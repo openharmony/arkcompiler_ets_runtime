@@ -459,7 +459,7 @@ public:
     {
         totalNodesSize_ -= size;
     }
-    CString *GenerateNodeName(TaggedObject *entry);
+    CString *GenerateNodeName(TaggedObject *entry, bool needProxySuffix = false);
     static CString GetNodeName(JSType type, bool isVmMode);
     CString GetProxyClassNameSuffix(TaggedObject *entry);
     NodeType GenerateNodeType(TaggedObject *entry);
@@ -547,12 +547,13 @@ public:
 private:
     void FillNodes(bool isInFinish = false, bool isSimplify = false);
     HprofNode *GenerateNode(JSTaggedValue entry, size_t size = 0,
-                            bool isInFinish = false, bool isSimplify = false, bool isBinMod = false);
+                            bool isInFinish = false, bool isSimplify = false, bool isBinMod = false,
+                            bool needProxySuffix = false);
     HprofNode *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod);
     HprofNode *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     HprofNode *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     HprofNode *HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
-                                   TaggedObject* obj, JSTaggedType &addr);
+                                   TaggedObject* obj, JSTaggedType &addr, bool needProxySuffix = false);
     CString GeneratePrimitiveNameString(JSTaggedValue &entry);
     HprofNode *GeneratePrivateStringNode(size_t size);
     HprofNode *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false, bool isBinMod = false);
@@ -588,8 +589,9 @@ private:
 
     class GenerateNodeRootVisitor final : public RootVisitor {
     public:
-        GenerateNodeRootVisitor(HeapSnapshot &snapshot, bool isInFinish, bool isSimplify)
-            : snapshot_(snapshot), isInFinish_(isInFinish), isSimplify_(isSimplify) {}
+        GenerateNodeRootVisitor(HeapSnapshot &snapshot, bool isInFinish, bool isSimplify, bool needProxySuffix)
+            : snapshot_(snapshot), isInFinish_(isInFinish), isSimplify_(isSimplify),
+              needProxySuffix_(needProxySuffix) {}
         ~GenerateNodeRootVisitor() override = default;
 
         void VisitRoot(Root type, ObjectSlot slot) override;
@@ -602,6 +604,7 @@ private:
         HeapSnapshot &snapshot_;
         bool isInFinish_;
         bool isSimplify_;
+        bool needProxySuffix_;
     };
 
     class EdgeBuilderRootVisitor : public RootVisitor {
