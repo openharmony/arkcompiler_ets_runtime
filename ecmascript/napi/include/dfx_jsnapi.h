@@ -103,6 +103,7 @@ public:
     // GetHeapObjectSize provide a rough estimate.
     static size_t GetHeapUsedSize(const EcmaVM *vm);
     static size_t GetHeapObjectSize(const EcmaVM *vm);
+    static size_t GetSharedHeapSize();
     static size_t GetHeapLimitSize(const EcmaVM *vm);
     static size_t GetProcessHeapLimitSize();
     static size_t GetGCCount(const EcmaVM *vm);

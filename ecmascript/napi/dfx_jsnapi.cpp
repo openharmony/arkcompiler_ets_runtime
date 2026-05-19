@@ -540,6 +540,14 @@ size_t DFXJSNApi::GetHeapObjectSize(const EcmaVM *vm)
     return vm->GetHeap()->GetHeapObjectSize();
 }
 
+size_t DFXJSNApi::GetSharedHeapSize()
+{
+    if (g_isEnableCMCGC) {
+        return 0;
+    }
+    return ecmascript::SharedHeap::GetInstance()->GetHeapObjectSize();
+}
+
 size_t DFXJSNApi::GetHeapLimitSize(const EcmaVM *vm)
 {
     if (g_isEnableCMCGC) {
