@@ -67,9 +67,9 @@ public:
  *      +--------------------------------+---------------    |          |
  *      |          AOTSymbolInfo         |TaggedArray        |          |
  *      +--------------------------------+---------------    |          |
- *      |      unshared constpool index  |int32_t        CacheLength    |
+ *      |      shared constpool id       |int32_t        CacheLength    |
  *      +--------------------------------+---------------    |        Length
- *      |      shared constpool id       |int32_t            |          |
+ *      |      unshared constpool index  |int32_t            |          |
  *      +--------------------------------+---------------    |          |
  *      |          AOTHClassInfo         |TaggedArray        |          |
  *      +--------------------------------+---------------    |          |
@@ -318,8 +318,8 @@ public:
             JSTaggedValue::TaggedTypeSize(), cacheSize + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
     }
 
-    void InitializeWithSpecialValue(JSThread *thread, JSTaggedValue initValue,
-        uint32_t capacity, uint32_t extraLength = 0)
+    inline void InitializeWithSpecialValue(JSThread *thread, JSTaggedValue initValue, uint32_t capacity,
+                                    uint32_t extraLength = 0)
     {
         ASSERT(initValue.IsSpecial());
         SetLength(capacity + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
@@ -328,6 +328,11 @@ public:
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
             Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
         }
+        InitializeWithSpecialValue(thread);
+    }
+
+    inline void InitializeWithSpecialValue(JSThread *thread)
+    {
         JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
         SetAotSymbolInfo(thread, array.GetTaggedValue());
         SetProtoTransTableInfo(thread, JSTaggedValue::Undefined());

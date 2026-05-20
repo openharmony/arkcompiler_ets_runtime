@@ -80,6 +80,7 @@ protected:
     void SerializeSendableEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSourceTextModuleFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    void SerializeConstantPoolFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto);
     void SerializeTaggedObjField(SerializeType serializeType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeInObjField(TaggedObject *object, ObjectSlot start, ObjectSlot end);

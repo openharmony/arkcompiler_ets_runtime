@@ -147,6 +147,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::SOURCE_TEXT_MODULE_RECORD:
             SerializeSourceTextModuleFieldIndividually(root, start, end);
             return true;
+        case JSType::CONSTANT_POOL:
+            SerializeConstantPoolFieldIndividually(root, start, end);
+            return true;
         default:
             return false;
     }
@@ -436,5 +439,47 @@ void BaseSerializer::SerializeSourceTextModuleFieldIndividually(TaggedObject *ro
         }
     }
 }
-}  // namespace panda::ecmascript
 
+void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject* root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::CONSTANT_POOL);
+    constexpr const auto SHARED_CONSTPOOL_ID_OFFSET =
+        ConstantPool::SHARED_CONSTPOOL_ID - ConstantPool::RESERVED_POOL_LENGTH;
+    // constpool size is always less than 65536
+    uint64_t seqHole = 0;
+    // Write sequential holes to serialization data
+    // Holes occur when constant pool slots don't contain heap objects or filtered out
+    auto writeHoles = [&seqHole, this]() {
+        if (seqHole == 0) {
+            return;
+        }
+        ASSERT(seqHole <= UINT16_MAX);
+        data_->WriteEncodeFlag(EncodeFlag::SEQUENCE_HOLE);
+        data_->WriteUint32(static_cast<uint32_t>(seqHole));
+        seqHole = 0;
+    };
+    for (auto slot = start; slot < end; slot++) {
+        if (!slot.GetTaggedValue().IsHeapObject()) {
+            const auto toEnd = (end.SlotAddress() - slot.SlotAddress()) / JSTaggedValue::TaggedTypeSize();
+            if (toEnd == SHARED_CONSTPOOL_ID_OFFSET) {
+                writeHoles();
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+                continue;
+            }
+            seqHole++;
+            continue;
+        }
+        auto val = slot.GetTaggedObject();
+        switch (val->GetClass()->GetObjectType()) {
+            case JSType::LINE_STRING:
+                writeHoles();
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+                break;
+            default:
+                seqHole++;
+                break;
+        }
+    }
+    writeHoles();
+}
+} // namespace panda::ecmascript

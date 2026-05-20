@@ -153,6 +153,8 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
 using PromiseRejectCallback = void (*)(void* info);
 using ExtraJSCrashMessageCallback = std::function<std::string (const EcmaVM*)>;
 using NativeReferenceDataCallbackGetter = void* (*)(void* ref);
+template <typename Value>
+using ForEachCallback = std::function<void(int32_t index, Value value, size_t total)>;
 
 using namespace panda;
 
@@ -329,6 +331,11 @@ public:
     JSThread *GetAssociatedJSThread() const
     {
         return thread_;
+    }
+
+    const JSRuntimeOptions &GetJSOptions() const
+    {
+        return options_;
     }
 
     JSRuntimeOptions &GetJSOptions()
@@ -1408,6 +1415,9 @@ public:
                                        int32_t index = 0);
     JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
                                                             panda_file::File::EntityId id);
+
+    void ForEachSharedConstpool(const JSPandaFile *jsPandaFile, const ForEachCallback<JSTaggedValue>& cb);
+
     void ClearCachedConstantPool()
     {
         cachedSharedConstpools_.clear();

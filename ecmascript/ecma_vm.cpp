@@ -2053,6 +2053,11 @@ void EcmaVM::UpdateConstpoolWhenDeserialAI(const std::string& fileName,
     ConstantPool::UpdateConstpoolWhenDeserialAI(thread_->GetEcmaVM(), aiCP, sharedCP, unsharedCP);
 }
 
+void EcmaVM::ForEachSharedConstpool(const JSPandaFile *jsPandaFile, const ForEachCallback<JSTaggedValue>& cb)
+{
+    Runtime::GetInstance()->ForEachConstpools(jsPandaFile, cb);
+}
+
 JSTaggedValue EcmaVM::FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index)
 {
     JSTaggedValue constpool = FindConstpoolFromContextCache(jsPandaFile, index);

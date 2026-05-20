@@ -97,6 +97,19 @@ bool Chmod(const std::string_view &path, const std::string_view &mode, std::erro
 // if `newPath` already exist, rename will fail with `EEXIST` error.
 std::error_code Rename(const char *oldPath, const char *newPath, bool existOk = true);
 
+enum class FileType : uint8_t {
+    BLOCK,
+    CHARACTER,
+    DIRECTORY,
+    FIFO,
+    SYMLINK,
+    REGULAR,
+    SOCKET,
+    UNKNOWN,
+};
+using IterdirCallback = std::function<void(const std::string_view&, FileType fileType)>;
+std::error_code Iterdir(const std::string& path, const IterdirCallback& callback);
+
 class MemMapScope {
 public:
     MemMapScope(MemMap memMap) : memMap_(memMap) {}
@@ -172,10 +185,14 @@ public:
         return true;
     }
 
-    void Step(const size_t stepSize)
+    bool Step(const size_t stepSize)
     {
+        if (remainingSize_ < stepSize) {
+            return false;
+        }
         readPtr_ += stepSize;
         remainingSize_ -= stepSize;
+        return true;
     }
 
     uint8_t *GetReadPtr() const
@@ -201,7 +218,7 @@ public:
     template<typename T>
     bool WriteSingleData(T *writeSrc, const size_t writeSize, const CString &message)
     {
-        if (memcpy_s(writePtr_, writeSize, writeSrc, writeSize) != EOK) {
+        if (memcpy_s(writePtr_, GetRemainingSize(), writeSrc, writeSize) != EOK) {
             LOG_ECMA(ERROR) << logTag_ << " memcpy_s write " << message << " failed";
             return false;
         }
@@ -219,12 +236,28 @@ public:
         if (paddingSize <= 0) {
             return true;
         }
-        if (memset_s(writePtr_, paddingSize, 0, paddingSize) != EOK) {
+        if (memset_s(writePtr_, GetRemainingSize(), 0, paddingSize) != EOK) {
             LOG_ECMA(ERROR) << logTag_ << " memset_s WriteAlignUpPadding " << paddingSize << " failed";
             return false;
         }
         writePtr_ += paddingSize;
         return true;
+    }
+
+    inline size_t GetWrittenSize() const
+    {
+        if (writePtr_ <= memMap_.GetOriginAddr()) {
+            return 0;
+        }
+        return writePtr_ - static_cast<uint8_t*>(memMap_.GetOriginAddr());
+    }
+
+    inline size_t GetRemainingSize() const
+    {
+        if (GetWrittenSize() >= fileSize_) {
+            return 0;
+        }
+        return fileSize_ - GetWrittenSize();
     }
 
 private:

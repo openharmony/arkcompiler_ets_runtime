@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 
+#include "constpool_snapshot.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -616,6 +617,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
             return jsPandaFile;
         } else {
             AddJSPandaFile(newJsPandaFile);
+            LoadConstpoolSnapshot(thread, newJsPandaFile.get());
             return newJsPandaFile;
         }
     }
@@ -753,6 +755,25 @@ bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
         }
         return JSPandaFileSnapshot::ReadData(
             thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR, version);
+    }
+    return false;
+}
+
+bool JSPandaFileManager::LoadConstpoolSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
+{
+    auto vm = thread->GetEcmaVM();
+    if (!jsPandaFile->IsBundlePack() && !vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+        CString version = ohos::OhosVersionInfoTools::GetRomVersion();
+        if (version.empty()) {
+            LOG_ECMA(DEBUG) << "JSPandaFileManager::LoadConstpoolSnapshot rom version is empty";
+            return false;
+        }
+        if (!ecmascript::Runtime::GetInstance()->IsMainProcess()) {
+            LOG_ECMA(DEBUG) << "JSPandaFileManager::LoadConstpoolSnapshot skiped in child process";
+            return false;
+        }
+        return ConstPoolSnapshot::DeserializeData(vm, jsPandaFile,
+                                                  ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR, version);
     }
     return false;
 }

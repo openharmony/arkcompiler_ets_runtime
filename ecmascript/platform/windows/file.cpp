@@ -238,6 +238,11 @@ template <typename T> T LogUnsupportedPlatform(const std::string_view &tag, T re
     return ret;
 }
 
+std::error_code Iterdir(const std::string& path, const IterdirCallback& callback)
+{
+    return LogUnsupportedPlatform(__func__, std::error_code(ENOSYS, std::generic_category()));
+}
+
 bool Chmod([[maybe_unused]] const std::string_view &path, [[maybe_unused]] const std::string_view &mode)
 {
     LOG_ECMA(WARN) << "Chmod is not supported on this platform.";

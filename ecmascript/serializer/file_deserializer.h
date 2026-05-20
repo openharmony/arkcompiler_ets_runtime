@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,24 +13,22 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_SERIALIZER_MODULE_DESERIALIZER_H
-#define ECMASCRIPT_SERIALIZER_MODULE_DESERIALIZER_H
+#ifndef ECMASCRIPT_SERIALIZER_FILE_DESERIALIZER_H
+#define ECMASCRIPT_SERIALIZER_FILE_DESERIALIZER_H
 
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/serialize_data.h"
 
 namespace panda::ecmascript {
 
-class ModuleDeserializer : public BaseDeserializer {
+class FileDeserializer : public BaseDeserializer {
 public:
-    explicit ModuleDeserializer(JSThread *thread, SerializeData *data)
-        : BaseDeserializer(thread, data), thread_(thread) {}
+    explicit FileDeserializer(JSThread* thread, SerializeData* data) : BaseDeserializer(thread, data) {}
 
-    ~ModuleDeserializer() override = default;
+    ~FileDeserializer() override = default;
 
 private:
     uintptr_t DeserializeTaggedObject(SerializedObjectSpace space) override;
-    JSThread *thread_;
 };
-}
-#endif // ECMASCRIPT_SERIALIZER_MODULE_DESERIALIZER_H
+} // namespace panda::ecmascript
+#endif // ECMASCRIPT_SERIALIZER_FILE_DESERIALIZER_H

@@ -24,6 +24,7 @@
 #include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/serializer/serialize_data.h"
 #define private public
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #undef private
@@ -47,7 +48,8 @@ public:
         if (serializeData == nullptr) {
             return false;
         }
-        return WriteDataToFile(thread, serializeData, filePath, version);
+        auto header = NewHeader(vm->GetApplicationVersionCode(), version);
+        return ModulesSnapshotHelper::WriteDataToFile(serializeData, filePath, header, "ModuleSnapshot");
     }
     static bool MockSerializeAndSavingBufferEmpty(const EcmaVM *vm, const CString &path, const CString &version)
     {
@@ -58,7 +60,8 @@ public:
         if (serializeData == nullptr) {
             return false;
         }
-        return WriteDataToFile(thread, serializeData, filePath, version);
+        auto header = NewHeader(vm->GetApplicationVersionCode(), version);
+        return ModulesSnapshotHelper::WriteDataToFile(serializeData, filePath, header, "ModuleSnapshot");
     }
     static bool MockSerializeAndSavingHasIncompleteData(const EcmaVM *vm, const CString &path, const CString &version)
     {
@@ -69,17 +72,18 @@ public:
         if (serializeData == nullptr) {
             return false;
         }
-        return WriteDataToFile(thread, serializeData, filePath, version);
+        auto header = NewHeader(vm->GetApplicationVersionCode(), version);
+        return ModulesSnapshotHelper::WriteDataToFile(serializeData, filePath, header, "ModuleSnapshot");
     }
-    static bool MockWriteDataToFile(JSThread *thread, const std::unique_ptr<SerializeData>& data,
-        const CString& filePath, const CString &version)
+    static bool MockWriteDataToFile(const std::unique_ptr<SerializeData>& data,
+        const CString& filePath, ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr header)
     {
-        return WriteDataToFile(thread, data, filePath, version);
+        return ModulesSnapshotHelper::WriteDataToFile(data, filePath, header, "ModuleSnapshot");
     }
-    static bool MockReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data,
-        const CString& path, const CString &version)
+    static bool MockReadDataFromFile(std::unique_ptr<SerializeData>& data,
+        const CString& path, ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr header)
     {
-        return ReadDataFromFile(thread, data, path, version);
+        return ModulesSnapshotHelper::ReadDataFromFile(data, path, header, "ModuleSnapshot");
     }
     static JSHandle<TaggedArray> MockGetModuleSerializeArray(JSThread *thread)
     {
@@ -95,7 +99,7 @@ public:
     }
     static size_t MockGetAlignUpPadding(const uint8_t *curPtr, void *originAddr, const size_t alignment)
     {
-        return GetAlignUpPadding(curPtr, originAddr, alignment);
+        return ModulesSnapshotHelper::GetAlignUpPadding(curPtr, originAddr, alignment);
     }
     static bool MockSerializeAndSavingWithZeroBuffer(const EcmaVM *vm, const CString &path, const CString &version)
     {
@@ -105,7 +109,13 @@ public:
         if (serializeData == nullptr) {
             return false;
         }
-        return WriteDataToFile(thread, serializeData, filePath, version);
+        auto header = NewHeader(vm->GetApplicationVersionCode(), version);
+        return ModulesSnapshotHelper::WriteDataToFile(serializeData, filePath, header, "ModuleSnapshot");
+    }
+
+    static ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr NewHeader(uint32_t versionCode, const CString& version)
+    {
+        return ModulesSnapshotHelper::SnapshotVersionInfo::New(versionCode, version, "");
     }
 };
 class ModuleSnapshotTest : public testing::Test {
@@ -159,6 +169,11 @@ public:
             currentPath += "/";
         }
         return currentPath;
+    }
+
+    ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr NewHeader(const CString& version)
+    {
+        return MockModuleSnapshot::NewHeader(instance->GetApplicationVersionCode(), version);
     }
 
     void InitEntries(JSHandle<SourceTextModule> module, JSHandle<SourceTextModule> jsonModule) const
@@ -1008,7 +1023,8 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeAndDeserializeWithZeroBuffer)
     ASSERT_TRUE(FileExist(fileName.c_str()));
     // read back the file to verify the zero-buffer read path (bufferSize_ == 0 branch in ReadDataFromFile)
     std::unique_ptr<SerializeData> readData = std::make_unique<SerializeData>(thread);
-    ASSERT_TRUE(MockModuleSnapshot::MockReadDataFromFile(thread, readData, path, version));
+    auto header = NewHeader(version);
+    ASSERT_TRUE(MockModuleSnapshot::MockReadDataFromFile(readData, fileName, std::move(header)));
     // Verify the read data has zero buffer size and nullptr buffer
     ASSERT_EQ(readData->Size(), static_cast<size_t>(0));
     ASSERT_EQ(readData->Data(), nullptr);
@@ -1025,7 +1041,8 @@ HWTEST_F_L0(ModuleSnapshotTest, WriteDataToFileMmapFailed)
     CString invalidPath = base::ConcatToCString("/non_existent_dir/deep/nested/path/",
         ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME);
     CString version = TEST_ROM_VERSION.data();
-    ASSERT_FALSE(MockModuleSnapshot::MockWriteDataToFile(jsThread, serializeData, invalidPath, version));
+    auto header = NewHeader(version);
+    ASSERT_FALSE(MockModuleSnapshot::MockWriteDataToFile(serializeData, invalidPath, std::move(header)));
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, GetAlignUpPaddingTest)
@@ -1112,7 +1129,10 @@ HWTEST_F_L0(ModuleSnapshotTest, ReadDataFromFileTest)
     ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
     // Read data from file using MockReadDataFromFile
     std::unique_ptr<SerializeData> data = std::make_unique<SerializeData>(thread);
-    ASSERT_TRUE(MockModuleSnapshot::MockReadDataFromFile(thread, data, path, version));
+    auto header = NewHeader(version);
+    ASSERT_TRUE(MockModuleSnapshot::MockReadDataFromFile(
+        data, path + CString(ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME),
+        std::move(header)));
     ASSERT_NE(data, nullptr);
 }
 
@@ -1122,7 +1142,8 @@ HWTEST_F_L0(ModuleSnapshotTest, ReadDataFromFileWithInvalidPath)
     CString version = TEST_ROM_VERSION.data();
     // Read from non-existent file - should fail
     std::unique_ptr<SerializeData> data = std::make_unique<SerializeData>(thread);
-    ASSERT_FALSE(MockModuleSnapshot::MockReadDataFromFile(thread, data, invalidPath, version));
+    auto header = NewHeader(version);
+    ASSERT_FALSE(MockModuleSnapshot::MockReadDataFromFile(data, invalidPath, std::move(header)));
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithMultipleModules)

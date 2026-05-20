@@ -505,6 +505,15 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             handledFieldSize = 0;
             break;
         }
+        case (uint8_t)EncodeFlag::SEQUENCE_HOLE: {
+            auto count = data_->ReadUint32(position_);
+            for (uint32_t i = 0; i < count; i++) {
+                slot.Update(JSTaggedValue::Hole().GetRawData());
+                slot++;
+            }
+            handledFieldSize *= count;
+            break;
+        }
         default:
             // This flag may be supported by subclass.
             return DerivedExtraReadSingleEncodeData(encodeFlag, objAddr, fieldOffset);

@@ -14,6 +14,7 @@
  */
 #include "ecmascript/ohos/module_snapshot_interfaces.h"
 
+#include "ecmascript/runtime.h"
 #include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "ecmascript/platform/filesystem.h"

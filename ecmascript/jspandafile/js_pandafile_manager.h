@@ -109,15 +109,21 @@ public:
     void RemoveJSPandaFile(const JSPandaFile *jsPandaFile);
     void ClearNameMap();
 
-    std::unordered_set<std::shared_ptr<JSPandaFile>> GetHapJSPandaFiles(const EcmaVM *vm)
+    std::unordered_set<std::shared_ptr<JSPandaFile>> GetAppJSPandaFiles(const EcmaVM *vm, bool hapOnly = false)
     {
         std::unordered_set<std::shared_ptr<JSPandaFile>> hapJSPandaFiles;
         if (!const_cast<EcmaVM *>(vm)->IsAsynTranslateClasses()) {
             return hapJSPandaFiles;
         }
         LockHolder lock(jsPandaFileLock_);
-        for (const auto &item : loadedJSPandaFiles_) {
-            if (!item.second->IsBundlePack() && item.second->IsHapOrHspPath() && item.second->IsNewVersion()) {
+        for (const auto& item : loadedJSPandaFiles_) {
+            if (item.second->IsBundlePack()) {
+                continue;
+            }
+            if (!(hapOnly ? item.second->IsHapPath() : item.second->IsHapOrHspPath())) {
+                continue;
+            }
+            if (item.second->IsNewVersion()) {
                 hapJSPandaFiles.emplace(item.second);
             }
         }
@@ -150,6 +156,7 @@ private:
     static void FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode);
 
     static bool UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile);
+    static bool LoadConstpoolSnapshot(JSThread *thread, JSPandaFile *jsPandaFile);
     std::string GenPandafileCheckReport();
 
     RecursiveMutex jsPandaFileLock_;

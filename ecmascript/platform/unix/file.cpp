@@ -18,6 +18,7 @@
 #include <dirent.h>
 #include <climits>
 #include <sys/stat.h>
+#include <functional>
 #include <system_error>
 #include "common_components/log/log.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -260,27 +261,55 @@ char *LoadLibError()
 
 void DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix)
 {
-    DIR* dir = opendir(dirPath.data());
+    Iterdir(dirPath, [&suffix, &dirPath](const std::string_view& fileName, FileType fileType) {
+        if (fileType != FileType::REGULAR) {
+            return;
+        }
+        if (fileName.find(suffix) == std::string::npos) {
+            return;
+        }
+        std::string fullPath(dirPath);
+        fullPath += fileName;
+        if (remove(fullPath.c_str()) == 0) {
+            LOG_ECMA(INFO) << "DeleteFilesWithSuffix remove path success: " << fullPath;
+        } else {
+            LOG_ECMA(ERROR) << "DeleteFilesWithSuffix remove path failed: " << fullPath;
+        }
+    });
+}
+
+std::error_code Iterdir(const std::string& path, const IterdirCallback& callback)
+{
+    DIR* dir = opendir(path.data());
     if (!dir) {
-        LOG_FULL(ERROR) << "DeleteFilesWithSuffix open dir Failed";
-        return;
+        LOG_FULL(ERROR) << "open dir failed, path: " << path;
+        return std::error_code(errno, std::generic_category());
     }
+    static const auto toFileType = [](unsigned char type) -> FileType {
+        switch (type) {
+            case DT_CHR:
+                return FileType::CHARACTER;
+            case DT_DIR:
+                return FileType::DIRECTORY;
+            case DT_FIFO:
+                return FileType::FIFO;
+            case DT_LNK:
+                return FileType::SYMLINK;
+            case DT_REG:
+                return FileType::REGULAR;
+            case DT_SOCK:
+                return FileType::SOCKET;
+            case DT_UNKNOWN:
+            default:
+                return FileType::UNKNOWN;
+        }
+    };
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
-        if (entry->d_type == DT_REG) {
-            const std::string &fileName = entry->d_name;
-            if (fileName.find(suffix) == std::string::npos) {
-                continue;
-            }
-            std::string fullPath = std::string(dirPath) + fileName;
-            if (remove(fullPath.c_str()) == 0) {
-                LOG_ECMA(INFO) << "DeleteFilesWithSuffix remove path success: " << fullPath;
-            } else {
-                LOG_ECMA(ERROR) << "DeleteFilesWithSuffix remove path failed: " << fullPath;
-            }
-        }
+        callback(entry->d_name, toFileType(entry->d_type));
     }
     closedir(dir);
+    return std::error_code();
 }
 
 int StrToPosixFlags(const std::string_view &flags)

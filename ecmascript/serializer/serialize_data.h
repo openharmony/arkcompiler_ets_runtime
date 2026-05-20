@@ -77,6 +77,7 @@ enum class EncodeFlag : uint8_t {
     MODULE_FILE_NAME,
     MODULE_RECORD_NAME,
     MODULE_LAZY_ARRAY,
+    SEQUENCE_HOLE,
     LAST
 };
 
@@ -545,7 +546,7 @@ private:
     std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM> regionRemainSizeVectors_ {};
     std::set<uintptr_t> sharedArrayBufferSet_ {};
     std::set<NativeBindingDetachInfo *> nativeBindingDetachInfos_ {};
-    friend class ModuleSnapshot;
+    friend class ModulesSnapshotHelper;
 };
 }
 

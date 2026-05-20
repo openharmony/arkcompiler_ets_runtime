@@ -522,11 +522,18 @@ public:
     /*
      * hapPath_: 1. /data/app/el1/bundle/public/bundleName/moduleName.hap
      *           2. /data/app/el1/bundle/public/bundleName/moduleName.hsp
-    */
+     */
     bool IsHapOrHspPath() const
     {
-        return base::StringHelper::StringEndWith(hapPath_, HAP_SUFFIX) ||
-               base::StringHelper::StringEndWith(hapPath_, HSP_SUFFIX);
+        return IsHapPath() || base::StringHelper::StringEndWith(hapPath_, HSP_SUFFIX);
+    }
+
+    /*
+     * hapPath_: 1. /data/app/el1/bundle/public/bundleName/moduleName.hap
+     */
+    inline bool IsHapPath() const
+    {
+        return base::StringHelper::StringEndWith(hapPath_, HAP_SUFFIX);
     }
 
     void SetFileMapper(void *fileMapper)
