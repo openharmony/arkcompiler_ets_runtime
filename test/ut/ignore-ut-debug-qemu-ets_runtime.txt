@@ -1,3 +1,1 @@
 # Known failure list for ut - debug - qemu - ets_runtime
-#34822
-obj/arkcompiler/ets_runtime/ecmascript/tests/GC_IdleGCTrigger_Test
