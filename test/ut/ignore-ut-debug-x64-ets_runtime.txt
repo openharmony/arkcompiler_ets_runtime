@@ -16,6 +16,9 @@ obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
 #25962
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Hclass_Test
 
+#34822
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_IdleGCTrigger_Test
+
 #25939
 obj/arkcompiler/ets_runtime/test/jittest/icnotfound/icnotfound
 
