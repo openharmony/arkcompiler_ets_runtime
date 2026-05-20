@@ -138,8 +138,9 @@ void RegionDesc::VisitAllObjectsBefore([[maybe_unused]] const std::function<void
     } else if (IsSmallRegion()) {
         while (position < end) {
             // GetAllocSize should before call func, because object maybe destroy in compact gc.
-            func(reinterpret_cast<BaseObject *>(position));
-            size_t size = RegionalHeap::GetAllocSize(*reinterpret_cast<BaseObject *>(position));
+            BaseObject *object = reinterpret_cast<BaseObject *>(position);
+            size_t size = RegionalHeap::GetAllocSize(*object);
+            func(object);
             position += size;
         }
     }
