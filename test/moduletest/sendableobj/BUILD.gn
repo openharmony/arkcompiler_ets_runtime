@@ -1,4 +1,5 @@
-# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,23 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-Sendable class is sendable
-UnSendable class is not sendable
-boolean is sendable
-string is sendable
-number is sendable
-bigInt is sendable
-function is not sendable
-sendableFunc is sendable
-Arr is sendable
-=== Test Map with sendable objects ===
-Test 1: Empty Map
-Empty Map get returns undefined
-Test 2: Non-empty Map
-Set key2=100, key3=200
-Get key2 returns 100
-Get key3 returns 200
-Get non-existent key returns undefined
-Test 3: Multiple Map operations
-Map operations count: 0
-SendableClassDic OK
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_moduletest_action("sendableobj") {
+  deps = []
+  entry_point = "--entry-point=sendableobj"
+  is_module = true
+  is_merge = true
+  src_dir = "$js_root/test/sharedtest/sendableobj"
+  src_postfix = "ts"
+}

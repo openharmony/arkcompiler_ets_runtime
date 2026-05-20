@@ -2310,7 +2310,7 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
         Label hasElementsDict(env);
         Label fastPath(env);
         Label newSObject(env);
-        BRANCH(IsDictionaryMode(glue, protoOrHClass), &callRuntime, &checkClassConstructor);
+        BRANCH(IsDictionaryModeByHClass(protoOrHClass), &callRuntime, &checkClassConstructor);
         Bind(&checkClassConstructor);
         {
             BRANCH(IsClassConstructor(glue, ctor), &checkElementsDict, &fastPath);
