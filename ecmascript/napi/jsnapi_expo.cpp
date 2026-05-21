@@ -608,6 +608,13 @@ bool JSValueRef::IsConstructor(const EcmaVM *vm)
     return value.IsHeapObject() && value.IsConstructor();
 }
 
+bool JSValueRef::IsClassConstructor(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
+    return value.IsHeapObject() && value.IsClassConstructor();
+}
+
 bool JSValueRef::IsFunction(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -7082,6 +7089,16 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     JSHandle<JSTaggedValue> exportObj(thread, result);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+}
+
+Local<ObjectRef> JSNApi::GetExportsFromFile(EcmaVM *vm, const std::string &file, const std::string &entryPoint)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope scope(thread);
+
+    JSHandle<JSTaggedValue> exports =
+        ecmascript::NapiModuleLoader::LoadModuleNameSpaceFromFile(thread, entryPoint.c_str(), file.c_str());
+    return JSNApiHelper::ToLocal<ObjectRef>(exports);
 }
 
 Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file,

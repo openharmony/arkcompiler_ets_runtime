@@ -53,3 +53,7 @@ export class TestClass2 {
 export function testFunction(num1 : number, num2 : number) {
     return num1 + num2
 }
+
+export let arr = Array
+
+export let sarr = SendableArray

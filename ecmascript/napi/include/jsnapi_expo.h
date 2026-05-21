@@ -645,6 +645,7 @@ public:
     bool IsArray(const EcmaVM *vm);
     bool IsJSArray(const EcmaVM *vm);
     bool IsConstructor(const EcmaVM *vm);
+    bool IsClassConstructor(const EcmaVM *vm);
     bool IsFunction(const EcmaVM *vm);
 
     bool IsJSFunction(const EcmaVM *vm);
@@ -1863,6 +1864,11 @@ public:
      */
     static PandaFileType GetFileType(const uint8_t *data, int32_t size);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
+    /*
+     * test-only
+     * Only use in host(linux) to load abc file
+     */
+    static Local<ObjectRef> GetExportsFromFile(EcmaVM *vm, const std::string &file, const std::string &entryPoint);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);

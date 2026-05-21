@@ -5183,4 +5183,31 @@ HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_Success)
     EXPECT_EQ(moduleName, "entry");
     EXPECT_EQ(ohmurl, "@normalized:N&&com.application.demo&entry/Index&");
 }
+
+HWTEST_F_L0(JSNApiTests, IsClassConstructor)
+{
+    LocalScope scope(vm_);
+
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    EXPECT_FALSE(object->IsClassConstructor(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, GetExportsFromFile)
+{
+    LocalScope scope(vm_);
+
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    Local<ObjectRef> result = JSNApi::GetExportsFromFile(vm_, baseFileName, "module_export");
+
+    Local<JSValueRef> obj = result->Get(vm_, "TestClass2");
+    EXPECT_TRUE(obj->IsClassConstructor(vm_));
+
+    Local<JSValueRef> arr = result->Get(vm_, "arr");
+    EXPECT_FALSE(arr->IsClassConstructor(vm_));
+
+    Local<JSValueRef> sarr = result->Get(vm_, "sarr");
+    EXPECT_FALSE(sarr->IsClassConstructor(vm_));
+}
+
 } // namespace panda::test
