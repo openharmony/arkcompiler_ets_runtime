@@ -259,6 +259,28 @@ HWTEST_F_L0(SharedPartialGCTest, ReadBarrierTest)
     EXPECT_EQ(toObjFromBarrier2, toObj);
 }
 
+HWTEST_F_L0(SharedPartialGCTest, SensitiveTest)
+{
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    heap->GetHeapPrepare(thread);
+    std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    sHeap->SetForceGC(true);
+    InitializeBaseObjects(space);
+    space->Merge();
+    // trigger concurrent mark
+    sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::OTHER>(thread);
+    while (!thread->HasSuspendRequest());
+    thread->CheckSafepointIfSuspended();
+    sHeap->WaitGCFinished(thread);
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
+    EXPECT_FALSE(sHeap->InSensitiveStatus());
+}
+
 HWTEST_F_L0(SharedPartialGCTest, SharedOldSpace1)
 {
     constexpr double ALIVE_RATE = 0.1;

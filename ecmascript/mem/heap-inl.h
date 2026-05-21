@@ -1185,6 +1185,9 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     if (UNLIKELY(g_isEnableCMCGC)) {
         return;
     }
+    if (NeedGCInSensitiveStatus()) {
+        SetForceGC(true);
+    }
     if (!CheckCanTriggerConcurrentMarking(thread)) {
         return;
     }
@@ -1197,11 +1200,25 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     bool triggerConcurrentMark = (GetHeapObjectSize() >= globalSpaceConcurrentMarkLimit_);
     if (triggerConcurrentMark && (OnStartupEvent() || IsJustFinishStartup())) {
         triggerConcurrentMark = ObjectExceedJustFinishStartupThresholdForCM();
+        if (triggerConcurrentMark && !smartGCStats_.forceGC_ && !OnStartupEvent()) {
+            SetForceGC(true);
+        }
     }
     if (triggerConcurrentMark) {
         // currently, SharedHeap::TryTriggerConcurrentMarking is called only when allocate object in SharedHeap
         TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::ALLOCATION_LIMIT>(thread);
     }
+}
+
+bool SharedHeap::NeedGCInSensitiveStatus() const
+{
+    if (!InSensitiveStatusAfterStartup() || smartGCStats_.forceGC_) {
+        return false;
+    }
+    if (GetHeapObjectSize() > recordSensitiveSize_ + config_.GetIncObjSizeThresholdInSensitive()) {
+        return true;
+    }
+    return false;
 }
 
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)

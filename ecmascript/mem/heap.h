@@ -586,7 +586,10 @@ public:
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
         smartGCStats_.sensitiveStatus_ = status;
         if (!InSensitiveStatus()) {
+            recordSensitiveSize_ = config_.GetMaxHeapSize();
             smartGCStats_.sensitiveStatusCV_.Signal();
+        } else if (recordSensitiveSize_ == config_.GetMaxHeapSize()) {
+            recordSensitiveSize_ = GetHeapObjectSize();
         }
     }
 
@@ -643,6 +646,12 @@ public:
     bool OnStartupEvent() const override
     {
         return smartGCStats_.startupStatus_ == StartupStatus::ON_STARTUP;
+    }
+
+    bool InSensitiveStatusAfterStartup() const
+    {
+        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE &&
+            GetStartupStatus() == StartupStatus::FINISH_STARTUP;
     }
 
     void NotifyPostFork() override
@@ -1030,6 +1039,8 @@ private:
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
     inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
     inline void InvokeSharedNativePointerCallbacks();
+    inline bool NeedGCInSensitiveStatus() const;
+
     struct SharedHeapSmartGCStats {
         /**
          * For SmartGC.
@@ -1091,6 +1102,7 @@ private:
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
     size_t fragmentationLimitForSharedFullGC_ {0};
+    size_t recordSensitiveSize_ {0};
     std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};

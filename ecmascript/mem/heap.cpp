@@ -236,6 +236,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     parallelGC_ = option.EnableParallelGC();
     optionalLogEnabled_ = option.EnableOptionalLog();
     size_t maxHeapSize = config_.GetMaxHeapSize();
+    recordSensitiveSize_ = maxHeapSize;
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
 
@@ -666,7 +667,7 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
-        region->DeleteCrossRegionRSet();
+        region->ClearCrossRegionRSet();
         region->ResetRegionTypeFlag();
     });
     if (!clearTaskFinished_) {
@@ -761,6 +762,9 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         ASSERT(dThread_->HasLaunchedSuspendAll());
 #endif
         dThread_->FinishRunningTask();
+        if (InSensitiveStatus()) {
+            recordSensitiveSize_ = GetHeapObjectSize();
+        }
         NotifyGCCompleted();
         // Update to forceGC_ is in DaemeanSuspendAll, and protected by the `Runtime::SuspendAll`,
         // so do not need lock.
@@ -892,6 +896,7 @@ void SharedHeap::MoveOldSpaceToAppspawn()
 #endif
     sOldSpace_->EnumerateRegions([&](Region *region) {
         region->SetRegionSpaceFlag(RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE);
+        region->ResetRegionTypeFlag();
         // Region in SharedHeap do not need PageTag threadId.
         PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName());
         sAppSpawnSpace_->AddRegion(region);
