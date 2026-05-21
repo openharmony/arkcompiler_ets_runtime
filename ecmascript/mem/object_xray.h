@@ -526,10 +526,14 @@ public:
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::WEAK_LINKED_HASH_MAP:
+#if ENABLE_MEMORY_OPTIMIZATION
                 if constexpr (visitWeakMapType == VisitLinkedWeakHashMapType::AS_TAGGED_ARRAY) {
                     TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 visitor.VisitWeakLinkedHashMap(object);
+#else
+                TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+#endif
                 break;
             case JSType::FUNC_SLOT:
                 FuncSlot::Cast(object)->VisitRangeSlot<visitType>(visitor);
