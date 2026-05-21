@@ -120,7 +120,7 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
 
     // Lambda captures 'this' so it can call the private GenerateNode().
     auto onMark = [this, isInFinish](JSTaggedValue value) {
-        GenerateNode(value, 0, isInFinish);
+        GenerateNode(value, 0, isInFinish, false, false, true);
     };
     ReachableVisitor visitor(marker, worklist, onMark);
     rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
@@ -270,7 +270,7 @@ CString HeapSnapshot::GetProxyClassNameSuffix(TaggedObject *entry)
 }
 
 // NOLINTNEXTLINE(readability-function-size)
-CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
+CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry, bool needProxySuffix)
 {
     auto *hCls = entry->GetClass();
     JSType type = hCls->GetObjectType();
@@ -293,7 +293,9 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             nodeName = GetArrayString(TaggedArray::Cast(entry), nodeName);
             break;
         case JSType::JS_PROXY:
-            nodeName += GetProxyClassNameSuffix(entry);
+            if (needProxySuffix) {
+                nodeName += GetProxyClassNameSuffix(entry);
+            }
             break;
         default:
             break;
@@ -598,7 +600,7 @@ void HeapSnapshot::GenerateNodeRootVisitor::VisitBaseAndDerivedRoot([[maybe_unus
 
 void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTaggedValue &value)
 {
-    HprofNode *node = snapshot_.GenerateNode(value, 0, isInFinish_, isSimplify_);
+    HprofNode *node = snapshot_.GenerateNode(value, 0, isInFinish_, isSimplify_, false, needProxySuffix_);
     if (node == nullptr || !value.IsHeapObject()) {
         return;
     }
@@ -625,7 +627,7 @@ void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
     LOG_ECMA(INFO) << "HeapSnapshot::FillNodes";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshot::FillNodes", "");
     // Iterate Heap Object
-    GenerateNodeRootVisitor visitor(*this, isInFinish, isSimplify);
+    GenerateNodeRootVisitor visitor(*this, isInFinish, isSimplify, true);
     rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
 }
 
@@ -662,7 +664,7 @@ HprofNode *HeapSnapshot::HandleObjectNode(JSTaggedValue &entry, size_t &size, bo
 }
 
 HprofNode *HeapSnapshot::HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
-                                             TaggedObject* obj, JSTaggedType &addr)
+                                             TaggedObject* obj, JSTaggedType &addr, bool needProxySuffix)
 {
     size_t selfSize;
     if (g_isEnableCMCGC) {
@@ -674,8 +676,8 @@ HprofNode *HeapSnapshot::HandleBaseClassNode(size_t size, bool idExist, NodeId &
     if (obj->GetClass()->IsJSNativePointer()) {
         nativeSize = JSNativePointer::Cast(obj)->GetBindingSize();
     }
-    HprofNode* node = HprofNode::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
-                                         selfSize, nativeSize, addr);
+    HprofNode* node = HprofNode::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj, needProxySuffix),
+                                         GenerateNodeType(obj), selfSize, nativeSize, addr);
     entryMap_.InsertEntry(node);
     if (!idExist) {
         entryIdMap_->InsertId(addr, sequenceId);
@@ -716,7 +718,8 @@ CString HeapSnapshot::GeneratePrimitiveNameString(JSTaggedValue &entry)
     return primitiveName;
 }
 
-HprofNode *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify, bool isBinMod)
+HprofNode *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify, bool isBinMod,
+                                      bool needProxySuffix)
 {
     HprofNode *node = nullptr;
     if (entry.IsHeapObject()) {
@@ -739,7 +742,7 @@ HprofNode *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isI
             HprofNode *existNode = entryMap_.FindEntry(addr);  // Fast Index
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
             if (existNode == nullptr) {
-                return HandleBaseClassNode(size, idExist, sequenceId, obj, addr);
+                return HandleBaseClassNode(size, idExist, sequenceId, obj, addr, needProxySuffix);
             } else {
                 existNode->SetLive(true);
                 return existNode;
@@ -1103,7 +1106,7 @@ void HeapSnapshot::ProcessRegularEdge(const Reference &it, HprofNode *entryFrom,
         entryTo = entryMap_.FindEntry(HprofNode::NewAddress(to));
     }
     if (entryTo == nullptr) {
-        entryTo = GenerateNode(toValue, 0, true, isSimplify);
+        entryTo = GenerateNode(toValue, 0, true, isSimplify, false, true);
     }
     if (entryTo != nullptr) {
         Edge *edge = (it.type_ == EdgeType::ELEMENT) ?

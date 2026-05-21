@@ -312,6 +312,33 @@ HWTEST_F_L0(HeapTrackerTest, HeapTrackerTraceAllocation)
     std::remove(fileName.c_str());
 }
 
+HWTEST_F_L0(HeapTrackerTest, HeapTrackerWithCreateJSProxy)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    HeapProfilerInterface *heapProfiler = HeapProfilerInterface::GetInstance(instance);
+    bool result = heapProfiler->StartHeapTracking(50);
+    ASSERT_TRUE(result);
+
+    ObjectFactory *factory = instance->GetFactory();
+    for (int i = 0; i < 1000; i++) {
+        JSHandle<JSTaggedValue> target(factory->NewEmptyJSObject());
+        JSHandle<JSTaggedValue> handler(factory->NewEmptyJSObject());
+        factory->NewJSProxy(target, handler);
+    }
+
+    std::string fileName = "test_proxy.heaptimeline";
+    fstream outputString(fileName, std::ios::out);
+    outputString.close();
+    outputString.clear();
+
+    FileStream stream(fileName.c_str());
+    result = heapProfiler->StopHeapTracking(&stream, nullptr);
+    ASSERT_TRUE(result);
+    HeapProfilerInterface::Destroy(instance);
+
+    std::remove(fileName.c_str());
+}
+
 HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
