@@ -398,6 +398,7 @@ group("ark_aot_ts_test") {
     "shared_module",
     "func_profile_type_info",
     "sendable",
+    "sendableobj",
     "sendablewithfunc",
     "webkit_call_convention",
     "retype_isnan",

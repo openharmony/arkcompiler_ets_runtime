@@ -173,6 +173,7 @@ module_test_list = [
   "sharedic",
   "sendable",
   "sendablearray",
+  "sendableobj",
   "sharedobjectstorebarrier_treestring",
 
   "weakmap",
