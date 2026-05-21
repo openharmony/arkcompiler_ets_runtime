@@ -4079,7 +4079,8 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
 
 Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     const Local<JSValueRef> argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    int32_t length)
+    int32_t length,
+    bool clearSingleStepper)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
@@ -4088,7 +4089,9 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     if (!IsFunction(vm)) {
         return JSValueRef::Undefined(vm);
     }
-    vm->GetJsDebuggerManager()->ClearSingleStepper();
+    if (LIKELY(clearSingleStepper)) {
+        vm->GetJsDebuggerManager()->ClearSingleStepper();
+    }
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(func, ERROR);
     JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
