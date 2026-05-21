@@ -97,7 +97,7 @@ std::string GetObjectInfo(const BaseObject* obj)
     if (obj == nullptr) {
         s << "Skip: nullptr(Ref of nullptr might be a root, or Ref is iterated in region)" << std::endl;
     } else {
-        s << std::hex << HexDump((void*) obj, defaultInfoLength);
+        s << std::hex << HexDump(reinterpret_cast<const void*>(obj), defaultInfoLength);
     }
 
     s << "> Region Info:" << std::endl;
@@ -105,7 +105,7 @@ std::string GetObjectInfo(const BaseObject* obj)
         s << "Skip: Object is not in heap range" << std::endl;
     } else {
         auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
-        s << std::hex << "Type: 0x" << (int) region->GetRegionType() << ", "
+        s << std::hex << "Type: 0x" << static_cast<int>(region->GetRegionType()) << ", "
           << "Base: 0x" << region->GetRegionBase() << ", "
           << "Start: 0x" << region->GetRegionStart() << ", "
           << "End: 0x" << region->GetRegionEnd() << ", "
@@ -349,7 +349,7 @@ public:
     {
         MarkStack<BaseObject*> roots;
 
-        RefFieldVisitor refVisitor = [&](RefField<>& ref) { visitor.VerifyRef(nullptr, ref); };
+        RefFieldVisitor refVisitor = [&visitor](RefField<>& ref) { visitor.VerifyRef(nullptr, ref); };
         VisitRoots(refVisitor);
     }
 
@@ -357,7 +357,7 @@ public:
     {
         MarkStack<BaseObject*> roots;
 
-        WeakRefFieldVisitor refVisitor = [&](RefField<>& ref) {
+        WeakRefFieldVisitor refVisitor = [&visitor](RefField<>& ref) {
             visitor.VerifyRef(nullptr, ref);
             return true;
         };
