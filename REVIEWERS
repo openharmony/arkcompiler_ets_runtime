@@ -30,6 +30,7 @@ common_components/taskpool/       @weng-changcheng @chentianyuu @dmitriitr ^udav
 common_components/test/           @weng-changcheng
 common_components/thread/         @weng-changcheng @chentianyuu @dmitriitr ^konstanting
 
+ecmascript/arksteed/         @zhangyukun8 @xwcai98 @onlynagesha @mengbierr
 ecmascript/builtins/         @xwcai98 @chenjx-huawei @guobingbing
 ecmascript/checkpoint/       @lukai25 @chentianyuu
 ecmascript/compiler/         @ginxu @zhangyukun8 @yingguofeng ^guobingbing @xwcai98
@@ -39,7 +40,7 @@ ecmascript/debugger/         @wanghuan2022 ^weng-changcheng
 ecmascript/deoptimizer/      @ginxu @zhangyukun8
 ecmascript/dfx/              @wanghuan2022 ^weng-changcheng
 ecmascript/ic/               @xwcai98 @guobingbing
-ecmascript/interpreter/      @xwcai98 @zhangyukun8 @yingguofeng
+ecmascript/interpreter/      @xwcai98 @zhangyukun8 ^yingguofeng
 ecmascript/intl/             ^xwcai98 @guobingbing
 ecmascript/jit/              @xiaoweidng @KasonChan @RyanZhou97_admin
 ecmascript/jobs/             @weng-changcheng @yingguofeng
