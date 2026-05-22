@@ -70,6 +70,7 @@ struct AotCompilerArgs : public Parcelable {
 
     // === Package info ===
     std::string bundleName;
+    std::string hostBundleName;    // Host bundle name for host-private shared HSP AOT
     std::string moduleName;
     std::string appIdentifier;     // Code sign ownerID
     int32_t bundleUid = -1;
@@ -130,6 +131,7 @@ private:
     bool WritePackageInfo(Parcel &parcel) const
     {
         return parcel.WriteString(bundleName) &&
+               parcel.WriteString(hostBundleName) &&
                parcel.WriteString(moduleName) &&
                parcel.WriteString(appIdentifier) &&
                parcel.WriteInt32(bundleUid) &&
@@ -184,6 +186,7 @@ private:
     static bool ReadPackageInfo(Parcel &parcel, AotCompilerArgs *args)
     {
         return parcel.ReadString(args->bundleName) &&
+               parcel.ReadString(args->hostBundleName) &&
                parcel.ReadString(args->moduleName) &&
                parcel.ReadString(args->appIdentifier) &&
                parcel.ReadInt32(args->bundleUid) &&

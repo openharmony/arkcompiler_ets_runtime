@@ -882,6 +882,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheDirectoryPrefix_004, 
 }
 
 /**
+ * @tc.name: AotArgsVerifyTest_CheckArkCacheDirectoryPrefix_005
+ * @tc.desc: Test AotArgsVerify::CheckArkCacheDirectoryPrefix rejects partial bundle name prefix
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheDirectoryPrefix_005, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckArkCacheDirectoryPrefix(
+        "/data/app/el1/public/aot_compiler/ark_cache/test_bundle_extra/file", "test_bundle");
+
+    EXPECT_FALSE(result);
+}
+
+/**
  * @tc.name: AotArgsVerifyTest_CheckFrameworkAnFile_001
  * @tc.desc: Test AotArgsVerify::CheckFrameworkAnFile with valid framework path
  * @tc.type: Func
@@ -1623,6 +1636,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleGidInvalid, Tes
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PathTraversalInAotFile, TestSize.Level0)
 {
 #if !defined(PANDA_TARGET_OHOS)
+    mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.test.app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream hapFile("/data/test.hap");
     hapFile << "HAP";
     hapFile.close();
@@ -2123,164 +2137,76 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_NegativeValue,
     EXPECT_FALSE(result);
 }
 
-// ============================================================================
-// CheckSharedBundlesUidAndGid - Test Cases
-// ============================================================================
-
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothValid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with uid=1000, gid=1000 - should return true
+ * @tc.name: AotArgsVerifyTest_CheckHostPrivateArkCacheFiles
+ * @tc.desc: Test host-private shared HSP ark cache files are checked against host bundle cache path
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothValid, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckHostPrivateArkCacheFiles, TestSize.Level0)
 {
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(1000, 1000);
+    AotCompilerArgs args;
+    args.hostBundleName = "com.example.host";
+    args.moduleName = "shared";
+    args.outputPath =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.host/arm64";
+    args.anFileName =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.host/arm64/shared.an";
+    EXPECT_TRUE(AotArgsVerify::CheckHostPrivateArkCacheFiles(args));
+
+    args.hostBundleName = "com.example.other";
+    EXPECT_FALSE(AotArgsVerify::CheckHostPrivateArkCacheFiles(args));
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_HostPrivateShared
+ * @tc.desc: Test host-private shared HSP AOT uses host app ark cache and app uid/gid
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_HostPrivateShared, TestSize.Level0)
+{
+    AotCompilerArgs args;
+    args.compileMode = ArgsIdx::FULL;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.processUid = 0;
+    args.bundleName = "com.example.sharedhsp";
+    args.hostBundleName = "com.example.host";
+    args.moduleName = "shared";
+    args.bundleType = static_cast<int32_t>(BundleType::SHARED);
+    args.bundleUid = 20000;
+    args.bundleGid = 20000;
+    args.outputPath =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.host/arm64/"
+        "com.example.sharedhsp/10001";
+    args.anFileName = args.outputPath + "/shared.an";
+
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_TRUE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidValid_GidInvalid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with uid=1000, gid!=1000 - should return false
+ * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_SharedWithoutHostRejected
+ * @tc.desc: Test shared HSP static AOT is rejected when hostBundleName is not set
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidValid_GidInvalid, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_SharedWithoutHostRejected, TestSize.Level0)
 {
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(1000, 10000);
+    AotCompilerArgs args;
+    args.compileMode = ArgsIdx::FULL;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.processUid = 0;
+    args.bundleName = "com.example.sharedhsp";
+    args.hostBundleName = "";
+    args.moduleName = "shared";
+    args.bundleType = static_cast<int32_t>(BundleType::SHARED);
+    args.bundleUid = 20000;
+    args.bundleGid = 20000;
+    args.outputPath =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.host/arm64/"
+        "com.example.sharedhsp/10001";
+    args.anFileName = args.outputPath + "/shared.an";
 
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidInvalid_GidValid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with uid!=1000, gid=1000 - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidInvalid_GidValid, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(10000, 1000);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothInvalid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with uid!=1000, gid!=1000 - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothInvalid, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(10000, 10000);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeUid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with negative uid - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeUid, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(-1, 1000);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeGid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with negative gid - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeGid, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(1000, -1);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_ZeroValues
- * @tc.desc: Test CheckSharedBundlesUidAndGid with uid=0, gid=0 - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_ZeroValues, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(0, 0);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_LargeValues
- * @tc.desc: Test CheckSharedBundlesUidAndGid with large uid/gid values - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_LargeValues, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(99999, 99999);
-
-    EXPECT_FALSE(result);
-}
-
-// ============================================================================
-// CheckSharedBundlesArkCacheFiles - Test Cases
-// ============================================================================
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_ValidPath
- * @tc.desc: Test CheckSharedBundlesArkCacheFiles with valid shared bundles path - should return true
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_ValidPath, TestSize.Level0)
-{
-    std::string anFile = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/test/file.an";
-
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
-
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_PathTraversal
- * @tc.desc: Test CheckSharedBundlesArkCacheFiles with path traversal attack - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_PathTraversal, TestSize.Level0)
-{
-    std::string anFile = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/../etc/file.an";
-
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_WrongPrefix
- * @tc.desc: Test with APP_ARK_CACHE_PREFIX instead of SHARED_BUNDLES - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_WrongPrefix, TestSize.Level0)
-{
-    std::string anFile = "/data/app/el1/public/aot_compiler/ark_cache/test/file.an";
-
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_EmptyAnFile
- * @tc.desc: Test CheckSharedBundlesArkCacheFiles with empty anFile string - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_EmptyAnFile, TestSize.Level0)
-{
-    std::string anFile = "";
-
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
-
-    EXPECT_FALSE(result);
+    EXPECT_FALSE(AotArgsVerify::CheckStaticAotArgs(args));
 }
 
 // ============================================================================

@@ -116,9 +116,8 @@ bool AotArgsVerify::CheckArkCacheDirectoryPrefix(const std::string &aotFile, con
     }
 
     std::string aotDir = aotFile.substr(0, lastSlash);
-    std::string expectedBasePath = "/data/app/el1/public/aot_compiler/ark_cache/" + bundleName;
-    if (aotDir.length() < expectedBasePath.length() ||
-        aotDir.substr(0, expectedBasePath.length()) != expectedBasePath) {
+    std::string expectedBasePath = ArgsIdx::APP_ARK_CACHE_PREFIX + bundleName;
+    if (aotDir != expectedBasePath && aotDir.find(expectedBasePath + "/") != 0) {
         LOG_SA(ERROR) << "directory is not in expected location: " << aotDir.c_str()
                       << ", expected prefix: " << expectedBasePath.c_str();
         return false;
@@ -238,10 +237,10 @@ bool AotArgsVerify::CheckStaticAotArgs(const AotCompilerArgs &args)
 
     bool isSharedBundles = IsSharedBundlesType(args);
     if (isSharedBundles) {
-        if (!CheckSharedBundlesUidAndGid(args.bundleUid, args.bundleGid)) {
+        if (!CheckBundleUidAndGid(args.bundleUid, args.bundleGid)) {
             return false;
         }
-        if (!CheckSharedBundlesArkCacheFiles(args.anFileName)) {
+        if (!CheckHostPrivateArkCacheFiles(args)) {
             return false;
         }
     } else {
@@ -302,13 +301,10 @@ bool AotArgsVerify::IsValidArkCachePath(const std::string &resolvedPath)
         ArgsIdx::APP_ARK_CACHE_PREFIX) == 0;
     bool isValidFrameworkPath = resolvedPath.compare(0, ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX.length(),
         ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX) == 0;
-    bool isValidSharedBundlesPath = resolvedPath.compare(0, ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.length(),
-        ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX) == 0;
-    if (!isValidAppPath && !isValidFrameworkPath && !isValidSharedBundlesPath) {
+    if (!isValidAppPath && !isValidFrameworkPath) {
         LOG_SA(ERROR) << "fileName is not in valid arkcache location: " << resolvedPath.c_str()
                       << ", expected prefixes: " << ArgsIdx::APP_ARK_CACHE_PREFIX.c_str()
-                      << ", " << ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX.c_str()
-                      << " or " << ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.c_str();
+                      << " or " << ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX.c_str();
         return false;
     }
     return true;
@@ -469,34 +465,24 @@ bool AotArgsVerify::ParseStringField(const nlohmann::json &jsonObj, const char *
     return true;
 }
 
-bool AotArgsVerify::CheckSharedBundlesUidAndGid(int32_t uid, int32_t gid)
+bool AotArgsVerify::CheckHostPrivateArkCacheFiles(const AotCompilerArgs &args)
 {
-    if (uid != OID_SYSTEM || gid != OID_SYSTEM) {
-        LOG_SA(ERROR) << "Shared bundles require BundleUid and BundleGid to be " << OID_SYSTEM;
+    if (args.hostBundleName.empty()) {
+        LOG_SA(ERROR) << ArgsIdx::HOST_BUNDLE_NAME.c_str() << " not found in args";
         return false;
     }
-    return true;
-}
-
-bool AotArgsVerify::CheckSharedBundlesArkCacheFiles(const std::string &anFile)
-{
-    if (anFile.empty()) {
-        LOG_SA(ERROR) << "anFileName is empty";
+    if (!CheckPathTraverse(args.hostBundleName)) {
         return false;
     }
 
-    if (!CheckPathTraverse(anFile)) {
+    std::string aotFile = args.outputPath.empty() ? "" : args.outputPath + "/" + args.moduleName;
+    if (!CheckArkCacheFiles(aotFile, args.anFileName, args.hostBundleName)) {
         return false;
     }
-
-    if (anFile.length() < ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.length() ||
-        anFile.substr(0, ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.length()) !=
-        ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX) {
-        LOG_SA(ERROR) << "Shared bundles file is not in expected location: " << anFile.c_str()
-                      << ", expected prefix: " << ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.c_str();
+    if (args.anFileName.find(ArgsIdx::APP_ARK_CACHE_PREFIX + args.hostBundleName + "/") != 0) {
+        LOG_SA(ERROR) << "host-private shared hsp file is not in host ark cache: " << args.anFileName.c_str();
         return false;
     }
-
     return true;
 }
 

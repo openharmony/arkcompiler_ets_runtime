@@ -103,6 +103,7 @@ void VerifyArgsEqual(const AotCompilerArgs &expected, const AotCompilerArgs &act
     EXPECT_EQ(actual.compileMode, expected.compileMode);
     EXPECT_EQ(actual.moduleArkTSMode, expected.moduleArkTSMode);
     EXPECT_EQ(actual.bundleName, expected.bundleName);
+    EXPECT_EQ(actual.hostBundleName, expected.hostBundleName);
     EXPECT_EQ(actual.moduleName, expected.moduleName);
     EXPECT_EQ(actual.appIdentifier, expected.appIdentifier);
     EXPECT_EQ(actual.bundleUid, expected.bundleUid);
@@ -1039,6 +1040,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_062, TestSize.Level0)
     EXPECT_EQ(deserialized->isSysComp, false);
     EXPECT_EQ(deserialized->compileMode, "");
     EXPECT_EQ(deserialized->bundleName, "");
+    EXPECT_EQ(deserialized->hostBundleName, "");
     EXPECT_EQ(deserialized->bundleUid, -1);
     EXPECT_EQ(deserialized->hspModules.size(), 0u);
     delete deserialized;
@@ -1580,6 +1582,8 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_088, TestSize.Level0)
     ASSERT_TRUE(parcel.WriteString("dynamic"));
     // bundleName
     ASSERT_TRUE(parcel.WriteString("com.test"));
+    // hostBundleName
+    ASSERT_TRUE(parcel.WriteString(""));
     // moduleName
     ASSERT_TRUE(parcel.WriteString("entry"));
     // appIdentifier
@@ -1633,6 +1637,7 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_089, TestSize.Level0)
     ASSERT_TRUE(parcel.WriteString("partial"));
     ASSERT_TRUE(parcel.WriteString("dynamic"));
     ASSERT_TRUE(parcel.WriteString("com.test"));
+    ASSERT_TRUE(parcel.WriteString(""));
     ASSERT_TRUE(parcel.WriteString("entry"));
     ASSERT_TRUE(parcel.WriteString("12345"));
     ASSERT_TRUE(parcel.WriteInt32(100));

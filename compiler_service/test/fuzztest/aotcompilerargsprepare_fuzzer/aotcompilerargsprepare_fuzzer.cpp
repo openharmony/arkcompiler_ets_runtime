@@ -90,6 +90,9 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     if (!ReadFuzzString(data, size, offset, args.bundleName)) {
         return false;
     }
+    if (!ReadFuzzString(data, size, offset, args.hostBundleName)) {
+        return false;
+    }
     if (!ReadFuzzString(data, size, offset, args.moduleName)) {
         return false;
     }

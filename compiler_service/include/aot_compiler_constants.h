@@ -31,6 +31,7 @@ const std::string TRIGGER_TYPE = "triggerType";
 const std::string AN_FILE_NAME = "anFileName";
 const std::string APP_SIGNATURE = "appIdentifier";
 const std::string BUNDLE_NAME = "bundleName";
+const std::string HOST_BUNDLE_NAME = "hostBundleName";
 const std::string PKG_PATH = "pkgPath";
 const std::string ABC_NAME = "abcName";
 const std::string MODULE_NAME = "moduleName";
@@ -51,7 +52,6 @@ const std::string IS_SYSTEM_COMPONENT = "isSysComp";
 
 const std::string APP_ARK_CACHE_PREFIX = "/data/app/el1/public/aot_compiler/ark_cache/";
 const std::string FRAMEWORK_ARK_CACHE_PREFIX = "/data/service/el1/public/for-all-app/framework_ark_cache/";
-const std::string SHARED_BUNDLES_ARK_CACHE_PREFIX = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/";
 
 const std::string ARKTS_MODE = "moduleArkTSMode";
 const std::string PARTIAL = "partial";
@@ -109,7 +109,7 @@ enum class AotTriggerType {
     INSTALL = 1,
 };
 
-constexpr const char* BOOLEAN_FALSE = "0";
+constexpr const char* BOOLEAN_TRUE = "1";
 
 namespace Symbols {
 constexpr const char* PREFIX = "--";
