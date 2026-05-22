@@ -1166,7 +1166,6 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
             auto cache = JSHClass::GetEnumCacheOwnWithOutCheck(thread_, jsHClass);
             uint32_t length = cache->GetLength();
             uint32_t dictStart = length;
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
             uint32_t inlinedProps = jsHClass->GetInlinedProperties();
             for (uint32_t i = 0; i < length; i++) {
                 JSTaggedValue key = cache->Get(thread_, i);
@@ -1175,6 +1174,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
                 }
                 handleKey_.Update(key);
                 JSTaggedValue value;
+                LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
                 int index = JSHClass::FindPropertyEntry(thread_, *jsHClass, key);
                 PropertyAttributes attr(layoutInfo->GetAttr(thread_, index));
                 ASSERT(static_cast<int>(attr.GetOffset()) == index);
@@ -1228,8 +1228,8 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
         if (end <= 0) {
             return hasContent;
         }
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
         for (int i = 0; i < end; i++) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
             JSTaggedValue key = layoutInfo->GetKey(thread_, i);
             if (!hasChangedToDictionaryMode) {
                 PropertyAttributes attr(layoutInfo->GetAttr(thread_, i));
@@ -1249,7 +1249,6 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
                     }
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString<ReplacerAndGapUndefined>(obj, hasContent);
-                    layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
                     if (obj->GetProperties(thread_).IsDictionary()) {
                         hasChangedToDictionaryMode = true;
                         propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties(thread_));
@@ -1258,7 +1257,6 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
                         JSHClass *currentHClass = obj->GetJSHClass();
                         if (UNLIKELY(currentHClass != jsHClass.GetTaggedValue().GetTaggedObject())) {
                             jsHClass = JSHandle<JSHClass>(thread_, currentHClass);
-                            layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
                             hasSymbol = jsHClass->HasSymbolProperties();
                         }
                     }
