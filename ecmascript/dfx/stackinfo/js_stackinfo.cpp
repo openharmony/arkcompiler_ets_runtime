@@ -672,7 +672,7 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t load
         return false;
     }
     auto debugExtractor = extractor->GetDebugExtractor();
-    auto methodInfos = extractor->GetMethodInfos();
+    const auto &methodInfos = extractor->GetMethodInfos();
     if (methodInfos.empty()) {
         LOG_ECMA(ERROR) << "Read all method info from JSPandaFile failed, methodInfos is empty.";
         return false;
@@ -1213,7 +1213,7 @@ uintptr_t JSSymbolExtractor::GetStaticSymbolExtractor()
     return staticSymbolExtractor_;
 }
 
-CVector<MethodInfo> JSSymbolExtractor::GetMethodInfos()
+const CVector<MethodInfo> &JSSymbolExtractor::GetMethodInfos() const
 {
     if (methodInfo_.empty()) {
         methodInfo_ = JSStackTrace::ReadAllMethodInfos(jsPandaFile_);
@@ -1432,7 +1432,7 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase,
     }
     loadOffset = loadOffset % PageSize();
     byteCodePc = byteCodePc - loadOffset;
-    auto infos = FindMethodInfos(mapBase);
+    const auto &infos = FindMethodInfos(mapBase);
     auto codeInfo = TranslateByteCodePc(byteCodePc, infos);
     if (!codeInfo) {
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;

@@ -197,7 +197,7 @@ public:
     JSPandaFile* GetJSPandaFile(uint8_t *data = nullptr, size_t dataSize = 0);
     DebugInfoExtractor* GetDebugExtractor();
     SourceMap* GetSourceMap();
-    CVector<MethodInfo> GetMethodInfos();
+    const CVector<MethodInfo> &GetMethodInfos() const;
 
 private:
     void CreateJSPandaFile();
@@ -212,7 +212,7 @@ private:
     std::shared_ptr<FileMapper> fileMapper_ {nullptr};
 #endif
 
-    CVector<MethodInfo> methodInfo_;
+    mutable CVector<MethodInfo> methodInfo_;
     uintptr_t loadOffset_ {0};
     uintptr_t dataSize_ {0};
     uint8_t* data_ {nullptr};
