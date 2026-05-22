@@ -3043,6 +3043,36 @@ void JSNApi::NotifyOnANR()
     EcmaVM::NotifyANR();
 }
 
+void JSNApi::SetTrackGlobalRef(EcmaVM *vm, bool enable)
+{
+    CROSS_THREAD_CHECK(vm);
+    thread->SetTrackGlobalRef(enable);
+}
+
+bool JSNApi::IsTrackGlobalRefEnabled(const EcmaVM *vm)
+{
+    CROSS_THREAD_CHECK(vm);
+    return thread->IsTrackGlobalRefEnabled();
+}
+
+void JSNApi::StoreGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr, void *ref)
+{
+    CROSS_THREAD_CHECK(vm);
+    thread->StoreGlobalRefMapping(slotAddr, ref);
+}
+
+void JSNApi::EraseGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr)
+{
+    CROSS_THREAD_CHECK(vm);
+    thread->EraseGlobalRefMapping(slotAddr);
+}
+
+void *JSNApi::FindGlobalRefMapping(const EcmaVM *vm, uintptr_t slotAddr)
+{
+    CROSS_THREAD_CHECK(vm);
+    return thread->FindGlobalRefMapping(slotAddr);
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);

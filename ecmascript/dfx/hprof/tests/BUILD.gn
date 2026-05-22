@@ -271,9 +271,9 @@ host_unittest_action("RawHeapTranslateTest") {
     # test file
     "../rawheap_translate/metadata_parse.cpp",
     "../rawheap_translate/rawheap_translate.cpp",
-    "../rawheap_translate/utils.cpp",
     "../rawheap_translate/serializer.cpp",
     "../rawheap_translate/string_hashmap.cpp",
+    "../rawheap_translate/utils.cpp",
     "rawheap_translate_test.cpp",
   ]
 
@@ -393,10 +393,25 @@ host_unittest_action("GlobalHandleLeakDetectTest") {
   ]
 }
 
+host_unittest_action("GlobalRefTrackTest") {
+  module_out_path = module_output_path
+
+  sources = [ "global_ref_track_test.cpp" ]
+
+  configs = [ "../../../../:ecma_test_config" ]
+
+  deps = [ "../../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
   deps = [
     ":GlobalHandleLeakDetectTest",
+    ":GlobalRefTrackTest",
     ":HProfTest",
     ":HeapDumpTest",
     ":HeapSamplingTest",
@@ -425,6 +440,7 @@ group("host_unittest") {
   testonly = true
   deps = [
     ":GlobalHandleLeakDetectTestAction",
+    ":GlobalRefTrackTestAction",
     ":HProfTestAction",
     ":HeapDumpTestAction",
     ":HeapSamplingTestAction",
@@ -438,6 +454,7 @@ group("host_unittest") {
   if (is_mac) {
     deps -= [
       ":GlobalHandleLeakDetectTestAction",
+      ":GlobalRefTrackTestAction",
       ":HProfTestAction",
       ":HeapDumpTestAction",
       ":HeapSamplingTestAction",

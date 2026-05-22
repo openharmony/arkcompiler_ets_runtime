@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdint>
 #include <fstream>
+#include <sstream>
 #include <sys/time.h>
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -560,6 +561,7 @@ private:
     HprofNode *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     HprofNode *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
+    void FillGlobalEdges();
     void ProcessNativeEdge(const Reference &it, HprofNode *entryFrom);
     void ProcessNativeStringEdge(const Reference &it, HprofNode *entryFrom);
     void ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify);
@@ -599,7 +601,7 @@ private:
         void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override;
 
     private:
-        void ProcessRoot(Root type, const JSTaggedValue &value);
+        void ProcessRoot(Root type, const JSTaggedValue &value, ObjectSlot slot);
 
         HeapSnapshot &snapshot_;
         bool isInFinish_;
@@ -709,6 +711,8 @@ private:
     CUnorderedSet<HprofNode *> globalHandleRoots_ {};
     CUnorderedSet<HprofNode *> vmRoots_ {};
     CUnorderedSet<HprofNode *> frameRoots_ {};
+    CUnorderedSet<HprofNode *> globalObjectRoots_ {};
+    CMap<uintptr_t, JSTaggedType> globalHandleAddrMap_ {};
     // The address of the native pointer storing the reference to the ArkTS object
     CVector<HprofNode *> nativeAddressNodes_ {};
     CVector<TimeStamp> timeStamps_ {};
