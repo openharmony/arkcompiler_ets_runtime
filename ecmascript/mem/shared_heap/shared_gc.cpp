@@ -129,7 +129,7 @@ void SharedGC::Sweep()
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (UNLIKELY(objectRegion == nullptr)) {
-            // existance of string table entry with null value is possible
+            // existence of string table entry with null value is possible
             // only if concurrent sweeping for string table is enabled
             return nullptr;
         }

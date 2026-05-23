@@ -73,7 +73,7 @@ Reg X64Emitter::TransferReg(Operand *opnd) const
             regType = X64CG::kR128List;
             break;
         default:
-            FATAL(kLncFatal, "unkown reg size");
+            FATAL(kLncFatal, "unknown reg size");
             break;
     }
     CHECK_FATAL(v->GetRegisterNumber() < kRegArray[regType].size(), "NIY, reg out of range");

@@ -78,7 +78,7 @@ export class XShader {
     gl.compileShader(vs);
     if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
       NapiLog.logError(
-        'error occured compiling the shaders:' + gl.getShaderInfoLog(vs)
+        'error occurred compiling the shaders:' + gl.getShaderInfoLog(vs)
       );
       return null;
     }
@@ -88,7 +88,7 @@ export class XShader {
     gl.compileShader(fs);
     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
       NapiLog.logError(
-        'error occured compiling the shaders:' + gl.getShaderInfoLog(fs)
+        'error occurred compiling the shaders:' + gl.getShaderInfoLog(fs)
       );
       return null;
     }

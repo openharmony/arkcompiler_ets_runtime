@@ -40,8 +40,8 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
         if (vm->IsNormalizedOhmUrlPack()) {
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
                                                               requestPath);
-        } else if (ModulePathHelper::NeedTranstale(requestPath)) {
-            ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
+        } else if (ModulePathHelper::NeedTranslate(requestPath)) {
+            ModulePathHelper::TranslateExpressionInput(curJsPandaFile.get(), requestPath);
         }
     }
     JSHandle<JSTaggedValue> nameSp = LoadModuleNameSpaceWithPath(thread, abcFilePath, requestPath, modulePath,

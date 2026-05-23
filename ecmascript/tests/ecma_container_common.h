@@ -164,9 +164,9 @@ public:
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         auto result = TestCommon::CreateContainerTaggedValue(thread, containers::ContainerTag::LinkedList);
 
-        JSHandle<JSTaggedValue> contianer(thread, result);
+        JSHandle<JSTaggedValue> container(thread, result);
         JSHandle<JSAPILinkedList> linkedList = JSHandle<JSAPILinkedList>::Cast(
-            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
+            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(container), container));
         JSTaggedValue doubleList = TaggedDoubleList::Create(thread);
         linkedList->SetDoubleList(thread, doubleList);
         return *linkedList;

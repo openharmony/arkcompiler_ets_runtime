@@ -271,15 +271,15 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
         Bind(&newTargetIsJSFunction);
         {
             Label intialHClassIsHClass(env);
-            GateRef intialHClass = Load(VariableType::JS_ANY(), glue_, newTarget,
+            GateRef initialHClass = Load(VariableType::JS_ANY(), glue_, newTarget,
                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            BRANCH(IsJSHClass(glue_, intialHClass), &intialHClassIsHClass, &slowPath);
+            BRANCH(IsJSHClass(glue_, initialHClass), &intialHClassIsHClass, &slowPath);
             Bind(&intialHClassIsHClass);
             {
                 NewObjectStubBuilder newBuilder(this);
                 newBuilder.SetParameters(glue_, 0);
                 Label afterNew(env);
-                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+                newBuilder.NewJSObject(&res, &afterNew, initialHClass);
                 Bind(&afterNew);
                 {
                     GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);

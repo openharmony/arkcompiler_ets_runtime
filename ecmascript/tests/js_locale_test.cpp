@@ -315,7 +315,7 @@ HWTEST_F_L0(JSLocaleTest, SetNumberFormatDigitOptions_Fraction)
 
 /**
  * @tc.name: CheckLocales
- * @tc.desc: Call "CheckLocales" function check wether language is correct from locale libraries obtained
+ * @tc.desc: Call "CheckLocales" function check whether language is correct from locale libraries obtained
  *           from different ways.
  * @tc.type: FUNC
  * @tc.require:

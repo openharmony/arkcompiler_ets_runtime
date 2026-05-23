@@ -65,7 +65,7 @@ class PageAllocator {
     };
 
     // pages are linked to each other as a double-linked list.
-    // the free slot list and other infomation are also in
+    // the free slot list and other information are also in
     // page header
     class Page {
     public:

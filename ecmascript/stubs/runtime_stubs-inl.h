@@ -2491,7 +2491,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
     JSMutableHandle<AOTLiteralInfo> aotLiteralInfo(thread, JSTaggedValue::Hole());
     //AOT ihc infos always in unshareConstpool
-    //If is runing on AOT,unshareConstpool is definitely not a hole
+    //If is running on AOT,unshareConstpool is definitely not a hole
     //So wo can skip if unshareConstpool is hole
     JSTaggedValue unsharedCp = thread->GetEcmaVM()->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
     if (!unsharedCp.IsHole()) {

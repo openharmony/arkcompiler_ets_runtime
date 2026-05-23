@@ -536,7 +536,7 @@ HWTEST_F_L0(ICRuntimeStubTest, Element_StoreAndLoad)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-    JSTaggedValue hanldeIntKey(4);
+    JSTaggedValue handleIntKey(4);
 
     uint32_t handlerInfo = 0U;
     KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handlerInfo);
@@ -549,10 +549,10 @@ HWTEST_F_L0(ICRuntimeStubTest, Element_StoreAndLoad)
     handleArrObj->SetProperties(thread, handleTaggedArr.GetTaggedValue());
 
     JSTaggedValue resultValue =
-        ICRuntimeStub::StoreElement(thread, *handleArrObj, hanldeIntKey, JSTaggedValue(3), JSTaggedValue(handlerInfo));
+        ICRuntimeStub::StoreElement(thread, *handleArrObj, handleIntKey, JSTaggedValue(3), JSTaggedValue(handlerInfo));
 
     EXPECT_TRUE(resultValue.IsUndefined());
-    EXPECT_EQ(ICRuntimeStub::LoadElement(thread, *handleArrObj, hanldeIntKey).GetInt(), 3);
+    EXPECT_EQ(ICRuntimeStub::LoadElement(thread, *handleArrObj, handleIntKey).GetInt(), 3);
     EXPECT_EQ(JSObject::GetProperty(thread, handleArrObj, lengthKey).GetValue()->GetInt(), 5);
     EXPECT_TRUE(ICRuntimeStub::LoadElement(thread, *handleArrObj, JSTaggedValue(2)).IsHole());
 }

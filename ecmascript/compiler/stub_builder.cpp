@@ -12327,7 +12327,7 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     Label afterAOTLiteral(env);
     Label tryGetAOTIhc(env);
     //AOT ihc infos always in unshareConstpool
-    //If is runing on AOT,unshareConstpool is definitely not a hole
+    //If is running on AOT,unshareConstpool is definitely not a hole
     //So wo can skip if unshareConstpool is hole
     GateRef unsharedConstpool = GetUnsharedConstpoolFromGlue(glue, constpool);
     BRANCH(TaggedIsHole(unsharedConstpool), &afterAOTLiteral, &tryGetAOTIhc);

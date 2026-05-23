@@ -633,7 +633,7 @@ EcmaVM::~EcmaVM()
         SharedHeap *sHeap = SharedHeap::GetInstance();
         const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
         if (IsWorkerThread() && Runtime::SharedGCRequest()) {
-            // destory workervm to release mem.
+            // destroy workervm to release mem.
             thread_->SetReadyForGCIterating(false);
             if (sHeap->CheckCanTriggerConcurrentMarking(thread_)) {
                 sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::WORKER_DESTRUCTION>(thread_);
@@ -2425,7 +2425,7 @@ void EcmaVM::ModuleManagers::DestroyAllNativeObj()
 {
     LockHolder lock(CMCGCMutex_);
     for (auto &moduleManager : moduleManagersVec_) {
-        moduleManager->NativeObjDestory();
+        moduleManager->NativeObjDestroy();
     }
 }
 

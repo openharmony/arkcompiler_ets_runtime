@@ -338,7 +338,7 @@ HWTEST_F_L0(JsStackInfoTest, TestParseJsFrameInfo)
  * @tc.name: ArkParseJsFrameInfo
  * @tc.desc: Check whether the result returned through "ArkCreateJSSymbolExtractor" function is within expectations;
  *           Check whether the result returned through "ArkParseJsFrameInfo" function is within expectations;
- *           Check whether the result returned through "ArkDestoryJSSymbolExtractor" function is within expectations.
+ *           Check whether the result returned through "ArkDestroyJSSymbolExtractor" function is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -430,21 +430,21 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
     EXPECT_TRUE(ret == 1);
     EXPECT_TRUE(std::string(jsFunction2.functionName) == "func_main_0");
 
-    ret = ark_destory_js_symbol_extractor(extractorptr1);
+    ret = ark_destroy_js_symbol_extractor(extractorptr1);
     EXPECT_TRUE(ret == 1);
 
-    ret = ark_destory_js_symbol_extractor(extractorptr2);
+    ret = ark_destroy_js_symbol_extractor(extractorptr2);
     EXPECT_TRUE(!JsStackInfo::nameMap.empty());
     EXPECT_TRUE(ret == 1);
 }
 
 /**
- * @tc.name: ark_destory_local
- * @tc.desc: Check whether the result returned through "ark_destory_local" function is within expectations;
+ * @tc.name: ark_destroy_local
+ * @tc.desc: Check whether the result returned through "ark_destroy_local" function is within expectations;
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(JsStackInfoTest, TestArkDestoryLocal)
+HWTEST_F_L0(JsStackInfoTest, TestArkDestroyLocal)
 {
     auto ret = ark_destroy_local(); // Direct destruct without creating Pointers
     EXPECT_TRUE(ret);
@@ -460,7 +460,7 @@ HWTEST_F_L0(JsStackInfoTest, TestArkDestoryLocal)
     trace = JSStackTrace::GetInstance();
     EXPECT_TRUE(trace == nullptr);
     EXPECT_TRUE(ret);
-    ret = ark_destroy_local(); // multiple destory
+    ret = ark_destroy_local(); // multiple destroy
     EXPECT_TRUE(ret);
 
     // Create and destruct multiple times within the process

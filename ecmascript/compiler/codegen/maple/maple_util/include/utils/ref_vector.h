@@ -18,12 +18,12 @@
 #include <vector>
 #include "iterator.h"
 
-// The `utils::ref_vector<T>` is a decorator of `std::vector<T*>` which won't destory any `T`s and just refer to them.
+// The `utils::ref_vector<T>` is a decorator of `std::vector<T*>` which won't destroy any `T`s and just refer to them.
 //
 // It is designed mainly to solve the problem that only the owner who is very familiar can tell whether the `T*` can be
 // nullptr. As time goes by, the others, even the owner may forget it. Or with more coding base on it, some will start
 // to check nullptr, it will make the code more confusion and hard to maintain.
-// Based on that, the ref_vector picks up the meaning of keeping objects' reference, it won't destory any of its
+// Based on that, the ref_vector picks up the meaning of keeping objects' reference, it won't destroy any of its
 // elements or require to check null(Never to be nullptr).
 namespace maple {
 namespace utils {

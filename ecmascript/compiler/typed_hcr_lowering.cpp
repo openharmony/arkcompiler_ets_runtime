@@ -1443,7 +1443,7 @@ void TypedHCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue, TypedS
 
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
     // Because at retype stage, we have set output according to op
-    // there is not need to consider about the convertion here.
+    // there is not need to consider about the conversion here.
     if (op == TypedStoreOp::ARRAY_STORE_INT_ELEMENT) {
         GateRef convertedValue = builder_.ZExtInt32ToInt64(value);
         builder_.SetValueToTaggedArray(VariableType::INT64(), glue, element, index, convertedValue);
@@ -2210,9 +2210,9 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
             {
-                GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), glue, newTarget,
-                                                     builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                check = builder_.IsJSHClass(glue, intialHClass);
+                GateRef initialHClass = builder_.Load(VariableType::JS_ANY(), glue, newTarget,
+                                                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                check = builder_.IsJSHClass(glue, initialHClass);
                 builder_.Jump(&exit);
             }
         }
@@ -2235,7 +2235,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
     Label exit(&builder_);
     GateRef newTarget = acc_.GetValueIn(gate, 0);
     GateRef arg0 = acc_.GetValueIn(gate, 1);
-    GateRef intialHClass =
+    GateRef initialHClass =
         builder_.Load(VariableType::JS_ANY(), glue, newTarget, builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     DEFVALUE(arrayLength, (&builder_), VariableType::INT64(), builder_.Int64(0));
     Label argIsNumber(&builder_);
@@ -2285,11 +2285,11 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
         {
             NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
             newBuilder.SetParameters(glue, 0);
-            res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
+            res = newBuilder.NewJSArrayWithSize(initialHClass, *arrayLength);
             GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
             builder_.Store(VariableType::INT32(), glue, *res, lengthOffset, builder_.TruncInt64ToInt32(*arrayLength));
             GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-            builder_.SetPropertyInlinedProps(glue, *res, intialHClass, accessor,
+            builder_.SetPropertyInlinedProps(glue, *res, initialHClass, accessor,
                 builder_.Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
             builder_.SetExtensibleToBitfield(glue, *res, true);
             builder_.Jump(&exit);
@@ -2430,16 +2430,16 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
 void TypedHCRLowering::NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
 {
     GateRef newTarget = acc_.GetValueIn(gate, 0);
-    GateRef intialHClass =
+    GateRef initialHClass =
         builder_.Load(VariableType::JS_ANY(), glue, newTarget, builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef arrayLength = builder_.Int64(0);
     NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
     newBuilder.SetParameters(glue, 0);
-    GateRef res = newBuilder.NewJSArrayWithSize(intialHClass, arrayLength);
+    GateRef res = newBuilder.NewJSArrayWithSize(initialHClass, arrayLength);
     GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
     builder_.Store(VariableType::INT32(), glue, res, lengthOffset, builder_.TruncInt64ToInt32(arrayLength));
     GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    builder_.SetPropertyInlinedProps(glue, res, intialHClass, accessor,
+    builder_.SetPropertyInlinedProps(glue, res, initialHClass, accessor,
                                      builder_.Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
     builder_.SetExtensibleToBitfield(glue, res, true);
     ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), res);
@@ -2470,9 +2470,9 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
             {
-                GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), glue, newTarget,
-                                                     builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                check = builder_.IsJSHClass(glue, intialHClass);
+                GateRef initialHClass = builder_.Load(VariableType::JS_ANY(), glue, newTarget,
+                                                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                check = builder_.IsJSHClass(glue, initialHClass);
                 builder_.Jump(&exit);
             }
         }
@@ -2603,9 +2603,9 @@ void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
             {
-                GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), glue, newTarget,
-                                                     builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                check = builder_.IsJSHClass(glue, intialHClass);
+                GateRef initialHClass = builder_.Load(VariableType::JS_ANY(), glue, newTarget,
+                                                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                check = builder_.IsJSHClass(glue, initialHClass);
                 builder_.Jump(&exit);
             }
         }

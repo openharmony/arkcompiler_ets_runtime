@@ -680,7 +680,7 @@ CString ModulePathHelper::RemoveSuffix(const CString &requestName)
     return res;
 }
 
-bool ModulePathHelper::NeedTranstale(const CString &requestName)
+bool ModulePathHelper::NeedTranslate(const CString &requestName)
 {
     if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE) ||
         StringHelper::StringStartWith(requestName, PREFIX_PACKAGE) ||
@@ -693,7 +693,7 @@ bool ModulePathHelper::NeedTranstale(const CString &requestName)
 }
 
 // Adapt dynamic import using expression input, translate include NativeModule/ohpm/hsp/har.
-void ModulePathHelper::TranstaleExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath)
+void ModulePathHelper::TranslateExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath)
 {
     LOG_ECMA(DEBUG) << "Enter Translate OhmUrl for DynamicImport, requestPath: " << requestPath;
     if (StringHelper::StringStartWith(requestPath, RAW_ARKUIX_PREFIX)) {

@@ -103,7 +103,7 @@ function testArrayPushException(){
       arr.push(1);
     } catch (e) {
       error = e;
-      print("exception happend") //: exception happend
+      print("exception happened") //: exception happened
     }
   }
 testArrayPushException()
@@ -118,7 +118,7 @@ function testArrayPushMaxLength(){
       //aot: [trace] Check Type: NotStableArray2
       arr.push(1);
     } catch (e) {
-      print("exception happend") //: exception happend
+      print("exception happened") //: exception happened
     }
   }
  testArrayPushMaxLength()

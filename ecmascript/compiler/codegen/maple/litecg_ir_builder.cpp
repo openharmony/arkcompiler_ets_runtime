@@ -820,7 +820,7 @@ void LiteCGIRBuilder::HandleCheckObjectIsStringIntrinsic(GateRef gate)
     Expr in = GetExprFromGate(acc_.GetIn(gate, 2));              // 2: third parameter  -> input
     Expr bitfieldOffset = GetExprFromGate(acc_.GetIn(gate, 3));  // 3: fourth parameter -> bitfieldoffset imm
     Expr stringFirst = GetExprFromGate(acc_.GetIn(gate, 4));     // 4: fifth parameter  -> stringFirst imm
-    Expr stringLast = GetExprFromGate(acc_.GetIn(gate, 5));      // 5: sixth paramter   -> stringLast imm
+    Expr stringLast = GetExprFromGate(acc_.GetIn(gate, 5));      // 5: sixth parameter   -> stringLast imm
     std::vector<Expr> args = { glue, in, bitfieldOffset, stringFirst, stringLast };
     auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_TAGGED_OBJECT_IS_STRING,
                                                  lmirBuilder_->u1Type, args);
@@ -833,7 +833,7 @@ void LiteCGIRBuilder::HandleIsJsCOWArrayIntrinsic(GateRef gate)
     Expr in = GetExprFromGate(acc_.GetIn(gate, 2));             // 2: third parameter  -> input
     Expr elementsOffset = GetExprFromGate(acc_.GetIn(gate, 3)); // 3: fourth parameter -> elementoffset imm
     Expr bitfieldOffset = GetExprFromGate(acc_.GetIn(gate, 4)); // 4: fifth parameter  -> bitfieldoffset imm
-    Expr cowArrayFirst = GetExprFromGate(acc_.GetIn(gate, 5));  // 5: sixth paramter   -> cowArray first imm
+    Expr cowArrayFirst = GetExprFromGate(acc_.GetIn(gate, 5));  // 5: sixth parameter   -> cowArray first imm
     Expr cowArrayLast = GetExprFromGate(acc_.GetIn(gate, 6));   // 6: seventh parameter-> cowArray last  imm
     std::vector<Expr> args = { glue, in, elementsOffset, bitfieldOffset, cowArrayFirst, cowArrayLast};
     auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_IS_COW_ARRAY, lmirBuilder_->u1Type, args);
@@ -1346,7 +1346,7 @@ void LiteCGIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfal
     BB &bb = CreateBB();
     BB &trueBB = GetOrCreateBB(btrue);
     BB &falseBB = GetOrCreateBB(bfalse);
-    // we hope that branch with higher probability can be placed immediatly behind
+    // we hope that branch with higher probability can be placed immediately behind
     if (trueWeight < falseWeight) {
         Stmt &stmt = lmirBuilder_->Goto(falseBB);
         lmirBuilder_->AppendStmt(bb, stmt);

@@ -69,7 +69,7 @@ HWTEST_F_L0(PropertyBoxTest, Clear)
 /**
  * @tc.name: SetValue
  * @tc.desc: Creating PropertyBox object through "NewPropertyBox" function,this object call "SetValue" function
- *           check wether the result returned through "GetValue" function is within expectations.
+ *           check whether the result returned through "GetValue" function is within expectations.
  * @tc.type: FUNC
  * @tc.requre:
  */

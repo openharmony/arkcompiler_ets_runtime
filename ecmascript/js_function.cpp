@@ -39,7 +39,7 @@ void JSFunction::InitializeJSFunctionCommon(JSThread *thread, const JSHandle<JSF
             accessor = globalConst->GetHandledFunctionLengthAccessor();
             func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
-                // Not duplicate codes, it will slow the performace if combining and put outside!
+                // Not duplicate codes, it will slow the performance if combining and put outside!
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
                 JSHandle<JSFunction> objFun(env->GetObjectFunction());
@@ -48,7 +48,7 @@ void JSFunction::InitializeJSFunctionCommon(JSThread *thread, const JSHandle<JSF
                 func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
             if (kind == FunctionKind::GENERATOR_FUNCTION) {
-                // Not duplicate codes, it will slow the performace if combining and put outside!
+                // Not duplicate codes, it will slow the performance if combining and put outside!
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
                 JSHandle<JSFunction> objFun(env->GetObjectFunction());

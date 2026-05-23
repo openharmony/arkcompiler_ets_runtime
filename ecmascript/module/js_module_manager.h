@@ -101,7 +101,7 @@ public:
         resolvedSendableModules_.Emplace(recordName, module);
     }
 
-    void NativeObjDestory()
+    void NativeObjDestroy()
     {
 #if ENABLE_LATEST_OPTIMIZATION
         resolvedModules_.ForEach([](const CString& key, GCRoot& root) {
@@ -206,7 +206,7 @@ private:
 
     void RemoveModuleNameFromList(const CString &recordName);
 
-    static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
+    static constexpr uint32_t DEFAULT_DICTIONARY_CAPACITY = 4;
 
     uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};
 

@@ -67,7 +67,7 @@ maplecl::Option<bool> localRc({"--local-rc"},
 maplecl::Option<bool> debug({"-g", "--g"}, "  -g                          \tGenerate debug information\n",
                             {cgCategory});
 
-maplecl::Option<bool> gdwarf({"--gdwarf"}, "  --gdwarf                    \tGenerate dwarf infomation\n", {cgCategory});
+maplecl::Option<bool> gdwarf({"--gdwarf"}, "  --gdwarf                   \tGenerate dwarf information\n", {cgCategory});
 
 maplecl::Option<bool> gsrc(
     {"--gsrc"}, "  --gsrc                      \tUse original source file instead of mpl file for debugging\n",

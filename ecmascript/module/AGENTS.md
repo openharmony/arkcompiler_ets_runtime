@@ -168,7 +168,7 @@ ACCESSORS(Exports, PATH_OFFSET, EXPORTS_OFFSET)
 
 // Bit field definitions
 DEFINE_ALIGN_SIZE(LAST_SIZE);
-static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
+static constexpr uint32_t DEFAULT_DICTIONARY_CAPACITY = 4;
 ```
 
 ### Atomic Operations

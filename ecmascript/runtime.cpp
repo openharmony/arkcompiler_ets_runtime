@@ -248,7 +248,7 @@ void Runtime::DestroyIfLastVm()
     LockHolder lock(*vmCreationLock_);
     if (--vmCount_ <= 0) {
         Jit::GetInstance()->Destroy();
-        SharedModuleManager::GetInstance()->SharedNativeObjDestory();
+        SharedModuleManager::GetInstance()->SharedNativeObjDestroy();
         SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
         DaemonThread::DestroyInstance();
         if (g_isEnableCMCGC) {

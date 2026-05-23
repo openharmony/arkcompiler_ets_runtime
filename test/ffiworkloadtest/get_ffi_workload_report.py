@@ -161,7 +161,7 @@ def generate_daily_report(daily_report_file, today_data, yestoday_data):
             ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF0000', end_color='FF0000',
                                                                   fill_type='solid')
     wb.save(daily_report_file)
-    Constants.logger.info("generate report successfully with no summary infomation.")
+    Constants.logger.info("generate report successfully with no summary information.")
     return Constants.RET_OK
 
 
@@ -271,7 +271,7 @@ def append_summary_info(daily_report_file, summary_data):
             degraded percentage upper limit:
             date:
     """
-    Constants.logger.info("begin to append summary infomation to  today report.")
+    Constants.logger.info("begin to append summary information to  today report.")
     wb = load_workbook(daily_report_file)
     ws = wb.worksheets[0]
     percentage_str = 'percentage:'

@@ -379,7 +379,7 @@ void FrameHandler::IterateAssembleStack(RootVisitor &visitor)
     }
 }
 
-// We seperate InterpretedEntryFrame from assemble stack when asm interpreter is enable.
+// We separate InterpretedEntryFrame from assemble stack when asm interpreter is enable.
 // To protect EcmaRuntimeCallInfo on InterpretedEntryFrame, we iterate InterpretedEntryFrame on thread sp individually.
 // And only InterpretedEntryFrame is on thread sp when asm interpreter is enable.
 void FrameHandler::IterateEcmaRuntimeCallInfo(RootVisitor &visitor)

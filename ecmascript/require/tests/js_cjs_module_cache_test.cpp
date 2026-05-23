@@ -60,7 +60,7 @@ HWTEST_F_L0(CjsModuleCacheTest, PutIfAbsent)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto vm = thread->GetEcmaVM();
-    JSHandle<CjsModuleCache> cache = CjsModuleCache::Create(thread, CjsModuleCache::DEAULT_DICTIONART_CAPACITY);
+    JSHandle<CjsModuleCache> cache = CjsModuleCache::Create(thread, CjsModuleCache::DEFAULT_DICTIONARY_CAPACITY);
 
     JSHandle<CjsModule> module = factory->NewCjsModule();
     JSHandle<JSTaggedValue> fileName(factory->NewFromUtf8("ark/js_runtime/test.js"));
@@ -87,7 +87,7 @@ HWTEST_F_L0(CjsModuleCacheTest, ResetModule)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto vm = thread->GetEcmaVM();
-    JSHandle<CjsModuleCache> cache = CjsModuleCache::Create(thread, CjsModuleCache::DEAULT_DICTIONART_CAPACITY);
+    JSHandle<CjsModuleCache> cache = CjsModuleCache::Create(thread, CjsModuleCache::DEFAULT_DICTIONARY_CAPACITY);
     JSHandle<CjsModule> module = factory->NewCjsModule();
     JSHandle<CjsModule> moduleWithNewExp = factory->NewCjsModule();
     JSHandle<JSTaggedValue> fileName(factory->NewFromUtf8("ark/js_runtime/test.js"));

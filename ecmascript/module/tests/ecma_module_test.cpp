@@ -551,40 +551,40 @@ HWTEST_F_L0(EcmaModuleTest, FindPackageInTopLevel)
     EXPECT_EQ(result, entryPoint);
 }
 
-HWTEST_F_L0(EcmaModuleTest, NeedTranstale)
+HWTEST_F_L0(EcmaModuleTest, NeedTranslate)
 {
     // start with @bundle
     CString requestName = "@bundle:com.bundleName.test/moduleName/requestModuleName";
-    bool res = ModulePathHelper::NeedTranstale(requestName);
+    bool res = ModulePathHelper::NeedTranslate(requestName);
     EXPECT_EQ(res, false);
 
     // start with @package:
     requestName = "@package:test";
-    res = ModulePathHelper::NeedTranstale(requestName);
+    res = ModulePathHelper::NeedTranslate(requestName);
     EXPECT_EQ(res, false);
 
     // start with .
     requestName = "./test";
-    res = ModulePathHelper::NeedTranstale(requestName);
+    res = ModulePathHelper::NeedTranslate(requestName);
     EXPECT_EQ(res, false);
 
     // start with @, has :
     requestName = "@test:";
-    res = ModulePathHelper::NeedTranstale(requestName);
+    res = ModulePathHelper::NeedTranslate(requestName);
     EXPECT_EQ(res, false);
 
     // start with @, don't has :
     requestName = "@test";
-    res = ModulePathHelper::NeedTranstale(requestName);
+    res = ModulePathHelper::NeedTranslate(requestName);
     EXPECT_EQ(res, true);
 
     // other branches
     requestName = "test";
-    res = ModulePathHelper::NeedTranstale(requestName);
+    res = ModulePathHelper::NeedTranslate(requestName);
     EXPECT_EQ(res, true);
 }
 
-HWTEST_F_L0(EcmaModuleTest, TranstaleExpressionInput)
+HWTEST_F_L0(EcmaModuleTest, TranslateExpressionInput)
 {
     CString baseFilename = "merge.abc";
     const char *data = R"(
@@ -602,13 +602,13 @@ HWTEST_F_L0(EcmaModuleTest, TranstaleExpressionInput)
 
     // start with @arkui-x.
     CString requestPath = "@arkui-x.test/moduleName/requestModuleName";
-    ModulePathHelper::TranstaleExpressionInput(pf.get(), requestPath);
+    ModulePathHelper::TranslateExpressionInput(pf.get(), requestPath);
     EXPECT_EQ(requestPath, "@ohos:test/moduleName/requestModuleName");
 
     requestPath = "@ohos.app:@native.system.app";
     CString fieldName = requestPath;
     pf->InsertNpmEntries(requestPath, fieldName);
-    ModulePathHelper::TranstaleExpressionInput(pf.get(), requestPath);
+    ModulePathHelper::TranslateExpressionInput(pf.get(), requestPath);
     EXPECT_EQ(requestPath, "@ohos:app:@native.system.app");
 }
 
@@ -5900,7 +5900,7 @@ HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule_CacheIntegration)
     EXPECT_EQ(cachedResult.GetTaggedValue(), originalValue.GetTaggedValue());
 }
 
-HWTEST_F_L0(EcmaModuleTest, ModuleManager_NativeObjDestory_SendableModules)
+HWTEST_F_L0(EcmaModuleTest, ModuleManager_NativeObjDestroy_SendableModules)
 {
     ModuleManager *moduleManager = thread->GetModuleManager();
     ASSERT_NE(moduleManager, nullptr);
@@ -5918,7 +5918,7 @@ HWTEST_F_L0(EcmaModuleTest, ModuleManager_NativeObjDestory_SendableModules)
     EXPECT_TRUE(cached->IsSourceTextModule());
     
     // Test native object destroy (this will clear the cache)
-    moduleManager->NativeObjDestory();
+    moduleManager->NativeObjDestroy();
     
     // Verify module is no longer in cache after destruction
     JSHandle<JSTaggedValue> afterDestroy = moduleManager->TryGetSendableModule(recordName);

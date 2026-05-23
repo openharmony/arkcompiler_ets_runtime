@@ -582,7 +582,7 @@ void X64OpndDumpVisitor::DumpRegInfo(maplebe::RegOperand &v)
                 regType = X64CG::kR64List;
                 break;
             default:
-                CHECK_FATAL(false, "unkown reg size");
+                CHECK_FATAL(false, "unknown reg size");
                 break;
         }
         assembler::Reg reg = assembler::kRegArray[regType][v.GetRegisterNumber()];

@@ -73,7 +73,7 @@ public:
     {
         resolvedSharedModules_.Insert(recordName, module);
     }
-    void SharedNativeObjDestory();
+    void SharedNativeObjDestroy();
 
     RecursiveMutex& GetSharedMutex()
     {
@@ -110,7 +110,7 @@ private:
     bool TryInsertInSModuleManager(JSThread *thread, const CString &recordName,
         const JSHandle<SourceTextModule> &moduleRecord);
 
-    static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
+    static constexpr uint32_t DEFAULT_DICTIONARY_CAPACITY = 4;
 #if ENABLE_LATEST_OPTIMIZATION
     ModuleManagerMap<CString, CStringHash> resolvedSharedModules_;
 #else

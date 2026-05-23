@@ -3594,10 +3594,10 @@ GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements
     Label entry(env);
     env->SubCfgEntry(&entry);
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef intialHClass = GetElementsKindHClass(glue, kind);
+    GateRef initialHClass = GetElementsKindHClass(glue, kind);
     GateRef len = GetLengthOfTaggedArray(elements);
-    GateRef result = NewJSObject(glue, intialHClass);
-    SetPropertyInlinedProps(glue, result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    GateRef result = NewJSObject(glue, initialHClass);
+    SetPropertyInlinedProps(glue, result, initialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
     SetArrayLength(glue, result, len);
     SetExtensibleToBitfield(glue, result, true);
     SetElementsArray(VariableType::JS_POINTER(), glue, result, elements);

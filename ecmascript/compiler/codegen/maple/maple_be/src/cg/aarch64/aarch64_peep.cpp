@@ -855,8 +855,8 @@ bool CombineContiLoadAndStorePattern::IsValidNormalLoadOrStorePattern(const Insn
     if (memOpnd.IsStackArgMem()) {
         return false;
     }
-    DEBUG_ASSERT(insn.GetOperand(kInsnFirstOpnd).IsRegister(), "unexpect operand");
-    DEBUG_ASSERT(prevInsn.GetOperand(kInsnFirstOpnd).IsRegister(), "unexpect operand");
+    DEBUG_ASSERT(insn.GetOperand(kInsnFirstOpnd).IsRegister(), "unexpected operand");
+    DEBUG_ASSERT(prevInsn.GetOperand(kInsnFirstOpnd).IsRegister(), "unexpected operand");
     auto &curDestOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
     auto &prevDestOpnd = static_cast<RegOperand &>(prevInsn.GetOperand(kInsnFirstOpnd));
     if (prevDestOpnd.GetRegisterType() != curDestOpnd.GetRegisterType() ||

@@ -282,7 +282,7 @@ private:
     MapleMap<AnalysisMemKey, MaplePhase *> analysisPhasesData;
 };
 
-/* manages (module phases) & (funtion phase managers) */
+/* manages (module phases) & (function phase managers) */
 class ModulePM : public MaplePhase, public MaplePhaseManager {
 public:
     ModulePM(MemPool *mp, MaplePhaseID id) : MaplePhase(kModulePM, id, *mp), MaplePhaseManager(*mp) {}

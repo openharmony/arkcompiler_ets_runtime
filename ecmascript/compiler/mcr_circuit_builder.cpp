@@ -975,7 +975,7 @@ GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp,
 GateRef CircuitBuilder::TypeConvert(MachineType type, ParamType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList)
 {
-    // merge types of valueIns before and after convertion
+    // merge types of valueIns before and after conversion
     uint64_t operandTypes = TypeConvertAccessor::ToValue(typeFrom, typeTo);
     return GetCircuit()->NewGate(circuit_->TypedConvert(operandTypes),
         type, inList.size(), inList.data(), GateType::AnyType());

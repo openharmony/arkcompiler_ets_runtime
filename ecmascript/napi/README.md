@@ -6090,7 +6090,7 @@ int32_t StringRef::Utf8Length(const EcmaVM *vm)；
 ```C++
 std::string testUtf8 = "Hello world";
 Local<StringRef> stringObj = StringRef::NewFromUtf8(vm, testUtf8.c_str());
-int32_t lenght = stringObj->Utf8Length(vm);
+int32_t length = stringObj->Utf8Length(vm);
 ```
 
 ### WriteUtf8

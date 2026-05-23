@@ -426,7 +426,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_GetUncaughtException)
 
 Local<JSValueRef> FuncRefNewCallbackForTest(JsiRuntimeCallInfo *info)
 {
-    GTEST_LOG_(INFO) << "runing FuncRefNewCallbackForTest";
+    GTEST_LOG_(INFO) << "running FuncRefNewCallbackForTest";
     EscapeLocalScope scope(info->GetVM());
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }

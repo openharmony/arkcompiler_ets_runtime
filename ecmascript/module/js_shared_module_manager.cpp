@@ -149,7 +149,7 @@ JSHandle<ModuleNamespace> SharedModuleManager::SModuleNamespaceCreate(JSThread *
     return JSSharedModule::SModuleNamespaceCreate(thread, module, exports);
 }
 
-void SharedModuleManager::SharedNativeObjDestory()
+void SharedModuleManager::SharedNativeObjDestroy()
 {
 #if ENABLE_LATEST_OPTIMIZATION
     resolvedSharedModules_.ForEach([](const CString& key, GCRoot& root) {

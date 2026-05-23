@@ -3157,11 +3157,11 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
     {
         Label intialHClassIsHClass(env);
         Label intialHClassIsHeapObject(env);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
-                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(TaggedIsHeapObject(intialHClass), &intialHClassIsHeapObject, &slowPath1);
+        GateRef initialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
+            IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        BRANCH(TaggedIsHeapObject(initialHClass), &intialHClassIsHeapObject, &slowPath1);
         Bind(&intialHClassIsHeapObject);
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
+        BRANCH(IsJSHClass(glue, initialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             Label isEcmaObj(env);

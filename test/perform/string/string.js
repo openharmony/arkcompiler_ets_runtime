@@ -248,7 +248,7 @@
     }
     const time2 = Date.now()
     const time3 = time2 - time1;
-    print("string replace into string.repalce : " + time3);
+    print("string replace into string.replace : " + time3);
 }
 
 {

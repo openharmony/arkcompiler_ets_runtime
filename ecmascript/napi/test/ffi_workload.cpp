@@ -3897,10 +3897,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedList_True)
     objCallInfo->SetThis(value.GetTaggedValue());
     objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, objCallInfo);
-    JSHandle<JSTaggedValue> contianer =
+    JSHandle<JSTaggedValue> container =
         JSHandle<JSTaggedValue>(thread_, containers::ContainersPrivate::Load(objCallInfo));
     JSHandle<JSAPILinkedList> linkedList =
-        JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
+        JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(container), container));
     JSTaggedValue doubleList = TaggedDoubleList::Create(thread_);
     linkedList->SetDoubleList(thread_, doubleList);
     JSHandle<JSTaggedValue> linkedListTag = JSHandle<JSTaggedValue>::Cast(linkedList);
@@ -3943,10 +3943,10 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsLinkedListIterator_True)
     objCallInfo->SetThis(tagvalue.GetTaggedValue());
     objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, objCallInfo);
-    JSHandle<JSTaggedValue> contianer =
+    JSHandle<JSTaggedValue> container =
         JSHandle<JSTaggedValue>(thread_, containers::ContainersPrivate::Load(objCallInfo));
     JSHandle<JSAPILinkedList> linkedList =
-        JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
+        JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(container), container));
     JSTaggedValue doubleList = TaggedDoubleList::Create(thread_);
     linkedList->SetDoubleList(thread_, doubleList);
     uint32_t elementsNum = 256; // 256 = Number of cycles

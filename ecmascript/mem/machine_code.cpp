@@ -375,7 +375,7 @@ void MachineCode::ProcessMarkObject()
 {
     Heap* heap = reinterpret_cast<Heap*>(this->GetLocalHeapAddress());
     if (g_isEnableCMCGC) {
-        // Skip HugeMachinecode or VM that is already destoryed
+        // Skip HugeMachinecode or VM that is already destroyed
         // We should implement a proper wait for VM destructor
         if (heap && heap->GetMachineCodeSpace()) {
             heap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
