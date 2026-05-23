@@ -1730,7 +1730,8 @@ HWTEST_F_L0(ContainersBufferTest, BufferConstructorTest006)
     JSTaggedValue result = ContainersBuffer::BufferConstructor(callInfo);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSAPIFastBuffer> buffer(thread, result);
-    EXPECT_EQ(buffer->GetLength(), 2);
+    // offset=-1 (uint32 overflow) exceeds src byteLength=5, actualAvailable=0, maxLength=0
+    EXPECT_EQ(buffer->GetLength(), 0);
 }
 
 HWTEST_F_L0(ContainersBufferTest, BufferConstructorTest007)
@@ -1750,7 +1751,8 @@ HWTEST_F_L0(ContainersBufferTest, BufferConstructorTest007)
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(result.IsJSAPIBuffer());
     JSHandle<JSAPIFastBuffer> buffer(thread, result);
-    EXPECT_EQ(buffer->GetLength(), 2);
+    // offset=10 exceeds src byteLength=5, actualAvailable=0, maxLength=0
+    EXPECT_EQ(buffer->GetLength(), 0);
 }
 
 HWTEST_F_L0(ContainersBufferTest, BufferConstructorTest008)

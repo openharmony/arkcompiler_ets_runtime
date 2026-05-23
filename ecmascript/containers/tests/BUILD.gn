@@ -72,6 +72,7 @@ host_unittest_action("Containers_003_Test") {
   sources = [
     # test file
     "containers_buffer_test.cpp",
+    "containers_fastbuffer_test.cpp",
     "containers_stack_test.cpp",
     "containers_treemap_test.cpp",
     "containers_treeset_test.cpp",
