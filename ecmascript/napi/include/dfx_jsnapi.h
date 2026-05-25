@@ -77,6 +77,7 @@ struct GCStatistic {
 struct DumpForSnapShotStruct {
     const EcmaVM *vm;
     DumpSnapShotOption dumpOption;
+    uint32_t tid {0};
 };
 
 class PUBLIC_API DFXJSNApi {
@@ -92,6 +93,10 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
+    static bool PerformHybridHeapDump(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
+    static bool PerformHybridHeapDump(const EcmaVM *vm, Stream *stream, const DumpSnapShotOption &dumpOption);
+    static void ScheduleHybridHeapDump(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
+    static void ScheduleHybridDumpOnLoop(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
     static void TriggerGCWithVm(const EcmaVM *vm);
     static void TriggerLocalCCWithVmForTest(const EcmaVM *vm);

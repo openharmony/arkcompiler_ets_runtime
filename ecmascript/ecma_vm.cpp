@@ -39,6 +39,9 @@
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.h"
+#endif  // PANDA_JS_ETS_HYBRID_MODE
 #endif
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -629,6 +632,9 @@ EcmaVM::~EcmaVM()
     }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+#ifdef ECMASCRIPT_SUPPORT_HEAPPROFILER
+    DeleteHybridHeapProfile();
+#endif  // ECMASCRIPT_SUPPORT_HEAPPROFILER
     if (Runtime::GetInstance()->IsHybridVm() && crossVMOperator_ != nullptr) {
         delete crossVMOperator_;
         crossVMOperator_ = nullptr;
@@ -1415,6 +1421,27 @@ HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
     ASSERT(heapProfile_ != nullptr);
     return heapProfile_;
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+void EcmaVM::DeleteHybridHeapProfile()
+{
+    if (hybridHeapProfiler_ == nullptr) {
+        return;
+    }
+    delete hybridHeapProfiler_;
+    hybridHeapProfiler_ = nullptr;
+}
+
+HybridHeapProfiler *EcmaVM::GetOrNewHybridHeapProfiler()
+{
+    if (hybridHeapProfiler_ != nullptr) {
+        return hybridHeapProfiler_;
+    }
+    hybridHeapProfiler_ = new HybridHeapProfiler(this);
+    ASSERT(hybridHeapProfiler_ != nullptr);
+    return hybridHeapProfiler_;
+}
+#endif  // PANDA_JS_ETS_HYBRID_MODE
 
 void EcmaVM::StartHeapTracking()
 {

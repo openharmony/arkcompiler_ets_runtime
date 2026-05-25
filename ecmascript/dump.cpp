@@ -5085,7 +5085,7 @@ static void ProcessNativePointerItem(const JSThread *thread, std::vector<Referen
     JSNativePointer *native = JSNativePointer::Cast(itemValue.GetTaggedObject());
     void* externalPointer = native->GetExternalPointer();
     auto cb = thread->GetEcmaVM()->GetNativeReferenceDataCallbackGetter();
-    if (cb == nullptr) {
+    if (cb == nullptr || externalPointer == nullptr) {
         return;
     }
     void* externalData = cb(externalPointer);
