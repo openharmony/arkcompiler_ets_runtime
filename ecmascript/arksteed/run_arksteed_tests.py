@@ -162,6 +162,7 @@ BASE_ARGS = [
 
 BUILD_MODES = ("debug", "release")
 DEFAULT_EXECUTION_TIMEOUT = 3000
+ARKSTEED_GN_ARG = "ets_runtime_enable_ark_steed=true"
 
 FILE_CLEAN_PATTERNS = ("disasm.txt", ".abc", ".actual_output.txt")
 SOURCE_INPUT_SUFFIXES = (".ts", ".js")
@@ -597,8 +598,10 @@ def build_ark(
     target = f"{HOST_PLATFORM}.{mode}"
     print(f"Building ArkSteed ({target})...")
     cmd = ["python3", "ark.py", target]
+    gn_args = [ARKSTEED_GN_ARG]
     if skip_stub:
-        cmd.append("--gn-args=skip_gen_stub=true")
+        gn_args.append("skip_gen_stub=true")
+    cmd.append(f"--gn-args={' '.join(gn_args)}")
     if keep_going is not None:
         cmd.append(f"--keep-going={keep_going}")
 
@@ -620,6 +623,27 @@ def build_ark(
     except Exception as e:
         print(f"Build exception: {e}", file=sys.stderr)
         return False
+
+
+def check_arksteed_gn_args(mode: str) -> bool:
+    """Validate that the selected build directory was generated with ArkSteed enabled."""
+    config = BuildConfig(mode)
+    args_gn = ARKSTEED_ROOT / config._out_prefix / "args.gn"
+    if not args_gn.exists():
+        print(f"Error: args.gn does not exist: {args_gn}", file=sys.stderr)
+        return False
+
+    content = args_gn.read_text(encoding="utf-8")
+    if re.search(r"^\s*ets_runtime_enable_ark_steed\s*=\s*true\s*$", content, re.MULTILINE):
+        return True
+
+    print(
+        "Error: ArkSteed GN option is not enabled in "
+        f"{args_gn}. Please rebuild without --skip-build, or run:\n"
+        f"  python3 ark.py {HOST_PLATFORM}.{mode} --gn-args={ARKSTEED_GN_ARG}",
+        file=sys.stderr,
+    )
+    return False
 
 
 def find_test_cases(
@@ -2704,6 +2728,8 @@ def main() -> None:
             mode, verbose, skip_stub=args.skip_stub, keep_going=args.keep_going
         ):
             sys.exit(1)
+    if not check_arksteed_gn_args(mode):
+        sys.exit(1)
 
     _, timestamp = _setup_logging()
 
