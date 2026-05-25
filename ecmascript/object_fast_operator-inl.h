@@ -661,9 +661,9 @@ JSTaggedValue ObjectFastOperator::SetJsonPropertyByName(JSThread *thread, JSTagg
                 keyHandle, valueHandle, attr);
             JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
             if (actualValue.isTagged) {
-                JSObject::Cast(receiver)->SetProperty<true>(thread, hclass, attr, actualValue.value);
+                JSObject::Cast(objHandle.GetTaggedValue())->SetProperty<true>(thread, hclass, attr, actualValue.value);
             } else {
-                JSObject::Cast(receiver)->SetProperty<false>(thread, hclass, attr, actualValue.value);
+                JSObject::Cast(objHandle.GetTaggedValue())->SetProperty<false>(thread, hclass, attr, actualValue.value);
             }
             return JSTaggedValue::Undefined();
         }
