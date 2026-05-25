@@ -19,9 +19,7 @@ function typeof_string() {
     print(typeof b === "string" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_string);
+ArkTools.arkSteedCompileSync(typeof_string);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_string();

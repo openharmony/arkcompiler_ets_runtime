@@ -29,10 +29,8 @@ function loop_continue_with_action(n, p, q)
     return sum * 100 + skipCount;
 }
 
-ArkTools.arkSteedCompileAsync(loop_continue_with_action);
+ArkTools.arkSteedCompileSync(loop_continue_with_action);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_continue_with_action(10, 3, 1));
 print(loop_continue_with_action(15, 5, 2));

@@ -22,10 +22,8 @@ function loop_for_in_return(obj: {[key: string]: number}, target: number): numbe
     return -1;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_return);
+ArkTools.arkSteedCompileSync(loop_for_in_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const obj1: {[key: string]: number} = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5};
 const obj2: {[key: string]: number} = {"x": 10, "y": 20, "z": 30};

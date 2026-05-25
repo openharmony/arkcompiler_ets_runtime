@@ -45,9 +45,7 @@ function loop_while_4(n: number): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_while_4);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(loop_while_4);
 
 let ret = loop_while_4(10);
 print(ret);

@@ -73,10 +73,8 @@ function if_else_many_args_9(x: number,
     return v1 * 1_000_000_000_000_0 + v2 * 100_000_000_000_0 + v3 * 10_000_000_000_0 + v4 * 1_000_000_000_0 + v5 * 100_000_000_0 + v6 * 10_000_000_0 + v7 * 1_000_000_0 + v8 * 100_000_0 + v9 * 10_000_0 + v10 * 1_000_0 + v11 * 100_0 + v12 * 10 + v13;
 }
 
-ArkTools.arkSteedCompileAsync(if_else_many_args_9);
+ArkTools.arkSteedCompileSync(if_else_many_args_9);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_else_many_args_9(15, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
 print(output);

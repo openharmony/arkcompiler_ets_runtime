@@ -18,10 +18,8 @@ function string_strict_equals(str1: string, str2: string): boolean {
     return str1 === str2;
 }
 
-ArkTools.arkSteedCompileAsync(string_strict_equals);
+ArkTools.arkSteedCompileSync(string_strict_equals);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_strict_equals("hello", "hello") ? 1 : 0);
 print(string_strict_equals("hello", "world") ? 1 : 0);

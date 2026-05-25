@@ -27,9 +27,7 @@ function instanceof_constructor_return_object() {
     print(obj instanceof Object ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(instanceof_constructor_return_object);
+ArkTools.arkSteedCompileSync(instanceof_constructor_return_object);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 instanceof_constructor_return_object();

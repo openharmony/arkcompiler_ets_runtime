@@ -22,10 +22,8 @@ function default_param_function_partial_args(
     print(year);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_function_partial_args);
+ArkTools.arkSteedCompileSync(default_param_function_partial_args);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_function_partial_args("Toyota");
 default_param_function_partial_args("Honda", "Civic");

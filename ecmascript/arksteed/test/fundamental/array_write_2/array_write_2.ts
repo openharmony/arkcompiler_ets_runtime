@@ -21,10 +21,8 @@ function array_write_2(arr: number[]): void
     arr[4] = 500;
 }
 
-ArkTools.arkSteedCompileAsync(array_write_2);
+ArkTools.arkSteedCompileSync(array_write_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [0, 0, 0, 0, 0];
 array_write_2(arr);

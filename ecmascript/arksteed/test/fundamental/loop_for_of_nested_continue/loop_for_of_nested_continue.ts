@@ -25,10 +25,8 @@ function loop_for_of_nested_continue(matrix: number[][], skip: number): number {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_nested_continue);
+ArkTools.arkSteedCompileSync(loop_for_of_nested_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const matrix1: number[][] = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 const matrix2: number[][] = [[10, 20], [30, 40], [50, 60]];

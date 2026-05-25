@@ -26,9 +26,7 @@ function loop_for_of_map(n: number): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_map);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(loop_for_of_map);
 
 let ret = loop_for_of_map(2000);
 print(ret);

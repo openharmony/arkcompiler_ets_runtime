@@ -28,10 +28,8 @@ function switch_case_default_only(x, a, b, c)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_default_only);
+ArkTools.arkSteedCompileSync(switch_case_default_only);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_default_only(1, 10, 3, 2));
 print(switch_case_default_only(2, 10, 3, 2));

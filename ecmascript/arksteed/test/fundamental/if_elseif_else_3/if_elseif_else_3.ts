@@ -27,13 +27,11 @@ function if_elseif_else_3(x, a, b, c)
     return a * 1000000 + b * 1000 + c;
 }
 
-ArkTools.arkSteedCompileAsync(if_elseif_else_3);
+ArkTools.arkSteedCompileSync(if_elseif_else_3);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(if_elseif_else_3);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_elseif_else_3(25, 1, 2, 3);  // globalValue <- 1
 print(output);

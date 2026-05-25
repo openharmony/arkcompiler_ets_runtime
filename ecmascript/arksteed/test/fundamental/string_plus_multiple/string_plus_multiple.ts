@@ -18,10 +18,8 @@ function string_plus_multiple(a: string, b: string, c: string): string {
     return a + b + c;
 }
 
-ArkTools.arkSteedCompileAsync(string_plus_multiple);
+ArkTools.arkSteedCompileSync(string_plus_multiple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_plus_multiple("a", "b", "c"));
 print(string_plus_multiple("hello", " ", "world"));

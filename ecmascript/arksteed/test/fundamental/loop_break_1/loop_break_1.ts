@@ -26,13 +26,11 @@ function loop_break_1(x)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_break_1);
+ArkTools.arkSteedCompileSync(loop_break_1);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_break_1);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = loop_break_1(5);
 print(output);

@@ -25,10 +25,8 @@ class VaArgsConstructor {
     }
 }
 
-ArkTools.arkSteedCompileAsync(VaArgsConstructor);
+ArkTools.arkSteedCompileSync(VaArgsConstructor);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let a = new VaArgsConstructor();
 print(a.count);

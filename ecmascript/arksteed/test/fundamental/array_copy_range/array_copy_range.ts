@@ -21,10 +21,8 @@ function array_copy_range(src: number[], dest: number[], start: number, end: num
     }
 }
 
-ArkTools.arkSteedCompileAsync(array_copy_range);
+ArkTools.arkSteedCompileSync(array_copy_range);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let src: number[] = [1, 2, 3, 4, 5];
 let dest: number[] = [0, 0, 0];

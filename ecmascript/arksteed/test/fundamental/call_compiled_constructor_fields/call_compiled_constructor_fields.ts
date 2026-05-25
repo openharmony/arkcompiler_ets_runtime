@@ -38,11 +38,9 @@ function call_compiled_constructor_fields(): void {
     print(b.sum());
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorFieldsBox);
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorFieldsBox.prototype.sum);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_fields);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorFieldsBox);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorFieldsBox.prototype.sum);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_fields);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_fields();

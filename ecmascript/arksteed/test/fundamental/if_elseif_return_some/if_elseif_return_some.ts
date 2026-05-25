@@ -23,10 +23,8 @@ function if_elseif_return_some(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_elseif_return_some);
+ArkTools.arkSteedCompileSync(if_elseif_return_some);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_elseif_return_some(15);
 print(output);

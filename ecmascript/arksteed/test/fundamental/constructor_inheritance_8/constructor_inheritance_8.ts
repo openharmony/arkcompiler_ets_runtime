@@ -56,12 +56,10 @@ class Leaf extends Middle {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Base);
-ArkTools.arkSteedCompileAsync(Middle);
-ArkTools.arkSteedCompileAsync(Leaf);
+ArkTools.arkSteedCompileSync(Base);
+ArkTools.arkSteedCompileSync(Middle);
+ArkTools.arkSteedCompileSync(Leaf);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let obj = new Leaf(1, 2, 3, 4, 5, 6);
 print(obj.sumXY());

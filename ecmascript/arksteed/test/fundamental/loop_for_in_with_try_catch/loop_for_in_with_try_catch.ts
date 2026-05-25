@@ -31,10 +31,8 @@ function loop_for_in_with_try_catch(arr: number[]): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_with_try_catch);
+ArkTools.arkSteedCompileSync(loop_for_in_with_try_catch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_with_try_catch([1, 2, 3]));
 print(loop_for_in_with_try_catch([5, -1, 3]));

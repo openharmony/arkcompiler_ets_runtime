@@ -22,9 +22,7 @@ function instanceof_function_ctor() {
     print(box instanceof Object ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(instanceof_function_ctor);
+ArkTools.arkSteedCompileSync(instanceof_function_ctor);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 instanceof_function_ctor();

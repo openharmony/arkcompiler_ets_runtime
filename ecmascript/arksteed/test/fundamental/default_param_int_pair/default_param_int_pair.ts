@@ -17,10 +17,8 @@ function default_param_int_pair(a: number = 4, b: number = 6) {
     print(a * b);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_int_pair);
+ArkTools.arkSteedCompileSync(default_param_int_pair);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_int_pair();
 default_param_int_pair(10);

@@ -21,10 +21,8 @@ function nullish_assignment(a: number | null | undefined, b: number | null | und
     return a + b;
 }
 
-ArkTools.arkSteedCompileAsync(nullish_assignment);
+ArkTools.arkSteedCompileSync(nullish_assignment);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nullish_assignment(5, 3));
 print(nullish_assignment(null, 3));

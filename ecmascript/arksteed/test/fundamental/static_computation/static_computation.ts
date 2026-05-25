@@ -29,12 +29,10 @@ function static_computation(r: number, x: number): number {
     return Constants.circleArea(r) + Constants.exp(x);
 }
 
-ArkTools.arkSteedCompileAsync(Constants);
-ArkTools.arkSteedCompileAsync(Constants.circleArea);
-ArkTools.arkSteedCompileAsync(Constants.exp);
-ArkTools.arkSteedCompileAsync(static_computation);
+ArkTools.arkSteedCompileSync(Constants);
+ArkTools.arkSteedCompileSync(Constants.circleArea);
+ArkTools.arkSteedCompileSync(Constants.exp);
+ArkTools.arkSteedCompileSync(static_computation);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(static_computation(5, 10));

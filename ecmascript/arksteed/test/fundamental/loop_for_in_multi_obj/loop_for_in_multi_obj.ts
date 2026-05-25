@@ -27,10 +27,8 @@ function loop_for_in_multi_obj(obj1: Record<string, number>, obj2: Record<string
     return sum1 * 100 + sum2;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_multi_obj);
+ArkTools.arkSteedCompileSync(loop_for_in_multi_obj);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_multi_obj({a: 1, b: 2}, {c: 3, d: 4}));
 print(loop_for_in_multi_obj({x: 10}, {y: 20, z: 30}));

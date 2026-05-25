@@ -24,10 +24,8 @@ function string_compare(str1: string, str2: string): number {
     }
 }
 
-ArkTools.arkSteedCompileAsync(string_compare);
+ArkTools.arkSteedCompileSync(string_compare);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_compare("apple", "apple"));
 print(string_compare("banana", "apple"));

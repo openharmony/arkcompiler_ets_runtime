@@ -30,10 +30,8 @@ function nested_for_4(limit)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(nested_for_4);
+ArkTools.arkSteedCompileSync(nested_for_4);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = nested_for_4(3);
 print(output);

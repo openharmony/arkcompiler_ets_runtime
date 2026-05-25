@@ -20,10 +20,8 @@ function default_param_array_sum(values: number[] = [1, 2, 3], scale: number = 2
     print(sum);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_array_sum);
+ArkTools.arkSteedCompileSync(default_param_array_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_array_sum();
 default_param_array_sum([4, 5], 3);

@@ -31,10 +31,8 @@ function call_compiled_bind_expression_with_args_3(run: (base: number, n: number
     return run(5, 3);  // 3 is discarded
 }
 
-ArkTools.arkSteedCompileAsync(BoundClosureTarget.prototype.run);
-ArkTools.arkSteedCompileAsync(call_compiled_bind_expression_with_args_3);
+ArkTools.arkSteedCompileSync(BoundClosureTarget.prototype.run);
+ArkTools.arkSteedCompileSync(call_compiled_bind_expression_with_args_3);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_compiled_bind_expression_with_args_3(new BoundClosureTarget(42)));

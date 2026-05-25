@@ -24,8 +24,7 @@ function test(a) {
 
 test(new A());
 
-ArkTools.arkSteedCompileAsync(test);
-(() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(test);
 
 let a = new A();
 function B() {}

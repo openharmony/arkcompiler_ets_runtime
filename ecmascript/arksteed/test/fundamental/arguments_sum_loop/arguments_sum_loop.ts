@@ -20,10 +20,8 @@ function arguments_sum_loop() {
     print(sum);
 }
 
-ArkTools.arkSteedCompileAsync(arguments_sum_loop);
+ArkTools.arkSteedCompileSync(arguments_sum_loop);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 arguments_sum_loop();
 arguments_sum_loop(5);

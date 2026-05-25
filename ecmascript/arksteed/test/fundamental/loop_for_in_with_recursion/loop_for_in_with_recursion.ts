@@ -29,10 +29,8 @@ function loop_for_in_with_recursion(obj: Record<string, number[]>): number {
     return total;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_with_recursion);
+ArkTools.arkSteedCompileSync(loop_for_in_with_recursion);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_with_recursion({a: [1, 2, 3], b: [4, 5]}));
 print(loop_for_in_with_recursion({x: [10]}));

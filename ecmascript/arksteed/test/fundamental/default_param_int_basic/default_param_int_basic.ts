@@ -18,10 +18,8 @@ function default_param_int_basic(x: number = 7) {
     print(x * 2);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_int_basic);
+ArkTools.arkSteedCompileSync(default_param_int_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_int_basic();
 default_param_int_basic(3);

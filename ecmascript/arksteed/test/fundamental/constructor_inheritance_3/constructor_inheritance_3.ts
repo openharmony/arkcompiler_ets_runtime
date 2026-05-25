@@ -30,11 +30,9 @@ class Derived extends Base {
 }
 
 // Compile both
-ArkTools.arkSteedCompileAsync(Base);
-ArkTools.arkSteedCompileAsync(Derived);
+ArkTools.arkSteedCompileSync(Base);
+ArkTools.arkSteedCompileSync(Derived);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let d = new Derived(24, 36);
 print(d.foo);

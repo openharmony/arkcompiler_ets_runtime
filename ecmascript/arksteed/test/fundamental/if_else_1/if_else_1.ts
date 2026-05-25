@@ -26,11 +26,9 @@ function if_else_1(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_else_1);
+ArkTools.arkSteedCompileSync(if_else_1);
 
 // Spin loop: A temporary approach to wait for ArkSteed JIT compiler
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_else_1(10);
 print(output);

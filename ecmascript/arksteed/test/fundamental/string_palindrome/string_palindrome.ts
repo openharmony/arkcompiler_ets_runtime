@@ -27,10 +27,8 @@ function string_palindrome(str: string): boolean {
     return true;
 }
 
-ArkTools.arkSteedCompileAsync(string_palindrome);
+ArkTools.arkSteedCompileSync(string_palindrome);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_palindrome("racecar") ? 1 : 0);
 print(string_palindrome("hello") ? 1 : 0);

@@ -36,12 +36,10 @@ function gc_3(): void {
     }   
 }
 
-ArkTools.arkSteedCompileAsync(myRandom);
-ArkTools.arkSteedCompileAsync(consumePoint);
-ArkTools.arkSteedCompileAsync(gc_3);
+ArkTools.arkSteedCompileSync(myRandom);
+ArkTools.arkSteedCompileSync(consumePoint);
+ArkTools.arkSteedCompileSync(gc_3);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 gc_3();
 print(result);

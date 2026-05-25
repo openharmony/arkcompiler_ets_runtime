@@ -29,8 +29,8 @@ for (var i = 0; i < 10; i++) {
     read(b);
 }
 
-ArkTools.arkSteedCompileAsync(read);
-var ret = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(read);
+var ret = true;
 print(ret);
 print(read(a));
 print(read(b));

@@ -25,11 +25,9 @@ function calculateBonus(base: number, years: number, performance: number): numbe
     return base + yearsBonus + perfBonus;
 }
 
-ArkTools.arkSteedCompileAsync(classifyScore);
-ArkTools.arkSteedCompileAsync(calculateBonus);
+ArkTools.arkSteedCompileSync(classifyScore);
+ArkTools.arkSteedCompileSync(calculateBonus);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(classifyScore(95));
 print(classifyScore(85));

@@ -772,18 +772,18 @@ print("=== Frequency-based Inline Testing ===");
 print("Phase 1: Gathering frequency data");
 GatherFrequencyData();
 
-ArkTools.arkSteedCompileAsync(FrequencyTestBasic);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-ArkTools.arkSteedCompileAsync(FrequencyTestComplex);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-ArkTools.arkSteedCompileAsync(FrequencyTestPattern);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-ArkTools.arkSteedCompileAsync(FrequencyTestMixed);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-ArkTools.arkSteedCompileAsync(FrequencyTestArray);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-ArkTools.arkSteedCompileAsync(FrequencyTestString);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(FrequencyTestBasic);
+print(true);
+ArkTools.arkSteedCompileSync(FrequencyTestComplex);
+print(true);
+ArkTools.arkSteedCompileSync(FrequencyTestPattern);
+print(true);
+ArkTools.arkSteedCompileSync(FrequencyTestMixed);
+print(true);
+ArkTools.arkSteedCompileSync(FrequencyTestArray);
+print(true);
+ArkTools.arkSteedCompileSync(FrequencyTestString);
+print(true);
 
 print("Phase 2: Testing high frequency inlining");
 FrequencyTestBasic(1);
@@ -812,50 +812,50 @@ TestMixedFrequencyPatterns();
 
 print("Phase 7: Testing frequency thresholds");
 TestFrequencyThresholds();
-ArkTools.arkSteedCompileAsync(TestFrequencyThresholds);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestFrequencyThresholds);
+print(true);
 TestFrequencyThresholds();
 
 print("Phase 8: Dynamic frequency pattern tests");
 TestDynamicFrequencyPatterns();
-ArkTools.arkSteedCompileAsync(TestDynamicFrequencyPatterns);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestDynamicFrequencyPatterns);
+print(true);
 TestDynamicFrequencyPatterns();
 
 print("Phase 9: Size frequency pattern tests");
 TestSizeFrequencyPatterns();
-ArkTools.arkSteedCompileAsync(TestSizeFrequencyPatterns);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestSizeFrequencyPatterns);
+print(true);
 TestSizeFrequencyPatterns();
 
 print("Phase 10: Type-based frequency tests");
 TestTypeBasedFrequency();
-ArkTools.arkSteedCompileAsync(TestTypeBasedFrequency);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestTypeBasedFrequency);
+print(true);
 TestTypeBasedFrequency();
 
 print("Phase 11: Conditional frequency pattern tests");
 TestConditionalFrequencyPatterns();
-ArkTools.arkSteedCompileAsync(TestConditionalFrequencyPatterns);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestConditionalFrequencyPatterns);
+print(true);
 TestConditionalFrequencyPatterns();
 
 print("Phase 12: Loop frequency pattern tests");
 TestLoopFrequencyPatterns();
-ArkTools.arkSteedCompileAsync(TestLoopFrequencyPatterns);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestLoopFrequencyPatterns);
+print(true);
 TestLoopFrequencyPatterns();
 
 print("Phase 13: Recursive frequency pattern tests");
 TestRecursiveFrequencyPatterns();
-ArkTools.arkSteedCompileAsync(TestRecursiveFrequencyPatterns);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestRecursiveFrequencyPatterns);
+print(true);
 TestRecursiveFrequencyPatterns();
 
 print("Phase 14: Allocation frequency pattern tests");
 TestAllocationFrequencyPatterns();
-ArkTools.arkSteedCompileAsync(TestAllocationFrequencyPatterns);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestAllocationFrequencyPatterns);
+print(true);
 TestAllocationFrequencyPatterns();
 
 print("Frequency-based inline testing completed");

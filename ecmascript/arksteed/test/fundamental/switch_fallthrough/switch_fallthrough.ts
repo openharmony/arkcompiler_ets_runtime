@@ -32,13 +32,11 @@ function switch_fallthrough(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_fallthrough);
+ArkTools.arkSteedCompileSync(switch_fallthrough);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(switch_fallthrough);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = switch_fallthrough(1);
 print(output);

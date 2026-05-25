@@ -27,10 +27,8 @@ function call_compiled_function_via_call_method_borrow() {
     print(call_compiled_function_via_call_method_borrow_source.mul.call({ scale: 2 }, 9));
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_method_borrow_impl);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_method_borrow);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_method_borrow_impl);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_method_borrow);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_method_borrow();

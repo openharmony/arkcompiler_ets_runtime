@@ -25,10 +25,8 @@ function string_remove_whitespace(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_remove_whitespace);
+ArkTools.arkSteedCompileSync(string_remove_whitespace);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_remove_whitespace("h e l l o"));
 print(string_remove_whitespace("a\tb\nc"));

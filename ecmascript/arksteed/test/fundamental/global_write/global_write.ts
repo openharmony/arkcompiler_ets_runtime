@@ -21,10 +21,8 @@ function writeGlobal(value: number): void {
     globalValue = value;
 }
 
-ArkTools.arkSteedCompileAsync(writeGlobal);
+ArkTools.arkSteedCompileSync(writeGlobal);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print((writeGlobal(10), globalValue));
 print((writeGlobal(20), globalValue));

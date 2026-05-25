@@ -26,10 +26,8 @@ function loop_for_of_label_break_1(matrix: number[][], target: number): number {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_label_break_1);
+ArkTools.arkSteedCompileSync(loop_for_of_label_break_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_label_break_1([[1, 2, 3], [4, 5, 6]], 5));
 print(loop_for_of_label_break_1([[1, 2, 3], [4, 5, 6]], 6));

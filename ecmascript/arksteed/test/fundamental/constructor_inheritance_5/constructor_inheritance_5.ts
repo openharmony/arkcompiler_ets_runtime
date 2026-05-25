@@ -37,11 +37,9 @@ class Dog extends Animal {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Animal);
-ArkTools.arkSteedCompileAsync(Dog);
+ArkTools.arkSteedCompileSync(Animal);
+ArkTools.arkSteedCompileSync(Dog);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let animal = new Animal("Generic Animal");
 print(animal.name);

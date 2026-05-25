@@ -18,10 +18,8 @@ function array_access_middle(arr: number[]): number
     return arr[len / 2];
 }
 
-ArkTools.arkSteedCompileAsync(array_access_middle);
+ArkTools.arkSteedCompileSync(array_access_middle);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [10, 20, 30, 40, 50];
 print(array_access_middle(arr));

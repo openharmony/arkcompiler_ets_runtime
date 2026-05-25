@@ -27,10 +27,8 @@ function loop_for_in_obj_arr_combined(obj: Record<string, number>, arr: number[]
     return sumObj * 100 + sumArr;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_arr_combined);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_arr_combined);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_arr_combined({a: 1, b: 2}, [10, 20, 30]));
 print(loop_for_in_obj_arr_combined({x: 5, y: 10}, [1, 2]));

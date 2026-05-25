@@ -18,10 +18,8 @@ function string_length(str: string): number {
     return str.length;
 }
 
-ArkTools.arkSteedCompileAsync(string_length);
+ArkTools.arkSteedCompileSync(string_length);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_length("hello"));
 print(string_length(""));

@@ -19,9 +19,7 @@ function typeof_number() {
     print(typeof b === "number" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_number);
+ArkTools.arkSteedCompileSync(typeof_number);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_number();

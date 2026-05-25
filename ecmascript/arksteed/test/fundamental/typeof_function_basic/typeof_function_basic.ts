@@ -20,9 +20,7 @@ function typeof_function_basic() {
     print(typeof typeof_function_basic_inner === "function" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_function_basic);
+ArkTools.arkSteedCompileSync(typeof_function_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_function_basic();

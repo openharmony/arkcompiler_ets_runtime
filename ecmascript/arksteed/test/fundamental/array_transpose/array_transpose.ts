@@ -21,10 +21,8 @@ function array_transpose(src: number[][], dest: number[][]): void
     }
 }
 
-ArkTools.arkSteedCompileAsync(array_transpose);
+ArkTools.arkSteedCompileSync(array_transpose);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let src: number[][] = [[1, 2], [3, 4]];
 let dest: number[][] = [[0, 0], [0, 0]];

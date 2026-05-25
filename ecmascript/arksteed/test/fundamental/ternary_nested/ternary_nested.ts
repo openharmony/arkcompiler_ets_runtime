@@ -19,10 +19,8 @@ function ternary_nested(x: number): number {
     return x > 10 ? (x > 20 ? 3 : 2) : (x > 5 ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(ternary_nested);
+ArkTools.arkSteedCompileSync(ternary_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(ternary_nested(25));
 print(ternary_nested(15));

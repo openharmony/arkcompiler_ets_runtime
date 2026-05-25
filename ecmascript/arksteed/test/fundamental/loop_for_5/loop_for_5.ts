@@ -25,12 +25,10 @@ function loop_for_5(limit: number, p: number, q: number): number
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_5);
+ArkTools.arkSteedCompileSync(loop_for_5);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_for_3);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_5(0, 2, 1));
 print(loop_for_5(6, 3, 2));

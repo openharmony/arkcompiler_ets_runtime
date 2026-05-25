@@ -24,10 +24,8 @@ function loop_for_of_string_index_of(str: string, target: string): number {
     return count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_index_of);
+ArkTools.arkSteedCompileSync(loop_for_of_string_index_of);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_index_of("hello", "l"));
 print(loop_for_of_string_index_of("banana", "a"));

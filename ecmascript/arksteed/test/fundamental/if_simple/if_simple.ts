@@ -23,13 +23,11 @@ function if_simple(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_simple);
+ArkTools.arkSteedCompileSync(if_simple);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(if_simple);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_simple(10);
 print(output);

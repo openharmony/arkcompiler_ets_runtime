@@ -32,10 +32,8 @@ function switch_return_all_variant(x, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_return_all_variant);
+ArkTools.arkSteedCompileSync(switch_return_all_variant);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_return_all_variant(1, 10, 20, 30, 40));
 print(switch_return_all_variant(2, 10, 20, 30, 40));

@@ -22,9 +22,7 @@ function array_read_2(arr: number[]): number
     return a + b + c + d + e;
 }
 
-ArkTools.arkSteedCompileAsync(array_read_2);
+ArkTools.arkSteedCompileSync(array_read_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(array_read_2([10, 20, 30, 40, 50]));

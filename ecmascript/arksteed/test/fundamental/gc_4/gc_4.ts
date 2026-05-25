@@ -41,12 +41,10 @@ function gc_4(): Point {
     return dest;
 }
 
-ArkTools.arkSteedCompileAsync(myRandom);
-ArkTools.arkSteedCompileAsync(consumePoint);
-ArkTools.arkSteedCompileAsync(gc_4);
+ArkTools.arkSteedCompileSync(myRandom);
+ArkTools.arkSteedCompileSync(consumePoint);
+ArkTools.arkSteedCompileSync(gc_4);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const result: Point = gc_4();
 print(result.x);

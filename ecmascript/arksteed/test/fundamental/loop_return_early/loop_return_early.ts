@@ -22,10 +22,8 @@ function loop_return_early(n, offset)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_early);
+ArkTools.arkSteedCompileSync(loop_return_early);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_early(10, 3));
 print(loop_return_early(0, 5));

@@ -25,13 +25,11 @@ function loop_nested(outer_limit, inner_limit)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_nested);
+ArkTools.arkSteedCompileSync(loop_nested);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_nested);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = loop_nested(3, 3);
 print(output);

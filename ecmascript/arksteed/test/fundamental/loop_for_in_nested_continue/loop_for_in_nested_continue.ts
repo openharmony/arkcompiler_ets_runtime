@@ -26,10 +26,8 @@ function loop_for_in_nested_continue(obj, skip) {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_nested_continue);
+ArkTools.arkSteedCompileSync(loop_for_in_nested_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const obj1 = {"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]};
 const obj2 = {"x": [10, 20], "y": [30, 40], "z": [50, 60]};

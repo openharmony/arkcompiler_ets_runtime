@@ -36,10 +36,8 @@ function call_compiled_constructor_arguments_object_1(): void {
     print(c.second);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorArgumentsObjectBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_arguments_object_1);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorArgumentsObjectBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_arguments_object_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_arguments_object_1();

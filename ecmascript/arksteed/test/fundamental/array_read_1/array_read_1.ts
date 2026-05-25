@@ -17,9 +17,7 @@ function array_read_1(arr: number[]): number
     return arr[0];
 }
 
-ArkTools.arkSteedCompileAsync(array_read_1);
+ArkTools.arkSteedCompileSync(array_read_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(array_read_1([42]));

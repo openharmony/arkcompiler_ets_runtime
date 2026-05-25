@@ -18,10 +18,8 @@ function string_is_empty(str: string): boolean {
     return str.length == 0;
 }
 
-ArkTools.arkSteedCompileAsync(string_is_empty);
+ArkTools.arkSteedCompileSync(string_is_empty);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_is_empty("") ? 1 : 0);
 print(string_is_empty("hello") ? 1 : 0);

@@ -18,10 +18,8 @@ function string_loose_notequal(str1: string, str2: string): boolean {
     return str1 != str2;
 }
 
-ArkTools.arkSteedCompileAsync(string_loose_notequal);
+ArkTools.arkSteedCompileSync(string_loose_notequal);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_loose_notequal("hello", "world") ? 1 : 0);
 print(string_loose_notequal("hello", "hello") ? 1 : 0);

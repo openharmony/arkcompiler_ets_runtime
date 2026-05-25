@@ -29,10 +29,8 @@ function loop_return_conditional(n, target, fallback, offset)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_conditional);
+ArkTools.arkSteedCompileSync(loop_return_conditional);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_conditional(15, 3, 7, 2));
 print(loop_return_conditional(12, 7, 3, 5));

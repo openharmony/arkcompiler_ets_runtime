@@ -20,10 +20,8 @@ function array_double(src: number[], dest: number[]): void
     }
 }
 
-ArkTools.arkSteedCompileAsync(array_double);
+ArkTools.arkSteedCompileSync(array_double);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let src: number[] = [1, 2, 3, 4, 5];
 let dest: number[] = [0, 0, 0, 0, 0];

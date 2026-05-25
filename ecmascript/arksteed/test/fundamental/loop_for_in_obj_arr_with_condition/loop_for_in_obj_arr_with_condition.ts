@@ -31,10 +31,8 @@ function loop_for_in_obj_arr_with_condition(obj: Record<string, number>, arr: nu
     return sumObj * 100 + sumArr;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_arr_with_condition);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_arr_with_condition);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_arr_with_condition({a: 1, b: -2, c: 3}, [2, 3, 4, 5]));
 print(loop_for_in_obj_arr_with_condition({x: -5, y: -10}, [1, 3, 5]));

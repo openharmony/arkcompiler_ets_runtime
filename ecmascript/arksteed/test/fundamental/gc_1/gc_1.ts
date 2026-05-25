@@ -33,12 +33,10 @@ function gc_1(x: number, y: number): Point {
     return {x: x, y: y};
 }
 
-ArkTools.arkSteedCompileAsync(myRandom);
-ArkTools.arkSteedCompileAsync(consumePoint);
-ArkTools.arkSteedCompileAsync(gc_1);
+ArkTools.arkSteedCompileSync(myRandom);
+ArkTools.arkSteedCompileSync(consumePoint);
+ArkTools.arkSteedCompileSync(gc_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const LOOP_COUNT = 25_000_000;
 for (let i = 0; i < LOOP_COUNT; i++) {

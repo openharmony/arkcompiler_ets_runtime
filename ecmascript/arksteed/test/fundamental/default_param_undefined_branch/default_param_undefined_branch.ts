@@ -26,10 +26,8 @@ function default_param_undefined_branch(name?: string, count?: number) {
     }
 }
 
-ArkTools.arkSteedCompileAsync(default_param_undefined_branch);
+ArkTools.arkSteedCompileSync(default_param_undefined_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_undefined_branch();
 default_param_undefined_branch("abc");

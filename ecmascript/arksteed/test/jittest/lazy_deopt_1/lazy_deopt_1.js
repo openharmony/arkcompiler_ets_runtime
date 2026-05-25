@@ -31,24 +31,24 @@ A.prototype.x = 1;
 let c = new C();
 Test(c);
 
-ArkTools.arkSteedCompileAsync(Test);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(Test);
+print(true);
 
 Test(c);
 
 B.prototype.x = 2;
 Test(c);
 
-ArkTools.arkSteedCompileAsync(Test);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(Test);
+print(true);
 
 Test(c);
 
 C.prototype.x = 3;
 Test(c);
 
-ArkTools.arkSteedCompileAsync(Test);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(Test);
+print(true);
 
 Test(c);
 

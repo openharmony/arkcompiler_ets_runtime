@@ -23,10 +23,8 @@ function array_nested_sum(arr: number[][]): number
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(array_nested_sum);
+ArkTools.arkSteedCompileSync(array_nested_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[][] = [[1, 2], [3, 4], [5, 6]];
 print(array_nested_sum(arr));

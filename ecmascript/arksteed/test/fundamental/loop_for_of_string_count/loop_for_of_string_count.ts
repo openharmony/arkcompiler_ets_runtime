@@ -22,10 +22,8 @@ function loop_for_of_string_count(str: string): number {
     return count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_count);
+ArkTools.arkSteedCompileSync(loop_for_of_string_count);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_count("hello"));
 print(loop_for_of_string_count("abc"));

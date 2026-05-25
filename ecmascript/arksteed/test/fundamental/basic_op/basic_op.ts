@@ -72,11 +72,9 @@ function basic_op()
 
 }
 
-ArkTools.arkSteedCompileAsync(basic_op);
+ArkTools.arkSteedCompileSync(basic_op);
 
 // Spin loop: A temporary approach to wait for ArkSteed JIT compiler
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 // TODO: Replace the spin loop above to:
 // let res = ArkTools.waitJitCompileFinish(basic_op);

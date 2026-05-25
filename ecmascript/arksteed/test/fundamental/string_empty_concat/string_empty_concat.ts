@@ -18,10 +18,8 @@ function string_empty_concat(): string {
     return "".concat("hello").concat("").concat("world").concat("");
 }
 
-ArkTools.arkSteedCompileAsync(string_empty_concat);
+ArkTools.arkSteedCompileSync(string_empty_concat);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_empty_concat());
 print(string_empty_concat());

@@ -26,10 +26,8 @@ function array_loop_max(arr: number[]): number
     return max;
 }
 
-ArkTools.arkSteedCompileAsync(array_loop_max);
+ArkTools.arkSteedCompileSync(array_loop_max);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [5, 3, 9, 1, 7];
 print(array_loop_max(arr));

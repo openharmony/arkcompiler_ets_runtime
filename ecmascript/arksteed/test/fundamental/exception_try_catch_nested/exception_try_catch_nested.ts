@@ -35,10 +35,8 @@ function exception_try_catch_nested(inner_throw, outer_throw)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(exception_try_catch_nested);
+ArkTools.arkSteedCompileSync(exception_try_catch_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = exception_try_catch_nested(true, false);
 print(output);

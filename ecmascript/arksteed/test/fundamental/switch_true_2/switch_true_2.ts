@@ -29,10 +29,8 @@ function switch_true_2(score, bonus, a, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_2);
+ArkTools.arkSteedCompileSync(switch_true_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_2(95, 5, 100, 80, 60, 40));
 print(switch_true_2(95, 0, 100, 80, 60, 40));

@@ -23,10 +23,8 @@ function readAndUpdateGlobal(addValue: number): number {
     return globalValue;
 }
 
-ArkTools.arkSteedCompileAsync(readAndUpdateGlobal);
+ArkTools.arkSteedCompileSync(readAndUpdateGlobal);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(readAndUpdateGlobal(5));
 print(readAndUpdateGlobal(10));

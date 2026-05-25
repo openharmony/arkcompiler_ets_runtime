@@ -37,10 +37,8 @@ function nested_for_break(n, p, q)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(nested_for_break);
+ArkTools.arkSteedCompileSync(nested_for_break);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_for_break(0, 2, 11));
 print(nested_for_break(3, 2, 11));

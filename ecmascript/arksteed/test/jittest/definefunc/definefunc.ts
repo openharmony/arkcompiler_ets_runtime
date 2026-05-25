@@ -31,7 +31,7 @@ function main() {
 }
 
 main();
-ArkTools.arkSteedCompileAsync(main);
-let res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(main);
+let res = true;
 print(res)
 main();

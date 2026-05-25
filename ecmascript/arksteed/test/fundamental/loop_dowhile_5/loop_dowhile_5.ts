@@ -30,12 +30,10 @@ function loop_dowhile_5(m: number,
     } while (i <= limit);
 }
 
-ArkTools.arkSteedCompileAsync(loop_dowhile_5);
+ArkTools.arkSteedCompileSync(loop_dowhile_5);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_dowhile_5);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let sum = 0;
 sum = 0; print((loop_dowhile_5(2, 3, 4, 5, (x) => { sum += x; }), sum));

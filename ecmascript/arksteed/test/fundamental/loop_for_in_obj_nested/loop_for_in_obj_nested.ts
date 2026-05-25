@@ -26,10 +26,8 @@ function loop_for_in_obj_nested(outer: Record<string, Record<string, number>>): 
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_nested);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_nested({a: {x: 1, y: 2}, b: {x: 3, y: 4}}));
 print(loop_for_in_obj_nested({a: {x: 10}, b: {y: 20}, c: {z: 30}}));

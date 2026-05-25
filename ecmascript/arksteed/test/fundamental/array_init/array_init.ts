@@ -19,10 +19,8 @@ function array_init(size: number, arr: number[]): void
     }
 }
 
-ArkTools.arkSteedCompileAsync(array_init);
+ArkTools.arkSteedCompileSync(array_init);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [0, 0, 0, 0, 0];
 array_init(5, arr);

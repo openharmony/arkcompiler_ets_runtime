@@ -23,10 +23,8 @@ function loop_for_of_string_contains(str: string, target: string): boolean {
     return false;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_contains);
+ArkTools.arkSteedCompileSync(loop_for_of_string_contains);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_contains("hello", "e") ? 1 : 0);
 print(loop_for_of_string_contains("hello", "x") ? 1 : 0);

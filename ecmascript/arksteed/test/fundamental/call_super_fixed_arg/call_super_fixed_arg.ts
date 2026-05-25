@@ -30,10 +30,8 @@ class CallSuperFixedArgDerived extends CallSuperFixedArgBase {
     }
 }
 
-ArkTools.arkSteedCompileAsync(CallSuperFixedArgBase);
+ArkTools.arkSteedCompileSync(CallSuperFixedArgBase);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let car = new CallSuperFixedArgDerived("Toyota");
 print(car.make);

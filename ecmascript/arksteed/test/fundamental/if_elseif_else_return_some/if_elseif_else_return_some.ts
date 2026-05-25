@@ -24,10 +24,8 @@ function if_elseif_else_return_some(x, a, b, c)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_elseif_else_return_some);
+ArkTools.arkSteedCompileSync(if_elseif_else_return_some);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(if_elseif_else_return_some(10, 100, 20, 5));
 print(if_elseif_else_return_some(-5, 100, 20, 5));

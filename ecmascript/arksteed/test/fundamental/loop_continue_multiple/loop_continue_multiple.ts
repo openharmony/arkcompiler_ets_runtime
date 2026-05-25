@@ -39,10 +39,8 @@ function loop_continue_multiple(n)
     return sum * 1000 + c1 * 100 + c2 * 10 + c3;
 }
 
-ArkTools.arkSteedCompileAsync(loop_continue_multiple);
+ArkTools.arkSteedCompileSync(loop_continue_multiple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_continue_multiple(10));
 print(loop_continue_multiple(9));

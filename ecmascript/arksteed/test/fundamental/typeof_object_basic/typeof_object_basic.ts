@@ -17,9 +17,7 @@ function typeof_object_basic() {
     print(typeof obj === "object" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_object_basic);
+ArkTools.arkSteedCompileSync(typeof_object_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_object_basic();

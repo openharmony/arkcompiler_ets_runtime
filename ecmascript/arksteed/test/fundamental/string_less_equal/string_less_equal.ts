@@ -18,10 +18,8 @@ function string_less_equal(str1: string, str2: string): boolean {
     return str1 <= str2;
 }
 
-ArkTools.arkSteedCompileAsync(string_less_equal);
+ArkTools.arkSteedCompileSync(string_less_equal);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_less_equal("apple", "banana") ? 1 : 0);
 print(string_less_equal("banana", "apple") ? 1 : 0);

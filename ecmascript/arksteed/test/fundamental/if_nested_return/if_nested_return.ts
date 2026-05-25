@@ -24,10 +24,8 @@ function if_nested_return(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_nested_return);
+ArkTools.arkSteedCompileSync(if_nested_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_nested_return(10);
 print(output);

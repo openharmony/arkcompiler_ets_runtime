@@ -30,10 +30,8 @@ function if_elseif_nested_return(x, y, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_elseif_nested_return);
+ArkTools.arkSteedCompileSync(if_elseif_nested_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(if_elseif_nested_return(10, 5, 100, 20, 30, 40));
 print(if_elseif_nested_return(10, -1, 100, 20, 30, 40));

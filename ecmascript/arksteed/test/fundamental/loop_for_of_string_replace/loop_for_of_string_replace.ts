@@ -26,10 +26,8 @@ function loop_for_of_string_replace(str: string, oldChar: string, newChar: strin
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_replace);
+ArkTools.arkSteedCompileSync(loop_for_of_string_replace);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_replace("hello", "l", "x"));
 print(loop_for_of_string_replace("world", "o", "0"));

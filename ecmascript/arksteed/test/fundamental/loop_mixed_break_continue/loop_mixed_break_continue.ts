@@ -37,10 +37,8 @@ function mixed_break_continue(n, p, q)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(mixed_break_continue);
+ArkTools.arkSteedCompileSync(mixed_break_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(mixed_break_continue(0, 2, 3));
 print(mixed_break_continue(5, 3, 4));

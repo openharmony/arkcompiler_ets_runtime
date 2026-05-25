@@ -17,10 +17,8 @@ function array_create(n: number): number[]
     return [n];
 }
 
-ArkTools.arkSteedCompileAsync(array_create);
+ArkTools.arkSteedCompileSync(array_create);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const arr = array_create(42);
 print(arr.length);

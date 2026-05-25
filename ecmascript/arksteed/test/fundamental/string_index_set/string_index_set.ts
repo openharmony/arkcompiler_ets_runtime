@@ -22,10 +22,8 @@ function string_index_set(str: string): string {
     return arr[0].concat(arr[1]).concat(arr[2]);
 }
 
-ArkTools.arkSteedCompileAsync(string_index_set);
+ArkTools.arkSteedCompileSync(string_index_set);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_index_set("hello"));
 print(string_index_set("abc"));

@@ -22,11 +22,9 @@ function call_compiled_function_2(x: number): number {
     return foo(x + 1);
 }
 
-ArkTools.arkSteedCompileAsync(foo);
-ArkTools.arkSteedCompileAsync(call_compiled_function_2);
+ArkTools.arkSteedCompileSync(foo);
+ArkTools.arkSteedCompileSync(call_compiled_function_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_compiled_function_2(-3.5));
 print(call_compiled_function_2(14));

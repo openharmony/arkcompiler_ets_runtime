@@ -27,10 +27,8 @@ function loop_return_nested(a, b, target_i, target_j)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_nested);
+ArkTools.arkSteedCompileSync(loop_return_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_nested(8, 8, 2, 3));
 print(loop_return_nested(5, 10, 4, 9));

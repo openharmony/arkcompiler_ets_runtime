@@ -27,10 +27,8 @@ function updateGlobals(): number {
     return c;
 }
 
-ArkTools.arkSteedCompileAsync(updateGlobals);
+ArkTools.arkSteedCompileSync(updateGlobals);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(updateGlobals());
 print(a);

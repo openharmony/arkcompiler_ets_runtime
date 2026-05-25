@@ -30,10 +30,8 @@ class CallSuperDefaultPartialArgsDerived extends CallSuperDefaultPartialArgsBase
     }
 }
 
-ArkTools.arkSteedCompileAsync(CallSuperDefaultPartialArgsBase);
+ArkTools.arkSteedCompileSync(CallSuperDefaultPartialArgsBase);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let car1 = new CallSuperDefaultPartialArgsDerived("Toyota");
 print(car1.make);

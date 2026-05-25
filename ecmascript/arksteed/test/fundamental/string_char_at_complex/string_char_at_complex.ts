@@ -18,10 +18,8 @@ function string_char_at_complex(str: string, idx: number): number {
     return str.charCodeAt(idx);
 }
 
-ArkTools.arkSteedCompileAsync(string_char_at_complex);
+ArkTools.arkSteedCompileSync(string_char_at_complex);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_char_at_complex("ABC", 0));
 print(string_char_at_complex("ABC", 2));

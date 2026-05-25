@@ -26,10 +26,8 @@ function loop_for_in_obj_break(obj: Record<string, number>, targetKey: string): 
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_break);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_break);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_break({a: 1, b: 2, c: 3}, "a"));
 print(loop_for_in_obj_break({a: 1, b: 2, c: 3}, "b"));

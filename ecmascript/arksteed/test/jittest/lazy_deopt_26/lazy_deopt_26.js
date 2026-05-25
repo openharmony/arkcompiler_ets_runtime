@@ -28,8 +28,8 @@ function f(arr) {
 let arr = []
 arr[1] = 0;
 f(arr);
-ArkTools.arkSteedCompileAsync(f);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(f);
+print(true);
 
 print("------------------------------------------------------");
 arr[1] = 1;

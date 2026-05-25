@@ -23,10 +23,8 @@ function if_elseif_else_return_all(x, a, b, c)
     }
 }
 
-ArkTools.arkSteedCompileAsync(if_elseif_else_return_all);
+ArkTools.arkSteedCompileSync(if_elseif_else_return_all);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(if_elseif_else_return_all(10, 100, 200, 300));
 print(if_elseif_else_return_all(-5, 100, 200, 300));

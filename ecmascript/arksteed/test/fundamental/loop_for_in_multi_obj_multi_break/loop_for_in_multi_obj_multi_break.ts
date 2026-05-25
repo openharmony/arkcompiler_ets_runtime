@@ -28,10 +28,8 @@ function loop_for_in_multi_obj_multi_break(obj1: Record<string, number>, obj2: R
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_multi_obj_multi_break);
+ArkTools.arkSteedCompileSync(loop_for_in_multi_obj_multi_break);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_multi_obj_multi_break({a: 1, b: 2, c: 3}, {d: 4, e: 5}, "b"));
 print(loop_for_in_multi_obj_multi_break({x: 10, y: 20}, {z: 30}, "z"));

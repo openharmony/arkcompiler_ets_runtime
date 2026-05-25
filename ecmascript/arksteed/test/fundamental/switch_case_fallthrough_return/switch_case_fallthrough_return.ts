@@ -31,10 +31,8 @@ function switch_case_fallthrough_return(x, a, b, c, d)
     return result * 10;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_fallthrough_return);
+ArkTools.arkSteedCompileSync(switch_case_fallthrough_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_fallthrough_return(1, 10, 20, 30, 40));
 print(switch_case_fallthrough_return(2, 10, 20, 30, 40));

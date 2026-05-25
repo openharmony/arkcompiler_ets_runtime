@@ -17,9 +17,7 @@ function typeof_symbol() {
     print(typeof value === "symbol" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_symbol);
+ArkTools.arkSteedCompileSync(typeof_symbol);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_symbol();

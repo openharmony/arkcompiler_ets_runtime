@@ -18,10 +18,8 @@ function string_greater_than(str1: string, str2: string): boolean {
     return str1 > str2;
 }
 
-ArkTools.arkSteedCompileAsync(string_greater_than);
+ArkTools.arkSteedCompileSync(string_greater_than);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_greater_than("banana", "apple") ? 1 : 0);
 print(string_greater_than("apple", "banana") ? 1 : 0);

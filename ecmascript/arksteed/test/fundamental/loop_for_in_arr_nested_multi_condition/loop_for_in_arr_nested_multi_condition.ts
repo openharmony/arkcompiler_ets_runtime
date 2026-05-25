@@ -35,10 +35,8 @@ function loop_for_in_arr_nested_multi_condition(matrix: number[][]): number {
     return sumEven * 10000 + sumOdd * 100 + countZero * 10 + 1;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_arr_nested_multi_condition);
+ArkTools.arkSteedCompileSync(loop_for_in_arr_nested_multi_condition);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_arr_nested_multi_condition([[1, 2, 0], [4, 5, 6]]));
 print(loop_for_in_arr_nested_multi_condition([[2, 4], [6, 8]]));

@@ -16,10 +16,8 @@ function arguments_length() {
     print(arguments.length);
 }
 
-ArkTools.arkSteedCompileAsync(arguments_length);
+ArkTools.arkSteedCompileSync(arguments_length);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 arguments_length();
 arguments_length(1);

@@ -23,10 +23,8 @@ function loop_for_of_string_map(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_map);
+ArkTools.arkSteedCompileSync(loop_for_of_string_map);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_map("abc"));
 print(loop_for_of_string_map("xyz"));

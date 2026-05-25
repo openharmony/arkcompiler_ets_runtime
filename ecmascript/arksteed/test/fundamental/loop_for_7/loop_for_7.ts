@@ -21,12 +21,10 @@ function loop_for_7(m: number, n: number, p: number, q: number): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_7);
+ArkTools.arkSteedCompileSync(loop_for_7);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_for_7);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_7(2, 3, 4, 5));
 print(loop_for_7(3, 4, 5, 6));

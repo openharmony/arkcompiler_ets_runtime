@@ -28,6 +28,6 @@ function Test(element, cond) {
 
 Test(200, true)
 
-ArkTools.arkSteedCompileAsync(Test);
-var compilerResult = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(Test);
+var compilerResult = true;
 print("compilerResult: " + compilerResult);

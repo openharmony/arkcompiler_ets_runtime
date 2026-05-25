@@ -21,10 +21,8 @@ function call_compiled_function_via_call_zero_args() {
     print(call_compiled_function_via_call_zero_args_impl.call({ value: 7 }));
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_zero_args_impl);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_zero_args);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_zero_args_impl);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_zero_args);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_zero_args();

@@ -29,10 +29,8 @@ class Rectangle {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Rectangle);
+ArkTools.arkSteedCompileSync(Rectangle);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let rect1 = new Rectangle();
 print(rect1.width);

@@ -21,10 +21,8 @@ function va_args_prefix_sum(base: number, ...args: number[]) {
     print(args.length);
 }
 
-ArkTools.arkSteedCompileAsync(va_args_prefix_sum);
+ArkTools.arkSteedCompileSync(va_args_prefix_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 va_args_prefix_sum(5);
 va_args_prefix_sum(5, 1, 2);

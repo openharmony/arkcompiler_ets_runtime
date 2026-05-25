@@ -22,10 +22,8 @@ function loop_for_of_string_double(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_double);
+ArkTools.arkSteedCompileSync(loop_for_of_string_double);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_double("abc"));
 print(loop_for_of_string_double("a"));

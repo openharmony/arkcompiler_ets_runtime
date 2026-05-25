@@ -25,10 +25,8 @@ function multi_var_for(n)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(multi_var_for);
+ArkTools.arkSteedCompileSync(multi_var_for);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 for (let i = 0; i < 10; i++) {
     print(multi_var_for(i));

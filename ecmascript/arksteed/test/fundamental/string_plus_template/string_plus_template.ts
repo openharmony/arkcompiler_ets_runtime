@@ -18,10 +18,8 @@ function string_plus_template(a: string, b: number, c: string): string {
     return a + b + c;
 }
 
-ArkTools.arkSteedCompileAsync(string_plus_template);
+ArkTools.arkSteedCompileSync(string_plus_template);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_plus_template("a", 1, "b"));
 print(string_plus_template("x", 99, "y"));

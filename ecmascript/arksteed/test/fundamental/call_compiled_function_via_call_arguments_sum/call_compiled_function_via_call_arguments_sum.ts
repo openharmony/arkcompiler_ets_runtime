@@ -25,10 +25,8 @@ function call_compiled_function_via_call_arguments_sum() {
     call_compiled_function_via_call_arguments_sum_impl.call({ bias: 5 });
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_arguments_sum_impl);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_arguments_sum);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_arguments_sum_impl);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_arguments_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_arguments_sum();

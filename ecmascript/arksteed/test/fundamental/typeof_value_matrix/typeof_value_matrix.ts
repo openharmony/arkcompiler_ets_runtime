@@ -30,9 +30,7 @@ function typeof_value_matrix() {
     print(typeof objectValue);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_value_matrix);
+ArkTools.arkSteedCompileSync(typeof_value_matrix);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_value_matrix();

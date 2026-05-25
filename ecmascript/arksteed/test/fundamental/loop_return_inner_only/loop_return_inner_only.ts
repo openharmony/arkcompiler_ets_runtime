@@ -28,10 +28,8 @@ function loop_return_inner_only(a, b, offset_i, offset_j)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_inner_only);
+ArkTools.arkSteedCompileSync(loop_return_inner_only);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_inner_only(5, 8, 1, 2));
 print(loop_return_inner_only(3, 2, 0, 0));

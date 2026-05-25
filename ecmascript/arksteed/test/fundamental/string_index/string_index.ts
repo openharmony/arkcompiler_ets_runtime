@@ -18,10 +18,8 @@ function string_index(str: string, idx: number): string {
     return str[idx];
 }
 
-ArkTools.arkSteedCompileAsync(string_index);
+ArkTools.arkSteedCompileSync(string_index);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_index("hello", 0));
 print(string_index("world", 2));

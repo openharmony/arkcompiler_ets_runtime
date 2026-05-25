@@ -31,10 +31,8 @@ function loop_for_of_multi_condition(arr: number[]): number {
     return sumPos * 100 + sumNeg * 10 + countZero;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_multi_condition);
+ArkTools.arkSteedCompileSync(loop_for_of_multi_condition);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_multi_condition([1, -2, 0, 3]));
 print(loop_for_of_multi_condition([10, 20]));

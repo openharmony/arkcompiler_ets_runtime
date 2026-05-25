@@ -49,12 +49,10 @@ function spread_constructor_inheritance_4(coords: [number, number, number, numbe
     return c.total();
 }
 
-ArkTools.arkSteedCompileAsync(GrandParent);
-ArkTools.arkSteedCompileAsync(Parent);
-ArkTools.arkSteedCompileAsync(Child);
-ArkTools.arkSteedCompileAsync(spread_constructor_inheritance_4);
+ArkTools.arkSteedCompileSync(GrandParent);
+ArkTools.arkSteedCompileSync(Parent);
+ArkTools.arkSteedCompileSync(Child);
+ArkTools.arkSteedCompileSync(spread_constructor_inheritance_4);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_constructor_inheritance_4([1, 2, 3, 4]));

@@ -18,10 +18,8 @@ function string_contains(str: string, search: string): boolean {
     return str.indexOf(search) >= 0;
 }
 
-ArkTools.arkSteedCompileAsync(string_contains);
+ArkTools.arkSteedCompileSync(string_contains);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_contains("hello world", "world") ? 1 : 0);
 print(string_contains("hello world", "xyz") ? 1 : 0);

@@ -18,9 +18,7 @@ function typeof_null_object() {
     print(value === null ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_null_object);
+ArkTools.arkSteedCompileSync(typeof_null_object);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_null_object();

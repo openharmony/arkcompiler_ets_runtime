@@ -33,10 +33,8 @@ function spread_constructor_2(nums: number[]): number {
     return v.sum();
 }
 
-ArkTools.arkSteedCompileAsync(Vec);
-ArkTools.arkSteedCompileAsync(spread_constructor_2);
+ArkTools.arkSteedCompileSync(Vec);
+ArkTools.arkSteedCompileSync(spread_constructor_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_constructor_2([1, 2, 3, 4, 5]));

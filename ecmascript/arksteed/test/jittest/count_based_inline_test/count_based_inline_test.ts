@@ -347,50 +347,50 @@ print("=== Inline Count Testing ===");
 
 print("Basic Inline Count Test:");
 TestBasicInlineCount();
-ArkTools.arkSteedCompileAsync(TestBasicInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestBasicInlineCount);
+print(true);
 TestBasicInlineCount();
 
 print("Mixed Inline Count Test:");
 TestMixedInlineCount();
-ArkTools.arkSteedCompileAsync(TestMixedInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestMixedInlineCount);
+print(true);
 TestMixedInlineCount();
 
 print("Conditional Inline Count Test:");
 TestConditionalInlineCount();
-ArkTools.arkSteedCompileAsync(TestConditionalInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestConditionalInlineCount);
+print(true);
 TestConditionalInlineCount();
 
 print("Composition Inline Count Test:");
 TestCompositionInlineCount();
-ArkTools.arkSteedCompileAsync(TestCompositionInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestCompositionInlineCount);
+print(true);
 TestCompositionInlineCount();
 
 print("Nested Inline Count Test:");
 TestNestedInlineCount();
-ArkTools.arkSteedCompileAsync(TestNestedInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestNestedInlineCount);
+print(true);
 TestNestedInlineCount();
 
 print("Array Inline Count Test:");
 TestArrayInlineCount();
-ArkTools.arkSteedCompileAsync(TestArrayInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestArrayInlineCount);
+print(true);
 TestArrayInlineCount();
 
 print("String Inline Count Test:");
 TestStringInlineCount();
-ArkTools.arkSteedCompileAsync(TestStringInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestStringInlineCount);
+print(true);
 TestStringInlineCount();
 
 print("Math Inline Count Test:");
 TestMathInlineCount();
-ArkTools.arkSteedCompileAsync(TestMathInlineCount);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TestMathInlineCount);
+print(true);
 TestMathInlineCount();
 
 print("Inline count testing completed");

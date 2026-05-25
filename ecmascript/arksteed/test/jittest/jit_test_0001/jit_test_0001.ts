@@ -30,8 +30,8 @@ for (var i = 0; i < 10; i++) {
     Test(cond)
 }
 
-ArkTools.arkSteedCompileAsync(Test);
-var ret = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(Test);
+var ret = true;
 print(ret);
 
 function Test2() {
@@ -49,6 +49,6 @@ function Test2() {
 }
 
 Test2();
-ArkTools.arkSteedCompileAsync(Test2);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(Test2);
+print(true);
 Test2();

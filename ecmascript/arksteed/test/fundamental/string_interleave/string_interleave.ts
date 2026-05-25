@@ -32,10 +32,8 @@ function string_interleave(s1: string, s2: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_interleave);
+ArkTools.arkSteedCompileSync(string_interleave);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_interleave("ace", "bdf"));
 print(string_interleave("abc", "xyz"));

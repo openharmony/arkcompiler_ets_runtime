@@ -22,10 +22,8 @@ function array_create_double(src: number[]): number[]
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(array_create_double);
+ArkTools.arkSteedCompileSync(array_create_double);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr = array_create_double([1, 2, 3, 4, 5]);
 print(arr[0]);

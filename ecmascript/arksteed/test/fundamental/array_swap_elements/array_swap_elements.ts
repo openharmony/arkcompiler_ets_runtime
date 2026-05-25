@@ -19,10 +19,8 @@ function array_swap_elements(arr: number[], i: number, j: number): void
     arr[j] = temp;
 }
 
-ArkTools.arkSteedCompileAsync(array_swap_elements);
+ArkTools.arkSteedCompileSync(array_swap_elements);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [1, 2, 3, 4, 5];
 array_swap_elements(arr, 0, 4);

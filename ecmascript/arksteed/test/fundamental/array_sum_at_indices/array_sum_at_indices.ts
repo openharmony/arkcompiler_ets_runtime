@@ -22,10 +22,8 @@ function array_sum_at_indices(arr: number[], indices: number[]): number
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(array_sum_at_indices);
+ArkTools.arkSteedCompileSync(array_sum_at_indices);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [10, 20, 30, 40, 50];
 let indices: number[] = [0, 2, 4];

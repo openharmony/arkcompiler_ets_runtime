@@ -21,10 +21,8 @@ function call_compiled_function_via_call_variadic() {
     print(call_compiled_function_via_call_variadic_impl.call({ bias: -5 }, 10, 20, 30));
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_variadic_impl);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_variadic);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_variadic_impl);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_variadic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_variadic();

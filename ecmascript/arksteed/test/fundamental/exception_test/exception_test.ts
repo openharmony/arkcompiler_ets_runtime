@@ -23,9 +23,7 @@ function exception_test() {
     }
 }
 
-ArkTools.arkSteedCompileAsync(exception_test);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(exception_test);
 
 exception_test();
 print(true);

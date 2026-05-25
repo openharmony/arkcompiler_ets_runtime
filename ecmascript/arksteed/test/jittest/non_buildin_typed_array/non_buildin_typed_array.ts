@@ -31,7 +31,7 @@ function Test() {
 
 Test();
 
-ArkTools.arkSteedCompileAsync(ReadBigInt64BE);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(ReadBigInt64BE);
+print(true);
 
 Test();

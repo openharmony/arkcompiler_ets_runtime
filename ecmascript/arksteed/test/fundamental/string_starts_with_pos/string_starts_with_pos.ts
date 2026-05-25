@@ -18,10 +18,8 @@ function string_starts_with_pos(str: string, prefix: string): boolean {
     return str.substring(0, prefix.length) == prefix;
 }
 
-ArkTools.arkSteedCompileAsync(string_starts_with_pos);
+ArkTools.arkSteedCompileSync(string_starts_with_pos);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_starts_with_pos("hello world", "hello") ? 1 : 0);
 print(string_starts_with_pos("hello world", "world") ? 1 : 0);

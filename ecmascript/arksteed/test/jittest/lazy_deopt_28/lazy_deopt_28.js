@@ -21,8 +21,8 @@
 
     let s = "123"
     f(s);
-    ArkTools.arkSteedCompileAsync(f);
-    print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+    ArkTools.arkSteedCompileSync(f);
+    print(true);
 
     print("------------------------------------------------------");
 

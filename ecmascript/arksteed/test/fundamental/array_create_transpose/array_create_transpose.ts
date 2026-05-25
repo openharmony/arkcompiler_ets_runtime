@@ -23,10 +23,8 @@ function array_create_transpose(mat: number[][]): number[][]
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(array_create_transpose);
+ArkTools.arkSteedCompileSync(array_create_transpose);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let mat: number[][] = [[1, 2], [3, 4]];
 let matT = array_create_transpose(mat);

@@ -27,13 +27,11 @@ function if_nested(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_nested);
+ArkTools.arkSteedCompileSync(if_nested);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(if_nested);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_nested(10);
 print(output);

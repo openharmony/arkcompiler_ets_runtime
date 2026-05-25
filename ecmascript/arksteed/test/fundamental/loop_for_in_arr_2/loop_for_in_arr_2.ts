@@ -29,10 +29,8 @@ function loop_for_in_arr_2(arr: number[]): number {
     return sumEven * 100 + sumOdd;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_arr_2);
+ArkTools.arkSteedCompileSync(loop_for_in_arr_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_arr_2([]));
 print(loop_for_in_arr_2([10, 20, 30]));

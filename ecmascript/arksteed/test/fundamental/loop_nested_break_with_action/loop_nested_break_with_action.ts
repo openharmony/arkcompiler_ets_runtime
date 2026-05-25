@@ -31,10 +31,8 @@ function nested_break_with_action(n, p)
     return sum + breakCount * 50;
 }
 
-ArkTools.arkSteedCompileAsync(nested_break_with_action);
+ArkTools.arkSteedCompileSync(nested_break_with_action);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_break_with_action(0, 2));
 print(nested_break_with_action(2, 3));

@@ -17,12 +17,10 @@ function this_2(a: number) {
     return a;
 }
 
-ArkTools.arkSteedCompileAsync(this_2);
+ArkTools.arkSteedCompileSync(this_2);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(this_2);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(this_2.call(42, 100));
 print(this_2.call(42, 200));

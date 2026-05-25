@@ -54,10 +54,8 @@ function switch_conditional_nested(x, y, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_conditional_nested);
+ArkTools.arkSteedCompileSync(switch_conditional_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_conditional_nested(1, 1, 10, 5, 3, 7));
 print(switch_conditional_nested(1, 2, 10, 5, 3, 7));

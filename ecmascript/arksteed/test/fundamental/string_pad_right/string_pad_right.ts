@@ -25,10 +25,8 @@ function string_pad_right(str: string, targetLen: number): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_pad_right);
+ArkTools.arkSteedCompileSync(string_pad_right);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_pad_right("abc", 5));
 print(string_pad_right("hello", 10));

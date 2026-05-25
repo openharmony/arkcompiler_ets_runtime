@@ -30,10 +30,8 @@ function string_strip_tags(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_strip_tags);
+ArkTools.arkSteedCompileSync(string_strip_tags);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_strip_tags("<b>hello</b> <i>world</i>"));
 print(string_strip_tags("<div>test</div>"));

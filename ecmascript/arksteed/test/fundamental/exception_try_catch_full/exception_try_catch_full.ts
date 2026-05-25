@@ -49,11 +49,9 @@ function exception_try_catch_full()
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(exception_try_catch_full);
+ArkTools.arkSteedCompileSync(exception_try_catch_full);
 
 // Spin loop: A temporary approach to wait for ArkSteed JIT compiler
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 // TODO: Replace the spin loop above to:
 // let res = ArkTools.waitJitCompileFinish(exception_try_catch_full);

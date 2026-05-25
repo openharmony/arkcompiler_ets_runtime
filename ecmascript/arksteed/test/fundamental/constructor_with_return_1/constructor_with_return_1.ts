@@ -22,11 +22,9 @@ function constructor_with_return_1() {
     return new Point(4, 5);
 }
 
-ArkTools.arkSteedCompileAsync(Point);
-ArkTools.arkSteedCompileAsync(constructor_with_return_1);
+ArkTools.arkSteedCompileSync(Point);
+ArkTools.arkSteedCompileSync(constructor_with_return_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const p = constructor_with_return_1();
 print(p instanceof Array);

@@ -27,10 +27,8 @@ function loop_for_of_filter_map(arr: number[]): number {
     return filteredSum * 1000 + mappedSum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_filter_map);
+ArkTools.arkSteedCompileSync(loop_for_of_filter_map);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_filter_map([1, -2, 3, -4, 5]));
 print(loop_for_of_filter_map([10, 20]));

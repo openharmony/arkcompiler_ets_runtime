@@ -24,10 +24,8 @@ class DefaultParamMethod {
     }
 }
 
-ArkTools.arkSteedCompileAsync(DefaultParamMethod);
+ArkTools.arkSteedCompileSync(DefaultParamMethod);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let a = new DefaultParamMethod();
 print(a.compute());

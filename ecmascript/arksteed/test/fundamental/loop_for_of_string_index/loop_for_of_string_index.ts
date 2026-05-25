@@ -25,10 +25,8 @@ function loop_for_of_string_index(str: string): number {
     return -1;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_index);
+ArkTools.arkSteedCompileSync(loop_for_of_string_index);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_index("hello"));
 print(loop_for_of_string_index("world"));

@@ -27,10 +27,8 @@ function loop_for_of_string_max(str: string): string {
     return maxChar;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_max);
+ArkTools.arkSteedCompileSync(loop_for_of_string_max);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_max("hello"));
 print(loop_for_of_string_max("abc"));

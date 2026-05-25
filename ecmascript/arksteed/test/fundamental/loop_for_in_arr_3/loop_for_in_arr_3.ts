@@ -32,10 +32,8 @@ function loop_for_in_arr_3(arr: number[]): number {
     return small * 100 + medium * 10 + large;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_arr_3);
+ArkTools.arkSteedCompileSync(loop_for_in_arr_3);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_arr_3([]));
 print(loop_for_in_arr_3([5, 15, 150]));

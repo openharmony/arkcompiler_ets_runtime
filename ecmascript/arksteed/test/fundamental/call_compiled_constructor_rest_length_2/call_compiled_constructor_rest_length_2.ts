@@ -27,11 +27,9 @@ function call_compiled_constructor_rest_length_2(
     return new CallCompiledConstructorRestLengthBox(...args);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorRestLengthBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_rest_length_2);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorRestLengthBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_rest_length_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let a = call_compiled_constructor_rest_length_2();
 print(a.len);

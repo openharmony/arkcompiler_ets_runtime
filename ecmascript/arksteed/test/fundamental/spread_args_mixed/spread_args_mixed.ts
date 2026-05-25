@@ -29,10 +29,8 @@ function spread_args_mixed(): string {
     return r;
 }
 
-ArkTools.arkSteedCompileAsync(spread_args_mixed_helper);
-ArkTools.arkSteedCompileAsync(spread_args_mixed);
+ArkTools.arkSteedCompileSync(spread_args_mixed_helper);
+ArkTools.arkSteedCompileSync(spread_args_mixed);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_args_mixed());

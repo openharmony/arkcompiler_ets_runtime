@@ -23,7 +23,7 @@ function f(x) {
 f(-100);
 f(12345678912345);
 
-ArkTools.arkSteedCompileAsync(f);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(f);
+print(true);
 
 f(-12345678912345);

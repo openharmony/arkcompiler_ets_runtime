@@ -47,11 +47,9 @@ function spread_constructor_inheritance_2(nums: number[]): number {
     return p.sum() + c.total();
 }
 
-ArkTools.arkSteedCompileAsync(Parent);
-ArkTools.arkSteedCompileAsync(Child);
-ArkTools.arkSteedCompileAsync(spread_constructor_inheritance_2);
+ArkTools.arkSteedCompileSync(Parent);
+ArkTools.arkSteedCompileSync(Child);
+ArkTools.arkSteedCompileSync(spread_constructor_inheritance_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_constructor_inheritance_2([1, 2, 3, 4]));

@@ -35,10 +35,8 @@ function switch_true_multi_conditions(x, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_multi_conditions);
+ArkTools.arkSteedCompileSync(switch_true_multi_conditions);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_multi_conditions(1, 10, 20, 30, 40));
 print(switch_true_multi_conditions(3, 10, 20, 30, 40));

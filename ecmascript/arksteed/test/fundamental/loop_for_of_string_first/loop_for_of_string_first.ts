@@ -21,10 +21,8 @@ function loop_for_of_string_first(str: string): string {
     return "";
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_first);
+ArkTools.arkSteedCompileSync(loop_for_of_string_first);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_first("hello"));
 print(loop_for_of_string_first("world"));

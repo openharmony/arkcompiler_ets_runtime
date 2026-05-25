@@ -30,10 +30,8 @@ function loop_for_of_string_chunks(str: string): number {
     return chunks.length;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_chunks);
+ArkTools.arkSteedCompileSync(loop_for_of_string_chunks);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_chunks("abcd"));
 print(loop_for_of_string_chunks("abcde"));

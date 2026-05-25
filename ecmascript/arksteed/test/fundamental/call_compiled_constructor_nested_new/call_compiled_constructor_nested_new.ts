@@ -40,12 +40,10 @@ function call_compiled_constructor_nested_new(): void {
     print(b.total());
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorNestedNewInner);
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorNestedNewOuter);
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorNestedNewOuter.prototype.total);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_nested_new);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorNestedNewInner);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorNestedNewOuter);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorNestedNewOuter.prototype.total);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_nested_new);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_nested_new();

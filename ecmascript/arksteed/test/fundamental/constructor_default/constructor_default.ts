@@ -28,10 +28,8 @@ class Car {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Car);
+ArkTools.arkSteedCompileSync(Car);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let car1 = new Car();
 print(car1.make);

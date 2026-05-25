@@ -33,10 +33,8 @@ function spread_constructor_1(coords: [number, number, number]): number {
     return p.sum();
 }
 
-ArkTools.arkSteedCompileAsync(Point);
-ArkTools.arkSteedCompileAsync(spread_constructor_1);
+ArkTools.arkSteedCompileSync(Point);
+ArkTools.arkSteedCompileSync(spread_constructor_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_constructor_1([1, 2, 3]));

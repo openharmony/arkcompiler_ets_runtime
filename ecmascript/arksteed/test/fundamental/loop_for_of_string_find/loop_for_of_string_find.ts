@@ -23,10 +23,8 @@ function loop_for_of_string_find(str: string): string {
     return "<not found>";
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_find);
+ArkTools.arkSteedCompileSync(loop_for_of_string_find);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_find("123abc"));
 print(loop_for_of_string_find("456"));

@@ -17,10 +17,8 @@ function array_write_1(arr: number[]): void
     arr[0] = 42;
 }
 
-ArkTools.arkSteedCompileAsync(array_write_1);
+ArkTools.arkSteedCompileSync(array_write_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr = [0];
 print((array_write_1(arr), arr[0]));

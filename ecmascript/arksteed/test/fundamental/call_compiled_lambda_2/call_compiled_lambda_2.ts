@@ -19,20 +19,16 @@ function call_compiled_lambda_2(x: number, y: number): number {
         return (b == 0) ? a : foo(b, a % b);
     };
     if (!compiled) {
-        ArkTools.arkSteedCompileAsync(foo);
+        ArkTools.arkSteedCompileSync(foo);
         // Do not remove this spin-loop. This is already part of the test case
-        let time = Date.now();
-        for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
         compiled = true;
     }
     return foo(x, y);
 }
 
 (async () => {
-    await ArkTools.arkSteedCompileAsync(call_compiled_lambda_2);
+    await ArkTools.arkSteedCompileSync(call_compiled_lambda_2);
     // TODO: Remove this spin-loop
-    let time = Date.now();
-    for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 })().then(() => {
     print(call_compiled_lambda_2(24, 36));
     print(call_compiled_lambda_2(15, 48));

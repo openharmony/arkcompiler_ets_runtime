@@ -42,10 +42,8 @@ function switch_case_nested(x, y, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_nested);
+ArkTools.arkSteedCompileSync(switch_case_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_nested(1, 1, 10, 20, 30, 40));
 print(switch_case_nested(1, 2, 10, 20, 30, 40));

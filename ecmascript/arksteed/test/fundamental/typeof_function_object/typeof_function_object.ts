@@ -22,9 +22,7 @@ function typeof_function_object() {
     print(typeof obj.call === "function" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_function_object);
+ArkTools.arkSteedCompileSync(typeof_function_object);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_function_object();

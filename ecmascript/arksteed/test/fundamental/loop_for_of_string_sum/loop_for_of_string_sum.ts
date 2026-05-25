@@ -22,10 +22,8 @@ function loop_for_of_string_sum(str: string): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_sum);
+ArkTools.arkSteedCompileSync(loop_for_of_string_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_sum("abc"));
 print(loop_for_of_string_sum("xyz"));

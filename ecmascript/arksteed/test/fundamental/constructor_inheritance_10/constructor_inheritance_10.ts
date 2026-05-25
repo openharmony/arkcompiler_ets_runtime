@@ -62,12 +62,10 @@ class Cuboid extends Rectangle {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Shape);
-ArkTools.arkSteedCompileAsync(Rectangle);
-ArkTools.arkSteedCompileAsync(Cuboid);
+ArkTools.arkSteedCompileSync(Shape);
+ArkTools.arkSteedCompileSync(Rectangle);
+ArkTools.arkSteedCompileSync(Cuboid);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let cube = new Cuboid(1, 2, 3, 4, 5);
 print(cube.position());

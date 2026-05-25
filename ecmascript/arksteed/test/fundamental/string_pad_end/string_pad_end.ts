@@ -18,10 +18,8 @@ function string_pad_end(str: string, length: number, char: string): string {
     return str.padEnd(length, char);
 }
 
-ArkTools.arkSteedCompileAsync(string_pad_end);
+ArkTools.arkSteedCompileSync(string_pad_end);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_pad_end("5", 3, "0"));
 print(string_pad_end("abc", 5, "x"));

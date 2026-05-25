@@ -39,10 +39,8 @@ function switch_case_chained_return(x, a, b, c, d, e)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_chained_return);
+ArkTools.arkSteedCompileSync(switch_case_chained_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_chained_return(1, 10, 5, 3, 7, 100));
 print(switch_case_chained_return(2, 10, 5, 3, 7, 100));

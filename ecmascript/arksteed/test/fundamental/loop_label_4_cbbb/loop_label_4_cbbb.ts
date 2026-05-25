@@ -49,10 +49,8 @@ function loop_label_4_cbbb(limit, c1, b2, b3, b4) {
     return sum * 10000 + outerCount * 1000 + mid1Count * 100 + mid2Count * 10 + innerCount;
 }
 
-ArkTools.arkSteedCompileAsync(loop_label_4_cbbb);
+ArkTools.arkSteedCompileSync(loop_label_4_cbbb);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_label_4_cbbb(0, 2, 2, 2, 2));
 print(loop_label_4_cbbb(2, 3, 2, 3, 2));

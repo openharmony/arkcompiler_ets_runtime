@@ -49,8 +49,6 @@ let o2 = {
 for (let i = 0; i < 1; i++) {
     assert(exception_try_catch_throw(o2) === "gy");
 }
-ArkTools.arkSteedCompileAsync(exception_try_catch_throw);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(exception_try_catch_throw);
 flag = true;
 print(exception_try_catch_throw(o2));

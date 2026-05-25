@@ -63,13 +63,11 @@ class L3 extends L2 {
     }
 }
 
-ArkTools.arkSteedCompileAsync(L0);
-ArkTools.arkSteedCompileAsync(L1);
-ArkTools.arkSteedCompileAsync(L2);
-ArkTools.arkSteedCompileAsync(L3);
+ArkTools.arkSteedCompileSync(L0);
+ArkTools.arkSteedCompileSync(L1);
+ArkTools.arkSteedCompileSync(L2);
+ArkTools.arkSteedCompileSync(L3);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let obj = new L3(1, 2, 3, 4);
 print(obj.getA());

@@ -29,10 +29,8 @@ function call_compiled_bind_expression_with_args_1(run: () => number): number {
     return run();
 }
 
-ArkTools.arkSteedCompileAsync(BoundClosureTarget.prototype.run);
-ArkTools.arkSteedCompileAsync(call_compiled_bind_expression_with_args_1);
+ArkTools.arkSteedCompileSync(BoundClosureTarget.prototype.run);
+ArkTools.arkSteedCompileSync(call_compiled_bind_expression_with_args_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_compiled_bind_expression_with_args_1(new BoundClosureTarget(42)));

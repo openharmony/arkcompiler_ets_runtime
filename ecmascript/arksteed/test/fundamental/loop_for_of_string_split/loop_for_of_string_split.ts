@@ -29,10 +29,8 @@ function loop_for_of_string_split(str: string): number {
     return parts.length;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_split);
+ArkTools.arkSteedCompileSync(loop_for_of_string_split);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_split("a,b,c"));
 print(loop_for_of_string_split("one"));

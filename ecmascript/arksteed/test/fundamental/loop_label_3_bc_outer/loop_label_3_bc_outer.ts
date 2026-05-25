@@ -38,10 +38,8 @@ function loop_label_3_bc_outer(limit, b_inner, c_outer) {
     return sum * 1000 + outerCount * 100 + middleCount * 10 + innerCount;
 }
 
-ArkTools.arkSteedCompileAsync(loop_label_3_bc_outer);
+ArkTools.arkSteedCompileSync(loop_label_3_bc_outer);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_label_3_bc_outer(0, 2, 3));
 print(loop_label_3_bc_outer(2, 3, 3));

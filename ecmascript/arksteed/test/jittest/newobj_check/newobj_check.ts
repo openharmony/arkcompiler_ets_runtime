@@ -20,7 +20,7 @@ function Test(ctor) {
 }
 
 Test(MyClass)
-ArkTools.arkSteedCompileAsync(Test);
-var ret = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(Test);
+var ret = true;
 print(ret);
 Test(MyClass2)

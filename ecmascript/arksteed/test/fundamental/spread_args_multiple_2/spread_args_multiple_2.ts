@@ -26,10 +26,8 @@ function spread_args_multiple_2(first: number[], second: number[]): number {
     return spread_args_multiple_helper(...first, 3, ...second);
 }
 
-ArkTools.arkSteedCompileAsync(spread_args_multiple_helper);
-ArkTools.arkSteedCompileAsync(spread_args_multiple_2);
+ArkTools.arkSteedCompileSync(spread_args_multiple_helper);
+ArkTools.arkSteedCompileSync(spread_args_multiple_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_args_multiple_2([1, 2], [4, 5, 6, 7, 8]));

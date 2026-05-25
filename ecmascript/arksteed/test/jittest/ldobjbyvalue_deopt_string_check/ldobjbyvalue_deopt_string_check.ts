@@ -25,8 +25,8 @@ function foo(obj, key) {
 for (let i = 0; i < 1000; i++) {
     foo(a, "y");
 }
-ArkTools.arkSteedCompileAsync(foo);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(foo);
+print(true);
 print(foo(b, 1));
 ArkTools.printTypedOpProfiler("INTERN_STRING_KEY_CHECK");
 ArkTools.clearTypedOpProfiler();

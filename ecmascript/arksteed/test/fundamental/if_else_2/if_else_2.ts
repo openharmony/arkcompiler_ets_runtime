@@ -23,11 +23,9 @@ function if_else_2(x, a, b, c)
     return a * 1000 + b;
 }
 
-ArkTools.arkSteedCompileAsync(if_else_2);
+ArkTools.arkSteedCompileSync(if_else_2);
 
 // Spin loop: A temporary approach to wait for ArkSteed JIT compiler
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_else_2(15, 3, 7, 1);
 print(output);

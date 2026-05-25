@@ -21,9 +21,7 @@ function call_builtin_function_via_call() {
     print(arrayLike.length);
 }
 
-ArkTools.arkSteedCompileAsync(call_builtin_function_via_call);
+ArkTools.arkSteedCompileSync(call_builtin_function_via_call);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_builtin_function_via_call();
