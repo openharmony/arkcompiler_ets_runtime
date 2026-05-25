@@ -28,6 +28,7 @@ namespace panda::ecmascript::arksteed {
 class PhiVertex;
 class Graph;
 class BB;
+class ArkSteedGraphLabeller;
 
 template <typename T>
 class VirtualRegisterArray {
@@ -110,6 +111,8 @@ private:
 class InterpreterFrameState : public VirtualRegisterArray<ValueVertex *> {
 public:
     using VirtualRegisterArray<ValueVertex *>::VirtualRegisterArray;
+
+    void CopyFrom(const MergePointFrameState &mergeState);
 };
 
 class CondensedFrameState {
@@ -476,6 +479,11 @@ public:
         return GetBasicBlockType() == BasicBlockType::LOOP_HEADER;
     }
 
+    bool IsUnmergedUnreachableLoop() const
+    {
+        return IsLoopHeader() && PredecessorsSoFar() == 0 && PredecessorCount() == 1;
+    }
+
     bool IsExceptionHandler() const
     {
         return GetBasicBlockType() == BasicBlockType::EXCEPTION_HANDLER_START;
@@ -522,10 +530,16 @@ public:
         return registerState_;
     }
 
+    void ReducePredecessorCount(uint32_t num = 1);
+
 private:
     void MergePhisFrom(InterpreterFrameState &srcState);
     // Merge a single value from the unmerged state
     ValueVertex *MergeValue(VirtualRegister reg, ValueVertex *destValue, ValueVertex *srcValue);
+    ValueVertex *MergeExistingPhiInput(VirtualRegister reg, PhiVertex *phi, ValueVertex *srcValue,
+                                       ArkSteedGraphLabeller *labeller);
+    PhiVertex *CreateMergePhi(VirtualRegister reg, ValueVertex *destValue, ValueVertex *srcValue,
+                              ArkSteedGraphLabeller *labeller);
 
     ValueVertex *NewLoopPhi(VirtualRegister reg);
     ValueVertex *NewExceptionPhi(VirtualRegister reg);

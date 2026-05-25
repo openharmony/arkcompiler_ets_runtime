@@ -44,6 +44,7 @@ public:
           env_(env),
           bytecodeContext_(graph->GetChunk()),
           mergeStates_(graph->GetChunk()),
+          predecessorCountReductions_(graph->GetChunk()),
           jumpTargets_(graph->GetChunk()),
           currentFrameState_(nullptr),
           bytecodeAnalysis_(nullptr)
@@ -220,6 +221,68 @@ public:
         return block;
     }
 
+    class ReduceResult {
+    public:
+        enum class Kind : uint8_t {
+            DONE_WITH_PAYLOAD,
+            DONE_WITHOUT_PAYLOAD,
+            DONE_WITH_ABORT,
+        };
+
+        static ReduceResult Done(ValueVertex *value)
+        {
+            ASSERT(value != nullptr);
+            return ReduceResult(Kind::DONE_WITH_PAYLOAD, value);
+        }
+
+        static ReduceResult Done()
+        {
+            return ReduceResult(Kind::DONE_WITHOUT_PAYLOAD, nullptr);
+        }
+
+        static ReduceResult DoneWithAbort()
+        {
+            return ReduceResult(Kind::DONE_WITH_ABORT, nullptr);
+        }
+
+        bool IsDoneWithValue() const
+        {
+            return kind_ == Kind::DONE_WITH_PAYLOAD;
+        }
+
+        bool IsDoneWithAbort() const
+        {
+            return kind_ == Kind::DONE_WITH_ABORT;
+        }
+
+        ValueVertex *Value() const
+        {
+            ASSERT(IsDoneWithValue());
+            return value_;
+        }
+
+    private:
+        explicit ReduceResult(Kind kind, ValueVertex *value) : kind_(kind), value_(value) {}
+
+        Kind kind_;
+        ValueVertex *value_;
+    };
+
+    enum class BranchResult : uint8_t {
+        DEFAULT,
+        ALWAYS_TRUE,
+        ALWAYS_FALSE,
+        ABORT,
+    };
+
+private:
+    enum class BranchType : uint8_t { TRUE_BRANCH, FALSE_BRANCH };
+    class BranchBuilder;
+
+public:
+    ReduceResult Select(CallbackRef<BranchResult(BranchBuilder &)> cond, CallbackRef<ReduceResult()> ifTrue,
+                        CallbackRef<ReduceResult()> ifFalse);
+
 private:
     ValueVertex *NewCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     void LowerCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
@@ -229,21 +292,99 @@ private:
 
     void MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex);
     void StartNewBlockWithMergeState(uint32_t index);
-    void TrySplitCriticalEdge(uint32_t index, uint32_t predIndex);
+    BB *StartNewBlockWithMergeState(MergePointFrameState *mergeState, BBRef *ref, BB **blockSlot);
+    void ProcessMergePointPredecessors(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock);
+    void TrySplitCriticalEdge(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock, uint32_t predIndex);
 
     class ArkSteedSubGraphBuilder {
     public:
+        class SubGraphVariable {
+        public:
+            explicit SubGraphVariable(int index) : pseudoRegister_(VRegOfLocal(index)) {}
+
+        private:
+            friend class ArkSteedSubGraphBuilder;
+            VirtualRegister pseudoRegister_;
+        };
+
         class Label {
         public:
+            Label(ArkSteedSubGraphBuilder *subBuilder, uint32_t predecessorCount);
+            Label(ArkSteedSubGraphBuilder *subBuilder, uint32_t predecessorCount,
+                  std::initializer_list<SubGraphVariable *> liveVariables);
+
+        private:
+            friend class ArkSteedSubGraphBuilder;
+            friend class BranchBuilder;
+            ArkSteedSubGraphBuilder *subBuilder_;
+            uint32_t predecessorCount_;
+            MergePointFrameState *variableMergeState_ = nullptr;
+            LivenessBitSet *mergeLiveSet_ = nullptr;
+            BB *block_ = nullptr;
             BBRef ref_;
         };
-        ArkSteedSubGraphBuilder(ArkSteedGraphBuilder *builder, int variableCount) : builder_(builder) {}
+
+        class LoopLabel {
+        public:
+            LoopLabel(ArkSteedSubGraphBuilder *subBuilder, MergePointFrameState *mergeState, BBRef *loopHeaderRef,
+                      BB *loopHeaderBlock)
+                : subBuilder_(subBuilder),
+                  mergeState_(mergeState),
+                  loopHeaderRef_(loopHeaderRef),
+                  loopHeaderBlock_(loopHeaderBlock)
+            {}
+
+        private:
+            friend class ArkSteedSubGraphBuilder;
+            ArkSteedSubGraphBuilder *subBuilder_;
+            MergePointFrameState *mergeState_;
+            BBRef *loopHeaderRef_;
+            BB *loopHeaderBlock_;
+        };
+
+        ArkSteedSubGraphBuilder(ArkSteedGraphBuilder *builder, int variableCount);
+
+        void Set(const SubGraphVariable &var, ValueVertex *value)
+        {
+            subGraphFrame_->Set(var.pseudoRegister_, value);
+        }
+
+        ValueVertex *Get(const SubGraphVariable &var) const
+        {
+            return subGraphFrame_->Get(var.pseudoRegister_);
+        }
+
+        LoopLabel BeginLoop(std::initializer_list<SubGraphVariable *> loopVars);
+        void EndLoop(LoopLabel *loopLabel);
+
+        template <typename ControlVertexT, typename... Args>
+        ReduceResult GotoIfTrue(Label *trueTarget, std::initializer_list<ValueVertex *> controlInputs, Args &&...args);
+
+        template <typename ControlVertexT, typename... Args>
+        ReduceResult GotoIfFalse(Label *falseTarget, std::initializer_list<ValueVertex *> controlInputs,
+                                 Args &&...args);
+
+        void Goto(Label *label);
+        void GotoOrTrim(Label *label);
+        void Bind(Label *label);
+        ReduceResult TrimPredecessorsAndBind(Label *label);
+        void TrimUnmergedPredecessors(Label *label, uint32_t num = 1);
+        ReduceResult Branch(std::initializer_list<SubGraphVariable *> vars,
+                            CallbackRef<BranchResult(BranchBuilder &)> cond,
+                            CallbackRef<ReduceResult()> ifTrue,
+                            CallbackRef<ReduceResult()> ifFalse);
 
     private:
-        [[maybe_unused]] ArkSteedGraphBuilder *builder_;
+        friend class BranchBuilder;
+
+        void MergeIntoLabel(Label *label, BB *predecessor);
+
+        ArkSteedGraphBuilder *builder_;
+        VRegIDType numLocal_;
+        VRegIDType numParams_;
+        InterpreterFrameState *subGraphFrame_;
     };
 
-    enum class BranchType { TRUE_BRANCH, FALSE_BRANCH };
     static inline BranchType ReverseBranchType(BranchType jumpType)
     {
         switch (jumpType) {
@@ -270,10 +411,11 @@ private:
         };
 
         struct JumpLabel {
-            explicit JumpLabel(ArkSteedSubGraphBuilder::Label *jumpLabel) : jumpLabel(jumpLabel), fallthroughTarget{}
+            explicit JumpLabel(ArkSteedSubGraphBuilder::Label *jumpLabel) : jumpLabel(jumpLabel), fallthroughTarget {}
             {}
             ArkSteedSubGraphBuilder::Label *jumpLabel;
             BBRef fallthroughTarget;
+            BB *fallthroughBlock = nullptr;
         };
 
         union Data {
@@ -292,7 +434,6 @@ private:
               data_(builder_->iterator_.GetJumpTargetBcIndex(), builder_->iterator_.NextIndex())
         {}
 
-        // Creates a branch builder for subgraph label.
         BranchBuilder(ArkSteedGraphBuilder *builder, ArkSteedSubGraphBuilder *subBuilder, BranchType jumpType,
                       ArkSteedSubGraphBuilder::Label *jumpLabel)
             : builder_(builder), subBuilder_(subBuilder), jumpType_(jumpType), data_(jumpLabel)
@@ -306,6 +447,30 @@ private:
         BranchType GetCurrentBranchType() const
         {
             return jumpType_;
+        }
+
+        uint32_t JumpTargetBcIndex() const
+        {
+            ASSERT(GetMode() == JUMP_BYTECODE_TARGET);
+            return data_.bytecodeTarget.jumpTargetBcIndex;
+        }
+
+        uint32_t FallthroughBcIndex() const
+        {
+            ASSERT(GetMode() == JUMP_BYTECODE_TARGET);
+            return data_.bytecodeTarget.fallthroughBcIndex;
+        }
+
+        ArkSteedSubGraphBuilder::Label *JumpLabel() const
+        {
+            ASSERT(GetMode() == JUMP_LABEL_TARGET);
+            return data_.labelTarget.jumpLabel;
+        }
+
+        ArkSteedSubGraphBuilder *SubBuilder() const
+        {
+            ASSERT(GetMode() == JUMP_LABEL_TARGET);
+            return subBuilder_;
         }
 
         void SwapTargets()
@@ -335,7 +500,7 @@ private:
         return BranchBuilder(this, jumpType);
     }
 
-    void BuildBranchIfTrue(BranchBuilder &builder, ValueVertex *vertex);
+    BranchResult BuildBranchIfTrue(BranchBuilder &builder, ValueVertex *vertex);
 
     void InitializeGraph();
 
@@ -350,7 +515,11 @@ private:
     void ValidateAfterBuilding();
 
     uint32_t PredecessorCount(uint32_t index) const;
+    void ReduceBytecodePredecessorCount(uint32_t index, uint32_t num = 1);
+    void MarkDeadLoopBackedge(uint32_t index);
+    void MarkDeadPredecessorsForSuccessors(uint32_t index, const BytecodeInfo &bytecodeInfo);
     const LivenessBitSet *GetInLivenessFor(uint32_t index) const;
+    void ValidateMergeStateAfterBuilding(uint32_t index, MergePointFrameState *mergeState);
 
     void ProcessBytecode();
 
@@ -520,6 +689,7 @@ private:
     BytecodeContext bytecodeContext_;
     BytecodeIterator iterator_;
     ChunkVector<MergePointFrameState *> mergeStates_;
+    ChunkVector<uint32_t> predecessorCountReductions_;
     ChunkVector<BBRef> jumpTargets_;
     BB *startBlock_{nullptr};
 
@@ -533,6 +703,41 @@ private:
     // to do: Never changes. Can be removed.
     size_t entryPoint_ = 0;
 };
+
+template <typename ControlVertexT, typename... Args>
+inline ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::GotoIfTrue(
+    Label *trueTarget, std::initializer_list<ValueVertex *> controlInputs, Args &&...args)
+{
+    if (builder_->CurrentBlock() == nullptr) {
+        TrimUnmergedPredecessors(trueTarget);
+        return ReduceResult::DoneWithAbort();
+    }
+    BranchBuilder branchBuilder(builder_, this, BranchType::TRUE_BRANCH, trueTarget);
+    branchBuilder.Build<ControlVertexT>(controlInputs, std::forward<Args>(args)...);
+    return ReduceResult::Done();
+}
+
+template <typename ControlVertexT, typename... Args>
+inline ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::GotoIfFalse(
+    Label *falseTarget, std::initializer_list<ValueVertex *> controlInputs, Args &&...args)
+{
+    if (builder_->CurrentBlock() == nullptr) {
+        TrimUnmergedPredecessors(falseTarget);
+        return ReduceResult::DoneWithAbort();
+    }
+    BranchBuilder branchBuilder(builder_, this, BranchType::FALSE_BRANCH, falseTarget);
+    branchBuilder.Build<ControlVertexT>(controlInputs, std::forward<Args>(args)...);
+    return ReduceResult::Done();
+}
+
+template <typename ControlVertexT, typename... Args>
+inline void ArkSteedGraphBuilder::BranchBuilder::Build(std::initializer_list<ValueVertex *> controlInputs,
+                                                       Args &&...args)
+{
+    BB *result =
+        builder_->FinishBlock<ControlVertexT>(controlInputs, std::forward<Args>(args)..., TrueTarget(), FalseTarget());
+    StartFallthroughBlock(result);
+}
 
 }  // namespace panda::ecmascript::arksteed
 
