@@ -31,6 +31,10 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
+// Static state for sort callback re-entrancy tests
+static uintptr_t g_sortTargetSlot = 0;
+static int g_sortCompareCount = 0;
+
 namespace panda::test {
 class ContainersVectorTest : public testing::Test {
 public:
@@ -91,6 +95,94 @@ public:
                 }
             }
             return JSTaggedValue::Undefined();
+        }
+
+        static JSTaggedValue TestSortDescFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> a = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> b = GetCallArg(argv, 1);
+            if (a->IsNumber() && b->IsNumber()) {
+                double diff = b->GetNumber() - a->GetNumber();
+                return JSTaggedValue(diff);
+            }
+            return JSTaggedValue(0);
+        }
+
+        static JSTaggedValue TestSortAscFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> a = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> b = GetCallArg(argv, 1);
+            if (a->IsNumber() && b->IsNumber()) {
+                double diff = a->GetNumber() - b->GetNumber();
+                return JSTaggedValue(diff);
+            }
+            return JSTaggedValue(0);
+        }
+
+        // Comparator that removes 3 elements from the end on the first call.
+        // Tests the else-branch logical-length restoration path.
+        static JSTaggedValue TestSortWithRemoveFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> a = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> b = GetCallArg(argv, 1);
+            if (g_sortCompareCount++ == 0 && g_sortTargetSlot != 0) {
+                JSHandle<JSTaggedValue> containerVal(g_sortTargetSlot);
+                JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(containerVal);
+                for (int i = 0; i < 3; i++) { // 3: remove 3 elements
+                    int32_t idx = static_cast<int32_t>(vector->GetSize()) - 1;
+                    JSAPIVector::RemoveByIndex(thread, vector, idx);
+                }
+            }
+            if (a->IsNumber() && b->IsNumber()) {
+                return JSTaggedValue(a->GetNumber() - b->GetNumber());
+            }
+            return JSTaggedValue(0);
+        }
+
+        // Comparator that removes all but one element and trims the backing store.
+        // Tests the if-branch (dstElements->GetLength() < length) re-allocation path.
+        static JSTaggedValue TestSortWithTrimFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> a = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> b = GetCallArg(argv, 1);
+            if (g_sortCompareCount++ == 0 && g_sortTargetSlot != 0) {
+                JSHandle<JSTaggedValue> containerVal(g_sortTargetSlot);
+                JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(containerVal);
+                while (vector->GetSize() > 1) {
+                    int32_t idx = static_cast<int32_t>(vector->GetSize()) - 1;
+                    JSAPIVector::RemoveByIndex(thread, vector, idx);
+                }
+                JSAPIVector::TrimToCurrentLength(thread, vector);
+            }
+            if (a->IsNumber() && b->IsNumber()) {
+                return JSTaggedValue(a->GetNumber() - b->GetNumber());
+            }
+            return JSTaggedValue(0);
+        }
+
+        // Comparator that adds 5 extra elements on the first call.
+        // Tests the else-branch where currLen > length (added elements preserved).
+        static JSTaggedValue TestSortWithAddFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> a = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> b = GetCallArg(argv, 1);
+            if (g_sortCompareCount++ == 0 && g_sortTargetSlot != 0) {
+                JSHandle<JSTaggedValue> containerVal(g_sortTargetSlot);
+                JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(containerVal);
+                for (int i = 0; i < 5; i++) { // 5: add 5 extra elements
+                    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(999)); // 999 extra 999s preserved
+                    JSAPIVector::Add(thread, vector, value);
+                }
+            }
+            if (a->IsNumber() && b->IsNumber()) {
+                return JSTaggedValue(a->GetNumber() - b->GetNumber());
+            }
+            return JSTaggedValue(0);
         }
     };
 protected:
@@ -534,6 +626,148 @@ HWTEST_F_L0(ContainersVectorTest, Sort)
             TestHelper::TearDownFrame(thread, prev1);
             EXPECT_EQ(result, JSTaggedValue(i));
         }
+    }
+}
+
+// sort with custom descending comparator
+HWTEST_F_L0(ContainersVectorTest, SortWithComparator)
+{
+    constexpr int32_t ELEMENT_NUMS = 8;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestSortDescFunc));
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, func.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersVector::Sort(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+            auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(i));
+
+            [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+            JSTaggedValue result = ContainersVector::Get(callInfo1);
+            TestHelper::TearDownFrame(thread, prev1);
+            EXPECT_EQ(result, JSTaggedValue(ELEMENT_NUMS - 1 - i));
+        }
+    }
+}
+
+// sort on empty and single-element containers
+HWTEST_F_L0(ContainersVectorTest, SortEmptyAndSingleElement)
+{
+    // empty
+    {
+        JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersVector::Sort(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        EXPECT_EQ(vector->GetSize(), 0);
+    }
+    // single element
+    {
+        JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+        auto callInfoAdd = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfoAdd->SetFunction(JSTaggedValue::Undefined());
+        callInfoAdd->SetThis(vector.GetTaggedValue());
+        callInfoAdd->SetCallArg(0, JSTaggedValue(42));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfoAdd);
+        JSTaggedValue addResult = ContainersVector::Add(callInfoAdd);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(addResult.IsTrue());
+
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        ContainersVector::Sort(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+
+        EXPECT_EQ(vector->GetSize(), 1);
+        auto callInfoGet = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfoGet->SetFunction(JSTaggedValue::Undefined());
+        callInfoGet->SetThis(vector.GetTaggedValue());
+        callInfoGet->SetCallArg(0, JSTaggedValue(0));
+
+        [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, callInfoGet);
+        JSTaggedValue getResult = ContainersVector::Get(callInfoGet);
+        TestHelper::TearDownFrame(thread, prev2);
+        EXPECT_EQ(getResult, JSTaggedValue(42));
+    }
+}
+
+// sort preserves container size and handles duplicate elements
+HWTEST_F_L0(ContainersVectorTest, SortDuplicateElements)
+{
+    constexpr int32_t ELEMENT_NUMS = 6;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    // insert: 3, 1, 2, 1, 3, 2
+    int32_t values[ELEMENT_NUMS] = {3, 1, 2, 1, 3, 2};
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(values[i]));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // size unchanged after sort
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+    // sorted result: 1, 1, 2, 2, 3, 3
+    int32_t expected[ELEMENT_NUMS] = {1, 1, 2, 2, 3, 3};
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(vector.GetTaggedValue());
+        callInfo1->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+        JSTaggedValue result = ContainersVector::Get(callInfo1);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(result, JSTaggedValue(expected[i]));
     }
 }
 
@@ -1001,5 +1235,267 @@ HWTEST_F_L0(ContainersVectorTest, ExceptionReturn4)
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetFirstElement);
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Sort);
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetIteratorObj);
+}
+
+// sort large array to trigger TimSort merge path (> MIN_MERGE=32)
+HWTEST_F_L0(ContainersVectorTest, SortLargeArray)
+{
+    constexpr int32_t ELEMENT_NUMS = 64;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    for (int32_t i = ELEMENT_NUMS - 1; i >= 0; i--) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestSortAscFunc));
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(vector.GetTaggedValue());
+        callInfo1->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+        JSTaggedValue result = ContainersVector::Get(callInfo1);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(result, JSTaggedValue(i));
+    }
+}
+
+// sort already-sorted container (idempotent)
+HWTEST_F_L0(ContainersVectorTest, SortAlreadySorted)
+{
+    constexpr int32_t ELEMENT_NUMS = 8;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(vector.GetTaggedValue());
+        callInfo1->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+        JSTaggedValue result = ContainersVector::Get(callInfo1);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(result, JSTaggedValue(i));
+    }
+}
+
+// sort with two-element container (boundary between <2 early return and full sort)
+HWTEST_F_L0(ContainersVectorTest, SortTwoElements)
+{
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(5));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(3));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(vector->GetSize(), 2);
+    {
+        auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(vector.GetTaggedValue());
+        callInfo1->SetCallArg(0, JSTaggedValue(0));
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+        JSTaggedValue result = ContainersVector::Get(callInfo1);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(result, JSTaggedValue(3));
+    }
+}
+
+// sort with removeByIndex during comparator callback (tests logical length restoration)
+HWTEST_F_L0(ContainersVectorTest, SortWithRemoveDuringCallback)
+{
+    constexpr int32_t ELEMENT_NUMS = 8;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    for (int32_t i = ELEMENT_NUMS - 1; i >= 0; i--) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+
+    JSHandle<JSTaggedValue> containerHandle(thread, vector.GetTaggedValue());
+    g_sortTargetSlot = containerHandle.GetAddress();
+    g_sortCompareCount = 0;
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func =
+        factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestSortWithRemoveFunc));
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Sort should complete safely: 8 sorted elements written back, length restored
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        EXPECT_EQ(JSAPIVector::Get(thread, vector, i), JSTaggedValue(i));
+    }
+    g_sortTargetSlot = 0;
+}
+
+// sort with trimToCurrentLength during comparator callback (tests backing store re-allocation)
+HWTEST_F_L0(ContainersVectorTest, SortWithTrimDuringCallback)
+{
+    constexpr int32_t ELEMENT_NUMS = 8;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    for (int32_t i = ELEMENT_NUMS - 1; i >= 0; i--) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+
+    JSHandle<JSTaggedValue> containerHandle(thread, vector.GetTaggedValue());
+    g_sortTargetSlot = containerHandle.GetAddress();
+    g_sortCompareCount = 0;
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func =
+        factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestSortWithTrimFunc));
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Backing store was trimmed during callback; new array should have been allocated
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        EXPECT_EQ(JSAPIVector::Get(thread, vector, i), JSTaggedValue(i));
+    }
+    g_sortTargetSlot = 0;
+}
+
+// sort with add during comparator callback (tests preservation of added elements)
+HWTEST_F_L0(ContainersVectorTest, SortWithAddDuringCallback)
+{
+    constexpr int32_t ELEMENT_NUMS = 8;
+    constexpr int32_t EXTRA = 5;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    for (int32_t i = ELEMENT_NUMS - 1; i >= 0; i--) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+    }
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS);
+
+    JSHandle<JSTaggedValue> containerHandle(thread, vector.GetTaggedValue());
+    g_sortTargetSlot = containerHandle.GetAddress();
+    g_sortCompareCount = 0;
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func =
+        factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestSortWithAddFunc));
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    ContainersVector::Sort(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // First 8 should be sorted [0..7], then 5 extra 999s preserved
+    EXPECT_EQ(vector->GetSize(), ELEMENT_NUMS + EXTRA);
+    for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+        EXPECT_EQ(JSAPIVector::Get(thread, vector, i), JSTaggedValue(i));
+    }
+    for (int32_t i = 0; i < EXTRA; i++) {
+        EXPECT_EQ(JSAPIVector::Get(thread, vector, ELEMENT_NUMS + i), JSTaggedValue(999)); // 999 extra 999s preserved
+    }
+    g_sortTargetSlot = 0;
 }
 } // namespace panda::test
