@@ -17,8 +17,6 @@
 
 #include "code_data_accessor-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_vreg.h"
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/base/bit_set.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "method_data_accessor-inl.h"  // IWYU pragma: keep
 
@@ -29,17 +27,6 @@ using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
 
 #define BLOCK_INDEX_FROM_PTR(ptr) (static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)))
 #define BLOCK_INDEX_TO_PTR(index) (reinterpret_cast<BasicBlockInfo *>(static_cast<uintptr_t>(index)))
-
-namespace {
-uint32_t NumParamVRegsOf(MethodLiteral *method)
-{
-    uint32_t res = method->GetNumArgsWithCallField();
-    // to do: ArkSteed calling convention is unclear currently.
-    res += method->IsFastCall() ? static_cast<uint32_t>(kungfu::FastCallArgIdx::NUM_OF_ARGS)
-                                : static_cast<uint32_t>(kungfu::CommonArgIdx::NUM_OF_ARGS);
-    return res;
-}
-}  // namespace
 
 uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex)
 {
@@ -73,42 +60,27 @@ uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex)
 // (1) This function should be called before SetBasicBlockPointers().
 //     In this helper we store indices instead of pointers into the pointer fields.
 //     See below for details.
-// (2) This function adds elements to both bytecodes_ and basicBlocks_ vectors.
+// (2) This function adds elements to basicBlocks_ vectors.
 //     Be careful with pointer & reference invalidated.
 uint32_t BytecodePreprocessorNew::AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors)
 {
-    constexpr uint8_t DUMMY_JUMP_OPCODE = static_cast<uint8_t>(kungfu::EcmaOpcode::JMP_IMM8);
-
-    kungfu::BytecodeInfo details;
-    details.SetMetaData(g_bytecodes.GetBytecodeMetaData(&DUMMY_JUMP_OPCODE));
-
-    uint32_t fakeJumpBcIndex = static_cast<uint32_t>(bytecodes_.size());
     uint32_t fakeJumpBlockIndex = static_cast<uint32_t>(basicBlocks_.size());
-
-    bytecodes_.emplace_back(BytecodeInfo{
-        // Synthetic jump instruction. No meaningful offset value.
-        .offset = NULL_INDEX,
-        .blockIndex = fakeJumpBlockIndex,
-        .details = std::move(details),
-    });
-
-    ASSERT(basicBlocks_.size() == numJumpPredecessors_.size());
-
     basicBlocks_.emplace_back(BasicBlockInfo{
-        .rpoIndex = NULL_INDEX,  // To be initialized later
-        // Only the synthetic jump instruction
-        .startBcIndex = fakeJumpBcIndex,
-        .endBcIndex = fakeJumpBcIndex,
+        // To be initialized later in MakeRPO()
+        .rpoIndex = NULL_INDEX,
+        // Synthetic block: Use [NULL_INDEX, NULL_INDEX - 1] to represent an empty range
+        .startBcIndex = NULL_INDEX,
+        .endBcIndex = NULL_INDEX - 1,
         // No fallthrough
         .fallthroughBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
         .jumpBlock = BLOCK_INDEX_TO_PTR(targetBlockIndex),
+        // No exception can be thrown in this jump-only block
+        .catchBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
         // To be initialized later
         .loopHeaderBlock = nullptr,
         .loopBackBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
-        // To be initialized later
         .jumpPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
-        // No catch blocks_
-        .catchBlocks = ChunkVector<const BasicBlockInfo *>(GetChunk()),
+        .catchPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
     });
     numJumpPredecessors_.emplace_back(numJumpPredecessors);
     return fakeJumpBlockIndex;
@@ -178,15 +150,15 @@ void BytecodePreprocessorNew::CollectTryCatchBlockInfo()
         uint32_t startBcIndex = bcIndexOfOffset_[tryStartOffset];
         uint32_t endBcIndex = bcIndexOfOffset_[tryEndOffset] - 1;
 
-        TryBlockInfo curInfoItem{startBcIndex, endBcIndex, ChunkVector<uint32_t>{GetChunk()}};
-        tryBlocks_.emplace_back(std::move(curInfoItem));
-
+        TryBlockInfo curInfoItem{startBcIndex, endBcIndex, NULL_INDEX};
         tryBlock.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catchBlock) {
             uint32_t pcOffset = catchBlock.GetHandlerPc();
             uint32_t catchBcIndex = bcIndexOfOffset_[pcOffset];
-            tryBlocks_.back().catchBcIndices.emplace_back(catchBcIndex);
+            ASSERT(curInfoItem.catchBcIndex == NULL_INDEX && "Expects exactly 1 catch block.");
+            curInfoItem.catchBcIndex = catchBcIndex;
             return true;
         });
+        tryBlocks_.push_back(curInfoItem);
         return true;
     });
 }
@@ -194,7 +166,7 @@ void BytecodePreprocessorNew::CollectTryCatchBlockInfo()
 // Note: A hack is used before the graph is fully constructed,
 //       in which block indices (in basicBlocks_ array) are stored into the const BasicBlockInfo* fields
 //       to prevent pointer invalidation after vector relocation,
-//       as new basic blocks_ will be added on splitting critical edges (see below).
+//       as new basic blocks will be added on loop canonicalization, splitting critical edges, etc. (see below).
 //       Equivalent to union {
 //           /* Before the graph is finished, we use this field temporarily */
 //           uintptr_t jumpBlockIndex;
@@ -202,79 +174,85 @@ void BytecodePreprocessorNew::CollectTryCatchBlockInfo()
 //           const BasicBlockInfo *jumpBlock;
 //       } yet we do not expose this union to keep a clean, user-friendly interface design.
 
+namespace {
+enum : uint8_t {
+    NOT_START_OF_BLOCK = 0,
+    START_OF_NON_CATCH_BLOCK = 1,
+    START_OF_CATCH_BLOCK = 2,
+};
+}
+
 void BytecodePreprocessorNew::BuildBasicBlocks()
 {
     uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
-    if (bcCount == 0) {
-        return;
-    }
+    if (bcCount == 0) return;
 
-    kungfu::BitSet isBlockStart(GetChunk(), bcCount);
-    MarkBasicBlockStarts(&isBlockStart, bcCount);
-    uint32_t blockCount = CreateBasicBlocks(isBlockStart, bcCount);
+    ChunkVector<uint8_t> blockStartMarks(bcCount, NOT_START_OF_BLOCK, GetChunk());
+    MarkBasicBlockStarts(blockStartMarks, bcCount);
+    uint32_t blockCount = CreateBasicBlocks(blockStartMarks, bcCount);
     InitializeBlockEdges(blockCount);
 }
 
-void BytecodePreprocessorNew::MarkBasicBlockStarts(kungfu::BitSet *isBlockStart, uint32_t bcCount)
+void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
     bool nextIsBlockStart = false;
     for (uint32_t i = 0; i < bcCount; i++) {
         if (nextIsBlockStart) {
-            isBlockStart->SetBit(i);
+            blockStartMarks[i] = START_OF_NON_CATCH_BLOCK;
             nextIsBlockStart = false;
         }
         const BytecodeInfo &curBcInfo = bytecodes_[i];
         if (curBcInfo.details.IsJump()) {
-            isBlockStart->SetBit(jumpTargetBcIndices_[i]);
+            blockStartMarks[jumpTargetBcIndices_[i]] = START_OF_NON_CATCH_BLOCK;
             nextIsBlockStart = true;
         } else if (curBcInfo.details.IsThrow() || curBcInfo.details.IsReturn()) {
             nextIsBlockStart = true;
         }
     }
+    blockStartMarks[0] = START_OF_NON_CATCH_BLOCK;
     for (const TryBlockInfo &tryBlock : tryBlocks_) {
-        isBlockStart->SetBit(tryBlock.startBcIndex);
+        blockStartMarks[tryBlock.startBcIndex] = START_OF_NON_CATCH_BLOCK;
         if (tryBlock.endBcIndex + 1 < bcCount) {
-            isBlockStart->SetBit(tryBlock.endBcIndex + 1);
+            blockStartMarks[tryBlock.endBcIndex + 1] = START_OF_NON_CATCH_BLOCK;
         }
-        for (uint32_t catchBc : tryBlock.catchBcIndices) {
-            isBlockStart->SetBit(catchBc);
-        }
+        blockStartMarks[tryBlock.catchBcIndex] = START_OF_CATCH_BLOCK;
     }
 }
 
-uint32_t BytecodePreprocessorNew::CreateBasicBlocks(const kungfu::BitSet &isBlockStart, uint32_t bcCount)
+uint32_t BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
     uint32_t startBcIndex = 0;
     uint32_t blockCount = 0;
 
     auto appendBasicBlock = [&](uint32_t nextStartBcIndex) {
         basicBlocks_.emplace_back(BasicBlockInfo{
-            .rpoIndex = NULL_INDEX,  // To be initialized later
+            .rpoIndex = NULL_INDEX,
             .startBcIndex = startBcIndex,
             .endBcIndex = nextStartBcIndex - 1,
-            // The following are all to be initialized later
             .fallthroughBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
             .jumpBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+            .catchBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
             .loopHeaderBlock = nullptr,
             .loopBackBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
             .jumpPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
-            .catchBlocks = ChunkVector<const BasicBlockInfo *>(GetChunk()),
+            .catchPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
         });
         startBcIndex = nextStartBcIndex;
         blockCount += 1;
     };
 
-    bytecodes_[0].blockIndex = 0;
-    for (uint32_t i = 1; i < bcCount; i++) {
-        if (isBlockStart.TestBit(i)) {
+    for (uint32_t i = 0; i < bcCount; i++) {
+        if (i > 0 && blockStartMarks[i] != NOT_START_OF_BLOCK) {
             appendBasicBlock(i);
+        }
+        if (i == 0 || blockStartMarks[i] == START_OF_CATCH_BLOCK) {
+            AppendSyntheticJump(blockCount + 1, 0);
+            blockCount += 1;
         }
         bytecodes_[i].blockIndex = blockCount;
     }
     appendBasicBlock(bcCount);
 
-    // To be initialized later (in CanonicalizeLoopsDFS)
-    numJumpPredecessors_.assign(blockCount, 0);
     return blockCount;
 }
 
@@ -282,6 +260,9 @@ void BytecodePreprocessorNew::InitializeBlockEdges(uint32_t blockCount)
 {
     for (uint32_t i = 0; i < blockCount; i++) {
         BasicBlockInfo &curBlock = basicBlocks_[i];
+        if (curBlock.startBcIndex == NULL_INDEX) {
+            continue;  // Skips synthetic header blocks created above
+        }
         ASSERT(curBlock.startBcIndex <= curBlock.endBcIndex && "Expects at least 1 bytecode instruction");
 
         const BytecodeInfo &lastBc = bytecodes_[curBlock.endBcIndex];
@@ -306,14 +287,21 @@ void BytecodePreprocessorNew::InitializeBlockEdges(uint32_t blockCount)
         if (!throws) {
             continue;
         }
+        const TryBlockInfo *innermostTryBlock = nullptr;
         for (const auto &tryBlock : tryBlocks_) {
             if (!tryBlock.ContainsBytecode(curBlock.startBcIndex)) {
                 continue;
             }
-            for (uint32_t catchBcIndex : tryBlock.catchBcIndices) {
-                uint32_t catchBlockIndex = bytecodes_[catchBcIndex].blockIndex;
-                curBlock.catchBlocks.emplace_back(BLOCK_INDEX_TO_PTR(catchBlockIndex));
+            if (innermostTryBlock == nullptr) {
+                innermostTryBlock = &tryBlock;
+            } else if (innermostTryBlock->ContainsBytecode(tryBlock.startBcIndex)) {
+                innermostTryBlock = &tryBlock;
             }
+        }
+        if (innermostTryBlock != nullptr) {
+            uint32_t catchBlockIndex = bytecodes_[innermostTryBlock->catchBcIndex].blockIndex - 1;
+            curBlock.catchBlock = BLOCK_INDEX_TO_PTR(catchBlockIndex);
+            basicBlocks_[catchBlockIndex].catchPredecessors.push_back(BLOCK_INDEX_TO_PTR(i));
         }
     }
 }
@@ -346,6 +334,8 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
     void Run() &&
     {
         uint32_t blockCount = static_cast<uint32_t>(blocks_.size());
+        numJumpPredecessors_.assign(blockCount, 0);
+
         for (uint32_t i = 0; i < blockCount; i++) {
             if (colors_[i] == WHITE) {
                 DoDFS(i);
@@ -358,16 +348,17 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
         colors_[blockIndex] = GREY;
         TryVisitSuccessor<0>(blockIndex);  // INDEX = 0: fallthrough
         TryVisitSuccessor<1>(blockIndex);  // INDEX = 1: jump
+        TryVisitCatchBlock(blockIndex);
         colors_[blockIndex] = BLACK;
         // Accessible loop headers are added to the list by post-order,
-        // so that inner loop is always before its parent_.
+        // so that inner loop is always before its parent.
         if (BLOCK_INDEX_FROM_PTR(blocks_[blockIndex].loopBackBlock) != NULL_INDEX) {
             parent_->loopHeaders_.push_back(blockIndex);
         }
     }
 
     // (1) Be careful when you use pointers or references to items in basicBlocks_
-    //     since they may be invalidated after relocation on adding basic blocks_ via AppendSyntheticJump().
+    //     since they may be invalidated after relocation on adding basic blocks via AppendSyntheticJump().
     // (2) All BasicBlockInfo "pointers" are indices actually.
     //     Use BLOCK_INDEX_FROM_PTR and BLOCK_INDEX_TO_PTR to extract and store the index value.
     template <int INDEX>
@@ -383,9 +374,21 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
             TryVisitBlackSuccessor<INDEX>(blockIndex, toIndex);
         } else {
             numJumpPredecessors_[toIndex] += 1;
+            dfsPredecessor_[toIndex] = blockIndex;
             DoDFS(toIndex);
         }
-        dfsPredecessor_[toIndex] = blockIndex;
+    }
+
+    void TryVisitCatchBlock(uint32_t blockIndex)
+    {
+        uint32_t toIndex = BLOCK_INDEX_FROM_PTR(blocks_[blockIndex].catchBlock);
+        if (toIndex != NULL_INDEX) {
+            if (colors_[toIndex] == WHITE) {
+                DoDFS(toIndex);
+            } else {
+                ASSERT(colors_[toIndex] == BLACK);
+            }
+        }
     }
 
     template <int INDEX>
@@ -405,9 +408,7 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
             // RB -> toIndex. 2 : numPredecessors of RB (may be incremented later)
             uint32_t newLoopBackIndex = parent_->AppendSyntheticJump(toIndex, 2);
             blocks_[toIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(newLoopBackIndex);
-#ifndef NDEBUG
             LOG_COMPILER(DEBUG) << "Creates block #" << newLoopBackIndex << " as loop-back block of #" << toIndex;
-#endif
             // prevLoopBackIndex -> RB
             BasicBlockInfo &prevLoopBackBlock = blocks_[prevLoopBackIndex];
             if (BLOCK_INDEX_FROM_PTR(prevLoopBackBlock.fallthroughBlock) == toIndex) {
@@ -447,9 +448,7 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
             // RE -> toIndex. 2 : numPredecessors or RE (may be incremented later)
             uint32_t preheaderIndex = parent_->AppendSyntheticJump(toIndex, 2);
             dfsPredecessor_[toIndex] = preheaderIndex;
-#ifndef NDEBUG
             LOG_COMPILER(DEBUG) << "Creates block #" << preheaderIndex << " as pre-header block of #" << toIndex;
-#endif
             // prevEntryIndex -> RE
             BasicBlockInfo &prevEntryBlock = blocks_[prevEntryIndex];
             if (BLOCK_INDEX_FROM_PTR(prevEntryBlock.fallthroughBlock) == toIndex) {
@@ -503,10 +502,9 @@ void BytecodePreprocessorNew::SplitCriticalEdges()
         if (numJumpPredecessors_[fallthroughIndex] >= 2) {  // 2: critical edge threshold (needs split)
             // 1 : numJumpPredecessors_ = 1 (which is current block)
             uint32_t nextBlockIndex = AppendSyntheticJump(fallthroughIndex, 1);
-#ifndef NDEBUG
-            LOG_COMPILER(DEBUG) << "Edge-split (previously fallthrough): Block #" << i << " -> #" << nextBlockIndex
+            LOG_COMPILER(DEBUG) << "Edge-split (previously fallthrough): Block #" << i
+                                << " -> #" << nextBlockIndex
                                 << " -> #" << fallthroughIndex;
-#endif
             // Redirect loop-back block of the fallthrough target if necessary
             if (BLOCK_INDEX_FROM_PTR(basicBlocks_[fallthroughIndex].loopBackBlock) == i) {
                 basicBlocks_[fallthroughIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
@@ -516,10 +514,9 @@ void BytecodePreprocessorNew::SplitCriticalEdges()
         if (numJumpPredecessors_[jumpIndex] >= 2) {  // 2: critical edge threshold (needs split)
             // 1 : numJumpPredecessors_ = 1 (which is current block)
             uint32_t nextBlockIndex = AppendSyntheticJump(jumpIndex, 1);
-#ifndef NDEBUG
-            LOG_COMPILER(DEBUG) << "Edge-split (previously jump): Block #" << i << " -> #" << nextBlockIndex << " -> #"
-                                << jumpIndex;
-#endif
+            LOG_COMPILER(DEBUG) << "Edge-split (previously jump): Block #" << i
+                                << " -> #" << nextBlockIndex
+                                << " -> #" << jumpIndex;
             // Redirect loop-back block of the jump target if necessary
             if (BLOCK_INDEX_FROM_PTR(basicBlocks_[jumpIndex].loopBackBlock) == i) {
                 basicBlocks_[jumpIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
@@ -575,8 +572,13 @@ void BytecodePreprocessorNew::SetBasicBlockPointers()
             curBlock.jumpBlock = nullptr;
         }
 
-        for (const BasicBlockInfo *&catchBlock : curBlock.catchBlocks) {
-            catchBlock = head + BLOCK_INDEX_FROM_PTR(catchBlock);
+        if (curBlock.catchBlock != BLOCK_INDEX_TO_PTR(NULL_INDEX)) {
+            curBlock.catchBlock = head + BLOCK_INDEX_FROM_PTR(curBlock.catchBlock);
+        } else {
+            curBlock.catchBlock = nullptr;
+        }
+        for (const BasicBlockInfo *&catchPred : curBlock.catchPredecessors) {
+            catchPred = head + BLOCK_INDEX_FROM_PTR(catchPred);
         }
     }
     // Validation (optimized out in Release build)
@@ -597,10 +599,10 @@ void BytecodePreprocessorNew::LoopAnalysis()
             return;
         }
         cur->loopHeaderBlock = header;
-        for (const BasicBlockInfo *pred : cur->jumpPredecessors) {
+        auto visitPredecessor = [&](const BasicBlockInfo *pred) {
             if (pred->loopHeaderBlock == nullptr) {
                 dfs(dfs, BLOCK_PTR_CONST_CAST(pred), header);
-                continue;
+                return;
             }
             if (pred->loopHeaderBlock != header) {
                 // pred belongs to an inner loop
@@ -609,10 +611,16 @@ void BytecodePreprocessorNew::LoopAnalysis()
                     dfs(dfs, BLOCK_PTR_CONST_CAST(innerHeader), header);
                 }
             }
+        };
+        for (const BasicBlockInfo *pred : cur->jumpPredecessors) {
+            visitPredecessor(pred);
+        }
+        for (const BasicBlockInfo *pred : cur->catchPredecessors) {
+            visitPredecessor(pred);
         }
     };
-    // Collects basic blocks_ in each loop.
-    // If block B is a loop header, B->loopHeaderBlock is the header of its parent_ loop.
+    // Collects basic blocks in each loop.
+    // If block B is a loop header, B->loopHeaderBlock is the header of its parent loop.
     for (uint32_t headerIndex : loopHeaders_) {
         BasicBlockInfo *curLoopHeader = &basicBlocks_[headerIndex];
         ASSERT(curLoopHeader->loopHeaderBlock == nullptr);
@@ -631,11 +639,8 @@ void BytecodePreprocessorNew::MakeRPO()
         constexpr uint32_t VISITING_TAG = static_cast<uint32_t>(-2);  // -2: visiting marker for DFS
         curBlock->rpoIndex = VISITING_TAG;
 
-        for (size_t i = 1, n = curBlock->catchBlocks.size(); i <= n; i++) {
-            const BasicBlockInfo *catchBlock = curBlock->catchBlocks[n - i];
-            if (catchBlock->rpoIndex == NULL_INDEX) {
-                dfs(dfs, BLOCK_PTR_CONST_CAST(catchBlock));
-            }
+        if (curBlock->catchBlock != nullptr && curBlock->catchBlock->rpoIndex == NULL_INDEX) {
+            dfs(dfs, BLOCK_PTR_CONST_CAST(curBlock->catchBlock));
         }
 
         BasicBlockInfo *fallthroughBlock = BLOCK_PTR_CONST_CAST(curBlock->fallthroughBlock);
@@ -645,7 +650,7 @@ void BytecodePreprocessorNew::MakeRPO()
         bool jumps = jumpBlock != nullptr && jumpBlock->rpoIndex == NULL_INDEX;
 
         // We adjust the DFS order to improve the chance (yet do not guarantee)
-        // that RPO index of blocks_ in a loop will be continuous.
+        // that RPO index of blocks in a loop will be continuous.
         if (fallthroughs && jumps) {
             const BasicBlockInfo *curLoop = curBlock->IsLoopHeader() ? curBlock : curBlock->loopHeaderBlock;
             if (jumpBlock->loopHeaderBlock != curLoop) {
@@ -675,6 +680,13 @@ void BytecodePreprocessorNew::MakeRPO()
             curBlock.rpoIndex = nextPostOrderIndex - 1 - curBlock.rpoIndex;
         }
     }
+    auto compareRPOIndex = [](const BasicBlockInfo *lhs, const BasicBlockInfo *rhs) {
+        return lhs->rpoIndex < rhs->rpoIndex;
+    };
+    for (BasicBlockInfo &curBlock : basicBlocks_) {
+        std::sort(curBlock.jumpPredecessors.begin(), curBlock.jumpPredecessors.end(), compareRPOIndex);
+        std::sort(curBlock.catchPredecessors.begin(), curBlock.catchPredecessors.end(), compareRPOIndex);
+    }
     // Post-order -> Reversed post-order
     std::reverse(rpoList_.begin(), rpoList_.end());
 }
@@ -688,6 +700,9 @@ void BytecodePreprocessorNew::ClearDeadPredecessors()
     for (BasicBlockInfo &curBlock : basicBlocks_) {
         auto it = std::remove_if(curBlock.jumpPredecessors.begin(), curBlock.jumpPredecessors.end(), pred);
         curBlock.jumpPredecessors.erase(it, curBlock.jumpPredecessors.end());
+
+        it = std::remove_if(curBlock.catchPredecessors.begin(), curBlock.catchPredecessors.end(), pred);
+        curBlock.catchPredecessors.erase(it, curBlock.catchPredecessors.end());
     }
 }
 
@@ -695,7 +710,7 @@ BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *
     : env_(env),
       method_(env->GetMethodLiteral()),
       numLocalVRegs_(method_->GetNumVregsWithCallField()),
-      numParamVRegs_(NumParamVRegsOf(method_)),
+      numParamVRegs_(method_->GetNumArgsForArkSteed()),
       tryBlocks_(chunk),
       basicBlocks_(chunk),
       bytecodes_(chunk),
@@ -729,8 +744,9 @@ struct PrintBasicBlockIndex {
 
 std::ostream &operator<<(std::ostream &out, PrintIndex printIndex)
 {
-    if (printIndex.index_ == BytecodePreprocessorNew::NULL_INDEX) {
-        out << "nullptr";
+    // Covers NULL_INDEX and NULL_INDEX - 1
+    if (printIndex.index_ >= BytecodePreprocessorNew::NULL_INDEX - 1) {
+        out << "NULL";
     } else {
         out << printIndex.index_;
     }
@@ -740,7 +756,7 @@ std::ostream &operator<<(std::ostream &out, PrintIndex printIndex)
 std::ostream &operator<<(std::ostream &out, PrintBasicBlockIndex printIndex)
 {
     if (printIndex.index_ == BytecodePreprocessorNew::NULL_INDEX) {
-        out << "nullptr";
+        out << "NULL";
     } else {
         out << "BB[" << printIndex.index_ << ']';
     }
@@ -763,6 +779,7 @@ std::string BytecodePreprocessorNew::Dump() const
 
     out << DumpBasicBlocksString();
     out << DumpTryBlocksString();
+    out << "\nGraphviz source code (basic blocks labelled by RPO index):\n" << DumpCFGAsGraphviz();
     return std::move(out).str();
 }
 
@@ -773,7 +790,7 @@ std::string BytecodePreprocessorNew::DumpBasicBlocksString() const
     };
 
     std::ostringstream out;
-    out << "\nBasic blocks_:";
+    out << "\nBasic blocks:";
     for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
         const BasicBlockInfo &curBlock = basicBlocks_[i];
         // 2: width for block index
@@ -782,6 +799,7 @@ std::string BytecodePreprocessorNew::DumpBasicBlocksString() const
         out << ", endBcIndex = " << PrintIndex(curBlock.endBcIndex);
         out << "\n     fallthroughBlock = " << printBB(curBlock.fallthroughBlock);
         out << "\n     jumpBlock = " << printBB(curBlock.jumpBlock);
+        out << "\n     catchBlock = " << printBB(curBlock.catchBlock);
         out << "\n     loopHeaderBlock = " << printBB(curBlock.loopHeaderBlock);
         out << "\n     loopBackBlock = " << printBB(curBlock.loopBackBlock);
         out << "\n     jumpPredecessors = [";
@@ -790,11 +808,11 @@ std::string BytecodePreprocessorNew::DumpBasicBlocksString() const
             first ? (void)(first = false) : (void)(out << ", ");
             out << printBB(predBlock);
         }
-        out << "]\n     catchBlocks = [";
+        out << "]\n     catchPredecessors = [";
         first = true;
-        for (const BasicBlockInfo *catchBlock : curBlock.catchBlocks) {
+        for (const BasicBlockInfo *predBlock : curBlock.catchPredecessors) {
             first ? (void)(first = false) : (void)(out << ", ");
-            out << printBB(catchBlock);
+            out << printBB(predBlock);
         }
         out << ']';
     }
@@ -804,21 +822,104 @@ std::string BytecodePreprocessorNew::DumpBasicBlocksString() const
 std::string BytecodePreprocessorNew::DumpTryBlocksString() const
 {
     std::ostringstream out;
-    out << "\nCatch blocks_:";
+    out << "\nCatch blocks:";
     for (size_t i = 0, tryBlockCount = tryBlocks_.size(); i < tryBlockCount; i++) {
         const TryBlockInfo &curTryBlock = tryBlocks_[i];
-        // 2: width for try block index
+        // 2: width for block index
         out << "\n[" << std::setw(2) << i << "] startBcIndex = " << curTryBlock.startBcIndex;
         out << "\n     endBcIndex = " << curTryBlock.endBcIndex;
-        out << "\n     catchBcIndices = [";
-        bool first = true;
-        for (uint32_t bcIndex : curTryBlock.catchBcIndices) {
-            first ? (void)(first = false) : (void)(out << ", ");
-            out << bcIndex;
-        }
-        out << ']';
+        out << "\n     catchBcIndex = " << curTryBlock.catchBcIndex;
     }
     return std::move(out).str();
+}
+
+std::string BytecodePreprocessorNew::DumpCFGAsGraphviz() const
+{
+    std::ostringstream out;
+    out << "digraph CFG {\n";
+    out << "    rankdir=TB;\n";
+    out << "    node [shape=box, style=filled, fontname=\"Courier\"];\n\n";
+    DumpGraphvizNodes(out);
+    out << "\n";
+    DumpGraphvizEdges(out);
+    out << "}\n";
+    return std::move(out).str();
+}
+
+void BytecodePreprocessorNew::DumpGraphvizNodes(std::ostream &out) const
+{
+    for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
+        const BasicBlockInfo &block = basicBlocks_[i];
+        if (block.IsDead()) {
+            continue;
+        }
+        std::string color;
+        if (block.IsLoopHeader()) {
+            color = "lightskyblue";
+        } else if (block.IsEndOfLoop()) {
+            color = "lightgreen";
+        } else if (block.IsCatchBlockHeader()) {
+            color = "lightyellow";
+        } else if (block.IsSynthetic()) {
+            color = "lightgray";
+        } else {
+            color = "white";
+        }
+        out << "    BB" << block.rpoIndex << " [";
+        out << "label=\"BB" << block.rpoIndex;
+        if (block.IsLoopHeader()) {
+            out << "\\n(loop header)";
+        }
+        if (block.IsEndOfLoop()) {
+            out << "\\n(loop tail)";
+        }
+        if (block.IsCatchBlockHeader()) {
+            out << "\\n(catch entry)";
+        }
+        if (!block.IsSynthetic()) {
+            out << "\\nbcs " << block.startBcIndex << "-" << block.endBcIndex;
+        } else {
+            out << "\\n(synthetic)";
+        }
+        out << "\", fillcolor=" << color << "];\n";
+    }
+}
+
+void BytecodePreprocessorNew::DumpGraphvizEdges(std::ostream &out) const
+{
+    auto rpoLabel = [](const BasicBlockInfo *block) {
+        if (block == nullptr || block->IsDead()) {
+            return std::string("(nil)");
+        }
+        return std::to_string(block->rpoIndex);
+    };
+    for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
+        const BasicBlockInfo &block = basicBlocks_[i];
+        if (block.IsDead()) {
+            continue;
+        }
+        if (block.HasFallthrough() && !block.fallthroughBlock->IsDead()) {
+            out << "    BB" << block.rpoIndex;
+            out << " -> BB" << block.fallthroughBlock->rpoIndex;
+            out << " [style=solid];\n";
+        }
+        if (block.IsJump() && !block.jumpBlock->IsDead()) {
+            out << "    BB" << block.rpoIndex;
+            out << " -> BB" << block.jumpBlock->rpoIndex;
+            if (block.IsEndOfLoop()) {
+                out << " [style=solid, penwidth=3];\n";
+                out << "    // " << rpoLabel(&block) << " -> " << rpoLabel(block.jumpBlock)
+                    << " is a loop back edge\n";
+            } else {
+                out << " [style=solid];\n";
+            }
+        }
+        if (block.catchBlock != nullptr && !block.catchBlock->IsDead()) {
+            out << "    BB" << block.rpoIndex;
+            out << " -> BB" << block.catchBlock->rpoIndex;
+            out << " [style=dashed, color=red];\n";
+        }
+    }
 }
 
 #undef BLOCK_INDEX_FROM_PTR

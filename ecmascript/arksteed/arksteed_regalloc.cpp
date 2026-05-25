@@ -142,26 +142,19 @@ void ArkSteedRegisterAllocator::SetupConstantLocations()
 
 void ArkSteedRegisterAllocator::InitializeBlockState(BB *block)
 {
-    if (block->HasState()) {
-        if (block->GetState()->IsExceptionHandler()) {
+    if (block->HasRegisterMerge()) {
+        if (block->IsExceptionHandler()) {
             ASSERT(false);  // to do: no catch now
             // Exceptions start with a blank state of register values.
             ClearRegisterValues();
         } else {
-            RegisterMergeState &state = block->GetState()->RegisterState();
+            RegisterMergeState &state = *block->GetRegisterMergeState();
             InitializeRegisterValues(state);
 #ifndef NDEBUG
             LOG_COMPILER(DEBUG) << "Register states after initialization:";
-            DebugDumpRegisterValues(state, block->GetPredecessors().Size());
+            DebugDumpRegisterValues(state, block->PredecessorCount());
 #endif
         }
-    } else if (block->GetBlockType() == BB::EDGE_SPLIT) {
-        RegisterMergeState *state = block->GetEdgeSplitBlockRegisterState();
-        InitializeRegisterValues(*state);
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Register states after initialization:";
-        DebugDumpRegisterValues(*state, block->GetPredecessors().Size());
-#endif
     }
 }
 
@@ -188,8 +181,7 @@ void ArkSteedRegisterAllocator::AllocateBlock(BB *block)
 
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "========================================================================";
-    LOG_COMPILER(DEBUG) << "RegAlloc: Starts BB #" << block->GetId()
-                        << (block->GetBlockType() == BB::EDGE_SPLIT ? " [EDGE SPLIT]" : "");
+    LOG_COMPILER(DEBUG) << "RegAlloc: Starts BB #" << block->GetId();
 #endif
     InitializeBlockState(block);
 
@@ -296,7 +288,7 @@ void ArkSteedRegisterAllocator::ProcessUnconditionalControl(UnconditionalControl
     auto predecessorId = block->GetPredecessorId();
     auto *target = unconditional->Target();
 
-    if (target->HasState()) {
+    if (target->HasRegisterMerge()) {
         // Not a fallthrough
         InitializeBranchTargetPhis(predecessorId, target);
         MergeRegisterValues(unconditional, target, predecessorId);
@@ -306,9 +298,6 @@ void ArkSteedRegisterAllocator::ProcessUnconditionalControl(UnconditionalControl
                           phi->GetInputLocation(predecessorId));
             }
         }
-    } else if (target->GetBlockType() == BB::EDGE_SPLIT) {
-        // Edge split block
-        InitializeEmptyBlockRegisterValues(currentVertex_->Cast<ControlVertex>(), target);
     } else {
         // Fallthrough
         ASSERT(currentVertex_->GetId() + 1 == target->GetFirstId());
@@ -1132,8 +1121,6 @@ bool ArkSteedRegisterAllocator::AllUsedRegistersLiveAt(BB *block)
 
 void ArkSteedRegisterAllocator::InitializeBranchTargetPhis(int predecessorId, BB *target)
 {
-    ASSERT(target->GetBlockType() != BB::EDGE_SPLIT);
-
     if (!target->HasPhi()) {
         return;
     }
@@ -1152,10 +1139,9 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetPhis(int predecessorId, BB
 
 void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVertex *control, BB *target)
 {
-    ASSERT(target->GetBlockType() != BB::EDGE_SPLIT);
-    ASSERT(target->HasState());
+    ASSERT(target->HasRegisterMerge());
 
-    RegisterMergeState &targetState = target->GetState()->RegisterState();
+    RegisterMergeState &targetState = *target->GetRegisterMergeState();
     ASSERT(!targetState.IsInitialized());
 
     bool hasChange = false;
@@ -1288,19 +1274,15 @@ void ArkSteedRegisterAllocator::MergeRegisterState(RegisterSnapshot<RegisterT> &
 
 void ArkSteedRegisterAllocator::MergeRegisterValues(ControlVertex *control, BB *target, int predecessorId)
 {
-    if (target->GetBlockType() == BB::EDGE_SPLIT) {
-        return InitializeEmptyBlockRegisterValues(control, target);
-    }
-
-    ASSERT(target->HasState());
-    RegisterMergeState &targetState = target->GetState()->RegisterState();
+    ASSERT(target->HasRegisterMerge());
+    RegisterMergeState &targetState = *target->GetRegisterMergeState();
 
     if (!targetState.IsInitialized()) {
         // This is the first block we're merging, initialize the values.
         return InitializeBranchTargetRegisterValues(control, target);
     }
 
-    int predecessorCount = target->GetState()->PredecessorCount();
+    int predecessorCount = target->PredecessorCount();
 
     auto merge = [&](auto &registers, auto reg, RegisterState &state) {
         MergeRegisterState(registers, reg, state, control, target, predecessorId, predecessorCount);
@@ -1317,14 +1299,11 @@ void ArkSteedRegisterAllocator::InitializeConditionalBranchTarget(ControlVertex 
 {
     ASSERT(!target->HasPhi());
 
-    if (target->HasState()) {
+    if (target->HasRegisterMerge()) {
         // Not a fall-through branch, copy the state over.
         return InitializeBranchTargetRegisterValues(controlVertex, target);
-    } else if (target->GetBlockType() == BB::EDGE_SPLIT) {
-        return InitializeEmptyBlockRegisterValues(controlVertex, target);
     } else {
         // Fallthrough
-        ASSERT(controlVertex->GetId() + 1 == target->GetFirstId());
         ASSERT(AllUsedRegistersLiveAt(target));
     }
 }
@@ -1347,9 +1326,7 @@ bool ArkSteedRegisterAllocator::IsLiveAtTarget(ValueVertex *vertex, ControlVerte
 
 void ArkSteedRegisterAllocator::InitializeEmptyBlockRegisterValues(ControlVertex *source, BB *target)
 {
-    ASSERT(target->GetBlockType() == BB::EDGE_SPLIT);
-
-    // Create a new merge point register state for the edge split block
+    // Create a new merge point register state for the block
     auto *registerState = graph_->GetChunk()->New<RegisterMergeState>();
 
     ASSERT(!registerState->IsInitialized());
@@ -1368,7 +1345,7 @@ void ArkSteedRegisterAllocator::InitializeEmptyBlockRegisterValues(ControlVertex
 
     ForEachRegisterMergeState(*registerState, init);
 
-    target->SetEdgeSplitBlockRegisterState(registerState);
+    target->SetRegisterMergeState(registerState);
 }
 
 void ArkSteedRegisterAllocator::UpdateUse(ValueVertex *vertex, InputLocation *inputLocation)

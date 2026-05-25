@@ -20,7 +20,6 @@
 #include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
 #include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
-#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/global_env.h"
 
@@ -2211,18 +2210,25 @@ BB *ArkSteedGraphBuilder::StartNewBlockWithMergeState(MergePointFrameState *merg
 
     BB *block = *blockSlot;
     if (block == nullptr) {
-        block = BB::NewForMergePoint(GetChunk(), mergeState);
+        uint32_t numPreds = mergeState->PredecessorCount();
+        block = BB::New(GetChunk());
+        block->SetPredecessorCount(numPreds);
+        block->SetRegisterMergeState(&mergeState->RegisterState());
+        if (mergeState->IsLoopHeader()) {
+            block->SetLoopHeader(true);
+        }
+        if (mergeState->IsExceptionHandler()) {
+            block->SetExceptionHandler(true);
+        }
         *blockSlot = block;
         ref->Bind(block);
-    } else {
-        ASSERT(block->HasState());
-        ASSERT(block->GetState() == mergeState);
     }
 
     SetCurrentBlock(block);
     for (PhiVertex *phi : mergeState->Phis()) {
         if (phi->Vertex::GetOwner() == nullptr) {
             phi->SetOwner(block);
+            block->GetPhis().push_back(phi);
             RegisterVertexWithLabeller(phi);
         }
     }
@@ -2600,7 +2606,9 @@ void ArkSteedGraphBuilder::TrySplitCriticalEdge(MergePointFrameState *mergeState
     }
     // to do: State initialization
     RegisterMergeState *state = GetChunk()->New<RegisterMergeState>();
-    BB *splitBlock = BB::NewForEdgeSplit(GetChunk(), state);
+    BB *splitBlock = BB::New(GetChunk());
+    splitBlock->SetPredecessorCount(1);
+    splitBlock->SetRegisterMergeState(state);
     GetGraph()->Add(splitBlock);
 
     JumpVertex *splitJump = Vertex::New<JumpVertex>(GetChunk(), {}, ref->BlockRef());
@@ -2608,7 +2616,7 @@ void ArkSteedGraphBuilder::TrySplitCriticalEdge(MergePointFrameState *mergeState
     splitBlock->SetControlVertex(splitJump);
     RegisterVertexWithLabeller(splitJump);
 
-    splitBlock->SetPredecessor(predecessor);
+    splitBlock->AddPredecessor(predecessor);
     splitBlock->SetPredecessorId(predIndex);
     mergeState->SetPredecessorAt(predIndex, splitBlock);
     ASSERT(!!(branchIf->IfTrue() == mergeBlock) + !!(branchIf->IfFalse() == mergeBlock) == 1);
@@ -2641,7 +2649,7 @@ void ArkSteedGraphBuilder::BranchBuilder::StartFallthroughBlock(BB *predecessor)
             subBuilder_->MergeIntoLabel(data.jumpLabel, predecessor);
             if (data.fallthroughBlock == nullptr) {
                 data.fallthroughBlock = BB::New(builder_->GetChunk());
-                data.fallthroughBlock->SetPredecessor(predecessor);
+                data.fallthroughBlock->AddPredecessor(predecessor);
                 data.fallthroughTarget.Bind(data.fallthroughBlock);
             }
             builder_->SetCurrentBlock(data.fallthroughBlock);
@@ -2689,38 +2697,5 @@ void ArkSteedGraphBuilder::BuildThrow(kungfu::RuntimeStubCSigns::ID id, ValueVer
         input = GetInt32Constant(0);
     }
     FinishBlock<ThrowVertex>({input}, id, hasInput);
-}
-
-void ArkSteedGraphBuilder::ValidateNewBytecodePreprocessor()
-{
-    BytecodePreprocessorNew tempPreproc(env_, GetChunk());
-    std::string result = tempPreproc.Dump();
-
-    LOG_COMPILER(DEBUG) << "================ BEGIN: Result of BytecodePreprocessorNew ================";
-    for (size_t pos = 0; pos < result.length();) {
-        size_t endlPos = result.find('\n', pos);
-        if (endlPos == std::string::npos) {
-            LOG_COMPILER(DEBUG) << result.substr(pos);
-            break;
-        }
-        LOG_COMPILER(DEBUG) << result.substr(pos, endlPos - pos);
-        pos = endlPos + 1;
-    }
-    LOG_COMPILER(DEBUG) << "================ END: Result of BytecodePreprocessorNew ================";
-
-    BytecodeAnalysisNew tempAnalysis(&tempPreproc);
-    result = tempAnalysis.Dump();
-
-    LOG_COMPILER(DEBUG) << "================ BEGIN: Result of BytecodeAnalysisNew ================";
-    for (size_t pos = 0; pos < result.length();) {
-        size_t endlPos = result.find('\n', pos);
-        if (endlPos == std::string::npos) {
-            LOG_COMPILER(DEBUG) << result.substr(pos);
-            break;
-        }
-        LOG_COMPILER(DEBUG) << result.substr(pos, endlPos - pos);
-        pos = endlPos + 1;
-    }
-    LOG_COMPILER(DEBUG) << "================ END: Result of BytecodeAnalysisNew ================";
 }
 }  // namespace panda::ecmascript::arksteed

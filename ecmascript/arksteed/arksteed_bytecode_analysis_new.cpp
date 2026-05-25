@@ -42,6 +42,7 @@ BytecodeAnalysisNew::BytecodeAnalysisNew(const BytecodePreprocessorNew *parent)
     while (UpdateLiveness()) {
         numIterations++;
     }
+    FinalizeWithFixedParamsAndEnv();
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "Liveness analysis done. " << numIterations << " iterations used.";
 #endif
@@ -51,6 +52,12 @@ void BytecodeAnalysisNew::UpwardExposedSet(const BytecodeInfo *info, uint32_t bl
 {
     if (info->details.AccIn() && !TestAcc(killSet_[blockIndex])) {
         SetAcc(ueSet_[blockIndex]);
+    }
+    if (info->details.EnvIn() && !TestEnv(killSet_[blockIndex])) {
+        SetEnv(ueSet_[blockIndex]);
+    }
+    if (info->details.ThisObjectIn()) {
+        SetVReg(ueSet_[blockIndex], GetNumLocalVRegs() + 2);  // 2 : a2, which is this object
     }
     for (size_t i = 0, n = info->details.inputs.size(); i < n; i++) {
         const auto &in = info->details.inputs[i];
@@ -68,6 +75,9 @@ void BytecodeAnalysisNew::KillSet(const BytecodeInfo *info, uint32_t blockIndex)
 {
     if (info->details.AccOut()) {
         SetAcc(killSet_[blockIndex]);
+    }
+    if (info->details.EnvOut()) {
+        SetEnv(killSet_[blockIndex]);
     }
     for (VRegIDType out : info->details.vregOut) {
         SetVReg(killSet_[blockIndex], out);
@@ -96,6 +106,24 @@ void BytecodeAnalysisNew::InitializeLiveIn()
     }
 }
 
+void BytecodeAnalysisNew::FinalizeWithFixedParamsAndEnv()
+{
+    VRegIDType firstParamVReg = GetNumLocalVRegs();
+    VRegIDType callTarget = firstParamVReg;     //     a0, which is call target
+    VRegIDType newTarget = firstParamVReg + 1;  // 1 : a1, which is new target
+    VRegIDType env = firstParamVReg + GetNumParamVRegs();
+
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        // These virtual registers may be used implicitly by GraphBuilder,
+        // even if EnvIn(), HasFuncIn() or HasNewTargetIn() is false
+        for (VRegIDType vregIndex : {callTarget, newTarget, env}) {
+            liveIn_[blockIndex].SetBit(vregIndex);
+            liveOut_[blockIndex].SetBit(vregIndex);
+        }
+    }
+}
+
 bool BytecodeAnalysisNew::UpdateLiveness()
 {
     bool hasChange = false;
@@ -110,13 +138,14 @@ bool BytecodeAnalysisNew::UpdateLiveness()
                 temp.Union(liveIn_[succBlock->rpoIndex]);
             }
         }
-        bool accWasLive = TestAcc(temp);  // Whether Acc will be used by some non-catch successor
-        for (const BasicBlockInfo *catchBlock : curBlock->catchBlocks) {
-            temp.Union(liveIn_[curBlock->rpoIndex]);
-        }
-        // Acc will be overwritten by the exception object.
-        if (!accWasLive) {
-            ClearAcc(temp);
+        if (curBlock->catchBlock != nullptr) {
+            // Whether Acc will be used by some non-catch successor
+            bool accWasLive = TestAcc(temp);
+            temp.Union(liveIn_[curBlock->catchBlock->rpoIndex]);
+            // Acc will be overwritten by the exception object.
+            if (!accWasLive) {
+                ClearAcc(temp);
+            }
         }
         if (temp.Equals(liveOut_[i])) {
             continue;  // No change
@@ -139,15 +168,12 @@ void BytecodeAnalysisNew::UpdateLiveIn(uint32_t blockIndex)
 std::string BytecodeAnalysisNew::Dump() const
 {
     std::ostringstream out;
-    out << "Liveness of Basic Block:";
+    out << "Liveness of Basic Blocks (labelled by RPO index):";
 
-    uint32_t numBlocks = parent_->GetNumAllBasicBlocks();
-    for (uint32_t i = 0; i < numBlocks; i++) {
-        uint32_t rpoIndex = parent_->GetBasicBlockByBCOrder(i)->rpoIndex;
-        if (rpoIndex == BytecodePreprocessorNew::NULL_INDEX) {
-            continue;
-        }
-        out << "\n[" << std::setw(2) << i << "] UESet:   " << DumpBitset(ueSet_[rpoIndex]);  // 2: width for block index
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t rpoIndex = 0; rpoIndex < numBlocks; rpoIndex++) {
+        // 2: width for block index
+        out << "\n[" << std::setw(2) << rpoIndex << "] UESet:   " << DumpBitset(ueSet_[rpoIndex]);
         out << "\n     KillSet: " << DumpBitset(killSet_[rpoIndex]);
         out << "\n     LiveIn:  " << DumpBitset(liveIn_[rpoIndex]);
         out << "\n     LiveOut: " << DumpBitset(liveOut_[rpoIndex]);

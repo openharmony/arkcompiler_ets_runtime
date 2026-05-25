@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_ARKSTEED_OPCODE_H
 #define ECMASCRIPT_ARKSTEED_OPCODE_H
 
-#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_regalloc.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
+#include "ecmascript/arksteed/arksteed_vreg.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/mem/chunk_containers.h"
 
@@ -28,6 +28,7 @@ using VirtualRegister = kungfu::VirtualRegister;
 class BB;
 class ArkSteedState;
 class ArkSteedAssembler;
+class MergePointFrameState;
 
 /**
  * CRTP Mixin Classes for ArkSteed Opcodes
@@ -568,7 +569,11 @@ class BranchIfTrueVertex : public FixedInputVertexMixin<1, ControlVertex, Branch
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
-    explicit BranchIfTrueVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
+    BranchIfTrueVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
+        : FixedInputVertexMixin(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
+    {}
+
+    BranchIfTrueVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : FixedInputVertexMixin(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
     {}
 
@@ -618,6 +623,7 @@ public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
     explicit JumpLoopVertex(uint64_t bitfield, BBRef *targetRefs) : UnconditionalControlVertexT(bitfield, targetRefs) {}
+    explicit JumpLoopVertex(uint64_t bitfield, BB *target) : UnconditionalControlVertexT(bitfield, target) {}
 
     void SetValueLocationConstraints();
 
@@ -916,6 +922,8 @@ public:
     {
         SetInput(index, value);
     }
+    // Note: Remove this field after refactoring (from ArkSteed* to *New) is fully done.
+    //       It's no more used in the new implementation.
     MergePointFrameState *GetMergePointState() const
     {
         return mergeState_;
@@ -937,7 +945,7 @@ public:
         }
     }
 
-    PhiVertex *next_ = nullptr;
+    // Note: Remove this field after refactoring (from ArkSteed* to *New) is fully done.
     MergePointFrameState *const mergeState_;
     const VirtualRegister owner_;
 };

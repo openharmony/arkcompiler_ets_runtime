@@ -707,7 +707,7 @@ void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
 
 void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, int predecessorId)
 {
-    if (!successor->HasPhi() && !successor->HasState()) {
+    if (!successor->HasPhi() && !successor->HasRegisterMerge()) {
         return;
     }
     // Gap moves are part of the current block's code (preparing for jump to successor)
@@ -778,10 +778,10 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
     const ArkSteedRegList &registersSetByPhis, const ArkDoubleRegList &doubleRegistersSetByPhis,
     ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves)
 {
-    if (!successor->HasState()) {
+    if (!successor->HasRegisterMerge()) {
         return;
     }
-    RegisterMergeState &registerState = successor->GetState()->RegisterState();
+    RegisterMergeState &registerState = *successor->GetRegisterMergeState();
     registerState.ForEachGeneralRegister([&](ArkSteedRegister reg, RegisterState &state) {
         if (registersSetByPhis.Has(reg)) {
             return;
@@ -904,7 +904,7 @@ void ArkSteedCodeGenerator::RecordBlockComment(BB *block)
     ss << GetCurrentBlockColor() << "-- Block b" << block->GetId();
 
     // Print predecessors for merge blocks with their colors
-    if (block->HasState()) {
+    if (block->HasRegisterMerge()) {
         const auto &predecessors = block->GetPredecessors();
         if (!predecessors.empty()) {
             ss << " <-- [";
@@ -915,9 +915,6 @@ void ArkSteedCodeGenerator::RecordBlockComment(BB *block)
             }
             ss << "]";
         }
-    } else if (BB *pred = block->GetPredecessor(0); pred != nullptr) {
-        // Single predecessor for edge split blocks
-        ss << " <-- [" << GetBlockColor(pred->GetId()) << "b" << pred->GetId() << GetCurrentBlockColor() << "]";
     }
     ss << COLOR_RESET;
 
