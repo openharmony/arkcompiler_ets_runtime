@@ -33,6 +33,14 @@ Options:
   --rerun-failed-from-latest-log
                     Only run test cases that failed in the newest log under
                     out/arksteed_test_logs/, skipping cases that passed.
+  --external-repo URL
+                    Git URL of an external test-case repository.
+                    If test/external/ does not exist, it is cloned automatically
+                    (lazy fetch). Use --external-dir to change the sub-directory name.
+  --external-dir NAME
+                    Local sub-directory under test/ for external cases
+                    (default: external).
+  --skip-external   Skip cloning external test cases even when --external-repo is set.
 
 Defaults:
   --print-graph and --check-live-range are enabled by default.
@@ -584,6 +592,24 @@ def parse_args() -> argparse.Namespace:
         default=1,
         help="Hotness threshold for JIT compilation (passed to --compiler-jit-hotness-threshold)",
     )
+    parser.add_argument(
+        "--external-repo",
+        type=str,
+        default=None,
+        help="Git URL of an external test-case repository. "
+             "If test/external/ does not exist, it is cloned automatically.",
+    )
+    parser.add_argument(
+        "--external-dir",
+        type=str,
+        default="external",
+        help="Local sub-directory under test/ for external cases (default: external)",
+    )
+    parser.add_argument(
+        "--skip-external",
+        action="store_true",
+        help="Skip cloning external test cases even when --external-repo is set",
+    )
     return parser.parse_args()
 
 
@@ -710,6 +736,42 @@ def clean_test_cases() -> bool:
 
     print(f"Cleanup complete, deleted {total_cleaned} files")
     return True
+
+
+def fetch_external_tests(repo_url: str, external_dir_name: str = "external") -> bool:
+    """Lazy-clone external test cases from a Git repository.
+
+    - If the external directory already exists, do nothing (lazy fetch).
+    - If git is not available, print a warning and return False.
+    - On clone failure, print a warning and return False.
+    """
+    external_path = TEST_DIR / external_dir_name
+    if external_path.exists():
+        return True
+
+    if shutil.which("git") is None:
+        print("Warning: git not found; cannot clone external test cases", file=sys.stderr)
+        return False
+
+    print(f"External test directory not found, cloning from {repo_url} ...")
+    TEST_DIR.mkdir(parents=True, exist_ok=True)
+    cmd = ["git", "clone", "--depth", "1", repo_url, str(external_path)]
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=120, check=False
+        )
+        if result.returncode != 0:
+            err = result.stderr.strip() if result.stderr else "(unknown error)"
+            print(f"Warning: failed to clone external tests: {err}", file=sys.stderr)
+            return False
+        print(f"External tests cloned to {external_path}")
+        return True
+    except subprocess.TimeoutExpired:
+        print("Warning: git clone timed out after 120s", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Warning: git clone failed: {e}", file=sys.stderr)
+        return False
 
 
 def read_extra_options(extra_file: Path) -> List[str]:
@@ -2712,6 +2774,9 @@ def main() -> None:
     run_stages = ["jit"]
 
     print(f"Run mode: {', '.join(run_stages)}")
+
+    if args.external_repo and not args.skip_external:
+        fetch_external_tests(args.external_repo, args.external_dir)
 
     test_cases = _find_test_cases_with_stage_fallback(
         only_subdirs, all_files=True

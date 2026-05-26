@@ -5,3 +5,4 @@ __pycache__
 test/**/*.disasm.txt
 test/**/*.actual_output.txt
 test/**/*.abc
+test/external/
