@@ -4091,6 +4091,9 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
             BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
             Bind(&isFastTypedArray);
             {
+#if ENABLE_V70_OPTIMIZATION
+                GlobalEnvScope scope(this);
+#endif
                 BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetCurrentGlobalEnv());
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
@@ -4118,6 +4121,9 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
                 BRANCH(Int32LessThan(index, length), &getSubString, &notString);
                 Bind(&getSubString);
                 Label flattenFastPath(env);
+#if ENABLE_V70_OPTIMIZATION
+                GlobalEnvScope scope(this);
+#endif
                 BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
                 FlatStringStubBuilder thisFlat(this);
                 thisFlat.FlattenString(glue, *holder, &flattenFastPath);
@@ -4371,6 +4377,9 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 }
                 Bind(&getStringPrototype);
                 {
+#if ENABLE_V70_OPTIMIZATION
+                    GlobalEnvScope scope(this);
+#endif
                     GateRef globalEnv = GetCurrentGlobalEnv();
                     GateRef stringPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                                                 GlobalEnv::STRING_PROTOTYPE_INDEX);
@@ -4387,6 +4396,9 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 BRANCH(IsJSProxy(jsType), &isJsProxy, &notJsProxy);
                 Bind(&isJsProxy);
                 {
+#if ENABLE_V70_OPTIMIZATION
+                    GlobalEnvScope scope(this);
+#endif
                     if (receiver == Circuit::NullGate()) {
                         result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
                                                 {glue, *holder, propKey, target, GetCurrentGlobalEnv()}, hir);
@@ -4917,6 +4929,9 @@ void StubBuilder::NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef rec
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
+#if ENABLE_V70_OPTIMIZATION
+    GlobalEnvScope scope(this);
+#endif
     GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef guardians = GetArrayElementsGuardians(globalEnv);
 
@@ -5629,6 +5644,9 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
                 if (defineSemantics) {
                     Jump(&exit);
                 } else {
+#if ENABLE_V70_OPTIMIZATION
+                    GlobalEnvScope scope(this);
+#endif
                     Label returnException(env);
                     Label noPendingException(env);
                     if (mayThrow) {
@@ -7388,6 +7406,9 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
             rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
             Bind(&rightFlattenFastPath);
             {
+#if ENABLE_V70_OPTIMIZATION
+                GlobalEnvScope scope(this);
+#endif
                 BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
                 StringInfoGateRef leftStrInfoGate(&leftFlat);
                 StringInfoGateRef rightStrInfoGate(&rightFlat);
@@ -9007,6 +9028,9 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
                     BRANCH(IsJSPrimitiveRef(glue, right), &isPrimitiveRef, &notStringAdd);
                     Bind(&isPrimitiveRef);
                     {
+#if ENABLE_V70_OPTIMIZATION
+                        GlobalEnvScope scope(this);
+#endif
                         GateRef globalEnv = GetCurrentGlobalEnv();
                         Label wrapperFastPath(env);
                         BRANCH_UNLIKELY(GetStringWrapperToPrimitiveDetector(globalEnv), &notStringAdd, &wrapperFastPath);
@@ -9043,6 +9067,9 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         Label hasPendingException(env);
         // NOTICE-PGO: support string and number
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
+#if ENABLE_V70_OPTIMIZATION
+        GlobalEnvScope scope(this);
+#endif
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, left, NumberToString(glue, right));
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
@@ -9055,6 +9082,9 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         Label hasPendingException(env);
         // NOTICE-PGO: support string and number
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
+#if ENABLE_V70_OPTIMIZATION
+        GlobalEnvScope scope(this);
+#endif
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, NumberToString(glue, left), right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
@@ -9065,6 +9095,9 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     Bind(&stringLeftAddStringWrapperRight);
     {
         Label hasPendingException(env);
+#if ENABLE_V70_OPTIMIZATION
+        GlobalEnvScope scope(this);
+#endif
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         GateRef right = *rightUnboxed;
         result = builtinsStringStubBuilder.StringConcat(glue, left, right);
@@ -9077,6 +9110,9 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     {
         Label hasPendingException(env);
         callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
+#if ENABLE_V70_OPTIMIZATION
+        GlobalEnvScope scope(this);
+#endif
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, left, right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
@@ -10862,6 +10898,9 @@ GateRef StubBuilder::GetTypedArrayPropertyByName(GateRef glue, GateRef receiver,
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
+#if ENABLE_V70_OPTIMIZATION
+            GlobalEnvScope scope(this);
+#endif
             BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetCurrentGlobalEnv());
             result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);

@@ -27,6 +27,18 @@
 #include "ecmascript/js_generator_object.h"
 
 namespace panda::ecmascript::kungfu {
+std::function<GateRef()> InterpreterStubBuilder::GlobalEnvGetter(GateRef glue, GateRef sp)
+{
+    return [this, glue, sp]() -> GateRef {
+        GateRef frame = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
+        GateRef currentEnv = LoadPrimitive(
+            VariableType::JS_POINTER(),
+            frame,
+            IntPtr(AsmInterpretedFrame::GetEnvOffset(GetEnvironment()->IsArch32Bit())));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+}
+
 void InterpreterStubBuilder::SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val)
 {
     Store(VariableType::INT64(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx), val);

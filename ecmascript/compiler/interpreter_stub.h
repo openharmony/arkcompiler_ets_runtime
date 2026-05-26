@@ -109,6 +109,7 @@ public:
     NO_COPY_SEMANTIC(InterpreterStubBuilder);
     virtual void GenerateCircuit() override = 0;
 
+    inline std::function<GateRef()> GlobalEnvGetter(GateRef glue, GateRef sp);
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
     inline GateRef GetVregValue(GateRef glue, GateRef sp, GateRef idx);
     inline GateRef GetVregValueFromArray(GateRef glue, GateRef array, GateRef idx);
