@@ -145,7 +145,6 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         CollectGarbageFinish(false, gcType);
         InvokeSharedNativePointerCallbacks();
     }
-    NotifyDeferFreezeFinish(gcType);
     if (gcType != TriggerGCType::SHARED_FULL_GC && gcType != TriggerGCType::GLOBAL_GC &&
         sharedGC_->IsConcurrentProcessStringTable()) {
         Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->WaitConcurrentSweepWeakRefTaskAndSuspend(thread);
@@ -526,7 +525,6 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         }
         CollectGarbageFinish(true, gcType);
     }
-    NotifyDeferFreezeFinish(gcType);
     InvokeSharedNativePointerCallbacks();
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
     if (gcType != TriggerGCType::SHARED_FULL_GC && gcType != TriggerGCType::GLOBAL_GC &&
@@ -675,6 +673,7 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
         clearTaskFinished_ = true;
         waitClearTaskFinishedCV_.SignalAll();
     }
+    NotifyDeferFreezeFinish(gcType);
 }
 
 void SharedHeap::DisableParallelGC(JSThread *thread)
