@@ -184,6 +184,10 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
     info->SetCallArg(JSTaggedValue(arrayLength));
     JSTaggedValue result = JSFunction::Construct(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (!result.IsJSSharedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "species constructor did not return a SendableArray",
+                                    JSTaggedValue::Exception());
+    }
 
     // NOTEIf originalArray was created using the standard built-in Array constructor for
     // a Realm that is not the Realm of the running execution context, then a new Array is
