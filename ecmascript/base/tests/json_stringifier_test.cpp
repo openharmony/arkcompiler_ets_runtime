@@ -1500,5 +1500,84 @@ HWTEST_F_L0(JsonStringifierTest, ShouldSerializeKey_ArrayWithObject_01)
     EXPECT_TRUE(result.find("\"elem\"") != CString::npos);
     EXPECT_TRUE(result.find("3") != CString::npos);
 }
+
+static JSTaggedValue ToJSONReturnNull([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+{
+    return JSTaggedValue(JSTaggedValue::Null());
+}
+
+HWTEST_F_L0(JsonStringifierTest, MayHaveInterestingProperties_MarkerNotExist_01)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JsonStringifier stringifier(thread);
+    EcmaVM *ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objectFunc(globalEnv->GetObjectFunction());
+    JSHandle<JSObject> proto(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    JSHandle<JSFunction> toJsonFunc = factory->NewJSFunction(globalEnv, reinterpret_cast<void *>(ToJSONReturnNull));
+    JSHandle<JSTaggedValue> toJsonKey(factory->NewFromASCII("toJSON"));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(proto), toJsonKey,
+                          JSHandle<JSTaggedValue>(toJsonFunc));
+    JSHandle<JSObject> jsObject(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    JSHandle<JSTaggedValue> protoHandle(thread, proto.GetTaggedValue());
+    JSObject::SetPrototype(thread, jsObject, protoHandle);
+    JSHandle<JSTaggedValue> handleValue(thread, jsObject.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleReplacer(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
+    EXPECT_TRUE(resultString->IsString());
+    JSHandle<EcmaString> handleEcmaStr(resultString);
+    EXPECT_STREQ("null", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
+}
+
+HWTEST_F_L0(JsonStringifierTest, MayHaveInterestingProperties_ProtoChange_01)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objectFunc(globalEnv->GetObjectFunction());
+    JSHandle<JSObject> proto(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    JSHandle<JSObject> jsObject(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    JSHandle<JSTaggedValue> protoHandle(thread, proto.GetTaggedValue());
+    JSObject::SetPrototype(thread, jsObject, protoHandle);
+    JSHandle<JSTaggedValue> handleValue(thread, jsObject.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleReplacer(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap(thread, JSTaggedValue::Undefined());
+    JsonStringifier stringifier1(thread);
+    JSHandle<JSTaggedValue> result1 = stringifier1.Stringify(handleValue, handleReplacer, handleGap);
+    EXPECT_TRUE(result1->IsString());
+    EXPECT_STREQ("{}", EcmaStringAccessor(JSHandle<EcmaString>(result1)).ToCString(thread).c_str());
+    JSHandle<JSFunction> toJsonFunc = factory->NewJSFunction(globalEnv, reinterpret_cast<void *>(ToJSONReturnNull));
+    JSHandle<JSTaggedValue> toJsonKey(factory->NewFromASCII("toJSON"));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(proto), toJsonKey,
+                          JSHandle<JSTaggedValue>(toJsonFunc));
+    JsonStringifier stringifier2(thread);
+    JSHandle<JSTaggedValue> result2 = stringifier2.Stringify(handleValue, handleReplacer, handleGap);
+    EXPECT_TRUE(result2->IsString());
+    EXPECT_STREQ("null", EcmaStringAccessor(JSHandle<EcmaString>(result2)).ToCString(thread).c_str());
+}
+
+HWTEST_F_L0(JsonStringifierTest, MayHaveInterestingProperties_MarkerNotChanged_01)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objectFunc(globalEnv->GetObjectFunction());
+    JSHandle<JSObject> proto(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    JSHandle<JSObject> jsObject(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFunc), objectFunc));
+    JSHandle<JSTaggedValue> protoHandle(thread, proto.GetTaggedValue());
+    JSObject::SetPrototype(thread, jsObject, protoHandle);
+    JSHandle<JSTaggedValue> handleValue(thread, jsObject.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleReplacer(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap(thread, JSTaggedValue::Undefined());
+    JsonStringifier stringifier1(thread);
+    JSHandle<JSTaggedValue> result1 = stringifier1.Stringify(handleValue, handleReplacer, handleGap);
+    EXPECT_TRUE(result1->IsString());
+    EXPECT_STREQ("{}", EcmaStringAccessor(JSHandle<EcmaString>(result1)).ToCString(thread).c_str());
+    JsonStringifier stringifier2(thread);
+    JSHandle<JSTaggedValue> result2 = stringifier2.Stringify(handleValue, handleReplacer, handleGap);
+    EXPECT_TRUE(result2->IsString());
+    EXPECT_STREQ("{}", EcmaStringAccessor(JSHandle<EcmaString>(result2)).ToCString(thread).c_str());
+}
 #endif
 }  // namespace panda::test

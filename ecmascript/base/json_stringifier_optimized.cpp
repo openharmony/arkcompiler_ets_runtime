@@ -280,7 +280,7 @@ bool JsonStringifier::MayHaveInterestingProperties(const JSHandle<JSTaggedValue>
         }
         JSHClass *protoHClass = receiverProto.GetTaggedObject()->GetClass();
         JSTaggedValue markerValue = protoHClass->GetProtoChangeMarker(thread_);
-        if (!markerValue.IsProtoChangeMarker() ||
+        if (markerValue.IsProtoChangeMarker() &&
             !ProtoChangeMarker::Cast(markerValue.GetTaggedObject())->GetHasChanged()) {
             return false;
         }
