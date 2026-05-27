@@ -20,6 +20,7 @@
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/arksteed/arksteed_vreg.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::arksteed {
@@ -968,6 +969,36 @@ public:
 
 private:
     kungfu::RuntimeStubCSigns::ID runtimeId_;
+};
+
+class CheckHClassVertex : public FixedInputVertexMixin<1, NonControlVertex, CheckHClassVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt() | VertexProperties::CanReadProp();
+
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::TAGGED);
+
+    static constexpr size_t RECEIVER_INDEX = 0;
+
+    explicit CheckHClassVertex(uint64_t bitfield, JSHClass *expectedHClass)
+        : FixedInputVertexMixin(bitfield), expectedHClass_(expectedHClass)
+    {}
+
+    JSHClass *GetExpectedHClass() const
+    {
+        return expectedHClass_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        FixedInputVertexMixin::VerifyInputs();
+        ASSERT(expectedHClass_ != nullptr);
+    }
+
+private:
+    JSHClass *expectedHClass_;
 };
 
 class GapMoveVertex : public FixedInputVertexMixin<0, NonControlVertex, GapMoveVertex> {

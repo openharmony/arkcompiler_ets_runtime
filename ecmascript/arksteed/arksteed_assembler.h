@@ -153,6 +153,7 @@ public:
 
     void Compare(ArkSteedRegister lhs, ArkSteedRegister rhs);
     void Compare(ArkSteedRegister lhs, int32_t immediate);
+    void CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs);
 
     // =========================================================================
     // Control Flow

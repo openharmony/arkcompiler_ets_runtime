@@ -473,6 +473,26 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ThrowUndefinedIfHoleWithNameVe
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckHClassVertex>(CheckHClassVertex *checkHClass)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << checkHClass->GetId() << ": CheckHClassVertex";
+#endif
+    auto receiver = GetInputRegister(checkHClass, CheckHClassVertex::RECEIVER_INDEX);
+    ScratchRegisterScope scope;
+    ArkSteedRegister expectedHClass = scope.AcquireScratch();
+    assembler_->LoadTaggedValue(expectedHClass, JSTaggedValue(checkHClass->GetExpectedHClass()).GetRawData());
+    assembler_->CompareField(receiver, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET), expectedHClass);
+
+    Label done;
+    assembler_->JumpIf(Condition::COND_EQUAL, &done);
+
+    assembler_->Epilogue();
+    assembler_->Return();
+    assembler_->Bind(&done);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<GapMoveVertex>(GapMoveVertex *gapMove)
 {
     const AllocatedState &source = gapMove->GetSource();

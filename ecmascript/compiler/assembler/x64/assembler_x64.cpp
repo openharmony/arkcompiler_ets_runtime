@@ -207,6 +207,14 @@ void AssemblerX64::Cmpq(Register src, Register dst)
     EmitModrm(src, dst);
 }
 
+void AssemblerX64::Cmpq(Register src, const Operand &dst)
+{
+    EmitRexPrefix(src, dst);
+    // 39: Cmp r/m64, r64
+    EmitU8(0x39);
+    EmitOperand(src, dst);
+}
+
 void AssemblerX64::Cmpl(Immediate src, Register dst)
 {
     EmitRexPrefix(dst);

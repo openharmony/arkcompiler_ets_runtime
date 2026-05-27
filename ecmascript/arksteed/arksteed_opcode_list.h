@@ -67,6 +67,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(ThrowIfNotObject)             \
     V(ThrowUndefinedIfHole)         \
     V(ThrowUndefinedIfHoleWithName) \
+    V(CheckHClass)                  \
     V(GapMove)                      \
     V(ConstantGapMove)
 

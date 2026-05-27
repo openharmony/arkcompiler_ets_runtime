@@ -16,18 +16,26 @@
 #ifndef ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_H
 #define ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_H
 
+#include <optional>
+#include <vector>
+
 #include "ecmascript/arksteed/arksteed_bytecode_context.h"
 #include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
 #include "ecmascript/arksteed/arksteed_compiler.h"
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_helper.h"
+#include "ecmascript/arksteed/arksteed_known_node_aspect.h"
 #include "ecmascript/arksteed/arksteed_pgo_context.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/chunk_containers.h"
+
+namespace panda::ecmascript {
+class TaggedArray;
+}
 
 namespace panda::ecmascript::arksteed {
 using namespace panda::ecmascript::kungfu;
@@ -38,16 +46,19 @@ class ControlVertex;
 
 class ArkSteedGraphBuilder : public ArkSteedHelper<ArkSteedGraphBuilder> {
 public:
-    ArkSteedGraphBuilder(JSThread *compilerThread, uintptr_t glueAddr, Graph *graph, JitCompilationEnv *env)
+    ArkSteedGraphBuilder(JSThread *compilerThread, uintptr_t glueAddr, Graph *graph, JitCompilationEnv *env,
+                         JSHandle<ProfileTypeInfo> profileTypeInfo)
         : ArkSteedHelper<ArkSteedGraphBuilder>(graph, this),
           compilerThread_(compilerThread),
           glueAddr_(glueAddr),
           env_(env),
           pgoContext_(compilerThread, env),
+          profileTypeInfo_(profileTypeInfo),
           bytecodeContext_(graph->GetChunk()),
           mergeStates_(graph->GetChunk()),
           predecessorCountReductions_(graph->GetChunk()),
           jumpTargets_(graph->GetChunk()),
+          knownNodeAspect_(graph->GetChunk()->New<KnownNodeAspect>(graph->GetChunk())),
           currentFrameState_(nullptr),
           bytecodeAnalysis_(nullptr)
     {}
@@ -296,11 +307,96 @@ public:
                         CallbackRef<ReduceResult()> ifFalse);
 
 private:
+    struct NamedLoadAccessInfo {
+        JSHClass *receiverHClass {nullptr};
+        JSHClass *holderHClass {nullptr};
+        std::vector<JSHClass *> lookupStartObjectHClasses;
+        std::optional<JSTaggedValue> handler;
+        PropertyLookupResult plr;
+        bool isConst {false};
+    };
+
+    struct NamedAccessFeedback {
+        std::vector<JSHClass *> maps;
+        std::vector<JSTaggedValue> handlers;
+    };
+
+    using NamedLoadAccessInfoOpt = std::optional<NamedLoadAccessInfo>;
+    using NamedLoadAccessInfosOpt = std::optional<std::vector<NamedLoadAccessInfo>>;
+
+    enum class NamedAccessMode {
+        LOAD,
+        STORE,
+        DEFINE,
+    };
+
     ValueVertex *NewCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     void LowerCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     void LowerCallStubWithICPreserveAcc(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     ValueVertex *NewCommonStubCall(std::initializer_list<ValueVertex *> args, const CommonStubCSigns::ID stubId);
     void ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args) const;
+    void ClearKnownNodeAspectsAfterSideEffect();
+
+    std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const;
+    std::optional<JSTaggedValue> TryGetNameFromConstDataId(uint16_t constDataId) const;
+    std::optional<std::vector<JSHClass *>> TryGetPossibleHClasses(ValueVertex *node) const;
+    std::optional<NamedAccessFeedback> TryGetLoadObjByNameFeedback(ICSlotIdType slotId) const;
+    bool TryFillLoadObjByNamePolyFeedback(TaggedArray *mapsAndHandlers, NamedAccessFeedback *feedback) const;
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const std::vector<JSHClass *> &inferredMaps,
+                                                           const NamedAccessFeedback &feedback,
+                                                           uint16_t constDataId, NamedAccessMode accessMode) const;
+    std::optional<JSTaggedValue> TryFindFeedbackHandler(const NamedAccessFeedback &feedback, JSHClass *map) const;
+    NamedLoadAccessInfoOpt TryGetPropertyAccessInfo(JSHClass *map, uint16_t constDataId,
+                                                    NamedAccessMode accessMode,
+                                                    std::optional<JSTaggedValue> handler) const;
+    bool FinalizeNamedAccessInfos(std::vector<NamedLoadAccessInfo> accessInfos, NamedAccessMode accessMode,
+                                  std::vector<NamedLoadAccessInfo> *result) const;
+    void MergeNamedAccessInfos(std::vector<NamedLoadAccessInfo> accessInfos, NamedAccessMode accessMode,
+                               std::vector<NamedLoadAccessInfo> *result) const;
+    bool TryMergeNamedAccessInfo(NamedLoadAccessInfo *target, const NamedLoadAccessInfo &source,
+                                 NamedAccessMode accessMode) const;
+    bool RecordNamedAccessInfoDependencies(const NamedLoadAccessInfo &accessInfo) const;
+    NamedLoadAccessInfoOpt TryGetConstantLoadObjByNameAccessInfo(JSTaggedValue lookupStartObject,
+                                                                 uint16_t constDataId) const;
+    NamedLoadAccessInfoOpt TryGetLoadObjByNameAccessInfo(uint16_t constDataId, ICSlotIdType slotId) const;
+    static bool IsDeprecatedHClass(JSHClass *hclass);
+    static bool IsAlwaysSharedSpaceJSObject(JSHClass *hclass);
+    static void AppendHClassIfMissing(std::vector<JSHClass *> *hclasses, JSHClass *hclass);
+    static bool ContainsSameHClasses(const std::vector<JSHClass *> &lhs, const std::vector<JSHClass *> &rhs);
+    static bool HasOnlyStringHClasses(const std::vector<JSHClass *> &hclasses);
+    static bool HasOnlySeqOneByteStringHClasses(const std::vector<JSHClass *> &hclasses);
+    static bool HasOnlyNumberHClasses(const std::vector<JSHClass *> &hclasses);
+    static bool IsSupportedMonoNamedLoad(const NamedLoadAccessInfo &accessInfo);
+    static bool HasSameLoadFieldAccess(const NamedLoadAccessInfo &lhs, const NamedLoadAccessInfo &rhs);
+    bool BuildCheckString(ValueVertex *object);
+    bool BuildCheckSeqOneByteString(ValueVertex *object);
+    bool BuildCheckNumber(ValueVertex *object);
+    bool BuildCheckMaps(ValueVertex *object, const std::vector<JSHClass *> &hclasses, bool mapsAreKnownFresh);
+    bool BuildCheckHClass(ValueVertex *object, JSHClass *hclass);
+    bool BuildCheckHClasses(ValueVertex *object, const std::vector<JSHClass *> &hclasses, bool mapsAreKnownFresh);
+    ValueVertex *BuildLoadField(ValueVertex *lookupStartObject, PropertyLookupResult plr);
+    ValueVertex *TryReuseKnownPropertyLoad(ValueVertex *lookupStartObject, uint16_t constDataId,
+                                           PropertyLookupResult plr);
+    void RecordKnownProperty(ValueVertex *lookupStartObject, uint16_t constDataId, PropertyLookupResult plr,
+                             ValueVertex *value, bool isConst);
+    ValueVertex *TryBuildPropertyLoad(ValueVertex *lookupStartObject, uint16_t constDataId,
+                                      const NamedLoadAccessInfo &accessInfo);
+    bool TryBuildPropertyAccess(ValueVertex *receiver, ValueVertex *lookupStartObject, uint16_t constDataId,
+                                const NamedLoadAccessInfo &accessInfo, NamedAccessMode accessMode);
+    void CopyCurrentFrameStateTo(InterpreterFrameState *target) const;
+    void RestoreCurrentFrameStateFrom(const InterpreterFrameState *source);
+    ValueVertex *BuildHClassCompare(ValueVertex *object, JSHClass *hclass);
+    ValueVertex *BuildGenericNamedLoad(ValueVertex *receiver, uint16_t constDataId);
+    bool TryBuildPolymorphicPropertyAccess(ValueVertex *receiver, ValueVertex *lookupStartObject,
+                                           uint16_t constDataId, NamedAccessMode accessMode,
+                                           const std::vector<NamedLoadAccessInfo> &accessInfos);
+    bool TryBuildNamedAccess(ValueVertex *receiver, ValueVertex *lookupStartObject, uint16_t constDataId,
+                             const NamedLoadAccessInfo &accessInfo, bool mapsAreKnownFresh = false);
+    bool TryBuildNamedAccess(ValueVertex *receiver, ValueVertex *lookupStartObject, uint16_t constDataId,
+                             const std::vector<NamedLoadAccessInfo> &accessInfos, bool mapsAreKnownFresh);
+    bool TryBuildNamedAccess(ValueVertex *receiver, ValueVertex *lookupStartObject, uint16_t constDataId);
+    bool TryBuildLoadNamedProperty(ValueVertex *receiver, ValueVertex *lookupStartObject, uint16_t constDataId);
+    bool TryBuildLoadNamedProperty(ValueVertex *receiver, uint16_t constDataId);
 
     void MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex);
     void StartNewBlock(BB *predecessor, MergePointFrameState *mergeState, BBRef *refsToBlock);
@@ -693,6 +789,7 @@ private:
     uintptr_t glueAddr_{0};
     JitCompilationEnv *env_;
     ArkSteedPGOContext pgoContext_;
+    JSHandle<ProfileTypeInfo> profileTypeInfo_;
     ValueVertex *glue_{nullptr};
     ArkSteedCompilationOptions options_;
     // to do: Huge object. Consider referencing instead of copying
@@ -701,6 +798,7 @@ private:
     ChunkVector<MergePointFrameState *> mergeStates_;
     ChunkVector<uint32_t> predecessorCountReductions_;
     ChunkVector<BBRef> jumpTargets_;
+    KnownNodeAspect *knownNodeAspect_ {nullptr};
     BB *startBlock_{nullptr};
 
     MethodLiteral *method_{nullptr};

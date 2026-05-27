@@ -398,6 +398,16 @@ void ThrowUndefinedIfHoleWithNameVertex::Dump(std::ostream &output) const
     output << "  ThrowUndefinedIfHoleWithName (id=" << static_cast<int>(runtimeId_) << ")";
 }
 
+void CheckHClassVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(RECEIVER_INDEX));
+}
+
+void CheckHClassVertex::Dump(std::ostream &output) const
+{
+    output << "  CheckHClass: expected=0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClass_) << std::dec;
+}
+
 void GapMoveVertex::SetValueLocationConstraints()
 {
     UNREACHABLE();

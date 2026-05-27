@@ -157,6 +157,12 @@ void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int32_t immediate)
     assembler_.Cmpq(x64::Immediate(immediate), lhs);
 }
 
+void ArkSteedAssembler::CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs)
+{
+    x64::Operand operand(base, offset);
+    assembler_.Cmpq(rhs, operand);
+}
+
 // =============================================================================
 // Control Flow
 // =============================================================================

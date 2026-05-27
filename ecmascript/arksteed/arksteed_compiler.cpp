@@ -136,7 +136,7 @@ bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGl
         return false;
     }
 #else
-    ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get());
+    ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get(), profileTypeInfo_);
     if (!graphBuilder.Build()) {
         return false;
     }

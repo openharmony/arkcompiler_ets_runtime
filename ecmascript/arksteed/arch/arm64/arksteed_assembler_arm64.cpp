@@ -180,6 +180,14 @@ void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int32_t immediate)
     assembler_.Cmp(lhs, aarch64::Operand(aarch64::Immediate(immediate)));
 }
 
+void ArkSteedAssembler::CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs)
+{
+    ScratchRegisterScope scope;
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    LoadField(scratch, base, offset);
+    Compare(scratch, rhs);
+}
+
 // =============================================================================
 // Control Flow
 // =============================================================================

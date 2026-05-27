@@ -15,13 +15,19 @@
 
 #include "ecmascript/arksteed/arksteed_graph_builder.h"
 
+#include <algorithm>
+
 #include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
 #include "ecmascript/arksteed/arksteed_bytecode_analysis_new.h"
 #include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
 #include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/ic_info.h"
+#include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::arksteed {
 namespace kungfu = panda::ecmascript::kungfu;
@@ -115,6 +121,63 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
     }
     return true;
 }
+
+bool TryAppendHClassFromWeak(JSTaggedValue maybeWeak, std::vector<JSHClass *> &maps)
+{
+    if (!maybeWeak.IsWeak()) {
+        return false;
+    }
+    TaggedObject *referent = maybeWeak.GetWeakReferent();
+    if (referent == nullptr || !JSTaggedValue(referent).IsJSHClass()) {
+        return false;
+    }
+    JSHClass *hclass = JSHClass::Cast(referent);
+    if (std::find(maps.begin(), maps.end(), hclass) == maps.end()) {
+        maps.push_back(hclass);
+    }
+    return true;
+}
+
+class KnownHClassesMerger {
+public:
+    explicit KnownHClassesMerger(const std::vector<JSHClass *> &feedbackMaps)
+    {
+        for (JSHClass *hclass : feedbackMaps) {
+            AppendIfMissing(intersectSet_, hclass);
+        }
+    }
+
+    void IntersectWithKnownNodeAspects(const std::optional<std::vector<JSHClass *>> &knownMaps)
+    {
+        if (!knownMaps.has_value()) {
+            return;
+        }
+
+        std::vector<JSHClass *> intersection;
+        for (JSHClass *hclass : intersectSet_) {
+            if (std::find(knownMaps->begin(), knownMaps->end(), hclass) != knownMaps->end()) {
+                AppendIfMissing(intersection, hclass);
+            }
+        }
+        intersectSet_ = std::move(intersection);
+    }
+
+    const std::vector<JSHClass *> &intersect_set() const
+    {
+        return intersectSet_;
+    }
+
+private:
+    static void AppendIfMissing(std::vector<JSHClass *> &maps, JSHClass *hclass)
+    {
+        if (hclass != nullptr && std::find(maps.begin(), maps.end(), hclass) == maps.end()) {
+            maps.push_back(hclass);
+        }
+    }
+
+    std::vector<JSHClass *> intersectSet_;
+};
+
 }  // namespace
 
 const LivenessBitSet *ArkSteedGraphBuilder::GetInLivenessFor(uint32_t index) const
@@ -209,7 +272,9 @@ ValueVertex *ArkSteedGraphBuilder::NewCallStubWithIC(const CommonStubCSigns::ID 
     allArgs.push_back(GetInt32Constant(static_cast<int>(GetICSlotId(0))));
 
     ValidateCommonStubCallArgs(stubId, allArgs);
-    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
+    ValueVertex *result = NewVertex<CallCommonStubVertex>(allArgs, stubId);
+    ClearKnownNodeAspectsAfterSideEffect();
+    return result;
 }
 
 void ArkSteedGraphBuilder::LowerCallStubWithIC(const CommonStubCSigns::ID stubId,
@@ -229,7 +294,9 @@ ValueVertex *ArkSteedGraphBuilder::NewCommonStubCall(std::initializer_list<Value
 {
     std::vector<ValueVertex *> allArgs(args);
     ValidateCommonStubCallArgs(stubId, allArgs);
-    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
+    ValueVertex *result = NewVertex<CallCommonStubVertex>(allArgs, stubId);
+    ClearKnownNodeAspectsAfterSideEffect();
+    return result;
 }
 
 void ArkSteedGraphBuilder::ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId,
@@ -258,6 +325,676 @@ void ArkSteedGraphBuilder::ValidateCommonStubCallArgs(const CommonStubCSigns::ID
             UNREACHABLE();
         }
     }
+}
+
+void ArkSteedGraphBuilder::ClearKnownNodeAspectsAfterSideEffect()
+{
+    knownNodeAspect_->ClearUnstable();
+}
+
+std::optional<JSTaggedValue> ArkSteedGraphBuilder::TryGetConstantHeapObject(ValueVertex *node) const
+{
+    if (node == nullptr || !node->IsTagged()) {
+        return std::nullopt;
+    }
+
+    JSTaggedValue value;
+    if (auto *constant = node->TryCast<ConstantVertex>()) {
+        value = constant->GetValue();
+    } else if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
+        value = JSTaggedValue(constant->GetValue());
+    } else {
+        return std::nullopt;
+    }
+
+    if (value.IsHole() || value.IsHeapObject()) {
+        return value;
+    }
+    return std::nullopt;
+}
+
+std::optional<JSTaggedValue> ArkSteedGraphBuilder::TryGetNameFromConstDataId(uint16_t constDataId) const
+{
+    if (method_ == nullptr || env_ == nullptr) {
+        return std::nullopt;
+    }
+
+    JSThread *thread = env_->GetJSThread();
+    if (thread == nullptr) {
+        return std::nullopt;
+    }
+
+    ALLOW_DEREF_HANDLE;
+    JSHandle<JSFunction> function = env_->GetJsFunction();
+    JSTaggedValue methodValue = function->GetMethod(thread);
+    if (!methodValue.IsMethod()) {
+        return std::nullopt;
+    }
+    JSTaggedValue constpool = Method::Cast(methodValue.GetTaggedObject())->GetConstantPool(thread);
+    if (constpool.IsUndefined() || !constpool.IsConstantPool()) {
+        return std::nullopt;
+    }
+
+    JSTaggedValue name = ConstantPool::GetStringFromCacheForJit(thread, constpool, constDataId, false);
+    if (name.IsUndefined() || name.IsHole() || !name.IsString()) {
+        return std::nullopt;
+    }
+    return name;
+}
+
+std::optional<std::vector<JSHClass *>> ArkSteedGraphBuilder::TryGetPossibleHClasses(ValueVertex *node) const
+{
+    if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(node)) {
+        if (constant->IsHole() || !constant->IsHeapObject()) {
+            return std::nullopt;
+        }
+        return std::vector<JSHClass *> { constant->GetTaggedObject()->GetClass() };
+    }
+    return knownNodeAspect_->TryGetPossibleHClasses(node);
+}
+
+std::optional<ArkSteedGraphBuilder::NamedAccessFeedback> ArkSteedGraphBuilder::TryGetLoadObjByNameFeedback(
+    ICSlotIdType slotId) const
+{
+    ALLOW_DEREF_HANDLE;
+    if (profileTypeInfo_.GetAddress() == 0) {
+        return std::nullopt;
+    }
+
+    JSTaggedValue profileTypeInfoValue = profileTypeInfo_.GetTaggedValue();
+    if (!profileTypeInfoValue.IsTaggedArray()) {
+        return std::nullopt;
+    }
+
+    auto *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoValue.GetTaggedObject());
+    uint32_t index = static_cast<uint32_t>(slotId);
+    if (index + 1 >= profileTypeInfo->GetIcSlotLength()) {
+        return std::nullopt;
+    }
+    IcAccessor accessor(compilerThread_, profileTypeInfo_, index, ICKind::NamedLoadIC);
+    IcAccessor::ICState state = accessor.GetICState();
+    if (state == IcAccessor::ICState::UNINIT) {
+        return std::nullopt;
+    }
+    NamedAccessFeedback feedback;
+    if (state == IcAccessor::ICState::MEGA || state == IcAccessor::ICState::IC_MEGA) {
+        return feedback;
+    }
+
+    JSTaggedValue first = profileTypeInfo->GetIcSlot(compilerThread_, index);
+    if (state == IcAccessor::ICState::MONO) {
+        if (!TryAppendHClassFromWeak(first, feedback.maps)) {
+            return std::nullopt;
+        }
+        feedback.handlers.push_back(profileTypeInfo->GetIcSlot(compilerThread_, index + 1));
+        return feedback;
+    }
+
+    if (state != IcAccessor::ICState::POLY || !first.IsTaggedArray()) {
+        return std::nullopt;
+    }
+
+    if (!TryFillLoadObjByNamePolyFeedback(TaggedArray::Cast(first.GetTaggedObject()), &feedback)) {
+        return std::nullopt;
+    }
+    return feedback;
+}
+
+bool ArkSteedGraphBuilder::TryFillLoadObjByNamePolyFeedback(TaggedArray *mapsAndHandlers,
+                                                            NamedAccessFeedback *feedback) const
+{
+    if (mapsAndHandlers == nullptr || feedback == nullptr) {
+        return false;
+    }
+    constexpr uint32_t entrySize = 2;
+    for (uint32_t i = 0; i + 1 < mapsAndHandlers->GetLength(); i += entrySize) {
+        JSTaggedValue maybeWeak = mapsAndHandlers->Get(compilerThread_, i);
+        if (maybeWeak.IsUndefined()) {
+            continue;
+        }
+        if (!TryAppendHClassFromWeak(maybeWeak, feedback->maps)) {
+            return false;
+        }
+        feedback->handlers.push_back(mapsAndHandlers->Get(compilerThread_, i + 1));
+    }
+    return !feedback->maps.empty();
+}
+
+ArkSteedGraphBuilder::NamedLoadAccessInfosOpt ArkSteedGraphBuilder::TryGetLoadObjByNameAccessInfos(
+    const std::vector<JSHClass *> &inferredMaps, const NamedAccessFeedback &feedback, uint16_t constDataId,
+    NamedAccessMode accessMode) const
+{
+    if (inferredMaps.empty()) {
+        return std::nullopt;
+    }
+
+    std::vector<NamedLoadAccessInfo> accessInfosForFeedback;
+    accessInfosForFeedback.reserve(inferredMaps.size());
+
+    for (JSHClass *map : inferredMaps) {
+        if (IsDeprecatedHClass(map)) {
+            continue;
+        }
+
+        if (IsAlwaysSharedSpaceJSObject(map) && accessMode == NamedAccessMode::STORE) {
+            return std::nullopt;
+        }
+
+        std::optional<JSTaggedValue> handler = TryFindFeedbackHandler(feedback, map);
+        std::optional<NamedLoadAccessInfo> accessInfo =
+            TryGetPropertyAccessInfo(map, constDataId, accessMode, handler);
+        if (!accessInfo.has_value()) {
+            return std::nullopt;
+        }
+        accessInfosForFeedback.push_back(accessInfo.value());
+    }
+
+    if (accessInfosForFeedback.empty()) {
+        return std::nullopt;
+    }
+
+    std::vector<NamedLoadAccessInfo> accessInfos;
+    if (!FinalizeNamedAccessInfos(std::move(accessInfosForFeedback), accessMode, &accessInfos)) {
+        return std::nullopt;
+    }
+    return accessInfos;
+}
+
+std::optional<JSTaggedValue> ArkSteedGraphBuilder::TryFindFeedbackHandler(const NamedAccessFeedback &feedback,
+                                                                          JSHClass *map) const
+{
+    auto it = std::find(feedback.maps.begin(), feedback.maps.end(), map);
+    if (it == feedback.maps.end()) {
+        return std::nullopt;
+    }
+    size_t idx = static_cast<size_t>(std::distance(feedback.maps.begin(), it));
+    if (idx >= feedback.handlers.size()) {
+        return std::nullopt;
+    }
+    return feedback.handlers[idx];
+}
+
+ArkSteedGraphBuilder::NamedLoadAccessInfoOpt ArkSteedGraphBuilder::TryGetPropertyAccessInfo(
+    JSHClass *map, uint16_t constDataId, NamedAccessMode accessMode, std::optional<JSTaggedValue> handler) const
+{
+    if (accessMode != NamedAccessMode::LOAD || map == nullptr) {
+        return std::nullopt;
+    }
+
+    std::optional<JSTaggedValue> name = TryGetNameFromConstDataId(constDataId);
+    if (!name.has_value()) {
+        return std::nullopt;
+    }
+
+    if (!map->GetLayout(compilerThread_).IsTaggedArray()) {
+        return std::nullopt;
+    }
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilerThread_, map, name.value());
+    NamedLoadAccessInfo accessInfo {
+        .receiverHClass = map,
+        .holderHClass = map,
+        .lookupStartObjectHClasses = {map},
+        .handler = handler,
+        .plr = plr,
+        .isConst = plr.IsFound() && !plr.IsWritable() && StableHClassDependency::IsValid(map),
+    };
+    if (!IsSupportedMonoNamedLoad(accessInfo)) {
+        return std::nullopt;
+    }
+    return accessInfo;
+}
+
+bool ArkSteedGraphBuilder::FinalizeNamedAccessInfos(std::vector<NamedLoadAccessInfo> accessInfos,
+                                                    NamedAccessMode accessMode,
+                                                    std::vector<NamedLoadAccessInfo> *result) const
+{
+    if (accessInfos.empty() || result == nullptr) {
+        return false;
+    }
+
+    MergeNamedAccessInfos(std::move(accessInfos), accessMode, result);
+    if (result->empty()) {
+        return false;
+    }
+
+    for (const NamedLoadAccessInfo &accessInfo : *result) {
+        if (!IsSupportedMonoNamedLoad(accessInfo)) {
+            return false;
+        }
+    }
+
+    for (const NamedLoadAccessInfo &accessInfo : *result) {
+        if (!RecordNamedAccessInfoDependencies(accessInfo)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ArkSteedGraphBuilder::MergeNamedAccessInfos(std::vector<NamedLoadAccessInfo> accessInfos,
+                                                 NamedAccessMode accessMode,
+                                                 std::vector<NamedLoadAccessInfo> *result) const
+{
+    ASSERT(result != nullptr);
+    ASSERT(result->empty());
+    for (auto it = accessInfos.begin(), end = accessInfos.end(); it != end; ++it) {
+        bool merged = false;
+        for (auto ot = it + 1; ot != end; ++ot) {
+            if (TryMergeNamedAccessInfo(&(*ot), *it, accessMode)) {
+                merged = true;
+                break;
+            }
+        }
+        if (!merged) {
+            result->push_back(*it);
+        }
+    }
+}
+
+bool ArkSteedGraphBuilder::TryMergeNamedAccessInfo(NamedLoadAccessInfo *target,
+                                                   const NamedLoadAccessInfo &source,
+                                                   NamedAccessMode accessMode) const
+{
+    if (target == nullptr || !IsSupportedMonoNamedLoad(*target) || !IsSupportedMonoNamedLoad(source)) {
+        return false;
+    }
+    bool bothLocalLoads = target->holderHClass == target->receiverHClass &&
+                          source.holderHClass == source.receiverHClass;
+    if (!bothLocalLoads && target->holderHClass != source.holderHClass) {
+        return false;
+    }
+
+    switch (accessMode) {
+        case NamedAccessMode::LOAD:
+            if (!HasSameLoadFieldAccess(*target, source)) {
+                return false;
+            }
+            break;
+        case NamedAccessMode::STORE:
+        case NamedAccessMode::DEFINE:
+            return false;
+    }
+
+    for (JSHClass *hclass : source.lookupStartObjectHClasses) {
+        AppendHClassIfMissing(&target->lookupStartObjectHClasses, hclass);
+    }
+    return true;
+}
+
+bool ArkSteedGraphBuilder::RecordNamedAccessInfoDependencies(const NamedLoadAccessInfo &accessInfo) const
+{
+    if (!accessInfo.isConst) {
+        return true;
+    }
+    if (env_->GetDependencies() == nullptr) {
+        return false;
+    }
+    for (JSHClass *hclass : accessInfo.lookupStartObjectHClasses) {
+        if (hclass != nullptr && StableHClassDependency::IsValid(hclass) &&
+            !env_->GetDependencies()->DependOnStableHClass(hclass)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+ArkSteedGraphBuilder::NamedLoadAccessInfoOpt ArkSteedGraphBuilder::TryGetConstantLoadObjByNameAccessInfo(
+    JSTaggedValue lookupStartObject, uint16_t constDataId) const
+{
+    if (lookupStartObject.IsHole() || !lookupStartObject.IsHeapObject()) {
+        return std::nullopt;
+    }
+
+    std::optional<JSTaggedValue> name = TryGetNameFromConstDataId(constDataId);
+    if (!name.has_value()) {
+        return std::nullopt;
+    }
+
+    JSHClass *hclass = lookupStartObject.GetTaggedObject()->GetClass();
+    if (!hclass->GetLayout(compilerThread_).IsTaggedArray()) {
+        return std::nullopt;
+    }
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilerThread_, hclass, name.value());
+    return NamedLoadAccessInfo {
+        .receiverHClass = hclass,
+        .holderHClass = hclass,
+        .lookupStartObjectHClasses = {hclass},
+        .plr = plr,
+        .isConst = plr.IsFound() && !plr.IsWritable() && StableHClassDependency::IsValid(hclass),
+    };
+}
+
+ArkSteedGraphBuilder::NamedLoadAccessInfoOpt ArkSteedGraphBuilder::TryGetLoadObjByNameAccessInfo(
+    uint16_t constDataId, ICSlotIdType slotId) const
+{
+    std::optional<NamedAccessFeedback> feedback = TryGetLoadObjByNameFeedback(slotId);
+    if (!feedback.has_value() || feedback->maps.size() != 1) {
+        return std::nullopt;
+    }
+    std::optional<std::vector<NamedLoadAccessInfo>> accessInfos =
+        TryGetLoadObjByNameAccessInfos(feedback->maps, feedback.value(), constDataId, NamedAccessMode::LOAD);
+    if (!accessInfos.has_value() || accessInfos->size() != 1) {
+        return std::nullopt;
+    }
+    return accessInfos->front();
+}
+
+bool ArkSteedGraphBuilder::IsDeprecatedHClass([[maybe_unused]] JSHClass *hclass)
+{
+    return false;
+}
+
+bool ArkSteedGraphBuilder::IsAlwaysSharedSpaceJSObject([[maybe_unused]] JSHClass *hclass)
+{
+    return false;
+}
+
+void ArkSteedGraphBuilder::AppendHClassIfMissing(std::vector<JSHClass *> *hclasses, JSHClass *hclass)
+{
+    if (hclasses == nullptr || hclass == nullptr) {
+        return;
+    }
+    if (std::find(hclasses->begin(), hclasses->end(), hclass) == hclasses->end()) {
+        hclasses->push_back(hclass);
+    }
+}
+
+bool ArkSteedGraphBuilder::ContainsSameHClasses(const std::vector<JSHClass *> &lhs,
+                                                const std::vector<JSHClass *> &rhs)
+{
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    for (JSHClass *hclass : lhs) {
+        if (std::find(rhs.begin(), rhs.end(), hclass) == rhs.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ArkSteedGraphBuilder::HasOnlyStringHClasses(const std::vector<JSHClass *> &hclasses)
+{
+    return !hclasses.empty() && std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
+        return hclass != nullptr && hclass->IsString();
+    });
+}
+
+bool ArkSteedGraphBuilder::HasOnlySeqOneByteStringHClasses([[maybe_unused]] const std::vector<JSHClass *> &hclasses)
+{
+    return false;
+}
+
+bool ArkSteedGraphBuilder::HasOnlyNumberHClasses([[maybe_unused]] const std::vector<JSHClass *> &hclasses)
+{
+    return false;
+}
+
+bool ArkSteedGraphBuilder::IsSupportedMonoNamedLoad(const NamedLoadAccessInfo &accessInfo)
+{
+    PropertyLookupResult plr = accessInfo.plr;
+    return accessInfo.receiverHClass != nullptr && !accessInfo.lookupStartObjectHClasses.empty() &&
+           accessInfo.holderHClass == accessInfo.receiverHClass &&
+           plr.IsFound() && plr.IsLocal() && plr.IsNotHole() && !plr.IsAccessor() && !plr.IsFunction() &&
+           !plr.IsLoadFromIterResult();
+}
+
+bool ArkSteedGraphBuilder::HasSameLoadFieldAccess(const NamedLoadAccessInfo &lhs, const NamedLoadAccessInfo &rhs)
+{
+    return lhs.plr.GetData() == rhs.plr.GetData() && lhs.isConst == rhs.isConst;
+}
+
+bool ArkSteedGraphBuilder::BuildCheckString([[maybe_unused]] ValueVertex *object)
+{
+    return false;
+}
+
+bool ArkSteedGraphBuilder::BuildCheckSeqOneByteString([[maybe_unused]] ValueVertex *object)
+{
+    return false;
+}
+
+bool ArkSteedGraphBuilder::BuildCheckNumber([[maybe_unused]] ValueVertex *object)
+{
+    return false;
+}
+
+bool ArkSteedGraphBuilder::BuildCheckMaps(ValueVertex *object, const std::vector<JSHClass *> &hclasses,
+                                          bool mapsAreKnownFresh)
+{
+    return BuildCheckHClasses(object, hclasses, mapsAreKnownFresh);
+}
+
+bool ArkSteedGraphBuilder::BuildCheckHClass(ValueVertex *object, JSHClass *hclass)
+{
+    if (knownNodeAspect_->TryGetHClass(object) == hclass) {
+        return true;
+    }
+
+    if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(object)) {
+        if (constant->IsHole() || !constant->IsHeapObject()) {
+            return false;
+        }
+        if (constant->GetTaggedObject()->GetClass() != hclass) {
+            return false;
+        }
+        knownNodeAspect_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+        return true;
+    }
+
+    if (StableHClassDependency::IsValid(hclass)) {
+        if (env_->GetDependencies() == nullptr || !env_->GetDependencies()->DependOnStableHClass(hclass)) {
+            return false;
+        }
+    }
+
+    NewVertex<CheckHClassVertex>({object}, hclass);
+    knownNodeAspect_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+    return true;
+}
+
+bool ArkSteedGraphBuilder::BuildCheckHClasses(ValueVertex *object, const std::vector<JSHClass *> &hclasses,
+                                              bool mapsAreKnownFresh)
+{
+    if (hclasses.empty()) {
+        return false;
+    }
+    if (hclasses.size() == 1) {
+        return BuildCheckHClass(object, hclasses.front());
+    }
+
+    if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(object)) {
+        if (constant->IsHole() || !constant->IsHeapObject()) {
+            return false;
+        }
+        JSHClass *hclass = constant->GetTaggedObject()->GetClass();
+        if (std::find(hclasses.begin(), hclasses.end(), hclass) == hclasses.end()) {
+            return false;
+        }
+        knownNodeAspect_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+        return true;
+    }
+
+    std::optional<std::vector<JSHClass *>> knownHClasses = knownNodeAspect_->TryGetPossibleHClasses(object);
+    if (mapsAreKnownFresh && knownHClasses.has_value() && ContainsSameHClasses(knownHClasses.value(), hclasses)) {
+        bool allStable = std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
+            return hclass != nullptr && StableHClassDependency::IsValid(hclass);
+        });
+        knownNodeAspect_->RecordPossibleHClasses(object, hclasses, allStable);
+        return true;
+    }
+
+    return false;
+}
+
+ValueVertex *ArkSteedGraphBuilder::BuildLoadField(ValueVertex *lookupStartObject, PropertyLookupResult plr)
+{
+    if (plr.IsInlinedProps()) {
+        return NewVertex<LoadTaggedFieldVertex>({lookupStartObject}, static_cast<int32_t>(plr.GetOffset()));
+    }
+
+    ValueVertex *properties =
+        NewVertex<LoadTaggedFieldVertex>({lookupStartObject}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+    int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                          plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+    return NewVertex<LoadTaggedFieldVertex>({properties}, offset);
+}
+
+ValueVertex *ArkSteedGraphBuilder::TryReuseKnownPropertyLoad(ValueVertex *lookupStartObject, uint16_t constDataId,
+                                                             PropertyLookupResult plr)
+{
+    return knownNodeAspect_->TryFindLoadedProperty(KnownLoadKey::ConstDataId(lookupStartObject, constDataId, plr));
+}
+
+void ArkSteedGraphBuilder::RecordKnownProperty(ValueVertex *lookupStartObject, uint16_t constDataId,
+                                               PropertyLookupResult plr, ValueVertex *value, bool isConst)
+{
+    if (!isConst) {
+        return;
+    }
+    knownNodeAspect_->RecordLoadedProperty(KnownLoadKey::ConstDataId(lookupStartObject, constDataId, plr), value);
+}
+
+ValueVertex *ArkSteedGraphBuilder::TryBuildPropertyLoad(ValueVertex *lookupStartObject, uint16_t constDataId,
+                                                        const NamedLoadAccessInfo &accessInfo)
+{
+    if (ValueVertex *cached = TryReuseKnownPropertyLoad(lookupStartObject, constDataId, accessInfo.plr)) {
+        return cached;
+    }
+
+    ValueVertex *result = BuildLoadField(lookupStartObject, accessInfo.plr);
+    RecordKnownProperty(lookupStartObject, constDataId, accessInfo.plr, result, accessInfo.isConst);
+    return result;
+}
+
+bool ArkSteedGraphBuilder::TryBuildPropertyAccess([[maybe_unused]] ValueVertex *receiver,
+                                                  ValueVertex *lookupStartObject, uint16_t constDataId,
+                                                  const NamedLoadAccessInfo &accessInfo,
+                                                  NamedAccessMode accessMode)
+{
+    if (accessMode != NamedAccessMode::LOAD) {
+        return false;
+    }
+    currentFrameState_->SetAcc(TryBuildPropertyLoad(lookupStartObject, constDataId, accessInfo));
+    return true;
+}
+
+bool ArkSteedGraphBuilder::TryBuildNamedAccess(ValueVertex *receiver, ValueVertex *lookupStartObject,
+                                               uint16_t constDataId,
+                                               const NamedLoadAccessInfo &accessInfo, bool mapsAreKnownFresh)
+{
+    if (!IsSupportedMonoNamedLoad(accessInfo)) {
+        return false;
+    }
+
+    const std::vector<JSHClass *> &maps = accessInfo.lookupStartObjectHClasses;
+    if (HasOnlyStringHClasses(maps)) {
+        if (HasOnlySeqOneByteStringHClasses(maps)) {
+            if (!BuildCheckSeqOneByteString(lookupStartObject)) {
+                return false;
+            }
+        } else {
+            if (!BuildCheckString(lookupStartObject)) {
+                return false;
+            }
+        }
+    } else if (HasOnlyNumberHClasses(maps)) {
+        if (!BuildCheckNumber(lookupStartObject)) {
+            return false;
+        }
+    } else if (!BuildCheckMaps(lookupStartObject, maps, mapsAreKnownFresh)) {
+        return false;
+    }
+
+    return TryBuildPropertyAccess(receiver, lookupStartObject, constDataId, accessInfo, NamedAccessMode::LOAD);
+}
+
+bool ArkSteedGraphBuilder::TryBuildNamedAccess(ValueVertex *receiver, ValueVertex *lookupStartObject,
+                                               uint16_t constDataId,
+                                               const std::vector<NamedLoadAccessInfo> &accessInfos,
+                                               bool mapsAreKnownFresh)
+{
+    if (accessInfos.empty()) {
+        return false;
+    }
+    if (accessInfos.size() == 1) {
+        return TryBuildNamedAccess(receiver, lookupStartObject, constDataId, accessInfos.front(), mapsAreKnownFresh);
+    }
+    if (!mapsAreKnownFresh) {
+        return false;
+    }
+
+    const NamedLoadAccessInfo &first = accessInfos.front();
+    for (const NamedLoadAccessInfo &accessInfo : accessInfos) {
+        if (!HasSameLoadFieldAccess(first, accessInfo)) {
+            return false;
+        }
+    }
+    currentFrameState_->SetAcc(TryBuildPropertyLoad(lookupStartObject, constDataId, first));
+    return true;
+}
+
+bool ArkSteedGraphBuilder::TryBuildNamedAccess(ValueVertex *receiver, ValueVertex *lookupStartObject,
+                                               uint16_t constDataId)
+{
+    if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(lookupStartObject)) {
+        if (constant->IsHole()) {
+            return false;
+        }
+        std::optional<NamedLoadAccessInfo> maybeAccessInfo =
+            TryGetConstantLoadObjByNameAccessInfo(constant.value(), constDataId);
+        if (!maybeAccessInfo.has_value()) {
+            return false;
+        }
+        return TryBuildNamedAccess(receiver, lookupStartObject, constDataId, maybeAccessInfo.value());
+    }
+
+    std::optional<NamedAccessFeedback> feedback = TryGetLoadObjByNameFeedback(GetICSlotId(0));
+    if (!feedback.has_value()) {
+        return false;
+    }
+
+    std::optional<std::vector<JSHClass *>> inferredMaps;
+    bool mapsAreKnownFresh = false;
+    if (feedback->maps.empty()) {
+        if (receiver != lookupStartObject) {
+            return false;
+        }
+
+        std::optional<std::vector<JSHClass *>> possibleMaps = TryGetPossibleHClasses(lookupStartObject);
+        if (possibleMaps.has_value()) {
+            inferredMaps = possibleMaps.value();
+            mapsAreKnownFresh = true;
+        }
+    } else {
+        KnownHClassesMerger merger(feedback->maps);
+        merger.IntersectWithKnownNodeAspects(TryGetPossibleHClasses(lookupStartObject));
+        inferredMaps = merger.intersect_set();
+    }
+
+    if (!inferredMaps.has_value() || inferredMaps->empty()) {
+        return false;
+    }
+    std::optional<std::vector<NamedLoadAccessInfo>> accessInfos =
+        TryGetLoadObjByNameAccessInfos(inferredMaps.value(), feedback.value(), constDataId, NamedAccessMode::LOAD);
+    if (!accessInfos.has_value()) {
+        return false;
+    }
+    return TryBuildNamedAccess(receiver, lookupStartObject, constDataId, accessInfos.value(), mapsAreKnownFresh);
+}
+
+bool ArkSteedGraphBuilder::TryBuildLoadNamedProperty(ValueVertex *receiver, ValueVertex *lookupStartObject,
+                                                     uint16_t constDataId)
+{
+    return TryBuildNamedAccess(receiver, lookupStartObject, constDataId);
+}
+
+bool ArkSteedGraphBuilder::TryBuildLoadNamedProperty(ValueVertex *receiver, uint16_t constDataId)
+{
+    return false;
+    return TryBuildLoadNamedProperty(receiver, receiver, constDataId);
 }
 
 void ArkSteedGraphBuilder::BuildMergeStates()
@@ -1323,7 +2060,12 @@ void ArkSteedGraphBuilder::LowerTestIn()
 void ArkSteedGraphBuilder::LowerLoadObjByName()
 {
     ValueVertex *receiver = currentFrameState_->GetAcc();
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
+    uint16_t constDataId = GetConstDataId(1);
+    if (TryBuildLoadNamedProperty(receiver, constDataId)) {
+        return;
+    }
+
+    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(constDataId));
     ValueVertex *globalEnv = GetGlobalEnv();
     LowerCallStubWithIC(CommonStubCSigns::GetPropertyByName, {receiver, id, globalEnv});
 }
@@ -2008,7 +2750,6 @@ void ArkSteedGraphBuilder::LowerStLexVar()
 
 void ArkSteedGraphBuilder::LowerDefineClassWithBuffer()
 {
-    // Bytecode format: ID16_ID16_ID16_IMM16_V8 (methodId, literalId, length, proto, lexicalEnv, slotId)
     ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
     ValueVertex *methodId = NewTaggedVertexFromRawInt32(static_cast<int>(GetConstDataId(0)));
     ValueVertex *literalId = NewTaggedVertexFromRawInt32(static_cast<int>(GetConstDataId(1)));
