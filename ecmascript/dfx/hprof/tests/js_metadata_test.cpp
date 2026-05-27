@@ -159,9 +159,8 @@ public:
         fieldNameTable_ = {
             {JSType::INVALID, {"INVALID"}},
             {JSType::HCLASS, {
-                "BitField", "BitField1", "BitField2", "Padding", "Proto", "Layout", "Transitions",
-                "Parent", "ProtoChangeMarker", "ProtoChangeDetails", "EnumCache", "DependentInfos",
-                "ProfilerType", "HCLASS"}},
+                "BitField", "BitField1", "Proto", "Layout", "Transitions", "Parent", "ProtoChangeMarker",
+                "ProtoChangeDetails", "EnumCache", "DependentInfos", "BitField2", "HCLASS"}},
             {JSType::ACCESSOR_DATA, {"Getter", "Setter", "ACCESSOR_DATA"}},
             {JSType::AOT_LITERAL_INFO, {"AOT_LITERAL_INFO"}},
             {JSType::ASYNC_GENERATOR_REQUEST, {"Completion", "Capability", "ASYNC_GENERATOR_REQUEST"}},
@@ -422,12 +421,11 @@ public:
         // endOffset: LAST_OFFSET - (start offset of the first field of this type)
         fieldOffsetTable_ = {
             {JSType::HCLASS, {
-                JSHClass::BIT_FIELD_OFFSET, JSHClass::BIT_FIELD1_OFFSET, JSHClass::BIT_FIELD2_OFFSET,
-                JSHClass::PADDING_OFFSET, JSHClass::PROTOTYPE_OFFSET,
+                JSHClass::BIT_FIELD_OFFSET, JSHClass::BIT_FIELD1_OFFSET, JSHClass::PROTOTYPE_OFFSET,
                 JSHClass::LAYOUT_OFFSET, JSHClass::TRANSTIONS_OFFSET, JSHClass::PARENT_OFFSET,
                 JSHClass::PROTO_CHANGE_MARKER_OFFSET, JSHClass::PROTO_CHANGE_DETAILS_OFFSET,
                 JSHClass::ENUM_CACHE_OFFSET,
-                JSHClass::DEPENDENT_INFOS_OFFSET, JSHClass::PROFILE_TYPE_OFFSET,
+                JSHClass::DEPENDENT_INFOS_OFFSET, JSHClass::BIT_FIELD2_OFFSET,
                 JSHClass::LAST_OFFSET - JSHClass::BIT_FIELD_OFFSET}},
             {JSType::ACCESSOR_DATA, {AccessorData::GETTER_OFFSET, AccessorData::SETTER_OFFSET,
                                      AccessorData::SIZE - AccessorData::GETTER_OFFSET}},
@@ -1264,9 +1262,7 @@ public:
         // { typeName: [size of all fields' in the same order as declared in .h files]}
         fieldSizeTable_ = {
             {JSType::HCLASS, {JSHClass::BIT_FIELD1_OFFSET - JSHClass::BIT_FIELD_OFFSET,
-                              JSHClass::BIT_FIELD2_OFFSET - JSHClass::BIT_FIELD1_OFFSET,
-                              JSHClass::PADDING_OFFSET - JSHClass::BIT_FIELD2_OFFSET,
-                              JSHClass::PROTOTYPE_OFFSET - JSHClass::PADDING_OFFSET,
+                              JSHClass::PROTOTYPE_OFFSET - JSHClass::BIT_FIELD1_OFFSET,
                               JSHClass::LAYOUT_OFFSET - JSHClass::PROTOTYPE_OFFSET,
                               JSHClass::TRANSTIONS_OFFSET - JSHClass::LAYOUT_OFFSET,
                               JSHClass::PARENT_OFFSET - JSHClass::TRANSTIONS_OFFSET,
@@ -1274,8 +1270,8 @@ public:
                               JSHClass::PROTO_CHANGE_DETAILS_OFFSET - JSHClass::PROTO_CHANGE_MARKER_OFFSET,
                               JSHClass::ENUM_CACHE_OFFSET - JSHClass::PROTO_CHANGE_DETAILS_OFFSET,
                               JSHClass::DEPENDENT_INFOS_OFFSET - JSHClass::ENUM_CACHE_OFFSET,
-                              JSHClass::PROFILE_TYPE_OFFSET - JSHClass::DEPENDENT_INFOS_OFFSET,
-                              JSHClass::LAST_OFFSET - JSHClass::PROFILE_TYPE_OFFSET}},
+                              JSHClass::BIT_FIELD2_OFFSET - JSHClass::DEPENDENT_INFOS_OFFSET,
+                              JSHClass::LAST_OFFSET - JSHClass::BIT_FIELD2_OFFSET}},
             {JSType::ACCESSOR_DATA, {AccessorData::SETTER_OFFSET - AccessorData::GETTER_OFFSET,
                                      AccessorData::SIZE - AccessorData::SETTER_OFFSET}},
             {JSType::AOT_LITERAL_INFO, {}},

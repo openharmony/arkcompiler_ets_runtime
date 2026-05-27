@@ -288,8 +288,8 @@ void PGOProfiler::UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHC
     }
     ProfileType oldPt = GetProfileType(oldHClass);
     if (oldPt.IsRootType()) {
-        newHClass->SetProfileType(oldPt.GetRaw());
-        oldHClass->SetProfileType(0);
+        newHClass->SetPGOProfileType(oldPt.GetRaw());
+        oldHClass->ClearPGOProfileType();
     }
 }
 
@@ -1896,13 +1896,13 @@ bool PGOProfiler::IsRecoredTransRootType(ProfileType type)
 
 void PGOProfiler::SetRootProfileType(JSHClass *root, ApEntityId abcId, uint32_t type, ProfileType::Kind kind)
 {
-    ProfileType traceType(root->GetProfileType());
+    ProfileType traceType(root->GetPGOProfileType());
     if (traceType.IsNone()) {
         traceType = ProfileType(abcId, type, kind, true);
         if (IsRecoredTransRootType(traceType)) {
             return;
         }
-        root->SetProfileType(traceType.GetRaw());
+        root->SetPGOProfileType(traceType.GetRaw());
     }
 }
 
@@ -1918,14 +1918,14 @@ ProfileType PGOProfiler::GetOrInsertProfileType(JSHClass *child, ProfileType roo
     if (childType.IsNone()) {
         ASSERT(rootType.IsRootType());
         childType = PGOTypeGenerator::GenerateProfileType(vm_->GetJSThread(), JSTaggedType(child), rootType);
-        child->SetProfileType(childType.GetRaw());
+        child->SetPGOProfileType(childType.GetRaw());
     }
     return childType;
 }
 
 ProfileType PGOProfiler::GetProfileType(JSHClass *hclass, bool check)
 {
-    auto result = ProfileType(hclass->GetProfileType());
+    auto result = ProfileType(hclass->GetPGOProfileType());
     if (check) {
         if (IsSkippableObjectTypeSafe(result)) {
             result = ProfileType::PROFILE_TYPE_NONE;

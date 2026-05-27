@@ -74,6 +74,8 @@ public:
     using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
     using IsRootBits = KindBits::NextFlag;  // 50
     using EverOutOfBoundsBits = IsRootBits::NextFlag; // 51
+    static_assert(EverOutOfBoundsBits::END_BIT == PGO_PROFILE_TYPE_USED_BITS,
+                  "PGO_PROFILE_TYPE_USED_BITS must match ProfileType");
 
     using StringMap = std::multimap<std::string, std::string>;
     using MapVector = std::vector<std::vector<StringMap>>;

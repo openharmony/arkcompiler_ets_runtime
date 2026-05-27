@@ -110,7 +110,7 @@ public:
     [[maybe_unused]] uint64_t padding_;
     static constexpr size_t SIZE = 1416; // Note: should be same with 1.2 string Class size
 #else
-    static constexpr size_t SIZE = 96; // Note: At least same with JSHClass::SIZE (BitField2 + Padding)
+    static constexpr size_t SIZE = 88; // Note: At least same with JSHClass::SIZE
 #endif
     BaseStringClass class_;
     // These fields are primitive or pointer to root, skip it.

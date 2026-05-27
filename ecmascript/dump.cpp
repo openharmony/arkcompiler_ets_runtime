@@ -673,7 +673,7 @@ static void DumpHClass(const JSThread *thread, const JSHClass *jshclass, std::os
         os << "\n";
     }
 
-    os << " - ProfileType : " << std::hex << jshclass->GetProfileType() << "\n";
+    os << " - ProfileType : " << std::hex << jshclass->GetBitField2() << "\n";
 
     os << " - Flags : " << std::setw(DUMP_TYPE_OFFSET);
     os << "IsCtor :" << std::boolalpha << jshclass->IsConstructor();
