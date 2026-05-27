@@ -843,24 +843,13 @@ void SharedGCStats::PrintStatisticResult()
 void SharedGCStats::PrintGCStatistic()
 {
     if (enableGCTracer_) {
-        LOG_GC(INFO) << " [ " << GetGCTypeName() << " ] "
-                     << sizeToMB(recordData_[(uint8_t)RecordData::START_OBJ_SIZE]) << " ("
-                     << sizeToMB(recordData_[(uint8_t)RecordData::START_COMMIT_SIZE]) << ") -> "
-                     << sizeToMB(recordData_[(uint8_t)RecordData::END_OBJ_SIZE]) << " ("
-                     << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
-                     << scopeDuration_[Scope::ScopeId::TotalGC]
-                     << "ms, GCReason: " << GCReasonToString()
-                     << ", MarkReason: " << MarkReasonToString();
-        LOG_GC(INFO) << "IsInBackground: " << Runtime::GetInstance()->IsInBackground() << "; "
-                     << "SensitiveStatus: " << static_cast<int>(sHeap_->GetSensitiveStatus()) << "; "
-                     << "StartupStatus: " << std::to_string(static_cast<int>(sHeap_->GetStartupStatus())) << "; "
-                     << "Old: " << std::to_string(sHeap_->GetOldSpace()->GetCommittedSize()) << "; "
-                     << "Huge:" << std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize()) << "; "
-                     << "NonMov:" << std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize()) << "; "
-                     << "TotCommit:" << std::to_string(sHeap_->GetCommittedSize());
+        PrintSharedGCOverview();
         PrintSharedGCDuration();
         PrintGCMemoryStatistic();
         PrintSharedGCSummaryStatistic();
+    } else if (gcType_ == GCType::SHARED_PARTIAL_GC) {
+        PrintSharedGCOverview();
+        PrintGCMemoryStatistic();
     }
     SharedGCFinishTrace();
     InitializeRecordList();
@@ -880,6 +869,25 @@ void SharedGCStats::SharedGCFinishTrace()
         + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
         + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
         + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
+}
+
+void SharedGCStats::PrintSharedGCOverview()
+{
+    LOG_GC(INFO) << " [ " << GetGCTypeName() << " ] "
+                 << sizeToMB(recordData_[(uint8_t)RecordData::START_OBJ_SIZE]) << " ("
+                 << sizeToMB(recordData_[(uint8_t)RecordData::START_COMMIT_SIZE]) << ") -> "
+                 << sizeToMB(recordData_[(uint8_t)RecordData::END_OBJ_SIZE]) << " ("
+                 << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
+                 << scopeDuration_[Scope::ScopeId::TotalGC]
+                 << "ms, GCReason: " << GCReasonToString()
+                 << ", MarkReason: " << MarkReasonToString();
+    LOG_GC(INFO) << "IsInBackground: " << Runtime::GetInstance()->IsInBackground() << "; "
+                 << "SensitiveStatus: " << static_cast<int>(sHeap_->GetSensitiveStatus()) << "; "
+                 << "StartupStatus: " << std::to_string(static_cast<int>(sHeap_->GetStartupStatus())) << "; "
+                 << "Old: " << std::to_string(sHeap_->GetOldSpace()->GetCommittedSize()) << "; "
+                 << "Huge:" << std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize()) << "; "
+                 << "NonMov:" << std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize()) << "; "
+                 << "TotCommit:" << std::to_string(sHeap_->GetCommittedSize());
 }
 
 void SharedGCStats::PrintSharedGCSummaryStatistic()

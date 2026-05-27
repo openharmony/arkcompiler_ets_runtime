@@ -370,6 +370,7 @@ public:
     void RecordStatisticAfterGC() override;
     size_t GetAccumulatedAllocateSize() override;
 private:
+    void PrintSharedGCOverview();
     void PrintSharedGCDuration();
     void PrintSharedGCSummaryStatistic();
     void SharedGCFinishTrace();
