@@ -20,8 +20,13 @@
 #include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
 #include "ecmascript/arksteed/arksteed_framestate_new.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
+#include "ecmascript/compiler/common_stub_csigns.h"
 
 namespace panda::ecmascript::arksteed {
+using CallSignature = kungfu::CallSignature;
+using CommonStubCSigns = kungfu::CommonStubCSigns;
+using RuntimeStubCSigns = kungfu::RuntimeStubCSigns;
+
 class GraphBuilderNew {
 public:
     GraphBuilderNew(Graph *destGraph,

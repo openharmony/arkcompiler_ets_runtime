@@ -291,8 +291,8 @@ private:
     void ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args) const;
 
     void MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex);
+    void StartNewBlock(BB *predecessor, MergePointFrameState *mergeState, BBRef *refsToBlock);
     void StartNewBlockWithMergeState(uint32_t index);
-    BB *StartNewBlockWithMergeState(MergePointFrameState *mergeState, BBRef *ref, BB **blockSlot);
     void ProcessMergePointPredecessors(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock);
     void TrySplitCriticalEdge(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock, uint32_t predIndex);
 
@@ -320,7 +320,6 @@ private:
             uint32_t predecessorCount_;
             MergePointFrameState *variableMergeState_ = nullptr;
             LivenessBitSet *mergeLiveSet_ = nullptr;
-            BB *block_ = nullptr;
             BBRef ref_;
         };
 

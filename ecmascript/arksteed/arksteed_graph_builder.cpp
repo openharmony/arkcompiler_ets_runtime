@@ -2193,6 +2193,7 @@ void ArkSteedGraphBuilder::LowerDefinePrivateProperty()
 
 void ArkSteedGraphBuilder::MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex)
 {
+    ASSERT(predecessor != nullptr);
     if (mergeStates_[destIndex] == nullptr) {
         const LivenessBitSet *liveness = GetInLivenessFor(destIndex);
         uint32_t predCount = PredecessorCount(destIndex);
@@ -2200,39 +2201,6 @@ void ArkSteedGraphBuilder::MergeCurrentFrameStateTo(BB *predecessor, uint32_t de
         mergeStates_[destIndex] = MergePointFrameState::New(destIndex, predCount, liveness, GetChunk());
     }
     mergeStates_[destIndex]->MergeFrom(*currentFrameState_, predecessor);
-}
-
-BB *ArkSteedGraphBuilder::StartNewBlockWithMergeState(MergePointFrameState *mergeState, BBRef *ref, BB **blockSlot)
-{
-    ASSERT(mergeState != nullptr);
-    ASSERT(ref != nullptr);
-    ASSERT(blockSlot != nullptr);
-
-    BB *block = *blockSlot;
-    if (block == nullptr) {
-        uint32_t numPreds = mergeState->PredecessorCount();
-        block = BB::New(GetChunk());
-        block->SetPredecessorCount(numPreds);
-        block->SetRegisterMergeState(&mergeState->RegisterState());
-        if (mergeState->IsLoopHeader()) {
-            block->SetLoopHeader(true);
-        }
-        if (mergeState->IsExceptionHandler()) {
-            block->SetExceptionHandler(true);
-        }
-        *blockSlot = block;
-        ref->Bind(block);
-    }
-
-    SetCurrentBlock(block);
-    for (PhiVertex *phi : mergeState->Phis()) {
-        if (phi->Vertex::GetOwner() == nullptr) {
-            phi->SetOwner(block);
-            block->GetPhis().push_back(phi);
-            RegisterVertexWithLabeller(phi);
-        }
-    }
-    return block;
 }
 
 ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Label::Label(ArkSteedSubGraphBuilder *subBuilder,
@@ -2322,8 +2290,8 @@ void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Bind(Label *label)
 
     subGraphFrame_->CopyFrom(*label->variableMergeState_);
 
-    builder_->StartNewBlockWithMergeState(label->variableMergeState_, &label->ref_, &label->block_);
-    builder_->ProcessMergePointPredecessors(label->variableMergeState_, &label->ref_, label->block_);
+    builder_->StartNewBlock(nullptr, label->variableMergeState_, &label->ref_);
+    builder_->ProcessMergePointPredecessors(label->variableMergeState_, &label->ref_, builder_->CurrentBlock());
 }
 
 ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::TrimPredecessorsAndBind(Label *label)
@@ -2363,8 +2331,8 @@ ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::LoopLabel ArkSteedGraphBuilder::A
     MergePointFrameState *loopState = MergePointFrameState::NewForLoop(
         BytecodeContext::INVALID_BC_INDEX, kLoopHeaderPredecessorCount, loopHeaderLiveness, loopInfo, chunk);
     loopState->MergeFrom(*subGraphFrame_, loopPredecessor);
-    BB *loopHeaderBlock = nullptr;
-    builder_->StartNewBlockWithMergeState(loopState, loopHeaderRef, &loopHeaderBlock);
+    builder_->StartNewBlock(nullptr, loopState, loopHeaderRef);
+    BB *loopHeaderBlock = builder_->CurrentBlock();
     builder_->ProcessMergePointPredecessors(loopState, loopHeaderRef, loopHeaderBlock);
     subGraphFrame_->CopyFrom(*loopState);
     return LoopLabel(this, loopState, loopHeaderRef, loopHeaderBlock);
@@ -2540,6 +2508,38 @@ void ArkSteedGraphBuilder::MarkDeadPredecessorsForSuccessors(uint32_t index, con
     }
 }
 
+void ArkSteedGraphBuilder::StartNewBlock(BB *predecessor, MergePointFrameState *mergeState, BBRef *refsToBlock)
+{
+    ASSERT(CurrentBlock() == nullptr);
+
+    BB *current = BB::New(GetChunk());
+    if (mergeState == nullptr) {
+        ASSERT(predecessor != nullptr);
+        current->SetPredecessorCount(1);
+        current->AddPredecessor(predecessor);
+    } else {
+        uint32_t numPreds = mergeState->PredecessorCount();
+        current->SetPredecessorCount(numPreds);
+        current->SetRegisterMergeState(&mergeState->RegisterState());
+        if (mergeState->IsLoopHeader()) {
+            current->SetLoopHeader(true);
+        }
+        if (mergeState->IsExceptionHandler()) {
+            current->SetExceptionHandler(true);
+        }
+        for (PhiVertex *phi : mergeState->Phis()) {
+            phi->SetOwner(current);
+            current->GetPhis().push_back(phi);
+            RegisterVertexWithLabeller(phi);
+        }
+    }
+
+    SetCurrentBlock(current);
+    if (refsToBlock != nullptr) {
+        refsToBlock->Bind(current);
+    }
+}
+
 void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
 {
 #ifndef NDEBUG
@@ -2547,8 +2547,8 @@ void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
 #endif
     ASSERT(mergeStates_[index] != nullptr);
 
-    BB *current = nullptr;
-    StartNewBlockWithMergeState(mergeStates_[index], &jumpTargets_[index], &current);
+    StartNewBlock(nullptr, mergeStates_[index], &jumpTargets_[index]);
+    BB *current = CurrentBlock();
 
     // For all virtual registers not in LiveIn(B) where B is current basic block,
     // it is either defined in B (which will be updated to currentFrameState_ during bytecode visiting) or

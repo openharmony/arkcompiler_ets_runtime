@@ -19,6 +19,7 @@
 #include <sstream>
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
+#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/js_tagged_value.h"
 
@@ -509,14 +510,96 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallComm
     assembler_->FreeCallArgSlots(stackArgCount);
 }
 
+bool ArkSteedCodeGenerator::AllPredecessorsDeferred(BB *block) const
+{
+    bool allDeferred = true;
+    block->ForEachPredecessor([&allDeferred](BB *predecessor) {
+        if (!predecessor->IsDeferred()) {
+            allDeferred = false;
+        }
+    });
+    return allDeferred;
+}
+
+bool ArkSteedCodeGenerator::AllSuccessorsDeferred(BB *block)
+{
+    bool allDeferred = true;
+    block->ForEachSuccessor([&allDeferred](BB *successor) {
+        ASSERT(successor != nullptr);
+        if (!successor->IsDeferred()) {
+            allDeferred = false;
+        }
+    });
+    return allDeferred;
+}
+
+int ArkSteedCodeGenerator::ComputeDeferredBlocks()
+{
+    int deferredCount = 0;
+    ChunkVector<BB *> workQueue(graph_->GetChunk());
+    // (fixme): Seed deferred blocks when cold throw/deopt paths are modelled.
+    for (BB *block : *graph_) {
+        if (block->IsDeferred()) {
+            ++deferredCount;
+            workQueue.push_back(block);
+        }
+    }
+
+    while (!workQueue.empty()) {
+        BB *block = workQueue.back();
+        workQueue.pop_back();
+        ASSERT(block->IsDeferred());
+
+        block->ForEachSuccessor([this, &workQueue, &deferredCount](BB *successor) {
+            if (!successor->IsDeferred() && AllPredecessorsDeferred(successor)) {
+                successor->SetDeferred(true);
+                ++deferredCount;
+                workQueue.push_back(successor);
+            }
+        });
+
+        block->ForEachPredecessor([this, &workQueue, &deferredCount](BB *predecessor) {
+            if (!predecessor->IsDeferred() && AllSuccessorsDeferred(predecessor)) {
+                predecessor->SetDeferred(true);
+                ++deferredCount;
+                workQueue.push_back(predecessor);
+            }
+        });
+    }
+    return deferredCount;
+}
+
+void ArkSteedCodeGenerator::ReorderDeferredBlocks(int deferredCount)
+{
+    if (deferredCount == 0) {
+        return;
+    }
+    // If we deferred the first block, un-defer it. This can happen because we
+    // defer a block if all its successors are deferred (i.e., lead to an
+    // unconditional deopt). E.g., if we only executed exception throwing code
+    // paths, the non-exception code paths might be untaken, and thus contain
+    // unconditional deopts, so we end up deferring all non-exception code
+    // paths, including the first block.
+    if ((*graph_)[0]->IsDeferred()) {
+        (*graph_)[0]->SetDeferred(false);
+        --deferredCount;
+    }
+    std::stable_partition(graph_->begin(), graph_->end(), [](BB *block) { return !block->IsDeferred(); });
+}
+
+bool ArkSteedCodeGenerator::IsNextBlockInLayout(BB *target) const
+{
+    ASSERT(target != nullptr);
+    return target == currentLayoutNextBlock_;
+}
+
 template <>
 void ArkSteedCodeGenerator::VisitControlVertex<JumpVertex>(JumpVertex *jump)
 {
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jump->GetId() << ": JumpVertex to BB #" << jump->Target()->GetId();
 #endif
-    uint32_t curBlockIndex = jump->GetOwner()->GetId();
-    bool isFallthrough = (jump->Target()->GetId() == curBlockIndex + 1);
+    bool isFallthrough = IsNextBlockInLayout(jump->Target());
     if (!isFallthrough) {
         assembler_->Jump(jump->Target()->GetLabel());
     } else {
@@ -539,9 +622,8 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTrueVertex>(BranchIfTrueV
 {
     BB *ifTrue = jumpIf->IfTrue();
     BB *ifFalse = jumpIf->IfFalse();
-    uint32_t curBlockIndex = jumpIf->GetOwner()->GetId();
-    bool trueBranchIsFallthrough = (ifTrue->GetId() == curBlockIndex + 1);
-    bool falseBranchIsFallthrough = (ifFalse->GetId() == curBlockIndex + 1);
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
 
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId() << ": BranchIfTrueVertex to BB #" << ifTrue->GetId()
@@ -595,6 +677,9 @@ int32_t ArkSteedCodeGenerator::ComputeFrameSize(Graph *graph)
 
 void ArkSteedCodeGenerator::Generate()
 {
+    int deferredCount = ComputeDeferredBlocks();
+    ReorderDeferredBlocks(deferredCount);
+
     // Compute block colors only when code comments are enabled
     // This minimizes JIT compilation overhead when comments are disabled
     if (assembler_->IsCommentEnabled()) {
@@ -605,6 +690,7 @@ void ArkSteedCodeGenerator::Generate()
 
     for (int i = 0, numBlocks = graph_->NumBlocks(); i < numBlocks; ++i) {
         BB *curBlock = (*graph_)[i];
+        currentLayoutNextBlock_ = (i + 1 < numBlocks) ? (*graph_)[i + 1] : nullptr;
 #ifndef NDEBUG
         LOG_COMPILER(DEBUG) << "CodeGen: Starts BB #" << curBlock->GetId();
 #endif
@@ -902,6 +988,9 @@ void ArkSteedCodeGenerator::RecordBlockComment(BB *block)
     SetCurrentBlockColor(block->GetId());
     std::ostringstream ss;
     ss << GetCurrentBlockColor() << "-- Block b" << block->GetId();
+    if (block->IsDeferred()) {
+        ss << " (deferred)";
+    }
 
     // Print predecessors for merge blocks with their colors
     if (block->HasRegisterMerge()) {
@@ -983,14 +1072,13 @@ void ArkSteedCodeGenerator::AppendVertexSuccessorInfo(std::ostringstream *ss, Ve
         *ss << " --> [" << GetBlockColor(jumpLoop->Target()->GetId()) << "b" << jumpLoop->Target()->GetId()
             << GetCurrentBlockColor() << "] (loop back)";
     } else if (auto *branch = control->TryCast<BranchIfTrueVertex>(); branch != nullptr) {
-        uint32_t curBlockIndex = branch->GetOwner()->GetId();
         *ss << " --> [" << GetBlockColor(branch->IfTrue()->GetId()) << "b" << branch->IfTrue()->GetId();
-        if (branch->IfTrue()->GetId() == curBlockIndex + 1) {
+        if (IsNextBlockInLayout(branch->IfTrue())) {
             *ss << " (fallthrough)";
         }
         *ss << GetCurrentBlockColor() << " if true, " << GetBlockColor(branch->IfFalse()->GetId()) << "b"
             << branch->IfFalse()->GetId();
-        if (branch->IfFalse()->GetId() == curBlockIndex + 1) {
+        if (IsNextBlockInLayout(branch->IfFalse())) {
             *ss << " (fallthrough)";
         }
         *ss << GetCurrentBlockColor() << " if false]";

@@ -17,7 +17,6 @@
 #define ECMASCRIPT_ARKSTEED_VERTEX_H
 
 #include "common_interfaces/base/bit_field.h"
-#include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_opcode_list.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/arksteed/arksteed_regalloc_vertex_info.h"
@@ -28,13 +27,73 @@
 
 namespace panda::ecmascript::arksteed {
 
+class BB;
 class Vertex;
 class ValueVertex;
 class ControlVertex;
 class UnconditionalControlVertex;
+class BranchControlVertex;
 class InputLocation;
 class Input;
 class ConstInput;
+
+// A singly linked list that temporarily stores predecessors referring to this block.
+// All predecessors point to the same target block after Bind() is called.
+class BBRef {
+public:
+    BBRef() : nextRef_(nullptr) {}
+    explicit BBRef(BB *basicBlock) : basicBlock_(basicBlock) {}
+    explicit BBRef(BBRef *head) : BBRef()
+    {
+        MoveToListHead(head);
+    }
+
+    void Bind(BB *basicBlock)
+    {
+        BBRef *nextRef = SetToBlockAndReturnNext(basicBlock);
+        while (nextRef != nullptr) {
+            nextRef = nextRef->SetToBlockAndReturnNext(basicBlock);
+        }
+    }
+
+    BBRef *MoveToListHead(BBRef *head)
+    {
+        BBRef *oldNextRef = head->nextRef_;
+        nextRef_ = oldNextRef;
+        head->nextRef_ = this;
+        return oldNextRef;
+    }
+
+    BBRef *SetToBlockAndReturnNext(BB *basicBlock)
+    {
+        BBRef *ref = nextRef_;
+        basicBlock_ = basicBlock;
+        return ref;
+    }
+
+    BBRef *Reset()
+    {
+        BBRef *ref = nextRef_;
+        nextRef_ = nullptr;
+        return ref;
+    }
+
+    BB *BlockRef() const
+    {
+        return basicBlock_;
+    }
+
+    void SetBlockRef(BB *basicBlock)
+    {
+        basicBlock_ = basicBlock;
+    }
+
+private:
+    union {
+        BB *basicBlock_;
+        BBRef *nextRef_;
+    };
+};
 
 // ValueRepresentation describes the machine representation of a value
 enum class ValueRepresentation : uint8_t {
@@ -345,6 +404,18 @@ inline constexpr bool IsControlVertex(VertexOpcode opcode)
 inline constexpr bool IsUnconditionalControlVertex(VertexOpcode opcode)
 {
     return opcode >= FIRST_UNCONDITIONAL_CONTROL_VERTEX_OPCODE && opcode <= LAST_UNCONDITIONAL_CONTROL_VERTEX_OPCODE;
+}
+
+inline constexpr bool IsBranchControlVertex(VertexOpcode opcode)
+{
+    switch (opcode) {
+#define CASE(type) case VertexOpcode::type:
+        BRANCH_CONTROL_VERTEX_LIST(CASE)
+#undef CASE
+        return true;
+        default:
+            return false;
+    }
 }
 
 // Input to a vertex
@@ -805,6 +876,12 @@ template <>
 constexpr bool Vertex::Is<UnconditionalControlVertex>() const
 {
     return IsUnconditionalControlVertex(GetOpcode());
+}
+
+template <>
+constexpr bool Vertex::Is<BranchControlVertex>() const
+{
+    return IsBranchControlVertex(GetOpcode());
 }
 
 // Factory method implementation

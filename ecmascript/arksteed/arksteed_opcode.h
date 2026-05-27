@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_ARKSTEED_OPCODE_H
 #define ECMASCRIPT_ARKSTEED_OPCODE_H
 
-#include "ecmascript/arksteed/arksteed_regalloc.h"
+#include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/arksteed/arksteed_vreg.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -560,46 +560,75 @@ protected:
     {}
 };
 
-/**
- * BranchIfTrue vertex - conditional branch based on boolean true value
- * Jumps to if_true if the condition is exactly the boolean true value,
- * otherwise jumps to if_false
- */
-class BranchIfTrueVertex : public FixedInputVertexMixin<1, ControlVertex, BranchIfTrueVertex> {
+class BranchControlVertex : public ControlVertex {
 public:
-    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
-
-    BranchIfTrueVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
-        : FixedInputVertexMixin(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
-    {}
-
-    BranchIfTrueVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
-        : FixedInputVertexMixin(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
-    {}
-
     BB *IfTrue() const
     {
         return ifTrue_.BlockRef();
     }
+
     BB *IfFalse() const
     {
         return ifFalse_.BlockRef();
     }
+
     void SetIfTrue(BB *block)
     {
         ifTrue_.SetBlockRef(block);
     }
+
     void SetIfFalse(BB *block)
     {
         ifFalse_.SetBlockRef(block);
     }
 
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
+protected:
+    BranchControlVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
+        : ControlVertex(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
+    {}
+    BranchControlVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
+        : ControlVertex(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
+    {}
 
 private:
     BBRef ifTrue_;
     BBRef ifFalse_;
+};
+
+/**
+ * BranchControlVertexT - CRTP mixin for conditional control vertices
+ * Provides compile-time type checking and branch target management.
+ */
+template <size_t InputCount, typename Derived>
+class BranchControlVertexT : public FixedInputVertexMixin<InputCount, BranchControlVertex, Derived> {
+protected:
+    BranchControlVertexT(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
+        : FixedInputVertexMixin<InputCount, BranchControlVertex, Derived>(bitfield, ifTrue, ifFalse)
+    {}
+    BranchControlVertexT(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
+        : FixedInputVertexMixin<InputCount, BranchControlVertex, Derived>(bitfield, ifTrue, ifFalse)
+    {}
+};
+
+/**
+ * BranchIfTrue vertex - conditional branch based on boolean true value
+ * Jumps to if_true if the condition is exactly the boolean true value,
+ * otherwise jumps to if_false
+ */
+class BranchIfTrueVertex : public BranchControlVertexT<1, BranchIfTrueVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfTrueVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse)
+    {}
+
+    BranchIfTrueVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
 };
 
 /**

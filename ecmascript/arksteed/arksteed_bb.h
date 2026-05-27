@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_BB_H
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "libpandabase/macros.h"
@@ -54,6 +55,16 @@ public:
     void SetId(uint32_t id)
     {
         id_ = id;
+    }
+
+    bool IsDeferred() const
+    {
+        return deferred_;
+    }
+
+    void SetDeferred(bool deferred)
+    {
+        deferred_ = deferred;
     }
 
     ControlVertex *GetControlVertex() const
@@ -123,6 +134,26 @@ public:
     Span<BB *> GetPredecessors() { return {predecessors_.data(), predecessors_.size()}; }
     Span<const BB *const> GetPredecessors() const { return {predecessors_.data(), predecessors_.size()}; }
 
+    template <class Callback>
+    void ForEachPredecessor(Callback callback) const
+    {
+        for (const BB *predecessor : GetPredecessors()) {
+            callback(const_cast<BB *>(predecessor));
+        }
+    }
+
+    template <class Callback>
+    void ForEachSuccessor(Callback callback) const
+    {
+        ControlVertex *control = GetControlVertex();
+        if (auto *jump = control->TryCast<UnconditionalControlVertex>(); jump != nullptr) {
+            callback(jump->Target());
+        } else if (auto *branch = control->TryCast<BranchControlVertex>(); branch != nullptr) {
+            callback(branch->IfTrue());
+            callback(branch->IfFalse());
+        }
+    }
+
     BB *GetPredecessor(uint32_t index) { return predecessors_[index]; }
     const BB *GetPredecessor(uint32_t index) const { return predecessors_[index]; }
 
@@ -146,6 +177,7 @@ public:
 private:
     explicit BB(Chunk *chunk)
         : id_(INVALID_BLOCK_ID),
+          deferred_(false),
           controlVertex_(nullptr),
           phis_(chunk),
           vertices_(chunk),
@@ -158,6 +190,7 @@ private:
     {}
 
     uint32_t id_;
+    bool deferred_;
     ControlVertex *controlVertex_;
     ChunkVector<PhiVertex *> phis_;
     ChunkVector<NonControlVertex *> vertices_;
@@ -170,63 +203,6 @@ private:
     Label label_;
 };
 
-// A singly linked list that temporarily stores predecessors referring to this block.
-// All predecessors point to the same target block after Bind() is called.
-class BBRef {
-public:
-    BBRef() : nextRef_(nullptr) {}
-    explicit BBRef(BB *basicBlock) : basicBlock_(basicBlock) {}
-    explicit BBRef(BBRef *head) : BBRef()
-    {
-        MoveToListHead(head);
-    }
-
-    void Bind(BB *basicBlock)
-    {
-        BBRef *nextRef = SetToBlockAndReturnNext(basicBlock);
-        while (nextRef != nullptr) {
-            nextRef = nextRef->SetToBlockAndReturnNext(basicBlock);
-        }
-    }
-
-    BBRef *MoveToListHead(BBRef *head)
-    {
-        BBRef *oldNextRef = head->nextRef_;
-        nextRef_ = oldNextRef;
-        head->nextRef_ = this;
-        return oldNextRef;
-    }
-
-    BBRef *SetToBlockAndReturnNext(BB *basicBlock)
-    {
-        BBRef *ref = nextRef_;
-        basicBlock_ = basicBlock;
-        return ref;
-    }
-
-    BBRef *Reset()
-    {
-        BBRef *ref = nextRef_;
-        nextRef_ = nullptr;
-        return ref;
-    }
-
-    BB *BlockRef() const
-    {
-        return basicBlock_;
-    }
-
-    void SetBlockRef(BB *basicBlock)
-    {
-        basicBlock_ = basicBlock;
-    }
-
-private:
-    union {
-        BB *basicBlock_;
-        BBRef *nextRef_;
-    };
-};
 }  // namespace panda::ecmascript::arksteed
 
 #endif  // ECMASCRIPT_ARKSTEED_BB_H
