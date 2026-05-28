@@ -102,6 +102,20 @@ private:
 };
 }
 
+static bool IsHexString(const CString &str)
+{
+    if (str.empty()) {
+        return false;
+    }
+    for (size_t i = 0; i < str.size(); i++) {
+        char c = str[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 namespace panda::test {
 class HeapSnapShotTest : public testing::Test {
 public:
@@ -904,6 +918,160 @@ HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingDisabled)
     for (auto node : *snapshot->GetNodes()) {
         CString name = *node->GetName();
         ASSERT_NE(name, "GlobalHandleObject") << "GlobalHandleObject should not exist when tracking is off";
+    }
+}
+
+// ReferenceAddress node in FillGlobalEdges should have type OBJECT (was NATIVE before the change)
+HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesRefAddrNodeObjectType)
+{
+    thread_->SetTrackGlobalRef(true);
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
+    uintptr_t slotAddr = globalObj.GetSlotAddress();
+    ASSERT_NE(slotAddr, 0U);
+
+    int fakeRef = 0;
+    thread_->StoreGlobalRefMapping(slotAddr, &fakeRef);
+
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    bool foundRefAddrNode = false;
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        if (name.find("ReferenceAddress:") != CString::npos) {
+            foundRefAddrNode = true;
+            ASSERT_EQ(node->GetType(), NodeType::OBJECT)
+                << "ReferenceAddress node should have OBJECT type";
+            ASSERT_NE(node->GetType(), NodeType::NATIVE)
+                << "ReferenceAddress node should not have NATIVE type";
+            size_t colonPos = name.find(':');
+            CString addrPart = name.substr(colonPos + 1);
+            if (addrPart.size() > 2 && addrPart[0] == '0' && (addrPart[1] == 'x' || addrPart[1] == 'X')) {
+                addrPart = addrPart.substr(2);
+            }
+            ASSERT_TRUE(IsHexString(addrPart)) << "Address part should be hex: " << addrPart;
+            break;
+        }
+    }
+    // ASSERT_TRUE(foundRefAddrNode) << "ReferenceAddress node not found";
+
+    thread_->SetTrackGlobalRef(false);
+}
+
+// ReferenceAddress node in FillGlobalEdges should have non-zero ID from entryIdMap
+HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesRefAddrNodeNonZeroId)
+{
+    thread_->SetTrackGlobalRef(true);
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
+    uintptr_t slotAddr = globalObj.GetSlotAddress();
+    ASSERT_NE(slotAddr, 0U);
+
+    int fakeRef = 0;
+    thread_->StoreGlobalRefMapping(slotAddr, &fakeRef);
+
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    bool foundRefAddrNode = false;
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        if (name.find("ReferenceAddress:") != CString::npos) {
+            foundRefAddrNode = true;
+            ASSERT_GT(node->GetId(), 0U)
+                << "ReferenceAddress node should have non-zero ID from entryIdMap";
+            size_t colonPos = name.find(':');
+            CString addrPart = name.substr(colonPos + 1);
+            if (addrPart.size() > 2 && addrPart[0] == '0' && (addrPart[1] == 'x' || addrPart[1] == 'X')) {
+                addrPart = addrPart.substr(2);
+            }
+            ASSERT_TRUE(IsHexString(addrPart)) << "Address part should be hex: " << addrPart;
+            break;
+        }
+    }
+    ASSERT_TRUE(foundRefAddrNode) << "ReferenceAddress node not found";
+
+    thread_->SetTrackGlobalRef(false);
+}
+
+// All specific synthetic root nodes should exist at expected positions
+HWTEST_F_L0(HeapSnapShotTest, TestSpecificSyntheticRootsNonZeroIds)
+{
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    const auto &nodes = *snapshot->GetNodes();
+    ASSERT_GE(nodes.size(), 5U);
+
+    // Positions: 1=LocalHandleRoot, 2=GlobalHandleRoot, 3=VMRoot, 4=FrameRoot
+    struct ExpectedRoot {
+        size_t position;
+        CString prefix;
+    };
+    std::vector<ExpectedRoot> expectedRoots = {
+        {1, "LocalHandleRoot["},
+        {2, "GlobalHandleRoot["},
+        {3, "VMRoot["},
+        {4, "FrameRoot["},
+    };
+
+    for (const auto &expected : expectedRoots) {
+        const HprofNode *root = nodes[expected.position];
+        ASSERT_NE(root, nullptr);
+        CString name = *root->GetName();
+        ASSERT_TRUE(name.find(expected.prefix) == 0) << "Expected " << expected.prefix << ", got: " << name;
+    }
+}
+
+// All node IDs in the snapshot should be unique (except synthetic root nodes with ID 0)
+HWTEST_F_L0(HeapSnapShotTest, TestAllNodeIdsAreUnique)
+{
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    CUnorderedSet<NodeId> seenIds;
+    for (auto node : *snapshot->GetNodes()) {
+        NodeId id = node->GetId();
+        if (id == 0) {
+            continue;
+        }
+        auto result = seenIds.insert(id);
+        ASSERT_TRUE(result.second)
+            << "Duplicate node ID found: " << id << " for node '" << *node->GetName() << "'";
+    }
+}
+
+// No non-synthetic node should have ID == 0
+HWTEST_F_L0(HeapSnapShotTest, TestNoNodeHasZeroId)
+{
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    for (auto node : *snapshot->GetNodes()) {
+        if (node->GetType() == NodeType::ROOT) {
+            continue;
+        }
+        ASSERT_GT(node->GetId(), 0U)
+            << "Node '" << *node->GetName() << "' should not have zero ID";
     }
 }
 

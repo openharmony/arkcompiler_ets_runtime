@@ -1178,15 +1178,17 @@ void HeapSnapshot::FillGlobalEdges()
         if (ref == nullptr) {
             return;
         }
-        JSTaggedType addr = static_cast<JSTaggedType>(slotAddr);
+        JSTaggedType addr = reinterpret_cast<JSTaggedType>(ref);
         std::ostringstream oss;
         oss << "ReferenceAddress:0x" << std::hex << reinterpret_cast<uintptr_t>(ref);
         CString nodeName = CString(oss.str().c_str());
-        HprofNode *entryFrom = HprofNode::NewNode(chunk_, 0, nodeCount_,
-            GetString(nodeName), NodeType::NATIVE, 0, 0, addr);
+        HprofNode *entryFrom = HprofNode::NewNode(chunk_, entryIdMap_->GetNextId(), nodeCount_,
+            GetString(nodeName), NodeType::OBJECT, 0, 0, addr);
         if (entryFrom == nullptr) {
             return;
         }
+        entryMap_.InsertEntry(entryFrom);
+        entryIdMap_->InsertId(addr, entryFrom->GetId());
         InsertNodeUnique(entryFrom);
         CString edgeName = GetNodeName(JSType::JS_OBJECT, IsInVmMode());
         Edge *edge = Edge::NewEdge(chunk_, EdgeType::PROPERTY, entryFrom, entryTo,
