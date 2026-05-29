@@ -459,7 +459,7 @@
       ark_parse_js_frame_info;
       step_ark;
       ark_create_js_symbol_extractor;
-      ark_destroy_js_symbol_extractor;
+      ark_destory_js_symbol_extractor;
       ark_create_local;
       ark_destroy_local;
       ark_parse_js_file_info;

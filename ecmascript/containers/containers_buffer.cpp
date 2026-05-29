@@ -264,7 +264,7 @@ JSTaggedValue ContainersBuffer::Equals(EcmaRuntimeCallInfo *argv)
     } else if (value->IsJSUint8Array()) {
         tEnd = JSHandle<JSTypedArray>::Cast(value)->GetByteLength();
     } else {
-        JSTaggedValue error = ContainerError::ParamError(thread, "unexpected value type, expect buffer | Uint8Array");
+        JSTaggedValue error = ContainerError::ParamError(thread, "unexpect value type, expect buffer | Uint8Array");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     auto res = JSAPIFastBuffer::Compare(thread, src, value, 0, src->GetLength(), 0, tEnd);
