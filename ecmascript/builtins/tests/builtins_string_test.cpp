@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -1205,5 +1206,44 @@ HWTEST_F_L0(BuiltinsStringTest, at4)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsString::At(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsUndefined());
+}
+
+HWTEST_F_L0(BuiltinsStringTest, StringToSList)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> str = factory->NewFromASCII("hello");
+    JSTaggedValue result = BuiltinsString::StringToSList(thread, str);
+    ASSERT_TRUE(result.IsJSSharedArray());
+    JSSharedArray *arr = JSSharedArray::Cast(result.GetTaggedObject());
+    EXPECT_EQ(arr->GetArrayLength(), 5U);
+}
+
+HWTEST_F_L0(BuiltinsStringTest, StringToSListAfterStringToList)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> str = factory->NewFromASCII("abc");
+    JSTaggedValue listResult = BuiltinsString::StringToList(thread, str);
+    ASSERT_TRUE(listResult.IsECMAObject());
+
+    JSTaggedValue sListResult = BuiltinsString::StringToSList(thread, str);
+    ASSERT_TRUE(sListResult.IsJSSharedArray());
+    JSSharedArray *arr = JSSharedArray::Cast(sListResult.GetTaggedObject());
+    EXPECT_EQ(arr->GetArrayLength(), 3U);
+}
+
+HWTEST_F_L0(BuiltinsStringTest, StringToSListCacheConsistency)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> str = factory->NewFromASCII("test");
+
+    JSTaggedValue sListResult1 = BuiltinsString::StringToSList(thread, str);
+    ASSERT_TRUE(sListResult1.IsJSSharedArray());
+
+    JSTaggedValue sListResult2 = BuiltinsString::StringToSList(thread, str);
+    ASSERT_TRUE(sListResult2.IsJSSharedArray());
+
+    JSSharedArray *arr1 = JSSharedArray::Cast(sListResult1.GetTaggedObject());
+    JSSharedArray *arr2 = JSSharedArray::Cast(sListResult2.GetTaggedObject());
+    EXPECT_EQ(arr1->GetArrayLength(), arr2->GetArrayLength());
 }
 }  // namespace panda::test
