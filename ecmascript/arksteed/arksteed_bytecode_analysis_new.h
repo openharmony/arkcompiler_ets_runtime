@@ -23,7 +23,18 @@
 namespace panda::ecmascript::arksteed {
 class BytecodeAnalysisNew {
 public:
+    static constexpr uint32_t NULL_INDEX = BytecodePreprocessorNew::NULL_INDEX;
+
     explicit BytecodeAnalysisNew(const BytecodePreprocessorNew *parent);
+
+    const kungfu::BitSet &GetLiveIn(uint32_t blockRpoIndex) const
+    {
+        return liveIn_[blockRpoIndex];
+    }
+    const kungfu::BitSet &GetLiveOut(uint32_t blockRpoIndex) const
+    {
+        return liveOut_[blockRpoIndex];
+    }
 
     VRegIDType GetNumLocalVRegs() const
     {
@@ -32,6 +43,10 @@ public:
     VRegIDType GetNumParamVRegs() const
     {
         return parent_->GetNumParamVRegs();
+    }
+    VRegIDType GetNumVRegs() const
+    {
+        return arksteed::NumVRegs(GetNumLocalVRegs(), GetNumParamVRegs());
     }
 
     Chunk *GetChunk() const
@@ -46,10 +61,15 @@ private:
     void KillSet(const BytecodePreprocessorNew::BytecodeInfo *info, uint32_t blockIndex);
     void InitializeUEAndKillSets();
     void InitializeLiveIn();
+    void FinalizeWithFixedParamsAndEnv();
 
     bool UpdateLiveness();
     void UpdateLiveIn(uint32_t blockIndex);
 
+    void SetEnv(kungfu::BitSet &bitset)
+    {
+        bitset.SetBit(accIndex_ - 1);
+    }
     void SetAcc(kungfu::BitSet &bitset)
     {
         bitset.SetBit(accIndex_);
@@ -65,6 +85,10 @@ private:
         bitset.ClearBit(accIndex_);
     }
 
+    bool TestEnv(const kungfu::BitSet &bitset) const
+    {
+        return bitset.TestBit(accIndex_ - 1);
+    }
     bool TestAcc(const kungfu::BitSet &bitset) const
     {
         return bitset.TestBit(accIndex_);
@@ -78,7 +102,6 @@ private:
     std::string DumpBitset(const kungfu::BitSet &bitset) const;
 
     const BytecodePreprocessorNew *parent_;
-    // Local + Param
     VRegIDType accIndex_;
     ChunkVector<kungfu::BitSet> liveIn_;
     ChunkVector<kungfu::BitSet> liveOut_;

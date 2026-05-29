@@ -57,7 +57,7 @@ import re
 import zipfile
 from enum import Enum
 from dataclasses import dataclass
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, TextIO
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from xml.sax.saxutils import escape
 
@@ -199,12 +199,7 @@ LOG_CASE_NAME_PATTERN = re.compile(r"^Test case:\s*(.+)$")
 LOG_RESULT_PATTERN = re.compile(r"^Result:\s*(PASS|FAIL)$")
 
 
-PREPROCESSOR_BEGIN = "================ BEGIN: Result of BytecodePreprocessorNew ================"
-PREPROCESSOR_END = "================ END: Result of BytecodePreprocessorNew ================"
 COMPILER_LOG_PREFIX = "[compiler] "
-
-LIVENESS_BEGIN = "================ BEGIN: Result of BytecodeAnalysisNew ================"
-LIVENESS_END = "================ END: Result of BytecodeAnalysisNew ================"
 
 
 def is_crash(returncode: Optional[int]) -> bool:
@@ -352,14 +347,6 @@ class TestCase:
         return self.case_dir / "expected_output.txt"
 
     @property
-    def expected_preproc_file(self) -> Path:
-        return self.case_dir / "expected_output.preproc.txt"
-
-    @property
-    def expected_liveness_file(self) -> Path:
-        return self.case_dir / "expected_output.liveness.txt"
-
-    @property
     def actual_file(self) -> Path:
         return self.case_dir / f"{self.ts_stem}.actual_output.txt"
 
@@ -417,6 +404,22 @@ class TestResult:
     ld_library_path: Optional[str] = None
     output: Optional[str] = None
     returncode: Optional[int] = None
+
+
+@dataclass
+class RunContext:
+    """Groups all runtime configuration for test execution.
+
+    Reduces parameter threading through run_test_case → _run_single_test
+    → _run_all_tests → execute_test_case.
+    """
+    mode: str
+    verbose: bool = False
+    log_level: Optional[str] = None
+    log_components: Optional[str] = None
+    print_graph: bool = False
+    check_live_range_flag: bool = False
+    hotness_threshold: int = 1
 
 
 def run_command_real_time(
@@ -917,6 +920,38 @@ def _rewrite_single_source(
     return temp_path, temp_path, []
 
 
+def _run_es2abc(
+    cmd: List[str],
+    tools: BuildConfig,
+    verbose: bool = False,
+    timeout: int = 30,
+    cwd: Optional[Path] = None,
+    label: str = "Compilation",
+) -> bool:
+    """Shared es2abc executor used by both compile_ts and compile_with_file_info."""
+    if not tools.es2abc.exists():
+        print(f"Error: es2abc does not exist: {tools.es2abc}", file=sys.stderr)
+        return False
+    try:
+        result = run_command_real_time(cmd, verbose=verbose, timeout=timeout, cwd=cwd)
+        if result.returncode != 0:
+            if verbose:
+                print(
+                    f"{label} failed, return code: {result.returncode}",
+                    file=sys.stderr,
+                )
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        if verbose:
+            print(f"{label} timeout", file=sys.stderr)
+        return False
+    except Exception as e:
+        if verbose:
+            print(f"{label} exception: {e}", file=sys.stderr)
+        return False
+
+
 def compile_ts(
     ts_path: Path,
     output_abc: Path,
@@ -925,9 +960,6 @@ def compile_ts(
     source_file: Optional[Path] = None,
 ) -> bool:
     """Use es2abc to compile .ts file to .abc."""
-    if not tools.es2abc.exists():
-        print(f"Error: es2abc does not exist: {tools.es2abc}", file=sys.stderr)
-        return False
     cmd = [
         str(tools.es2abc),
         str(ts_path),
@@ -942,24 +974,7 @@ def compile_ts(
         cmd.append("--module")
     if source_file is not None:
         cmd.extend(["--source-file", str(source_file)])
-    try:
-        result = run_command_real_time(cmd, verbose=verbose, timeout=30)
-        if result.returncode != 0:
-            if verbose:
-                print(
-                    f"TypeScript compilation failed, return code: {result.returncode}",
-                    file=sys.stderr,
-                )
-            return False
-        return True
-    except subprocess.TimeoutExpired:
-        if verbose:
-            print("Compilation timeout", file=sys.stderr)
-        return False
-    except Exception as e:
-        if verbose:
-            print(f"Compilation exception: {e}", file=sys.stderr)
-        return False
+    return _run_es2abc(cmd, tools, verbose, label="TypeScript compilation")
 
 
 def parse_file_info(file_info_path: Path) -> List[Dict[str, str]]:
@@ -1006,10 +1021,6 @@ def compile_with_file_info(
     verbose: bool = False,
 ) -> bool:
     """Compile a directory-form test case using fileInfo.txt."""
-    if not tools.es2abc.exists():
-        print(f"Error: es2abc does not exist: {tools.es2abc}", file=sys.stderr)
-        return False
-
     cmd = [
         str(tools.es2abc),
         "--module",
@@ -1018,26 +1029,7 @@ def compile_with_file_info(
         "--output",
         str(output_abc),
     ]
-    try:
-        result = run_command_real_time(
-            cmd, cwd=case_dir.parent, verbose=verbose, timeout=60
-        )
-        if result.returncode != 0:
-            if verbose:
-                print(
-                    f"fileInfo compilation failed, return code: {result.returncode}",
-                    file=sys.stderr,
-                )
-            return False
-        return True
-    except subprocess.TimeoutExpired:
-        if verbose:
-            print("fileInfo compilation timeout", file=sys.stderr)
-        return False
-    except Exception as e:
-        if verbose:
-            print(f"fileInfo compilation exception: {e}", file=sys.stderr)
-        return False
+    return _run_es2abc(cmd, tools, verbose, timeout=60, cwd=case_dir.parent, label="fileInfo compilation")
 
 
 def dump_ts_abc(
@@ -1192,110 +1184,6 @@ def compare_output(actual: str, expected_file: Path) -> Tuple[bool, Optional[str
     return False, "\n".join(diff)
 
 
-def extract_preprocessor_output(output: str) -> Optional[str]:
-    """Extract BytecodePreprocessorNew output from log."""
-    prefixed_begin = COMPILER_LOG_PREFIX + PREPROCESSOR_BEGIN
-    prefixed_end = COMPILER_LOG_PREFIX + PREPROCESSOR_END
-
-    has_begin = PREPROCESSOR_BEGIN in output or prefixed_begin in output
-    has_end = PREPROCESSOR_END in output or prefixed_end in output
-    if not has_begin or not has_end:
-        return None
-
-    start_idx = output.find(prefixed_begin) if prefixed_begin in output else output.find(PREPROCESSOR_BEGIN)
-    end_idx = output.find(prefixed_end) if prefixed_end in output else output.find(PREPROCESSOR_END)
-    if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
-        return None
-
-    preprocessor_output = output[start_idx:end_idx]
-    lines = preprocessor_output.splitlines()[1:]  # Skip the BEGIN line
-    filtered_lines = []
-
-    for line in lines:
-        if line.strip():
-            if line.startswith(COMPILER_LOG_PREFIX):
-                filtered_lines.append(line[len(COMPILER_LOG_PREFIX):].rstrip())
-            else:
-                filtered_lines.append(line.rstrip())
-
-    return "\n".join(filtered_lines)
-
-
-def compare_preprocessor_output(actual: str, expected_file: Path) -> Tuple[bool, Optional[str]]:
-    """Compare preprocessor output with expected file."""
-    if not expected_file.exists():
-        return False, "Expected preprocessor output file does not exist"
-    with open(expected_file, "r") as f:
-        expected = f.read()
-
-    expected_lines = _normalize_output(expected)
-    actual_lines = _normalize_output(actual)
-
-    if "\n".join(expected_lines) == "\n".join(actual_lines):
-        return True, None
-
-    diff = difflib.unified_diff(
-        expected_lines,
-        actual_lines,
-        fromfile="expected_preproc",
-        tofile="actual_preproc",
-        lineterm="",
-    )
-    return False, "\n".join(diff)
-
-
-def extract_liveness_output(output: str) -> Optional[str]:
-    """Extract BytecodeAnalysisNew (liveness) output from log."""
-    prefixed_begin = COMPILER_LOG_PREFIX + LIVENESS_BEGIN
-    prefixed_end = COMPILER_LOG_PREFIX + LIVENESS_END
-
-    has_begin = LIVENESS_BEGIN in output or prefixed_begin in output
-    has_end = LIVENESS_END in output or prefixed_end in output
-    if not has_begin or not has_end:
-        return None
-
-    start_idx = output.find(prefixed_begin) if prefixed_begin in output else output.find(LIVENESS_BEGIN)
-    end_idx = output.find(prefixed_end) if prefixed_end in output else output.find(LIVENESS_END)
-    if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
-        return None
-
-    liveness_output = output[start_idx:end_idx]
-    lines = liveness_output.splitlines()[1:]  # Skip the BEGIN line
-    filtered_lines = []
-
-    for line in lines:
-        if line.strip():
-            if line.startswith(COMPILER_LOG_PREFIX):
-                filtered_lines.append(line[len(COMPILER_LOG_PREFIX):].rstrip())
-            else:
-                filtered_lines.append(line.rstrip())
-
-    return "\n".join(filtered_lines)
-
-
-def compare_liveness_output(actual: str, expected_file: Path) -> Tuple[bool, Optional[str]]:
-    """Compare liveness output with expected file."""
-    if not expected_file.exists():
-        return False, "Expected liveness output file does not exist"
-    with open(expected_file, "r") as f:
-        expected = f.read()
-
-    expected_lines = _normalize_output(expected)
-    actual_lines = _normalize_output(actual)
-
-    if "\n".join(expected_lines) == "\n".join(actual_lines):
-        return True, None
-
-    diff = difflib.unified_diff(
-        expected_lines,
-        actual_lines,
-        fromfile="expected_liveness",
-        tofile="actual_liveness",
-        lineterm="",
-    )
-    return False, "\n".join(diff)
-
-
 def run_ark_vm(
     abc_path: Path,
     entry_point: str,
@@ -1428,11 +1316,7 @@ def compile_test_case(
 def execute_test_case(
     test: TestCase,
     tools: BuildConfig,
-    verbose: bool,
-    log_level: Optional[str],
-    log_components: Optional[str],
-    print_graph: bool,
-    hotness_threshold: int = 1,
+    ctx: RunContext,
     entry_point: Optional[str] = None,
 ) -> Tuple[Optional[CommandResult], str, str, bool]:
     """Execute a compiled test case. Returns (result, cmd_str, ld_library_path, timed_out)."""
@@ -1443,19 +1327,18 @@ def execute_test_case(
         )
     else:
         entry_point = entry_point or test.ts_stem
-    timeout = DEFAULT_EXECUTION_TIMEOUT
 
     return run_ark_vm(
         test.abc_path,
         entry_point,
         read_extra_options(test.extra_options_file),
         tools,
-        verbose,
-        log_level,
-        log_components,
-        print_graph,
-        hotness_threshold,
-        timeout,
+        ctx.verbose,
+        ctx.log_level,
+        ctx.log_components,
+        ctx.print_graph,
+        ctx.hotness_threshold,
+        DEFAULT_EXECUTION_TIMEOUT,
     )
 
 
@@ -1527,7 +1410,7 @@ def check_standard_test_result(
             returncode,
         )
 
-    if check_live_range_flag and actual_output:
+    if actual_output:
         lr_ok, lr_errors, lr_ok_count, lr_error_msgs = check_live_range(actual_output)
         if not lr_ok:
             return TestResult(
@@ -1539,40 +1422,6 @@ def check_standard_test_result(
                 actual_output,
                 returncode,
             )
-
-    if (log_level == "debug" and
-        log_components and "compiler" in log_components and
-        test.expected_preproc_file.exists()):
-        preprocessor_output = extract_preprocessor_output(actual_output)
-        if preprocessor_output:
-            preproc_ok, preproc_diff = compare_preprocessor_output(preprocessor_output, test.expected_preproc_file)
-            if not preproc_ok:
-                return TestResult(
-                    test.case_name,
-                    False,
-                    f"BytecodePreprocessorNew output mismatch:\n{preproc_diff}",
-                    cmd_str,
-                    ld_library_path,
-                    actual_output,
-                    returncode,
-                )
-
-    if (log_level == "debug" and
-        log_components and "compiler" in log_components and
-        test.expected_liveness_file.exists()):
-        liveness_output = extract_liveness_output(actual_output)
-        if liveness_output:
-            liveness_ok, liveness_diff = compare_liveness_output(liveness_output, test.expected_liveness_file)
-            if not liveness_ok:
-                return TestResult(
-                    test.case_name,
-                    False,
-                    f"BytecodeAnalysisNew (liveness) output mismatch:\n{liveness_diff}",
-                    cmd_str,
-                    ld_library_path,
-                    actual_output,
-                    returncode,
-                )
 
     return TestResult(
         test.case_name,
@@ -1595,15 +1444,8 @@ def check_compiler_result(
     log_components: Optional[str],
     returncode: int = 0,
 ) -> TestResult:
-    """Check compiler stage results: RA live range, preproc, and liveness (no output comparison)."""
-    has_preproc_or_liveness = (
-        log_level == "debug" and
-        log_components and
-        "compiler" in log_components and
-        (test.expected_preproc_file.exists() or test.expected_liveness_file.exists())
-    )
-
-    if not check_live_range_flag and not has_preproc_or_liveness:
+    """Check compiler stage results: RA live range only (no output comparison)."""
+    if not check_live_range_flag:
         return TestResult(
             test.case_name,
             True,
@@ -1626,37 +1468,6 @@ def check_compiler_result(
                 actual_output,
                 returncode,
             )
-
-    if log_level == "debug" and log_components and "compiler" in log_components:
-        if test.expected_preproc_file.exists():
-            preprocessor_output = extract_preprocessor_output(actual_output)
-            if preprocessor_output:
-                preproc_ok, preproc_diff = compare_preprocessor_output(preprocessor_output, test.expected_preproc_file)
-                if not preproc_ok:
-                    return TestResult(
-                        test.case_name,
-                        False,
-                        f"BytecodePreprocessorNew output mismatch:\n{preproc_diff}",
-                        cmd_str,
-                        ld_library_path,
-                        actual_output,
-                        returncode,
-                    )
-
-        if test.expected_liveness_file.exists():
-            liveness_output = extract_liveness_output(actual_output)
-            if liveness_output:
-                liveness_ok, liveness_diff = compare_liveness_output(liveness_output, test.expected_liveness_file)
-                if not liveness_ok:
-                    return TestResult(
-                        test.case_name,
-                        False,
-                        f"BytecodeAnalysisNew (liveness) output mismatch:\n{liveness_diff}",
-                        cmd_str,
-                        ld_library_path,
-                        actual_output,
-                        returncode,
-                    )
 
     return TestResult(
         test.case_name,
@@ -1787,124 +1598,10 @@ def _build_package_file_info(
     return temp_path, [temp_path]
 
 
-def _retry_single_case_with_package_file_info(
-    test: TestCase,
-    tools: BuildConfig,
-    verbose: bool,
-    log_level: Optional[str],
-    log_components: Optional[str],
-    print_graph: bool,
-    check_live_range_flag: bool,
-    hotness_threshold: int = 1,
-) -> Optional[TestResult]:
-    """Retry a single-file case by compiling the whole package tree when needed."""
-    if test.ts_file is None:
-        return None
-    package_root = _single_case_package_root(test)
-    if package_root is None:
-        return None
-
-    rewritten_source, temp_source, extra_temp_paths = _rewrite_single_source(
-        test.ts_file, verbose
-    )
-    file_info_path = package_root / "fileInfo.txt"
-    temp_file_info: Optional[Path] = None
-    compile_file_info_path = file_info_path
-    if not file_info_path.exists():
-        compile_file_info_path, temp_paths = _build_package_file_info(
-            package_root, {test.ts_file: rewritten_source}
-        )
-        temp_file_info = temp_paths[0]
-    else:
-#Use the rewritten source if the package already provides fileInfo.txt.
-        rewritten_source = temp_source or rewritten_source
-        if temp_source is not None:
-            compile_file_info_path, temp_paths = _build_package_file_info(
-                package_root, {test.ts_file: rewritten_source}
-            )
-            temp_file_info = temp_paths[0]
-
-    try:
-        if not compile_with_file_info(
-            package_root,
-            compile_file_info_path,
-            test.abc_path,
-            tools,
-            verbose,
-        ):
-            return None
-
-        entry_point = _entry_point_for_single_source(test.ts_file, package_root)
-        result, cmd_str, ld_library_path, timed_out = run_ark_vm(
-            test.abc_path,
-            entry_point,
-            read_extra_options(test.extra_options_file),
-            tools,
-            verbose,
-            log_level,
-            log_components,
-            print_graph,
-            hotness_threshold,
-            True,
-        )
-        if result is None or result.returncode != 0:
-            return _handle_execution_failure(test, result, cmd_str, ld_library_path, timed_out)
-
-        actual_output = result.stdout
-        _save_actual_output(test, actual_output)
-        return check_test_result(
-            test,
-            actual_output,
-            cmd_str,
-            ld_library_path,
-            check_live_range_flag,
-            log_level,
-            log_components,
-            result.returncode,
-        )
-    finally:
-        if temp_file_info is not None:
-            try:
-                Path(temp_file_info).unlink(missing_ok=True)
-            except Exception:
-                pass
-        if temp_source is not None:
-            try:
-                Path(temp_source).unlink(missing_ok=True)
-            except Exception:
-                pass
-        for temp_path in extra_temp_paths:
-            try:
-                Path(temp_path).unlink(missing_ok=True)
-            except Exception:
-                pass
-
-
-def _needs_package_file_info_retry(output: Optional[str]) -> bool:
-    """Decide whether a failed single-file run should retry with package fileInfo."""
-    if not output:
-        return False
-    retry_markers = (
-        "requested module",
-        "does not provide an export name",
-        "Cannot find module",
-        "Load file with filename",
-        "open file ",
-        "Can't fopen location",
-    )
-    return any(marker in output for marker in retry_markers)
-
-
 def run_test_case(
     test: TestCase,
-    mode: str,
-    verbose: bool = False,
-    log_level: Optional[str] = None,
-    log_components: Optional[str] = None,
-    print_graph: bool = False,
-    check_live_range_flag: bool = False,
+    ctx: RunContext,
     stage: str = "compile",
-    hotness_threshold: int = 1,
 ) -> TestResult:
     """Run a single test case. Returns TestResult.
 
@@ -1912,9 +1609,9 @@ def run_test_case(
       compile - compile + disassemble only
       jit     - compile + execute with ArkSteed JIT + full comparison
     """
-    tools = BuildConfig(mode)
+    tools = BuildConfig(ctx.mode)
 
-    ok, msg = compile_test_case(test, tools, verbose)
+    ok, msg = compile_test_case(test, tools, ctx.verbose)
     if not ok:
         return TestResult(test.case_name, False, msg, None, None, None, None)
 
@@ -1922,7 +1619,7 @@ def run_test_case(
         return TestResult(test.case_name, True, "Compilation passed", None, None, None, 0)
 
     result, cmd_str, ld_library_path, timed_out = execute_test_case(
-        test, tools, verbose, log_level, log_components, print_graph, hotness_threshold
+        test, tools, ctx
     )
 
     if result is None or result.returncode != 0:
@@ -1936,9 +1633,9 @@ def run_test_case(
         actual_output,
         cmd_str,
         ld_library_path,
-        check_live_range_flag,
-        log_level,
-        log_components,
+        ctx.check_live_range_flag,
+        ctx.log_level,
+        ctx.log_components,
         result.returncode,
     )
 
@@ -2010,11 +1707,8 @@ Reports:
 {report_lines}
 
 Read the full log files directly, not a pre-summarized report. Focus on:
-1. compile mode pass/fail summary;
-2. jit mode pass/fail summary;
-3. top failure categories and representative test cases;
-4. whether failures are crashes, output mismatches, live-range/preprocessor/liveness mismatches, or other errors;
-5. recommended next debugging direction.
+1. A **full list** of failed test cases;
+2. failure categories and representative test cases;
 
 Keep the answer practical and concise. Do not modify files.
 """
@@ -2333,33 +2027,21 @@ def _filter_and_exclude_tests(
 
 def _run_single_test(
     test: TestCase,
-    mode: str,
-    verbose: bool,
-    log_level: Optional[str],
-    log_components: Optional[str],
-    print_graph: bool,
-    check_live_range_flag: bool,
+    ctx: RunContext,
     run_stage: str,
-    hotness_threshold: int = 1,
 ) -> TestResult:
     """Run a single test case with atomic output. Used by both sequential and parallel execution."""
-    if verbose:
+    if ctx.verbose:
         with OUTPUT_LOCK:
             print(f"\nRunning {run_stage} test case: {test.case_name}", flush=True)
 
     result = run_test_case(
         test,
-        mode,
-        verbose,
-        log_level,
-        log_components,
-        print_graph,
-        check_live_range_flag,
+        ctx,
         run_stage,
-        hotness_threshold,
     )
 
-    if verbose:
+    if ctx.verbose:
         with OUTPUT_LOCK:
             if result.ok:
                 print(f"[PASS] {test.case_name}", flush=True)
@@ -2371,16 +2053,10 @@ def _run_single_test(
 
 def _run_all_tests(
     test_cases: List[TestCase],
-    mode: str,
-    verbose: bool,
+    ctx: RunContext,
     keep_going: int,
-    log_level: Optional[str],
-    log_components: Optional[str],
-    print_graph: bool,
-    check_live_range_flag: bool,
     run_stage: str = "compile",
     num_workers: int = 1,
-    hotness_threshold: int = 1,
 ) -> Tuple[int, int, List[TestResult]]:
     """Run all test cases and collect results. Returns (passed, failed, results)."""
     results: List[TestResult] = []
@@ -2394,14 +2070,8 @@ def _run_all_tests(
         nonlocal failed_count, should_stop, completed_count
         result = _run_single_test(
             test,
-            mode,
-            verbose,
-            log_level,
-            log_components,
-            print_graph,
-            check_live_range_flag,
+            ctx,
             run_stage,
-            hotness_threshold,
         )
         with results_lock:
             if not result.ok:
@@ -2479,7 +2149,7 @@ def _report_results(
     show_failures: bool = False,
 ) -> None:
     """Write log file and print summary."""
-    summary_file: Optional[object] = None
+    summary_file: Optional[TextIO] = None
     if summary_output_path is not None:
         summary_file = open(summary_output_path, summary_mode)
         summary_output = summary_file
@@ -2787,6 +2457,16 @@ def main() -> None:
         print_graph = True
         print("Note: --check-live-range enabled, auto-enabling --print-graph")
 
+    ctx = RunContext(
+        mode=mode,
+        verbose=verbose,
+        log_level=args.log_level,
+        log_components=args.log_components,
+        print_graph=print_graph,
+        check_live_range_flag=check_live_range_flag,
+        hotness_threshold=args.hotness_threshold,
+    )
+
     all_failed = 0
     report_files: List[Tuple[str, Path, Path]] = []
     all_results: List[TestResult] = []
@@ -2794,16 +2474,10 @@ def main() -> None:
         print(f"\n=== Running {run_stage} mode ===")
         passed, failed, results = _run_all_tests(
             test_cases,
-            mode,
-            verbose,
+            ctx,
             keep_going,
-            args.log_level,
-            args.log_components,
-            print_graph,
-            check_live_range_flag,
             run_stage,
             args.num_workers,
-            args.hotness_threshold,
         )
         all_failed += failed
         stage_log_file = _log_file_for_mode(timestamp, run_stage)

@@ -662,8 +662,6 @@ private:
 
     void BuildThrow(kungfu::RuntimeStubCSigns::ID id, ValueVertex *input);
 
-    void ValidateNewBytecodePreprocessor();
-
     bool HasTryCatch() const
     {
         return bytecodeContext_.HasTryCatch();

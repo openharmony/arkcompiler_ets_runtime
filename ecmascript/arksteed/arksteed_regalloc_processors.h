@@ -137,7 +137,7 @@ public:
     void PreProcessBlock(BB *block)
     {
         // Check if this block is a loop header
-        if (block->HasState() && block->GetState()->IsLoopHeader()) {
+        if (block->IsLoopHeader()) {
             LoopUsedVertices loopVertex;
             loopVertex.header = block;
             loopUsedVertices_.push_back(loopVertex);

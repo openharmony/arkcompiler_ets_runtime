@@ -17,7 +17,6 @@
 #define ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_NEW_H
 
 #include "ecmascript/arksteed/arksteed_vreg.h"
-#include "ecmascript/compiler/base/bit_set.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -31,7 +30,8 @@ public:
         // [startBcIndex, endBcIndex]
         uint32_t startBcIndex;
         uint32_t endBcIndex;
-        ChunkVector<uint32_t> catchBcIndices;
+        // Start position of the innermost catch block
+        uint32_t catchBcIndex;
 
         bool ContainsBytecode(uint32_t bcIndex) const;
     };
@@ -40,12 +40,18 @@ public:
         // Index by the RPO order. NULL_INDEX if this block is dead (inaccessible from the start).
         uint32_t rpoIndex;
         // [startBcIndex, endBcIndex]
+        // For synthetic block (which contains only an unconditional jump),
+        // the range is [NULL_INDEX, NULL_INDEX - 1].
         uint32_t startBcIndex;
         uint32_t endBcIndex;
         // nullptr if this block is terminating (RETURN, THROW) or unconditional jump.
         const BasicBlockInfo *fallthroughBlock;
         // nullptr if this block is not a jump.
         const BasicBlockInfo *jumpBlock;
+        // nullptr if one of the following happens:
+        // (1) no corresponding catch block in the input bytecode, or
+        // (2) no bytecode can throw exception in this block.
+        const BasicBlockInfo *catchBlock;
         // Header of the innermost loop that current block belongs to.
         // nullptr if this block does not belong to any loop.
         // If this block is already a loop header (IsLoopHeader() return true),
@@ -54,12 +60,10 @@ public:
         // If this block is a loop header, then loopBackBlock is the one from which the loop jumps back to header.
         // nullptr if this block is not a loop header.
         const BasicBlockInfo *loopBackBlock;
-        //
+        // List of basic blocks which jumps directly to this basic block.
         ChunkVector<const BasicBlockInfo *> jumpPredecessors;
-        // Empty list if one of the following happens:
-        // (1) this block is never caught in the input bytecode, or
-        // (2) no bytecode can throw exception in this block.
-        ChunkVector<const BasicBlockInfo *> catchBlocks;
+        // List of basic blocks whose exceptions are caught directly by this basic block.
+        ChunkVector<const BasicBlockInfo *> catchPredecessors;
 
         bool ContainsBytecode(uint32_t bcIndex) const;
         bool HasFallthrough() const;
@@ -67,6 +71,9 @@ public:
         bool IsConditionalJump() const;
         bool IsDead() const;
         bool IsLoopHeader() const;
+        bool IsCatchBlockHeader() const;
+        bool IsEndOfLoop() const;
+        bool IsSynthetic() const;
     };
 
     struct BytecodeInfo {
@@ -111,10 +118,22 @@ public:
     {
         return numLocalVRegs_;
     }
-
     VRegIDType GetNumParamVRegs() const
     {
         return numParamVRegs_;
+    }
+    VRegIDType GetNumVRegs() const
+    {
+        return arksteed::NumVRegs(GetNumLocalVRegs(), GetNumParamVRegs());
+    }
+
+    JitCompilationEnv *GetEnv() const
+    {
+        return env_;
+    }
+    MethodLiteral *GetMethod() const
+    {
+        return method_;
     }
 
     Chunk *GetChunk() const
@@ -123,8 +142,7 @@ public:
     }
 
     std::string Dump() const;
-    std::string DumpBasicBlocksString() const;
-    std::string DumpTryBlocksString() const;
+    std::string DumpCFGAsGraphviz() const;
 
 private:
     uint32_t JumpTargetBcIndexOfBytecode(uint32_t bcIndex);
@@ -134,8 +152,8 @@ private:
     void CollectBytecodeInfo();
     void CollectTryCatchBlockInfo();
     void BuildBasicBlocks();
-    void MarkBasicBlockStarts(kungfu::BitSet *isBlockStart, uint32_t bcCount);
-    uint32_t CreateBasicBlocks(const kungfu::BitSet &isBlockStart, uint32_t bcCount);
+    void MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
+    uint32_t CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
     void InitializeBlockEdges(uint32_t blockCount);
     struct CanonicalizeLoopsDFS;
     void SplitCriticalEdges();
@@ -143,6 +161,11 @@ private:
     void LoopAnalysis();
     void MakeRPO();
     void ClearDeadPredecessors();
+
+    std::string DumpBasicBlocksString() const;
+    std::string DumpTryBlocksString() const;
+    void DumpGraphvizNodes(std::ostream &out) const;
+    void DumpGraphvizEdges(std::ostream &out) const;
 
     JitCompilationEnv *env_;
     MethodLiteral *method_;
@@ -195,6 +218,21 @@ inline bool BytecodePreprocessorNew::BasicBlockInfo::IsDead() const
 inline bool BytecodePreprocessorNew::BasicBlockInfo::IsLoopHeader() const
 {
     return loopBackBlock != nullptr;
+}
+
+inline bool BytecodePreprocessorNew::BasicBlockInfo::IsCatchBlockHeader() const
+{
+    return !catchPredecessors.empty();
+}
+
+inline bool BytecodePreprocessorNew::BasicBlockInfo::IsEndOfLoop() const
+{
+    return jumpBlock != nullptr && jumpBlock->loopBackBlock == this;
+}
+
+inline bool BytecodePreprocessorNew::BasicBlockInfo::IsSynthetic() const
+{
+    return startBcIndex == NULL_INDEX;
 }
 }  // namespace panda::ecmascript::arksteed
 

@@ -15,25 +15,9 @@
 
 #include "arksteed_bb.h"
 
-#include "arksteed_framestate.h"
 #include "arksteed_opcode.h"
 
 namespace panda::ecmascript::arksteed {
-
-bool BB::HasPhi() const
-{
-    return HasState() && state_->HasPhi();
-}
-
-const ChunkVector<PhiVertex *> &BB::GetPhis() const
-{
-    return state_->Phis();
-}
-
-ChunkVector<PhiVertex *> &BB::GetPhis()
-{
-    return state_->Phis();
-}
 
 int BB::GetPredecessorId() const
 {
@@ -80,40 +64,6 @@ uint32_t BB::GetFirstNonGapMoveId() const
     }
     // If all vertices are gap moves, return the control vertex id
     return controlVertex_->GetId();
-}
-
-Span<BB *> BB::GetPredecessors()
-{
-    if (type_ != MERGE) {
-        return {&predecessor_, 1};
-    }
-    ASSERT(HasState());
-    return state_->Predecessors();
-}
-
-Span<const BB *const> BB::GetPredecessors() const
-{
-    if (type_ != MERGE) {
-        return {&predecessor_, 1};
-    }
-    ASSERT(HasState());
-    const MergePointFrameState *constState = state_;
-    return constState->Predecessors();
-}
-
-BB *BB::GetPredecessor(uint32_t index)
-{
-    if (type_ != MERGE) {
-        ASSERT(index == 0);
-        return predecessor_;
-    }
-    ASSERT(HasState());
-    return state_->PredecessorAt(index);
-}
-
-const BB *BB::GetPredecessor(uint32_t index) const
-{
-    return const_cast<BB *>(this)->GetPredecessor(index);
 }
 
 }  // namespace panda::ecmascript::arksteed

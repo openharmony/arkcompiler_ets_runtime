@@ -70,6 +70,10 @@ public:
     void RunPreRegallocProcessors();
     void FillCodeDesc(MachineCodeDesc &codeDesc);
 
+#ifdef JIT_ENABLE_CODE_SIGN
+    void EnableCodeSign();
+#endif
+
     JitCompilationEnv *GetCompilationEnv() const
     {
         return jitCompilationEnv_.get();

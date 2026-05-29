@@ -113,8 +113,8 @@ void GraphPrinter::PreProcessGraph(Graph *graph)
 
     for (BB *block : *graph) {
         blockOrder_.push_back(block);
-        // Skip predecessor processing for blocks without state (not real merge blocks)
-        if (block->HasState()) {
+        // Skip predecessor processing for blocks without register merge state
+        if (block->HasRegisterMerge()) {
             const auto &predecessors = block->GetPredecessors();
             for (BB *pred : predecessors) {
                 successorsMap_[pred].push_back(block);
@@ -323,13 +323,12 @@ void GraphPrinter::PreProcessBlock(BB *block)
     LOG_COMPILER(INFO) << GetArrowColumn(nullptr) <<
         "------------------------------------------------------------------------";
 
-    const char *blockTypeName = (block->GetBlockType() == BB::EDGE_SPLIT) ? "Edge Split"
-                                : (block->GetBlockType() == BB::MERGE)    ? "Merge"
-                                                                          : "Other";
+    const char *blockTypeName = block->IsLoopHeader()    ? "Loop Header"
+                                : block->IsExceptionHandler() ? "Exception Handler"
+                                                              : "Other";
     LOG_COMPILER(INFO) << PrintBlockArrows(block) << "Block " << block->GetId() << " (" << blockTypeName << ')';
 
-    // Only print predecessors for real merge blocks (those with state)
-    if (block->HasState()) {
+    if (block->HasRegisterMerge()) {
         PrintPredecessors(block);
     }
 

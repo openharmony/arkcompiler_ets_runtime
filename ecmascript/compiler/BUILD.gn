@@ -211,6 +211,7 @@ if (ets_runtime_enable_ark_steed) {
     "${ARK_STEED_ROOT}/arksteed_compiler.cpp",
     "${ARK_STEED_ROOT}/arksteed_disassembler.cpp",
     "${ARK_STEED_ROOT}/arksteed_graph_builder.cpp",
+    "${ARK_STEED_ROOT}/arksteed_graph_builder_new.cpp",
     "${ARK_STEED_ROOT}/arksteed_graph_printer.cpp",
     "${ARK_STEED_ROOT}/arksteed_graph_labeller.cpp",
     "${ARK_STEED_ROOT}/arksteed_opcode.cpp",

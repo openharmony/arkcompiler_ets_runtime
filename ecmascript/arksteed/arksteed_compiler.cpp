@@ -17,7 +17,6 @@
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_codegen.h"
-#include "ecmascript/arksteed/arksteed_graph_builder.h"
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_graph_printer.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
@@ -26,13 +25,15 @@
 #include "ecmascript/arksteed/arksteed_regalloc_processors.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/arksteed/arksteed_task.h"
-#include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/jit_compiler.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/jit/jit_resources.h"
 #include "ecmascript/mem/machine_code.h"
-#include "ecmascript/method.h"
-#include "libpandafile/bytecode_instruction.h"
+
+#ifdef ARKSTEED_REFACTORED
+#include "ecmascript/arksteed/arksteed_graph_builder_new.h"
+#else
+#include "ecmascript/arksteed/arksteed_graph_builder.h"
+#endif
 
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "ecmascript/compiler/jit_signcode.h"
@@ -150,17 +151,21 @@ bool ArkSteedCompilerTask::Compile()
     auto *compilerThread = arkSteedTask_->GetCompilerThread();
     auto *hostThread = arkSteedTask_->GetHostThread();
     uintptr_t hostGlueAddr = hostThread->GetGlueAddr();
+
+#ifdef ARKSTEED_REFACTORED
+    BytecodePreprocessorNew preproc(jitCompilationEnv_.get(), chunk_.get());
+    BytecodeAnalysisNew analysis(&preproc);
+
+    GraphBuilderNew graphBuilder(graph_, hostGlueAddr, &preproc, &analysis);
+    if (!graphBuilder.Run()) {
+        return false;
+    }
+#else
     ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get());
     if (!graphBuilder.Build()) {
         return false;
     }
-
-    // Print graph with labeller if option is enabled
-    if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintGraph()) {
-        LOG_COMPILER(INFO) << "===== After graph builder =====";
-        GraphProcessor<GraphPrinter> graphPrinterProcessor(chunk_.get(), false);
-        graphPrinterProcessor.Run(graph_);
-    }
+#endif
 
     // Verify graph integrity
     // to do: Post-build optimizations (when enabled)
@@ -183,13 +188,7 @@ bool ArkSteedCompilerTask::Compile()
         assembler_->EnableComments(true);
     }
 #ifdef JIT_ENABLE_CODE_SIGN
-    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign()) {
-        kungfu::JitSignCode *singleton = kungfu::JitSignCode::GetInstance();
-        singleton->Reset();
-        OHOS::Security::CodeSign::JitCodeSigner *jitSigner = CreateJitCodeSigner();
-        singleton->SetCodeSigner(jitSigner);
-        assembler_->EnableCodeSign();
-    }
+    EnableCodeSign();
 #endif
     safepointTableBuilder_ = new ArkSteedSafepointTableBuilder();
     ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_);
@@ -200,6 +199,19 @@ bool ArkSteedCompilerTask::Compile()
 
     return true;
 }
+
+#ifdef JIT_ENABLE_CODE_SIGN
+void ArkSteedCompilerTask::EnableCodeSign()
+{
+    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign()) {
+        kungfu::JitSignCode *singleton = kungfu::JitSignCode::GetInstance();
+        singleton->Reset();
+        OHOS::Security::CodeSign::JitCodeSigner *jitSigner = CreateJitCodeSigner();
+        singleton->SetCodeSigner(jitSigner);
+        assembler_->EnableCodeSign();
+    }
+}
+#endif
 
 void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
 {

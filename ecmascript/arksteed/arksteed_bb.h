@@ -36,8 +36,6 @@ constexpr uint32_t INVALID_BLOCK_ID = static_cast<uint32_t>(-1);
 // Basic block class for ArkSteed IR
 class BB {
 public:
-    enum BlockType : uint8_t { MERGE, EDGE_SPLIT, DEFAULT };
-
     NO_COPY_SEMANTIC(BB);
     NO_MOVE_SEMANTIC(BB);
 
@@ -46,20 +44,6 @@ public:
         void *memory = chunk->Allocate(sizeof(BB));
         ASSERT(memory != nullptr);
         return new (memory) BB(chunk);
-    }
-
-    static BB *NewForMergePoint(Chunk *chunk, MergePointFrameState *state)
-    {
-        void *memory = chunk->Allocate(sizeof(BB));
-        ASSERT(memory != nullptr);
-        return new (memory) BB(chunk, state);
-    }
-
-    static BB *NewForEdgeSplit(Chunk *chunk, RegisterMergeState *state)
-    {
-        void *memory = chunk->Allocate(sizeof(BB));
-        ASSERT(memory != nullptr);
-        return new (memory) BB(chunk, state);
     }
 
     uint32_t GetId() const
@@ -80,6 +64,12 @@ public:
     void SetControlVertex(ControlVertex *vertex)
     {
         controlVertex_ = vertex;
+    }
+
+    // Note: phis_ is only maintained by GraphBuilderNew. Unused in the old implementation.
+    void AddPhiVertex(PhiVertex *vertex)
+    {
+        phis_.push_back(vertex);
     }
 
     void AddVertex(NonControlVertex *vertex)
@@ -107,43 +97,39 @@ public:
         return vertices_;
     }
 
-    bool HasState() const
+    bool IsLoopHeader() const { return isLoopHeader_; }
+    void SetLoopHeader(bool v) { isLoopHeader_ = v; }
+
+    bool IsExceptionHandler() const { return isExceptionHandler_; }
+    void SetExceptionHandler(bool v) { isExceptionHandler_ = v; }
+
+    bool HasRegisterMerge() const { return registerMergeState_ != nullptr; }
+
+    RegisterMergeState *GetRegisterMergeState()
     {
-        if (type_ == MERGE) {
-            ASSERT(state_ != nullptr);
-            return true;
-        }
-        return false;
+        ASSERT(registerMergeState_ != nullptr);
+        return registerMergeState_;
     }
 
-    MergePointFrameState *GetState() const
-    {
-        ASSERT(type_ == MERGE);
-        return state_;
-    }
+    void SetRegisterMergeState(RegisterMergeState *state) { registerMergeState_ = state; }
 
-    void SetState(MergePointFrameState *state)
-    {
-        type_ = MERGE;
-        this->state_ = state;
-    }
+    bool HasPhi() const { return !phis_.empty(); }
 
-    bool HasPhi() const;
+    const ChunkVector<PhiVertex *> &GetPhis() const { return phis_; }
+    ChunkVector<PhiVertex *> &GetPhis() { return phis_; }
 
-    const ChunkVector<PhiVertex *> &GetPhis() const;
-    ChunkVector<PhiVertex *> &GetPhis();
+    void AddPredecessor(BB *pred) { predecessors_.push_back(pred); }
 
-    Span<BB *> GetPredecessors();
-    Span<const BB *const> GetPredecessors() const;
+    Span<BB *> GetPredecessors() { return {predecessors_.data(), predecessors_.size()}; }
+    Span<const BB *const> GetPredecessors() const { return {predecessors_.data(), predecessors_.size()}; }
 
-    BB *GetPredecessor(uint32_t index);
-    const BB *GetPredecessor(uint32_t index) const;
+    BB *GetPredecessor(uint32_t index) { return predecessors_[index]; }
+    const BB *GetPredecessor(uint32_t index) const { return predecessors_[index]; }
 
-    void SetPredecessor(BB *predecessor)
-    {
-        ASSERT(type_ != MERGE);  // Expects EDGE_SPLIT or DEFAULT
-        predecessor_ = predecessor;
-    }
+    uint32_t PredecessorCount() const { return predecessorCount_; }
+    void SetPredecessorCount(uint32_t n) { predecessorCount_ = n; }
+
+    void SetSinglePredecessor(BB *predecessor) { predecessor_ = predecessor; }
 
     Label *GetLabel()
     {
@@ -157,50 +143,30 @@ public:
     uint32_t GetFirstNonPhiId() const;
     uint32_t GetFirstNonGapMoveId() const;
 
-    BlockType GetBlockType() const
-    {
-        return type_;
-    }
-
-    RegisterMergeState *GetEdgeSplitBlockRegisterState()
-    {
-        ASSERT(type_ == EDGE_SPLIT);
-        ASSERT(mergeState_ != nullptr);
-        return mergeState_;
-    }
-
-    void SetEdgeSplitBlockRegisterState(RegisterMergeState *registerState)
-    {
-        ASSERT(type_ == EDGE_SPLIT);
-        mergeState_ = registerState;
-    }
-
 private:
     explicit BB(Chunk *chunk)
-        : id_(INVALID_BLOCK_ID), controlVertex_(nullptr), vertices_(chunk), state_(nullptr), type_(DEFAULT)
+        : id_(INVALID_BLOCK_ID),
+          controlVertex_(nullptr),
+          phis_(chunk),
+          vertices_(chunk),
+          predecessors_(chunk),
+          isLoopHeader_(false),
+          isExceptionHandler_(false),
+          registerMergeState_(nullptr),
+          predecessorCount_(0),
+          predecessor_(nullptr)
     {}
-
-    BB(Chunk *chunk, MergePointFrameState *state)
-        : id_(INVALID_BLOCK_ID), controlVertex_(nullptr), vertices_(chunk), state_(state), type_(MERGE)
-    {
-        ASSERT(state_ != nullptr);
-    }
-
-    BB(Chunk *chunk, RegisterMergeState *state)
-        : id_(INVALID_BLOCK_ID), controlVertex_(nullptr), vertices_(chunk), mergeState_(state), type_(EDGE_SPLIT)
-    {
-        ASSERT(mergeState_ != nullptr);
-    }
 
     uint32_t id_;
     ControlVertex *controlVertex_;
+    ChunkVector<PhiVertex *> phis_;
     ChunkVector<NonControlVertex *> vertices_;
-    union {
-        MergePointFrameState *state_;
-        RegisterMergeState *mergeState_;
-    };
+    ChunkVector<BB *> predecessors_;
+    bool isLoopHeader_;
+    bool isExceptionHandler_;
+    RegisterMergeState *registerMergeState_;
+    uint32_t predecessorCount_ = 0;
     BB *predecessor_ = nullptr;
-    BlockType type_;
     Label label_;
 };
 
