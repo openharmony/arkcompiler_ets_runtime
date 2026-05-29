@@ -22,6 +22,7 @@
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_helper.h"
+#include "ecmascript/arksteed/arksteed_pgo_context.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/js_thread.h"
@@ -42,6 +43,7 @@ public:
           compilerThread_(compilerThread),
           glueAddr_(glueAddr),
           env_(env),
+          pgoContext_(compilerThread, env),
           bytecodeContext_(graph->GetChunk()),
           mergeStates_(graph->GetChunk()),
           predecessorCountReductions_(graph->GetChunk()),
@@ -165,6 +167,16 @@ public:
     ValueVertex *NewTaggedVertexFromRawInt32(int number)
     {
         return GetTaggedConstant(JSTaggedValue(number).GetRawData());
+    }
+
+    ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
+    {
+        ASSERT(ref.IsSafeForCompile());
+        if (!ref.IsHeapObject()) {
+            return GetTaggedConstant(ref.Value().GetRawData());
+        }
+        LOG_COMPILER(FATAL) << "AccessInfo heap objects are compile-time only and must not be embedded in codegen.";
+        UNREACHABLE();
     }
 
     ICSlotIdType GetICSlotId(int index) const
@@ -683,6 +695,7 @@ private:
     [[maybe_unused]] JSThread *compilerThread_;
     uintptr_t glueAddr_{0};
     JitCompilationEnv *env_;
+    ArkSteedPGOContext pgoContext_;
     ValueVertex *glue_{nullptr};
     ArkSteedCompilationOptions options_;
     // to do: Huge object. Consider referencing instead of copying

@@ -148,6 +148,11 @@ public:
         profileTypeInfo_ = info;
     }
 
+    JSHandle<ProfileTypeInfo> GetProfileTypeInfo() const
+    {
+        return profileTypeInfo_;
+    }
+
     const std::vector<JSHandle<JSTaggedValue>> &GetHeapConstantTable() const
     {
         return heapConstantInfo_.heapConstantTable;
