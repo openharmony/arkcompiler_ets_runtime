@@ -430,10 +430,10 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
     EXPECT_TRUE(ret == 1);
     EXPECT_TRUE(std::string(jsFunction2.functionName) == "func_main_0");
 
-    ret = ark_destroy_js_symbol_extractor(extractorptr1);
+    ret = ark_destory_js_symbol_extractor(extractorptr1);
     EXPECT_TRUE(ret == 1);
 
-    ret = ark_destroy_js_symbol_extractor(extractorptr2);
+    ret = ark_destory_js_symbol_extractor(extractorptr2);
     EXPECT_TRUE(!JsStackInfo::nameMap.empty());
     EXPECT_TRUE(ret == 1);
 }

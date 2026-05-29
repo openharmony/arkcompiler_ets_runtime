@@ -275,7 +275,7 @@ extern "C" int ark_write_jit_code(
 extern "C" int step_ark(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, panda::ecmascript::ArkStepParam *arkStepParam);
 extern "C" int ark_create_js_symbol_extractor(uintptr_t *extractorptr);
-extern "C" int ark_destroy_js_symbol_extractor(uintptr_t extractorptr);
+extern "C" int ark_destory_js_symbol_extractor(uintptr_t extractorptr);
 extern "C" int ark_parse_js_file_info(
     uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, const char* filePath,
     uintptr_t extractorptr, bool needTranslate, panda::ecmascript::JsFunction *jsFunction);

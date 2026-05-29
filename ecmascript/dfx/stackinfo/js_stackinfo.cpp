@@ -1483,7 +1483,7 @@ __attribute__((visibility("default"))) int ark_create_js_symbol_extractor(uintpt
     return 1;
 }
 
-__attribute__((visibility("default"))) int ark_destroy_js_symbol_extractor(uintptr_t extractorptr)
+__attribute__((visibility("default"))) int ark_destory_js_symbol_extractor(uintptr_t extractorptr)
 {
     if (panda::ecmascript::ArkDestroyJSSymbolExtractor(extractorptr)) {
         return 1;
