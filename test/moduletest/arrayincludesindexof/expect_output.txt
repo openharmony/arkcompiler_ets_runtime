@@ -27,7 +27,7 @@ Result with numberIndices: true,true,true,true,true,true,true,true,true,false,fa
 Result with nonNumberIndices: true,true,true,true,true,true,true,true,true,true,true
 OK: TypeError raised for bigint index
 OK: TypeError raised for object index
-======== Testing comparision ========
+======== Testing comparison ========
 [0] Target = 1 (number): indexOf => 0 lastIndexOf => 1 includes => true
 [1] Target = 1 (number): indexOf => 0 lastIndexOf => 1 includes => true
 [2] Target = -1 (number): indexOf => 2 lastIndexOf => 2 includes => true

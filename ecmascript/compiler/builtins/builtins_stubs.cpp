@@ -450,15 +450,15 @@ DECLARE_BUILTINS(BooleanConstructor)
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
-                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
+        GateRef initialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
+                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        BRANCH(IsJSHClass(glue, initialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             Label afterNew(env);
-            newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+            newBuilder.NewJSObject(&res, &afterNew, initialHClass);
             Bind(&afterNew);
             {
                 GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
@@ -502,9 +502,9 @@ DECLARE_BUILTINS(DateConstructor)
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
-                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath);
+        GateRef initialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
+                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        BRANCH(IsJSHClass(glue, initialHClass), &intialHClassIsHClass, &slowPath);
         Bind(&intialHClassIsHClass);
         {
             Label oneArg(env);
@@ -549,7 +549,7 @@ DECLARE_BUILTINS(DateConstructor)
                 NewObjectStubBuilder newBuilder(this);
                 newBuilder.SetParameters(glue, 0);
                 Label afterNew(env);
-                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+                newBuilder.NewJSObject(&res, &afterNew, initialHClass);
                 Bind(&afterNew);
                 {
                     GateRef timeValueOffset = IntPtr(JSDate::TIME_VALUE_OFFSET);

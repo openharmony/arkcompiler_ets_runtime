@@ -58,9 +58,9 @@ void GCStats::Init()
     garbageRatio = 0.0;
     collectionRate = 0.0;
 
-    // 20 MB:set 20 MB as intial value
+    // 20 MB:set 20 MB as initial value
     heapThreshold = std::min(BaseRuntime::GetInstance()->GetGCParam().gcThreshold, 20 * MB);
-    // 0.2:set 20% heap size as intial value
+    // 0.2:set 20% heap size as initial value
     heapThreshold = std::min(static_cast<size_t>(Heap::GetHeap().GetMaxCapacity() * 0.2), heapThreshold);
 
     targetFootprint = heapThreshold;

@@ -1201,7 +1201,7 @@ void AArch64CGFunc::SelectCondGoto(LabelOperand &targetOpnd, Opcode jmpOp, Opcod
  */
 void AArch64CGFunc::SelectCondSpecialCase1(CondGotoNode &stmt, BaseNode &expr)
 {
-    DEBUG_ASSERT(expr.GetOpCode() == OP_cmp, "unexpect opcode");
+    DEBUG_ASSERT(expr.GetOpCode() == OP_cmp, "unexpected opcode");
     Operand *opnd0 = HandleExpr(expr, *expr.Opnd(0));
     Operand *opnd1 = HandleExpr(expr, *expr.Opnd(1));
     CompareNode *node = static_cast<CompareNode *>(&expr);

@@ -37,9 +37,9 @@ void BuiltinsArrayStubBuilder::ElementsKindHclassCompare(GateRef glue, GateRef a
     Bind(&isGeneric);
     {
         GateRef globalEnv = GetCurrentGlobalEnv();
-        GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
-                                                 static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
-        BRANCH(Equal(intialHClass, arrayCls), matchCls, slowPath);
+        GateRef initialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+            static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
+        BRANCH(Equal(initialHClass, arrayCls), matchCls, slowPath);
     }
 }
 
@@ -1290,10 +1290,10 @@ GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
     Label setProperties(env);
     GateRef globalEnv = GetCurrentGlobalEnv();
     auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef initialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
-    result = newBuilder.NewJSArrayWithSize(intialHClass, count);
+    result = newBuilder.NewJSArrayWithSize(initialHClass, count);
     BRANCH(TaggedIsException(*result), &exit, &setProperties);
     Bind(&setProperties);
     {
@@ -1361,11 +1361,11 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
         GateRef cacheResArray = GetValueFromTaggedArray(glue, cacheArray,
             Int32Add(index, Int32(builtins::StringToListResultCache::ARRAY_INDEX)));
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
-                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        GateRef initialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
+                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
-        GateRef newArray = newBuilder.NewJSObject(glue, intialHClass);
+        GateRef newArray = newBuilder.NewJSObject(glue, initialHClass);
         Store(VariableType::INT32(), glue, newArray, IntPtr(JSArray::LENGTH_OFFSET), strLen);
         GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
         Store(VariableType::JS_ANY(), glue, newArray,
@@ -2636,10 +2636,10 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                                            GlobalEnv::ARRAY_FUNCTION_INDEX);
         BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath1);
         Bind(&fastGetHclass);
-        GateRef intialHClass =
+        GateRef initialHClass =
             Load(VariableType::JS_ANY(), glue, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
+        BRANCH(IsJSHClass(glue, initialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             Label noArg(env);
@@ -2702,7 +2702,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                     BRANCH(Int64LessThan(numArgs, IntPtr(JSObject::MAX_GAP)), &lengthValid, &slowPath);
                     Bind(&lengthValid);
                     {
-                        FastCreateArrayWithArgv(glue, &res, numArgs, intialHClass, &exit);
+                        FastCreateArrayWithArgv(glue, &res, numArgs, initialHClass, &exit);
                     }
                 }
             }
@@ -2714,7 +2714,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                 {
                     NewObjectStubBuilder newBuilder(this, globalEnv);
                     newBuilder.SetParameters(glue, 0);
-                    res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
+                    res = newBuilder.NewJSArrayWithSize(initialHClass, *arrayLength);
                     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
                     Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(*arrayLength));
                     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,

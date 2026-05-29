@@ -2650,14 +2650,14 @@ void BaselineCopyrestargsImm8StubBuilder::GenerateCircuit()
     Label slowPath(env);
     GateRef globalEnv = GetGlobalEnv(glue);
     auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef initialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
     newBuilder.SetParameters(glue, 0);
-    res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);
+    res = newBuilder.NewJSArrayWithSize(initialHClass, numArgs);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(numArgs));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, *res, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetPropertyInlinedProps(glue, *res, initialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
     SetExtensibleToBitfield(glue, *res, true);
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);

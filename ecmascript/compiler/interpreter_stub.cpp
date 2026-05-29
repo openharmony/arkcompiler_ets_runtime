@@ -630,11 +630,11 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     // For the args, we use ElementsKind::GENERIC as the kind
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-    GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
-                                             static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
+    GateRef initialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                              static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
     NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
-    res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);
+    res = newBuilder.NewJSArrayWithSize(initialHClass, numArgs);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(numArgs));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);

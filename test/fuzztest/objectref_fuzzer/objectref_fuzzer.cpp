@@ -24,7 +24,7 @@ using FunctionForRef = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 namespace OHOS {
     Local<JSValueRef> FuncRefNewCallbackForTest(JsiRuntimeCallInfo* info)
     {
-        LOG_ECMA(ERROR) << "runing FuncRefNewCallbackForTest";
+        LOG_ECMA(ERROR) << "running FuncRefNewCallbackForTest";
         EscapeLocalScope scope(info->GetVM());
         return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
     }

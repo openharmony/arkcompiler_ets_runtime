@@ -15,7 +15,7 @@
 
 /* 
  * Instructions:
- * The case is extracted from application, had occured a IC LoadMiss bug,
+ * The case is extracted from application, had occurred a IC LoadMiss bug,
  * when the op is not found, should not generate cache.
  */
 

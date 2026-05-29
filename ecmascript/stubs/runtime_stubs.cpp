@@ -4502,7 +4502,7 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
             } else if (second.IsString()) {
                 msg += "ic-mega, ";
             } else {
-                msg += "unkown-mega, ";
+                msg += "unknown-mega, ";
             }
         } else if (first.IsUndefined()) {
             msg += "undedfine slot, ";
@@ -4642,7 +4642,7 @@ DEF_RUNTIME_STUBS(TraceCallDetail)
             msg += std::string("[js function] id: ") + std::to_string(calleeMethodId) +
                    " abc id: " + std::to_string(calleeAbcId) + " method name: " + methodName;
         } else {
-            msg += "[unkown]";
+            msg += "[unknown]";
         }
     }
     ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, msg.c_str());

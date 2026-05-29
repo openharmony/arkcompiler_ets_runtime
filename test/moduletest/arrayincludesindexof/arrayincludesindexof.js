@@ -60,7 +60,7 @@ print('======== Testing fromIndex ========');
     }
 }
 
-print('======== Testing comparision ========');
+print('======== Testing comparison ========');
 {
     const obj = { x: 1, y: 2 };
     const objN = { valueOf() { return 0; } };

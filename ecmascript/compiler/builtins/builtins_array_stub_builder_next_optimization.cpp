@@ -2287,11 +2287,11 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
     GateRef globalEnv = GetCurrentGlobalEnv();
     auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
         GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
+    GateRef initialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
+    GateRef newArray = newBuilder.NewJSArrayWithSize(initialHClass, sumArrayLen);
     BRANCH(TaggedIsException(newArray), exit, &setProperties);
     Bind(&setProperties);
     {
@@ -2300,7 +2300,7 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
             TruncInt64ToInt32(sumArrayLen));
         GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
             ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-        SetPropertyInlinedProps(glue, newArray, intialHClass, accessor,
+        SetPropertyInlinedProps(glue, newArray, initialHClass, accessor,
             Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
         SetExtensibleToBitfield(glue, newArray, true);
         DEFVARIABLE(i, VariableType::INT64(), Int64(0));

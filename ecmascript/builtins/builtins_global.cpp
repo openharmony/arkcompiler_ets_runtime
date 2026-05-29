@@ -389,8 +389,8 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
         if (vm->IsNormalizedOhmUrlPack()) {
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
                 requestPath);
-        } else if (ModulePathHelper::NeedTranstale(requestPath)) {
-            ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
+        } else if (ModulePathHelper::NeedTranslate(requestPath)) {
+            ModulePathHelper::TranslateExpressionInput(curJsPandaFile.get(), requestPath);
         }
 
         size_t pos = requestPath.find(PathHelper::COLON_TAG);

@@ -163,7 +163,7 @@ protected:
         }
     }
 
-    static constexpr uint32_t threshhold = 0;
+    static constexpr uint32_t threshold = 0;
 };
 
 HWTEST_F_L0(PGOProfilerTestOne, WithWorker)
@@ -200,7 +200,7 @@ HWTEST_F_L0(PGOProfilerTestOne, WithWorker)
     JSNApi::DestroyJSVM(vm);
 
     vm = JSNApi::CreateJSVM(option);
-    PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshhold);
+    PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshold);
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
     ParseRelatedPandaFileMethods(loader, methodIdInAp);
     ASSERT_EQ(methodIdInAp.size(), 3);
@@ -251,7 +251,7 @@ HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshhold);
+    PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshold);
     std::shared_ptr<PGOAbcFilePool> abcFilePool = std::make_shared<PGOAbcFilePool>();
     ASSERT_TRUE(loader.LoadFull(abcFilePool));
 

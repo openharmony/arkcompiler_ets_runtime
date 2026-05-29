@@ -112,7 +112,7 @@ void ValueNumbering::Grow()
     }
     chunk_->Free(oldEntries);
     if (enableLog_) {
-        LOG_COMPILER(INFO) << "Grow happend";
+        LOG_COMPILER(INFO) << "Grow happened";
     }
 }
 

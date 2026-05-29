@@ -171,9 +171,9 @@ public:
                                          const CString &packagePath);
     static bool IsImportFile(const CString &moduleRequestName);
     static CString RemoveSuffix(const CString &requestName);
-    static bool NeedTranstale(const CString &requestName);
+    static bool NeedTranslate(const CString &requestName);
     static bool NeedTranslateToNormalized(const CString &requestName);
-    static void TranstaleExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath);
+    static void TranslateExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString GetModuleNameWithBaseFile(const CString &baseFileName);
     static CString TranslateExpressionInputWithEts(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    const CString &baseFileName, const CString &requestName);

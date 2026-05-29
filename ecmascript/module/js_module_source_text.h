@@ -239,12 +239,12 @@ public:
     inline void SetLazyImportArray(bool *lazyImportArray)
     {
         if (lazyImportArray != nullptr) {
-            DestoryLazyImportArray();
+            DestroyLazyImportArray();
         }
         SetLazyImportStatus(ToUintPtr(lazyImportArray));
     }
 
-    inline void DestoryLazyImportArray()
+    inline void DestroyLazyImportArray()
     {
         delete[] GetLazyImportStatusArray();
         SetLazyImportStatus(ToUintPtr(nullptr));
@@ -289,25 +289,25 @@ public:
     inline void SetEcmaModuleFilenameString(const CString &fileName)
     {
         CString *ptr = new CString(fileName);
-        DestoryEcmaModuleFilenameString();
+        DestroyEcmaModuleFilenameString();
         SetEcmaModuleFilename(ToUintPtr(ptr));
     }
 
     inline void SetEcmaModuleRecordNameString(const CString &recordName)
     {
         CString *ptr = new CString(recordName);
-        DestoryEcmaModuleRecordNameString();
+        DestroyEcmaModuleRecordNameString();
         SetEcmaModuleRecordName(ToUintPtr(ptr));
     }
 
-    inline void DestoryEcmaModuleFilenameString()
+    inline void DestroyEcmaModuleFilenameString()
     {
         CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleFilename());
         delete ptr;
         SetEcmaModuleFilename(ToUintPtr(nullptr));
     }
 
-    inline void DestoryEcmaModuleRecordNameString()
+    inline void DestroyEcmaModuleRecordNameString()
     {
         CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleRecordName());
         delete ptr;
@@ -333,9 +333,9 @@ public:
 
     inline void DestroyModuleCNativeFields()
     {
-        DestoryLazyImportArray();
-        DestoryEcmaModuleFilenameString();
-        DestoryEcmaModuleRecordNameString();
+        DestroyLazyImportArray();
+        DestroyEcmaModuleFilenameString();
+        DestroyEcmaModuleRecordNameString();
     }
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
@@ -357,8 +357,8 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(DFSIndex, int32_t, DFS_INDEX_OFFSET, ASYNC_EVALUATION_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(AsyncEvaluatingOrdinal, uint32_t, ASYNC_EVALUATION_OFFSET, PENDING_DEPENDENCIES_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(PendingAsyncDependencies,
-        int32_t, PENDING_DEPENDENCIES_OFFSET, LAYZ_IMPORT_STATUS_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(LazyImportStatus, uintptr_t, LAYZ_IMPORT_STATUS_OFFSET, ECMA_MODULE_FILENAME);
+        int32_t, PENDING_DEPENDENCIES_OFFSET, LAZY_IMPORT_STATUS_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(LazyImportStatus, uintptr_t, LAZY_IMPORT_STATUS_OFFSET, ECMA_MODULE_FILENAME);
     ACCESSORS_PRIMITIVE_FIELD(EcmaModuleFilename, uintptr_t, ECMA_MODULE_FILENAME, ECMA_MODULE_RECORDNAME);
     ACCESSORS_PRIMITIVE_FIELD(EcmaModuleRecordName, uintptr_t, ECMA_MODULE_RECORDNAME, BIT_FIELD_OFFSET);
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)

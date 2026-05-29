@@ -375,7 +375,7 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
 
 
 {
-  // repalce
+  // replace
   let obj = { a: 1, b: 2, c: 3 };
   function replacer(key, value) {
     if (value === 2) return undefined;

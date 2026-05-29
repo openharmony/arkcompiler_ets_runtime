@@ -243,24 +243,24 @@ void BuiltinsSharedArrayStubBuilder::GenSharedArrayConstructor(GateRef glue, Gat
     Bind(&newTargetIsJSFunction);
     {
         Label fastGetHclass(env);
-        Label intialHClassIsHClass(env);
+        Label initialHClassIsHClass(env);
         GateRef globalEnv = GetCurrentGlobalEnv();
         auto sharedArrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
             GlobalEnv::SHARED_ARRAY_FUNCTION_INDEX);
         BRANCH(Equal(sharedArrayFunc, newTarget), &fastGetHclass, &slowPath1);
         Bind(&fastGetHclass);
-        GateRef intialHClass =
+        GateRef initialHClass =
             Load(VariableType::JS_ANY(), glue, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
-        Bind(&intialHClassIsHClass);
+        BRANCH(IsJSHClass(glue, initialHClass), &initialHClassIsHClass, &slowPath1);
+        Bind(&initialHClassIsHClass);
         {
             Label hasArg(env);
             Label arrayCreateNoArg(env);
             BRANCH(Int64Equal(numArgs, IntPtr(0)), &arrayCreateNoArg, &hasArg);
             Bind(&arrayCreateNoArg);
             {
-                res = NewSharedArrayWithHClass(glue, intialHClass);
+                res = NewSharedArrayWithHClass(glue, initialHClass);
                 Jump(&exit);
             }
             Bind(&hasArg);
@@ -270,7 +270,7 @@ void BuiltinsSharedArrayStubBuilder::GenSharedArrayConstructor(GateRef glue, Gat
                 BRANCH(Int64LessThan(numArgs, IntPtr(JSObject::MAX_GAP)), &multiArgLengthValid, &slowPath);
                 Bind(&multiArgLengthValid);
                 {
-                    FastCreateSharedArrayWithArgv(glue, &res, numArgs, intialHClass, &exit, &slowPath);
+                    FastCreateSharedArrayWithArgv(glue, &res, numArgs, initialHClass, &exit, &slowPath);
                 }
             }
         }

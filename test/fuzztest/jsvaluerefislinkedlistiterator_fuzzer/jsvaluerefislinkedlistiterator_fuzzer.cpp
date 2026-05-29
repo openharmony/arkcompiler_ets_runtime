@@ -143,9 +143,9 @@ void JSValueRefIsLinkedListIteratorFuzzTest(const uint8_t *data, size_t size)
         objCallInfo->SetThis(tagvalue.GetTaggedValue());
         objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
         [[maybe_unused]] auto prev = SetupFrame(thread, objCallInfo);
-        JSHandle<JSTaggedValue> contianer =
+        JSHandle<JSTaggedValue> container =
             JSHandle<JSTaggedValue>(thread, containers::ContainersPrivate::Load(objCallInfo));
-        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer);
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(container), container);
         JSHandle<JSAPILinkedList> linkedList = JSHandle<JSAPILinkedList>::Cast(obj);
         JSTaggedValue doubleList = TaggedDoubleList::Create(thread);
         linkedList->SetDoubleList(thread, doubleList);

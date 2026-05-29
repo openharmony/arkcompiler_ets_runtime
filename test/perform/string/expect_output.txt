@@ -31,7 +31,7 @@ string substr negative number in parameter : 18
 string substr number of input parameters is 2 : 17
 string replace into string.replace searchtag in the middle of the input parameter : 59
 string replace into string.replace searchtag in the beginning of the input parameter : 46
-string replace into string.repalce : 55
+string replace into string.replace : 55
 string repeat the parameter is integer : 18
 string repeat the parameter is double : 19
 string repeat the return value is himself : 15

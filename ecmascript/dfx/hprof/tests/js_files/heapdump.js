@@ -67,7 +67,7 @@ for (let item of list) {
   print(item);
 }
 
-// funtion
+// function
 function greet() {
   print('Hello, this is a function!');
 }

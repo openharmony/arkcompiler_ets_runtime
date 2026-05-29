@@ -30,11 +30,11 @@ public:
     /*
      * for cpu instruction contains different operands
      * maple provide a default implement from three address to two address
-     * convertion rule is:
+     * conversion rule is:
      * mop(dest, src1, src2) -> mov(dest, src1)
      *                          mop(dest, src2)
      * maple provide a default implement from two address to one address for unary op
-     * convertion rule is:
+     * conversion rule is:
      * mop(dest, src) -> mov(dest, src1)
      *                   mop(dest)
      */

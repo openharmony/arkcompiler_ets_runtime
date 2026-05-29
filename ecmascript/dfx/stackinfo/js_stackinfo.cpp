@@ -1188,10 +1188,10 @@ JSSymbolExtractor* JSSymbolExtractor::Create()
     return extractor;
 }
 
-bool JSSymbolExtractor::Destory(JSSymbolExtractor *extractor)
+bool JSSymbolExtractor::Destroy(JSSymbolExtractor *extractor)
 {
     if (extractor == nullptr) {
-        LOG_ECMA(ERROR) << "Destory ark symbol extractor failed, extractor is nullptr.";
+        LOG_ECMA(ERROR) << "Destroy ark symbol extractor failed, extractor is nullptr.";
         return false;
     }
     delete extractor;
@@ -1289,14 +1289,14 @@ uintptr_t ArkCreateJSSymbolExtractor()
     return extractorptr;
 }
 
-bool ArkDestoryJSSymbolExtractor(uintptr_t extractorptr)
+bool ArkDestroyJSSymbolExtractor(uintptr_t extractorptr)
 {
     auto extractor = reinterpret_cast<JSSymbolExtractor*>(extractorptr);
 #if defined(ENABLE_STATIC_BACKTRACE)
     auto staticSymbolExtractor = extractor->GetStaticSymbolExtractor();
     ark::tooling::Backtrace::DestroyArkSymbolExtractor(staticSymbolExtractor);
 #endif
-    return JSSymbolExtractor::Destory(extractor);
+    return JSSymbolExtractor::Destroy(extractor);
 }
 
 void JSStackTrace::AddReference()
@@ -1470,7 +1470,7 @@ bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t mapBase,
     return result;
 }
 
-void ArkDestoryLocal()
+void ArkDestroyLocal()
 {
     JSStackTrace::ReleaseReference();
 }
@@ -1483,9 +1483,9 @@ __attribute__((visibility("default"))) int ark_create_js_symbol_extractor(uintpt
     return 1;
 }
 
-__attribute__((visibility("default"))) int ark_destory_js_symbol_extractor(uintptr_t extractorptr)
+__attribute__((visibility("default"))) int ark_destroy_js_symbol_extractor(uintptr_t extractorptr)
 {
-    if (panda::ecmascript::ArkDestoryJSSymbolExtractor(extractorptr)) {
+    if (panda::ecmascript::ArkDestroyJSSymbolExtractor(extractorptr)) {
         return 1;
     }
     return -1;
@@ -1493,7 +1493,7 @@ __attribute__((visibility("default"))) int ark_destory_js_symbol_extractor(uintp
 
 __attribute__((visibility("default"))) int ark_destroy_local()
 {
-    panda::ecmascript::ArkDestoryLocal();
+    panda::ecmascript::ArkDestroyLocal();
     return 1;
 }
 

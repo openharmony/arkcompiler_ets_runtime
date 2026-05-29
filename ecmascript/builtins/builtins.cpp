@@ -4053,7 +4053,7 @@ void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const
     JSHandle<JSTaggedValue> loaded(factory_->NewEmptyJSObject(env));
     JSHandle<JSTaggedValue> children(factory_->NewEmptyJSObject(env));
     JSHandle<JSTaggedValue> cache = JSHandle<JSTaggedValue>::Cast(CjsModuleCache::Create(thread_,
-        CjsModuleCache::DEAULT_DICTIONART_CAPACITY));
+        CjsModuleCache::DEFAULT_DICTIONARY_CAPACITY));
 
     // CjsModule.prototype members
     SetNonConstantObject(cjsModulePrototype, "id", id);

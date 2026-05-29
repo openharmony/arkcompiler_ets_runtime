@@ -141,7 +141,7 @@ public:
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
     static constexpr int ENTRY_SIZE = 2;
-    static constexpr int DEAULT_DICTIONART_CAPACITY = 4;
+    static constexpr int DEFAULT_DICTIONARY_CAPACITY = 4;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_REQUIRE_JS_CJS_MODULE_CACHE_H

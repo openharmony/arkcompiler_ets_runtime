@@ -64,7 +64,7 @@ HWTEST_F_L0(CjsModuleTest, SearchFromModuleCache)
     auto vm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
-    JSHandle<CjsModuleCache> cache = CjsModuleCache::Create(thread, CjsModuleCache::DEAULT_DICTIONART_CAPACITY);
+    JSHandle<CjsModuleCache> cache = CjsModuleCache::Create(thread, CjsModuleCache::DEFAULT_DICTIONARY_CAPACITY);
     JSHandle<CjsModule> module1 = factory->NewCjsModule();
     JSHandle<CjsModule> module2 = factory->NewCjsModule();
     JSHandle<JSTaggedValue> fileName1(factory->NewFromUtf8("ark/js_runtime/test1.js"));
