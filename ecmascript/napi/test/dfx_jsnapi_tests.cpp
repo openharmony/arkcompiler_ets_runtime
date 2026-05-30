@@ -25,6 +25,9 @@
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/platform/backtrace.h"
+#include "ecmascript/platform/debug_signal.h"
+#include <csignal>
+#include <thread>
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -796,16 +799,132 @@ HWTEST_F_L0(DFXJSNApiTests, GetMainThreadStackTrace_1)
 
 HWTEST_F_L0(DFXJSNApiTests, SetMultithreadingDetectionEnabled_1)
 {
-    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, true);
+    bool prevCheck = EcmaVM::GetMultiThreadCheck();
+    bool prevCountApi = EcmaVM::GetCheckCountApi();
+    bool prevAbort = EcmaVM::GetDetectionConfig().abort.load();
+    uint64_t prevFreq = EcmaVM::GetDetectionConfig().frequency.load();
+    uint64_t prevInterval = EcmaVM::GetDetectionConfig().interval.load();
+    DFXJSNApi::MultithreadingDetectionOptions options(true, 100, 5);
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, true, options);
     ASSERT_TRUE(EcmaVM::GetMultiThreadCheck());
     ASSERT_TRUE(EcmaVM::GetCheckCountApi());
+    ASSERT_TRUE(EcmaVM::GetDetectionConfig().abort.load());
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().frequency.load(), 100U);
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().interval.load(), 5U);
+    EcmaVM::SetMultiThreadCheck(prevCheck);
+    EcmaVM::SetCheckCountApi(prevCountApi);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(prevAbort, prevFreq, prevInterval));
 }
 
 HWTEST_F_L0(DFXJSNApiTests, SetMultithreadingDetectionEnabled_2)
 {
-    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, false);
+    bool prevCheck = EcmaVM::GetMultiThreadCheck();
+    bool prevCountApi = EcmaVM::GetCheckCountApi();
+    DFXJSNApi::MultithreadingDetectionOptions options(false, 200, 10);
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, false, options);
     ASSERT_FALSE(EcmaVM::GetMultiThreadCheck());
     ASSERT_FALSE(EcmaVM::GetCheckCountApi());
+    EcmaVM::SetMultiThreadCheck(prevCheck);
+    EcmaVM::SetCheckCountApi(prevCountApi);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SetMultithreadingDetectionEnabled_WithAbortFalse)
+{
+    bool prevCheck = EcmaVM::GetMultiThreadCheck();
+    bool prevAbort = EcmaVM::GetDetectionConfig().abort.load();
+    uint64_t prevFreq = EcmaVM::GetDetectionConfig().frequency.load();
+    uint64_t prevInterval = EcmaVM::GetDetectionConfig().interval.load();
+    DFXJSNApi::MultithreadingDetectionOptions options(false, 100, 5);
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, true, options);
+    ASSERT_TRUE(EcmaVM::GetMultiThreadCheck());
+    ASSERT_FALSE(EcmaVM::GetDetectionConfig().abort.load());
+    EcmaVM::SetMultiThreadCheck(prevCheck);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(prevAbort, prevFreq, prevInterval));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SetMultithreadingDetectionEnabled_DisabledNoOptionsApplied)
+{
+    bool prevAbort = EcmaVM::GetDetectionConfig().abort.load();
+    uint64_t prevFreq = EcmaVM::GetDetectionConfig().frequency.load();
+    uint64_t prevInterval = EcmaVM::GetDetectionConfig().interval.load();
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 150, 8));
+    DFXJSNApi::MultithreadingDetectionOptions options(false, 50, 1);
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, false, options);
+    ASSERT_FALSE(EcmaVM::GetMultiThreadCheck());
+    ASSERT_TRUE(EcmaVM::GetDetectionConfig().abort.load());
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().frequency.load(), 150U);
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().interval.load(), 8U);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(prevAbort, prevFreq, prevInterval));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SetDetectionConfig_ValidValue)
+{
+    bool prevAbort = EcmaVM::GetDetectionConfig().abort.load();
+    uint64_t prevFreq = EcmaVM::GetDetectionConfig().frequency.load();
+    uint64_t prevInterval = EcmaVM::GetDetectionConfig().interval.load();
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 100, 0));
+    ASSERT_TRUE(EcmaVM::GetDetectionConfig().abort.load());
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().frequency.load(), 100U);
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().interval.load(), 0U);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 200, 1440));
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().frequency.load(), 200U);
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().interval.load(), 1440U);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(prevAbort, prevFreq, prevInterval));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SetDetectionConfig_InvalidFrequency)
+{
+    uint64_t originalFreq = EcmaVM::GetDetectionConfig().frequency.load();
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, -1, 5));
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().frequency.load(), originalFreq);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 99, 5));
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().frequency.load(), originalFreq);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SetDetectionConfig_InvalidInterval)
+{
+    uint64_t originalInterval = EcmaVM::GetDetectionConfig().interval.load();
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 100, 14401));
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().interval.load(), originalInterval);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 100, -1));
+    ASSERT_EQ(EcmaVM::GetDetectionConfig().interval.load(), originalInterval);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, CheckCountNum_TrueAndFalse)
+{
+    bool prevCheckCountApi = EcmaVM::GetCheckCountApi();
+    bool prevAbort = EcmaVM::GetDetectionConfig().abort.load();
+    uint64_t prevFreq = EcmaVM::GetDetectionConfig().frequency.load();
+    uint64_t prevInterval = EcmaVM::GetDetectionConfig().interval.load();
+    EcmaVM::SetCheckCountApi(false);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(true, 100, 5));
+    while (!vm_->CheckCountNum()) {}
+    ASSERT_FALSE(vm_->CheckCountNum());
+    for (int i = 0; i < 98; i++) {
+        vm_->CheckCountNum();
+    }
+    ASSERT_TRUE(vm_->CheckCountNum());
+    EcmaVM::SetCheckCountApi(prevCheckCountApi);
+    EcmaVM::SetDetectionConfig(DFXJSNApi::MultithreadingDetectionOptions(prevAbort, prevFreq, prevInterval));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, CheckTimeInterval_LastTimeZeroReturnsTrue)
+{
+    ASSERT_TRUE(vm_->CheckTimeInterval());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetTimeStamp_ReturnsNonZero)
+{
+    uint64_t ts = vm_->GetTimeStamp();
+    ASSERT_GT(ts, 0U);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, MultithreadingDetectionOptions_DefaultValues)
+{
+    DFXJSNApi::MultithreadingDetectionOptions opts(true, 100, 5);
+    ASSERT_TRUE(opts.abort);
+    ASSERT_EQ(opts.frequency, 100U);
+    ASSERT_EQ(opts.interval, 5U);
 }
 
 HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_1)
