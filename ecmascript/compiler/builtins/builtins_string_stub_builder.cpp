@@ -2541,8 +2541,8 @@ GateRef BuiltinsStringStubBuilder::AllocateLineString(GateRef glue, GateRef leng
     builder_.StartAllocate();
     GateRef lineString =
         builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
-    builder_.Store(VariableType::JS_POINTER(), glue, lineString,
-                   builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue, lineString, stringClass, RegionSpaceFlag::IN_SHARED_OLD_SPACE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
     InitStringLengthAndFlags(glue, lineString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, lineString,
                    builder_.IntPtr(BaseString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
@@ -2567,8 +2567,8 @@ GateRef BuiltinsStringStubBuilder::AllocateSlicedString(GateRef glue, GateRef fl
     builder_.StartAllocate();
     GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(),
         RegionSpaceFlag::IN_SHARED_OLD_SPACE);
-    builder_.Store(VariableType::JS_POINTER(), glue, slicedString,
-                   builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue, slicedString, stringClass, RegionSpaceFlag::IN_SHARED_OLD_SPACE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
     InitStringLengthAndFlags(glue, slicedString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, slicedString,
                    builder_.IntPtr(BaseString::MIX_HASHCODE_OFFSET), builder_.Int32(0));

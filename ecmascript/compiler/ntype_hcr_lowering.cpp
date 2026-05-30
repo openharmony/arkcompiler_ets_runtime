@@ -244,7 +244,13 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
         builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined(),
                                   MemoryAttribute::NoBarrier());
     }
+#if USE_STICKY_CMS_GC
+    // fixme: to support const offset optimization, currently StoreHClassConstOffset
+    // is only used for transition and only modifies low 32-bit
+    builder_.StoreHClass(glue, array, hclass, flag, MemoryAttribute::NeedBarrierAndAtomic());
+#else
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass, MemoryAttribute::NeedBarrierAndAtomic());
+#endif
     builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()), MemoryAttribute::NoBarrier());
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray,
@@ -271,8 +277,14 @@ GateRef NTypeHCRLowering::NewTaggedArray(size_t length, GateRef glue)
 
     builder_.StartAllocate();
     GateRef elements = builder_.HeapAlloc(glue, elementsSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+#if USE_STICKY_CMS_GC
+    // fixme: to support const offset optimization
+    builder_.StoreHClass(glue, elements, elementsHclass, RegionSpaceFlag::IN_YOUNG_SPACE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
+#else
     builder_.StoreConstOffset(VariableType::JS_POINTER(), elements, 0, elementsHclass,
                               MemoryAttribute::NeedBarrierAndAtomic());
+#endif
     builder_.StoreConstOffset(VariableType::JS_ANY(), elements, TaggedArray::LENGTH_OFFSET,
         builder_.Int32ToTaggedInt(builder_.IntPtr(length)), MemoryAttribute::NoBarrier());
     size_t endOffset = TaggedArray::DATA_OFFSET + length * JSTaggedValue::TaggedTypeSize();

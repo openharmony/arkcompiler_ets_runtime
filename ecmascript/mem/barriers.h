@@ -63,6 +63,10 @@ public:
     template<bool needWriteBarrier = true>
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
+    static void PUBLIC_API CheckObjectForCMS(const JSThread *thread, void *obj, size_t offset, JSTaggedValue value,
+                                             bool writeBarrierCheck = false);
+    static void PUBLIC_API CheckValueForCMS(const JSThread *thread, JSTaggedValue value);
+
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
     //
@@ -96,6 +100,7 @@ public:
     static JSTaggedType GetTaggedValue(const JSThread *thread, uintptr_t slotAddress);
     static JSTaggedType GetTaggedValueAtomic(const JSThread *thread, const void *obj, size_t offset);
     static JSTaggedType UpdateSlot(const JSThread *thread, void *obj, size_t offset);
+    static JSTaggedType UpdateSlot(const JSThread *thread, uintptr_t slotAddress);
 
     template <RBMode mode = RBMode::DEFAULT_RB>
     static TaggedObject *GetTaggedObject(const JSThread *thread, const void *obj, size_t offset);

@@ -577,7 +577,7 @@ public:
     inline GateRef IsJsProxy(GateRef glue, GateRef obj);
     GateRef IsJSHClass(GateRef glue, GateRef obj);
     // It must sets zero for high 32 bits field when store hclass to object header.
-    inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass,
+    inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass, RegionSpaceFlag spaceType,
                             MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     // It must keeps high 32 bits field when store hclass to object header.
     inline void TransitionHClass(GateRef glue, GateRef object, GateRef hClass,

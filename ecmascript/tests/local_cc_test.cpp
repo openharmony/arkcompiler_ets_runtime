@@ -206,9 +206,9 @@ HWTEST_F_L0(LocalCCTest, ReadBarrierTest)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArrayBuffer> arraybuffer = factory->NewJSArrayBuffer(8);
     JSTaggedType hclassSlot = arraybuffer.GetTaggedValue().GetRawData();
-    JSTaggedValue hclassValue(arraybuffer->GetClass());
-    JSTaggedType hclass = ReadBarrier(thread, hclassSlot, hclassValue);
-    EXPECT_TRUE(JSTaggedValue(hclass).IsJSHClass());
+    JSTaggedValue slotValue3 = ObjectSlot(hclassSlot).GetTaggedValue();
+    JSTaggedType hclass = ReadBarrier(thread, hclassSlot, slotValue3);
+    EXPECT_TRUE(JSTaggedValue(hclass & TaggedObject::GC_STATE_MASK).IsJSHClass());
     JSTaggedType nullValue(0);
     uintptr_t nullSlot = ToUintPtr(&nullValue);
     JSTaggedType nullObject = ReadBarrierImpl(thread, nullSlot);

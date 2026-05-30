@@ -1094,6 +1094,9 @@ GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
 GateRef CircuitBuilder::StoreConstOffset(VariableType type,
                                          GateRef receiver, size_t offset, GateRef value, MemoryAttribute mAttr)
 {
+    if (G_USE_STICKY_CMS_GC && (type == VariableType::JS_ANY() || type == VariableType::JS_POINTER()) && offset == 0) {
+        LOG_ECMA(FATAL) << "store with zero offset should use StoreHClass";
+    }
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
     auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, mAttr);

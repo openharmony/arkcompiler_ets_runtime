@@ -68,6 +68,11 @@ public:
     void ProcessSnapshotRSet(uint32_t threadId);                // for non-concurrent YoungGC
     void ProcessSnapshotRSetNoMarkStack(uint32_t threadId);     // for concurrent YoungGC
 
+    void ProcessOldToNewForSticky(uint32_t threadId);                    // for non-concurrent StickyCMS
+    void ProcessOldToNewNoMarkStackForSticky(uint32_t threadId);         // for concurrent StickyCMS
+    void ProcessSnapshotRSetForSticky(uint32_t threadId);                // for non-concurrent StickyCMS
+    void ProcessSnapshotRSetNoMarkStackForSticky(uint32_t threadId);     // for concurrent StickyCMS
+
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
     void MarkJitCodeMap(uint32_t threadId) override;

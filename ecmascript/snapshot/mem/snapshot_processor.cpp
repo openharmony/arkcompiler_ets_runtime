@@ -1633,12 +1633,13 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
         RelocateSlotSpaceObject(type, rootObjSize);
 #else
         auto oldSpace = heap->GetOldSpace();
-        RelocateSpaceObject(oldSpace, type, methods, methodNums, rootObjSize);
+        RelocateSpaceObject(oldSpace, MemSpaceType::OLD_SPACE, type, methods, methodNums, rootObjSize);
 #endif
-        RelocateSpaceObject(nonMovableSpace, type, methods, methodNums, rootObjSize);
-        RelocateSpaceObject(machineCodeSpace, type, methods, methodNums, rootObjSize);
-        RelocateSpaceObject(snapshotSpace, type, methods, methodNums, rootObjSize);
-        RelocateSpaceObject(hugeObjectSpace, type, methods, methodNums, rootObjSize);
+        RelocateSpaceObject(nonMovableSpace, MemSpaceType::NON_MOVABLE, type, methods, methodNums, rootObjSize);
+        RelocateSpaceObject(machineCodeSpace, MemSpaceType::MACHINE_CODE_SPACE, type,
+                            methods, methodNums, rootObjSize);
+        RelocateSpaceObject(snapshotSpace, MemSpaceType::SNAPSHOT_SPACE, type, methods, methodNums, rootObjSize);
+        RelocateSpaceObject(hugeObjectSpace, MemSpaceType::HUGE_OBJECT_SPACE, type, methods, methodNums, rootObjSize);
     }
 }
 
@@ -1665,7 +1666,7 @@ void SnapshotProcessor::RelocateSpaceObject(std::vector<std::pair<uintptr_t, siz
                 break;
             }
             TaggedObject *objectHeader = reinterpret_cast<TaggedObject *>(begin);
-            DeserializeClassWord(objectHeader);
+            DeserializeClassWord(objectHeader, MemSpaceType::SPACE_TYPE_LAST);
             DeserializeField(objectHeader);
             if (builtinsDeserialize_ &&
                 (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
@@ -1683,15 +1684,15 @@ void SnapshotProcessor::RelocateSpaceObject(std::vector<std::pair<uintptr_t, siz
     };
 }
 
-void SnapshotProcessor::RelocateSpaceObject(MonoSpace* space, SnapshotType type, MethodLiteral* methods,
-                                            size_t methodNums, size_t rootObjSize)
+void SnapshotProcessor::RelocateSpaceObject(MonoSpace* space, MemSpaceType spaceType, SnapshotType type,
+                                            MethodLiteral* methods, size_t methodNums, size_t rootObjSize)
 {
     size_t others = 0;
     size_t objIndex = 0;
     size_t constSpecialIndex = 0;
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     space->EnumerateRegions([stringTable, &others, &objIndex, &rootObjSize, &constSpecialIndex,
-                            &type, this, methods, &methodNums](Region *current) {
+                            &type, this, methods, &methodNums, &spaceType](Region *current) {
         if (!current->NeedRelocate()) {
             return;
         }
@@ -1713,7 +1714,7 @@ void SnapshotProcessor::RelocateSpaceObject(MonoSpace* space, SnapshotType type,
                 break;
             }
             TaggedObject *objectHeader = reinterpret_cast<TaggedObject *>(begin);
-            DeserializeClassWord(objectHeader);
+            DeserializeClassWord(objectHeader, spaceType);
             DeserializeField(objectHeader);
             if (builtinsDeserialize_ &&
                 (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
@@ -1824,7 +1825,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
     }
 }
 
-void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
+void SnapshotProcessor::DeserializeClassWord(TaggedObject *object, MemSpaceType spaceType)
 {
     // During AOT deserialization, setting the hclass on an object does not require atomic operations, but a write
     // barrier is still needed to track cross-generation references. Besides this, if the hclass is created during
@@ -1841,6 +1842,27 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
 #else
         WriteBarrier(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET, hclassValue.GetRawData());
         object->SetClassWithoutBarrier(JSHClass::Cast(hclassValue.GetTaggedObject()));
+#if USE_STICKY_CMS_GC
+        switch (spaceType) {
+            case MemSpaceType::READ_ONLY_SPACE:
+            case MemSpaceType::APPSPAWN_SPACE:
+            case MemSpaceType::NON_MOVABLE:
+                object->SetObjectState(ObjectState::OLD);
+                break;
+            case MemSpaceType::MACHINE_CODE_SPACE:
+            case MemSpaceType::SLOT_SPACE:
+            case MemSpaceType::HUGE_OBJECT_SPACE:
+            case MemSpaceType::OLD_SPACE:
+            case MemSpaceType::SEMI_SPACE:
+                object->SetObjectState(ObjectState::YOUNG);
+                break;
+            case MemSpaceType::SHARED_OLD_SPACE:
+            case MemSpaceType::SHARED_NON_MOVABLE:
+                break;
+            default:
+                break;
+        }
+#endif
 #endif
         return;
     }
@@ -1854,6 +1876,27 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
     WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
                                                     JSTaggedValue(hclass).GetRawData());
     object->SetClassWithoutBarrier(hclass);
+#if USE_STICKY_CMS_GC
+    switch (spaceType) {
+        case MemSpaceType::READ_ONLY_SPACE:
+        case MemSpaceType::APPSPAWN_SPACE:
+        case MemSpaceType::NON_MOVABLE:
+            object->SetObjectState(ObjectState::OLD);
+            break;
+        case MemSpaceType::MACHINE_CODE_SPACE:
+        case MemSpaceType::SLOT_SPACE:
+        case MemSpaceType::HUGE_OBJECT_SPACE:
+        case MemSpaceType::OLD_SPACE:
+        case MemSpaceType::SEMI_SPACE:
+            object->SetObjectState(ObjectState::YOUNG);
+            break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+        case MemSpaceType::SHARED_NON_MOVABLE:
+            break;
+        default:
+            break;
+    }
+#endif
 #endif
 }
 
@@ -2258,7 +2301,7 @@ void SnapshotProcessor::RelocateSlotSpaceObject(SnapshotType type, size_t rootOb
             auto objType = encodeBit.GetObjectType();
             ASSERT(objType != Constants::MASK_METHOD_SPACE_BEGIN);
             TaggedObject *objectHeader = reinterpret_cast<TaggedObject *>(begin);
-            DeserializeClassWord(objectHeader);
+            DeserializeClassWord(objectHeader, MemSpaceType::SLOT_SPACE);
             DeserializeField(objectHeader);
             if (builtinsDeserialize_ &&
                 (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {

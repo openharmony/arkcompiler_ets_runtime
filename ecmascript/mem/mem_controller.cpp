@@ -249,6 +249,7 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
             recordedMarkCompacts_.Push(MakeBytesAndDuration(heap_->GetHeapObjectSize(), duration));
             break;
         }
+        case TriggerGCType::STICKY_CMS_GC:
         case TriggerGCType::CMS_GC: {
             recordedSweep_.Push(MakeBytesAndDuration(heap_->GetHeapObjectSize(), duration));
         }

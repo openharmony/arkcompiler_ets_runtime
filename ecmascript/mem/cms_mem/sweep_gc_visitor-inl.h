@@ -152,5 +152,36 @@ void SweepGCMarkObjectVisitor::RecordWeakReference(JSTaggedType *weak)
     workNodeHolder_->PushWeakReference(weak);
 }
 
+StickyMarkOldToNewRSetVisitor::StickyMarkOldToNewRSetVisitor(WorkNodeHolder *workNodeHolder)
+    : workNodeHolder_(workNodeHolder) {}
+
+void StickyMarkOldToNewRSetVisitor::operator()(Region *region) const
+{
+    region->IterateAllOldToNewBits([this](void *mem) -> bool {
+        ObjectSlot slot(ToUintPtr(mem));
+        return HandleSlot(slot);
+    });
+}
+
+bool StickyMarkOldToNewRSetVisitor::HandleSlot(ObjectSlot slot) const
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (!value.IsHeapObject()) {
+        return false;
+    }
+
+    if (!value.IsWeakForHeapObject()) {
+        TaggedObject *object = value.GetTaggedObject();
+        Region *objectRegion = Region::ObjectAddressToRange(object);
+        if (!objectRegion->InSharedHeap()) {
+            if (objectRegion->AtomicMark(object)) {
+                workNodeHolder_->Push(object);
+            }
+        }
+    } else {
+        workNodeHolder_->PushWeakReference((reinterpret_cast<JSTaggedType*>(slot.SlotAddress())));
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_CMS_MEM_SWEEP_GC_VISITOR_INL_H

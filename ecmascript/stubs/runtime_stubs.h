@@ -106,6 +106,8 @@ public:
     static void SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
     static void TryFillSweptRegion(uintptr_t argGlue);
     static void CMCGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
+    static void CheckObjectForCMS(uintptr_t argGlue, uintptr_t object, size_t offset, uintptr_t value,
+                                  bool writeBarrierCheck);
     static JSTaggedType ReadBarrier(uintptr_t argGlue, uintptr_t addr);
     static void CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget);
     static void CopyArgvArray(uintptr_t argGlue, uintptr_t argv, uint64_t argc);

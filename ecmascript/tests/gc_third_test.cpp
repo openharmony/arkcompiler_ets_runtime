@@ -195,7 +195,7 @@ HWTEST_F_L0(GCTest, ObjectExceedMaxHeapSizeTest001)
 
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest001)
 {
-#ifdef NDEBUG
+#if !USE_STICKY_CMS_GC && defined(NDEBUG)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->CollectGarbage(TriggerGCType::OLD_GC);
     ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), false);

@@ -447,6 +447,15 @@ config("ark_jsruntime_common_config") {
     defines += [ "USE_CMS_GC=0" ]
   }
 
+  if (enable_sticky_cms_gc) {
+    defines += [ "USE_STICKY_CMS_GC=1" ]
+    if (!enable_cms_gc) {
+      print("ERROR: enable_sticky_cms_gc requires enable_cms_gc to be true")
+    }
+  } else {
+    defines += [ "USE_STICKY_CMS_GC=0" ]
+  }
+
   if (ark_standalone_build) {
     defines += [ "STANDALONE_MODE" ]
   }
@@ -1051,6 +1060,7 @@ ecma_source = [
   "ecmascript/mem/cms_mem/cms_region_chain_manager.cpp",
   "ecmascript/mem/cms_mem/slot_allocator.cpp",
   "ecmascript/mem/cms_mem/slot_space.cpp",
+  "ecmascript/mem/cms_mem/sticky_sweep_gc.cpp",
   "ecmascript/mem/cms_mem/sweep_gc.cpp",
   "ecmascript/mem/dyn_chunk.cpp",
   "ecmascript/mem/full_gc.cpp",

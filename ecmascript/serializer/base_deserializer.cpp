@@ -110,7 +110,19 @@ void BaseDeserializer::DeserializeObjectField(uintptr_t start, uintptr_t end)
     size_t offset = 0; // 0: initial offset
     while (start + offset < end) {
         uint8_t encodeFlag = data_->ReadUint8(position_);
-        offset += ReadSingleEncodeData(encodeFlag, start, offset);
+        size_t result = ReadSingleEncodeData(encodeFlag, start, offset);
+#if USE_STICKY_CMS_GC
+        if (offset == 0) {
+            TaggedObject *obj = JSTaggedValue(static_cast<JSTaggedType>(start)).GetTaggedObject();
+            Region *objRegion = Region::ObjectAddressToRange(obj);
+            if (!objRegion->InSharedHeap()) {
+                objRegion->AtomicMark(reinterpret_cast<void *>(obj));
+                obj->SetObjectState(ObjectState::OLD);
+                objRegion->IncreaseGCAliveSize(end - start);
+            }
+        }
+#endif
+        offset += result;
     }
 }
 

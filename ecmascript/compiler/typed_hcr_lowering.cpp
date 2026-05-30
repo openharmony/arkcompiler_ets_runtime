@@ -3310,7 +3310,8 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     {
         builder_.StartAllocate();
         GateRef newObj = builder_.HeapAlloc(glue, objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-        builder_.StoreHClass(glue, newObj, hclass, MemoryAttribute::NeedBarrierAndAtomic());
+        builder_.StoreHClass(glue, newObj, hclass, RegionSpaceFlag::IN_YOUNG_SPACE,
+                             MemoryAttribute::NeedBarrierAndAtomic());
         builder_.StoreConstOffset(VariableType::INT64(), newObj,
             JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
         builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);

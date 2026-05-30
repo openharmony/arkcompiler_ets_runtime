@@ -728,16 +728,6 @@ public:
         aliveObject_.fetch_add(size, std::memory_order_relaxed);
     }
 
-    void SetGCAliveSize()
-    {
-        gcAliveSize_ = AliveObject();
-    }
-
-    size_t GetGCAliveSize() const
-    {
-        return gcAliveSize_;
-    }
-
     void ResetAliveObject()
     {
         aliveObject_ = 0;
@@ -751,6 +741,26 @@ public:
     bool MostObjectAlive() const
     {
         return aliveObject_ > MOST_OBJECT_ALIVE_THRESHOLD_PERCENT * GetSize();
+    }
+
+    void SetGCAliveSize()
+    {
+        gcAliveSize_ = AliveObject();
+    }
+
+    void IncreaseGCAliveSize(size_t size)
+    {
+        gcAliveSize_ += size;
+    }
+
+    void ResetGCAliveSize()
+    {
+        gcAliveSize_ = 0;
+    }
+
+    size_t GetGCAliveSize() const
+    {
+        return gcAliveSize_;
     }
 
     bool BelowCompressThreasholdAlive() const
