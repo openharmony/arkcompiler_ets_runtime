@@ -1126,55 +1126,6 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionAndObject)
     ASSERT_TRUE(strMatched7);
 }
 
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpGenerateNodeName1)
-{
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = ecmaVm_->GetFactory();
-    HeapDumpTestHelper tester(ecmaVm_);
-
-    // TAGGED_ARRAY
-    factory->NewTaggedArray(10);
-    // LEXICAL_ENV
-    factory->NewLexicalEnv(10);
-    // CONSTANT_POOL
-    factory->NewConstantPool(10);
-    // PROFILE_TYPE_INFO
-    factory->NewProfileTypeInfo(10);
-    // TAGGED_DICTIONARY
-    factory->NewDictionaryArray(10);
-    // AOT_LITERAL_INFO
-    factory->NewAOTLiteralInfo(10);
-    // VTABLE
-    factory->NewVTable(10);
-    // COW_TAGGED_ARRAY
-    factory->NewCOWTaggedArray(10);
-    // HCLASS
-    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-    factory->NewEcmaHClass(JSHClass::SIZE, JSType::HCLASS, proto);
-    // LINKED_NODE
-    JSHandle<LinkedNode> linkedNode(thread_, JSTaggedValue::Hole());
-    factory->NewLinkedNode(1, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole()),
-        JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole()), linkedNode);
-    // JS_NATIVE_POINTER
-    auto newData = ecmaVm_->GetNativeAreaAllocator()->AllocateBuffer(8);
-    factory->NewJSNativePointer(newData);
-
-    tester.GenerateSnapShot("testGenerateNodeName_1.heapsnapshot");
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalArray["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"LexicalEnv["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalConstantPool["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalProfileTypeInfo["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalDict["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalAOTLiteralInfo["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalVTable["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalCOWArray["));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"HiddenClass(NonMovable)"));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"LinkedNode\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"JSNativePointer\""));
-    // Test Not Found
-    ASSERT_TRUE(!tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "*#@failed case"));
-}
-
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName2)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
@@ -1288,34 +1239,6 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName4)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakMap\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"JSArray\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Typed Array\""));
-}
-
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpGenerateNodeName5)
-{
-    ObjectFactory *factory = ecmaVm_->GetFactory();
-    HeapDumpTestHelper tester(ecmaVm_);
-
-    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
-    // JS_REG_EXP
-    tester.NewObject(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    // JS_DATE
-    tester.NewObject(JSDate::SIZE, JSType::JS_DATE, proto);
-    // JS_ARGUMENTS
-    factory->NewJSArguments();
-    // JS_PROXY
-    tester.NewJSProxy();
-    // JS_PRIMITIVE_REF
-    tester.NewObject(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, proto);
-    // JS_DATA_VIEW
-    factory->NewJSDataView(factory->NewJSArrayBuffer(10), 5, 5);
-
-    tester.GenerateSnapShot("testGenerateNodeName_5.heapsnapshot");
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Regexp\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Date\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Arguments\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Proxy\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Primitive\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"DataView\""));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName6)
@@ -2073,27 +1996,6 @@ HWTEST_F_L0(HeapDumpTest, TestHeapMetadataFields)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"local heap\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"vmType\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"dynamic\""));
-}
-
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
-
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
-    EXPECT_TRUE(result);
-
-    std::string rawHeapPath("test_proxy_class_name.rawheap");
-    HeapDumpTestHelper tester(ecmaVm_);
-    DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
-
-    std::string heapsnapshotPath("test_proxy_class_name.heapsnapshot");
-    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
-    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
-
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassA\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestSourceTextModuleRecordAndFileName)
