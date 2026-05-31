@@ -115,15 +115,15 @@ void AotCompilerService::OnStop()
 }
 // LCOV_EXCL_STOP
 
-int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
-                                        std::vector<int16_t> &sigData)
+int32_t AotCompilerService::AotCompiler(const AotCompilerArgs &args,
+                                        std::vector<uint8_t> &sigData)
 {
     LOG_SA(DEBUG) << "begin to call aot compiler";
     RemoveUnloadTask(TASK_ID);
     int32_t ret = ERR_FAIL;
     {
         std::lock_guard<std::mutex> lock(aotCompilerMutex_);
-        ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
+        ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(args, sigData);
     }
     LOG_SA(DEBUG) << "finish aot compiler";
     DelayUnloadTask(TASK_ID, DELAY_TIME);

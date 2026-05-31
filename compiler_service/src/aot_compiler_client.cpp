@@ -40,8 +40,8 @@ AotCompilerClient &AotCompilerClient::GetInstance()
     return singleAotCompilerClient;
 }
 
-int32_t AotCompilerClient::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
-                                       std::vector<int16_t> &sigData)
+int32_t AotCompilerClient::AotCompiler(const AotCompilerArgs &args,
+                                       std::vector<uint8_t> &sigData)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     LOG_SA(DEBUG) << "aot compiler function called";
@@ -50,7 +50,7 @@ int32_t AotCompilerClient::AotCompiler(const std::unordered_map<std::string, std
         LOG_SA(ERROR) << "get aot compiler service failed";
         return ERR_AOT_COMPILER_CONNECT_FAILED;
     }
-    return aotCompilerProxy->AotCompiler(argsMap, sigData);
+    return aotCompilerProxy->AotCompiler(args, sigData);
 }
 
 int32_t AotCompilerClient::StopAotCompiler()

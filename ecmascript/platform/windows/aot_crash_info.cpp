@@ -72,7 +72,7 @@ bool AotCrashInfo::GetAotEscapeDisable()
 
 std::string AotCrashInfo::GetSandBoxPath()
 {
-    return ohos::OhosConstants::SANDBOX_ARK_PROFILE_PATH;
+    return "";
 }
 
 int AotCrashInfo::GetAotCrashCount()

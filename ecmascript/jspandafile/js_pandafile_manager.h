@@ -55,6 +55,8 @@ public:
 
     std::shared_ptr<JSPandaFile> OpenJSPandaFileFromBuffer(uint8_t *buffer, size_t size, const CString &filename);
 
+    std::shared_ptr<JSPandaFile> OpenJSPandaFileFromFd(int fd, const CString &abcName, const CString &desc);
+
     std::shared_ptr<JSPandaFile> NewJSPandaFile(const panda_file::File *pf, const CString &desc);
     std::shared_ptr<JSPandaFile> NewJSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &desc,
                                                 std::string_view entryPoint);

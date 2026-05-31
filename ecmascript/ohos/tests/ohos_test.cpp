@@ -82,7 +82,6 @@ public:
         pkgJson += R"({"bundleName": ")" + bundleName + "\"";
         pkgJson += R"(,"moduleName": ")" + moduleName + "\"";
         pkgJson += R"(,"pkgPath": "/data/app/el1/bundle/public/com.ohos.test/entry.hap","abcName": "ets/modules.abc")";
-        pkgJson += R"(,"abcOffset": "0x6bb3c","abcSize": "0x51adfc")";
         if (!pgoDir.empty()) {
             pkgJson += R"(,"pgoDir": ")" + pgoDir + "\"";
         }
@@ -152,8 +151,6 @@ HWTEST_F_L0(OhosTest, OhosPkgArgsParse)
     ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetBundleName(), TEST_BUNDLE_NAME);
     ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetModuleName(), "entry");
     ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetPath(), "/data/app/el1/bundle/public/com.ohos.test/entry.hap");
-    ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetSize(), 0x51adfc);
-    ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetOffset(), 0x6bb3c);
     ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetPgoDir(), pgoDir);
 
     ASSERT_EQ(preProcessor.GetPkgsArgs().size(), 3);
@@ -300,12 +297,18 @@ HWTEST_F_L0(OhosTest, AotIsEnableArkProfileTrue)
     std::string bundleScope1 = "com.bundle.scope.test1";
     std::string bundleScope2 = "com.bundle.scope.test2";
     mkdir(whiteListTestDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::ofstream file(enableListName);
+    file << bundleScope << std::endl;
+    file << bundleScope1 << std::endl;
+    file << bundleScope2 << std::endl;
+    file.close();
     ohos::EnableAotJitListHelper *helper = new MockEnableAotJitListHelper(enableListName);
- 
+
     ASSERT_TRUE(helper->IsEnableAot(bundleScope));
     ASSERT_TRUE(helper->IsEnableAot(bundleScope1));
     ASSERT_TRUE(helper->IsEnableAot(bundleScope2));
 
+    delete helper;
     unlink(enableListName);
     rmdir(whiteListTestDir);
 }

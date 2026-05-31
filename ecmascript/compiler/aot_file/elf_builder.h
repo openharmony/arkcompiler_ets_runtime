@@ -36,17 +36,17 @@ public:
     ~ElfBuilder();
     static constexpr uint32_t FuncEntryModuleDesIndex = 0;
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
-    void PackELFSections(std::fstream &elfFile);
-    void PackELFSegment(std::fstream &elfFile);
-    void MergeTextSections(std::fstream &elfFile,
+    void PackELFSections(std::iostream &elfFile);
+    void PackELFSegment(std::iostream &elfFile);
+    void MergeTextSections(std::iostream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeArkStackMapSections(std::fstream &elfFile,
+    void MergeArkStackMapSections(std::iostream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeStrtabSections(std::fstream &elfFile,
+    void MergeStrtabSections(std::iostream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeSymtabSections(std::fstream &elfFile, std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
+    void MergeSymtabSections(std::iostream &elfFile, std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
         llvm::ELF::Elf64_Off &curSecOffset, llvm::ELF::Elf64_Off &asmStubOffset);
-    uint32_t AddAsmStubStrTab(std::fstream &elfFile,
+    uint32_t AddAsmStubStrTab(std::iostream &elfFile,
         const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo);
     static llvm::ELF::Elf64_Word FindShName(std::string name, uintptr_t strTabPtr, int strTabSize);
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> GetFullSecInfo() const
@@ -81,10 +81,10 @@ private:
     void CollectUndefSyms(std::map<std::string_view, llvm::ELF::Elf64_Sym *> &nameToSym,
                           std::map<std::string_view, std::vector<llvm::ELF::Elf64_Sym *>> &undefSyms,
                           llvm::ELF::Elf64_Sym *sy, std::string_view symName);
-    void ResolveRelocate(std::fstream &elfFile);
-    void ResolveAArch64Relocate(std::fstream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
+    void ResolveRelocate(std::iostream &elfFile);
+    void ResolveAArch64Relocate(std::iostream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
                             Span<llvm::ELF::Elf64_Sym> syms, uint32_t textOff);
-    void ResolveAmd64Relocate(std::fstream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
+    void ResolveAmd64Relocate(std::iostream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
                             Span<llvm::ELF::Elf64_Sym> syms, uint32_t textOff);
     void CalculateTextSectionSize(llvm::ELF::Elf64_Off &curOffset);
     void CalculateStrTabSectionSize(llvm::ELF::Elf64_Off &curOffset);

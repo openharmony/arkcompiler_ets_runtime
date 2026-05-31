@@ -31,8 +31,8 @@ public:
     {}
 
     ErrCode AotCompiler(
-        const std::unordered_map<std::string, std::string>& argsMap,
-        std::vector<int16_t>& sigData) override;
+        const AotCompilerArgs& args,
+        std::vector<uint8_t>& sigData) override;
 
     ErrCode StopAotCompiler() override;
 

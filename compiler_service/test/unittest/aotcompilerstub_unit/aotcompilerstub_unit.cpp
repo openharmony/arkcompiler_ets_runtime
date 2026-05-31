@@ -21,6 +21,7 @@
 
 #include "aot_compiler_client.h"
 #include "aot_compiler_service.h"
+#include "aot_compiler_args.h"
 #include "aot_compiler_error_utils.h"
 #include "aot_compiler_interface_proxy.h"
 #include "aot_compiler_interface_stub.h"
@@ -45,8 +46,8 @@ public:
     AotCompilerStubMock() = default;
     virtual ~AotCompilerStubMock() = default;
 
-    MOCK_METHOD(ErrCode, AotCompiler, ((const std::unordered_map<std::string, std::string> &argsMap),
-        std::vector<int16_t> &sigData), (override));
+    MOCK_METHOD(ErrCode, AotCompiler, ((const AotCompilerArgs &args),
+        std::vector<uint8_t> &sigData), (override));
     MOCK_METHOD(ErrCode, StopAotCompiler, (), (override));
     MOCK_METHOD(ErrCode, GetAOTVersion, (std::string& sigData), (override));
     MOCK_METHOD(ErrCode, NeedReCompile, (const std::string& args, bool& sigData), (override));
@@ -81,6 +82,8 @@ HWTEST_F(AotCompilerStubTest, AotCompilerStubTest_001, TestSize.Level0)
     MessageParcel reply;
     MessageOption option(MessageOption::TF_SYNC);
     data.WriteInterfaceToken(AotCompilerInterfaceStub::GetDescriptor());
+    AotCompilerArgs args;
+    args.Marshalling(data);
     AotCompilerService aotService(AOT_COMPILER_SERVICE_ID, false);
     int32_t ret = aotService.OnRemoteRequest(code, data, reply, option);
     EXPECT_EQ(ret, ERR_NONE);
@@ -203,6 +206,8 @@ HWTEST_F(AotCompilerStubTest, AotCompilerStubTest_008, TestSize.Level0)
     MessageParcel reply;
     MessageOption option(MessageOption::TF_SYNC);
     data.WriteInterfaceToken(AotCompilerInterfaceStub::GetDescriptor());
+    AotCompilerArgs args;
+    args.Marshalling(data);
 
     EXPECT_CALL(*aotCompilerStub_, AotCompiler(testing::_, testing::_)).
         Times(1).WillOnce(testing::Return(ERR_OK));
@@ -222,6 +227,8 @@ HWTEST_F(AotCompilerStubTest, AotCompilerStubTest_009, TestSize.Level0)
     MessageParcel reply;
     MessageOption option(MessageOption::TF_SYNC);
     data.WriteInterfaceToken(AotCompilerInterfaceStub::GetDescriptor());
+    AotCompilerArgs args;
+    args.Marshalling(data);
 
     EXPECT_CALL(*aotCompilerStub_, AotCompiler(testing::_, testing::_)).
         Times(1).WillOnce(testing::Return(ERR_FAIL));

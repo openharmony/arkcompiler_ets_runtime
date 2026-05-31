@@ -17,10 +17,11 @@
 #define OHOS_ARKCOMPILER_IAOTCOMPILER_INTERFACE_H
 
 #include <vector>
-#include <unordered_map>
 #include <string_ex.h>
 #include <cstdint>
 #include <iremote_broker.h>
+#include "aot_compiler_args.h"
+#include "aot_compiler_error_utils.h"
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #elif defined(__GNUC__)
@@ -33,16 +34,15 @@ public:
     DECLARE_INTERFACE_DESCRIPTOR(u"OHOS.ArkCompiler.IAotCompilerInterface");
 
     virtual ErrCode AotCompiler(
-        const std::unordered_map<std::string, std::string>& argsMap,
-        std::vector<int16_t>& sigData) = 0;
+        const AotCompilerArgs& args,
+        std::vector<uint8_t>& sigData) = 0;
 
     virtual ErrCode StopAotCompiler() = 0;
     virtual ErrCode GetAOTVersion(std::string& sigData) = 0;
     virtual ErrCode NeedReCompile(const std::string& argsString, bool& sigData) = 0;
+
 protected:
     const unsigned long vectorMaxSize = 102400;
-    const unsigned long mapMaxSize = 102400;
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_IAOTCOMPILER_INTERFACE_H
-

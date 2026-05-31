@@ -14,13 +14,14 @@
  */
 
 #include "aot_compiler_interface_proxy.h"
+#include "aot_compiler_error_utils.h"
 #include "ecmascript/log_wrapper.h"
 #include "hitrace_meter.h"
 
 namespace OHOS::ArkCompiler {
 ErrCode AotCompilerInterfaceProxy::AotCompiler(
-    const std::unordered_map<std::string, std::string>& argsMap,
-    std::vector<int16_t>& sigData)
+    const AotCompilerArgs& args,
+    std::vector<uint8_t>& sigData)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     MessageParcel data;
@@ -32,21 +33,9 @@ ErrCode AotCompilerInterfaceProxy::AotCompiler(
         return ERR_INVALID_VALUE;
     }
 
-    if (argsMap.size() > mapMaxSize) {
-        LOG_SA(ERROR) << "The map size exceeds the security limit!";
+    if (!args.Marshalling(data)) {
+        LOG_SA(ERROR) << "Write AotCompilerArgs failed!";
         return ERR_INVALID_DATA;
-    }
-
-    data.WriteInt32(argsMap.size());
-    for (auto it = argsMap.begin(); it != argsMap.end(); ++it) {
-        if (!data.WriteString16(Str8ToStr16((it->first)))) {
-            LOG_SA(ERROR) << "Write [(it->first)] failed!";
-            return ERR_INVALID_DATA;
-        }
-        if (!data.WriteString16(Str8ToStr16((it->second)))) {
-            LOG_SA(ERROR) << "Write [(it->second)] failed!";
-            return ERR_INVALID_DATA;
-        }
     }
 
     sptr<IRemoteObject> remote = Remote();
@@ -72,7 +61,7 @@ ErrCode AotCompilerInterfaceProxy::AotCompiler(
         return ERR_INVALID_DATA;
     }
     for (int32_t i = 0; i < sigDataSize; ++i) {
-        int16_t value = reply.ReadInt16();
+        uint8_t value = reply.ReadUint8();
         sigData.push_back(value);
     }
     return ERR_OK;
@@ -179,4 +168,5 @@ ErrCode AotCompilerInterfaceProxy::NeedReCompile(const std::string& args, bool& 
 
     return ERR_OK;
 }
+
 } // namespace OHOS::ArkCompiler

@@ -14,14 +14,37 @@
  */
 
 #include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if (defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)) || defined(ENABLE_OHOS_PARAMETER)
 #include "parameters.h"
 #endif
 
 namespace panda::ecmascript {
+namespace {
+constexpr const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
+
+bool GetAotBuildCountDisable()
+{
+#ifdef ENABLE_OHOS_PARAMETER
+    return OHOS::system::GetBoolParameter(AOT_BUILD_COUNT_DISABLE, false);
+#endif
+    return false;
+}
+
+bool IsAotCompileSuccessOnce(const std::string &pgoRealPath)
+{
+    if (GetAotBuildCountDisable()) {
+        return false;
+    }
+    int count = ohos::AotRuntimeInfo::GetInstance().GetCompileCountByType(
+        ohos::RuntimeInfoType::AOT_BUILD, pgoRealPath);
+    return count > 0;
+}
+}  // namespace
+
 #ifdef ENABLE_OHOS_PARAMETER
 static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
 void GetSignalHandler(int signal, siginfo_t *info, void *context)
@@ -98,7 +121,7 @@ bool AotCrashInfo::IsAotEscapedOrCompiledOnce(AotCompilerPreprocessor &cPreproce
     std::string pgoRealPath = cPreprocessor.GetMainPkgArgs()->GetPgoDir();
     pgoRealPath.append(ohos::OhosConstants::PATH_SEPARATOR);
     pgoRealPath.append(ohos::OhosConstants::AOT_RUNTIME_INFO_NAME);
-    if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce(pgoRealPath)) {
+    if (IsAotCompileSuccessOnce(pgoRealPath)) {
         ret = 0;
         LOG_ECMA(INFO) << "Aot has compile success once or escaped.";
         return true;

@@ -54,4 +54,26 @@ HWTEST_F(AotCompilerErrorUtilsTest, AotCompilerErrorUtilsTest_001, TestSize.Leve
     EXPECT_STREQ(errMsg1.c_str(), "success");
     EXPECT_STREQ(errMsg2.c_str(), "invalid errCode");
 }
+
+/**
+* @tc.name: AotCompilerErrorUtilsTest_003
+* @tc.desc: GetErrorMessage for ERR_AOT_COMPILER_WHITELIST_BLOCKED
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerErrorUtilsTest, AotCompilerErrorUtilsTest_003, TestSize.Level0)
+{
+    auto msg = AotCompilerErrorUtil::GetErrorMessage(ERR_AOT_COMPILER_WHITELIST_BLOCKED);
+    EXPECT_STREQ(msg.c_str(), "bundle not in aot whitelist");
+}
+
+/**
+* @tc.name: AotCompilerErrorUtilsTest_004
+* @tc.desc: GetErrorMessage for ERR_AOT_COMPILER_CHOWN_FAILED
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerErrorUtilsTest, AotCompilerErrorUtilsTest_004, TestSize.Level0)
+{
+    auto msg = AotCompilerErrorUtil::GetErrorMessage(ERR_AOT_COMPILER_CHOWN_FAILED);
+    EXPECT_STREQ(msg.c_str(), "chown aot files to bundle failed");
+}
 } // namespace OHOS::ArkCompiler

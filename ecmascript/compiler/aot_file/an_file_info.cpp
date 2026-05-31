@@ -20,10 +20,12 @@
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "macros.h"
 #include <cerrno>
+#include <sstream>
+#include <unistd.h>
 
 namespace panda::ecmascript {
 bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize,
-                      const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+    const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -68,6 +70,55 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileM
     }
     file.close();
     return true;
+}
+
+bool AnFileInfo::Save(int fd, const std::string &filename, Triple triple, size_t anFileMaxByteSize,
+    const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+{
+#ifdef PANDA_TARGET_OHOS
+    LOG_COMPILER(DEBUG) << "AnFileInfo::Save via fd enter, fd=" << fd << " filename=" << filename;
+    // Skip RealPath - file is pre-created by compiler_service, path already validated upstream
+
+    SetStubNum(entries_.size());
+    AddFuncEntrySec();
+    if (!AddFileNameToChecksumSec(fileNameToChecksumMap)) {
+        LOG_COMPILER(ERROR) << "Fail to add filename to checksum section";
+        return false;
+    }
+
+    ElfBuilder builder(des_, GetDumpSectionNames(), false, triple);
+    size_t anFileSize = builder.CalculateTotalFileSize();
+    if (anFileMaxByteSize != 0) {
+        if (anFileSize > anFileMaxByteSize) {
+            LOG_COMPILER(ERROR) << "Expected AN file size " << anFileSize << " bytes ("
+                                << (static_cast<double>(anFileSize) / 1_MB) << "MB) "
+                                << "exceeds maximum allowed size of " << (static_cast<double>(anFileMaxByteSize) / 1_MB)
+                                << "MB";
+            return false;
+        }
+    }
+    std::stringstream file(std::stringstream::binary | std::stringstream::in | std::stringstream::out);
+    file.str(std::string(anFileSize, '\0'));
+    llvm::ELF::Elf64_Ehdr header;
+    builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
+    file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
+    builder.PackELFSections(file);
+    builder.PackELFSegment(file);
+    if (static_cast<size_t>(file.tellp()) != anFileSize) {
+        LOG_COMPILER(ERROR) << "Error to save an file: file size " << file.tellp()
+                            << " not equal calculated size: " << anFileSize;
+        return false;
+    }
+    std::string content = file.str();
+    if (!WriteBufferToFd(fd, content.data(), content.size())) {
+        return false;
+    }
+    LOG_COMPILER(DEBUG) << "AnFileInfo::Save via fd completed, fd=" << fd << " size=" << anFileSize;
+    return true;
+#else
+    LOG_COMPILER(ERROR) << "AnFileInfo::Save via fd not supported on Windows";
+    return false;
+#endif
 }
 
 bool AnFileInfo::LoadInternal(const std::string &filename)
@@ -281,6 +332,24 @@ bool AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint
     uint64_t checksumInfoAddr = reinterpret_cast<uint64_t>(basePtr);
     uint32_t checksumInfoSize = secSize;
     des.SetSecAddrAndSize(ElfSecName::ARK_CHECKSUMINFO, checksumInfoAddr, checksumInfoSize);
+    return true;
+}
+
+bool AnFileInfo::WriteBufferToFd(int fd, const char *data, size_t size)
+{
+    size_t remaining = size;
+    while (remaining > 0) {
+        ssize_t written = ::write(fd, data, remaining);
+        if (written <= 0) {
+            LOG_COMPILER(ERROR) << "WriteBufferToFd: write failed, fd=" << fd << " errno=" << errno;
+            return false;
+        }
+        data += written;
+        remaining -= written;
+    }
+#ifdef PANDA_TARGET_OHOS
+    fsync(fd);
+#endif
     return true;
 }
 

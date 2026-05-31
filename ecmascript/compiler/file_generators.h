@@ -217,6 +217,10 @@ public:
     bool PUBLIC_API SaveAOTFile(const std::string &filename, const std::string &appSignature,
                                 const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
+    // FD-version: skip SetFileModeAsDefault/SetSecurityLabel/CodeSignatureForAOTFile (child process has dropped privs)
+    bool PUBLIC_API SaveAOTFile(int anFd, const std::string &filename, const std::string &appSignature,
+                                const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
+
     static void PUBLIC_API SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature,
                                             bool isAnFile);
 

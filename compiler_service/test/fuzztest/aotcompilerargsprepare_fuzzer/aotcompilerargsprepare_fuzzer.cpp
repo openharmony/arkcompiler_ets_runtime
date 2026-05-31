@@ -17,6 +17,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <string>
+#include <vector>
 #include "aot_compiler_impl.h"
 #include "securec.h"
 #include "system_ability_definition.h"
@@ -24,66 +27,96 @@
 using namespace OHOS::ArkCompiler;
 
 namespace OHOS {
-bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
+namespace {
+bool ReadFuzzString(const char *data, size_t size, size_t &offset, std::string &out)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
-    size_t offset = 0;
-    // check if there is enough data
-    if (offset + sizeof(int16_t) >= size) {
+    if (offset + sizeof(uint8_t) >= size) {
         return false;
     }
-    uint8_t numberOfArgs = static_cast<uint8_t>(data[offset]);
-
-    // parse argsMap
+    uint8_t len = static_cast<uint8_t>(data[offset]);
     offset += sizeof(uint8_t);
-    for (uint8_t i = 0; i < numberOfArgs && offset < size; ++i) {
-        // read the key length
-        if (offset + sizeof(int16_t) >= size) {
-            break;
-        }
-        uint8_t keyLength = static_cast<uint8_t>(data[offset]);
-        offset += sizeof(uint8_t);
-        // read the key
-        if (offset + keyLength >= size) {
-            break;
-        }
-        std::string key(&data[offset], keyLength);
-        offset += keyLength;
-        // read the value length
-        if (offset + sizeof(uint8_t) >= size) {
-            break;
-        }
-        uint8_t valueLength = static_cast<uint8_t>(data[offset]);
-        offset += sizeof(uint8_t);
-        // read the value
-        if (offset + valueLength >= size) {
-            break;
-        }
-        std::string value(&data[offset], valueLength);
-        offset += valueLength;
-        argsMap.emplace(std::move(key), std::move(value));
+    if (offset + len >= size) {
+        return false;
     }
+    out = std::string(&data[offset], len);
+    offset += len;
+    return true;
+}
 
-    // parse sigData
-    while (offset + sizeof(int16_t) < size) {
-        int16_t signalValue;
-        if (memcpy_s(&signalValue, sizeof(int16_t), &data[offset], sizeof(int16_t)) != 0) {
+bool ReadFuzzInt32(const char *data, size_t size, size_t &offset, int32_t &out)
+{
+    if (offset + sizeof(int32_t) >= size) {
+        return false;
+    }
+    if (memcpy_s(&out, sizeof(int32_t), &data[offset], sizeof(int32_t)) != 0) {
+        return false;
+    }
+    offset += sizeof(int32_t);
+    return true;
+}
+
+bool ParseSigData(const char *data, size_t size, size_t &offset, std::vector<uint8_t> &sigData)
+{
+    while (offset + sizeof(uint8_t) < size) {
+        uint8_t signalValue;
+        if (memcpy_s(&signalValue, sizeof(uint8_t), &data[offset], sizeof(uint8_t)) != 0) {
             break;
         }
         sigData.push_back(signalValue);
-        offset += sizeof(int16_t);
+        offset += sizeof(uint8_t);
     }
-    AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
+    return true;
+}
+} // namespace
+
+bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
+{
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
+    size_t offset = 0;
+
+    if (offset + sizeof(uint8_t) >= size) {
+        return false;
+    }
+    args.isSysComp = static_cast<bool>(data[offset]);
+    offset += sizeof(uint8_t);
+
+    if (!ReadFuzzString(data, size, offset, args.compileMode)) {
+        return false;
+    }
+    if (!ReadFuzzString(data, size, offset, args.moduleArkTSMode)) {
+        return false;
+    }
+    if (!ReadFuzzString(data, size, offset, args.bundleName)) {
+        return false;
+    }
+    if (!ReadFuzzString(data, size, offset, args.moduleName)) {
+        return false;
+    }
+    if (!ReadFuzzInt32(data, size, offset, args.bundleUid)) {
+        return false;
+    }
+    if (!ReadFuzzInt32(data, size, offset, args.bundleGid)) {
+        return false;
+    }
+    if (!ReadFuzzInt32(data, size, offset, args.bundleType)) {
+        return false;
+    }
+    if (!ReadFuzzString(data, size, offset, args.anFileName)) {
+        return false;
+    }
+    ParseSigData(data, size, offset, sigData);
+
+    AotCompilerImpl::GetInstance().EcmascriptAotCompiler(args, sigData);
     return true;
 }
 }
 
 /* Fuzzer entry point */
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
-    const char* dataPtr = reinterpret_cast<const char*>(data);
+    const char *dataPtr = reinterpret_cast<const char *>(data);
     OHOS::DoSomethingInterestingWithMyAPI(dataPtr, size);
     return 0;
 }

@@ -21,6 +21,7 @@
 
 #include "aot_compiler_client.h"
 #include "aot_compiler_service.h"
+#include "aot_compiler_args.h"
 #include "aot_compiler_error_utils.h"
 #include "aot_compiler_interface_proxy.h"
 #include "aot_compiler_interface_stub.h"
@@ -49,8 +50,8 @@ public:
     MOCK_METHOD(int32_t, CommandStopAOTCompiler, (MessageParcel &reply));
     MOCK_METHOD(int32_t, CommandGetAOTVersion, (MessageParcel& reply));
     MOCK_METHOD(int32_t, CommandNeedReCompile, (MessageParcel& data, MessageParcel& reply));
-    MOCK_METHOD(ErrCode, AotCompiler, ((const std::unordered_map<std::string, std::string> &argsMap),
-        std::vector<int16_t> &sigData), (override));
+    MOCK_METHOD(ErrCode, AotCompiler, ((const AotCompilerArgs &args),
+        std::vector<uint8_t> &sigData), (override));
     MOCK_METHOD(ErrCode, StopAotCompiler, (), (override));
     MOCK_METHOD(ErrCode, GetAOTVersion, (std::string& sigData), (override));
     MOCK_METHOD(ErrCode, NeedReCompile, (const std::string& args, bool& sigData), (override));
@@ -117,9 +118,9 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_001, TestSize.Level0)
 {
     sptr<IRemoteObject> remote = nullptr;
     sptr<AotCompilerProxyMock> mockProxy_ = new AotCompilerProxyMock(remote);
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
-    int32_t result = mockProxy_->AotCompiler(argsMap, sigData);
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
+    int32_t result = mockProxy_->AotCompiler(args, sigData);
     EXPECT_EQ(result, ERR_INVALID_DATA);
 }
 
@@ -172,12 +173,12 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_004, TestSize.Level0)
 */
 HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_005, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
 
     EXPECT_CALL(*mockStub_, CommandAOTCompiler(testing::_, testing::_)).
         Times(1).WillOnce(testing::Return(ERR_AOT_COMPILER_CONNECT_FAILED));
-    int32_t result = proxy_->AotCompiler(argsMap, sigData);
+    int32_t result = proxy_->AotCompiler(args, sigData);
     EXPECT_EQ(result, ERR_AOT_COMPILER_CONNECT_FAILED);
 }
 
@@ -188,8 +189,8 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_005, TestSize.Level0)
 */
 HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_006, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
 
     auto func = [](MessageParcel &data, MessageParcel &reply) -> int32_t {
         reply.WriteInt32(ERR_AOT_COMPILER_CALL_FAILED);
@@ -197,7 +198,7 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_006, TestSize.Level0)
     };
     EXPECT_CALL(*mockStub_, CommandAOTCompiler(testing::_, testing::_)).
         Times(1).WillOnce(testing::Invoke(func));
-    int32_t result = proxy_->AotCompiler(argsMap, sigData);
+    int32_t result = proxy_->AotCompiler(args, sigData);
     EXPECT_EQ(result, ERR_AOT_COMPILER_CALL_FAILED);
 }
 
@@ -208,8 +209,8 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_006, TestSize.Level0)
 */
 HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_007, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
 
     auto func = [](MessageParcel &data, MessageParcel &reply) -> int32_t {
         reply.WriteInt32(ERR_OK);
@@ -218,7 +219,7 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_007, TestSize.Level0)
     };
     EXPECT_CALL(*mockStub_, CommandAOTCompiler(testing::_, testing::_)).
         Times(1).WillOnce(testing::Invoke(func));
-    int32_t result = proxy_->AotCompiler(argsMap, sigData);
+    int32_t result = proxy_->AotCompiler(args, sigData);
     EXPECT_EQ(result, ERR_INVALID_DATA);
 }
 
@@ -229,8 +230,8 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_007, TestSize.Level0)
 */
 HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_008, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
 
     auto func = [](MessageParcel &data, MessageParcel &reply) -> int32_t {
         reply.WriteInt32(ERR_OK);
@@ -239,7 +240,7 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_008, TestSize.Level0)
     };
     EXPECT_CALL(*mockStub_, CommandAOTCompiler(testing::_, testing::_)).
         Times(1).WillOnce(testing::Invoke(func));
-    int32_t result = proxy_->AotCompiler(argsMap, sigData);
+    int32_t result = proxy_->AotCompiler(args, sigData);
     EXPECT_EQ(result, ERR_OK);
 }
 

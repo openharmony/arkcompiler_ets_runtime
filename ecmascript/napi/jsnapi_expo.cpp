@@ -40,6 +40,7 @@
 #include "ecmascript/ohos/js_pandafile_snapshot_interfaces.h"
 #include "ecmascript/ohos/module_snapshot_interfaces.h"
 #include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif

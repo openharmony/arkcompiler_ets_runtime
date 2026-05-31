@@ -20,23 +20,11 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
 
-#include "ohos_constants.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/ohos/aot_runtime_info.h"
 #include "libpandabase/macros.h"
 
-#ifdef ENABLE_OHOS_PARAMETER
-#include "parameters.h"
-#endif
 namespace panda::ecmascript::ohos {
 class EnableAotJitListHelper {
-constexpr static const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
-constexpr static const char *const ARK_PROFILE = "ark.profile";
-constexpr static const char *const AOT_ESCAPE_DISABLE = "ark.aot.escape.disable";
 public:
     static std::shared_ptr<EnableAotJitListHelper> GetInstance()
     {
@@ -52,24 +40,13 @@ public:
     EnableAotJitListHelper() = default;
     virtual ~EnableAotJitListHelper() = default;
 
-    bool IsEnableAot(const std::string &candidate)
+    bool IsEnableAot(const std::string &candidate) const
     {
-        // The enable logic is not only controlled by the whitelist, but also by the ark.profile switch
-        if (IsEnabledByArkProfiler()) {
-            return true;
-        }
-
-#ifdef ENABLE_OHOS_PARAMETER
-        if (!OHOS::system::GetBoolParameter(AOT_ESCAPE_DISABLE, false)) {
-            return false;
-        }
-#endif
-
         return (enableList_.find(candidate) != enableList_.end()) ||
                (enableList_.find(candidate + ":aot") != enableList_.end());
     }
 
-    bool IsEnableJit(const std::string &candidate)
+    bool IsEnableJit(const std::string &candidate) const
     {
         return (enableList_.find(candidate) != enableList_.end()) ||
                (enableList_.find(candidate + ":jit") != enableList_.end());
@@ -83,47 +60,6 @@ public:
     void Clear()
     {
         enableList_.clear();
-    }
-
-    virtual bool IsEnabledByArkProfiler() const
-    {
-#ifdef ENABLE_OHOS_PARAMETER
-        return OHOS::system::GetBoolParameter(ARK_PROFILE, false);
-#endif
-        return false;
-    }
-
-    static bool GetAotBuildCountDisable()
-    {
-#ifdef ENABLE_OHOS_PARAMETER
-        return OHOS::system::GetBoolParameter(AOT_BUILD_COUNT_DISABLE, false);
-#endif
-        return false;
-    }
-
-    void AddEnableListCount(bool isCompileSuccess, const std::string &pgoPath = "") const
-    {
-        if (!isCompileSuccess) {
-            return;
-        }
-        std::string runtimePgoRealPath = pgoPath;
-        runtimePgoRealPath.append(ohos::OhosConstants::PATH_SEPARATOR);
-        runtimePgoRealPath.append(ohos::OhosConstants::AOT_RUNTIME_INFO_NAME);
-        ohos::AotRuntimeInfo::GetInstance().BuildCompileRuntimeInfo(ohos::RuntimeInfoType::AOT_BUILD,
-            runtimePgoRealPath);
-    }
-
-    bool IsAotCompileSuccessOnce(const std::string &pgoRealPath = "") const
-    {
-        if (GetAotBuildCountDisable()) {
-            return false;
-        }
-        int count = ohos::AotRuntimeInfo::GetInstance().GetCompileCountByType(
-            ohos::RuntimeInfoType::AOT_BUILD, pgoRealPath);
-        if (count > 0) {
-            return true;
-        }
-        return false;
     }
 
 private:
@@ -153,42 +89,23 @@ private:
 
     void ReadEnableList(const std::string &aotJitListName)
     {
-        std::string realPath;
-        if (!panda::ecmascript::RealPath(aotJitListName, realPath, false)) {
-            LOG_ECMA(DEBUG) << "Fail to get realPath: " << aotJitListName;
-            return;
-        }
-        if (!panda::ecmascript::FileExist(realPath.c_str())) {
-            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << realPath;
-            return;
-        }
-
-        std::ifstream inputFile(realPath);
-
+        std::ifstream inputFile(aotJitListName);
         if (!inputFile.is_open()) {
-            LOG_ECMA(ERROR) << "bundle enable list open failed! file: " << aotJitListName << ", errno: " << errno;
             return;
         }
-
         std::string line;
         while (getline(inputFile, line)) {
             auto appName = line;
             Trim(appName);
-            // skip empty line
-            if (appName.empty()) {
+            if (appName.empty() || appName.at(0) == '#') {
                 continue;
             }
-            // skip comment line
-            if (appName.at(0) == '#') {
-                continue;
-            }
-            // remove the comment
             RemoveComment(appName);
             AddEnableListEntry(appName);
         }
     }
     std::set<std::string> enableList_ {};
-    PUBLIC_API static const std::string ENABLE_LIST_NAME;
+    static inline const std::string ENABLE_LIST_NAME = "/etc/ark/app_aot_jit_enable_list.conf";
 };
 }  // namespace panda::ecmascript::ohos
 #endif  // ECMASCRIPT_OHOS_ENABLE_AOT_LIST_HELPER_H

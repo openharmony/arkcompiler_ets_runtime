@@ -246,7 +246,6 @@ group("fuzztest") {
     "functionrefnewclassfunction_fuzzer:fuzztest",
     "getallocationprofile_fuzzer:fuzztest",
     "getbundlename_fuzzer:fuzztest",
-    "getjspandafile_fuzzer:fuzztest",
     "getmodulename_fuzzer:fuzztest",
     "getnativepointerfield_fuzzer:fuzztest",
     "getwordsarray_fuzzer:fuzztest",
