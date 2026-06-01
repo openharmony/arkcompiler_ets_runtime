@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Huawei Device Co., Ltd.
+* Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -28,8 +28,10 @@
         return unifiedGC_;                                                                                        \
     }                                                                                                             \
     template<TriggerGCType gcType, GCReason gcReason>                                                             \
-    bool TriggerUnifiedGCMark(JSThread *thread) const;                                                            \
+    bool TriggerUnifiedGCMark(JSThread *thread);                                                                  \
     void StartUnifiedGCMark(TriggerGCType gcType, GCReason gcReason);                                             \
+    void RunUnifiedGCPhases(TriggerGCType gcType);                                                                \
+    void NotifyUnifiedGCInterrupt();                                                                              \
     void CreateUnifiedGC()
 
 
@@ -47,7 +49,12 @@
     {                                                                                                         \
         return gcType_ == TriggerGCType::UNIFIED_GC;                                                          \
     }                                                                                                         \
-    void CreateUnifiedGCMarker()
+    void CreateUnifiedGCMarker();                                                                             \
+    bool GetStsTriggerXGC(const char *callerName);                                                            \
+    bool TryTriggerUnifiedGCMark(const char *callerName);                                                     \
+    bool TryTriggerXGC(const char *callerName);                                                               \
+    bool TryTriggerXGCAndReclaim(const char *callerName)
+
 
 #define HEAP_PRIVATE_HYBRID_EXTENSION()                                                                        \
     UnifiedGCMarker *unifiedGCMarker_ {nullptr}

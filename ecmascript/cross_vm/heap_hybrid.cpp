@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Huawei Device Co., Ltd.
+* Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -49,36 +49,52 @@ void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[mayb
             });
             unifiedGC_->SetInterruptUnifiedGC(false);
             dThread_->FinishRunningTask();
+            NotifyGCCompleted();
             return;
         }
 #endif // PANDA_JS_ETS_HYBRID_MODE
-        runtime->GCIterateThreadList([gcType](JSThread *thread) {
-            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-                // pre unified gc heap verify
-                LOG_ECMA(DEBUG) << "pre unified gc heap verify";
-                heap->ProcessSharedGCRSetWorkList();
-                Verification(heap, VerifyKind::VERIFY_PRE_GC).VerifyAll();
-            }
-            heap->SetGCType(gcType);
-        });
-        unifiedGC_->RunPhases();
-        runtime->GCIterateThreadList([](JSThread *thread) {
-            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-                // post unified gc heap verify
-                LOG_ECMA(DEBUG) << "post unified gc heap verify";
-                Verification(heap, VerifyKind::VERIFY_POST_GC).VerifyAll();
-            }
-        });
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-        unifiedGC_->FinishXGCBarrier();
-        // Restore cross-thread execution restriction after XGC is finished
-        runtime->GCIterateThreadList([](JSThread *thread) {
-            thread->SetCrossThreadExecution(false);
-        });
-#endif // PANDA_JS_ETS_HYBRID_MODE
+        RunUnifiedGCPhases(gcType);
     }
+}
+
+void SharedHeap::RunUnifiedGCPhases(TriggerGCType gcType)
+{
+    Runtime *runtime = Runtime::GetInstance();
+    runtime->GCIterateThreadList([gcType](JSThread *thread) {
+        Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+        if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // pre unified gc heap verify
+            LOG_ECMA(DEBUG) << "pre unified gc heap verify";
+            heap->ProcessSharedGCRSetWorkList();
+            Verification(heap, VerifyKind::VERIFY_PRE_GC).VerifyAll();
+        }
+        heap->SetGCType(gcType);
+    });
+    unifiedGC_->RunPhases();
+    runtime->GCIterateThreadList([](JSThread *thread) {
+        Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+        if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // post unified gc heap verify
+            LOG_ECMA(DEBUG) << "post unified gc heap verify";
+            Verification(heap, VerifyKind::VERIFY_POST_GC).VerifyAll();
+        }
+    });
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    unifiedGC_->FinishXGCBarrier();
+    // Restore cross-thread execution restriction after XGC is finished
+    runtime->GCIterateThreadList([](JSThread *thread) {
+        thread->SetCrossThreadExecution(false);
+    });
+#endif // PANDA_JS_ETS_HYBRID_MODE
+    NotifyGCCompleted();
+}
+
+void SharedHeap::NotifyUnifiedGCInterrupt()
+{
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    unifiedGC_->SetInterruptUnifiedGC(true);
+    unifiedGC_->GetSTSVMInterface()->NotifyWaiters();
+#endif // PANDA_JS_ETS_HYBRID_MODE
 }
 
 void SharedHeap::CreateUnifiedGC()

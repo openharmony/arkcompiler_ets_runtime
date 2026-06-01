@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,6 +42,7 @@ void CrossVMOperator::DoHandshake(EcmaVM *vm, void *stsIface, void **ecmaIface)
     auto vmOperator = vm->GetCrossVMOperator();
     *ecmaIface = vmOperator->ecmaVMInterface_.get();
     vmOperator->stsVMInterface_ = static_cast<arkplatform::STSVMInterface *>(stsIface);
+    Runtime::GetInstance()->SetSTSVMInterface(vmOperator->stsVMInterface_);
     UnifiedGC *unifiedGC = SharedHeap::GetInstance()->GetUnifiedGC();
     if (unifiedGC->GetSTSVMInterface() == nullptr) {
         unifiedGC->SetSTSVMInterface(vmOperator->stsVMInterface_);
