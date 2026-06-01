@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <fcntl.h>
+#include <regex>
 #include <sstream>
 #include <unistd.h>
 #include <chrono>
@@ -276,6 +277,20 @@ public:
         GTEST_LOG_(ERROR) << "file: " << filePath.c_str() << ", target:" << targetStr.c_str()
                           << ", line:" << std::to_string(lineNum) <<"not found";
         return false;  // Lost the Line
+    }
+
+    bool MatchHeapDumpRegex(const std::string &filePath, const std::string &pattern)
+    {
+        std::string line;
+        std::ifstream inputStream(filePath);
+        std::regex re(pattern);
+        while (getline(inputStream, line)) {
+            if (std::regex_search(line, re)) {
+                return true;
+            }
+        }
+        GTEST_LOG_(ERROR) << "file: " << filePath.c_str() << ", pattern:" << pattern.c_str() << " not found";
+        return false;
     }
 
     bool ReadRawHeapSectionInfo(std::string &filePath, std::vector<uint32_t> &section)
@@ -2599,6 +2614,10 @@ HWTEST_F_L0(HeapDumpTest, TestGlobalRefInHeapSnapshot)
     // Verify NATIVE nodes with ReferenceAddress in snapshot
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"ReferenceAddress:0x"))
         << "ReferenceAddress node not found in snapshot";
+
+    // Verify ReferenceAddress value is in hex format (only hex digits after 0x)
+    ASSERT_TRUE(tester.MatchHeapDumpRegex(snapshotPath, R"("ReferenceAddress:0x[0-9a-f]+")"))
+        << "ReferenceAddress value is not in hex format";
 
     // Verify target JS objects reachable via global ref edges
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"JSObject"))

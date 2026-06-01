@@ -1180,7 +1180,7 @@ void HeapSnapshot::FillGlobalEdges()
         }
         JSTaggedType addr = static_cast<JSTaggedType>(slotAddr);
         std::ostringstream oss;
-        oss << "ReferenceAddress:0x" << reinterpret_cast<uintptr_t>(ref);
+        oss << "ReferenceAddress:0x" << std::hex << reinterpret_cast<uintptr_t>(ref);
         CString nodeName = CString(oss.str().c_str());
         HprofNode *entryFrom = HprofNode::NewNode(chunk_, 0, nodeCount_,
             GetString(nodeName), NodeType::NATIVE, 0, 0, addr);
