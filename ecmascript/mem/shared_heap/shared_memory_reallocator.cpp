@@ -72,12 +72,15 @@ void SharedMemoryReallocator::TransferCapacityLimits(SharedOldSpace *oldSpace,
     size_t oldMaxCapacity = oldSpace->GetMaximumCapacity();
     size_t compressMaxCapacity = compressSpace->GetMaximumCapacity();
     oldSpace->SetMaximumCapacity(oldMaxCapacity + transferSize);
+    oldSpace->SetInitialCapacity(oldMaxCapacity + transferSize);
     compressSpace->SetMaximumCapacity(compressMaxCapacity + transferSize);
+    compressSpace->SetInitialCapacity(compressMaxCapacity + transferSize);
 
     // Decrease HugeObjectSpace capacity
     size_t hugeMaxCapacity = hugeSpace->GetMaximumCapacity();
     ASSERT(hugeMaxCapacity >= transferSize);
     hugeSpace->SetMaximumCapacity(hugeMaxCapacity - transferSize);
+    hugeSpace->SetInitialCapacity(hugeMaxCapacity - transferSize);
 
     LOG_ECMA_MEM(INFO) << "SharedMemoryReallocator: Capacity transfer completed"
                        << " OldSpace: " << oldMaxCapacity << " -> " << oldSpace->GetMaximumCapacity()
