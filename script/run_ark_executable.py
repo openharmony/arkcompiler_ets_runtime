@@ -23,12 +23,21 @@ Description: run script
 
 import argparse
 import os
+import platform
+import shlex
 import shutil
 import subprocess
 import sys
 import time
 import zipfile
 from io import StringIO
+
+
+IS_MACOS = platform.system().lower() == "darwin"
+# On macOS, DYLD_LIBRARY_PATH is stripped by SIP when the process is launched
+# via a protected binary like /bin/sh (used by shell=True). Use shell=False
+# with a proper argument list to avoid this issue.
+LIB_PATH_ENV_VAR = "DYLD_LIBRARY_PATH" if IS_MACOS else "LD_LIBRARY_PATH"
 
 
 def get_env_path_from_rsp(script_file: str) -> list:
@@ -124,12 +133,19 @@ def process_open(args: object) -> [str, object]:
     """get command and open subprocess."""
     if args.env_path:
         # use the given env-path
-        cmd = args.script_file
-        cmd += " {}".format(args.script_options) if args.script_options else ""
-        cmd += " {}".format(args.script_args) if args.script_args else ""
-        # process for running executable directly
-        subp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env={'LD_LIBRARY_PATH': str(args.env_path)})
+        cmd_list = [args.script_file]
+        if args.script_options:
+            cmd_list.extend(shlex.split(args.script_options))
+        if args.script_args:
+            cmd_list.extend(shlex.split(args.script_args))
+        # Build the display command string for logging
+        cmd = " ".join(cmd_list)
+        # On macOS, avoid shell=True to prevent SIP from stripping
+        # DYLD_LIBRARY_PATH from the environment.
+        env = os.environ.copy()
+        env[LIB_PATH_ENV_VAR] = str(args.env_path)
+        subp = subprocess.Popen(cmd_list, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, env=env)
     else:
         # get env-path from response file recursively
         [cmd, env_path] = get_command_and_env_path(args)
@@ -139,8 +155,11 @@ def process_open(args: object) -> [str, object]:
             subp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             # process for running executable directly
-            subp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                env={'LD_LIBRARY_PATH': str(env_path)})
+            cmd_list = shlex.split(cmd)
+            env = os.environ.copy()
+            env[LIB_PATH_ENV_VAR] = str(env_path)
+            subp = subprocess.Popen(cmd_list, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, env=env)
     return [cmd, subp]
 
 
