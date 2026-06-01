@@ -16,6 +16,7 @@
         "syscap": [],
         "features": [
           "ets_runtime_feature_enable_pgo",
+          "ets_runtime_feature_enable_back_annotation",
           "ets_runtime_feature_enable_codemerge",
           "ets_runtime_feature_enable_inst_prefetch",
           "ets_runtime_feature_pgo_path",

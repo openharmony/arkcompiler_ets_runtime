@@ -525,6 +525,17 @@ config("ark_jsruntime_common_config") {
         "-O3",
       ]
     }
+
+    if (ets_runtime_feature_enable_back_annotation && enable_enhanced_opt) {
+      cflags += [
+        "-mllvm",
+        "-auto-tuning-input=" + rebase_path(
+                "${ets_runtime_feature_pgo_path}/config.yaml",
+                root_build_dir),
+        "-mllvm",
+        "-autotuning-project-dir=" + rebase_path(root_build_dir) + "/",
+      ]
+    }
   }
 
   if (use_musl) {
