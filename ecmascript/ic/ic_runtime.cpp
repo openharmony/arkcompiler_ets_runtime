@@ -70,6 +70,10 @@ bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &h
         if (hclass->IsJSGlobalObject()) {
             return false;
         }
+        // Not support not found ic for dictionary mode object
+        if (hclass->IsDictionaryMode()) {
+            return false;
+        }
         JSTaggedValue proto = hclass->GetPrototype(thread_);
         // If proto is not an EcmaObject,
         // it means that there is no need to search for the prototype chain.
@@ -311,7 +315,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     }
     TraceIC(GetThread(), receiver, key);
 
-#if ENABLE_LATEST_OPTIMIZATION && defined(USE_CMC_GC)
+#if ENABLE_V70_OPTIMIZATION
     if (!op.IsFastMode() && op.IsFound()) {
         icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
