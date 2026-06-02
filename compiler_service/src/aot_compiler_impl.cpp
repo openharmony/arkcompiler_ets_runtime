@@ -229,6 +229,7 @@ void AotCompilerImpl::UpdateExternalPkgFdInfo(const AotCompilerArgs &args,
     argsHandler_->UpdateExternalPkgInfo(extPkgInfo);
 }
 
+#ifdef CODE_SIGN_ENABLE
 int32_t AotCompilerImpl::PrepareCompilationInputs(const AotCompilerArgs &args,
     AotParserType parserType, CompilationCleanupGuard &guard)
 {
@@ -262,6 +263,7 @@ int32_t AotCompilerImpl::PrepareCompilationInputs(const AotCompilerArgs &args,
     }
     return ERR_OK;
 }
+#endif
 
 int32_t AotCompilerImpl::EcmascriptAotCompiler(const AotCompilerArgs &args,
                                                std::vector<uint8_t> &sigData)

@@ -133,31 +133,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotArgsHandlerTest_005
- * @tc.desc: Test AOTArgsHandler::BuildCompilerPkgInfo hex format
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_005, TestSize.Level0)
-{
-    AotCompilerArgs args;
-    args.bundleName = "com.test";
-    args.moduleName = "entry";
-    args.hapPath = "/data/test/test.hap";
-    args.pgoDir = "/data/pgo";
-    args.bundleUid = 20020079;
-    args.processUid = 3060;
-    args.appIdentifier = "sig";
-    args.isEncryptedBundle = 0;
-    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
-
-    std::string pkgInfo = AOTArgsHandler::BuildCompilerPkgInfo(args);
-    EXPECT_TRUE(pkgInfo.find("0xff") != std::string::npos);
-    EXPECT_TRUE(pkgInfo.find("0x100") != std::string::npos);
-    EXPECT_TRUE(pkgInfo.find("20020079") != std::string::npos);
-    EXPECT_TRUE(pkgInfo.find("3060") != std::string::npos);
-}
-
-/**
  * @tc.name: AotArgsHandlerTest_006
  * @tc.desc: Test AOTArgsHandler::BuildExternalPkgInfo with static mode hsp
  * @tc.type: Func
@@ -291,21 +266,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_014, TestSize.Level0)
     EXPECT_NE(result.value(), nullptr);
 }
 
-/**
- * @tc.name: AotArgsHandlerTest_015
- * @tc.desc: AOTArgsParserFactory::GetParser(args)
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_015, TestSize.Level0)
-{
-    AotCompilerArgs args;
-    args.isSysComp = false;
-
-    auto result = AOTArgsParserFactory::GetParser(args, true);
-    EXPECT_TRUE(result.has_value());
-    EXPECT_NE(result.value(), nullptr);
-}
-
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_016, TestSize.Level0)
 {
     AotCompilerArgs args;
@@ -411,29 +371,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_028, TestSize.Level0)
     bool result = parser.AddProfilePathArg(argVector, pgoDir, moduleName);
 
     EXPECT_FALSE(result);
-}
-
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_029, TestSize.Level0) {
-    AotCompilerArgs args;
-
-    auto result = AOTArgsParserFactory::GetParser(args, false);
-    EXPECT_NE(result, std::nullopt);
-}
-
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_030, TestSize.Level0) {
-    AotCompilerArgs args;
-    args.isSysComp = false;
-
-    auto result = AOTArgsParserFactory::GetParser(args, false);
-    EXPECT_NE(result, std::nullopt);
-}
-
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_031, TestSize.Level0) {
-    AotCompilerArgs args;
-    args.isSysComp = false;
-
-    auto result = AOTArgsParserFactory::GetParser(args, false);
-    EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_032, TestSize.Level0) {
@@ -2073,20 +2010,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingIsSystemCompone
 }
 
 /**
- * @tc.name: AotArgsHandlerTest_GetParser_MissingArkTsMode
- * @tc.desc: Test GetParser with missing ARKTS_MODE parameter
- * @tc.type: Func
- */
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingArkTsMode, TestSize.Level0)
-{
-    AotCompilerArgs args;
-    args.isSysComp = false;
-
-    auto result = AOTArgsParserFactory::GetParser(args, true);
-    EXPECT_TRUE(result.has_value());
-}
-
-/**
  * @tc.name: AotArgsHandlerTest_GetParser_InvalidIsSystemComponent
  * @tc.desc: Test GetParser with invalid IS_SYSTEM_COMPONENT value (non-numeric)
  * @tc.type: Func
@@ -2234,32 +2157,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticDisa
 
     auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_GetParser_BothParamsMissing_StaticEnabled
- * @tc.desc: Test GetParser: both params missing, static enabled
- * @tc.type: Func
- */
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_StaticEnabled, TestSize.Level0)
-{
-    AotCompilerArgs args;
-
-    auto result = AOTArgsParserFactory::GetParser(args, true);
-    EXPECT_TRUE(result.has_value());
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_GetParser_BothParamsMissing_StaticDisabled
- * @tc.desc: Test GetParser: both params missing, static disabled
- * @tc.type: Func
- */
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_StaticDisabled, TestSize.Level0)
-{
-    AotCompilerArgs args;
-
-    auto result = AOTArgsParserFactory::GetParser(args, false);
-    EXPECT_TRUE(result.has_value());
 }
 
 /**

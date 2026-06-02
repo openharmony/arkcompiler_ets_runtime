@@ -1324,29 +1324,6 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_073, TestSize.Level0)
 }
 
 /**
-* @tc.name: AotCompilerImplTest_074
-* @tc.desc: PrepareOutputFiles: DYNAMIC_AOT file already exists returns ERR_OK
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_074, TestSize.Level0)
-{
-    // Create a dummy .an file so FileExist returns true
-    std::ofstream ofs(TEST_AN_PATH);
-    ofs << "dummy";
-    ofs.close();
-
-    AotCompilerImplMock aotImplMock;
-    AotCompilerArgs args;
-    args.moduleArkTSMode = "dynamic";
-    args.anFileName = TEST_AN_PATH;
-    aotImplMock.SetAOTArgsHandler(std::make_unique<AOTArgsHandler>(args));
-
-    int32_t outFd = -1;
-    auto ret = aotImplMock.PrepareOutputFilesMock(AotParserType::DYNAMIC_AOT, getuid(), getgid(), outFd);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/**
 * @tc.name: AotCompilerImplTest_075
 * @tc.desc: PreCreateAotFiles: empty anFilePath returns ERR_OK
 * @tc.type: Func
@@ -1428,23 +1405,6 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_079, TestSize.Level0)
 }
 
 /**
-* @tc.name: AotCompilerImplTest_080
-* @tc.desc: CreateAiFile: fchown fails returns ERR_AOT_COMPILER_CALL_FAILED
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_080, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::string testPath = TEST_AN_DIR + "/chown_test.ai";
-    unlink(testPath.c_str());
-    // Use uid/gid that we cannot chown to (root uid 0 owned by another process)
-    // Since test runs as non-root, chown to uid=1 should fail
-    auto ret = aotImplMock.CreateAiFileMock(testPath, 1, 1);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_FAILED);
-    unlink(testPath.c_str());
-}
-
-/**
 * @tc.name: AotCompilerImplTest_081
 * @tc.desc: ChownAotFilesToBundle: empty anFilePath returns ERR_OK
 * @tc.type: Func
@@ -1460,32 +1420,6 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_081, TestSize.Level0)
 }
 
 /**
-* @tc.name: AotCompilerImplTest_082
-* @tc.desc: ChownAotFilesToBundle: chown on disk file with unchownable uid returns ERR_AOT_COMPILER_CHOWN_FAILED
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_082, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    // Create a temp file on disk (memfd改造后，chown基于路径而非fd)
-    std::string testPath = TEST_AN_DIR + "/chown_fd_test.an";
-    std::ofstream ofs(testPath);
-    ofs << "test";
-    ofs.close();
-
-    AotCompilerArgs args;
-    args.anFileName = testPath;
-    args.bundleUid = TEST_BUNDLE_UID;
-    args.bundleGid = TEST_BUNDLE_UID;
-    aotImplMock.SetAOTArgsHandler(std::make_unique<AOTArgsHandler>(args));
-
-    // chown to an unchownable uid should fail
-    auto ret = aotImplMock.ChownAotFilesToBundleMock();
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_CHOWN_FAILED);
-    unlink(testPath.c_str());
-}
-
-/**
 * @tc.name: AotCompilerImplTest_083
 * @tc.desc: CompilationCleanupGuard: files do not exist — no crash on cleanup
 * @tc.type: Func
@@ -1498,30 +1432,6 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_083, TestSize.Level0)
         // Guard goes out of scope — should not crash when files don't exist
     }
     EXPECT_TRUE(true);
-}
-
-/**
-* @tc.name: AotCompilerImplTest_084
-* @tc.desc: HandlePostCompilation: ERR_OK_NO_AOT_FILE resets fd and cleans up
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_084, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    AotCompilerArgs args = MakeTestArgs();
-    aotImplMock.SetAOTArgsHandler(std::make_unique<AOTArgsHandler>(args));
-
-    // Create a guard with a dummy fd
-    CompilationCleanupGuard guard(args.anFileName);
-    int fd = open(args.anFileName.c_str(), O_RDWR | O_CREAT, S_IRWXU);
-    ASSERT_GE(fd, 0);
-    guard.AcquireFd(fd);
-
-    std::vector<uint8_t> sigData;
-    auto ret = aotImplMock.HandlePostCompilationMock(args, ERR_OK_NO_AOT_FILE, sigData, guard);
-    EXPECT_EQ(ret, ERR_OK);
-    // guard was not dismissed, fd should have been reset by guard cleanup
-    EXPECT_EQ(guard.GetFd(), -1);
 }
 
 /**

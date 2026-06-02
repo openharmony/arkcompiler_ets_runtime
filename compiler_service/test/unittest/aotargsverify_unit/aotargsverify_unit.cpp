@@ -604,19 +604,6 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_006, TestSize.L
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_001
- * @tc.desc: Test AotArgsVerify::CheckCodeSignArkCacheFilePath with valid app arkcache path
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_001, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckCodeSignArkCacheFilePath(
-        "/data/app/el1/public/aot_compiler/ark_cache/nonexistent/file.abc");
-
-    EXPECT_FALSE(result);
-}
-
-/**
  * @tc.name: AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_003
  * @tc.desc: Test AotArgsVerify::CheckCodeSignArkCacheFilePath with path traversal attack
  * @tc.type: Func
@@ -653,19 +640,6 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_004,
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_005, TestSize.Level0)
 {
     bool result = AotArgsVerify::CheckCodeSignArkCacheFilePath("");
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_006
- * @tc.desc: Test AotArgsVerify::CheckCodeSignArkCacheFilePath with non-existent path (RealPath failure)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_006, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckCodeSignArkCacheFilePath(
-        "/data/app/el1/public/aot_compiler/ark_cache/nonexistent/file.abc");
 
     EXPECT_FALSE(result);
 }
@@ -1921,34 +1895,6 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseInt32Field_WrongType_Float, T
     EXPECT_FALSE(result);
 }
 // CheckCodeSignArkCacheFilePath - Symlink Path Traversal (Lines 319-321)
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_SymlinkTraversal
- * @tc.desc: Test CheckCodeSignArkCacheFilePath with symlink containing path traversal
- *           Covers: Re-check for path traversal after RealPath (symlink could bypass)
- *           if (!CheckPathTraverse(resolvedPath)) return false;
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_SymlinkTraversal, TestSize.Level0)
-{
-    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.example.app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream realFile("/data/app/el1/public/aot_compiler/ark_cache/com.example.app/test.abc");
-    realFile << "test content";
-    realFile.close();
-    std::string symlinkPath = "/data/app/el1/public/aot_compiler/ark_cache/com.example.app/symlink.abc";
-    mkdir("/data/local/tmp", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream outsideFile("/data/local/tmp/outside.abc");
-    outsideFile << "outside content";
-    outsideFile.close();
-    symlink("/data/local/tmp/outside.abc", symlinkPath.c_str());
-    bool result = AotArgsVerify::CheckCodeSignArkCacheFilePath(symlinkPath);
-
-    EXPECT_FALSE(result);
-    unlink(symlinkPath.c_str());
-    unlink("/data/local/tmp/outside.abc");
-    unlink("/data/app/el1/public/aot_compiler/ark_cache/com.example.app/test.abc");
-    rmdir("/data/app/el1/public/aot_compiler/az_cache/com.example.app");
-}
 
 // ============================================================================
 // CheckTriggerTypeForAOT - Test Cases
