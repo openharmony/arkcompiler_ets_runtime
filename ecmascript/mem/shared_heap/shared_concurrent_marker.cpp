@@ -49,9 +49,9 @@ public:
 
     void Run([[maybe_unused]] JSThread *thread) override
     {
-        ThreadPriorityScope scope;
         ASSERT(thread->IsDaemonThread());
         SharedHeap *sHeap = SharedHeap::GetInstance();
+        sHeap->SetGCThreadQosPriority(common::PriorityMode::STW);
         TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, sHeap->GetEcmaGCStats());
         LOG_GC(DEBUG) << "SharedConcurrentMarker: Concurrent Marking Begin";
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedConcurrentMarker::Mark;MarkReason"
@@ -79,25 +79,9 @@ public:
         SharedGCMarker *marker = sHeap->GetSharedGCMarker();
         SharedGCMarkRootVisitor rootVisitor(sHeap->GetWorkManager()->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
         marker->MarkGlobalRoots(rootVisitor);
-
         marker->PrepareCollectLocalVMRSet();
+        sHeap->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     }
-
-private:
-    class ThreadPriorityScope {
-    public:
-        explicit ThreadPriorityScope()
-        {
-            common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
-        }
-        ~ThreadPriorityScope()
-        {
-            common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
-        }
-
-        NO_COPY_SEMANTIC(ThreadPriorityScope);
-        NO_MOVE_SEMANTIC(ThreadPriorityScope);
-    };
 };
 
 class InitialMarkFlipFunction : public Closure {
