@@ -85,6 +85,13 @@ private:
     void RecordGapMoveComment(const InstructionOperand &src, const InstructionOperand &dest, PhiVertex *phi);
     void RecordSpillComment();
 
+    int ComputeDeferredBlocks();
+    void ReorderDeferredBlocks(int deferredCount);
+    bool IsNextBlockInLayout(BB *target) const;
+
+    bool AllPredecessorsDeferred(BB *block) const;
+    bool AllSuccessorsDeferred(BB *block);
+
     // Block color management for IR visualization
     static constexpr const char *BLOCK_COLORS[] = {
         "\033[33m",  // Yellow
@@ -122,6 +129,7 @@ private:
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
     const char *currentBlockColor_ = "";
+    BB *currentLayoutNextBlock_ = nullptr;
 
     // Block color assignment for CFG coloring (only computed when comments enabled)
     ChunkVector<int> blockColorAssignment_;
