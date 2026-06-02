@@ -536,7 +536,7 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
             // Do not use gate-id nullness of stringId_ as semantic signal.
             if (constPool_ != Circuit::NullGate()) {
                 GateRef funcName = GetStringFromConstPool(glue_, constPool_, stringId_);
-                CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {funcName});
+                CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {funcName, func_});
             } else {
                 CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {func_});
             }

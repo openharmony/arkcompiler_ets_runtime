@@ -12,21 +12,21 @@
 # limitations under the License.
 
 true
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
-b is not callable
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1
+b is not callable, b is 1

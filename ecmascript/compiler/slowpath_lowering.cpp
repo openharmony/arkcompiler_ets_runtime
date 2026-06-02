@@ -1159,7 +1159,7 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
 
     builder_.Bind(&funcNotCallable);
     {
-        LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+        LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName, callTarget}, true);
         result = builder_.ExceptionConstant();
         builder_.Jump(&exit);
     }
@@ -1220,7 +1220,7 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate)
 
     builder_.Bind(&funcNotCallable);
     {
-        LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+        LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName, callTarget}, true);
         result = builder_.ExceptionConstant();
         builder_.Jump(&exit);
     }
@@ -3607,7 +3607,7 @@ void SlowPathLowering::LowerCallThis0Stub(GateRef gate)
 
         builder_.Bind(&funcNotCallable);
         {
-            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName, func}, true);
             result = builder_.ExceptionConstant();
             builder_.Jump(&exit);
         }
@@ -3647,7 +3647,7 @@ void SlowPathLowering::LowerCallThis1Stub(GateRef gate)
 
         builder_.Bind(&funcNotCallable);
         {
-            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName, func}, true);
             result = builder_.ExceptionConstant();
             builder_.Jump(&exit);
         }
@@ -3688,7 +3688,7 @@ void SlowPathLowering::LowerCallThis2Stub(GateRef gate)
 
         builder_.Bind(&funcNotCallable);
         {
-            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName, func}, true);
             result = builder_.ExceptionConstant();
             builder_.Jump(&exit);
         }
@@ -3730,7 +3730,7 @@ void SlowPathLowering::LowerCallThis3Stub(GateRef gate)
 
         builder_.Bind(&funcNotCallable);
         {
-            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName, func}, true);
             result = builder_.ExceptionConstant();
             builder_.Jump(&exit);
         }
