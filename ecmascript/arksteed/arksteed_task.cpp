@@ -15,11 +15,11 @@
 
 #include "ecmascript/arksteed/arksteed_task.h"
 
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/jit_dfx.h"
 #include "ecmascript/jit/jit_thread.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/method.h"
 
@@ -61,6 +61,10 @@ void ArkSteedTask::InstallCode()
     JSHandle<Method> methodHandle(hostThread, Method::Cast(jsFunction->GetMethod(hostThread).GetTaggedObject()));
     size_t size = ComputePayLoadSize(codeDesc);
     codeDesc.isAsyncCompileMode = IsAsyncTask();
+
+    if (!kungfu::LazyDeoptAllDependencies::Commit(GetDependencies(), hostThread, jsFunction.GetTaggedValue())) {
+        return;
+    }
 
     JSHandle<MachineCode> machineCodeObj;
     if (Jit::GetInstance()->IsEnableJitFort()) {

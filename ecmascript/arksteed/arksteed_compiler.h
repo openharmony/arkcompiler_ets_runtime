@@ -62,7 +62,9 @@ public:
                                                    jsFunction_, arkSteedTask->GetDependencies())),
           profileTypeInfo_(arkSteedTask->GetProfileTypeInfo()),
           compilerTier_(arkSteedTask->GetCompilerTier())
-    {}
+    {
+        jitCompilationEnv_->SetProfileTypeInfo(profileTypeInfo_);
+    }
     ~ArkSteedCompilerTask();
     static ArkSteedCompilerTask *CreateJitCompilerTask(ArkSteedTask *arkSteedTask);
 
