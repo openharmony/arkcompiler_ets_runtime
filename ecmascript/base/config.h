@@ -33,6 +33,15 @@ constexpr bool G_USE_CMS_GC = true;
 constexpr bool G_USE_CMS_GC = false;
 #endif
 
+#if USE_STICKY_CMS_GC
+constexpr bool G_USE_STICKY_CMS_GC = true;
+#if !USE_CMS_GC
+#error "USE_STICKY_CMS_GC requires USE_CMS_GC to be defined as 1"
+#endif
+#else
+constexpr bool G_USE_STICKY_CMS_GC = false;
+#endif
+
 enum class PUBLIC_API RBMode : uint8_t {
     DEFAULT_RB = 0,  // Default read barrier mode to support both gc.
     FAST_NO_RB,   // Use to old gc read barrier mode.

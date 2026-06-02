@@ -100,7 +100,7 @@ public:
     inline void SetIhc(JSThread *thread, JSTaggedValue value)
     {
         if (value.IsHeapObject()) {
-            Barriers::SetObject(thread, GetData(), GetIhcOffset(), value.GetRawData());
+            Barriers::SetObject(thread, this, TaggedArray::DATA_OFFSET + GetIhcOffset(), value.GetRawData());
         } else {
             Barriers::SetPrimitive<JSTaggedType>(GetData(), GetIhcOffset(), value.GetRawData());
         }
@@ -108,13 +108,13 @@ public:
 
     inline JSTaggedValue GetIhc(JSThread *thread) const
     {
-        return JSTaggedValue(Barriers::GetTaggedValue(thread, GetData(), GetIhcOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, TaggedArray::DATA_OFFSET + GetIhcOffset()));
     }
 
     inline void SetChc(JSThread *thread, JSTaggedValue value)
     {
         if (value.IsHeapObject()) {
-            Barriers::SetObject(thread, GetData(), GetChcOffset(), value.GetRawData());
+            Barriers::SetObject(thread, this, TaggedArray::DATA_OFFSET + GetChcOffset(), value.GetRawData());
         } else {
             Barriers::SetPrimitive<JSTaggedType>(GetData(), GetChcOffset(), value.GetRawData());
         }
@@ -122,7 +122,7 @@ public:
 
     inline JSTaggedValue GetChc(JSThread *thread) const
     {
-        return JSTaggedValue(Barriers::GetTaggedValue(thread, GetData(), GetChcOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, TaggedArray::DATA_OFFSET + GetChcOffset()));
     }
 
     inline void SetLiteralType(JSTaggedValue value)

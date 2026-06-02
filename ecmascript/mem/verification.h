@@ -75,6 +75,7 @@ private:
     void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
     void VerifyHeapObjectSlotLegal(ObjectSlot slot, JSTaggedValue value, TaggedObject *obj) const;
     void VerifyWeakRef(ObjectSlot slot, TaggedObject *object) const;
+    void VerifyStickyObjectReference(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;

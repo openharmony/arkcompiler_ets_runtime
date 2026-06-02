@@ -1687,6 +1687,40 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
         __ Jae(&valueMaybeSweepableShare);
         // if value may be SweepableShare, goto valueMaybeSweepableShare
     }
+#if USE_STICKY_CMS_GC
+    __ Bind(&valueNotShare);
+    {
+        // valueNotShare:
+        // rcx & WeakTag removeWeakTag
+        // %rd1 - glue
+        // %rsi - obj
+        // %rdx - offset
+        // %rcx - value
+        // *rcx loadHClass-> r11 hclass
+        // hclass & ~TaggedObject::GC_STATE_MASK r11
+        // r11 compare TaggedStateWord::YOUNG_STATE
+        // if false goto checkMark
+        // rsi loadHClass-> r11 hclass
+        // hclass & ~TaggedObject::GC_STATE_MASK r11
+        // r11 compare TaggedStateWord::OLD_STATE
+        // if true goto needCallNotShare
+
+        __ Movabs(~(JSTaggedValueInternals::TAG_WEAK), r11); // r11 is weakMask
+        __ And(rcx, r11); // RemoveWeakTag of value
+        static_assert(TaggedStateWord::OLD_STATE == (static_cast<uint64_t>(ObjectState::OLD) <<
+                                                     TaggedStateWord::ADDRESS_WIDTH));
+        static_assert(TaggedStateWord::YOUNG_STATE == (static_cast<uint64_t>(ObjectState::YOUNG) <<
+                                                       TaggedStateWord::ADDRESS_WIDTH));
+        static_assert(TaggedStateWord::ADDRESS_WIDTH % GCBitset::BIT_PER_BYTE == 0);
+        __ Movzbl(Operand(r11, static_cast<uint32_t>(TaggedStateWord::ADDRESS_WIDTH) / GCBitset::BIT_PER_BYTE), r11);
+        __ Cmpl(Immediate(static_cast<uint32_t>(ObjectState::YOUNG)), r11);
+        __ Jne(&checkMark);
+
+        __ Movzbl(Operand(rsi, static_cast<uint32_t>(TaggedStateWord::ADDRESS_WIDTH) / GCBitset::BIT_PER_BYTE), r11);
+        __ Cmpl(Immediate(static_cast<uint32_t>(ObjectState::YOUNG)), r11);
+        __ Jne(&needCallNotShare);
+    }
+#else
     __ Bind(&valueNotShare);
     {
         // valueNotShare:
@@ -1710,6 +1744,7 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
         __ Jne(&needCallNotShare);
         // if obj is not in young, goto needCallNotShare
     }
+#endif
 
     __ Bind(&checkMark);
     {

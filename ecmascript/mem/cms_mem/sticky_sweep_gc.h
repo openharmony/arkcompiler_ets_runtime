@@ -13,27 +13,21 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_MEM_CMS_MEM_SWEEP_GC_H
-#define ECMASCRIPT_MEM_CMS_MEM_SWEEP_GC_H
+#ifndef ECMASCRIPT_MEM_STICKY_MEM_SWEEP_GC_H
+#define ECMASCRIPT_MEM_STICKY_MEM_SWEEP_GC_H
 
 #include "ecmascript/mem/garbage_collector.h"
-#include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/mark_stack.h"
-#include "ecmascript/mem/mark_word.h"
-#include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/slots.h"
-#include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/work_manager.h"
+#include "ecmascript/mem/cms_mem/sweep_gc.h"
 
 namespace panda {
 namespace ecmascript {
-class SweepGC : public GarbageCollector {
+class StickySweepGC : public SweepGC {
 public:
-    explicit SweepGC(Heap *heap);
-    ~SweepGC() override = default;
+    explicit StickySweepGC(Heap *heap);
+    ~StickySweepGC() override = default;
 
-    NO_COPY_SEMANTIC(SweepGC);
-    NO_MOVE_SEMANTIC(SweepGC);
+    NO_COPY_SEMANTIC(StickySweepGC);
+    NO_MOVE_SEMANTIC(StickySweepGC);
 
     void RunPhases() override;
 
@@ -45,18 +39,8 @@ public:
 protected:
     void Initialize() override;
     void Mark() override;
+    void ProcessNativeDelete() override;
     void Sweep() override;
-    void Finish() override;
-    virtual void ProcessNativeDelete();
-    void ProcessSharedGCRSetWorkList();
-    void ClearDeadReferences();
-    void UpdateRecordWeakReference(uint32_t threadId);
-    void UpdateRecordWeakLinkedHashMap(uint32_t threadId);
-
-    Heap *heap_ {nullptr};
-    bool markingInProgress_ {false};
-    // Obtained from the shared heap instance.
-    WorkManager *workManager_ {nullptr};
 
 private:
     void MarkRoots();
@@ -67,4 +51,4 @@ private:
 }  // namespace ecmascript
 }  // namespace panda
 
-#endif  // ECMASCRIPT_MEM_CMS_MEM_SWEEP_GC_H
+#endif  // ECMASCRIPT_MEM_STICKY_MEM_SWEEP_GC_H

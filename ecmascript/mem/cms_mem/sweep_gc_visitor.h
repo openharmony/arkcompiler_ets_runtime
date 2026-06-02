@@ -63,5 +63,16 @@ private:
     friend class NonMovableMarker;
 };
 
+class StickyMarkOldToNewRSetVisitor {
+public:
+    inline explicit StickyMarkOldToNewRSetVisitor(WorkNodeHolder *workNodeHolder);
+    ~StickyMarkOldToNewRSetVisitor() = default;
+
+    inline void operator()(Region *region) const;
+private:
+    inline bool HandleSlot(ObjectSlot slot) const;
+
+    WorkNodeHolder *workNodeHolder_ {nullptr};
+};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_CMS_MEM_SWEEP_GC_VISITOR_H

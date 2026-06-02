@@ -73,9 +73,11 @@ public:
     inline void SetRecordRegion();
 
     // In stw
+    template <bool isSticky>
     size_t Sweep(std::vector<Region *> &pendingReclaimFromRegions);
 
     // In stw
+    template <bool isSticky>
     size_t PrepareSweeping(std::vector<Region *> &pendingReclaimFromRegions);
 
     void ConcurrentSweep(const SweepMode sweepMode);

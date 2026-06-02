@@ -92,6 +92,8 @@ declare_args() {
   enable_handle_leak_detect = false
 
   enable_cms_gc = false
+
+  enable_sticky_cms_gc = false
 }
 
 if (defined(enable_cmc_gc)) {

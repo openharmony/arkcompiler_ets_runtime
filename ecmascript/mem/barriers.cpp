@@ -29,19 +29,25 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
         return;
     }
     auto heap = thread->GetEcmaVM()->GetHeap();
+    TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
     if (heap->IsConcurrentFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
             objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
         }
     } else if (heap->IsYoungMark()) {
+#if USE_STICKY_CMS_GC
+        if (heapValue->IsInOld()) {
+            return;
+        }
+#else
         if (!valueRegion->InYoungSpace()) {
             return;
         }
+#endif
     }
 
     // Weak ref record and concurrent mark record maybe conflict.
     // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
-    TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
     if (valueRegion->IsFreshRegion()) {
         if (valueRegion->NonAtomicMark(heapValue)) {
             valueRegion->IncreaseAliveObject(heapValue->GetSize());
@@ -102,10 +108,17 @@ ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* o
             continue;
         }
         if constexpr (kind == Region::InGeneralOld) {
+#if USE_STICKY_CMS_GC
+            if (!valueRegion->InSharedHeap() && taggedValue.GetTaggedObject()->IsInYoung()) {
+                updater.UpdateOldToNew();
+                continue;
+            }
+#else
             if (valueRegion->InYoungSpace()) {
                 updater.UpdateOldToNew();
                 continue;
             }
+#endif
         }
     }
     return allValueNotHeap;
@@ -220,7 +233,7 @@ void Barriers::CMCArrayCopyReadBarrierForward(const JSThread *thread, JSTaggedVa
                                               size_t count)
 {
     for (size_t i = 0; i < count; i++) {
-        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, src, i * sizeof(JSTaggedType));
+        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, ToUintPtr(src) + i * sizeof(JSTaggedType));
         Barriers::SetObject<false>(thread, dst, i * sizeof(JSTaggedType), valueToRef);
     }
 }
@@ -229,8 +242,53 @@ void Barriers::CMCArrayCopyReadBarrierBackward(const JSThread *thread, JSTaggedV
                                                size_t count)
 {
     for (size_t i = count; i > 0; i--) {
-        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, src, (i - 1) * sizeof(JSTaggedType));
+        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, ToUintPtr(src) + (i - 1) * sizeof(JSTaggedType));
         Barriers::SetObject<false>(thread, dst, (i - 1) * sizeof(JSTaggedType), valueToRef);
+    }
+}
+
+void Barriers::CheckObjectForCMS(const JSThread *thread, void *obj, size_t offset, JSTaggedValue value,
+                                 bool writeBarrierCheck)
+{
+    Region *objectRegion = Region::ObjectAddressToRange(static_cast<TaggedObject *>(obj));
+    if (!objectRegion->InSharedHeap() && static_cast<TaggedObject *>(obj)->IsInvalid()) {
+        LOG_ECMA(FATAL) << "obj state is invalid";
+    }
+    if (thread->IsReadyToConcurrentMark() && objectRegion->InSlotSpace() &&
+        static_cast<TaggedObject *>(obj)->IsInOld() && !objectRegion->Test(obj)) {
+        LOG_ECMA(FATAL) << "obj is old but not marked";
+    }
+    if (value.IsHeapObject()) {
+        TaggedObject *heapValue = value.GetHeapObject();
+        Region *valueRegion = Region::ObjectAddressToRange(heapValue);
+        if (!valueRegion->InSharedHeap() && heapValue->IsInvalid()) {
+            LOG_ECMA(FATAL) << "value state is invalid";
+        }
+        if (thread->IsReadyToConcurrentMark()) {
+            if (valueRegion->InSlotSpace() && heapValue->IsInOld() && !valueRegion->Test(heapValue)) {
+                LOG_ECMA(FATAL) << "value is old but not marked";
+            }
+            if (!writeBarrierCheck && valueRegion->InSlotSpace() && static_cast<TaggedObject *>(obj)->IsInOld() &&
+                heapValue->IsInYoung() && !objectRegion->TestOldToNew(reinterpret_cast<uintptr_t>(obj) + offset)) {
+                LOG_ECMA(FATAL) << "old to new reference not marked in RSet";
+            }
+        }
+    }
+}
+
+void Barriers::CheckValueForCMS(const JSThread *thread, JSTaggedValue value)
+{
+    if (value.IsHeapObject()) {
+        TaggedObject *heapValue = value.GetHeapObject();
+        Region *valueRegion = Region::ObjectAddressToRange(heapValue);
+        if (!valueRegion->InSharedHeap() && heapValue->IsInvalid()) {
+            LOG_ECMA(FATAL) << "value state is invalid";
+        }
+        if (thread->IsReadyToConcurrentMark()) {
+            if (valueRegion->InSlotSpace() && heapValue->IsInOld() && !valueRegion->Test(heapValue)) {
+                LOG_ECMA(FATAL) << "value is old but not marked";
+            }
+        }
     }
 }
 

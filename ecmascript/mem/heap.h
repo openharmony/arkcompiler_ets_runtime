@@ -65,6 +65,7 @@ class IdleGCTrigger;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
+class StickySweepGC;
 class SweepGC;
 class RSetWorkListHandler;
 class SharedConcurrentMarker;
@@ -125,6 +126,7 @@ enum class StartupStatus : uint8_t {
 
 enum class VerifyKind {
     VERIFY_PRE_GC,
+    VERIFY_PRE_STICKY_GC,
     VERIFY_POST_GC,
     VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
@@ -139,6 +141,7 @@ enum class VerifyKind {
     VERIFY_POST_SHARED_GC,
     VERIFY_SHARED_GC_MARK,
     VERIFY_SHARED_GC_SWEEP,
+    VERIFY_NO_SLOT_CHECK,
     VERIFY_END,
 };
 
@@ -386,7 +389,7 @@ public:
 
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
     inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
-                                            [[maybe_unused]] size_t size);
+                                            [[maybe_unused]] size_t size, MemSpaceType type);
     inline bool CheckCanDistributeTask() const;
     void WaitRunningMarkTaskFinished();
     void WaitAllMarkTaskFinished();
@@ -1115,6 +1118,7 @@ public:
     void Resume(TriggerGCType gcType, bool cmsGC = false);
     void ResumeForAppSpawn();
     void ResumeCC();
+    void ClearGCBitSetForCMS();
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     void EnableParallelGC();
@@ -2039,6 +2043,7 @@ private:
     /**
      * An alternative sweep-only gc to `PartialGC`
      */
+    StickySweepGC *stickySweepGC_ {nullptr};
     SweepGC *sweepGC_ {nullptr};
 
     // Full collector which collects garbage in all valid heap spaces.

@@ -490,6 +490,7 @@ public:
 
     void UpdateYoungGlobalList()
     {
+        ASSERT(!G_USE_CMS_GC);
         size_t index = 0;
         for (T* node : youngGlobalNodes_) {
             ASSERT(!node->IsWeak());
@@ -531,10 +532,17 @@ public:
     inline void CheckAndAddToYoungGlobalNodes(S *node, JSTaggedType value)
     {
         if (JSTaggedValue(value).IsHeapObject()) {
-            Region* region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
-            if (region->InYoungSpace() && !node->IsInYoungList()) {
-                youngGlobalNodes_.push_back(node);
-                node->SetInYoungList(true);
+            if constexpr (G_USE_STICKY_CMS_GC) {
+                if (JSTaggedValue(value).GetTaggedObject()->IsInYoung() && !node->IsInYoungList()) {
+                    youngGlobalNodes_.push_back(node);
+                    node->SetInYoungList(true);
+                }
+            } else if constexpr (!G_USE_CMS_GC) {
+                Region* region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
+                if (region->InYoungSpace() && !node->IsInYoungList()) {
+                    youngGlobalNodes_.push_back(node);
+                    node->SetInYoungList(true);
+                }
             }
         }
     }
@@ -586,6 +594,8 @@ public:
     template<class Callback>
     void IterateYoungUsageGlobal(Callback callback)
     {
+        // For sticky CMS-GC, young node list may contain objects with old state when iterate
+        // in remarking phase, which is ok because all the objects with old state must have been marked.
         ASSERT(!CheckYoungGlobalNodesUnique());
         VisitRange(youngGlobalNodes_.begin(), youngGlobalNodes_.end(), callback);
         if (nodeKind_ == NodeKind::UNIFIED_NODE) {

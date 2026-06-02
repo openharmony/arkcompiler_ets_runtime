@@ -28,7 +28,7 @@
 namespace panda::ecmascript {
 inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
 {
-    state_ = 0;
+    state_ = 0; // todo why set0 here
     TransitionClassWithoutBarrier(hclass);
 }
 
@@ -41,7 +41,11 @@ inline void TaggedObject::SetFreeObjectClass(JSHClass *hclass)
 {
     ASSERT(hclass->IsFreeObject());
     common::StateWordType state = static_cast<common::StateWordType>(ToUintPtr(hclass));
-    reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetGCStateWord(state);
+    if constexpr (G_USE_STICKY_CMS_GC) {
+        reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetGCStateWordForCMS(state, ObjectState::YOUNG);
+    } else {
+        reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetGCStateWord(state);
+    }
 }
 
 inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)

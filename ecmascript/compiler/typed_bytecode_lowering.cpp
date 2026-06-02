@@ -2852,7 +2852,8 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     for (size_t offset = JSObject::SIZE; offset < objectSize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), object, offset, builder_.Undefined());
     }
-    builder_.StoreHClass(glue_, object, hclass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue_, object, hclass, RegionSpaceFlag::IN_YOUNG_SPACE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,

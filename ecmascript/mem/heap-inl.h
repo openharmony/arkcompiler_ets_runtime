@@ -117,8 +117,12 @@ void SharedHeap::IterateOverObjects(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
 {
-    ASSERT(!G_USE_CMS_GC);
-    oldSpace_->EnumerateRegions(cb, region);
+    if constexpr (G_USE_STICKY_CMS_GC) {
+        slotSpace_->EnumerateRegions(cb);
+    } else {
+        ASSERT(!G_USE_CMS_GC);
+        oldSpace_->EnumerateRegions(cb);
+    }
     appSpawnSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
@@ -289,6 +293,9 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
     auto object = AllocateYoungOrHugeObject(size);
     ASSERT(object != nullptr);
     object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+    object->SetObjectState(ObjectState::YOUNG);
+#endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -296,10 +303,33 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 }
 
 void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
-                                           [[maybe_unused]] size_t size)
+                                           [[maybe_unused]] size_t size, MemSpaceType type)
 {
     ASSERT(object != nullptr);
     object->SetClass(thread, hclass);
+
+#if USE_STICKY_CMS_GC
+    switch (type) {
+        case MemSpaceType::READ_ONLY_SPACE:
+        case MemSpaceType::APPSPAWN_SPACE:
+        case MemSpaceType::NON_MOVABLE:
+            object->SetObjectState(ObjectState::OLD);
+            break;
+        case MemSpaceType::MACHINE_CODE_SPACE:
+        case MemSpaceType::SLOT_SPACE:
+        case MemSpaceType::HUGE_OBJECT_SPACE:
+        case MemSpaceType::OLD_SPACE:
+        case MemSpaceType::SEMI_SPACE:
+            object->SetObjectState(ObjectState::YOUNG);
+            break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+        case MemSpaceType::SHARED_NON_MOVABLE:
+            break;
+        default:
+            break;
+    }
+#endif
+
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
@@ -408,6 +438,9 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
     }
     if (object != nullptr) {
         object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+        object->SetObjectState(ObjectState::YOUNG);
+#endif
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
@@ -467,6 +500,9 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
 {
     auto object = AllocateOldOrHugeObject(size);
     object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+    object->SetObjectState(ObjectState::YOUNG);
+#endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject*>(object), size);
 #endif
@@ -497,6 +533,9 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
             " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         ASSERT(object != nullptr);
         object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+        object->SetObjectState(ObjectState::OLD);
+#endif
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
@@ -544,6 +583,10 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
                 std::to_string(GetHeapObjectSize()) + " bytes, committed size: " +
                 std::to_string(GetCommittedSize()) + " bytes");
             object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+            // Object in nonmovalble space will be regarded as old object.
+            object->SetObjectState(ObjectState::OLD);
+#endif
         }
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -567,6 +610,10 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
+#if USE_STICKY_CMS_GC
+    // Object in nonmovalble space will be regarded as old object.
+    object->SetObjectState(ObjectState::OLD);
+#endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -699,6 +746,9 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     CheckAndTriggerOldGC(size);
     auto object = AllocateHugeObject(size);
     object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+    object->SetObjectState(ObjectState::YOUNG);
+#endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -738,6 +788,10 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
             "Heap::AllocateMachineCodeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
                 " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+        object->SetObjectState(ObjectState::YOUNG);
+#endif
+
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
         OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -771,6 +825,9 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
         "Heap::AllocateMachineCodeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
                 " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
     object->SetClass(thread_, hclass);
+#if USE_STICKY_CMS_GC
+    object->SetObjectState(ObjectState::YOUNG);
+#endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
@@ -787,6 +844,10 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
             "Heap::AllocateSnapshotSpaceObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
             " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
     }
+#if USE_STICKY_CMS_GC
+    // Object in snapshot space will be regarded as old object.
+    reinterpret_cast<TaggedObject *>(object)->SetObjectState(ObjectState::OLD);
+#endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject *>(object), size);
 #endif
@@ -991,8 +1052,10 @@ void Heap::ReclaimRegions(TriggerGCType gcType, bool cmsGC)
         clearActiveSemiSpace(true);
     }
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
-        region->ClearMarkGCBitset();
-        region->ClearCrossRegionRSet();
+        if constexpr (!G_USE_STICKY_CMS_GC) {
+            region->ClearMarkGCBitset();
+            region->ClearCrossRegionRSet();
+        }
         region->ResetRegionTypeFlag();
         // fixme: refactor?
         if constexpr (G_USE_CMS_GC) {

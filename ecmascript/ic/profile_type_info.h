@@ -194,7 +194,8 @@ public:
 
     JSTaggedValue GetExtraInfoMap(const JSThread *thread) const
     {
-        return JSTaggedValue(Barriers::GetTaggedValue(thread, GetData(), GetExtraInfoMapOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, TaggedArray::DATA_OFFSET +
+                                                                    GetExtraInfoMapOffset()));
     }
 
     void SetExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> extraInfoMap)

@@ -155,7 +155,7 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
-        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size, MemSpaceType::SEMI_SPACE);
     }
     return JSTaggedValue(result).GetRawData();
 }
@@ -171,7 +171,7 @@ DEF_RUNTIME_STUBS(AllocateInOld)
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
-        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size, MemSpaceType::OLD_SPACE);
     }
     return JSTaggedValue(result).GetRawData();
 }
@@ -183,13 +183,14 @@ DEF_RUNTIME_STUBS(AllocateInOld)
         JSTaggedValue allocateSize = GetArg(argv, argc, 0);                                \
         auto size = static_cast<size_t>(allocateSize.GetInt());                            \
         auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());              \
-        ASSERT(size <= g_maxRegularHeapObjectSize);                                      \
+        ASSERT(size <= g_maxRegularHeapObjectSize);                                        \
         auto result = sharedHeap->Allocate##SPACE##OrHugeObject(thread, size);             \
         ASSERT(result != nullptr);                                                         \
         if (argc > 1) {                                                                    \
             JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);            \
             auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject()); \
-            sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);         \
+            sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size,          \
+                                                    MemSpaceType::SHARED_OLD_SPACE);       \
         }                                                                                  \
         return JSTaggedValue(result).GetRawData();                                         \
     }
@@ -212,7 +213,7 @@ DEF_RUNTIME_STUBS(AllocateInSNonMovable)
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
-        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size, MemSpaceType::SHARED_NON_MOVABLE);
     }
     return JSTaggedValue(result).GetRawData();
 }
@@ -244,7 +245,7 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
-        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size, MemSpaceType::SHARED_OLD_SPACE);
     }
     return JSTaggedValue(result).GetRawData();
 }
@@ -3755,6 +3756,18 @@ void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     Barriers::CMCWriteBarrier(thread, (TaggedObject*)object, offset, JSTaggedType(value));
 }
 
+void RuntimeStubs::CheckObjectForCMS(uintptr_t argGlue, uintptr_t object, size_t offset, uintptr_t value,
+                                     bool writeBarrierCheck)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    if (!writeBarrierCheck) {
+        Barriers::CheckValueForCMS(thread, JSTaggedValue(static_cast<JSTaggedType>(value)));
+    } else if (offset != 0) {
+        Barriers::CheckObjectForCMS(thread, reinterpret_cast<TaggedObject *>(object), offset,
+                                    JSTaggedValue(static_cast<JSTaggedType>(value)), writeBarrierCheck);
+    }
+}
+
 JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -5205,7 +5218,7 @@ void RuntimeStubs::ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t l
     auto thread = JSThread::GlueToJSThread(argGlue);
     if (thread->NeedReadBarrier()) {
         for (uint32_t i = 0; i < length; i++) {
-            Barriers::UpdateSlot(thread, dst, i * sizeof(JSTaggedType));
+            Barriers::UpdateSlot(thread, reinterpret_cast<uintptr_t>(dst) + i * sizeof(JSTaggedType));
         }
     }
     std::reverse(dst, dst + length);

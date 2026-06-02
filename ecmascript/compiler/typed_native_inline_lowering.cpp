@@ -401,7 +401,8 @@ GateRef TypedNativeInlineLowering::AllocateArrayIterator(GateRef glue,
     GateRef iterator = builder_.HeapAlloc(glue, builder_.IntPtr(JSArrayIterator::SIZE),
         GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
 
-    builder_.StoreHClass(glue, iterator, iteratorHClass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue, iterator, iteratorHClass, RegionSpaceFlag::IN_YOUNG_SPACE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::HASH_OFFSET,
         builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::PROPERTIES_OFFSET, emptyArray);
@@ -1128,7 +1129,8 @@ GateRef AllocateNewNumber(GateRef glue, const CompilationEnv *compilationEnv, Ci
     GateRef object = builder->HeapAlloc(glue, size, GateType::TaggedValue(),
                                         RegionSpaceFlag::IN_YOUNG_SPACE);
     // Initialization:
-    builder->StoreHClass(glue, object, protoOrHclass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder->StoreHClass(glue, object, protoOrHclass, RegionSpaceFlag::IN_YOUNG_SPACE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
     builder->StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder->Int64(JSTaggedValue(0).GetRawData()));
     builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
@@ -2147,7 +2149,8 @@ void TypedNativeInlineLowering::LowerBigIntConstructorInt32(GateRef gate)
                                         RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
     // initialization
     GateRef glue = glue_;
-    builder_.StoreHClass(glue, object, hclass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue, object, hclass, RegionSpaceFlag::IN_SHARED_NON_MOVABLE,
+                         MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::LENGTH_OFFSET, builder_.Int32(length));
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::BIT_FIELD_OFFSET, sign);
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::DATA_OFFSET, value);

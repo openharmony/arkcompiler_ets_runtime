@@ -732,7 +732,8 @@ private:
     V(MarkInBuffer)                                  \
     V(BatchMarkInBuffer)                             \
     V(LoadBarrierCopyBack)                           \
-    V(CMCSetValueWithBarrier)
+    V(CMCSetValueWithBarrier)                        \
+    V(CheckObjectForCMS)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

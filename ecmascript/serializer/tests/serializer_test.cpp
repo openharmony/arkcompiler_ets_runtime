@@ -1718,6 +1718,7 @@ protected:
 
 HWTEST_F_L0(JSSerializerTest, SerializeOldObjOOMTest)
 {
+#if !USE_CMS_GC
     // disable force gc to avoid time out
     ecmaVm->SetEnableForceGC(false);
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -1738,10 +1739,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeOldObjOOMTest)
     ecmascript::ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
+#endif
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeHugeObjOOMTest)
 {
+#if !USE_CMS_GC
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<TaggedArray> array =
         factory->NewTaggedArray(10 * 1024 * 1024 / 8, JSTaggedValue::Hole()); // 15 * 1024 * 1024 / 8: array length
@@ -1756,10 +1759,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeHugeObjOOMTest)
     ecmascript::ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
+#endif
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeNonMoveObjOOMTest)
 {
+#if !USE_CMS_GC
     // disable force gc to avoid time out
     ecmaVm->SetEnableForceGC(false);
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -1781,6 +1786,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNonMoveObjOOMTest)
     ecmascript::ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
+#endif
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSSpecialValue)

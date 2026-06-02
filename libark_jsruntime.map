@@ -175,6 +175,8 @@
       panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::ReadBarrierImpl*;
+      panda::ecmascript::Barriers::CheckObjectForCMS*;
+      panda::ecmascript::Barriers::CheckValueForCMS*;
       panda::ecmascript::BaseHeap::IsAlive*;
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BigInt::DoubleToBigInt*;

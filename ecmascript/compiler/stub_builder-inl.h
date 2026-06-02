@@ -1492,9 +1492,10 @@ inline GateRef StubBuilder::LoadHclassImpl(GateRef glue, GateRef object, int lin
     return res;
 }
 
-inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass,
+                                     RegionSpaceFlag spaceType, MemoryAttribute mAttr)
 {
-    return env_->GetBuilder()->StoreHClass(glue, object, hClass, mAttr);
+    return env_->GetBuilder()->StoreHClass(glue, object, hClass, spaceType, mAttr);
 }
 
 inline void StubBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
@@ -1502,9 +1503,9 @@ inline void StubBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef 
     return env_->GetBuilder()->TransitionHClass(glue, object, hClass, mAttr);
 }
 
-inline void StubBuilder::StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass)
+inline void StubBuilder::StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass, RegionSpaceFlag spaceType)
 {
-    return env_->GetBuilder()->StoreHClass(glue, object, hClass, MemoryAttribute::NoBarrier());
+    return env_->GetBuilder()->StoreHClass(glue, object, hClass, spaceType, MemoryAttribute::NoBarrier());
 }
 
 inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
@@ -3376,6 +3377,26 @@ inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag space)
 inline GateRef StubBuilder::InYoungGeneration(GateRef region)
 {
     return RegionInSpace(region, RegionSpaceFlag::IN_YOUNG_SPACE);
+}
+
+inline GateRef StubBuilder::InYoungGenerationForCMSObj(GateRef object, GateRef region)
+{
+    // In CMS GC use objstate from obj to identity a young obj
+    GateRef hclass = LoadPrimitive(VariableType::INT64(), object, IntPtr(TaggedObject::HCLASS_OFFSET));
+    GateRef objStateInt64 = Int64And(hclass, Int64(~TaggedObject::GC_STATE_MASK));
+    GateRef inYoungState = Int64Equal(objStateInt64, Int64(TaggedStateWord::YOUNG_STATE));
+    GateRef regionInLocal = BoolNot(InSharedHeap(region));
+    return BitAnd(inYoungState, regionInLocal);
+}
+
+inline GateRef StubBuilder::InOldGenerationForCMSObj(GateRef object, GateRef region)
+{
+    // In CMS GC use objstate from obj to identity an old obj
+    GateRef hclass = LoadPrimitive(VariableType::INT64(), object, IntPtr(TaggedObject::HCLASS_OFFSET));
+    GateRef objStateInt64 = Int64And(hclass, Int64(~TaggedObject::GC_STATE_MASK));
+    GateRef inOldState = Int64Equal(objStateInt64, Int64(TaggedStateWord::OLD_STATE));
+    GateRef regionInLocal = BoolNot(InSharedHeap(region));
+    return BitAnd(inOldState, regionInLocal);
 }
 
 inline GateRef StubBuilder::InFromSpace(GateRef region)

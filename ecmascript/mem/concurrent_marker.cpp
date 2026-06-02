@@ -212,6 +212,14 @@ void ConcurrentMarker::InitializeMarking()
     if (heap_->IsYoungMark()) {
         if constexpr (G_USE_CMS_GC) {
             heapObjectSize_ = heap_->GetHeapObjectSize();
+            if constexpr (G_USE_STICKY_CMS_GC) {
+                NonMovableMarker *marker = static_cast<NonMovableMarker*>(heap_->GetNonMovableMarker());
+                {
+                    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::MarkOldToNew", "");
+                    marker->ProcessOldToNewNoMarkStackForSticky(MAIN_THREAD_INDEX);
+                }
+                marker->ProcessSnapshotRSetNoMarkStackForSticky(MAIN_THREAD_INDEX);
+            }
         } else {
             heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
             NonMovableMarker *marker = static_cast<NonMovableMarker*>(heap_->GetNonMovableMarker());
@@ -230,6 +238,8 @@ void ConcurrentMarker::InitializeMarking()
         });
         if (heap_->IsConcurrentFullMark() && !G_USE_CMS_GC) {
             heap_->GetOldSpace()->SelectCSet();
+        } else if constexpr (G_USE_STICKY_CMS_GC) {
+            heap_->ClearGCBitSetForCMS();
         }
         heap_->EnumerateNonNewSpaceRegions([](Region *current) {
             // fixme: refactor?

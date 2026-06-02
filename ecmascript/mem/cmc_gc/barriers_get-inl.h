@@ -185,6 +185,13 @@ inline ARK_INLINE JSTaggedType Barriers::UpdateSlot(const JSThread *thread, void
     *reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset) = value;
     return value;
 }
+
+inline ARK_INLINE JSTaggedType Barriers::UpdateSlot(const JSThread *thread, uintptr_t slotAddress)
+{
+    JSTaggedType value = GetTaggedValue(thread, slotAddress);
+    *reinterpret_cast<JSTaggedType *>(slotAddress) = value;
+    return value;
+}
 } // namespace panda::ecmascript
 
 #endif // ECMASCRIPT_MEM_CMC_GC_BARRIERS_GET_INL_H

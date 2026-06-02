@@ -872,6 +872,17 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
     MemoryAttribute::Barrier kind = GetBarrierKind(gate);
+#if USE_STICKY_CMS_GC
+    // if sticky CMS-GC is enabled, gate of LoadHClass opcode should be replaced with
+    // one load-without-barrier and one bitand to mask the object state
+    if (isLoadHClass) {
+        LoweringLoadHClassAndPrepareScheduleGate(gate, currentBBGates);
+        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+        return false;
+    } else if (isStwCopyStub_) {
+        kind = MemoryAttribute::Barrier::NO_BARRIER;
+    }
+#else
     if (isStwCopyStub_) {
         kind = MemoryAttribute::Barrier::NO_BARRIER;
     } else if (isLoadHClass) {
@@ -879,6 +890,7 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
         return false;
     }
+#endif
     switch (kind) {
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
         case MemoryAttribute::Barrier::NEED_BARRIER: {

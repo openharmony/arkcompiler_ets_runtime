@@ -112,6 +112,15 @@ GateRef CircuitBuilder::Alloca(size_t size)
 void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                            MemoryAttribute mAttr)
 {
+    if (G_USE_STICKY_CMS_GC && (type == VariableType::JS_ANY() || type == VariableType::JS_POINTER())) {
+        if (acc_.IsConstant(offset) && static_cast<int>(acc_.GetConstantValue(offset)) == 0) {
+            LOG_ECMA(FATAL) << "store with zero offset should use StoreHClass";
+        }
+#ifndef NDEBUG
+        CallNGCRuntime(glue, RTSTUB_ID(CheckObjectForCMS), Circuit::NullGate(),
+                       { glue, base, offset, value, Boolean(true) }, Circuit::NullGate());
+#endif
+    }
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     auto bit = LoadStoreAccessor::ToValue(mAttr);

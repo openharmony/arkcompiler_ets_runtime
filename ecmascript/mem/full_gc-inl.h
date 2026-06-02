@@ -99,6 +99,8 @@ void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object
             if constexpr (!G_USE_CMS_GC) {
                 size_t size = object->GetSize();
                 objectRegion->IncreaseAliveObject(size);
+            } else if constexpr (G_USE_STICKY_CMS_GC) {
+                object->SetObjectState(ObjectState::OLD);
             }
             PushObject(object);
         }
@@ -174,6 +176,13 @@ void FullGCRunner::EvacuateObject(ObjectSlot slot, TaggedObject *object, const M
         if (region->HasLocalToShareRememberedSet()) {
             ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(toObject, klass, updateLocalToShareRSetVisitor_);
         }
+#if USE_STICKY_CMS_GC
+        // Full GC should set mark bit and object state to make sticky CMS-GC correct.
+        auto toRegion = Region::ObjectAddressToRange(toObject);
+        toRegion->AtomicMark(toObject);
+        toObject->SetObjectState(ObjectState::OLD);
+        toRegion->IncreaseGCAliveSize(size);
+#endif
         return;
     }
     ASSERT(MarkWord::IsForwardingAddress(result));

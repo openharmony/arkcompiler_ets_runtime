@@ -261,6 +261,12 @@ void GCStats::PrintGCMemoryStatistic()
                                      GetRecordData(RecordData::COMPRESS_COMMIT_SIZE));
             break;
         }
+        case GCType::STICKY_CMS_GC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Heap alive rate:")
+                << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SWEEP_ALIVE_SIZE)) /
+                                     GetRecordData(RecordData::SWEEP_COMMIT_SIZE));
+            break;
+        }
         case GCType::CMS_GC: {
             LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Heap alive rate:")
                 << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SWEEP_ALIVE_SIZE)) /
@@ -333,6 +339,33 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DESCRIPTION_FORMAT("Finish:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
             break;
+        case GCType::STICKY_CMS_GC:
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Initialize:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Mark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("MarkRoots:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ConcurrentMark pause:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ConcurrentMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("WaitConcurrentMarkFinish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::WaitConcurrentMarkFinished]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ReMark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ReMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessSharedGCRSetWorkList:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessSharedGCRSetWorkList]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Sweep:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ClearNativeObject:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ClearNativeObject]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ClearDeadReferences:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ClearDeadReferences]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("WaitFinish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::WaitFinish]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Finish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
         case GCType::CMS_GC:
             LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
@@ -471,6 +504,21 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
                                      GetRecordData(RecordData::COMPRESS_TOTAL_COMMIT));
             break;
         }
+        case GCType::STICKY_CMS_GC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("StickySweepGC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::SWEEP_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("StickySweepGC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SWEEP_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("StickySweepGC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SWEEP_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("StickySweepGC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SWEEP_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::SWEEP_COUNT)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("Heap average alive rate:")
+                << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SWEEP_TOTAL_ALIVE)) /
+                                     GetRecordData(RecordData::SWEEP_TOTAL_COMMIT));
+            break;
+        }
         case GCType::CMS_GC: {
             LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("SweepGC occurs count")
                 << STATS_DATA_FORMAT(GetRecordData(RecordData::SWEEP_COUNT)) << "\n"
@@ -537,6 +585,12 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
             size_t compressCommitSize = heap_->GetCommittedSize();
             SetRecordData(RecordData::COMPRESS_COMMIT_SIZE, compressCommitSize);
             IncreaseRecordData(RecordData::COMPRESS_TOTAL_COMMIT, compressCommitSize);
+            break;
+        }
+        case GCType::STICKY_CMS_GC: {
+            size_t sweepCommitSize = heap_->GetCommittedSize();
+            SetRecordData(RecordData::SWEEP_COMMIT_SIZE, sweepCommitSize);
+            IncreaseRecordData(RecordData::SWEEP_TOTAL_COMMIT, sweepCommitSize);
             break;
         }
         case GCType::CMS_GC: {
@@ -611,6 +665,23 @@ void GCStats::RecordStatisticAfterGC()
             size_t compressAliveSize = heap_->GetHeapObjectSize();
             SetRecordData(RecordData::COMPRESS_ALIVE_SIZE, compressAliveSize);
             IncreaseRecordData(RecordData::COMPRESS_TOTAL_ALIVE, compressAliveSize);
+            break;
+        }
+        case GCType::STICKY_CMS_GC: {
+            if (GetRecordData(RecordData::SWEEP_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::SWEEP_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::SWEEP_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::SWEEP_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::SWEEP_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::SWEEP_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::SWEEP_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::SWEEP_COUNT);
+            IncreaseRecordDuration(RecordDuration::SWEEP_TOTAL_PAUSE, duration);
+            size_t sweepAliveSize = heap_->GetHeapObjectSize();
+            SetRecordData(RecordData::SWEEP_ALIVE_SIZE, sweepAliveSize);
+            IncreaseRecordData(RecordData::SWEEP_TOTAL_ALIVE, sweepAliveSize);
             break;
         }
         case GCType::CMS_GC: {
@@ -811,6 +882,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::GLOBAL_GC;
         case TriggerGCType::CMS_GC:
             return GCType::CMS_GC;
+        case TriggerGCType::STICKY_CMS_GC:
+            return GCType::STICKY_CMS_GC;
         default:
             return GCType::OTHER;
     }

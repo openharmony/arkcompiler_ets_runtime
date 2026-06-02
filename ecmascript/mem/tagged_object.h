@@ -49,8 +49,8 @@ public:
     void SetClassWithoutBarrier(JSHClass *hclass);
     void SetFreeObjectClass(JSHClass *hclass);
     void TransitionClassWithoutBarrier(JSHClass *hclass);
-
     JSHClass *SynchronizedGetClass() const;
+
     void SetForwardingPointerAfterExclusive(BaseObject *fwdPtr)
     {
         reinterpret_cast<TaggedStateWord *>(this)->SetForwardingAddress(reinterpret_cast<uintptr_t>(fwdPtr));
@@ -59,6 +59,26 @@ public:
     BaseObject *GetForwardingPointer() const
     {
         return reinterpret_cast<BaseObject *>(reinterpret_cast<const TaggedStateWord *>(this)->GetForwardingAddress());
+    }
+
+    bool IsInOld() const
+    {
+        return reinterpret_cast<const TaggedStateWord *>(this)->IsInOld();
+    }
+
+    bool IsInYoung() const
+    {
+        return reinterpret_cast<const TaggedStateWord *>(this)->IsInYoung();
+    }
+
+    bool IsInvalid() const
+    {
+        return reinterpret_cast<const TaggedStateWord *>(this)->IsInvalid();
+    }
+
+    void SetObjectState(ObjectState state)
+    {
+        reinterpret_cast<TaggedStateWord *>(this)->SetObjectState(state);
     }
 
     JSHClass *GetClass() const
@@ -76,7 +96,12 @@ public:
         return sizeof(TaggedObject);
     }
 
+#if USE_STICKY_CMS_GC
+    static constexpr uint64_t GC_STATE_MASK = 0x0000FFFFFFFFFFFF;
+#else
     static constexpr uint64_t GC_STATE_MASK = 0x0FFFFFFFFFFFFFFF;
+#endif
+
     static constexpr int HCLASS_OFFSET = 0;
     static constexpr int SIZE = sizeof(TaggedStateWord);
 

@@ -57,7 +57,9 @@ HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithConcurrentMarking)
         rootArray->Set(thread, i, array);
     }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->TriggerConcurrentMarking();  // concurrent mark
+    if (heap->CheckCanTriggerConcurrentMarking()) {
+        heap->TriggerConcurrentMarking();  // concurrent mark
+    }
     for (uint32_t i = 0; i < length; i++) {
         auto array = CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         rootArray->Set(thread, i, array);

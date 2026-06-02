@@ -283,9 +283,30 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
         Int32(0));
 }
 
-void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass,
+                                 RegionSpaceFlag spaceType, MemoryAttribute mAttr)
 {
+#if USE_STICKY_CMS_GC
+    switch (spaceType) {
+        case RegionSpaceFlag::IN_YOUNG_SPACE: {
+            GateRef hclassWithState = Int64Or(ChangeTaggedPointerToInt64(hClass), Int64(TaggedStateWord::YOUNG_STATE));
+            StoreHClass(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+                        hclassWithState, mAttr);
+            break;
+        }
+        case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+        case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+            StoreHClass(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+                        hClass, mAttr);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            break;
+    }
+#else
     Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass, mAttr);
+#endif
 }
 
 void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
