@@ -53,6 +53,7 @@ using ecmascript::CpuProfiler;
 #endif
 using ecmascript::EcmaString;
 using ecmascript::JSTaggedValue;
+using ecmascript::GCStatisticData;
 using ecmascript::GCStats;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
@@ -609,6 +610,35 @@ size_t DFXJSNApi::GetAccumulatedFreeSize(const EcmaVM *vm)
 size_t DFXJSNApi::GetFullGCLongTimeCount(const EcmaVM *vm)
 {
     return vm->GetEcmaGCStats()->GetFullGCLongTimeCount();
+}
+
+GCStatistic DFXJSNApi::GetGCStatistic(const EcmaVM *vm)
+{
+    if (!vm->GetJSThread()->IsMainThreadFast()) {
+        LOG_ECMA(FATAL) << "GetGCStatistic only supports the main thread VM";
+        return {};
+    }
+
+    GCStatisticData gcStatisticData = vm->GetEcmaGCStats()->GetGCStatistic();
+    gcStatisticData = GCStats::MergeGCStatistic(gcStatisticData,
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    GCStatistic statistic;
+    statistic.count = gcStatisticData.count;
+    statistic.maxPause = gcStatisticData.maxPause;
+    statistic.minPause = gcStatisticData.minPause;
+    statistic.averagePause = gcStatisticData.count == 0 ? 0.0f :
+        (gcStatisticData.totalPause / gcStatisticData.count);
+    statistic.lastStartTime = gcStatisticData.lastStartTime;
+    statistic.lastEndTime = gcStatisticData.lastEndTime;
+    statistic.lastType = gcStatisticData.lastType;
+    LOG_ECMA(INFO) << "GC statistic, count: " << statistic.count
+                   << ", maxPause: " << statistic.maxPause
+                   << ", minPause: " << statistic.minPause
+                   << ", averagePause: " << statistic.averagePause
+                   << ", lastStartTime: " << statistic.lastStartTime
+                   << ", lastEndTime: " << statistic.lastEndTime
+                   << ", lastType: " << statistic.lastType;
+    return statistic;
 }
 
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)

@@ -45,6 +45,12 @@ uint64_t MilliSeconds() { return ClockTime<Ms>(CLOCK_MONOTONIC); }
 
 uint64_t MicroSeconds() noexcept { return ClockTime<Us>(CLOCK_MONOTONIC); }
 
+uint64_t CurrentTimeInMs()
+{
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+}
+
 void SleepForNano(uint64_t ns) { std::this_thread::sleep_for(std::chrono::nanoseconds(ns)); }
 
 #ifndef NDEBUG

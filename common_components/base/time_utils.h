@@ -32,6 +32,9 @@ PUBLIC_API uint64_t NanoSeconds();
 // returns the monotonic time since epoch starting point in microseconds
 uint64_t MicroSeconds() noexcept;
 
+// returns the wall-clock time since Unix epoch in milliseconds; not monotonic and may jump on clock changes
+uint64_t CurrentTimeInMs();
+
 // sleep for the given count of nanoseconds
 void SleepForNano(uint64_t ns);
 

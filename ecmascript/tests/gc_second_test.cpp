@@ -63,6 +63,23 @@ public:
     }
 };
 
+class TestableGCStats : public GCStats {
+public:
+    explicit TestableGCStats(const Heap *heap) : GCStats(heap) {}
+
+    using GCStats::GetGCStatistic;
+    using GCStats::GetGCStatisticType;
+    using GCStats::MergeGCStatistic;
+    using GCStats::RecordGCStatisticEnd;
+    using GCStats::RecordGCStatisticStart;
+    using GCStats::SetRecordDuration;
+
+    void SetGCTypeForTest(GCType type)
+    {
+        gcType_ = type;
+    }
+};
+
 HWTEST_F_L0(GCTest, NativeGCTestConcurrentMarkDisabled)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -631,5 +648,145 @@ HWTEST_F_L0(GCTest, NotifyWarmStartFalse002)
     EXPECT_TRUE(heap->AllowWarmStartGcRestrain());
     heap->NotifyPostFork();
     EXPECT_FALSE(heap->AllowWarmStartGcRestrain());
+}
+
+HWTEST_F_L0(GCTest, GetGCStatisticTypeTest001)
+{
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::SHARED_GC), "Shared GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::SHARED_PARTIAL_GC), "Shared GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::SHARED_FULL_GC), "Shared GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::PARTIAL_YOUNG_GC), "Local GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::PARTIAL_OLD_GC), "Local GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::LOCAL_CC), "Local GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::COMPRESS_GC), "Local GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::CMS_GC), "Local GC");
+    EXPECT_STREQ(TestableGCStats::GetGCStatisticType(GCType::OTHER), "UnknownType");
+}
+
+HWTEST_F_L0(GCTest, GetGCStatisticDataTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    TestableGCStats stats(heap);
+    stats.SetRecordData(RecordData::YOUNG_COUNT, 2);
+    stats.SetRecordDuration(RecordDuration::YOUNG_MIN_PAUSE, 3.5f);
+    stats.SetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE, 8.5f);
+    stats.SetRecordDuration(RecordDuration::YOUNG_TOTAL_PAUSE, 12.0f);
+    stats.SetRecordData(RecordData::OLD_COUNT, 1);
+    stats.SetRecordDuration(RecordDuration::OLD_MIN_PAUSE, 5.0f);
+    stats.SetRecordDuration(RecordDuration::OLD_MAX_PAUSE, 9.0f);
+    stats.SetRecordDuration(RecordDuration::OLD_TOTAL_PAUSE, 5.0f);
+    stats.SetRecordData(RecordData::LOCAL_CC_COUNT, 1);
+    stats.SetRecordDuration(RecordDuration::LOCAL_CC_MIN_PAUSE, 2.0f);
+    stats.SetRecordDuration(RecordDuration::LOCAL_CC_MAX_PAUSE, 4.0f);
+    stats.SetRecordDuration(RecordDuration::LOCAL_CC_TOTAL_PAUSE, 2.0f);
+    stats.SetGCTypeForTest(GCType::PARTIAL_YOUNG_GC);
+    stats.RecordGCStatisticStart();
+    stats.RecordGCStatisticEnd();
+
+    GCStatisticData gcStatistic = stats.GetGCStatistic();
+    EXPECT_EQ(gcStatistic.count, 4U);
+    EXPECT_FLOAT_EQ(gcStatistic.maxPause, 9.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.minPause, 2.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.totalPause, 19.0f);
+    EXPECT_NE(gcStatistic.lastStartTime, 0U);
+    EXPECT_NE(gcStatistic.lastEndTime, 0U);
+    EXPECT_STREQ(gcStatistic.lastType, "Local GC");
+}
+
+HWTEST_F_L0(GCTest, MergeGCStatisticTest001)
+{
+    GCStatisticData localStats;
+    localStats.count = 0;
+    localStats.maxPause = 1.0f;
+    localStats.minPause = 0.0f;
+    localStats.totalPause = 1.0f;
+    localStats.lastStartTime = 10;
+    localStats.lastEndTime = 20;
+    localStats.lastType = "Local GC";
+
+    GCStatisticData sharedStats;
+    sharedStats.count = 2;
+    sharedStats.maxPause = 5.0f;
+    sharedStats.minPause = 2.0f;
+    sharedStats.totalPause = 7.0f;
+    sharedStats.lastStartTime = 30;
+    sharedStats.lastEndTime = 40;
+    sharedStats.lastType = "Shared GC";
+
+    GCStatisticData merged = TestableGCStats::MergeGCStatistic(localStats, sharedStats);
+    EXPECT_EQ(merged.count, 2U);
+    EXPECT_FLOAT_EQ(merged.maxPause, 5.0f);
+    EXPECT_FLOAT_EQ(merged.minPause, 2.0f);
+    EXPECT_FLOAT_EQ(merged.totalPause, 8.0f);
+    EXPECT_EQ(merged.lastStartTime, 30U);
+    EXPECT_EQ(merged.lastEndTime, 40U);
+    EXPECT_STREQ(merged.lastType, "Shared GC");
+}
+
+HWTEST_F_L0(GCTest, MergeGCStatisticTest002)
+{
+    GCStatisticData localStats;
+    localStats.count = 3;
+    localStats.maxPause = 6.0f;
+    localStats.minPause = 1.5f;
+    localStats.totalPause = 9.0f;
+    localStats.lastStartTime = 50;
+    localStats.lastEndTime = 80;
+    localStats.lastType = "Local GC";
+
+    GCStatisticData sharedStats;
+    sharedStats.count = 0;
+    sharedStats.maxPause = 4.0f;
+    sharedStats.minPause = 0.0f;
+    sharedStats.totalPause = 2.0f;
+    sharedStats.lastStartTime = 40;
+    sharedStats.lastEndTime = 70;
+    sharedStats.lastType = "Shared GC";
+
+    GCStatisticData merged = TestableGCStats::MergeGCStatistic(localStats, sharedStats);
+    EXPECT_EQ(merged.count, 3U);
+    EXPECT_FLOAT_EQ(merged.maxPause, 6.0f);
+    EXPECT_FLOAT_EQ(merged.minPause, 1.5f);
+    EXPECT_FLOAT_EQ(merged.totalPause, 11.0f);
+    EXPECT_EQ(merged.lastStartTime, 50U);
+    EXPECT_EQ(merged.lastEndTime, 80U);
+    EXPECT_STREQ(merged.lastType, "Local GC");
+}
+
+HWTEST_F_L0(GCTest, MergeGCStatisticTest003)
+{
+    GCStatisticData localStats;
+    localStats.count = 2;
+    localStats.maxPause = 3.0f;
+    localStats.minPause = 2.5f;
+    localStats.totalPause = 5.0f;
+    localStats.lastStartTime = 100;
+    localStats.lastEndTime = 120;
+    localStats.lastType = "Local GC";
+
+    GCStatisticData sharedStats;
+    sharedStats.count = 4;
+    sharedStats.maxPause = 7.0f;
+    sharedStats.minPause = 1.0f;
+    sharedStats.totalPause = 8.0f;
+    sharedStats.lastStartTime = 90;
+    sharedStats.lastEndTime = 110;
+    sharedStats.lastType = "Shared GC";
+
+    GCStatisticData merged = TestableGCStats::MergeGCStatistic(localStats, sharedStats);
+    EXPECT_EQ(merged.count, 6U);
+    EXPECT_FLOAT_EQ(merged.maxPause, 7.0f);
+    EXPECT_FLOAT_EQ(merged.minPause, 1.0f);
+    EXPECT_FLOAT_EQ(merged.totalPause, 13.0f);
+    EXPECT_EQ(merged.lastStartTime, 100U);
+    EXPECT_EQ(merged.lastEndTime, 120U);
+    EXPECT_STREQ(merged.lastType, "Local GC");
+
+    sharedStats.lastStartTime = 130;
+    sharedStats.lastEndTime = 140;
+    merged = TestableGCStats::MergeGCStatistic(localStats, sharedStats);
+    EXPECT_EQ(merged.lastStartTime, 130U);
+    EXPECT_EQ(merged.lastEndTime, 140U);
+    EXPECT_STREQ(merged.lastType, "Shared GC");
 }
 } // namespace panda::test
