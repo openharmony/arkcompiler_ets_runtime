@@ -66,7 +66,7 @@ public:
     void UnlockRead()
     {
         int count = lockCount_.fetch_sub(1);
-        if (count < 0) { //LCOV_EXCL_BR_LINE
+        if (count <= 0) { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Unresolved fatal";
             UNREACHABLE_CC();
         }
@@ -86,4 +86,4 @@ private:
     std::atomic<int> lockCount_{ 0 };
 };
 } // namespace common
-#endif // COMMON_COMPONENTS_BASE_SPINLOCK_H
+#endif // COMMON_COMPONENTS_BASE_RWLOCK_H

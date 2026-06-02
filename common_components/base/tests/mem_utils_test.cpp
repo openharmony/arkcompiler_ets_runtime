@@ -29,7 +29,7 @@ HWTEST_F_L0(MemUtilsTest, CopyZeroBytes)
     char dest[100] = {};
     const char* src = "hello world";
     MemoryCopy(reinterpret_cast<uintptr_t>(dest), 0,
-               reinterpret_cast<uintptr_t>(src), strlen(src) + 1);
+               reinterpret_cast<uintptr_t>(src), 0);
     EXPECT_EQ(dest[0], '\0');
 }
 
