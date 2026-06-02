@@ -179,8 +179,6 @@ protected:
     int32_t OpenHapFile(const AotCompilerArgs &args, CompilationCleanupGuard &guard);
     int32_t OpenHspFiles(const AotCompilerArgs &args, CompilationCleanupGuard &guard);
     void UpdateExternalPkgFdInfo(const AotCompilerArgs &args, const CompilationCleanupGuard &guard);
-    int32_t PrepareCompilationInputs(const AotCompilerArgs &args, AotParserType parserType,
-                                     CompilationCleanupGuard &guard);
     int32_t HapVerifyInParent(const AotCompilerArgs &args, pid_t childPid);
     int32_t HandlePostCompilation(const AotCompilerArgs &args, int32_t ret,
                                    std::vector<uint8_t> &sigData,
@@ -188,6 +186,8 @@ protected:
     int32_t CheckCompilationResult(const AotCompilerArgs &args, int32_t ret,
                                     CompilationCleanupGuard &guard);
 #ifdef CODE_SIGN_ENABLE
+    int32_t PrepareCompilationInputs(const AotCompilerArgs &args, AotParserType parserType,
+                                     CompilationCleanupGuard &guard);
     int32_t PersistAndSignAnFile(CompilationCleanupGuard &guard, std::vector<uint8_t> &sigData);
     int32_t FinalizeAotOutput(CompilationCleanupGuard &guard, int32_t ret);
 #endif
