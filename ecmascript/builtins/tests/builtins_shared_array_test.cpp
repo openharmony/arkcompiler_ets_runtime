@@ -243,6 +243,12 @@ public:
     };
 };
 
+JSTaggedValue SharedArraySpeciesGetter(EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    return thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction().GetTaggedValue();
+}
+
 // Array.from ( items [ , mapfn [ , thisArg ] ] )
 HWTEST_F_L0(BuiltinsSharedArrayTest, From_Two)
 {
@@ -1274,5 +1280,59 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Reverse_one)
     JSHandle<JSObject> valueHandle(thread, value);
     std::vector<double> vals{5.9, 4.4, 3.6, 2.3, 1.5};
     CheckSharedArrKeyValue<double>(thread, valueHandle, descRes, keys, vals);
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, ArraySpeciesCreateReturnsNonSharedArrayThrows)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> sendableArrayBufferFunc(env->GetSBuiltininArrayBufferFunction());
+
+    JSHandle<JSHClass> getterHClass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutAccessor());
+    JSHandle<JSFunction> customGetter = factory->NewSFunctionByHClass(
+        reinterpret_cast<void *>(SharedArraySpeciesGetter), getterHClass,
+        FunctionKind::NORMAL_FUNCTION, BUILTINS_STUB_ID(INVALID), MemSpaceType::SHARED_NON_MOVABLE);
+
+    int32_t speciesIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;
+    JSTaggedValue accessorVal = sendableArrayBufferFunc->GetPropertyInlinedProps(thread, speciesIndex);
+    ASSERT_TRUE(accessorVal.IsAccessorData());
+    AccessorData *accessor = AccessorData::Cast(accessorVal.GetTaggedObject());
+    accessor->SetGetter(thread, customGetter.GetTaggedValue());
+
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(3))
+                                            .GetTaggedValue().GetTaggedObject());
+    ASSERT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    obj->GetJSHClass()->SetHasConstructor(true);
+
+    JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype(thread));
+    ASSERT_TRUE(proto->IsECMAObject());
+    JSHandle<JSObject> protoObj(proto);
+    int32_t ctorIndex = JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX + 1;
+    protoObj->SetPropertyInlinedProps(thread, ctorIndex, sendableArrayBufferFunc.GetTaggedValue());
+    JSTaggedValue speciesResult = JSSharedArray::ArraySpeciesCreate(thread, obj, JSTaggedNumber(5));
+    EXPECT_FALSE(speciesResult.IsException());
+    EXPECT_TRUE(speciesResult.IsJSSharedArray());
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, ArraySpeciesCreateReturnsValidSharedArray)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> sendableArrayBufferFunc(env->GetSBuiltininArrayBufferFunction());
+
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(3))
+                                            .GetTaggedValue().GetTaggedObject());
+    ASSERT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    obj->GetJSHClass()->SetHasConstructor(true);
+
+    JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype(thread));
+    ASSERT_TRUE(proto->IsECMAObject());
+    JSHandle<JSObject> protoObj(proto);
+    int32_t ctorIndex = JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX + 1;
+    protoObj->SetPropertyInlinedProps(thread, ctorIndex, sendableArrayBufferFunc.GetTaggedValue());
+    JSTaggedValue speciesResult = JSSharedArray::ArraySpeciesCreate(thread, obj, JSTaggedNumber(5));
+    EXPECT_TRUE(speciesResult.IsException());
+    thread->ClearException();
 }
 }  // namespace panda::test
