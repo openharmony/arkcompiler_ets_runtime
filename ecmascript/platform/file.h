@@ -102,11 +102,20 @@ public:
     MemMapScope(MemMap memMap) : memMap_(memMap) {}
     ~MemMapScope()
     {
+        if (escaped_) {
+            return;
+        }
         FileUnMap(memMap_);
+    }
+
+    void Escape()
+    {
+        escaped_ = true;
     }
 
 private:
     MemMap memMap_ {};
+    bool escaped_ {false};
 };
 
 class FileMemMapReader {
