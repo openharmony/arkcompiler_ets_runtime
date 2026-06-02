@@ -316,7 +316,11 @@ int32_t AotCompilerImpl::PrepareArgsHandler(const AotCompilerArgs &args)
         return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
     argsHandler_ = std::make_unique<AOTArgsHandler>(args);
-    if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
+    int32_t handleRet = argsHandler_->Handle(thermalLevel_);
+    if (handleRet == ERR_AOT_COMPILER_CALL_CANCELLED) {
+        return handleRet;
+    }
+    if (handleRet != ERR_OK) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     return ERR_OK;
@@ -867,9 +871,7 @@ int32_t AotCompilerImpl::ChownAotFilesToBundle()
         LOG_SA(INFO) << "skip chown dir for app ark_cache, keep compiler_service write access: " << dirPath;
     } else if (!dirPath.empty() &&
         dirPath.compare(0, ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX.size(),
-            ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX) != 0 &&
-        dirPath.compare(0, ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.size(),
-            ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX) != 0) {
+            ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX) != 0) {
         if (chown(dirPath.c_str(), bundleUid, bundleGid) != 0) {
             LOG_SA(ERROR) << "chown dir to bundle failed: " << dirPath
                 << " uid=" << bundleUid << " gid=" << bundleGid << " errno=" << errno;

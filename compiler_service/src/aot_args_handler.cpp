@@ -364,6 +364,11 @@ int32_t StaticAOTArgsParser::Parse(AotCompilerArgs &args, std::vector<std::strin
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
+    if (args.bundleType == static_cast<int32_t>(BundleType::SHARED) && IsFileExists(args.anFileName)) {
+        LOG_SA(INFO) << "host-private shared hsp an is exist";
+        return ERR_AOT_COMPILER_CALL_CANCELLED;
+    }
+
     argVector.clear();
     argVector.emplace_back(STATIC_AOT_EXE);
 

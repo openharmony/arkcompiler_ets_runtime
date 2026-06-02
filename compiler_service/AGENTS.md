@@ -92,8 +92,8 @@ Static AOT args: `--boot-panda-files` (from `/system/framework/bootpath.json`), 
 `AotArgsVerify` provides comprehensive argument validation:
 
 - **Path traversal**: rejects `..`, `../`, `/../` in all file paths
-- **Ark cache directory**: validates paths under `/data/app/el1/public/aot_compiler/ark_cache/<bundleName>/`, `/data/service/el1/public/for-all-app/framework_ark_cache/`, or `/data/service/el1/public/for-all-app/shared_bundles_ark_cache/`
-- **Bundle UID/GID**: must be >= 10000 (for app bundles); shared bundles require UID=GID=1000 (OID_SYSTEM)
+- **Ark cache directory**: validates paths under `/data/app/el1/public/aot_compiler/ark_cache/<bundleName>/` or `/data/service/el1/public/for-all-app/framework_ark_cache/`
+- **Bundle UID/GID**: must be >= 10000 for app bundles and host-private shared HSP AOT
 - **ABC offset/size**: validates `abcOffset + abcSize <= HAP file size`
 - **Compile mode**: must be "partial" or "full"
 - **ArkTS mode**: must be "dynamic", "static", or "hybrid"

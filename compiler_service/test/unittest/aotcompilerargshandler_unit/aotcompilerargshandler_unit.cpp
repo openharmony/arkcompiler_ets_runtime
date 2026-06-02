@@ -1850,6 +1850,30 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_004, TestSize.Level0)
 }
 
 /**
+ * @tc.name: StaticAOTArgsParserTest_ExistingSharedHspAn
+ * @tc.desc: Test StaticAOTArgsParser::Parse cancels existing host-private shared hsp an
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_ExistingSharedHspAn, TestSize.Level0)
+{
+    std::string anFileName = "/data/local/tmp/static_aot_shared_hsp_exists_" + std::to_string(getpid()) + ".an";
+    std::ofstream anFile(anFileName);
+    anFile.close();
+
+    AotCompilerArgs args;
+    args.bundleType = static_cast<int32_t>(BundleType::SHARED);
+    args.anFileName = anFileName;
+    args.abcPath = "/data/local/tmp/test/shared.hsp";
+
+    StaticAOTArgsParser parser;
+    std::vector<std::string> argVector;
+    int32_t ret = parser.Parse(args, argVector, 0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+
+    unlink(anFileName.c_str());
+}
+
+/**
  * @tc.name: StaticAOTArgsParserTest_005
  * @tc.desc: Test StaticAOTArgsParser::Check with path traversal in aot-file
  * @tc.type: Func

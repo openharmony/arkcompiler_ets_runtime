@@ -58,8 +58,7 @@ public:
     static bool ParseInt32Field(const nlohmann::json &jsonObj, const char *key, int32_t &output);
     static bool ParseUint32FieldFromHex(const std::string &hexStr, uint32_t &output);
     static bool ParseStringField(const nlohmann::json &jsonObj, const char *key, std::string &output);
-    static bool CheckSharedBundlesUidAndGid(int32_t uid, int32_t gid);
-    static bool CheckSharedBundlesArkCacheFiles(const std::string &anFile);
+    static bool CheckHostPrivateArkCacheFiles(const AotCompilerArgs &args);
     static bool CheckHapFsVerity(int fd);
 
     // HAP verification (struct-based)
