@@ -1,0 +1,38 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Try-catch inside double nested for loop
+function exception_loop_try_catch_2(n: number, m: number): number {
+  let r: number = 0;
+  for (let i: number = 0; i < n; i++) {
+    for (let j: number = 0; j < m; j++) {
+      try {
+        if ((i + j) % 4 === 0) {
+          throw new Error("mod4");
+        }
+        r += i + j;
+      } catch (e) {
+        r += 1;
+      }
+    }
+  }
+  return r;
+}
+
+ArkTools.arkSteedCompileSync(exception_loop_try_catch_2);
+print(exception_loop_try_catch_2(0, 0));
+print(exception_loop_try_catch_2(2, 3));
+print(exception_loop_try_catch_2(3, 4));
+print(exception_loop_try_catch_2(4, 5));

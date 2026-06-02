@@ -304,7 +304,6 @@ private:
 
     void SetupConstantLocations();
     void InitializeBlockState(BB *block);
-    void ProcessBlockVertices(BB *block);
     void AllocateBlock(BB *block);
 
     void AllocateVertex(Vertex *vertex);
@@ -336,6 +335,7 @@ private:
     void Spill(ValueVertex *vertex);
     void SpillRegisters();
     void SpillAndClearRegisters();
+    void SpillCatchPhiInputsOfIndex(BB *catchBlock, uint32_t index);
 
     // SpillAndClearRegisters as inline template, calls ClearRegisters with spill=true
     template <typename RegisterT>

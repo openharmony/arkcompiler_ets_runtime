@@ -28,6 +28,37 @@ using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
 #define BLOCK_INDEX_FROM_PTR(ptr) (static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)))
 #define BLOCK_INDEX_TO_PTR(index) (reinterpret_cast<BasicBlockInfo *>(static_cast<uintptr_t>(index)))
 
+BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *chunk)
+    : env_(env),
+      method_(env->GetMethodLiteral()),
+      numLocalVRegs_(method_->GetNumVregsWithCallField()),
+      numParamVRegs_(method_->GetNumArgsForArkSteed()),
+      tryBlocks_(chunk),
+      basicBlocks_(chunk),
+      bytecodes_(chunk),
+      rpoList_(chunk),
+      bcIndexOfOffset_(chunk),
+      jumpTargetBcIndices_(chunk),
+      loopHeaders_(chunk),
+      numJumpPredecessors_(chunk)
+{}
+
+bool BytecodePreprocessorNew::Run()
+{
+    if (CollectBytecodeInfo()) {
+        return false;
+    }
+    CollectTryCatchBlockInfo();
+    BuildBasicBlocks();
+    CanonicalizeLoopsDFS();
+    SplitCriticalEdges();
+    SetBasicBlockPointers();
+    LoopAnalysis();
+    MakeRPO();
+    ClearDeadPredecessors();
+    return true;
+}
+
 uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex)
 {
     // Used by READ_INST_*_0() macros below
@@ -88,9 +119,12 @@ uint32_t BytecodePreprocessorNew::AppendSyntheticJump(uint32_t targetBlockIndex,
 
 // -------- Initialization steps: called one-by-one --------
 
-void BytecodePreprocessorNew::CollectBytecodeInfo()
+bool BytecodePreprocessorNew::CollectBytecodeInfo()
 {
     uint32_t bcSizeBytes = MethodLiteral::GetCodeSize(env_->GetJSPandaFile(), method_->GetMethodId());
+    if (bcSizeBytes == 0) {
+        return false;
+    }
     bytecodes_.reserve(bcSizeBytes);
     bcIndexOfOffset_.resize(bcSizeBytes + 1, NULL_INDEX);
 
@@ -131,6 +165,7 @@ void BytecodePreprocessorNew::CollectBytecodeInfo()
             jumpTargetBcIndices_[i] = JumpTargetBcIndexOfBytecode(i);
         }
     }
+    return true;
 }
 
 void BytecodePreprocessorNew::CollectTryCatchBlockInfo()
@@ -189,8 +224,8 @@ void BytecodePreprocessorNew::BuildBasicBlocks()
 
     ChunkVector<uint8_t> blockStartMarks(bcCount, NOT_START_OF_BLOCK, GetChunk());
     MarkBasicBlockStarts(blockStartMarks, bcCount);
-    uint32_t blockCount = CreateBasicBlocks(blockStartMarks, bcCount);
-    InitializeBlockEdges(blockCount);
+    CreateBasicBlocks(blockStartMarks, bcCount);
+    InitializeBlockEdges();
 }
 
 void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
@@ -219,7 +254,7 @@ void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockSt
     }
 }
 
-uint32_t BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
+void BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
     uint32_t startBcIndex = 0;
     uint32_t blockCount = 0;
@@ -252,12 +287,11 @@ uint32_t BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &
         bytecodes_[i].blockIndex = blockCount;
     }
     appendBasicBlock(bcCount);
-
-    return blockCount;
 }
 
-void BytecodePreprocessorNew::InitializeBlockEdges(uint32_t blockCount)
+void BytecodePreprocessorNew::InitializeBlockEdges()
 {
+    uint32_t blockCount = static_cast<uint32_t>(basicBlocks_.size());
     for (uint32_t i = 0; i < blockCount; i++) {
         BasicBlockInfo &curBlock = basicBlocks_[i];
         if (curBlock.startBcIndex == NULL_INDEX) {
@@ -294,7 +328,8 @@ void BytecodePreprocessorNew::InitializeBlockEdges(uint32_t blockCount)
             }
             if (innermostTryBlock == nullptr) {
                 innermostTryBlock = &tryBlock;
-            } else if (innermostTryBlock->ContainsBytecode(tryBlock.startBcIndex)) {
+            } else if (tryBlock.startBcIndex >= innermostTryBlock->startBcIndex &&
+                       tryBlock.endBcIndex <= innermostTryBlock->endBcIndex) {
                 innermostTryBlock = &tryBlock;
             }
         }
@@ -310,7 +345,7 @@ void BytecodePreprocessorNew::InitializeBlockEdges(uint32_t blockCount)
 // (1) each loop ends with an unconditional jump block (named J) which jumps to the header;
 // (2) J is the only block inside this loop which jumps to the header.
 // Precondition: The input bytecode sequence forms reducible loops only.
-struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
+struct BytecodePreprocessorNew::LoopCanonicalizer {
     // DFS states (white: unvisited, grey: in DFS stack; black: visited)
     enum : uint8_t { WHITE = 0, GREY = 1, BLACK = 2 };
     enum : uint8_t { NOT_REDIRECTED = 0, LOOP_BACK_REDIRECTED = 1, LOOP_ENTRY_REDIRECTED = 2 };
@@ -322,7 +357,7 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
     ChunkVector<uint8_t> redirection_;
     ChunkVector<uint32_t> dfsPredecessor_;
 
-    explicit CanonicalizeLoopsDFS(BytecodePreprocessorNew *parent)
+    explicit LoopCanonicalizer(BytecodePreprocessorNew *parent)
         : parent_(parent),
           blocks_(parent->basicBlocks_),
           numJumpPredecessors_(parent->numJumpPredecessors_),
@@ -331,7 +366,7 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
           dfsPredecessor_(blocks_.size(), NULL_INDEX, parent->GetChunk())
     {}
 
-    void Run() &&
+    void Run()
     {
         uint32_t blockCount = static_cast<uint32_t>(blocks_.size());
         numJumpPredecessors_.assign(blockCount, 0);
@@ -488,6 +523,12 @@ struct BytecodePreprocessorNew::CanonicalizeLoopsDFS {
         }
     }
 };
+
+void BytecodePreprocessorNew::CanonicalizeLoopsDFS()
+{
+    LoopCanonicalizer runner(this);
+    runner.Run();
+}
 
 void BytecodePreprocessorNew::SplitCriticalEdges()
 {
@@ -704,31 +745,6 @@ void BytecodePreprocessorNew::ClearDeadPredecessors()
         it = std::remove_if(curBlock.catchPredecessors.begin(), curBlock.catchPredecessors.end(), pred);
         curBlock.catchPredecessors.erase(it, curBlock.catchPredecessors.end());
     }
-}
-
-BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *chunk)
-    : env_(env),
-      method_(env->GetMethodLiteral()),
-      numLocalVRegs_(method_->GetNumVregsWithCallField()),
-      numParamVRegs_(method_->GetNumArgsForArkSteed()),
-      tryBlocks_(chunk),
-      basicBlocks_(chunk),
-      bytecodes_(chunk),
-      rpoList_(chunk),
-      bcIndexOfOffset_(chunk),
-      jumpTargetBcIndices_(chunk),
-      loopHeaders_(chunk),
-      numJumpPredecessors_(chunk)
-{
-    CollectBytecodeInfo();
-    CollectTryCatchBlockInfo();
-    BuildBasicBlocks();
-    CanonicalizeLoopsDFS(this).Run();
-    SplitCriticalEdges();
-    SetBasicBlockPointers();
-    LoopAnalysis();
-    MakeRPO();
-    ClearDeadPredecessors();
 }
 
 namespace {

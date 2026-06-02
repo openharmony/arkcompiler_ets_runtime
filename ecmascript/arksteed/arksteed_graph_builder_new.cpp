@@ -111,6 +111,28 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
 }
 }  // namespace
 
+// Condensed storage: [vA, vA, vA, vB, vB, vB, vB, vB, vB, vC, vC, vC, vC]
+//                 => [(vA, 3),    (vB, 6),                (vC, 4)]
+struct GraphBuilderNew::CatchBlockInputData {
+    struct InputEntry {
+        ValueVertex *vertex;
+        uint32_t count;
+    };
+
+    uint32_t totalCount;
+    // inputs[i] = List of inputs for the i-th live-in virtual register
+    ChunkVector<ChunkVector<InputEntry>> inputs;
+
+    explicit CatchBlockInputData(const kungfu::BitSet &liveIn, Chunk *chunk) : totalCount(0), inputs(chunk)
+    {
+        size_t numLive = liveIn.Count();
+        inputs.reserve(numLive);
+        for (size_t i = 0; i < numLive; i++) {
+            inputs.emplace_back(chunk);
+        }
+    }
+};
+
 GraphBuilderNew::GraphBuilderNew(Graph *destGraph,
                                  uintptr_t glueAddr,
                                  BytecodePreprocessorNew *preproc,
@@ -120,30 +142,57 @@ GraphBuilderNew::GraphBuilderNew(Graph *destGraph,
       preproc_(preproc),
       analysis_(analysis),
       blocks_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
-      frameStates_(preproc->GetNumLiveBasicBlocks(), preproc_->GetChunk())
+      frameStates_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      catchBlockInputs_(preproc->GetChunk())
 {}
 
 bool GraphBuilderNew::Run()
 {
+    ASSERT(preproc_->GetNumLiveBasicBlocks() > 0);
+    DebugLog();
+    InitializeBasicBlocks();
+    InitializeGlobalsAndParameters();
+
+    BCFrameState frameState(GetNumVRegs(), nullptr, GetChunk());
+    FinalizeStartBasicBlock(frameState);
+    frameStates_[0] = CondensedBCFrameState(frameState, analysis_->GetLiveOut(0), GetChunk());
+
+    // 1 : Skips the start block (which is initialized before)
+    for (uint32_t i = 1, n = preproc_->GetNumLiveBasicBlocks(); i < n; i++) {
+        frameState.Reset(nullptr);
+        ProcessBasicBlock(frameState, i);
+        frameStates_[i] = CondensedBCFrameState(frameState, analysis_->GetLiveOut(i), GetChunk());
+    }
+    FinalizeBasicBlockRelations();
+    return true;
+}
+
+void GraphBuilderNew::DebugLog()
+{
+    if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
+        return;
+    }
     JitCompilationEnv *env = preproc_->GetEnv();
     MethodLiteral *method = preproc_->GetMethod();
     const char *recordName = method->GetRecordNameWithSymbol(env->GetJSPandaFile(), method->GetMethodId());
     const char *methodName = method->GetMethodName(env->GetJSPandaFile(), method->GetMethodId());
-    LOG_COMPILER(DEBUG) << "Starts compiling " << recordName << " :: " << methodName;
-    LOG_COMPILER(DEBUG) << "NumLocalVRegs = " << GetNumLocalVRegs() << ", NumParamVRegs = " << GetNumParamVRegs();
-    // 1 : Start block only.
-    if (preproc_->GetNumLiveBasicBlocks() <= 1) {
-        return false;  // Possibly empty bytecode
+
+    LOG_COMPILER(DEBUG) << "arksteed::GraphBuilder: Starts compiling " << recordName << " :: " << methodName;
+    LOG_COMPILER(DEBUG) << "NumLocalVRegs = " << GetNumLocalVRegs()
+                        << ", NumParamVRegs = " << GetNumParamVRegs();
+
+    std::string dumpStr = preproc_->Dump();
+    std::istringstream preprocStream(dumpStr);
+    std::string line;
+    while (std::getline(preprocStream, line)) {
+        LOG_COMPILER(DEBUG) << line;
     }
-    InitializeBasicBlocks();
-    InitializeGlobalsAndParameters();
-    FinalizeStartBasicBlock();
-    // 1 : Skips the start block (which is initialized before)
-    for (uint32_t i = 1, n = preproc_->GetNumLiveBasicBlocks(); i < n; i++) {
-        ProcessBasicBlock(i);
+
+    dumpStr = analysis_->Dump();
+    std::istringstream analysisStream(dumpStr);
+    while (std::getline(analysisStream, line)) {
+        LOG_COMPILER(DEBUG) << line;
     }
-    FinalizeBasicBlockRelations();
-    return true;
 }
 
 void GraphBuilderNew::InitializeBasicBlocks()
@@ -179,22 +228,19 @@ void GraphBuilderNew::InitializeGlobalsAndParameters()
     const int32_t CALL_TARGET_FP_SLOT_INDEX = 3;
     for (uint32_t i = 0, n = GetNumParamVRegs(); i < n; i++) {
         int32_t slotIndex = static_cast<int32_t>(i + CALL_TARGET_FP_SLOT_INDEX);
-        ValueVertex *v = NewVertexNoInput<InitialValueVertex>(blocks_[0], slotIndex);
+        auto *v = NewVertexNoInput<InitialValueVertex>(blocks_[0], slotIndex);
         graph_->AddParameter(v);
     }
 }
 
-void GraphBuilderNew::FinalizeStartBasicBlock()
+void GraphBuilderNew::FinalizeStartBasicBlock(BCFrameState &frameState)
 {
-    auto frameState = BCFrameState(GetNumVRegs(), GetChunk());
     for (VRegIDType i = 0, n = GetNumParamVRegs(); i < n; i++) {
         VRegIDType curIndex = VRegOfParam(GetNumLocalVRegs(), i).GetId();
         frameState.Set(curIndex, graph_->GetParameter(i));
     }
     // -3 : Fixed header lexicalEnv is at slot -3 in word units.
     frameState.SetEnv(NewVertexNoInput<InitialValueVertex>(blocks_[0], -3));
-    frameStates_[0] = CondensedBCFrameState(std::move(frameState), analysis_->GetLiveOut(0), GetChunk());
-
     NewControlVertex<JumpVertex>(blocks_[0], {}, blocks_[1]);
 }
 
@@ -223,17 +269,21 @@ void GraphBuilderNew::FinalizeBasicBlockRelations()
     }
 }
 
-void GraphBuilderNew::ProcessBasicBlock(uint32_t rpoIndex)
+void GraphBuilderNew::ProcessBasicBlock(BCFrameState &frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
     if (bcBlock->IsCatchBlockHeader()) {
-        LOG_COMPILER(WARN) << "Try-catch is unimplemented. Skipped.";
+        ProcessCatchBlockHead(frameState, rpoIndex);
+        return;
     }
-    BCFrameState curFrameState =
-        bcBlock->IsLoopHeader() ? MakeMergedFrameStateForLoopHeader(rpoIndex) : MakeMergedFrameState(rpoIndex);
+
+    bcBlock->IsLoopHeader()
+        ? InitFrameStateForLoopHeader(frameState, rpoIndex)
+        : InitFrameState(frameState, rpoIndex);
+
     for (uint32_t i = bcBlock->startBcIndex; i <= bcBlock->endBcIndex; i++) {
         const BytecodeInfo *bcInfo = preproc_->GetBytecode(i);
-        VisitBytecode(rpoIndex, &curFrameState, bcInfo);
+        VisitBytecode(rpoIndex, &frameState, bcInfo);
     }
     if (bcBlock->IsSynthetic()) {
         // Edge-split block, etc.
@@ -249,40 +299,83 @@ void GraphBuilderNew::ProcessBasicBlock(uint32_t rpoIndex)
         NewControlVertex<JumpVertex>(blocks_[rpoIndex], {}, blocks_[bcBlock->fallthroughBlock->rpoIndex]);
     }
     if (bcBlock->IsEndOfLoop()) {
-        WriteBackFrameStateToLoopHeader(curFrameState, rpoIndex);
+        WriteBackFrameStateToLoopHeader(frameState, rpoIndex);
     }
-    frameStates_[rpoIndex] = CondensedBCFrameState(
-        std::move(curFrameState), analysis_->GetLiveOut(rpoIndex), GetChunk());
 }
 
-BCFrameState GraphBuilderNew::MakeMergedFrameState(uint32_t rpoIndex)
+void GraphBuilderNew::ProcessCatchBlockHead(BCFrameState &frameState, uint32_t rpoIndex)
+{
+    InitFrameStateForCatchBlockHeader(frameState, rpoIndex);
+
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    // Catch block header is always synthetic. Only an unconditional jump.
+    ASSERT(bcBlock->jumpBlock != nullptr);
+    NewControlVertex<JumpVertex>(blocks_[rpoIndex], {}, blocks_[bcBlock->jumpBlock->rpoIndex]);
+}
+
+void GraphBuilderNew::InitFrameState(BCFrameState &frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
     uint32_t numPreds = static_cast<uint32_t>(bcBlock->jumpPredecessors.size());
-
-    BCFrameState curFrameState(GetNumVRegs(), GetChunk());
     for (uint32_t j = 0; j < numPreds; j++) {
-        MergeFrameState(curFrameState, rpoIndex, j);
+        MergeFrameState(frameState, rpoIndex, j);
     }
-    return curFrameState;
 }
 
-BCFrameState GraphBuilderNew::MakeMergedFrameStateForLoopHeader(uint32_t rpoIndex)
+void GraphBuilderNew::InitFrameStateForLoopHeader(BCFrameState &frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
     ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2 : One is entry, the other is loop-back
 
     kungfu::BitSet phiCandidates = analysis_->GetLiveIn(rpoIndex);
     // Note: We need better policy to initialize Phi nodes for loop header in further implementation
-    BCFrameState curFrameState(GetNumVRegs(), GetChunk());
     for (uint32_t vregIndex = 0, n = GetNumVRegs(); vregIndex < n; vregIndex++) {
         if (phiCandidates.TestBit(vregIndex)) {
             // 2 : One is entry, the other is loop-back
-            curFrameState.Set(vregIndex, NewPhiVertex(blocks_[rpoIndex], 2, vregIndex));
+            frameState.Set(vregIndex, NewPhiVertex(blocks_[rpoIndex], 2, vregIndex));
         }
     }
-    MergeFrameState(curFrameState, rpoIndex, 0);  // 0 : The first predecessor which is loop entry
-    return curFrameState;
+    MergeFrameState(frameState, rpoIndex, 0);  // 0 : The first predecessor which is loop entry
+}
+
+void GraphBuilderNew::InitFrameStateForCatchBlockHeader(BCFrameState &frameState, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    // For catch blocks, acc is always initialized as the exception object
+    frameState.SetAcc(NewVertex<LoadExceptionVertex>(blocks_[rpoIndex], {glue_}));
+
+    CatchBlockInputData *data = catchBlockInputs_[rpoIndex];
+    if (data == nullptr) {
+        LOG_COMPILER(WARN) << "Catch block " << rpoIndex << " has no throwable predecessors";
+        return;
+    }
+    ASSERT(data->totalCount >= 1);
+
+    const kungfu::BitSet &liveIn = analysis_->GetLiveIn(rpoIndex);
+    VRegIDType liveIndex = 0;
+    // -1: Skips acc, which is numbered as the last
+    for (VRegIDType vregIndex = 0, n = GetNumVRegs(); vregIndex < n - 1; vregIndex++) {
+        if (!liveIn.TestBit(vregIndex)) {
+            continue;
+        }
+        const auto &curInputList = data->inputs[liveIndex++];
+        ASSERT(!curInputList.empty());
+
+        if (curInputList.size() == 1) {
+            // Same inputs
+            frameState.Set(vregIndex, curInputList[0].vertex);
+            continue;
+        }
+        PhiVertex *phi = NewPhiVertex(blocks_[rpoIndex], data->totalCount, vregIndex);
+        uint32_t inputIndex = 0;
+        for (const auto &[input, count] : curInputList) {
+            // Decompress input list
+            for (uint32_t j = 0; j < count; j++) {
+                phi->SetInput(inputIndex++, input);
+            }
+        }
+        frameState.Set(vregIndex, phi);
+    }
 }
 
 void GraphBuilderNew::WriteBackFrameStateToLoopHeader(BCFrameState &current, uint32_t rpoIndex)
@@ -331,6 +424,39 @@ void GraphBuilderNew::MergeFrameState(BCFrameState &dest, uint32_t rpoIndex, uin
         phi->SetInput(predecessorIndex, fromPred);
         dest.Set(vregIndex, phi);
     });
+}
+
+uint32_t GraphBuilderNew::AppendCatchBlockInputs(const BCFrameState &current, uint32_t catchBlockIndex)
+{
+    const kungfu::BitSet &liveIn = analysis_->GetLiveIn(catchBlockIndex);
+
+    CatchBlockInputData *data = catchBlockInputs_[catchBlockIndex];
+    if (UNLIKELY(data == nullptr)) {
+        data = GetChunk()->New<CatchBlockInputData>(liveIn, GetChunk());
+        catchBlockInputs_[catchBlockIndex] = data;
+    }
+
+    VRegIDType liveIndex = 0;
+    // -1: Skips acc, which will be overwritten by the exception object
+    for (VRegIDType i = 0, n = GetNumVRegs(); i < n - 1; i++) {
+        if (!liveIn.TestBit(i)) {
+            continue;
+        }
+        ValueVertex *value = current.Get(i);
+        if (value == nullptr) {
+            value = undefinedValue_;
+        }
+        auto &curInputList = data->inputs[liveIndex++];
+        if (curInputList.empty() || curInputList.back().vertex != value) {
+            curInputList.push_back({.vertex = value, .count = 1});
+        } else {
+            curInputList.back().count += 1;
+        }
+    }
+
+    uint32_t curInputIndex = data->totalCount;
+    data->totalCount += 1;
+    return curInputIndex;
 }
 
 template <class VertexT, class... Args>
@@ -1450,51 +1576,59 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         constexpr bool HAS_INPUT = true;
         ValueVertex *exception = frameState->GetAcc();
-        self->NewControlVertex<ThrowVertex>(
-            CurrentBlock(), {exception}, RTSTUB_ID(Throw), HAS_INPUT);
+        auto *vertex = self->NewControlVertex<ThrowVertex>(CurrentBlock(), {exception}, RTSTUB_ID(Throw), HAS_INPUT);
+        MergeCurrentFrameStateToCatchBlock(vertex);
     }
 
     void LowerThrowConstAssignment()
     {
         constexpr bool HAS_INPUT = true;
         ValueVertex *value = LoadRegister(0);
-        self->NewControlVertex<ThrowVertex>(
+        auto *vertex = self->NewControlVertex<ThrowVertex>(
             CurrentBlock(), {value}, RTSTUB_ID(ThrowConstAssignment), HAS_INPUT);
+        MergeCurrentFrameStateToCatchBlock(vertex);
     }
 
     void LowerThrowNotExists()
     {
         constexpr bool HAS_INPUT = false;
-        self->NewControlVertex<ThrowVertex>(
+        auto *vertex = self->NewControlVertex<ThrowVertex>(
             CurrentBlock(), {self->undefinedValue_}, RTSTUB_ID(ThrowThrowNotExists), HAS_INPUT);
+        MergeCurrentFrameStateToCatchBlock(vertex);
     }
 
     void LowerThrowPatternNonCoercible()
     {
         constexpr bool HAS_INPUT = false;
-        self->NewControlVertex<ThrowVertex>(
+        auto *vertex = self->NewControlVertex<ThrowVertex>(
             CurrentBlock(), {self->undefinedValue_}, RTSTUB_ID(ThrowPatternNonCoercible), HAS_INPUT);
+        MergeCurrentFrameStateToCatchBlock(vertex);
     }
 
+    // Note: This bytecode is probably legacy.
     void LowerThrowDeleteSuperProperty()
     {
         constexpr bool HAS_INPUT = false;
-        self->NewControlVertex<ThrowVertex>(
+        auto *vertex = self->NewControlVertex<ThrowVertex>(
             CurrentBlock(), {self->undefinedValue_}, RTSTUB_ID(ThrowDeleteSuperProperty), HAS_INPUT);
+        MergeCurrentFrameStateToCatchBlock(vertex);
     }
 
     void LowerThrowIfNotObject()
     {
+        // Requires sub-graph mechanism which is unsupported currently.
         LOG_COMPILER(WARN) << "Unimplemented: LowerThrowIfNotObject";
     }
 
     void LowerThrowUndefinedIfHole()
     {
+        // Requires sub-graph mechanism which is unsupported currently.
         LOG_COMPILER(WARN) << "Unimplemented: LowerThrowUndefinedIfHole";
     }
 
     void LowerThrowUndefinedIfHoleWithName()
     {
+        // Requires sub-graph mechanism which is unsupported currently.
         LOG_COMPILER(WARN) << "Unimplemented: LowerThrowUndefinedIfHoleWithName";
     }
 
@@ -1503,8 +1637,9 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *index = TaggedConstantFromInt32(static_cast<int>(GetImmediate(0)));
         ValueVertex *thisValue = frameState->GetAcc();
 
-        self->NewVertex<ThrowIfSuperNotCorrectCallVertex>(
+        auto *vertex = self->NewVertex<ThrowIfSuperNotCorrectCallVertex>(
             CurrentBlock(), {index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+        MergeCurrentFrameStateToCatchBlock(vertex);
     }
 
     void LowerLdSymbol()
@@ -2259,6 +2394,15 @@ struct GraphBuilderNew::BytecodeVisitor {
         return self->NewVertex<ToTaggedIntVertex>(CurrentBlock(), {argc});
     }
 
+    void MergeCurrentFrameStateToCatchBlock(ThrowableMixin *mixin)
+    {
+        if (blockInfo->catchBlock != nullptr) {
+            uint32_t catchBlockIndex = blockInfo->catchBlock->rpoIndex;
+            mixin->SetCaughtBy(self->blocks_[catchBlockIndex]);
+            mixin->SetCatchPredecessorIndex(self->AppendCatchBlockInputs(*frameState, catchBlockIndex));
+        }
+    }
+
     void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, CommonStubID id)
     {
 #ifndef NDEBUG
@@ -2295,7 +2439,9 @@ struct GraphBuilderNew::BytecodeVisitor {
     ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
     {
         ValidateCommonStubCallArgs({inputs.begin(), inputs.end()}, id);
-        return self->NewVertex<CallCommonStubVertex>(CurrentBlock(), inputs, id);
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(CurrentBlock(), inputs, id);
+        MergeCurrentFrameStateToCatchBlock(vertex);
+        return vertex;
     }
 
     ValueVertex *CommonStubCallWithIC(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
@@ -2309,17 +2455,17 @@ struct GraphBuilderNew::BytecodeVisitor {
         allArgs.push_back(self->graph_->GetInt32Constant(static_cast<int>(GetICSlotId(0))));
 
         ValidateCommonStubCallArgs({allArgs.data(), allArgs.size()}, id);
-        return self->NewVertex<CallCommonStubVertex>(CurrentBlock(), allArgs, id);
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(CurrentBlock(), allArgs, id);
+        MergeCurrentFrameStateToCatchBlock(vertex);
+        return vertex;
     }
 
-    ValueVertex *RuntimeCall(std::initializer_list<ValueVertex *> inputs, RuntimeStubID id)
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    ValueVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id)
     {
-        return self->NewVertex<CallRuntimeVertex>(CurrentBlock(), inputs, id);
-    }
-
-    ValueVertex *RuntimeCall(const ChunkVector<ValueVertex *> &inputs, RuntimeStubID id)
-    {
-        return self->NewVertex<CallRuntimeVertex>(CurrentBlock(), inputs, id);
+        auto *vertex = self->NewVertex<CallRuntimeVertex>(CurrentBlock(), inputs, id);
+        MergeCurrentFrameStateToCatchBlock(vertex);
+        return vertex;
     }
 
     ValueVertex *TaggedConstantFromInt32(int value)
@@ -2392,17 +2538,19 @@ struct GraphBuilderNew::BytecodeVisitor {
     ValueVertex *MethodFromConstPool(ValueVertex *index)
     {
         ValueVertex *constpool = SharedConstPool();
-        return self->NewVertex<CallRuntimeVertex>(CurrentBlock(), {constpool, index}, RTSTUB_ID(GetMethodFromCache));
+        return RuntimeCall({constpool, index}, RTSTUB_ID(GetMethodFromCache));
     }
 
     GraphBuilderNew *self;
     uint32_t rpoIndex;
     BCFrameState *frameState;
+    const BasicBlockInfo *blockInfo;
     const BytecodeInfo *bcInfo;
 };
 
 void GraphBuilderNew::VisitBytecode(uint32_t rpoIndex, BCFrameState *frameState, const BytecodeInfo *bcInfo)
 {
-    BytecodeVisitor{this, rpoIndex, frameState, bcInfo}.Visit();
+    const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
+    BytecodeVisitor{this, rpoIndex, frameState, blockInfo, bcInfo}.Visit();
 }
 }  // namespace panda::ecmascript::arksteed

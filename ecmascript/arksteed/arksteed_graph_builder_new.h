@@ -55,19 +55,26 @@ private:
     using CommonStubID = CommonStubCSigns::ID;
     using RuntimeStubID = RuntimeStubCSigns::ID;
 
+    struct CatchBlockInputData;
     struct BytecodeVisitor;
 
+    void DebugLog();
     void InitializeBasicBlocks();
     void InitializeGlobalsAndParameters();
-    void FinalizeStartBasicBlock();
-    void ProcessBasicBlock(uint32_t rpoIndex);
+    void FinalizeStartBasicBlock(BCFrameState &frameState);
+    void ProcessBasicBlock(BCFrameState &frameState, uint32_t rpoIndex);
+    void ProcessCatchBlockHead(BCFrameState &frameState, uint32_t rpoIndex);
     void VisitBytecode(uint32_t rpoIndex, BCFrameState *frameState, const BytecodeInfo *bcInfo);
     void FinalizeBasicBlockRelations();
 
-    BCFrameState MakeMergedFrameState(uint32_t rpoIndex);
-    BCFrameState MakeMergedFrameStateForLoopHeader(uint32_t rpoIndex);
+    void InitFrameState(BCFrameState &framestate, uint32_t rpoIndex);
+    void InitFrameStateForLoopHeader(BCFrameState &framestate, uint32_t rpoIndex);
+    void InitFrameStateForCatchBlockHeader(BCFrameState &framestate, uint32_t rpoIndex);
+
     void WriteBackFrameStateToLoopHeader(BCFrameState &current, uint32_t rpoIndex);
     void MergeFrameState(BCFrameState &dest, uint32_t rpoIndex, uint32_t predecessorIndex);
+
+    uint32_t AppendCatchBlockInputs(const BCFrameState &current, uint32_t catchBlockIndex);
 
     template <class VertexT, class... Args>
     VertexT *NewVertex(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args);
@@ -103,6 +110,7 @@ private:
 
     ChunkVector<BB *> blocks_;
     ChunkVector<CondensedBCFrameState> frameStates_;
+    ChunkVector<CatchBlockInputData *> catchBlockInputs_;
 };
 }  // namespace panda::ecmascript::arksteed
 

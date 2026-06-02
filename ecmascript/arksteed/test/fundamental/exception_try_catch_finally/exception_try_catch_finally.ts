@@ -32,9 +32,6 @@ function exception_try_catch_finally(should_throw)
 
 ArkTools.arkSteedCompileSync(exception_try_catch_finally);
 
-// TODO: Replace the spin loop with:
-// let res = ArkTools.waitJitCompileFinish(exception_try_catch_finally);
-// print(res);
 
 let output = exception_try_catch_finally(false);
 print(output);

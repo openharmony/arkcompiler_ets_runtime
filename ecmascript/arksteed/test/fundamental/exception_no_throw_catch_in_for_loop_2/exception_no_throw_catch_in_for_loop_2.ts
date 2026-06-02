@@ -16,7 +16,7 @@
 declare function print(arg: number): string;
 
 declare class ArkTools {
-  static arkSteedCompileAsync<T extends Function>(func: T): T;
+  static arkSteedCompileSync<T extends Function>(func: T): T;
 }
 
 function iterate(a: number, i: number): number {
@@ -34,10 +34,8 @@ function exception_no_throw_catch_phi_in_for_loop_2(a: number, n: number): numbe
   return -1;
 }
 
-ArkTools.arkSteedCompileAsync(exception_no_throw_catch_phi_in_for_loop_2);
+ArkTools.arkSteedCompileSync(exception_no_throw_catch_phi_in_for_loop_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(exception_no_throw_catch_phi_in_for_loop_2(1, 0));
 print(exception_no_throw_catch_phi_in_for_loop_2(2, 3));

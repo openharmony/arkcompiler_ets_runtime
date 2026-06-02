@@ -26,6 +26,9 @@ BytecodeAnalysisNew::BytecodeAnalysisNew(const BytecodePreprocessorNew *parent)
       liveOut_(parent->GetChunk()),
       ueSet_(parent->GetChunk()),
       killSet_(parent->GetChunk())
+{}
+
+bool BytecodeAnalysisNew::Run()
 {
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (auto *dest : {&liveIn_, &liveOut_, &ueSet_, &killSet_}) {
@@ -46,6 +49,7 @@ BytecodeAnalysisNew::BytecodeAnalysisNew(const BytecodePreprocessorNew *parent)
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "Liveness analysis done. " << numIterations << " iterations used.";
 #endif
+    return true;
 }
 
 void BytecodeAnalysisNew::UpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex)

@@ -356,6 +356,28 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ActualArgcVertex>(ActualArgcVe
 // ========================================= Slow Value Opcode =========================================
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadFromAddressVertex>(LoadFromAddressVertex *loadField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadField->GetId() << ": LoadFromAddressVertex";
+#endif
+    auto dst = GetResultRegister(loadField);
+    auto obj = GetInputRegister(loadField, LoadFromAddressVertex::OBJECT_INDEX);
+    assembler_->LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadExceptionVertex>(LoadExceptionVertex *loadException)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadException->GetId() << ": LoadExceptionVertex";
+#endif
+    auto dst = GetResultRegister(loadException);
+    auto glue = GetInputRegister(loadException, LoadExceptionVertex::GLUE_INDEX);
+    assembler_->LoadAndClearPendingException(dst, glue);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedFieldVertex>(LoadTaggedFieldVertex *loadField)
 {
 #ifndef NDEBUG
@@ -364,6 +386,17 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedFieldVertex>(LoadTag
     auto dst = GetResultRegister(loadField);
     auto obj = GetInputRegister(loadField, LoadTaggedFieldVertex::OBJECT_INDEX);
     assembler_->LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreToAddressVertex>(StoreToAddressVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreToAddressVertex";
+#endif
+    auto obj = GetInputRegister(storeField, StoreToAddressVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeField, StoreToAddressVertex::VALUE_INDEX);
+    assembler_->StoreField(value, obj, storeField->GetOffset());
 }
 
 template <>
@@ -584,6 +617,15 @@ void ArkSteedCodeGenerator::VisitControlVertex<ThrowVertex>(ThrowVertex *throws)
     assembler_->CallRuntime(throws->GetRuntimeId());
     assembler_->FreeCallArgSlots(stackArgCount);
     safepointBuilder_->DefineSafepoint(assembler_->GetPcOffset());
+
+    BB *catchBlock = throws->CaughtBy();
+    if (catchBlock != nullptr) {
+        uint32_t catchPredId = throws->GetCatchPredecessorIndex();
+        DeconstructPhisInSuccessor(catchBlock, static_cast<int>(catchPredId));
+        assembler_->Jump(catchBlock->GetLabel());
+    } else {
+        assembler_->ReturnWithPendingException();
+    }
 }
 
 int32_t ArkSteedCodeGenerator::ComputeFrameSize(Graph *graph)
@@ -660,14 +702,12 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
 {
     RecordVertexComment(vertex);
     switch (vertex->GetOpcode()) {
-        // clang-format off
 #define PROCESS_VERTEX_CASE(Type)                                \
         case VertexOpcode::Type:                                 \
             VisitNonControlVertex(vertex->Cast<Type##Vertex>()); \
             break;
         NON_CONTROL_VERTEX_LIST(PROCESS_VERTEX_CASE)
 #undef PROCESS_VERTEX_CASE
-        // clang-format on
         default:
             UNREACHABLE();
             break;
@@ -679,9 +719,16 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
         ProcessValueVertex(valueVertex);
     }
 
-    // to do: try-catch optimize
     if (vertex->GetProperties().CanThrow() || vertex->GetProperties().IsAnyCall()) {
-        assembler_->ReturnIfPendingException();
+        if (BB *catchBlock = CatchBlockOf(vertex)) {
+            Label noException;
+            assembler_->BranchIfNoPendingException(&noException);
+            DeconstructPhisInSuccessor(catchBlock, static_cast<int>(CatchPredecessorIndexOf(vertex)));
+            assembler_->Jump(catchBlock->GetLabel());
+            assembler_->Bind(&noException);
+        } else {
+            assembler_->ReturnIfPendingException();
+        }
     }
 }
 
@@ -689,20 +736,19 @@ void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
 {
     RecordVertexComment(vertex);
     switch (vertex->GetOpcode()) {
-        // clang-format off
 #define PROCESS_VERTEX_CASE(Type)                             \
         case VertexOpcode::Type:                              \
             VisitControlVertex(vertex->Cast<Type##Vertex>()); \
             break;
         CONTROL_VERTEX_LIST(PROCESS_VERTEX_CASE)
 #undef PROCESS_VERTEX_CASE
-        // clang-format on
         default:
             UNREACHABLE();
             break;
     }
-    // to do: try-catch optimize
-    assembler_->ReturnIfPendingException();
+    if (!vertex->Is<ThrowVertex>()) {
+        assembler_->ReturnIfPendingException();
+    }
 }
 
 void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, int predecessorId)
@@ -782,6 +828,11 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
         return;
     }
     RegisterMergeState &registerState = *successor->GetRegisterMergeState();
+    // Exception handler blocks may have an uninitialized merge state since
+    // they receive values from the frame/glue, not through registers.
+    if (!registerState.IsInitialized()) {
+        return;
+    }
     registerState.ForEachGeneralRegister([&](ArkSteedRegister reg, RegisterState &state) {
         if (registersSetByPhis.Has(reg)) {
             return;

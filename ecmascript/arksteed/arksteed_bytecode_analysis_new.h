@@ -27,6 +27,8 @@ public:
 
     explicit BytecodeAnalysisNew(const BytecodePreprocessorNew *parent);
 
+    bool Run();
+
     const kungfu::BitSet &GetLiveIn(uint32_t blockRpoIndex) const
     {
         return liveIn_[blockRpoIndex];

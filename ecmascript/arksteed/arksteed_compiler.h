@@ -67,6 +67,8 @@ public:
     static ArkSteedCompilerTask *CreateJitCompilerTask(ArkSteedTask *arkSteedTask);
 
     bool Compile();
+
+    bool BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr);
     void RunPreRegallocProcessors();
     void FillCodeDesc(MachineCodeDesc &codeDesc);
 

@@ -115,6 +115,32 @@ ArkSteedCompilerTask *ArkSteedCompilerTask::CreateJitCompilerTask(ArkSteedTask *
     return new (std::nothrow) ArkSteedCompilerTask(arkSteedTask);
 }
 
+bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr)
+{
+#ifdef ARKSTEED_REFACTORED
+    (void)compilerThread;  // Unused
+
+    BytecodePreprocessorNew preproc(jitCompilationEnv_.get(), chunk_.get());
+    if (!preproc.Run()) {
+        return false;
+    }
+    BytecodeAnalysisNew analysis(&preproc);
+    if (!analysis.Run()) {
+        return false;
+    }
+    GraphBuilderNew graphBuilder(graph_, hostGlueAddr, &preproc, &analysis);
+    if (!graphBuilder.Run()) {
+        return false;
+    }
+#else
+    ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get());
+    if (!graphBuilder.Build()) {
+        return false;
+    }
+#endif
+    return true;
+}
+
 void ArkSteedCompilerTask::RunPreRegallocProcessors()
 {
     // VertexInfoAllocateProcessor - allocate regalloc info for all vertices
@@ -152,21 +178,9 @@ bool ArkSteedCompilerTask::Compile()
     auto *hostThread = arkSteedTask_->GetHostThread();
     uintptr_t hostGlueAddr = hostThread->GetGlueAddr();
 
-#ifdef ARKSTEED_REFACTORED
-    BytecodePreprocessorNew preproc(jitCompilationEnv_.get(), chunk_.get());
-    BytecodeAnalysisNew analysis(&preproc);
-
-    GraphBuilderNew graphBuilder(graph_, hostGlueAddr, &preproc, &analysis);
-    if (!graphBuilder.Run()) {
+    if (!BuildGraph(compilerThread, hostGlueAddr)) {
         return false;
     }
-#else
-    ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get());
-    if (!graphBuilder.Build()) {
-        return false;
-    }
-#endif
-
     // Verify graph integrity
     // to do: Post-build optimizations (when enabled)
     VerifyGraph(graph_);

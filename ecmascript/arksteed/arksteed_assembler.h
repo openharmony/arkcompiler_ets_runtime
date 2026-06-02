@@ -172,7 +172,11 @@ public:
     void Call(Label *target);
     inline void CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId);
     inline void CallCommonStub(uint32_t stubId);
+    void ReturnWithPendingException();
     void ReturnIfPendingException();
+    // Branch to target if no pending exception exists in JSThread.
+    void BranchIfNoPendingException(Label* target);
+    void LoadAndClearPendingException(ArkSteedRegister dst, ArkSteedRegister glue);
     void Return();
 
     // =========================================================================
@@ -232,8 +236,6 @@ public:
     }
 
 private:
-    void BranchIfNoPendingException(Label* target);
-
 #if defined(PANDA_TARGET_AMD64)
     using PlatformAssembler = x64::AssemblerX64;
 #elif defined(PANDA_TARGET_ARM64)

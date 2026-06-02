@@ -197,24 +197,38 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 void ArkSteedAssembler::BranchIfNoPendingException(Label* target)
 {
     ArkSteedRegister scratch = kScratchRegister;
+    Push(aarch64::xzr, aarch64::x0);
     Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
     LoadField(scratch, aarch64::x0, static_cast<int32_t>(JSThread::GlueData::GetExceptionOffset(false)));
     Move(aarch64::x0, JSTaggedValue::Hole().GetRawData());
     Compare(scratch, aarch64::x0);
+    Pop(aarch64::xzr, aarch64::x0);
     JumpIf(Condition::COND_EQUAL, target);
+}
+
+void ArkSteedAssembler::ReturnWithPendingException()
+{
+    Move(aarch64::x0, JSTaggedValue::Exception().GetRawData());
+    Epilogue();
+    Return();
 }
 
 void ArkSteedAssembler::ReturnIfPendingException()
 {
     Label noPendingException;
-    // Keep SP 16-byte aligned on ARM64 while only preserving x0.
-    Push(aarch64::xzr, aarch64::x0);
     BranchIfNoPendingException(&noPendingException);
-    Move(aarch64::x0, JSTaggedValue::Exception().GetRawData());
-    Epilogue();
-    Return();
+    ReturnWithPendingException();
     Bind(&noPendingException);
-    Pop(aarch64::xzr, aarch64::x0);
+}
+
+void ArkSteedAssembler::LoadAndClearPendingException(ArkSteedRegister dst, ArkSteedRegister glue)
+{
+    ArkSteedRegister scratch = kScratchRegister;
+    size_t offset = JSThread::GlueData::GetExceptionOffset(false);  // false : isArch32 = false
+
+    LoadField(dst, glue, static_cast<int32_t>(offset));
+    Move(scratch, JSTaggedValue::Hole().GetRawData());
+    StoreField(scratch, glue, static_cast<int32_t>(offset));
 }
 
 void ArkSteedAssembler::Bind(Label *label)
