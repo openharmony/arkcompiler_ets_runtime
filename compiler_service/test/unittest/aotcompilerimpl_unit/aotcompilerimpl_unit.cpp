@@ -35,6 +35,7 @@
 #include "aot_compiler_impl.h"
 #include "aot_compiler_constants.h"
 #include "aot_compiler_load_callback.h"
+#include "ecmascript/platform/file.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 
@@ -1610,12 +1611,12 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_PersistAnFile_001, TestSize.Le
     EXPECT_EQ(ret, ERR_OK);
 
     // Verify disk file content matches
-    int diskFd = open(diskPath.c_str(), O_RDONLY);
-    ASSERT_GE(diskFd, 0);
+    FILE *diskFp = fopen(diskPath.c_str(), "rb");
+    ASSERT_NE(diskFp, nullptr);
     char buf[256] = {0};
-    ssize_t n = read(diskFd, buf, sizeof(buf));
-    close(diskFd);
-    EXPECT_EQ(n, static_cast<ssize_t>(sizeof(data)));
+    size_t n = fread(buf, 1, sizeof(buf), diskFp);
+    fclose(diskFp);
+    EXPECT_EQ(n, sizeof(data));
     EXPECT_EQ(memcmp(buf, data, sizeof(data)), 0);
 
     close(memfd);
@@ -1638,6 +1639,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_SpliceFdToFd_001, TestSize.Lev
     std::string diskPath = "/data/local/tmp/test_splice_dst.an";
     int32_t dstFd = open(diskPath.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     ASSERT_GE(dstFd, 0);
+    panda::ecmascript::FdsanExchangeOwnerTag(dstFd);
 
     int32_t ret = AotCompilerImplMock::SpliceFdToFdMock(srcFd, dstFd, sizeof(data));
     EXPECT_EQ(ret, ERR_OK);
@@ -1646,7 +1648,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_SpliceFdToFd_001, TestSize.Lev
     lseek(dstFd, 0, SEEK_SET);
     char buf[64] = {0};
     ssize_t n = read(dstFd, buf, sizeof(buf));
-    close(dstFd);
+    panda::ecmascript::Close(dstFd);
     close(srcFd);
     EXPECT_EQ(n, static_cast<ssize_t>(sizeof(data)));
     EXPECT_EQ(memcmp(buf, data, sizeof(data)), 0);

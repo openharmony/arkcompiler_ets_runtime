@@ -45,6 +45,9 @@
 
 namespace OHOS::ArkCompiler {
 
+using panda::ecmascript::FdsanExchangeOwnerTag;
+using panda::ecmascript::Close;
+
 const std::string USER_MODE_UNSLEEP = "unsleep";
 AotCompilerImpl& AotCompilerImpl::GetInstance()
 {
@@ -187,6 +190,7 @@ int32_t AotCompilerImpl::OpenHapFile(const AotCompilerArgs &args, CompilationCle
             << " errno=" << errno << " " << strerror(errno);
         return ERR_AOT_COMPILER_CALL_FAILED;
     }
+    FdsanExchangeOwnerTag(hapFd);
     guard.AcquireHapFd(hapFd);
     LOG_SA(INFO) << "pre-opened HAP fd=" << hapFd << " path=" << realHapPath;
     return ERR_OK;
@@ -209,6 +213,7 @@ int32_t AotCompilerImpl::OpenHspFiles(const AotCompilerArgs &args, CompilationCl
                 << " errno=" << errno << " " << strerror(errno);
             return ERR_AOT_COMPILER_CALL_FAILED;
         }
+        FdsanExchangeOwnerTag(hspFd);
         guard.AcquireHspFd(hspFd);
         LOG_SA(INFO) << "pre-opened HSP fd=" << hspFd << " path=" << realHspPath;
     }
@@ -291,6 +296,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const AotCompilerArgs &args,
 
     int32_t inputRet = PrepareCompilationInputs(args, parserType, guard);
     if (inputRet == ERR_OK_AOT_FILE_EXIST) {
+        guard.Dismiss();
         return ERR_OK;
     }
     if (inputRet != ERR_OK) {
@@ -602,7 +608,7 @@ int32_t AotCompilerImpl::PreCreateAotFiles(AotParserType parserType, uid_t bundl
     if (parserType == AotParserType::DYNAMIC_AOT) {
         std::string aiFilePath = GetAiFilePath(anFilePath);
         if (CreateAiFile(aiFilePath, bundleUid, bundleGid) != ERR_OK) {
-            close(outAnFd);
+            Close(outAnFd);
             outAnFd = -1;
             return ERR_AOT_COMPILER_CALL_FAILED;
         }
@@ -629,6 +635,7 @@ int32_t AotCompilerImpl::CreateAnFile(const std::string &anFilePath, int32_t &ou
             << " errno=" << errno << " " << strerror(errno);
         return ERR_AOT_COMPILER_CALL_FAILED;
     }
+    FdsanExchangeOwnerTag(fd);
     outFd = fd;
     LOG_SA(INFO) << "created .an file, fd=" << fd << " path=" << anFilePath;
     return ERR_OK;
@@ -653,6 +660,8 @@ int32_t AotCompilerImpl::SpliceFdToFd(int srcFd, int dstFd, off_t size)
         LOG_SA(ERROR) << "pipe failed, errno=" << errno;
         return ERR_AOT_COMPILER_CALL_FAILED;
     }
+    FdsanExchangeOwnerTag(pipeFds[0]);
+    FdsanExchangeOwnerTag(pipeFds[1]);
 
     off_t remaining = size;
     while (remaining > 0) {
@@ -660,8 +669,8 @@ int32_t AotCompilerImpl::SpliceFdToFd(int srcFd, int dstFd, off_t size)
             static_cast<size_t>(remaining), SPLICE_F_MOVE);
         if (toPipe <= 0) {
             LOG_SA(ERROR) << "splice to pipe failed, errno=" << errno;
-            close(pipeFds[0]);
-            close(pipeFds[1]);
+            Close(pipeFds[0]);
+            Close(pipeFds[1]);
             return ERR_AOT_COMPILER_CALL_FAILED;
         }
         ssize_t written = 0;
@@ -670,16 +679,16 @@ int32_t AotCompilerImpl::SpliceFdToFd(int srcFd, int dstFd, off_t size)
                 static_cast<size_t>(toPipe - written), SPLICE_F_MOVE);
             if (w <= 0) {
                 LOG_SA(ERROR) << "splice to disk failed, errno=" << errno;
-                close(pipeFds[0]);
-                close(pipeFds[1]);
+                Close(pipeFds[0]);
+                Close(pipeFds[1]);
                 return ERR_AOT_COMPILER_CALL_FAILED;
             }
             written += w;
         }
         remaining -= toPipe;
     }
-    close(pipeFds[0]);
-    close(pipeFds[1]);
+    Close(pipeFds[0]);
+    Close(pipeFds[1]);
     return ERR_OK;
 }
 
@@ -700,6 +709,7 @@ int32_t AotCompilerImpl::PersistAnFile(int32_t memfd, const std::string &anPath)
         return ERR_OK;
     }
 
+    unlink(anPath.c_str());
     int diskFd = open(anPath.c_str(), O_RDWR | O_CREAT | O_TRUNC,
         S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     if (diskFd < 0) {
@@ -707,17 +717,18 @@ int32_t AotCompilerImpl::PersistAnFile(int32_t memfd, const std::string &anPath)
             << " errno=" << errno << " " << strerror(errno);
         return ERR_AOT_COMPILER_CALL_FAILED;
     }
+    FdsanExchangeOwnerTag(diskFd);
 
     if (lseek(memfd, 0, SEEK_SET) < 0) {
         LOG_SA(ERROR) << "lseek memfd to 0 failed";
-        close(diskFd);
+        Close(diskFd);
         unlink(anPath.c_str());
         return ERR_AOT_COMPILER_CALL_FAILED;
     }
 
     int32_t ret = SpliceFdToFd(memfd, diskFd, memfdSize);
     if (ret != ERR_OK) {
-        close(diskFd);
+        Close(diskFd);
         unlink(anPath.c_str());
         return ret;
     }
@@ -725,7 +736,7 @@ int32_t AotCompilerImpl::PersistAnFile(int32_t memfd, const std::string &anPath)
     if (fsync(diskFd) != 0) {
         LOG_SA(WARN) << "fsync failed, errno=" << errno;
     }
-    close(diskFd);
+    Close(diskFd);
     LOG_SA(INFO) << "PersistAnFile: done, size=" << memfdSize << " path=" << anPath;
     return ERR_OK;
 }
@@ -736,13 +747,14 @@ int32_t AotCompilerImpl::CreateAiFile(const std::string &aiFilePath, uid_t bundl
     int aiFd = open(aiFilePath.c_str(), O_RDWR | O_CREAT | O_TRUNC,
         S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     if (aiFd >= 0) {
+        FdsanExchangeOwnerTag(aiFd);
         if (fchown(aiFd, bundleUid, bundleGid) != 0) {
             LOG_SA(ERROR) << "fchown .ai to bundle failed: fd=" << aiFd
                 << " uid=" << bundleUid << " gid=" << bundleGid << " errno=" << errno;
-            close(aiFd);
+            Close(aiFd);
             return ERR_AOT_COMPILER_CALL_FAILED;
         }
-        close(aiFd);
+        Close(aiFd);
         LOG_SA(INFO) << "created .ai file, path=" << aiFilePath
             << " uid=" << bundleUid << " gid=" << bundleGid;
     } else {
@@ -878,11 +890,14 @@ int32_t AotCompilerImpl::ChownAotFilesToBundle()
             return ERR_AOT_COMPILER_CHOWN_FAILED;
         }
     }
-    // chown the on-disk .an file (persisted by PersistAnFile after signing)
-    if (chown(anFilePath.c_str(), bundleUid, bundleGid) != 0) {
-        LOG_SA(ERROR) << "chown .an to bundle failed: " << anFilePath
-            << " uid=" << bundleUid << " gid=" << bundleGid << " errno=" << errno;
-        return ERR_AOT_COMPILER_CHOWN_FAILED;
+    // chown the on-disk .an file: skip for STATIC_AOT / DYNAMIC_AOT to keep compiler_service ownership
+    auto parserType = argsHandler_->GetParserType();
+    if (parserType != AotParserType::STATIC_AOT && parserType != AotParserType::DYNAMIC_AOT) {
+        if (chown(anFilePath.c_str(), bundleUid, bundleGid) != 0) {
+            LOG_SA(ERROR) << "chown .an to bundle failed: " << anFilePath
+                << " uid=" << bundleUid << " gid=" << bundleGid << " errno=" << errno;
+            return ERR_AOT_COMPILER_CHOWN_FAILED;
+        }
     }
     if (argsHandler_->IsDynamicAOT()) {
         std::string aiFilePath = GetAiFilePath(anFilePath);

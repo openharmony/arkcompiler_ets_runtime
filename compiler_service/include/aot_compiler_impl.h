@@ -24,6 +24,7 @@
 #include "aot_args_handler.h"
 #include "aot_compiler_args.h"
 #include "ecmascript/compiler/aot_file/aot_version.h"
+#include "ecmascript/platform/file.h"
 
 namespace OHOS::ArkCompiler {
 
@@ -46,7 +47,7 @@ public:
     {
         int32_t fd = fd_.exchange(-1);
         if (fd >= 0) {
-            close(fd);
+            panda::ecmascript::Close(fd);
         }
     }
 
@@ -138,7 +139,7 @@ private:
     {
         for (int32_t fd : hspFds_) {
             if (fd >= 0) {
-                close(fd);
+                panda::ecmascript::Close(fd);
             }
         }
         hspFds_.clear();
