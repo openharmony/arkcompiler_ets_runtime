@@ -69,6 +69,12 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
     isEnableBaselinePgo_ = runtimeOptions.IsEnableBaselinePgo();
     isEnableMergePoly_ = runtimeOptions.IsEnableMergePoly();
+#ifdef ENABLE_BRANCH_ELIMINATION
+    isEnableBranchElimination_ = runtimeOptions.IsEnableBranchElimination();
+#endif
+#ifdef ENABLE_BRANCH_PROFILE
+    isEnableBreProfiling_ = runtimeOptions.IsEnableBreProfiling();
+#endif
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();
     if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {

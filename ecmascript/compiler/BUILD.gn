@@ -116,7 +116,6 @@ libark_jsoptimizer_sources = [
   "compilation_driver.cpp",
   "compilation_env.cpp",
   "compiler_log.cpp",
-  "constant_folding.cpp",
   "dead_code_elimination.cpp",
   "debug_info.cpp",
   "early_elimination.cpp",
@@ -193,6 +192,24 @@ libark_jsoptimizer_sources = [
   "value_numbering.cpp",
   "verifier.cpp",
 ]
+
+if (enable_branch_elimination) {
+  libark_jsoptimizer_sources += [
+    "branch_elimination.cpp",
+    "constant.cpp",
+    "constant_folding2.cpp",
+  ]
+} else {
+  libark_jsoptimizer_sources += [
+    "constant_folding.cpp"
+  ]
+}
+
+if (enable_branch_profile) {
+  libark_jsoptimizer_sources += [
+    "branch_profile.cpp"
+  ]
+}
 
 if (ets_runtime_enable_ark_steed) {
   libark_jsoptimizer_sources += [

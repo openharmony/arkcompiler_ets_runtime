@@ -394,6 +394,11 @@ void Circuit::DecreaseIn(GateRef gate, size_t idx)
     DeleteIn(gate, numIns - 1);
     GateMetaData *meta = const_cast<GateMetaData *>(
             LoadGatePtr(gate)->GetMetaData());
+#ifdef ENABLE_BRANCH_ELIMINATION
+    meta = metaBuilder_.NewGateMetaData(meta);
+    meta->DecreaseIn(idx);
+    LoadGatePtr(gate)->SetMetaData(meta);
+#else
     if (meta->GetKind() == GateMetaData::Kind::MUTABLE_WITH_SIZE) {
         meta->DecreaseIn(idx);
     } else {
@@ -401,6 +406,7 @@ void Circuit::DecreaseIn(GateRef gate, size_t idx)
         meta->DecreaseIn(idx);
         LoadGatePtr(gate)->SetMetaData(meta);
     }
+#endif
 }
 
 void Circuit::SetGateType(GateRef gate, GateType type)

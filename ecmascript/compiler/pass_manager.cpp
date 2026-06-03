@@ -65,6 +65,9 @@ void JitPassManager::RunLitePasses(PassRunner<PassData>& pipeline)
     pipeline.RunPass<LaterEliminationPass>();
     pipeline.RunPass<LCRLoweringPass>();
     pipeline.RunPass<ConstantFoldingPass>();
+#ifdef ENABLE_BRANCH_ELIMINATION
+    pipeline.RunPass<BranchEliminationPass>();
+#endif
     pipeline.RunPass<SlowPathLoweringPass>();
     pipeline.RunPass<GraphLinearizerPass>(!g_isEnableCMCGC);
 }
@@ -110,6 +113,9 @@ void JitPassManager::RunFullPasses(PassRunner<PassData>& pipeline)
     pipeline.RunPass<LCRLoweringPass>();
     pipeline.RunPass<UselessGateEliminationPass>();
     pipeline.RunPass<ConstantFoldingPass>();
+#ifdef ENABLE_BRANCH_ELIMINATION
+    pipeline.RunPass<BranchEliminationPass>();
+#endif
     if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
         pipeline.RunPass<ValueNumberingPass>();
     }
@@ -397,6 +403,12 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LCRLoweringPass>();
         pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<ConstantFoldingPass>();
+#ifdef ENABLE_BRANCH_ELIMINATION
+        pipeline.RunPass<BranchEliminationPass>();
+#endif
+#ifdef ENABLE_BRANCH_PROFILE
+        pipeline.RunPass<BranchProfilePass>();
+#endif
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<ValueNumberingPass>();

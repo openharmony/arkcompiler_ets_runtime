@@ -271,6 +271,10 @@ enum CommandValues {
     OPTION_MEM_CONFIG,
     OPTION_MULTI_CONTEXT,
     OPTION_PGO_NAPI,
+#ifdef ENABLE_BRANCH_ELIMINATION
+    OPTION_ENABLE_BRANCH_ELIMINATION,
+#endif
+    OPTION_ENABLE_BRE_PROFILE,
 
     // .an file descriptor passed from compiler_service via Binder
     OPTION_AN_FD,
@@ -2472,6 +2476,18 @@ public:
         return multiContext_;
     }
 
+#ifdef ENABLE_BRANCH_ELIMINATION
+    void SetEnableBranchElimination(bool value)
+    {
+        enableBranchElimination_ = value;
+    }
+
+    bool IsEnableBranchElimination() const
+    {
+        return enableBranchElimination_;
+    }
+#endif
+
     void SetDisableModuleSnapshot(bool isdisable)
     {
         disableModuleSnapshot_ = isdisable;
@@ -2528,6 +2544,16 @@ public:
     void SetEnableHoleMemory(bool value)
     {
         enableHoleMemory_ = value;
+    }
+
+    void SetEnableBreProfiling(bool value)
+    {
+        enableBreProfiling_ = value;
+    }
+
+    bool IsEnableBreProfiling() const
+    {
+        return enableBreProfiling_;
     }
 
     static bool ParseBool(const std::string &arg, bool* argBool);
@@ -2856,8 +2882,12 @@ private:
     bool storeBarrierOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
+    bool enableBreProfiling_ {false};
     bool enableMergePoly_ {true};
     bool multiContext_ {false};
+#ifdef ENABLE_BRANCH_ELIMINATION
+    bool enableBranchElimination_ {true};
+#endif
     std::string jitMethodDichotomy_ {"disable"};
     std::string jitMethodPath_ {"method_compiled_by_jit.cfg"};
     size_t heapSize_ = {0};

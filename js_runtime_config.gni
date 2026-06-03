@@ -86,6 +86,9 @@ declare_args() {
   ets_runtime_feature_enable_list = false
   enable_gc_dfx_options = false
 
+  enable_branch_elimination = false
+  enable_branch_profile = false
+
   # NOTE(ipetrov): Need to enable for mac previewer
   ark_js_hybrid = !ark_standalone_build && !is_mac
 

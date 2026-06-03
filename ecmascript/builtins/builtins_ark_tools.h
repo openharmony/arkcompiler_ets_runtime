@@ -17,6 +17,10 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_ARK_TOOLS_H
 
 #include "ecmascript/base/builtins_base.h"
+#ifdef ENABLE_BRANCH_PROFILE
+#include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/js_tagged_value.h"
+#endif
 #include "ecmascript/base/config.h"
 #include "ecmascript/js_thread.h"
 
@@ -87,7 +91,8 @@
     V("triggerSharedGC",                TriggerSharedGC,                0, INVALID)       \
     V("triggerLocalCCGC",               TriggerLocalCCGC,               0, INVALID)       \
     V("triggerSharedCC",                TriggerSharedCC,                0, INVALID)       \
-    V("enableProcDumpInSharedOOM",      EnableProcDumpInSharedOOM,      1, INVALID)
+    V("enableProcDumpInSharedOOM",      EnableProcDumpInSharedOOM,      1, INVALID)       \
+    V("GetBranchCount",                 GetBranchCount,                 0, INVALID)
 
 // List of mock ArkTools extension builtins
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -522,6 +527,8 @@ public:
 
     // Create an external string based on the string literal passed in by the user.
     static JSTaggedValue CreateCachedExternalString(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetBranchCount(EcmaRuntimeCallInfo *info);
 
 private:
 #define BUILTINS_ARK_TOOLS_FUNCTION_ENTRY(name, method, length, id) \

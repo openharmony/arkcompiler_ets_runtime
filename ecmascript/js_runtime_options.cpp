@@ -424,6 +424,12 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"mem-config", required_argument, nullptr, OPTION_MEM_CONFIG},
         {"multi-context", required_argument, nullptr, OPTION_MULTI_CONTEXT},
         {"enable-pgo-napi", required_argument, nullptr, OPTION_PGO_NAPI},
+#ifdef ENABLE_BRANCH_ELIMINATION
+        {"compiler-opt-branch-elimination", required_argument, nullptr, OPTION_ENABLE_BRANCH_ELIMINATION},
+#endif
+#ifdef ENABLE_BRANCH_PROFILE
+        {"compiler-enable-bre-profiling", required_argument, nullptr, OPTION_ENABLE_BRE_PROFILE},
+#endif
         {nullptr, 0, nullptr, 0},
     };
 
@@ -503,6 +509,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+#ifdef ENABLE_BRANCH_PROFILE
+            case OPTION_ENABLE_BRE_PROFILE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableBreProfiling(argBool);
+                } else {
+                    return false;
+                }
+                break;
+#endif
             case OPTION_COMPILER_LOG_OPT:
                 SetCompilerLogOption(optarg);
                 break;
@@ -1676,6 +1692,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+#ifdef ENABLE_BRANCH_ELIMINATION
+            case OPTION_ENABLE_BRANCH_ELIMINATION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableBranchElimination(argBool);
+                } else {
+                    return false;
+                }
+                break;
+#endif
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;

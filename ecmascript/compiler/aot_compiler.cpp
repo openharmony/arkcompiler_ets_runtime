@@ -179,6 +179,12 @@ int Main(const int argc, const char **argv)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
                 .EnableVerifierPass(cOptions.isEnableVerifierPass_)
                 .EnableMergePoly(cOptions.isEnableMergePoly_)
+#ifdef ENABLE_BRANCH_ELIMINATION
+                .EnableBranchElimination(cOptions.isEnableBranchElimination_)
+#endif
+#ifdef ENABLE_BRANCH_PROFILE
+                .EnableBreProfiling(cOptions.isEnableBreProfiling_)
+#endif
                 .Build();
 
         PassManager passManager(&aotCompilationEnv,

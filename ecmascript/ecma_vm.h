@@ -1666,6 +1666,18 @@ public:
         wrappedNativePointerAddrsMap_.clear();
     }
 
+#ifdef ENABLE_BRANCH_PROFILE
+    void CountBranch()
+    {
+        branchCount_ ++;
+    }
+
+    size_t GetBranchCount() const
+    {
+        return branchCount_;
+    }
+#endif
+
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 #if ECMASCRIPT_ENABLE_ARK_STEED
@@ -1981,6 +1993,9 @@ private:
 
     // process StartRealTime
     int processStartRealtime_ = 0;
+#ifdef ENABLE_BRANCH_PROFILE
+    size_t branchCount_ = 0;
+#endif
 
     bool enableJitLogSkip_ = true;
 

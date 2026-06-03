@@ -557,6 +557,14 @@ config("ark_jsruntime_common_config") {
     defines += [ "ENABLE_API_FUNCTION_OPTIMIZATION" ]
   }
 
+  if (enable_branch_elimination) {
+    defines += [ "ENABLE_BRANCH_ELIMINATION" ]
+  }
+
+  if (enable_branch_profile) {
+    defines += [ "ENABLE_BRANCH_PROFILE" ]
+  }
+
   if (ets_runtime_enable_ark_steed) {
     defines += [ "ECMASCRIPT_ENABLE_ARK_STEED_GN" ]
   }
