@@ -15,10 +15,12 @@
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 CString *HeapSnapshot::GetString(const CString &as)
@@ -611,7 +613,7 @@ void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTagge
             break;
         case Root::ROOT_GLOBAL_HANDLE:
             snapshot_.globalHandleRoots_.emplace(node);
-            if (snapshot_.vm_->GetJSThread()->IsTrackGlobalRefEnabled()) {
+            if (panda::JSNApi::IsTrackGlobalRefEnabled()) {
                 snapshot_.globalHandleAddrMap_[slot.SlotAddress()] = slot.GetTaggedType();
             }
             break;
@@ -1151,19 +1153,22 @@ void HeapSnapshot::FillEdges(bool isSimplify)
 
 void HeapSnapshot::FillGlobalEdges()
 {
-    JSThread *thread = vm_->GetJSThread();
-    if (!thread->IsTrackGlobalRefEnabled()) {
+    if (!panda::JSNApi::IsTrackGlobalRefEnabled()) {
+        LOG_ECMA(INFO) << "FillGlobalEdges track global ref not enabled";
         return;
     }
 
+    auto *thread = vm_->GetJSThread();
     thread->IterateGlobalRefMappings([this](uintptr_t slotAddr, void *ref) {
         auto it = globalHandleAddrMap_.find(slotAddr);
         if (it == globalHandleAddrMap_.end()) {
+            LOG_ECMA(ERROR) << "FillGlobalEdges slotAddr not found in globalHandleAddrMap: " << slotAddr;
             return;
         }
 
         JSTaggedValue value(it->second);
         if (!value.IsHeapObject()) {
+            LOG_ECMA(ERROR) << "FillGlobalEdges value is not heap object";
             return;
         }
         if (value.IsWeak()) {
@@ -1172,10 +1177,12 @@ void HeapSnapshot::FillGlobalEdges()
 
         HprofNode *entryTo = entryMap_.FindEntry(HprofNode::NewAddress(value.GetTaggedObject()));
         if (entryTo == nullptr) {
+            LOG_ECMA(ERROR) << "FillGlobalEdges entryTo is null";
             return;
         }
 
         if (ref == nullptr) {
+            LOG_ECMA(ERROR) << "FillGlobalEdges ref is null";
             return;
         }
         JSTaggedType addr = reinterpret_cast<JSTaggedType>(ref);
@@ -1185,6 +1192,7 @@ void HeapSnapshot::FillGlobalEdges()
         HprofNode *entryFrom = HprofNode::NewNode(chunk_, entryIdMap_->GetNextId(), nodeCount_,
             GetString(nodeName), NodeType::OBJECT, 0, 0, addr);
         if (entryFrom == nullptr) {
+            LOG_ECMA(ERROR) << "FillGlobalEdges alloc entryFrom failed";
             return;
         }
         entryMap_.InsertEntry(entryFrom);
@@ -1325,7 +1333,7 @@ void HeapSnapshot::AddSyntheticRoot()
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, frameSyntheticRoot, rootEdges);
 
     HprofNode *globalObjRoot = nullptr;
-    if (vm_->GetJSThread()->IsTrackGlobalRefEnabled()) {
+    if (panda::JSNApi::IsTrackGlobalRefEnabled()) {
         globalObjRoot = CreateSpecificSyntheticRoot(globalObjectRoots_, "GlobalHandleObject", GLOBAL_HANDLE_OBJECT_POS);
         CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, globalObjRoot, rootEdges);
     }

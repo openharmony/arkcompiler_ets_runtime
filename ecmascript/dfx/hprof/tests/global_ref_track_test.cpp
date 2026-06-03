@@ -30,7 +30,8 @@ public:
 
     void TearDown() override
     {
-        thread_->SetTrackGlobalRef(false);
+        JSNApi::SetTrackGlobalRef(false);
+        thread_->ClearGlobalRefMap();
         TestHelper::DestroyEcmaVMWithScope(ecmaVm_, scope_);
     }
 
@@ -39,18 +40,20 @@ public:
     JSThread *thread_ {nullptr};
 };
 
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(GlobalRefTrackTest, TestSetTrackGlobalRef)
 {
-    ASSERT_FALSE(thread_->IsTrackGlobalRefEnabled());
-    thread_->SetTrackGlobalRef(true);
-    ASSERT_TRUE(thread_->IsTrackGlobalRefEnabled());
-    thread_->SetTrackGlobalRef(false);
-    ASSERT_FALSE(thread_->IsTrackGlobalRefEnabled());
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
+    JSNApi::SetTrackGlobalRef(true);
+    ASSERT_TRUE(JSNApi::IsTrackGlobalRefEnabled());
+    JSNApi::SetTrackGlobalRef(false);
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
 }
+#endif
 
 HWTEST_F_L0(GlobalRefTrackTest, TestStoreAndFindGlobalRefMapping)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
     uintptr_t slotAddr = 0x12345678;
     void *fakeRef = reinterpret_cast<void *>(0xABCDEF00);
     thread_->StoreGlobalRefMapping(slotAddr, fakeRef);
@@ -61,7 +64,7 @@ HWTEST_F_L0(GlobalRefTrackTest, TestStoreAndFindGlobalRefMapping)
 
 HWTEST_F_L0(GlobalRefTrackTest, TestEraseGlobalRefMapping)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
     uintptr_t slotAddr = 0x12345678;
     void *fakeRef = reinterpret_cast<void *>(0xABCDEF00);
     thread_->StoreGlobalRefMapping(slotAddr, fakeRef);
@@ -72,74 +75,72 @@ HWTEST_F_L0(GlobalRefTrackTest, TestEraseGlobalRefMapping)
 
 HWTEST_F_L0(GlobalRefTrackTest, TestDisableClearsMap)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
     uintptr_t slotAddr = 0x12345678;
     void *fakeRef = reinterpret_cast<void *>(0xABCDEF00);
     thread_->StoreGlobalRefMapping(slotAddr, fakeRef);
     ASSERT_NE(thread_->FindGlobalRefMapping(slotAddr), nullptr);
-    thread_->SetTrackGlobalRef(false);
+    JSNApi::SetTrackGlobalRef(false);
+    thread_->ClearGlobalRefMap();
     ASSERT_EQ(thread_->FindGlobalRefMapping(slotAddr), nullptr);
 }
 
 HWTEST_F_L0(GlobalRefTrackTest, TestStoreWithoutTracking)
 {
-    ASSERT_FALSE(thread_->IsTrackGlobalRefEnabled());
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
     uintptr_t slotAddr = 0x12345678;
     void *fakeRef = reinterpret_cast<void *>(0xABCDEF00);
-    thread_->StoreGlobalRefMapping(slotAddr, fakeRef);
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::StoreGlobalRefMapping(ecmaVm_, slotAddr, fakeRef);
+    JSNApi::SetTrackGlobalRef(true);
     ASSERT_EQ(thread_->FindGlobalRefMapping(slotAddr), nullptr);
 }
 
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(GlobalRefTrackTest, TestJSNApiBridge)
 {
-    ASSERT_FALSE(panda::JSNApi::IsTrackGlobalRefEnabled(ecmaVm_));
-    panda::JSNApi::SetTrackGlobalRef(ecmaVm_, true);
-    ASSERT_TRUE(panda::JSNApi::IsTrackGlobalRefEnabled(ecmaVm_));
+    JSNApi::SetTrackGlobalRef(false);
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
+    JSNApi::SetTrackGlobalRef(true);
+    ASSERT_TRUE(JSNApi::IsTrackGlobalRefEnabled());
 
     uintptr_t slotAddr = 0xAAAA0000;
     void *fakeRef = reinterpret_cast<void *>(0xBBBB0000);
-    panda::JSNApi::StoreGlobalRefMapping(ecmaVm_, slotAddr, fakeRef);
-    ASSERT_EQ(panda::JSNApi::FindGlobalRefMapping(ecmaVm_, slotAddr), fakeRef);
+    JSNApi::StoreGlobalRefMapping(ecmaVm_, slotAddr, fakeRef);
+    ASSERT_EQ(JSNApi::FindGlobalRefMapping(ecmaVm_, slotAddr), fakeRef);
 
-    panda::JSNApi::EraseGlobalRefMapping(ecmaVm_, slotAddr);
-    ASSERT_EQ(panda::JSNApi::FindGlobalRefMapping(ecmaVm_, slotAddr), nullptr);
+    JSNApi::EraseGlobalRefMapping(ecmaVm_, slotAddr);
+    ASSERT_EQ(JSNApi::FindGlobalRefMapping(ecmaVm_, slotAddr), nullptr);
 
-    panda::JSNApi::SetTrackGlobalRef(ecmaVm_, false);
-    ASSERT_FALSE(panda::JSNApi::IsTrackGlobalRefEnabled(ecmaVm_));
+    JSNApi::SetTrackGlobalRef(false);
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
 }
+#endif
 
-// Store mapping for a real global handle slot → verify FindGlobalRefMapping returns the ref
-HWTEST_F_L0(GlobalRefTrackTest, TestMappingWithRealGlobalHandleSlot)
+HWTEST_F_L0(GlobalRefTrackTest, TestMappingWithRealGlobalHandle)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
     ObjectFactory *factory = ecmaVm_->GetFactory();
     JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
 
-    // Create a real global handle — this allocates a slot in EcmaGlobalStorage
     Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
     uintptr_t slotAddr = globalObj.GetSlotAddress();
     ASSERT_NE(slotAddr, 0U);
 
-    // Store a mapping for this real slot address
     int fakeRef = 0;
     void *refPtr = &fakeRef;
     thread_->StoreGlobalRefMapping(slotAddr, refPtr);
 
-    // Verify mapping is retrievable
     void *found = thread_->FindGlobalRefMapping(slotAddr);
     ASSERT_EQ(found, refPtr);
 
-    // Erase and verify
     thread_->EraseGlobalRefMapping(slotAddr);
     ASSERT_EQ(thread_->FindGlobalRefMapping(slotAddr), nullptr);
 }
 
-// Verify multiple mappings work correctly
 HWTEST_F_L0(GlobalRefTrackTest, TestMultipleMappings)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
     ObjectFactory *factory = ecmaVm_->GetFactory();
     JSHandle<JSTaggedValue> obj1(factory->CreateNapiObject());
@@ -156,9 +157,37 @@ HWTEST_F_L0(GlobalRefTrackTest, TestMultipleMappings)
     ASSERT_EQ(thread_->FindGlobalRefMapping(g1.GetSlotAddress()), &ref1);
     ASSERT_EQ(thread_->FindGlobalRefMapping(g2.GetSlotAddress()), &ref2);
 
-    // Erase one, other still present
     thread_->EraseGlobalRefMapping(g1.GetSlotAddress());
     ASSERT_EQ(thread_->FindGlobalRefMapping(g1.GetSlotAddress()), nullptr);
     ASSERT_EQ(thread_->FindGlobalRefMapping(g2.GetSlotAddress()), &ref2);
 }
+
+// Guard at JSNApi::StoreGlobalRefMapping must block stores while tracking is off,
+// and let them through once tracking is on. Covers the API-level contract that
+// the snapshot path relies on.
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+HWTEST_F_L0(GlobalRefTrackTest, TestGuardBlocksStoreWhenDisabled)
+{
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
+
+    // Disabled: store via JSNApi is a no-op (guard returns early)
+    uintptr_t slotA = 0x99990000;
+    int refA = 42;
+    JSNApi::StoreGlobalRefMapping(ecmaVm_, slotA, &refA);
+    ASSERT_EQ(thread_->FindGlobalRefMapping(slotA), nullptr);
+
+    // Enable: same store now goes through
+    JSNApi::SetTrackGlobalRef(true);
+    JSNApi::StoreGlobalRefMapping(ecmaVm_, slotA, &refA);
+    ASSERT_EQ(thread_->FindGlobalRefMapping(slotA), &refA);
+
+    // Disable: subsequent stores blocked again, existing entry untouched
+    JSNApi::SetTrackGlobalRef(false);
+    uintptr_t slotB = 0x88880000;
+    int refB = 99;
+    JSNApi::StoreGlobalRefMapping(ecmaVm_, slotB, &refB);
+    ASSERT_EQ(thread_->FindGlobalRefMapping(slotB), nullptr);
+    ASSERT_EQ(thread_->FindGlobalRefMapping(slotA), &refA);
+}
+#endif
 }  // namespace panda::test

@@ -388,6 +388,16 @@ public:
         return isProcDumpInSharedOOMEnabled_.load(std::memory_order_acquire);
     }
 
+    void SetTrackGlobalRef(bool flag)
+    {
+        trackGlobalRefEnabled_.store(flag, std::memory_order_release);
+    }
+
+    bool IsTrackGlobalRefEnabled() const
+    {
+        return trackGlobalRefEnabled_.load(std::memory_order_acquire);
+    }
+
     void SetTaskpoolShrinkCallback(TaskPoolShrinkCallback callback)
     {
         taskpoolShrinkCallback_ = callback;
@@ -548,6 +558,9 @@ private:
     // - Release (store): all prior writes visible before flag becomes true
     // - Acquire (load): subsequent reads see all writes that happened before flag was set
     std::atomic<bool> isProcDumpInSharedOOMEnabled_ {false};
+
+    // Process-level switch: when true, track napi global-ref mappings for rawheap or snapshotheap dumps.
+    std::atomic<bool> trackGlobalRefEnabled_ {false};
 
     // sendable global reference
     Mutex sendableGlobalStorageLock_;

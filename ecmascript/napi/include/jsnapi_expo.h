@@ -2115,8 +2115,8 @@ public:
     static void DeleteStrongRef(const EcmaVM *vm, uintptr_t strongRef);
     static void NotifyOnANR();
 
-    static void SetTrackGlobalRef(EcmaVM *vm, bool enable);
-    static bool IsTrackGlobalRefEnabled(const EcmaVM *vm);
+    static void SetTrackGlobalRef(bool enable);
+    static bool IsTrackGlobalRefEnabled();
     static void StoreGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr, void *ref);
     static void EraseGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr);
     static void *FindGlobalRefMapping(const EcmaVM *vm, uintptr_t slotAddr);

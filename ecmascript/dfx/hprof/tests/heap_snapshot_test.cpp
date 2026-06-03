@@ -17,6 +17,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/stream.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -811,28 +812,25 @@ HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleNodeInHeapSnapshot)
 
 // Enable tracking → trigger GC first to stabilize slots → then create global handle + store mapping →
 // snapshot should contain GlobalHandleObject subtree
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingEnabled)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
-    // First snapshot to trigger GC and stabilize global handle slots
     DumpSnapShotOption dumpOption;
     HeapProfilerFriendTest tester(ecmaVm_);
+    // First snapshot triggers GC and stabilizes object addresses
     tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
 
-    // Now create a global handle AFTER GC — its slot address will be stable
     ObjectFactory *factory = ecmaVm_->GetFactory();
     JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
-
     Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
     uintptr_t slotAddr = globalObj.GetSlotAddress();
     ASSERT_NE(slotAddr, 0U);
 
-    // Store mapping for the real global handle slot
     int fakeRef = 0;
     thread_->StoreGlobalRefMapping(slotAddr, &fakeRef);
 
-    // Second snapshot — should find the mapping
     HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
     ASSERT_NE(snapshot, nullptr);
     ASSERT_GT(snapshot->GetNodeCount(), 0U);
@@ -868,13 +866,13 @@ HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingEnabled)
     ASSERT_TRUE(foundEdgeToRefAddr) << "Edge GlobalHandleObject → ReferenceAddress not found";
     ASSERT_TRUE(foundEdgeToJSObj) << "Edge ReferenceAddress → JSObject not found";
 
-    thread_->SetTrackGlobalRef(false);
+    JSNApi::SetTrackGlobalRef(false);
 }
 
 // Tracking enabled but no ref mapping stored → GlobalHandleObject exists but no NATIVE children
 HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesNoMatchRef)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
     ObjectFactory *factory = ecmaVm_->GetFactory();
     JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
@@ -901,13 +899,14 @@ HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesNoMatchRef)
     ASSERT_TRUE(foundGlobalHandleObject) << "GlobalHandleObject should exist when tracking is enabled";
     ASSERT_FALSE(foundNativeNode) << "ReferenceAddress node should not exist without ref mapping";
 
-    thread_->SetTrackGlobalRef(false);
+    JSNApi::SetTrackGlobalRef(false);
 }
+#endif
 
 // Tracking disabled → no GlobalHandleObject subtree
 HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingDisabled)
 {
-    ASSERT_FALSE(thread_->IsTrackGlobalRefEnabled());
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
 
     DumpSnapShotOption dumpOption;
     HeapProfilerFriendTest tester(ecmaVm_);
@@ -922,9 +921,10 @@ HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingDisabled)
 }
 
 // ReferenceAddress node in FillGlobalEdges should have type OBJECT (was NATIVE before the change)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesRefAddrNodeObjectType)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
     DumpSnapShotOption dumpOption;
     HeapProfilerFriendTest tester(ecmaVm_);
@@ -960,18 +960,18 @@ HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesRefAddrNodeObjectType)
             break;
         }
     }
-    // ASSERT_TRUE(foundRefAddrNode) << "ReferenceAddress node not found";
 
-    thread_->SetTrackGlobalRef(false);
+    JSNApi::SetTrackGlobalRef(false);
 }
 
 // ReferenceAddress node in FillGlobalEdges should have non-zero ID from entryIdMap
 HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesRefAddrNodeNonZeroId)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
     DumpSnapShotOption dumpOption;
     HeapProfilerFriendTest tester(ecmaVm_);
+    // First snapshot triggers GC
     tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
 
     ObjectFactory *factory = ecmaVm_->GetFactory();
@@ -1004,8 +1004,9 @@ HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesRefAddrNodeNonZeroId)
     }
     ASSERT_TRUE(foundRefAddrNode) << "ReferenceAddress node not found";
 
-    thread_->SetTrackGlobalRef(false);
+    JSNApi::SetTrackGlobalRef(false);
 }
+#endif
 
 // All specific synthetic root nodes should exist at expected positions
 HWTEST_F_L0(HeapSnapShotTest, TestSpecificSyntheticRootsNonZeroIds)
