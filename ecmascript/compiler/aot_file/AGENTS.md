@@ -86,7 +86,7 @@ Full OHOS tree:
 ./build.sh --product-name <product-name> --build-target ecmascript/compiler/aot_file/tests:host_unittest
 ```
 
-- C++ tests: `tests/aot_file_test.cpp`, `an_file_info_test.cpp`, `binary_buffer_parser_test.cpp`
+- C++ tests: `tests/aot_file_test.cpp`, `an_file_info_test.cpp`, `binary_buffer_parser_test.cpp`, `elf_reader_test.cpp`
 - JS fixtures: `tests/aot_file_test_case/*.js` (compiled to ABC for test input)
 
 Add new tests via `host_unittest_action` in `tests/BUILD.gn`. Place JS fixtures in `tests/aot_file_test_case/` with `es2abc_gen_abc` targets.
