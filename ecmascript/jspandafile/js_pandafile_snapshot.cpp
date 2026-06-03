@@ -207,6 +207,7 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
+    memMapScope.Escape();
     FileUnMap(fileMapMem);
     if (guard.Done()) {
         ModulesSnapshotHelper::SetReadOnly(filename);
