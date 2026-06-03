@@ -69,6 +69,20 @@ void ArkSteedAssembler::CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId)
     Move(scratch, static_cast<uint64_t>(address));
     Call(scratch);
 }
+void ArkSteedAssembler::CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId)
+{
+    ScratchRegisterScope scope;
+    ASSERT(entryThread_ != nullptr);
+    Address address = entryThread_->GetRTInterface(static_cast<size_t>(stubId));
+    auto scratch = scope.AcquireScratch();
+#if defined(PANDA_TARGET_AMD64)
+    Move(x64::rax, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+#elif defined(PANDA_TARGET_ARM64)
+    Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+#endif
+    Move(scratch, static_cast<uint64_t>(address));
+    Call(scratch);
+}
 inline void ArkSteedAssembler::CallCommonStub(uint32_t stubId)
 {
     ScratchRegisterScope scope;

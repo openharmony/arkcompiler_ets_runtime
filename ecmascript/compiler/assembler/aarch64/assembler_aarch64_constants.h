@@ -173,6 +173,7 @@ enum LoadStoreOpCode {
     STR_Post     = 0xb8000400,
     STR_Pre      = 0xb8000c00,
     STR_Offset   = 0xb9000000,
+    STR_Register = 0xb8200800,
     LDR_Register = 0xb8600800,
     LDRB_Register = 0x38600800,
     LDRH_Register = 0x78600800,

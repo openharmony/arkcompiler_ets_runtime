@@ -18,8 +18,12 @@
 #include "ecmascript/arksteed/arch/arm64/arksteed_assembler_arm64-inl.h"
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript::arksteed {
 #if defined(PANDA_TARGET_ARM64)
@@ -91,13 +95,13 @@ void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate)
 void ArkSteedAssembler::LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset)
 {
     aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
-    assembler_.Ldr(dst, operand);
+    LoadRegisterWithOperand(assembler_, dst, operand);
 }
 
 void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
 {
     aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
-    assembler_.Str(src, operand);
+    StoreRegisterWithOperand(assembler_, src, operand);
 }
 
 void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
@@ -166,6 +170,34 @@ void ArkSteedAssembler::Or(ArkSteedRegister dst, ArkSteedRegister src)
     assembler_.Orr(arm64Dst, arm64Dst, aarch64::Operand(src));
 }
 
+void ArkSteedAssembler::And(ArkSteedRegister dst, int64_t immediate)
+{
+    ArkSteedRegister arm64Dst = dst;
+    auto imm = aarch64::LogicalImmediate::Create(static_cast<uint64_t>(immediate),
+                                                 arm64Dst.IsW() ? aarch64::W_REG_SIZE : aarch64::X_REG_SIZE);
+    if (imm.IsValid()) {
+        assembler_.And(arm64Dst, arm64Dst, imm);
+        return;
+    }
+
+    ScratchRegisterScope scope;
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, immediate);
+    assembler_.And(arm64Dst, arm64Dst, aarch64::Operand(scratch));
+}
+
+void ArkSteedAssembler::And(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    ArkSteedRegister arm64Dst = dst;
+    assembler_.And(arm64Dst, arm64Dst, aarch64::Operand(src));
+}
+
+void ArkSteedAssembler::Lsr(ArkSteedRegister dst, uint32_t shift)
+{
+    ArkSteedRegister arm64Dst = dst;
+    assembler_.Lsr(arm64Dst, arm64Dst, shift);
+}
+
 // =============================================================================
 // Comparison Operations
 // =============================================================================
@@ -200,6 +232,53 @@ void ArkSteedAssembler::Jump(Label *target)
 void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 {
     assembler_.B(ToPhysicalCondition(condition), target);
+}
+
+void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target)
+{
+    ScratchRegisterScope scope;
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, value);
+    And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    Compare(scratch, 0);
+    JumpIf(Condition::COND_NOT_EQUAL, target);
+}
+
+void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *target)
+{
+    ScratchRegisterScope scope;
+    ArkSteedRegister hclass = scope.AcquireScratch();
+    ArkSteedRegister objectType = scope.AcquireScratch();
+    LoadField(hclass, value, TaggedObject::HCLASS_OFFSET);
+    And(hclass, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    LoadField(objectType, hclass, JSHClass::BIT_FIELD_OFFSET);
+    And(objectType, (1U << JSHClass::TYPE_BITFIELD_NUM) - 1);
+    Compare(objectType, static_cast<int32_t>(JSType::JS_FUNCTION_FIRST));
+    JumpIf(Condition::COND_LESS_THAN, target);
+    Compare(objectType, static_cast<int32_t>(JSType::JS_FUNCTION_LAST));
+    JumpIf(Condition::COND_GREATER_THAN, target);
+}
+
+void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target)
+{
+    ScratchRegisterScope scope;
+    ArkSteedRegister hclass = scope.AcquireScratch();
+    ArkSteedRegister bitfield = scope.AcquireScratch();
+    Label notClassConstructor;
+    LoadField(hclass, jsFunc, TaggedObject::HCLASS_OFFSET);
+    And(hclass, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    LoadField(bitfield, hclass, JSHClass::BIT_FIELD_OFFSET);
+    assembler_.Tbz(bitfield, JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &notClassConstructor);
+    assembler_.Tbnz(bitfield, JSHClass::ConstructorBit::START_BIT, target);
+    Bind(&notClassConstructor);
+}
+
+void ArkSteedAssembler::JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target)
+{
+    ScratchRegisterScope scope;
+    ArkSteedRegister bitfield = scope.AcquireScratch();
+    LoadField(bitfield, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
+    assembler_.Tbz(bitfield, JSFunctionBase::IsCompiledCodeBit::START_BIT, target);
 }
 
 void ArkSteedAssembler::BranchIfNoPendingException(Label* target)
@@ -294,6 +373,46 @@ void ArkSteedAssembler::FreeCallArgSlots(int32_t slotCount)
     if (slotCount > 0) {
         assembler_.Add(aarch64::sp, aarch64::sp, aarch64::Operand(aarch64::Immediate(slotCount * FRAME_SLOT_SIZE)));
     }
+}
+
+void ArkSteedAssembler::ReserveCallArgSlots(ArkSteedRegister slotCount)
+{
+    static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
+    assembler_.Sub(aarch64::sp, aarch64::sp, aarch64::Operand(slotCount, aarch64::UXTW, FRAME_SLOT_SIZE_LOG2));
+}
+
+void ArkSteedAssembler::FreeCallArgSlots(ArkSteedRegister slotCount)
+{
+    static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
+    assembler_.Add(aarch64::sp, aarch64::sp, aarch64::Operand(slotCount, aarch64::UXTW, FRAME_SLOT_SIZE_LOG2));
+}
+
+void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc)
+{
+    Label fillUndefined;
+    Label fillDone;
+    Compare(fillSlotCount, 0);
+    JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &fillDone);
+
+    ScratchRegisterScope scope;
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    constexpr int32_t SLOT_INDEX_SHIFT = 3;
+    const int32_t firstUndefinedArgBaseSlot = static_cast<int32_t>(NUM_MANDATORY_JSFUNC_ARGS + userArgc);
+    Move(scratch, static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED));
+    Add(fillSlotCount, firstUndefinedArgBaseSlot);
+    Bind(&fillUndefined);
+    assembler_.Str(scratch, MemoryOperand(aarch64::sp, fillSlotCount, aarch64::UXTW, SLOT_INDEX_SHIFT));
+    Sub(fillSlotCount, 1);
+    Compare(fillSlotCount, firstUndefinedArgBaseSlot);
+    JumpIf(Condition::COND_GREATER_THAN, &fillUndefined);
+    Bind(&fillDone);
+}
+
+void ArkSteedAssembler::PrepareSteedCalleeContext(ArkSteedRegister target, ArkSteedRegister codeEntry)
+{
+    Move(aarch64::x20, target);
+    LoadField(aarch64::x19, aarch64::x20, JSFunction::LEXICAL_ENV_OFFSET);
+    LoadField(codeEntry, aarch64::x20, JSFunction::CODE_ENTRY_OFFSET);
 }
 
 // =============================================================================

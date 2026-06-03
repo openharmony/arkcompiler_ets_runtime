@@ -327,8 +327,17 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
         EmitU32(instructionCode);
         return;
     }
-    LOG_ECMA(FATAL) << "this branch is unreachable";
-    UNREACHABLE();
+    ASSERT(operand.GetExtendOption() != Extend::NO_EXTEND);
+    uint32_t shift = GetShiftOfLdr(operand, Scale::Q, regX);
+    Register rm = operand.GetRegisterOffset();
+    Register rn = operand.GetRegBase();
+    uint32_t extendField =
+        (operand.GetExtendOption() << LDR_STR_Extend_LOWBITS) & LDR_STR_Extend_MASK;
+    uint32_t shiftField = (shift << LDR_STR_S_LOWBITS) & LDR_STR_S_MASK;
+    // 30: 30bit indicate the size of STR Reg
+    uint32_t instructionCode = (regX << 30) | LoadStoreOpCode::STR_Register | Rm(rm.GetId()) |
+                               extendField | shiftField | Rn(rn.GetId()) | Rt(rt.GetId());
+    EmitU32(instructionCode);
 }
 
 void AssemblerAarch64::Ldur(const Register &rt, const MemoryOperand &operand)

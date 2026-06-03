@@ -95,6 +95,10 @@ public:
     inline MemoryOperand GetCallArgSlot(int32_t slotIndex);
     void ReserveCallArgSlots(int32_t slotCount);
     void FreeCallArgSlots(int32_t slotCount);
+    void ReserveCallArgSlots(ArkSteedRegister slotCount);
+    void FreeCallArgSlots(ArkSteedRegister slotCount);
+    void PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc);
+    void PrepareSteedCalleeContext(ArkSteedRegister target, ArkSteedRegister codeEntry);
 
     inline int32_t GetFramePointerOffsetForStackSlot(int32_t slotIndex, MachineRepresentation rep) const
     {
@@ -146,6 +150,9 @@ public:
 
     void Or(ArkSteedRegister dst, int64_t immediate);
     void Or(ArkSteedRegister dst, ArkSteedRegister src);
+    void And(ArkSteedRegister dst, int64_t immediate);
+    void And(ArkSteedRegister dst, ArkSteedRegister src);
+    void Lsr(ArkSteedRegister dst, uint32_t shift);
 
     // =========================================================================
     // Comparison Operations
@@ -161,6 +168,10 @@ public:
 
     void Jump(Label *target);
     void JumpIf(Condition condition, Label *target);
+    void JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target);
+    void JumpIfNotJSFunction(ArkSteedRegister value, Label *target);
+    void JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target);
+    void JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target);
     void Bind(Label *label);
     inline void Branch(Condition condition, Label *ifTrue, bool fallthroughWhenTrue, Label *ifFalse,
                        bool fallthroughWhenFalse);
@@ -172,6 +183,7 @@ public:
     void Call(ArkSteedRegister target);
     void Call(Label *target);
     inline void CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId);
+    inline void CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId);
     inline void CallCommonStub(uint32_t stubId);
     void ReturnWithPendingException();
     void ReturnIfPendingException();

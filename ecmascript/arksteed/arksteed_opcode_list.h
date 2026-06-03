@@ -44,6 +44,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     CONSTANT_VALUE_VERTEX_LIST(V)   \
     V(InitialValue)                 \
     V(ActualArgc)                   \
+    V(Call)                         \
     V(CallRuntime)                  \
     V(CallCommonStub)               \
     V(Deopt)                        \

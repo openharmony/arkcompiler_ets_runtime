@@ -67,8 +67,7 @@ public:
     //      parameter required for common stubs)
     //    - DeoptVertex: Validates GetInputCount() >= 3 (frame state requires
     //      function, context, and accumulator at minimum)
-    //    - ReturnVertex: Validates GetInputCount() is 0 or 1 (RETURNUNDEFINED
-    //      vs RETURN with value)
+    //    - ReturnVertex: Uses the fixed-input verifier for the return value
     //    - ThrowVertex: Validates GetInputCount() matches hasInput_ flag
     //      (0 for rethrow, 1 for throw with exception)
     //    - PhiVertex: Validates GetInputCount() > 0 and all inputs have

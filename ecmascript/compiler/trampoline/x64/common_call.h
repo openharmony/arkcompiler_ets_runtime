@@ -283,6 +283,19 @@ public:
     static void ArkSteedCallEntry(ExtendedAssembler *assembler);
     static void SteedCallAndPushArgv(ExtendedAssembler *assembler);
     static void SteedCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
+
+private:
+    static void LoadSteedCallTargetInfo(ExtendedAssembler *assembler, Register jsfunc, Register method,
+                                        Register codeAddr, Register expectedNumArgs);
+    static void CopyUserArgsFromCCallArgs(ExtendedAssembler *assembler, Register actualArgc, Register currentSp,
+                                          Label *invokeSteedCode);
+    static void CopyUserArgsFromArgV(ExtendedAssembler *assembler, Register glue, Register actualArgc,
+                                     Register argV, Register currentSp, Label *invokeSteedCode);
+
+    template <typename CopyUserArgs>
+    static void EmitSteedCall(ExtendedAssembler *assembler, Register glue, Register jsfunc, Register codeAddr,
+                              Register newTarget, Register thisObj, Register actualNumArgs,
+                              Register expectedNumArgs, CopyUserArgs copyUserArgs);
 };
 
 class JsFunctionArgsConfigFrameScope {

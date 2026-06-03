@@ -525,6 +525,41 @@ private:
     kungfu::RuntimeStubCSigns::ID runtimeId_;
 };
 
+class CallVertex : public VertexMixin<ValueVertex, CallVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
+
+    static constexpr uint32_t TARGET_INDEX = 0;
+    static constexpr uint32_t NEW_TARGET_INDEX = 1;
+    static constexpr uint32_t THIS_INDEX = 2;
+    static constexpr uint32_t FIRST_ARG_INDEX = 3;
+
+    CallVertex(uint64_t bitfield, uint32_t actualArgc)
+        : VertexMixin(bitfield), actualArgc_(actualArgc)
+    {}
+
+    uint32_t GetActualArgc() const
+    {
+        return actualArgc_;
+    }
+
+    size_t GetArgCount() const
+    {
+        return GetInputCount();
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == FIRST_ARG_INDEX + actualArgc_);
+    }
+
+private:
+    uint32_t actualArgc_;
+};
+
 /**
  * CallCommonStub vertex - for common stub calls
  */

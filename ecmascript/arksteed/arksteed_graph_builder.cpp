@@ -33,6 +33,11 @@ namespace panda::ecmascript::arksteed {
 namespace kungfu = panda::ecmascript::kungfu;
 
 namespace {
+constexpr uint32_t CALL_ARG0 = 0;
+constexpr uint32_t CALL_ARG1 = 1;
+constexpr uint32_t CALL_ARG2 = CALL_ARG1 + 1;
+constexpr uint32_t CALL_ARG3 = CALL_ARG2 + 1;
+
 VRegIDType CheckedSubGraphVariableCount(int variableCount)
 {
     ASSERT(variableCount >= 0);
@@ -265,7 +270,7 @@ ValueVertex *ArkSteedGraphBuilder::NewCallStubWithIC(const CommonStubCSigns::ID 
                                                      const std::vector<ValueVertex *> &args)
 {
     std::vector<ValueVertex *> allArgs;
-    allArgs.reserve(args.size() + 3);  // 3: glue + jsFunc + slotId
+    allArgs.reserve(args.size() + CallVertex::FIRST_ARG_INDEX);
     allArgs.push_back(GetGlue());
     allArgs.insert(allArgs.end(), args.begin(), args.end());
     allArgs.push_back(currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX));
@@ -2072,51 +2077,53 @@ void ArkSteedGraphBuilder::LowerLoadObjByName()
 
 void ArkSteedGraphBuilder::LowerCallArg0()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func}, CommonStubCSigns::CallArg0Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(NewVertex<CallVertex>({func, undefined, undefined}, CALL_ARG0));
 }
 
 void ArkSteedGraphBuilder::LowerCallArg1()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *a0Value = LoadRegister(0);
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, a0Value}, CommonStubCSigns::CallArg1Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(NewVertex<CallVertex>({func, undefined, undefined, a0Value}, CALL_ARG1));
 }
 
 void ArkSteedGraphBuilder::LowerCallArgs2()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *a0Value = LoadRegister(0);
     ValueVertex *a1Value = LoadRegister(1);
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, a0Value, a1Value}, CommonStubCSigns::CallArg2Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(
+        NewVertex<CallVertex>({func, undefined, undefined, a0Value, a1Value}, CALL_ARG2));
 }
 
 void ArkSteedGraphBuilder::LowerCallArgs3()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *a0Value = LoadRegister(0);
     ValueVertex *a1Value = LoadRegister(1);
     ValueVertex *a2Value = LoadRegister(2);  // 2: third argument register index
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, a0Value, a1Value, a2Value}, CommonStubCSigns::CallArg3Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(
+        NewVertex<CallVertex>({func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3));
 }
 
 void ArkSteedGraphBuilder::LowerCallRange()
 {
     uint32_t inputSize = GetInputSize();
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *taggedArray = GetTaggedArrayFromValueIn(inputSize);
-    ValueVertex *taggedLength = GetTaggedLength(inputSize);
-
-    ValueVertex *result = NewVertex<CallRuntimeVertex>({func, taggedArray, taggedLength}, RTSTUB_ID(CallRange));
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    std::vector<ValueVertex *> args;
+    args.push_back(func);
+    args.push_back(undefined);
+    args.push_back(undefined);
+    for (uint32_t idx = 0; idx < inputSize; idx++) {
+        args.push_back(LoadRegister(idx));
+    }
+    currentFrameState_->SetAcc(NewVertex<CallVertex>(args, inputSize));
 }
 
 void ArkSteedGraphBuilder::LowerReturn(kungfu::EcmaOpcode opcode)
@@ -2268,45 +2275,42 @@ void ArkSteedGraphBuilder::LowerStoreArraySpread()
 
 void ArkSteedGraphBuilder::LowerCallThis0()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *thisObj = LoadRegister(0);
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, thisObj}, CommonStubCSigns::CallThis0Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(NewVertex<CallVertex>({func, undefined, thisObj}, CALL_ARG0));
 }
 
 void ArkSteedGraphBuilder::LowerCallThis1()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *thisObj = LoadRegister(0);
     ValueVertex *a0Value = LoadRegister(1);
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, thisObj, a0Value}, CommonStubCSigns::CallThis1Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(NewVertex<CallVertex>({func, undefined, thisObj, a0Value}, CALL_ARG1));
 }
 
 void ArkSteedGraphBuilder::LowerCallThis2()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *thisObj = LoadRegister(0);
     ValueVertex *a0Value = LoadRegister(1);
     ValueVertex *a1Value = LoadRegister(2);  // 2: second argument register index
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, thisObj, a0Value, a1Value}, CommonStubCSigns::CallThis2Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(
+        NewVertex<CallVertex>({func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2));
 }
 
 void ArkSteedGraphBuilder::LowerCallThis3()
 {
-    ValueVertex *glue = GetGlue();
     ValueVertex *thisObj = LoadRegister(0);
     ValueVertex *a0Value = LoadRegister(1);
     ValueVertex *a1Value = LoadRegister(2);  // 2: second argument register index
     ValueVertex *a2Value = LoadRegister(3);  // 3: third argument register index
     ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result =
-        NewCommonStubCall({glue, func, thisObj, a0Value, a1Value, a2Value}, CommonStubCSigns::CallThis3Stub);
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    currentFrameState_->SetAcc(
+        NewVertex<CallVertex>({func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3));
 }
 
 void ArkSteedGraphBuilder::LowerCallThisRange()
@@ -2316,12 +2320,15 @@ void ArkSteedGraphBuilder::LowerCallThisRange()
     uint32_t argc = inputSize - 1;  // Skip the receiver.
     ValueVertex *func = currentFrameState_->GetAcc();
     ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *taggedArray = GetTaggedArrayFromValueIn(argc, 1);
-    ValueVertex *taggedLength = GetTaggedLength(argc);
-
-    ValueVertex *result =
-        NewVertex<CallRuntimeVertex>({thisObj, func, taggedArray, taggedLength}, RTSTUB_ID(CallThisRange));
-    currentFrameState_->SetAcc(result);
+    ValueVertex *undefined = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    std::vector<ValueVertex *> args;
+    args.push_back(func);
+    args.push_back(undefined);
+    args.push_back(thisObj);
+    for (uint32_t idx = 0; idx < argc; idx++) {
+        args.push_back(LoadRegister(idx + 1));
+    }
+    currentFrameState_->SetAcc(NewVertex<CallVertex>(args, argc));
 }
 
 void ArkSteedGraphBuilder::LowerCallSpread()

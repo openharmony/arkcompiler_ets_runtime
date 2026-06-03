@@ -231,6 +231,20 @@ void CallRuntimeVertex::Dump(std::ostream &output) const
     output << "  CallRuntime (id=" << static_cast<int>(runtimeId_) << ") with " << GetInputCount() << " args";
 }
 
+void CallVertex::SetValueLocationConstraints()
+{
+    DefineAsFixed(this, 0);
+    UseRegister(Arg(TARGET_INDEX));
+    for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
+        UseAny(Arg(i));
+    }
+}
+
+void CallVertex::Dump(std::ostream &output) const
+{
+    output << "  Call actualArgc=" << actualArgc_;
+}
+
 void CallCommonStubVertex::SetValueLocationConstraints()
 {
     // Define return value in x0/rax (C calling convention)

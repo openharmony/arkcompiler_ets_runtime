@@ -15,15 +15,171 @@
 
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
-#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/method.h"
 
 namespace panda::ecmascript::aarch64 {
 #define __ assembler->
+
+constexpr uint32_t CALL_ARG0 = 0;
+constexpr uint32_t CALL_ARG1 = CALL_ARG0 + 1;
+constexpr uint32_t CALL_ARG2 = CALL_ARG1 + 1;
+constexpr uint32_t DIRECT_USER_ARG_COUNT = 2;
+
+void ArkSteedCall::LoadSteedCallTargetInfo(ExtendedAssembler *assembler, Register jsfunc, Register method,
+                                           Register codeAddr, Register expectedNumArgs)
+{
+    __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
+    __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
+    __ Ldr(expectedNumArgs, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
+    __ Lsr(expectedNumArgs, expectedNumArgs, Method::NumArgsBits::START_BIT);
+    __ And(expectedNumArgs, expectedNumArgs,
+        LogicalImmediate::Create(
+            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, X_REG_SIZE));
+}
+
+void ArkSteedCall::CopyUserArgsFromCCallArgs(ExtendedAssembler *assembler, Register actualArgc, Register currentSp,
+                                             Label *invokeSteedCode)
+{
+    Register stackUserArgCount = x11;
+    Register stackUserArgEnd = x12;
+    Register argValue = x16;
+    Register firstArg = x6;
+    Register secondArg = x7;
+    Label copyStackArgLoop;
+    Label copyDirectArgs;
+    Label copyDirectArg0;
+
+    __ Cbz(actualArgc, invokeSteedCode);
+
+    // The first two user args are passed in registers; later args are on the entry stack.
+    __ Cmp(actualArgc, Immediate(DIRECT_USER_ARG_COUNT));
+    __ B(Condition::LS, &copyDirectArgs);
+
+    __ Sub(stackUserArgCount, actualArgc, Immediate(DIRECT_USER_ARG_COUNT));
+    __ Add(stackUserArgEnd, fp, Immediate(CommonCall::DOUBLE_SLOT_SIZE));
+    __ Add(stackUserArgEnd, stackUserArgEnd, Operand(stackUserArgCount, UXTW, CommonCall::FRAME_SLOT_SIZE_LOG2));
+    __ Bind(&copyStackArgLoop);
+    __ Ldr(argValue, MemoryOperand(stackUserArgEnd, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(argValue, MemoryOperand(currentSp, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Sub(stackUserArgCount.W(), stackUserArgCount.W(), Immediate(1));
+    __ Cbnz(stackUserArgCount.W(), &copyStackArgLoop);
+
+    __ Bind(&copyDirectArgs);
+    __ Cmp(actualArgc, Immediate(DIRECT_USER_ARG_COUNT));
+    __ B(Condition::LO, &copyDirectArg0);
+    __ Str(secondArg, MemoryOperand(currentSp, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+
+    __ Bind(&copyDirectArg0);
+    __ Str(firstArg, MemoryOperand(currentSp, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+}
+
+void ArkSteedCall::CopyUserArgsFromArgV(ExtendedAssembler *assembler, Register glue, Register actualArgc,
+                                        Register argV, Register currentSp, Label *invokeSteedCode)
+{
+    __ Cbz(actualArgc, invokeSteedCode);
+    {
+        TempRegister1Scope scope1(assembler);
+        TempRegister2Scope scope2(assembler);
+        Register argc = __ TempRegister1();
+        Register argValue = __ TempRegister2();
+        __ Mov(argc, actualArgc);
+        CommonCall::PushArgsWithArgv(assembler, glue, argc, argV, argValue, currentSp, invokeSteedCode, nullptr);
+    }
+}
+
+void ArkSteedCall::PrepareSteedCallFrame(ExtendedAssembler *assembler, Register glue, Register actualNumArgs,
+                                         Register expectedNumArgs, Label *copyArguments)
+{
+    Register currentSp = x5;
+    Register reservedSlots = x22;
+    Register slotCount = x16;
+    Register actualArgc = x15;
+
+    OptimizedCall::PushOptimizedArgsConfigFrame(assembler);
+    __ CalleeSave();
+    __ Mov(actualArgc, actualNumArgs);
+    __ Sub(actualArgc, actualArgc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+    __ Cmp(expectedNumArgs, actualArgc);
+    __ CMov(slotCount, expectedNumArgs, actualArgc, Condition::HI);
+    // Build the SteedFunctionFrame caller layout expected by GraphBuilder:
+    // [argc][call-target][new-target][this][user args...]
+    __ Add(slotCount, slotCount, Immediate(NUM_MANDATORY_JSFUNC_ARGS + 1));
+    __ Mov(reservedSlots, slotCount);
+    OptimizedCall::IncreaseStackForArguments(assembler, slotCount, currentSp);
+    {
+        TempRegister1Scope scope1(assembler);
+        TempRegister2Scope scope2(assembler);
+        Register tmp = __ TempRegister1();
+        Register undefinedValue = __ TempRegister2();
+        __ Subs(tmp, expectedNumArgs, actualArgc);
+        __ B(Condition::LS, copyArguments);
+        CommonCall::PushUndefinedWithArgc(assembler, glue, tmp, undefinedValue, currentSp, nullptr, nullptr);
+    }
+}
+
+static void FreeSteedCallStack(ExtendedAssembler *assembler)
+{
+    Register reservedSlots = x22;
+    Register slotCount = x16;
+    Register actualArgc = x15;
+
+    __ Ldr(actualArgc, MemoryOperand(sp, 0));
+    __ Sub(actualArgc, actualArgc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+    __ Ldr(slotCount, MemoryOperand(sp, CommonCall::FRAME_SLOT_SIZE));
+    __ Ldr(slotCount, MemoryOperand(slotCount, JSFunction::METHOD_OFFSET));
+    __ Ldr(reservedSlots, MemoryOperand(slotCount, Method::CALL_FIELD_OFFSET));
+    __ Lsr(reservedSlots, reservedSlots, Method::NumArgsBits::START_BIT);
+    __ And(reservedSlots, reservedSlots,
+        LogicalImmediate::Create(
+            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, X_REG_SIZE));
+    __ Cmp(reservedSlots, actualArgc);
+    __ CMov(reservedSlots, actualArgc, reservedSlots, Condition::LO);
+    __ Add(reservedSlots, reservedSlots, Immediate(NUM_MANDATORY_JSFUNC_ARGS + 1));
+    __ Add(reservedSlots, reservedSlots, Immediate(1));
+    __ And(reservedSlots, reservedSlots, LogicalImmediate::Create(~1ULL, X_REG_SIZE));
+    __ Add(sp, sp, Operand(reservedSlots, UXTW, CommonCall::FRAME_SLOT_SIZE_LOG2));
+    __ Mov(x10, sp);
+    __ Tst(x10, LogicalImmediate::Create(0xf, X_REG_SIZE));
+    Label aligned;
+    __ B(Condition::EQ, &aligned);
+    __ Add(sp, sp, Immediate(CommonCall::FRAME_SLOT_SIZE));
+    __ Bind(&aligned);
+}
+
+void ArkSteedCall::RestoreSteedCallFrame(ExtendedAssembler *assembler)
+{
+    __ CalleeRestore();
+    OptimizedCall::PopOptimizedArgsConfigFrame(assembler);
+    __ Ret();
+}
+
+template <typename CopyUserArgs>
+void ArkSteedCall::EmitSteedCall(ExtendedAssembler *assembler, Register glue, Register jsfunc, Register codeAddr,
+                                 Register newTarget, Register thisObj, Register actualNumArgs,
+                                 Register expectedNumArgs, CopyUserArgs copyUserArgs)
+{
+    Register currentSp = x5;
+    Register actualArgc = x15;
+    Label copyArguments;
+    Label invokeSteedCode;
+
+    PrepareSteedCallFrame(assembler, glue, actualNumArgs, expectedNumArgs, &copyArguments);
+
+    __ Bind(&copyArguments);
+    copyUserArgs(actualArgc, currentSp, &invokeSteedCode);
+
+    __ Bind(&invokeSteedCode);
+    OptimizedCall::PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget, currentSp);
+    __ Str(actualNumArgs, MemoryOperand(currentSp, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Mov(x20, jsfunc);
+    __ Ldr(x19, MemoryOperand(x20, JSFunction::LEXICAL_ENV_OFFSET));
+    __ Blr(codeAddr);
+
+    FreeSteedCallStack(assembler);
+    RestoreSteedCallFrame(assembler);
+}
 
 // Entry state for ArkSteedCallEntry (CCallConv):
 //   x0 = glue
@@ -44,9 +200,9 @@ void ArkSteedCall::ArkSteedCallEntry(ExtendedAssembler *assembler)
 
     __ Mov(x20, glueReg);
     __ Mov(tmpArgV, argvReg);
-    __ Ldr(x2, MemoryOperand(tmpArgV, 0));
-    __ Ldr(x3, MemoryOperand(tmpArgV, FRAME_SLOT_SIZE));
-    __ Ldr(x4, MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
+    __ Ldr(x2, MemoryOperand(tmpArgV, CALL_ARG0 * FRAME_SLOT_SIZE));
+    __ Ldr(x3, MemoryOperand(tmpArgV, CALL_ARG1 * FRAME_SLOT_SIZE));
+    __ Ldr(x4, MemoryOperand(tmpArgV, CALL_ARG2 * FRAME_SLOT_SIZE));
     __ Add(tmpArgV, tmpArgV, Immediate(TRIPLE_SLOT_SIZE));
     __ Mov(x5, tmpArgV);
 
@@ -57,97 +213,39 @@ void ArkSteedCall::ArkSteedCallEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-// Entry state for SteedCallAndPushArgv (generated from AOT_CALL_SIGNATURE):
+// Entry state for SteedCallAndPushArgv (CCallConv variadic stub):
 //   x0 = glue
 //   x1 = actualNumArgs(total)
-//   x2 = argv
+//   x2 = actualArgV / 0
 //   x3 = call-target
 //   x4 = new-target
 //   x5 = this
+//   x6 = arg0
+//   x7 = arg1
+//   [entry sp + 0] = arg2
+//   [entry sp + 8] = arg3
+//   ...
 void ArkSteedCall::SteedCallAndPushArgv(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(SteedCallAndPushArgv));
 
-    Register jsfunc = x7;
-    Register method = x6;
-    Register expectedNumArgs = x1;
-    Register actualNumArgs = x2;
-    Register codeAddr = x3;
-    Register argV = x4;
+    Register glue = x0;
+    Register actualNumArgs = x1;
+    Register jsfunc = x3;
+    Register method = x12;
+    Register expectedNumArgs = x11;
+    Register codeAddr = x17;
     Register newTarget = x13;
     Register thisObj = x14;
 
-    auto funcSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum();
-    __ Ldr(jsfunc, MemoryOperand(sp, funcSlotOffset * FRAME_SLOT_SIZE));
-    __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
-    __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
-    __ Ldr(expectedNumArgs, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
-    __ Lsr(expectedNumArgs, expectedNumArgs, Method::NumArgsBits::START_BIT);
-    __ And(expectedNumArgs, expectedNumArgs,
-        LogicalImmediate::Create(
-            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, X_REG_SIZE));
+    __ Mov(newTarget, x4);
+    __ Mov(thisObj, x5);
+    LoadSteedCallTargetInfo(assembler, jsfunc, method, codeAddr, expectedNumArgs);
 
-    __ Add(argV, sp, Immediate(funcSlotOffset * FRAME_SLOT_SIZE));
-    __ Ldr(actualNumArgs, MemoryOperand(sp, 0));
-    __ Ldr(newTarget, MemoryOperand(argV, FRAME_SLOT_SIZE));
-    __ Ldr(thisObj, MemoryOperand(argV, DOUBLE_SLOT_SIZE));
-    __ Add(argV, argV, Immediate(NUM_MANDATORY_JSFUNC_ARGS * FRAME_SLOT_SIZE));
-
-    Register glue = x0;
-    Register currentSp = x5;
-    Register reservedSlots = x22;
-    Register actualArgc = x15;
-    Label copyArguments;
-    Label invokeSteedCode;
-
-    OptimizedCall::PushOptimizedArgsConfigFrame(assembler);
-    __ CalleeSave();
-    __ Mov(actualArgc, actualNumArgs);
-    __ Sub(actualArgc, actualArgc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
-    __ Cmp(expectedNumArgs, actualArgc);
-    __ CMov(reservedSlots, expectedNumArgs, actualArgc, Condition::HI);
-    // Build the SteedFunctionFrame caller layout expected by GraphBuilder:
-    // [argc][call-target][new-target][this][user args...]
-    __ Add(reservedSlots, reservedSlots, Immediate(NUM_MANDATORY_JSFUNC_ARGS + 1));
-    OptimizedCall::IncreaseStackForArguments(assembler, reservedSlots, currentSp);
-    {
-        TempRegister1Scope scope1(assembler);
-        TempRegister2Scope scope2(assembler);
-        Register tmp = __ TempRegister1();
-        Register undefinedValue = __ TempRegister2();
-        __ Subs(tmp, expectedNumArgs, actualArgc);
-        __ B(Condition::LS, &copyArguments);
-        PushUndefinedWithArgc(assembler, glue, tmp, undefinedValue, currentSp, nullptr, nullptr);
-    }
-    __ Bind(&copyArguments);
-    __ Cbz(actualArgc, &invokeSteedCode);
-    {
-        TempRegister1Scope scope1(assembler);
-        TempRegister2Scope scope2(assembler);
-        Register argc = __ TempRegister1();
-        Register argValue = __ TempRegister2();
-        __ Mov(argc, actualArgc);
-        PushArgsWithArgv(assembler, glue, argc, argV, argValue, currentSp, &invokeSteedCode, nullptr);
-    }
-    __ Bind(&invokeSteedCode);
-    {
-        OptimizedCall::PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget, currentSp);
-        __ Str(actualNumArgs, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Mov(x20, jsfunc);
-        __ Ldr(x19, MemoryOperand(x20, JSFunction::LEXICAL_ENV_OFFSET));
-        __ Blr(codeAddr);
-    }
-
-    __ Add(sp, sp, Operand(reservedSlots, UXTW, FRAME_SLOT_SIZE_LOG2));
-    __ Mov(x10, sp);
-    __ Tst(x10, LogicalImmediate::Create(0xf, X_REG_SIZE));
-    Label aligned;
-    __ B(Condition::EQ, &aligned);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE));
-    __ Bind(&aligned);
-    __ CalleeRestore();
-    OptimizedCall::PopOptimizedArgsConfigFrame(assembler);
-    __ Ret();
+    EmitSteedCall(assembler, glue, jsfunc, codeAddr, newTarget, thisObj, actualNumArgs, expectedNumArgs,
+        [assembler](Register actualArgc, Register currentSp, Label *invokeSteedCode) {
+            CopyUserArgsFromCCallArgs(assembler, actualArgc, currentSp, invokeSteedCode);
+        });
 }
 
 // Entry state for SteedCallWithArgVAndPushArgv (CCallConv variadic stub):
@@ -160,7 +258,27 @@ void ArkSteedCall::SteedCallAndPushArgv(ExtendedAssembler *assembler)
 void ArkSteedCall::SteedCallWithArgVAndPushArgv(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(SteedCallWithArgVAndPushArgv));
-    OptimizedCall::GenJSCallWithArgV(assembler, RTSTUB_ID(SteedCallAndPushArgv));
+
+    Register glue = x0;
+    Register jsfunc = x2;
+    Register method = x6;
+    Register expectedNumArgs = x4;
+    Register codeAddr = x3;
+    Register argV = x12;
+    Register newTarget = x13;
+    Register thisObj = x14;
+    Register actualNumArgs = x1;
+
+    __ Mov(newTarget, x3);
+    __ Mov(thisObj, x4);
+    __ Mov(argV, x5);
+    __ Add(actualNumArgs, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+    LoadSteedCallTargetInfo(assembler, jsfunc, method, codeAddr, expectedNumArgs);
+
+    EmitSteedCall(assembler, glue, jsfunc, codeAddr, newTarget, thisObj, actualNumArgs, expectedNumArgs,
+        [assembler, glue, argV](Register actualArgc, Register currentSp, Label *invokeSteedCode) {
+            CopyUserArgsFromArgV(assembler, glue, actualArgc, argV, currentSp, invokeSteedCode);
+        });
 }
 
 #undef __

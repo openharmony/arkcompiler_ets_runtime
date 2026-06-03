@@ -1621,7 +1621,21 @@ DEF_CALL_SIGNATURE(ArkSteedCallEntry)
 
 DEF_CALL_SIGNATURE(SteedCallAndPushArgv)
 {
-    AOT_CALL_SIGNATURE(SteedCallAndPushArgv)
+    /* 6 : 6 input parameters */
+    CallSignature steedCallAndPushArgv("SteedCallAndPushArgv", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = steedCallAndPushArgv;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(), // glue
+        VariableType::INT64(),          // actual argC
+        VariableType::NATIVE_POINTER(), // actual argV
+        VariableType::JS_ANY(),         // call target
+        VariableType::JS_ANY(),         // new target
+        VariableType::JS_ANY(),         // thisobj
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 

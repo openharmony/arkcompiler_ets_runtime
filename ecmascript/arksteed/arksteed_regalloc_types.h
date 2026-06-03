@@ -634,19 +634,16 @@ struct LiveRange {
 constexpr ArkSteedRegList GetAllocatableGeneralRegisters()
 {
 #if defined(PANDA_TARGET_ARM64)
-    // Allocatable registers: x0-x15, x19-x21, x23-x28 (25 registers)
-    // Excluded: x16-x17 (scratch), x18 (platform), x22 (currently kept live across the
-    //           compiled code call by SteedCallAndPushArgv trampoline epilogue),
-    //           x29-x31 (fp/lr/sp).
+    // Allocatable registers: x0-x15, x19-x28 (26 registers)
+    // Excluded: x16-x17 (scratch), x18 (platform), x29-x31 (fp/lr/sp).
     // Keep this exclusion list in sync with kScratchRegister/kScratchRegister2 in
     // arch/arm64/arksteed_assembler_arm64-inl.h.
-    // to do: Once ArkSteed generated functions save/restore their full callee-saved set, x22 can be reconsidered as
-    //        allocatable.
     return ArkSteedRegList{aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3,  aarch64::x4,
                            aarch64::x5,  aarch64::x6,  aarch64::x7,  aarch64::x8,  aarch64::x9,
                            aarch64::x10, aarch64::x11, aarch64::x12, aarch64::x13, aarch64::x14,
-                           aarch64::x15, aarch64::x19, aarch64::x20, aarch64::x21, aarch64::x23,
-                           aarch64::x24, aarch64::x25, aarch64::x26, aarch64::x27, aarch64::x28};
+                           aarch64::x15, aarch64::x19, aarch64::x20, aarch64::x21, aarch64::x22,
+                           aarch64::x23, aarch64::x24, aarch64::x25, aarch64::x26, aarch64::x27,
+                           aarch64::x28};
 #elif defined(PANDA_TARGET_AMD64)
     // Allocatable registers: rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r11, r12 (10 registers)
     // Excluded: rsp, rbp, r10 (scratch), r13 (argc), r14 (currently kept live across the compiled code call by
