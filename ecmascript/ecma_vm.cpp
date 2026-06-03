@@ -614,7 +614,9 @@ EcmaVM::~EcmaVM()
     if (JsStackInfo::loader == aotFileManager_) {
         JsStackInfo::loader = nullptr;
     }
-    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(false);
+    if (thread_->IsMainThread()) {
+        Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(false);
+    }
     if (heap_ != nullptr) {
         heap_->Destroy();
         delete heap_;
