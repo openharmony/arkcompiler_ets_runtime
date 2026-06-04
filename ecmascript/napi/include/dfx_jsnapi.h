@@ -64,6 +64,16 @@ using AppFreezeFilterCallback =
 using DumpSnapShotOption = ecmascript::DumpSnapShotOption;
 using DumpFormat = ecmascript::DumpFormat;
 using CropLevel = ecmascript::RawHeapDumpCropLevel;
+struct GCStatistic {
+    size_t count {0};
+    float maxPause {0.0f};
+    float minPause {0.0f};
+    float averagePause {0.0f};
+    uint64_t lastStartTime {0};
+    uint64_t lastEndTime {0};
+    const char *lastType {"UnknownType"};
+};
+
 struct DumpForSnapShotStruct {
     const EcmaVM *vm;
     DumpSnapShotOption dumpOption;
@@ -112,6 +122,7 @@ public:
     static size_t GetAccumulatedAllocateSize(const EcmaVM *vm);
     static size_t GetAccumulatedFreeSize(const EcmaVM *vm);
     static size_t GetFullGCLongTimeCount(const EcmaVM *vm);
+    static GCStatistic GetGCStatistic(const EcmaVM *vm);
     static void GetHeapPrepare(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);

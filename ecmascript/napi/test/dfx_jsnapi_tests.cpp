@@ -1156,4 +1156,47 @@ HWTEST_F_L0(DFXJSNApiTests, GetHybridStackTrace3) {
     DFXJSNApi::GetHybridStackTrace(vm_, stackTraceStr);
     EXPECT_TRUE(stackTraceStr.empty());
 }
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread001)
+{
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    EXPECT_EQ(expectStats.count, 0U);
+
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+    EXPECT_EQ(gcStats.count, expectStats.count);
+    EXPECT_FLOAT_EQ(gcStats.maxPause, expectStats.maxPause);
+    EXPECT_FLOAT_EQ(gcStats.minPause, expectStats.minPause);
+    EXPECT_FLOAT_EQ(gcStats.averagePause, 0.0f);
+    EXPECT_EQ(gcStats.lastStartTime, expectStats.lastStartTime);
+    EXPECT_EQ(gcStats.lastEndTime, expectStats.lastEndTime);
+    EXPECT_STREQ(gcStats.lastType, expectStats.lastType);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread002)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    if (g_isEnableCMCGC) {
+        return;
+    }
+
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    ecmascript::SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    EXPECT_GT(expectStats.count, 0U);
+
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+    EXPECT_EQ(gcStats.count, expectStats.count);
+    EXPECT_FLOAT_EQ(gcStats.maxPause, expectStats.maxPause);
+    EXPECT_FLOAT_EQ(gcStats.minPause, expectStats.minPause);
+    EXPECT_FLOAT_EQ(gcStats.averagePause, expectStats.totalPause / expectStats.count);
+    EXPECT_EQ(gcStats.lastStartTime, expectStats.lastStartTime);
+    EXPECT_EQ(gcStats.lastEndTime, expectStats.lastEndTime);
+    EXPECT_STREQ(gcStats.lastType, expectStats.lastType);
+}
 } // namespace panda::test

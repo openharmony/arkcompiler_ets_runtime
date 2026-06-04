@@ -45,6 +45,16 @@ enum class GCType : int {
     START,
 };
 
+struct GCStatisticData {
+    size_t count {0};
+    float maxPause {0.0f};
+    float minPause {0.0f};
+    float totalPause {0.0f};
+    uint64_t lastStartTime {0};
+    uint64_t lastEndTime {0};
+    const char *lastType {"UnknownType"};
+};
+
 enum class RecordData : uint8_t {
 #define DEFINE_SCOPE(scope) scope,
     RECORD_DATA(DEFINE_SCOPE)
@@ -250,6 +260,13 @@ public:
         return fullGCLongTimeCount_;
     }
 
+    GCStatisticData GetGCStatistic();
+    static GCStatisticData MergeGCStatistic(const GCStatisticData &localStats,
+        const GCStatisticData &sharedStats);
+    static const char *GetGCStatisticType(GCType type);
+    void RecordGCStatisticStart();
+    void RecordGCStatisticEnd();
+
 protected:
     bool CheckIfNeedPrint(GCType type);
     void PrintVerboseGCStatistic();
@@ -353,6 +370,9 @@ protected:
     NO_MOVE_SEMANTIC(GCStats);
 private:
     LongGCStats *longGCStats_;
+    uint64_t lastGCStartTime_ {0};
+    uint64_t lastGCEndTime_ {0};
+    const char *lastGCType_ {"UnknownType"};
 };
 
 class SharedGCStats : public GCStats {
