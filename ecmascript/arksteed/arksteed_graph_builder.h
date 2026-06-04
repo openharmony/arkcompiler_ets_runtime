@@ -424,7 +424,7 @@ private:
         private:
             friend class ArkSteedSubGraphBuilder;
             friend class BranchBuilder;
-            ArkSteedSubGraphBuilder *subBuilder_;
+            [[maybe_unused]] ArkSteedSubGraphBuilder *subBuilder_;
             uint32_t predecessorCount_;
             MergePointFrameState *variableMergeState_ = nullptr;
             LivenessBitSet *mergeLiveSet_ = nullptr;
@@ -443,10 +443,10 @@ private:
 
         private:
             friend class ArkSteedSubGraphBuilder;
-            ArkSteedSubGraphBuilder *subBuilder_;
+            [[maybe_unused]] ArkSteedSubGraphBuilder *subBuilder_;
             MergePointFrameState *mergeState_;
             BBRef *loopHeaderRef_;
-            BB *loopHeaderBlock_;
+            [[maybe_unused]] BB *loopHeaderBlock_;
         };
 
         ArkSteedSubGraphBuilder(ArkSteedGraphBuilder *builder, int variableCount);

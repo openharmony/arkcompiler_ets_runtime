@@ -21,7 +21,9 @@
 #include "ecmascript/arksteed/arksteed_bytecode_analysis_new.h"
 #include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
 #include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
+#include "ecmascript/arksteed/arksteed_constant_folding.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/global_env.h"
@@ -1814,6 +1816,9 @@ void ArkSteedGraphBuilder::LowerAdd2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::ADD)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Add));
 }
@@ -1823,6 +1828,9 @@ void ArkSteedGraphBuilder::LowerSub2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::SUB)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Sub));
 }
@@ -1832,6 +1840,9 @@ void ArkSteedGraphBuilder::LowerMul2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::MUL)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Mul));
 }
@@ -1841,6 +1852,9 @@ void ArkSteedGraphBuilder::LowerDiv2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::DIV)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Div));
 }
@@ -1865,6 +1879,9 @@ void ArkSteedGraphBuilder::LowerNeg()
 {
     ValueVertex *glue = GetGlue();
     ValueVertex *x = currentFrameState_->GetAcc();
+    if (TryConstFoldUnary(this, x, UnaryFoldOp::NEG)) {
+        return;
+    }
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Neg));
 }
 
@@ -1872,6 +1889,9 @@ void ArkSteedGraphBuilder::LowerInc()
 {
     ValueVertex *glue = GetGlue();
     ValueVertex *x = currentFrameState_->GetAcc();
+    if (TryConstFoldUnary(this, x, UnaryFoldOp::INC)) {
+        return;
+    }
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Inc));
 }
 
@@ -1879,6 +1899,9 @@ void ArkSteedGraphBuilder::LowerDec()
 {
     ValueVertex *glue = GetGlue();
     ValueVertex *x = currentFrameState_->GetAcc();
+    if (TryConstFoldUnary(this, x, UnaryFoldOp::DEC)) {
+        return;
+    }
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Dec));
 }
 
@@ -1887,6 +1910,9 @@ void ArkSteedGraphBuilder::LowerShl2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::SHL)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Shl));
 }
@@ -1896,6 +1922,9 @@ void ArkSteedGraphBuilder::LowerShr2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::SHR)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Shr));
 }
@@ -1905,6 +1934,9 @@ void ArkSteedGraphBuilder::LowerAshr2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::ASHR)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Ashr));
 }
@@ -1914,6 +1946,9 @@ void ArkSteedGraphBuilder::LowerAnd2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::AND)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::And));
 }
@@ -1923,6 +1958,9 @@ void ArkSteedGraphBuilder::LowerOr2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::OR)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Or));
 }
@@ -1932,6 +1970,9 @@ void ArkSteedGraphBuilder::LowerXor2()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::XOR)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Xor));
 }
@@ -1940,6 +1981,9 @@ void ArkSteedGraphBuilder::LowerNot()
 {
     ValueVertex *glue = GetGlue();
     ValueVertex *x = currentFrameState_->GetAcc();
+    if (TryConstFoldUnary(this, x, UnaryFoldOp::NOT)) {
+        return;
+    }
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Not));
 }
 
@@ -1948,6 +1992,9 @@ void ArkSteedGraphBuilder::LowerEq()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::EQ)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Equal));
 }
@@ -1957,6 +2004,9 @@ void ArkSteedGraphBuilder::LowerNotEq()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::NOT_EQ)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::NotEqual));
 }
@@ -1966,6 +2016,9 @@ void ArkSteedGraphBuilder::LowerLess()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::LESS)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Less));
 }
@@ -1975,6 +2028,9 @@ void ArkSteedGraphBuilder::LowerLessEq()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::LESS_EQ)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::LessEq));
 }
@@ -1984,6 +2040,9 @@ void ArkSteedGraphBuilder::LowerGreater()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::GREATER)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Greater));
 }
@@ -1993,6 +2052,9 @@ void ArkSteedGraphBuilder::LowerGreaterEq()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::GREATER_EQ)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::GreaterEq));
 }
@@ -2002,6 +2064,9 @@ void ArkSteedGraphBuilder::LowerStrictEq()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::STRICT_EQ)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::StrictEqual));
 }
@@ -2011,6 +2076,9 @@ void ArkSteedGraphBuilder::LowerStrictNotEq()
     ValueVertex *glue = GetGlue();
     ValueVertex *x = LoadRegister(0);
     ValueVertex *y = currentFrameState_->GetAcc();
+    if (TryConstFoldBinary(this, x, y, BinaryFoldOp::STRICT_NOT_EQ)) {
+        return;
+    }
     ValueVertex *globalEnv = GetGlobalEnv();
     currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::StrictNotEqual));
 }
@@ -2025,12 +2093,18 @@ void ArkSteedGraphBuilder::LowerTypeOf()
 void ArkSteedGraphBuilder::LowerToNumber()
 {
     ValueVertex *value = currentFrameState_->GetAcc();
+    if (TryConstFoldUnary(this, value, UnaryFoldOp::TO_NUMBER)) {
+        return;
+    }
     currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value}, RTSTUB_ID(ToNumber)));
 }
 
 void ArkSteedGraphBuilder::LowerToNumeric()
 {
     ValueVertex *value = currentFrameState_->GetAcc();
+    if (TryConstFoldUnary(this, value, UnaryFoldOp::TO_NUMERIC)) {
+        return;
+    }
     currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value}, RTSTUB_ID(ToNumeric)));
 }
 
@@ -2549,6 +2623,13 @@ void ArkSteedGraphBuilder::LowerIsTrueOrFalse(bool isTrue)
 {
     ValueVertex *glue = GetGlue();
     ValueVertex *value = currentFrameState_->GetAcc();
+    bool toBoolean = false;
+    if (TryFoldToBooleanConstant(value, &toBoolean)) {
+        bool folded = isTrue ? toBoolean : !toBoolean;
+        auto root = folded ? RootConstantVertex::RootIndex::TRUE_VALUE : RootConstantVertex::RootIndex::FALSE_VALUE;
+        currentFrameState_->SetAcc(GetRootConstant(root));
+        return;
+    }
     if (isTrue) {
         currentFrameState_->SetAcc(NewCommonStubCall({glue, value}, CommonStubCSigns::ToBooleanTrue));
     } else {
