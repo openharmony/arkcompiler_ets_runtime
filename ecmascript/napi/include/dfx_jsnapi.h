@@ -23,7 +23,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <atomic>
 
 #include "ecmascript/common.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
@@ -150,15 +149,6 @@ public:
         double sharedHeapThreshold;
         double processHeapThreshold;
     };
-    struct PUBLIC_API MultithreadingDetectionOptions {
-        std::atomic<bool> abort{true};
-        std::atomic<int64_t> frequency{100};
-        std::atomic<int64_t> interval{5};
-
-        MultithreadingDetectionOptions() = default;
-        MultithreadingDetectionOptions(bool abort_, int64_t frequency_, int64_t interval_)
-            : abort(abort_), frequency(frequency_), interval(interval_) {}
-    };
     struct ProfilerOption {
         const char *libraryPath;
         int interval = 500; // 500:Default Sampling interval 500 microseconds
@@ -190,9 +180,7 @@ public:
     static uint32_t GetCurrentThreadId();
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
     static void GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
-    static void SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled,
-                                                  const MultithreadingDetectionOptions& options);
-    static const MultithreadingDetectionOptions &GetDetectionConfig();
+    static void SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled);
 
     static bool OnVMHeapMemoryPressure(const EcmaVM *vm, HeapMemoryPressureOptions options,
                                        Local<FunctionRef> callback);

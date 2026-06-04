@@ -1382,7 +1382,6 @@ if (is_mingw) {
     "ecmascript/platform/windows/time.cpp",
     "ecmascript/platform/windows/log.cpp",
     "ecmascript/platform/windows/aot_crash_info.cpp",
-    "ecmascript/platform/windows/debug_signal.cpp",
     "ecmascript/platform/windows/dfx_hisys_event.cpp",
     "ecmascript/platform/windows/process.cpp",
     "ecmascript/platform/windows/pandafile.cpp",
@@ -1398,7 +1397,6 @@ if (is_mingw) {
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
     "ecmascript/platform/unix/aot_crash_info.cpp",
-    "ecmascript/platform/unix/debug_signal.cpp",
     "ecmascript/platform/unix/time_common.cpp",
   ]
   if (is_mac) {
