@@ -447,6 +447,9 @@ void SharedOldSpace::SelectCSets()
 #ifdef NDEBUG
     if (collectRegionSet_.size() < MIN_COLLECT_REGION_SIZE) {
         LOG_ECMA_MEM(DEBUG) << "Selected SCSet number: " << collectRegionSet_.size() << " are too few";
+        for (auto region : collectRegionSet_) {
+            region->ClearGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
+        }
         collectRegionSet_.clear();
         return;
     }

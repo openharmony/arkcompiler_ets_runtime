@@ -162,8 +162,8 @@ public:
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
-            sharedHeapLimitGrowingFactor_ = 4; // 4: growing factor
-            sharedHeapLimitGrowingStep_ = 80_MB;
+            sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
+            sharedHeapLimitGrowingStep_ = 40_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
             semiSpaceCommittedSizeThresholdForCmsInSensitive_ = 100_MB;
             stepNativeSizeInc_ = 300_MB;
