@@ -64,6 +64,22 @@ protected:
     EcmaHandleScope *scope_ {nullptr};
 };
 
+class TestableDFXJSNApiTestsGCStats : public GCStats {
+public:
+    explicit TestableDFXJSNApiTestsGCStats(const Heap *heap) : GCStats(heap) {}
+
+    using GCStats::GetGCStatistic;
+    using GCStats::RecordGCStatisticEnd;
+    using GCStats::RecordGCStatisticStart;
+    using GCStats::SetRecordData;
+    using GCStats::SetRecordDuration;
+
+    void SetGCTypeForTest(GCType type)
+    {
+        gcType_ = type;
+    }
+};
+
 bool MatchJSONLineHeader(std::fstream &fs, const std::string filePath, int lineNum, CString lineContent)
 {
     CString tempLineContent = "";
@@ -1198,5 +1214,310 @@ HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread002)
     EXPECT_EQ(gcStats.lastStartTime, expectStats.lastStartTime);
     EXPECT_EQ(gcStats.lastEndTime, expectStats.lastEndTime);
     EXPECT_STREQ(gcStats.lastType, expectStats.lastType);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread003)
+{
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_EQ(gcStats.count, expectStats.count);
+    EXPECT_EQ(gcStats.lastStartTime, expectStats.lastStartTime);
+    EXPECT_EQ(gcStats.lastEndTime, expectStats.lastEndTime);
+    if (gcStats.count == 0) {
+        EXPECT_FLOAT_EQ(gcStats.averagePause, 0.0f);
+    } else {
+        EXPECT_FLOAT_EQ(gcStats.averagePause, expectStats.totalPause / expectStats.count);
+    }
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread004)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    if (g_isEnableCMCGC) {
+        return;
+    }
+
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    heap->CollectGarbage(TriggerGCType::OLD_GC);
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_EQ(gcStats.count, expectStats.count);
+    EXPECT_FLOAT_EQ(gcStats.maxPause, expectStats.maxPause);
+    EXPECT_FLOAT_EQ(gcStats.minPause, expectStats.minPause);
+    EXPECT_FLOAT_EQ(gcStats.averagePause, expectStats.totalPause / expectStats.count);
+    EXPECT_EQ(gcStats.lastStartTime, expectStats.lastStartTime);
+    EXPECT_EQ(gcStats.lastEndTime, expectStats.lastEndTime);
+    EXPECT_STREQ(gcStats.lastType, expectStats.lastType);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread005)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    if (g_isEnableCMCGC) {
+        return;
+    }
+
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto firstStats = DFXJSNApi::GetGCStatistic(vm_);
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto secondStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_GE(secondStats.count, firstStats.count);
+    EXPECT_GE(secondStats.maxPause, 0.0f);
+    EXPECT_GE(secondStats.minPause, 0.0f);
+    EXPECT_GE(secondStats.averagePause, 0.0f);
+    EXPECT_GE(secondStats.lastStartTime, firstStats.lastStartTime);
+    EXPECT_GE(secondStats.lastEndTime, firstStats.lastEndTime);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread006)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    if (g_isEnableCMCGC) {
+        return;
+    }
+
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    ecmascript::SharedHeap *sharedHeap = ecmascript::SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto localStats = vm_->GetEcmaGCStats()->GetGCStatistic();
+    auto sharedStats = sharedHeap->GetEcmaGCStats()->GetGCStatistic();
+    auto mergedStats = GCStats::MergeGCStatistic(localStats, sharedStats);
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_EQ(gcStats.count, localStats.count + sharedStats.count);
+    EXPECT_EQ(gcStats.count, mergedStats.count);
+    EXPECT_FLOAT_EQ(gcStats.maxPause, mergedStats.maxPause);
+    EXPECT_FLOAT_EQ(gcStats.minPause, mergedStats.minPause);
+    EXPECT_FLOAT_EQ(gcStats.averagePause, mergedStats.totalPause / mergedStats.count);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread007)
+{
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_STREQ(gcStats.lastType, expectStats.lastType);
+    EXPECT_TRUE(std::strcmp(gcStats.lastType, "Local GC") == 0 ||
+        std::strcmp(gcStats.lastType, "Shared GC") == 0 ||
+        std::strcmp(gcStats.lastType, "UnknownType") == 0);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread008)
+{
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_GE(gcStats.count, 0U);
+    EXPECT_GE(gcStats.maxPause, 0.0f);
+    EXPECT_GE(gcStats.minPause, 0.0f);
+    EXPECT_GE(gcStats.averagePause, 0.0f);
+    EXPECT_GE(gcStats.lastStartTime, 0U);
+    EXPECT_GE(gcStats.lastEndTime, 0U);
+    EXPECT_TRUE(gcStats.lastType != nullptr);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread009)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    if (g_isEnableCMCGC) {
+        return;
+    }
+
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_GT(gcStats.count, 0U);
+    EXPECT_GE(gcStats.maxPause, gcStats.minPause);
+    EXPECT_GE(gcStats.averagePause, 0.0f);
+    EXPECT_LE(gcStats.minPause, gcStats.maxPause);
+    EXPECT_LE(gcStats.lastStartTime, gcStats.lastEndTime);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread010)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    if (g_isEnableCMCGC) {
+        return;
+    }
+
+    auto sharedHeap = ecmascript::SharedHeap::GetInstance();
+    sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        sharedHeap->GetEcmaGCStats()->GetGCStatistic());
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_EQ(gcStats.count, expectStats.count);
+    EXPECT_FLOAT_EQ(gcStats.maxPause, expectStats.maxPause);
+    EXPECT_FLOAT_EQ(gcStats.minPause, expectStats.minPause);
+    EXPECT_FLOAT_EQ(gcStats.averagePause, expectStats.totalPause / expectStats.count);
+    EXPECT_EQ(gcStats.lastStartTime, expectStats.lastStartTime);
+    EXPECT_EQ(gcStats.lastEndTime, expectStats.lastEndTime);
+    EXPECT_STREQ(gcStats.lastType, expectStats.lastType);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread011)
+{
+    auto beforeStats = DFXJSNApi::GetGCStatistic(vm_);
+    auto afterStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    EXPECT_EQ(afterStats.count, beforeStats.count);
+    EXPECT_FLOAT_EQ(afterStats.maxPause, beforeStats.maxPause);
+    EXPECT_FLOAT_EQ(afterStats.minPause, beforeStats.minPause);
+    EXPECT_FLOAT_EQ(afterStats.averagePause, beforeStats.averagePause);
+    EXPECT_EQ(afterStats.lastStartTime, beforeStats.lastStartTime);
+    EXPECT_EQ(afterStats.lastEndTime, beforeStats.lastEndTime);
+    EXPECT_STREQ(afterStats.lastType, beforeStats.lastType);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticMainThread012)
+{
+    auto expectStats = GCStats::MergeGCStatistic(vm_->GetEcmaGCStats()->GetGCStatistic(),
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCStatistic());
+    auto gcStats = DFXJSNApi::GetGCStatistic(vm_);
+
+    float expectedAveragePause = expectStats.count == 0 ? 0.0f : (expectStats.totalPause / expectStats.count);
+    EXPECT_FLOAT_EQ(gcStats.averagePause, expectedAveragePause);
+    EXPECT_EQ(gcStats.count == 0, expectedAveragePause == 0.0f);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticDataLocalAggregation001)
+{
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    TestableDFXJSNApiTestsGCStats stats(heap);
+    stats.SetRecordData(RecordData::YOUNG_COUNT, 2);
+    stats.SetRecordDuration(RecordDuration::YOUNG_MIN_PAUSE, 2.0f);
+    stats.SetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE, 6.0f);
+    stats.SetRecordDuration(RecordDuration::YOUNG_TOTAL_PAUSE, 7.0f);
+    stats.SetRecordData(RecordData::OLD_COUNT, 1);
+    stats.SetRecordDuration(RecordDuration::OLD_MIN_PAUSE, 4.0f);
+    stats.SetRecordDuration(RecordDuration::OLD_MAX_PAUSE, 5.0f);
+    stats.SetRecordDuration(RecordDuration::OLD_TOTAL_PAUSE, 5.0f);
+    stats.SetGCTypeForTest(GCType::PARTIAL_OLD_GC);
+    stats.RecordGCStatisticStart();
+    stats.RecordGCStatisticEnd();
+
+    auto gcStatistic = stats.GetGCStatistic();
+    EXPECT_EQ(gcStatistic.count, 3U);
+    EXPECT_FLOAT_EQ(gcStatistic.maxPause, 6.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.minPause, 2.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.totalPause, 12.0f);
+    EXPECT_STREQ(gcStatistic.lastType, "Local GC");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticDataSharedAggregation001)
+{
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    TestableDFXJSNApiTestsGCStats stats(heap);
+    stats.SetRecordData(RecordData::SHARED_COUNT, 2);
+    stats.SetRecordDuration(RecordDuration::SHARED_MIN_PAUSE, 1.0f);
+    stats.SetRecordDuration(RecordDuration::SHARED_MAX_PAUSE, 8.0f);
+    stats.SetRecordDuration(RecordDuration::SHARED_TOTAL_PAUSE, 9.0f);
+    stats.SetRecordData(RecordData::SWEEP_COUNT, 3);
+    stats.SetRecordDuration(RecordDuration::SWEEP_MIN_PAUSE, 2.0f);
+    stats.SetRecordDuration(RecordDuration::SWEEP_MAX_PAUSE, 7.0f);
+    stats.SetRecordDuration(RecordDuration::SWEEP_TOTAL_PAUSE, 12.0f);
+    stats.SetGCTypeForTest(GCType::SHARED_FULL_GC);
+    stats.RecordGCStatisticStart();
+    stats.RecordGCStatisticEnd();
+
+    auto gcStatistic = stats.GetGCStatistic();
+    EXPECT_EQ(gcStatistic.count, 5U);
+    EXPECT_FLOAT_EQ(gcStatistic.maxPause, 8.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.minPause, 1.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.totalPause, 21.0f);
+    EXPECT_STREQ(gcStatistic.lastType, "Shared GC");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCStatisticDataUnknownType001)
+{
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
+    TestableDFXJSNApiTestsGCStats stats(heap);
+    stats.SetGCTypeForTest(GCType::OTHER);
+    stats.RecordGCStatisticStart();
+    stats.RecordGCStatisticEnd();
+
+    auto gcStatistic = stats.GetGCStatistic();
+    EXPECT_EQ(gcStatistic.count, 0U);
+    EXPECT_FLOAT_EQ(gcStatistic.maxPause, 0.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.minPause, 0.0f);
+    EXPECT_FLOAT_EQ(gcStatistic.totalPause, 0.0f);
+    EXPECT_STREQ(gcStatistic.lastType, "UnknownType");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, MergeGCStatisticForDFX001)
+{
+    GCStatisticData localStats;
+    localStats.count = 2;
+    localStats.maxPause = 6.0f;
+    localStats.minPause = 2.0f;
+    localStats.totalPause = 8.0f;
+    localStats.lastStartTime = 10;
+    localStats.lastEndTime = 30;
+    localStats.lastType = "Local GC";
+
+    GCStatisticData sharedStats;
+    sharedStats.count = 4;
+    sharedStats.maxPause = 7.0f;
+    sharedStats.minPause = 1.0f;
+    sharedStats.totalPause = 20.0f;
+    sharedStats.lastStartTime = 50;
+    sharedStats.lastEndTime = 60;
+    sharedStats.lastType = "Shared GC";
+
+    auto merged = GCStats::MergeGCStatistic(localStats, sharedStats);
+    float averagePause = merged.count == 0 ? 0.0f : (merged.totalPause / merged.count);
+    EXPECT_EQ(merged.count, 6U);
+    EXPECT_FLOAT_EQ(merged.maxPause, 7.0f);
+    EXPECT_FLOAT_EQ(merged.minPause, 1.0f);
+    EXPECT_FLOAT_EQ(merged.totalPause, 28.0f);
+    EXPECT_FLOAT_EQ(averagePause, 28.0f / 6.0f);
+    EXPECT_STREQ(merged.lastType, "Shared GC");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, MergeGCStatisticForDFX002)
+{
+    GCStatisticData localStats;
+    localStats.count = 0;
+    localStats.maxPause = 0.0f;
+    localStats.minPause = 0.0f;
+    localStats.totalPause = 0.0f;
+    localStats.lastStartTime = 0;
+    localStats.lastEndTime = 0;
+    localStats.lastType = "UnknownType";
+
+    GCStatisticData sharedStats;
+    sharedStats.count = 0;
+    sharedStats.maxPause = 0.0f;
+    sharedStats.minPause = 0.0f;
+    sharedStats.totalPause = 0.0f;
+    sharedStats.lastStartTime = 0;
+    sharedStats.lastEndTime = 0;
+    sharedStats.lastType = "UnknownType";
+
+    auto merged = GCStats::MergeGCStatistic(localStats, sharedStats);
+    float averagePause = merged.count == 0 ? 0.0f : (merged.totalPause / merged.count);
+    EXPECT_EQ(merged.count, 0U);
+    EXPECT_FLOAT_EQ(merged.maxPause, 0.0f);
+    EXPECT_FLOAT_EQ(merged.minPause, 0.0f);
+    EXPECT_FLOAT_EQ(merged.totalPause, 0.0f);
+    EXPECT_FLOAT_EQ(averagePause, 0.0f);
+    EXPECT_STREQ(merged.lastType, "UnknownType");
 }
 } // namespace panda::test
