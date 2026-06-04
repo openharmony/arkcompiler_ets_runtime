@@ -1213,19 +1213,10 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
     }
 }
 
-void DFXJSNApi::SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled,
-                                                  const MultithreadingDetectionOptions& options)
+void DFXJSNApi::SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled)
 {
     EcmaVM::SetMultiThreadCheck(enabled);
     EcmaVM::SetCheckCountApi(enabled);
-    if (enabled) {
-        EcmaVM::SetDetectionConfig(options);
-    }
-}
-
-const DFXJSNApi::MultithreadingDetectionOptions &DFXJSNApi::GetDetectionConfig()
-{
-    return EcmaVM::GetDetectionConfig();
 }
 
 bool DFXJSNApi::OnVMHeapMemoryPressure(const EcmaVM *vm, HeapMemoryPressureOptions options,

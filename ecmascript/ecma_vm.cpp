@@ -18,7 +18,6 @@
 #include <cmath>
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/base/config.h"
-#include "ecmascript/platform/debug_signal.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
@@ -86,9 +85,6 @@ constexpr const char* HEAP_MEM_PRESSURE_SHARED = "SharedHeapMemPressure";
 AOTFileManager *JsStackInfo::loader = nullptr;
 std::atomic<bool> EcmaVM::multiThreadCheck_ = false;
 std::atomic<bool> EcmaVM::checkCountApi_ = false;
-DFXJSNApi::MultithreadingDetectionOptions EcmaVM::detectionConfig_;
-std::atomic<uint64_t> EcmaVM::lastCheckTime_ = 0;
-std::atomic<uint64_t> EcmaVM::count_ = 0;
 bool EcmaVM::errorInfoEnhanced_ = false;
 
 void EcmaVM::TriggerMemoryPressureCallback(const char *heapType)
@@ -825,19 +821,10 @@ void EcmaVM::CheckThread() const
     if (thread_->CheckMultiThread() &&
         !common::Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
         !(dThread != nullptr && dThread->GetThreadId() == JSThread::GetCurrentThreadId())) {
-        if (detectionConfig_.abort.load()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
-            UNREACHABLE();
-        } else {
-            lastCheckTime_.store(GetTimeStamp());
-            std::string msg = "Fatal: ecma_vm cannot run in multi-thread! thread:"
-                                + std::to_string(thread_->GetThreadId())
-                                + " currentThread:"
-                                + std::to_string(JSThread::GetCurrentThreadId());
-            NotifyMultiThreadError(msg);
-        }
+        UNREACHABLE();
     }
 }
 

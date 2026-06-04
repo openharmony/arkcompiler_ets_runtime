@@ -19,7 +19,6 @@
 #include "ecmascript/cross_vm/ecma_vm_hybrid.h"
 
 #include <atomic>
-#include <ctime>
 #include <functional>
 #include <mutex>
 
@@ -367,7 +366,7 @@ public:
         CheckThread();
 #else
         if (GetThreadCheckStatus()) {
-            if (!GetCheckCountApi() || (CheckTimeInterval() && CheckCountNum())) {
+            if (!GetCheckCountApi() || CheckCountNum()) {
                 CheckThread();
             }
         }
@@ -1075,57 +1074,9 @@ public:
         return checkCountApi_;
     }
 
-    static void SetDetectionConfig(const DFXJSNApi::MultithreadingDetectionOptions& config)
-    {
-        detectionConfig_.abort.store(config.abort.load());
-        constexpr int64_t MIN_CHECK_COUNT_NUM = 100;
-        if (config.frequency.load() < MIN_CHECK_COUNT_NUM) {
-            LOG_ECMA(ERROR) << "checkCountNum must be >= 100, but got " << config.frequency.load();
-        } else {
-            detectionConfig_.frequency.store(config.frequency.load());
-        }
-        constexpr int64_t MAX_CHECKINTERVAL = 1440;
-        if (config.interval.load() < 0 || config.interval.load() > MAX_CHECKINTERVAL) {
-            LOG_ECMA(ERROR) << "checkInterval must within [0, 1440] minutes, but got " << config.interval.load();
-        } else {
-            detectionConfig_.interval.store(config.interval.load());
-        }
-    }
-
-    PUBLIC_API static const DFXJSNApi::MultithreadingDetectionOptions &GetDetectionConfig()
-    {
-        return detectionConfig_;
-    }
-
     bool CheckCountNum() const
     {
-        if (count_ % detectionConfig_.frequency.load() == 0) {
-            count_ = 1;
-            return true;
-        } else {
-            count_++;
-        }
-        return false;
-    }
-
-    bool CheckTimeInterval() const
-    {
-        uint64_t currentTime = GetTimeStamp();
-        uint64_t lastTime = lastCheckTime_.load();
-        if (lastTime == 0) {
-            return true;
-        }
-        if (currentTime - lastTime >= detectionConfig_.interval.load() * SECOND_PER_MINUTE * MS_PER_SECOND) {
-            return true;
-        }
-        return false;
-    }
-
-    uint64_t GetTimeStamp() const
-    {
-        struct timespec ts{};
-        clock_gettime(CLOCK_REALTIME, &ts);
-        return ((uint64_t)ts.tv_sec * MS_PER_SECOND) + (((uint64_t)ts.tv_nsec) / NS_PER_SECOND);
+        return (count_++) % CHECKCOUNTNUM == 0;
     }
 
     static void SetErrorInfoEnhance(bool errorInfoEnhance)
@@ -1713,16 +1664,10 @@ private:
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
-    // Whether to enable multi-thread detection
     PUBLIC_API static std::atomic<bool> multiThreadCheck_;
-    // Whether to enable count-based multi-thread detection sampling
     PUBLIC_API static std::atomic<bool> checkCountApi_;
-    // Configuration for multi-thread detection (abort/frequency/interval)
-    PUBLIC_API static DFXJSNApi::MultithreadingDetectionOptions detectionConfig_;
-    // Timestamp of the last multi-thread detection
-    PUBLIC_API static std::atomic<uint64_t> lastCheckTime_;
-    // Counter for count-based multi-thread detection sampling
-    PUBLIC_API static std::atomic<uint64_t> count_;
+    const static uint64_t CHECKCOUNTNUM = 100;
+    mutable std::atomic<uint64_t> count_{0};
     static bool errorInfoEnhanced_;
 
     // for constpool.The shared constpool includes string, method, sendable classLiteral, etc.
@@ -1731,9 +1676,6 @@ private:
     JSTaggedValue* unsharedConstpools_ = nullptr;
     int32_t unsharedConstpoolsArrayLen_ = UNSHARED_CONSTANTPOOL_COUNT;
     static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
-    static constexpr uint64_t SECOND_PER_MINUTE = 60;
-    static constexpr uint64_t MS_PER_SECOND = 1000;
-    static constexpr uint64_t NS_PER_SECOND = 1000000;
 
     //apiVersion states
     uint32_t apiVersion_ = 8;
