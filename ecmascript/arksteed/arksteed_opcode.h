@@ -171,6 +171,33 @@ private:
     struct HasInputTypes<T, decltype(void(T::INPUT_TYPES))> : std::true_type {};
 };
 
+class ThrowableMixin {
+public:
+    BB *CaughtBy() const
+    {
+        return caughtBy_;
+    }
+
+    void SetCaughtBy(BB *caughtBy)
+    {
+        caughtBy_ = caughtBy;
+    }
+
+    uint32_t GetCatchPredecessorIndex() const
+    {
+        return catchPredIndex_;
+    }
+
+    void SetCatchPredecessorIndex(uint32_t id)
+    {
+        catchPredIndex_ = id;
+    }
+
+private:
+    BB *caughtBy_ = nullptr;
+    uint32_t catchPredIndex_ = static_cast<uint32_t>(-1);
+};
+
 //==============================================================================
 // Constant Value Vertices
 //==============================================================================
@@ -352,6 +379,73 @@ public:
     void Dump(std::ostream &output) const;
 };
 
+// Loads from raw pointer
+class LoadFromAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadFromAddressVertex> {
+public:
+    // Currently LoadFromAddressVertex can load TaggedValue only.
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+    // 1 : Object
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::INT_PTR);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+
+    explicit LoadFromAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Loads exception from glue pointer (with fixed offset)
+class LoadExceptionVertex : public FixedInputVertexMixin<1, ValueVertex, LoadExceptionVertex> {
+public:
+    // LoadExceptionVertex loads TaggedValue (the exception object) from glue pointer.
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+    // 1 : Glue pointer
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::INT_PTR);
+
+    static constexpr size_t GLUE_INDEX = 0;
+
+    explicit LoadExceptionVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+// Stores to raw pointer. 2 : Two inputs
+class StoreToAddressVertex : public FixedInputVertexMixin<2, ValueVertex, StoreToAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties(0);
+    // 2: object and value to be stored (Currently StoreToAddressVertex can store TaggedValue only)
+    static constexpr auto INPUT_TYPES =
+        detail::InputTypes<2>(ValueRepresentation::INT_PTR, ValueRepresentation::TAGGED);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+    static constexpr size_t VALUE_INDEX = 1;
+
+    explicit StoreToAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
 class LoadTaggedFieldVertex : public FixedInputVertexMixin<1, ValueVertex, LoadTaggedFieldVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::CanReadProp();
@@ -405,7 +499,7 @@ private:
 /**
  * CallRuntime vertex - for runtime function calls
  */
-class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex> {
+class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex>, public ThrowableMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
@@ -433,7 +527,7 @@ private:
 /**
  * CallCommonStub vertex - for common stub calls
  */
-class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVertex> {
+class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVertex>, public ThrowableMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
@@ -693,7 +787,7 @@ public:
 /**
  * Throw vertex - exception throw
  */
-class ThrowVertex : public VertexMixin<ControlVertex, ThrowVertex> {
+class ThrowVertex : public VertexMixin<ControlVertex, ThrowVertex>, public ThrowableMixin {
 public:
     static constexpr int EXCEPTION_INDEX = 0;
 
@@ -734,7 +828,7 @@ private:
 
 class ThrowIfSuperNotCorrectCallVertex
     // 2: index and thisValue inputs
-    : public FixedInputVertexMixin<2, NonControlVertex, ThrowIfSuperNotCorrectCallVertex> {
+    : public FixedInputVertexMixin<2, NonControlVertex, ThrowIfSuperNotCorrectCallVertex>, public ThrowableMixin {
 public:
     static constexpr int INDEX_INDEX = 0;
     static constexpr int THIS_VALUE_INDEX = 1;
@@ -994,6 +1088,34 @@ public:
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
 };
+
+inline BB *CatchBlockOf(Vertex *vertex)
+{
+    if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
+        return derived->CaughtBy();
+    }
+    if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
+        return derived->CaughtBy();
+    }
+    if (auto *derived = vertex->TryCast<ThrowVertex>()) {
+        return derived->CaughtBy();
+    }
+    return nullptr;
+}
+
+inline uint32_t CatchPredecessorIndexOf(Vertex *vertex)
+{
+    if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
+        return derived->GetCatchPredecessorIndex();
+    }
+    if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
+        return derived->GetCatchPredecessorIndex();
+    }
+    if (auto *derived = vertex->TryCast<ThrowVertex>()) {
+        return derived->GetCatchPredecessorIndex();
+    }
+    return static_cast<uint32_t>(-1);  // NULL_INDEX
+}
 
 // =============================================================================
 // Helper functions for setting location constraints

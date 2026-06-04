@@ -217,23 +217,38 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 void ArkSteedAssembler::BranchIfNoPendingException(Label *target)
 {
     ArkSteedRegister scratch = X64_SCRATCH_REGISTER;
+    assembler_.Push(x64::rax);
     assembler_.Movabs(static_cast<uint64_t>(entryThread_->GetGlueAddr()), x64::rax);
     LoadField(scratch, x64::rax, static_cast<int32_t>(JSThread::GlueData::GetExceptionOffset(false)));
     assembler_.Movabs(JSTaggedValue::Hole().GetRawData(), x64::rax);
     assembler_.Cmpq(scratch, x64::rax);
+    assembler_.Pop(x64::rax);
     assembler_.Je(target);
+}
+
+void ArkSteedAssembler::ReturnWithPendingException()
+{
+    assembler_.Movabs(JSTaggedValue::Exception().GetRawData(), x64::rax);
+    Epilogue();
+    Return();
 }
 
 void ArkSteedAssembler::ReturnIfPendingException()
 {
     Label noPendingException;
-    Push(x64::rax);
     BranchIfNoPendingException(&noPendingException);
-    assembler_.Movabs(JSTaggedValue::Exception().GetRawData(), x64::rax);
-    Epilogue();
-    Return();
+    ReturnWithPendingException();
     Bind(&noPendingException);
-    Pop(x64::rax);
+}
+
+void ArkSteedAssembler::LoadAndClearPendingException(ArkSteedRegister dst, ArkSteedRegister glue)
+{
+    ArkSteedRegister scratch = X64_SCRATCH_REGISTER;
+    size_t offset = JSThread::GlueData::GetExceptionOffset(false);  // false : isArch32 = false
+
+    LoadField(dst, glue, static_cast<int32_t>(offset));
+    assembler_.Movabs(JSTaggedValue::Hole().GetRawData(), scratch);
+    StoreField(scratch, glue, static_cast<int32_t>(offset));
 }
 
 void ArkSteedAssembler::Bind(Label *label)

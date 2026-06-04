@@ -177,12 +177,38 @@ private:
     }
 
     template <typename T>
-    void MarkInputUses(T *vertex, const ArkSteedState &state)
+    void MarkDirectInputUses(T *vertex, const ArkSteedState &state)
     {
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
         vertex->ForAllInputsInRegallocAssignmentOrder([&](const Input &input) {
             MarkUse(static_cast<ValueVertex *>(input.vertex()), vertex->GetId(), input.GetLocation(), loopUsedVertices);
         });
+    }
+
+    template <typename T>
+    void MarkCatchPhiInputUses(T *vertex, const ArkSteedState &state)
+    {
+        BB *catchBlock = vertex->CaughtBy();
+        if (catchBlock == nullptr || !catchBlock->HasPhi()) {
+            return;
+        }
+        uint32_t use = vertex->GetId();
+        uint32_t predId = vertex->GetCatchPredecessorIndex();
+        int predIdx = static_cast<int>(predId);
+        LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+
+        for (PhiVertex *phi : catchBlock->GetPhis()) {
+            const ValueVertex *input = phi->GetInput(predIdx);
+            InputLocation *location = phi->GetInputLocation(predIdx);
+            MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
+        }
+    }
+
+public:
+    template <typename T>
+    void MarkInputUses(T *vertex, const ArkSteedState &state)
+    {
+        MarkDirectInputUses(vertex, state);
     }
 
     // Specialization for PhiVertex - skip here, will be handled by control vertices
@@ -206,6 +232,27 @@ private:
             InputLocation *location = phi->GetInputLocation(predecessorIdx);
             MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
         }
+    }
+
+    // Specialization for CallCommonStubVertex - extend live range of catch phi inputs
+    void MarkInputUses(CallCommonStubVertex *vertex, const ArkSteedState &state)
+    {
+        MarkDirectInputUses(vertex, state);
+        MarkCatchPhiInputUses(vertex, state);
+    }
+
+    // Specialization for CallRuntimeVertex - extend live range of catch phi inputs
+    void MarkInputUses(CallRuntimeVertex *vertex, const ArkSteedState &state)
+    {
+        MarkDirectInputUses(vertex, state);
+        MarkCatchPhiInputUses(vertex, state);
+    }
+
+    // Specialization for ThrowVertex - extend live range of catch phi inputs
+    void MarkInputUses(ThrowVertex *vertex, const ArkSteedState &state)
+    {
+        MarkDirectInputUses(vertex, state);
+        MarkCatchPhiInputUses(vertex, state);
     }
 
     // Specialization for JumpLoopVertex - handle phi inputs for loop header block and propagate loop-external vertices

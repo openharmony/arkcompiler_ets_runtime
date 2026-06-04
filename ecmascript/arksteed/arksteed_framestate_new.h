@@ -25,18 +25,21 @@ class BCFrameState;
 class CondensedBCFrameState;
 
 class BCFrameState {
-    friend class CondensedBCFrameState;
-
 public:
-    BCFrameState(VRegIDType numVRegs, Chunk *chunk)
+    BCFrameState(VRegIDType numVRegs, ValueVertex *initial, Chunk *chunk)
     {
         data_ = chunk->NewArray<ValueVertex *>(numVRegs);
-        std::fill_n(data_, numVRegs, nullptr);
         numVRegs_ = numVRegs;
+        Reset(initial);
     }
 
     NO_COPY_SEMANTIC(BCFrameState);
     DEFAULT_MOVE_SEMANTIC(BCFrameState);
+
+    void Reset(ValueVertex *initial)
+    {
+        std::fill_n(data_, numVRegs_, initial);
+    }
 
     VRegIDType NumVRegs() const
     {
@@ -88,16 +91,19 @@ public:
     CondensedBCFrameState() = default;
 
     // IsInitialized() == true
-    CondensedBCFrameState(BCFrameState &&from, const kungfu::BitSet &liveSet, Chunk *chunk)
-        : data_(from.data_), numVRegs_(from.numVRegs_)
+    CondensedBCFrameState(const BCFrameState &from, const kungfu::BitSet &liveSet, Chunk *chunk)
     {
         numLiveVRegs_ = liveSet.Count();
-        indices_ = chunk->NewArray<uint32_t>(numLiveVRegs_);
-        for (VRegIDType vregIndex = 0, liveCount = 0; vregIndex < numVRegs_; vregIndex++) {
+        data_ = chunk->NewArray<CondensedEntry>(numLiveVRegs_);
+
+        VRegIDType numVRegs = from.NumVRegs();
+        VRegIDType liveCount = 0;
+        for (VRegIDType vregIndex = 0; vregIndex < numVRegs; vregIndex++) {
             if (liveSet.TestBit(vregIndex)) {
-                indices_[liveCount++] = vregIndex;
+                data_[liveCount++] = {.vertex = from.Get(vregIndex), .index = vregIndex};
             }
         }
+        ASSERT(liveCount == numLiveVRegs_);
     }
 
     DEFAULT_COPY_SEMANTIC(CondensedBCFrameState);
@@ -108,24 +114,13 @@ public:
     {
         static_assert(std::is_invocable_v<Function, ValueVertex *, VRegIDType>);
         for (VRegIDType i = 0; i < numLiveVRegs_; i++) {
-            VRegIDType index = indices_[i];
-            std::invoke(f, data_[index], index);
+            std::invoke(f, data_[i].vertex, data_[i].index);
         }
     }
 
-    VRegIDType NumVRegs() const
-    {
-        return numVRegs_;
-    }
     VRegIDType NumLiveVRegs() const
     {
         return numLiveVRegs_;
-    }
-
-    ValueVertex *Get(VRegIDType index) const
-    {
-        ASSERT(index < numVRegs_);
-        return data_[index];
     }
 
     bool IsInitialized() const
@@ -134,9 +129,12 @@ public:
     }
 
 private:
-    ValueVertex **data_ = nullptr;
-    VRegIDType *indices_ = nullptr;
-    VRegIDType numVRegs_ = 0;
+    struct CondensedEntry {
+        ValueVertex *vertex;
+        VRegIDType index;
+    };
+
+    CondensedEntry *data_ = nullptr;
     VRegIDType numLiveVRegs_ = 0;
 };
 }  // namespace panda::ecmascript::arksteed

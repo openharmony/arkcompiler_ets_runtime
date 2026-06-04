@@ -259,6 +259,28 @@ void DeoptVertex::Dump(std::ostream &output) const
 
 // ========================================= Slow Value Opcode =========================================
 
+void LoadFromAddressVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(OBJECT_INDEX));
+}
+
+void LoadFromAddressVertex::Dump(std::ostream &output) const
+{
+    output << "  LoadFromAddress: offset=" << offset_;
+}
+
+void LoadExceptionVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(GLUE_INDEX));
+}
+
+void LoadExceptionVertex::Dump(std::ostream &output) const
+{
+    output << "  LoadException";
+}
+
 void LoadTaggedFieldVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
@@ -268,6 +290,18 @@ void LoadTaggedFieldVertex::SetValueLocationConstraints()
 void LoadTaggedFieldVertex::Dump(std::ostream &output) const
 {
     output << "  LoadTaggedField: offset=" << offset_;
+}
+
+void StoreToAddressVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(OBJECT_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void StoreToAddressVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreToAddress: offset=" << offset_;
 }
 
 void StoreTaggedFieldVertex::SetValueLocationConstraints()

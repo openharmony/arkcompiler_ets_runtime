@@ -50,8 +50,11 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(Phi)
 
 #define VALUE_VERTEX_LIST(V)    \
+    V(LoadFromAddress)          \
+    V(StoreToAddress)           \
     V(LoadTaggedField)          \
     V(StoreTaggedField)         \
+    V(LoadException)            \
     COMMON_VALUE_VERTEX_LIST(V) \
     CONVERSION_VERTEX_LIST(V)
 

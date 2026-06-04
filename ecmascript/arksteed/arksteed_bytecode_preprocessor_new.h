@@ -86,8 +86,9 @@ public:
         kungfu::BytecodeInfo details;
     };
 
-    // Constructs & finishes the bytecode preprocessor
     BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *chunk);
+
+    bool Run();
 
     uint32_t GetNumLiveBasicBlocks() const
     {
@@ -145,17 +146,18 @@ public:
     std::string DumpCFGAsGraphviz() const;
 
 private:
-    uint32_t JumpTargetBcIndexOfBytecode(uint32_t bcIndex);
+    struct LoopCanonicalizer;
 
+    uint32_t JumpTargetBcIndexOfBytecode(uint32_t bcIndex);
     uint32_t AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors);
 
-    void CollectBytecodeInfo();
+    bool CollectBytecodeInfo();
     void CollectTryCatchBlockInfo();
     void BuildBasicBlocks();
     void MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
-    uint32_t CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
-    void InitializeBlockEdges(uint32_t blockCount);
-    struct CanonicalizeLoopsDFS;
+    void CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
+    void InitializeBlockEdges();
+    void CanonicalizeLoopsDFS();
     void SplitCriticalEdges();
     void SetBasicBlockPointers();
     void LoopAnalysis();

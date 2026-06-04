@@ -144,8 +144,6 @@ void ArkSteedRegisterAllocator::InitializeBlockState(BB *block)
 {
     if (block->HasRegisterMerge()) {
         if (block->IsExceptionHandler()) {
-            ASSERT(false);  // to do: no catch now
-            // Exceptions start with a blank state of register values.
             ClearRegisterValues();
         } else {
             RegisterMergeState &state = *block->GetRegisterMergeState();
@@ -155,22 +153,6 @@ void ArkSteedRegisterAllocator::InitializeBlockState(BB *block)
             DebugDumpRegisterValues(state, block->PredecessorCount());
 #endif
         }
-    }
-}
-
-void ArkSteedRegisterAllocator::ProcessBlockVertices(BB *block)
-{
-    for (NonControlVertex *vertex : block->GetVertices()) {
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Visiting non-control vertex v" << vertex->GetId() << ": "
-                            << OpcodeToString(vertex->GetOpcode());
-#endif
-        AllocateVertex(vertex);
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Finished visiting non-control vertex v" << vertex->GetId() << ": "
-                            << OpcodeToString(vertex->GetOpcode());
-        DumpCurrentRegisters();
-#endif
     }
 }
 
@@ -193,7 +175,13 @@ void ArkSteedRegisterAllocator::AllocateBlock(BB *block)
     ASSERT(AllUsedRegistersLiveAt(block));
     VerifyRegisterState();
 
-    ProcessBlockVertices(block);
+    for (NonControlVertex *vertex : block->GetVertices()) {
+        BB *catchBlock = CatchBlockOf(vertex);
+        if (catchBlock != nullptr && catchBlock->HasPhi()) {
+            SpillCatchPhiInputsOfIndex(catchBlock, CatchPredecessorIndexOf(vertex));
+        }
+        AllocateVertex(vertex);
+    }
 
     auto *controlVertex = block->GetControlVertex();
 #ifndef NDEBUG
@@ -363,6 +351,10 @@ void ArkSteedRegisterAllocator::AllocateControlVertex(ControlVertex *vertex, BB 
 
     // to do: Add AbortVertex && DeoptVertex
     if (vertex->Is<ThrowVertex>()) {
+        BB *catchBlock = CatchBlockOf(vertex);
+        if (catchBlock != nullptr && catchBlock->HasPhi()) {
+            SpillCatchPhiInputsOfIndex(catchBlock, CatchPredecessorIndexOf(vertex));
+        }
         AllocateVertex(vertex);
     } else if (auto *unconditional = vertex->TryCast<UnconditionalControlVertex>()) {
         ProcessUnconditionalControl(unconditional, block);
@@ -725,6 +717,28 @@ void ArkSteedRegisterAllocator::SpillAndClearRegisters()
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "CALL OPERATION: Registers spilled and cleared.";
 #endif
+}
+
+void ArkSteedRegisterAllocator::SpillCatchPhiInputsOfIndex(BB *catchBlock, uint32_t index)
+{
+    ASSERT(catchBlock != nullptr);
+    for (PhiVertex *phi : catchBlock->GetPhis()) {
+        if (!phi->GetRegallocInfo()->HasValidLiveRange()) {
+            continue;
+        }
+        ValueVertex *inputVertex = phi->GetInput(index);
+        // Ensure the input value is on the stack so it persists.
+        Spill(inputVertex);
+        InputLocation *inputLocation = phi->GetInputLocation(index);
+        auto *info = inputVertex->GetRegallocInfo();
+        // Prefer the spill slot so the location remains valid even after
+        // AssignInputs moves/frees the register.
+        if (info->IsSpilled()) {
+            inputLocation->InjectLocation(info->GetSpillSlot());
+        } else {
+            inputLocation->InjectLocation(info->GetAllocation());
+        }
+    }
 }
 
 void ArkSteedRegisterAllocator::ClearRegisterValues()
