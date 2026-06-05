@@ -19,43 +19,22 @@
 #include <ctime>
 #include <unistd.h>
 
-#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
+#if defined(PANDA_TARGET_ARM64)
 #include <asm/unistd.h>
 #else
 #include <sys/syscall.h>
 #endif
 
-#ifndef SYS_gettid
-#ifdef __NR_gettid
-#define SYS_gettid __NR_gettid
-#elif defined(__aarch64__)
-#define SYS_gettid 178
-#elif defined(__arm__)
-#define SYS_gettid 224
-#elif defined(__x86_64__)
-#define SYS_gettid 186
-#elif defined(__i386__)
-#define SYS_gettid 224
-#endif
-#endif
-
-#ifndef SYS_rt_tgsigqueueinfo
-#if defined(__aarch64__)
-#define SYS_rt_tgsigqueueinfo 240
-#elif defined(__arm__)
-#define SYS_rt_tgsigqueueinfo 363
-#elif defined(__x86_64__)
-#define SYS_rt_tgsigqueueinfo 335
-#elif defined(__i386__)
-#define SYS_rt_tgsigqueueinfo 332
-#endif
-#endif
-
-#include "../../third_party/musl/include/info/linux/fatal_message.h"
 #include "ecmascript/log_wrapper.h"
 
+struct debug_msg {
+    uint64_t timestamp;
+    const char *msg;
+};
+using DebugMsg = debug_msg;
+
 namespace panda::ecmascript {
-#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
+#if defined(PANDA_TARGET_ARM64)
 static long Syscall(unsigned long n, unsigned long a, unsigned long b, unsigned long c, unsigned long d,
                     unsigned long e, unsigned long f)
 {
@@ -78,21 +57,20 @@ void NotifyMultiThreadError(const std::string &msg)
 
     struct timespec ts;
     (void)clock_gettime(CLOCK_REALTIME, &ts);
-    debug_msg_t debug_message = {0, NULL};
-    debug_message.timestamp = ((uint64_t)ts.tv_sec * NUMBER_ONE_THOUSAND) +
+    DebugMsg debugMessage = {0, NULL};
+    debugMessage.timestamp = ((uint64_t)ts.tv_sec * NUMBER_ONE_THOUSAND) +
         (((uint64_t)ts.tv_nsec) / NUMBER_ONE_MILLION);
-    debug_message.msg = msg.c_str();
+    debugMessage.msg = msg.c_str();
 
-    // When signo = 42, use si_code = 4 mark the event as ArkTS_ENV_SAN
     static constexpr int SIGNO = 42;
     static constexpr int SI_CODE = -4;
     siginfo_t info;
     info.si_code = SI_CODE;
-    info.si_value.sival_ptr = &debug_message;
+    info.si_value.sival_ptr = &debugMessage;
 
-#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
-    pid_t tid = static_cast<pid_t>(Syscall(SYS_gettid, 0, 0, 0, 0, 0, 0));
-    if (Syscall(SYS_rt_tgsigqueueinfo, static_cast<unsigned long>(getpid()),
+#if defined(PANDA_TARGET_ARM64)
+    pid_t tid = static_cast<pid_t>(Syscall(__NR_gettid, 0, 0, 0, 0, 0, 0));
+    if (Syscall(__NR_rt_tgsigqueueinfo, static_cast<unsigned long>(getpid()),
                 static_cast<unsigned long>(tid), static_cast<unsigned long>(SIGNO),
                 reinterpret_cast<unsigned long>(&info), 0, 0) == -1) {
 #else

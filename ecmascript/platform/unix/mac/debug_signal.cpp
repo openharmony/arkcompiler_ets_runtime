@@ -19,6 +19,6 @@
 namespace panda::ecmascript {
 void NotifyMultiThreadError(const std::string &msg)
 {
-    LOG_FULL(WARN) << "NotifyMultiThreadError is not supported on windows.";
+    LOG_FULL(WARN) << "NotifyMultiThreadError is not supported on mac or ios.";
 }
 } // namespace panda::ecmascript

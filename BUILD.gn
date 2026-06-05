@@ -1408,7 +1408,6 @@ if (is_mingw) {
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
     "ecmascript/platform/unix/aot_crash_info.cpp",
-    "ecmascript/platform/unix/debug_signal.cpp",
     "ecmascript/platform/unix/time_common.cpp",
   ]
   if (is_mac) {
@@ -1427,6 +1426,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/asm_stack.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
       "ecmascript/platform/common/parameters.cpp",
+      "ecmascript/platform/unix/mac/debug_signal.cpp",
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
@@ -1435,6 +1435,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
       "ecmascript/platform/unix/mac/async_detect.cpp",
+      "ecmascript/platform/unix/mac/debug_signal.cpp",
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
@@ -1465,6 +1466,7 @@ if (is_mingw) {
         "ecmascript/platform/common/signal_manager.cpp",
       ]
       ecma_platform_source += [
+        "ecmascript/platform/unix/ohos/debug_signal.cpp",
         "ecmascript/platform/unix/ohos/pandafile.cpp",
         "ecmascript/platform/unix/ohos/ecma_context.cpp",
         "ecmascript/platform/unix/ohos/parameters.cpp",
@@ -1473,6 +1475,7 @@ if (is_mingw) {
       ]
     } else {
       ecma_platform_source += [
+        "ecmascript/platform/unix/linux/debug_signal.cpp",
         "ecmascript/platform/common/pandafile.cpp",
         "ecmascript/platform/common/ecma_context.cpp",
         "ecmascript/platform/common/parameters.cpp",
@@ -1493,6 +1496,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
       "ecmascript/platform/unix/linux/async_detect.cpp",
+      "ecmascript/platform/unix/linux/debug_signal.cpp",
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/linux/memory.cpp",
