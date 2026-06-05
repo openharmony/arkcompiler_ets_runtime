@@ -614,7 +614,8 @@ size_t DFXJSNApi::GetFullGCLongTimeCount(const EcmaVM *vm)
 
 GCStatistic DFXJSNApi::GetGCStatistic(const EcmaVM *vm)
 {
-    if (!vm->GetJSThread()->IsMainThreadFast()) {
+    auto *thread = vm->GetAssociatedJSThread();
+    if (!thread->IsMainThreadFast()) {
         LOG_ECMA(FATAL) << "GetGCStatistic only supports the main thread VM";
         return {};
     }

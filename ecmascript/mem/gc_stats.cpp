@@ -58,12 +58,14 @@ const char *GCStats::GetGCStatisticType(GCType type)
         case GCType::SHARED_GC:
         case GCType::SHARED_PARTIAL_GC:
         case GCType::SHARED_FULL_GC:
+        case GCType::GLOBAL_GC:
             return "Shared GC";
         case GCType::PARTIAL_YOUNG_GC:
         case GCType::PARTIAL_OLD_GC:
         case GCType::LOCAL_CC:
         case GCType::COMPRESS_GC:
         case GCType::CMS_GC:
+        case GCType::STICKY_CMS_GC:
             return "Local GC";
         default:
             return "UnknownType";
