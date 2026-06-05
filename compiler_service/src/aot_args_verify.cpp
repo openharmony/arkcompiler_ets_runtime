@@ -521,17 +521,18 @@ bool AotArgsVerify::CheckHapBundleInfo(const std::string &hapPath, const std::st
         LOG_SA(ERROR) << "Open file failed: " << realPath;
         return false;
     }
+    panda::ecmascript::FdsanExchangeOwnerTag(fd);
 
     if (!CheckHapFsVerity(fd)) {
         LOG_SA(ERROR) << "HAP fs-verity check failed: " << realPath;
-        close(fd);
+        panda::ecmascript::Close(fd);
         return false;
     }
 
     std::string parsedBundleName;
     std::string parsedAppIdentifier;
     int32_t res = parseFunc(fd, parsedBundleName, parsedAppIdentifier);
-    close(fd);
+    panda::ecmascript::Close(fd);
 
     if (res != 0) {
         LOG_SA(ERROR) << "ParseBundleNameAndAppIdentifier failed, res: " << res;
