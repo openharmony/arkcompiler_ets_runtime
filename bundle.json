@@ -145,7 +145,7 @@
                     "compile_mode": ["cross"]
                 },
                 "//arkcompiler/ets_runtime:libark_jsruntime": {
-                    "compile_mode": ["cross"]
+                    "compile_mode": ["host", "cross"]
                 },
                 "//arkcompiler/ets_runtime:libark_jsruntime_static": {
                     "compile_mode": ["cross"]
