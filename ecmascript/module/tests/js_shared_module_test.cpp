@@ -166,4 +166,138 @@ HWTEST_F_L0(JSSharedModuleTest, JSSharedModule_GenerateSharedExports_EmptyExport
     EXPECT_FALSE(exports.IsUndefined());
 }
 
+/**
+ * @tc.name: GenerateSendableFuncModule_NonSourceTextModule
+ * @tc.desc: Test GenerateSendableFuncModule with non-SourceTextModule input (line 27-29)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, GenerateSendableFuncModule_NonSourceTextModule)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSTaggedValue> recordName = JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("test_record"));
+    JSHandle<JSTaggedValue> result = SendableClassModule::GenerateSendableFuncModule(thread, recordName);
+    EXPECT_TRUE(result->IsString());
+}
+
+/**
+ * @tc.name: GenerateSendableFuncModule_ModuleInSharedHeap
+ * @tc.desc: Test GenerateSendableFuncModule when module is already in shared heap (line 33-35)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, GenerateSendableFuncModule_ModuleInSharedHeap)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
+    sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
+    JSHandle<JSTaggedValue> result =
+        SendableClassModule::GenerateSendableFuncModule(thread, JSHandle<JSTaggedValue>::Cast(sharedModule));
+    EXPECT_EQ(result.GetTaggedValue(), sharedModule.GetTaggedValue());
+}
+
+/**
+ * @tc.name: CloneModuleEnvironment_UndefinedEnvironment
+ * @tc.desc: Test CloneModuleEnvironment with undefined environment (line 99-101)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_UndefinedEnvironment)
+{
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSHandle<TaggedArray> result = SendableClassModule::CloneModuleEnvironment(thread, undefined);
+    EXPECT_TRUE(result.GetTaggedValue().IsUndefined());
+}
+
+/**
+ * @tc.name: CloneModuleEnvironment_ResolvedIndexBinding
+ * @tc.desc: Test CloneModuleEnvironment with RESOLVEDINDEXBINDING_RECORD (line 116-119)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_ResolvedIndexBinding)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
+    sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
+    JSHandle<ResolvedIndexBinding> binding = factory->NewResolvedIndexBindingRecord(sharedModule, 0);
+    JSHandle<TaggedArray> env = factory->NewTaggedArray(1);
+    env->Set(thread, 0, binding.GetTaggedValue());
+    JSHandle<TaggedArray> result =
+        SendableClassModule::CloneModuleEnvironment(thread, JSHandle<JSTaggedValue>::Cast(env));
+    EXPECT_EQ(result->GetLength(), 1U);
+    EXPECT_TRUE(result->Get(thread, 0).IsResolvedIndexBinding());
+}
+
+/**
+ * @tc.name: CloneModuleEnvironment_ResolvedRecordIndexBinding
+ * @tc.desc: Test CloneModuleEnvironment with RESOLVEDRECORDINDEXBINDING_RECORD (line 121-122)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_ResolvedRecordIndexBinding)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<EcmaString> record = factory->NewFromASCII("recIdxModule");
+    JSHandle<EcmaString> fileName = factory->NewFromASCII("recIdxModule.js");
+    JSHandle<JSTaggedValue> binding = JSHandle<JSTaggedValue>::Cast(
+        factory->NewSResolvedRecordIndexBindingRecord(record, fileName, 0));
+    JSHandle<TaggedArray> env = factory->NewTaggedArray(1);
+    env->Set(thread, 0, binding.GetTaggedValue());
+    JSHandle<TaggedArray> result =
+        SendableClassModule::CloneModuleEnvironment(thread, JSHandle<JSTaggedValue>::Cast(env));
+    EXPECT_EQ(result->GetLength(), 1U);
+}
+
+/**
+ * @tc.name: CloneModuleEnvironment_NonSharedIndexBinding
+ * @tc.desc: Test CloneModuleEnvironment indirectly covers CloneRecordIndexBinding non-shared branch
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_NonSharedIndexBinding)
+{
+    ScopedDisableForceGC disableForceGC(instance);
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<SourceTextModule> nonSharedModule = factory->NewSourceTextModule();
+    nonSharedModule->SetEcmaModuleRecordNameString("nonSharedIdxMod");
+    nonSharedModule->SetEcmaModuleFilenameString("nonSharedIdxMod.js");
+    JSHandle<ResolvedIndexBinding> binding = factory->NewResolvedIndexBindingRecord(nonSharedModule, 3);
+    JSHandle<TaggedArray> env = factory->NewTaggedArray(1);
+    env->Set(thread, 0, binding.GetTaggedValue());
+    JSHandle<TaggedArray> result =
+        SendableClassModule::CloneModuleEnvironment(thread, JSHandle<JSTaggedValue>::Cast(env));
+    EXPECT_EQ(result->GetLength(), 1U);
+    JSTaggedValue clonedBinding = result->Get(thread, 0);
+    EXPECT_TRUE(clonedBinding.IsRecord());
+}
+
+/**
+ * @tc.name: CloneModuleEnvironment_ResolvedRecordBinding
+ * @tc.desc: Test CloneModuleEnvironment with RESOLVEDRECORDBINDING_RECORD (line 123-124)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_ResolvedRecordBinding)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<EcmaString> record = factory->NewFromASCII("recBindModule");
+    JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("bindName"));
+    JSHandle<JSTaggedValue> binding = JSHandle<JSTaggedValue>::Cast(
+        factory->NewSResolvedRecordBindingRecord(record, bindingName));
+    JSHandle<TaggedArray> env = factory->NewTaggedArray(1);
+    env->Set(thread, 0, binding.GetTaggedValue());
+    JSHandle<TaggedArray> result =
+        SendableClassModule::CloneModuleEnvironment(thread, JSHandle<JSTaggedValue>::Cast(env));
+    EXPECT_EQ(result->GetLength(), 1U);
+}
+
+/**
+ * @tc.name: CloneEnvForSModule_NonSharedModule
+ * @tc.desc: Test CloneEnvForSModule with non-shared module returns original env (line 137-139)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSSharedModuleTest, CloneEnvForSModule_NonSharedModule)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<SourceTextModule> nonSharedModule = factory->NewSourceTextModule();
+    nonSharedModule->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> envRec = factory->NewTaggedArray(2);
+    JSHandle<TaggedArray> result = JSSharedModule::CloneEnvForSModule(thread, nonSharedModule, envRec);
+    EXPECT_EQ(result.GetTaggedValue(), envRec.GetTaggedValue());
+}
+
 }  // namespace panda::test

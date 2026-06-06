@@ -183,6 +183,19 @@ public:
         return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordBinding>(
             thread, module, binding, ModulePathHelper::Utf8ConvertToString(thread, binding->GetModuleRecord(thread)));
     }
+    static void LogModuleLoadInfo(JSThread *thread, JSHandle<SourceTextModule> module,
+        JSHandle<SourceTextModule> requiredModule, int32_t index, bool isSendable)
+    {
+        return ModuleValueAccessor::LogModuleLoadInfo(thread, module, requiredModule, index, isSendable);
+    }
+    static JSHandle<JSTaggedValue> GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule)
+    {
+        return ModuleValueAccessor::GetNativeOrCjsExports(thread, resolvedModule);
+    }
+    static JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index)
+    {
+        return ModuleValueAccessor::GetModuleValue(thread, module, index);
+    }
 };
 class MockDeprecatedModuleValueAccessor : public DeprecatedModuleValueAccessor {
 public:
@@ -6036,4 +6049,140 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleNamespaceInternal_NativeModule)
         thread, 0, module.GetTaggedValue());
     EXPECT_TRUE(result.IsHole());
 }
+/**
+ * @tc.name: ModuleLogger_SetDuration_MultiScenario
+ * @tc.desc: Test SetDuration with normal record, entry function exclusion, and TimeScope (line 223-237)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_SetDuration_MultiScenario)
+{
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->SetModuleLogger(moduleLogger);
+    double startTime = static_cast<double>(moduleLogger->now());
+    moduleLogger->SetDuration("normalRecord", startTime);
+    moduleLogger->SetDuration("normalRecord", startTime);
+    EXPECT_FALSE(thread->HasPendingException());
+    startTime = static_cast<double>(moduleLogger->now());
+    moduleLogger->SetDuration("func_main_0", startTime);
+    moduleLogger->SetDuration("_GLOBAL::func_main_0", startTime);
+    EXPECT_FALSE(thread->HasPendingException());
+    {
+        CString recordName = "timeScopeRecord";
+        ModuleLoggerTimeScope timeScope(thread, recordName);
+    }
+    {
+        CString entryName = "func_main_0";
+        ModuleLoggerTimeScope timeScope(thread, entryName);
+    }
+    EXPECT_FALSE(thread->HasPendingException());
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+}
+
+/**
+ * @tc.name: ModuleLogger_ToStringWithPrecision
+ * @tc.desc: Test ToStringWithPrecision static method (line 239-243)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_ToStringWithPrecision)
+{
+    std::string result = ModuleLogger::ToStringWithPrecision(3.14159265, 2);
+    EXPECT_TRUE(result.find("3.1") != std::string::npos);
+    result = ModuleLogger::ToStringWithPrecision(100.0, 3);
+    EXPECT_FALSE(result.empty());
+}
+
+/**
+ * @tc.name: ModuleLogger_PrintModuleLoadInfoTask_MultiScenario
+ * @tc.desc: Test PrintModuleLoadInfoTask with null and valid data (line 246-253)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_PrintModuleLoadInfoTask_MultiScenario)
+{
+    ModuleLogger::PrintModuleLoadInfoTask(nullptr);
+    EXPECT_FALSE(thread->HasPendingException());
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->SetModuleLogger(moduleLogger);
+    {
+        CString recordName = "taskTestRecord";
+        ModuleLoggerTimeScope timeScope(thread, recordName);
+    }
+    ModuleLogger::PrintModuleLoadInfoTask(moduleLogger);
+    EXPECT_FALSE(thread->HasPendingException());
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+}
+
+/**
+ * @tc.name: ModuleLogger_InsertModuleLoadInfo_DuplicateUpLevel
+ * @tc.desc: Test InsertModuleLoadInfo with duplicate upLevel entries (line 60-68)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_InsertModuleLoadInfo_DuplicateUpLevel)
+{
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->SetModuleLogger(moduleLogger);
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> currentModule = objectFactory->NewSourceTextModule();
+    currentModule->SetEcmaModuleRecordNameString("dupParent");
+    JSHandle<SourceTextModule> exportModule = objectFactory->NewSourceTextModule();
+    exportModule->SetEcmaModuleRecordNameString("dupChild");
+    JSHandle<JSTaggedValue> importName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(0, importName, importName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, currentModule, importEntry, 0, 1);
+    moduleLogger->InsertModuleLoadInfo(currentModule, exportModule, 0);
+    moduleLogger->InsertModuleLoadInfo(currentModule, exportModule, 0);
+    EXPECT_FALSE(thread->HasPendingException());
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+}
+
+/**
+ * @tc.name: ModuleValueAccessor_LogModuleLoadInfo_MultiScenario
+ * @tc.desc: Test LogModuleLoadInfo with sendable, logger present, and no logger (line 449-455)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleValueAccessor_LogModuleLoadInfo_MultiScenario)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    JSHandle<SourceTextModule> requiredModule = factory->NewSourceTextModule();
+    thread->SetModuleLogger(nullptr);
+    MockModuleValueAccessor::LogModuleLoadInfo(thread, module, requiredModule, 0, false);
+    EXPECT_FALSE(thread->HasPendingException());
+
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->SetModuleLogger(moduleLogger);
+    MockModuleValueAccessor::LogModuleLoadInfo(thread, module, requiredModule, 0, true);
+    EXPECT_FALSE(thread->HasPendingException());
+
+    JSHandle<SourceTextModule> currentModule = factory->NewSourceTextModule();
+    currentModule->SetEcmaModuleRecordNameString("logParent");
+    JSHandle<SourceTextModule> exportModule = factory->NewSourceTextModule();
+    exportModule->SetEcmaModuleRecordNameString("logChild");
+    JSHandle<JSTaggedValue> importName = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8("logImport"));
+    JSHandle<ImportEntry> importEntry =
+        factory->NewImportEntry(0, importName, importName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, currentModule, importEntry, 0, 1);
+    MockModuleValueAccessor::LogModuleLoadInfo(thread, currentModule, exportModule, 0, false);
+    EXPECT_FALSE(thread->HasPendingException());
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+}
+
+/**
+ * @tc.name: ModuleValueAccessor_GetNativeOrCjsExports_OtherModule
+ * @tc.desc: Test GetNativeOrCjsExports with non-native non-cjs module (line 483)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleValueAccessor_GetNativeOrCjsExports_OtherModule)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    JSHandle<JSTaggedValue> exports = MockModuleValueAccessor::GetNativeOrCjsExports(thread, module.GetTaggedValue());
+    EXPECT_TRUE(exports->IsUndefined());
+}
+
 }  // namespace panda::test

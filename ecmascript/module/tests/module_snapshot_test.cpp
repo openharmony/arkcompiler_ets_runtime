@@ -1188,4 +1188,77 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithMultipleModules)
     // module2: environment should still be undefined
     ASSERT_TRUE(module2->GetEnvironment(thread).IsUndefined());
 }
+
+/**
+ * @tc.name: DeserializeDataWithSharedModule
+ * @tc.desc: Test DeserializeData with shared module in serialize array (line 71-74)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleSnapshotTest, DeserializeDataWithSharedModule)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
+    CString baseFileName = "modules.abc";
+    CString recordName = "sharedDeserializeMod";
+    sharedModule->SetEcmaModuleFilenameString(baseFileName);
+    sharedModule->SetEcmaModuleRecordNameString(recordName);
+    sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
+    sharedModule->SetTypes(ModuleTypes::ECMA_MODULE);
+    sharedModule->SetStatus(ModuleStatus::INSTANTIATED);
+
+    SharedModuleManager::GetInstance()->AddResolveImportedSModule(recordName, sharedModule.GetTaggedValue());
+    thread->GetModuleManager()->AddResolveImportedModule(recordName, sharedModule.GetTaggedValue());
+
+    CString path = GetSnapshotPath();
+    CString version = TEST_ROM_VERSION.data();
+    ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+
+    thread->GetModuleManager()->ClearResolvedModules();
+    SharedModuleManager::GetInstance()->Destroy();
+
+    ASSERT_TRUE(ModuleSnapshot::DeserializeData(vm, path, version));
+
+    JSHandle<SourceTextModule> deserializedModule = thread->GetModuleManager()->HostGetImportedModule(recordName);
+    EXPECT_TRUE(SourceTextModule::IsSharedModule(deserializedModule));
+    EXPECT_EQ(deserializedModule->GetEcmaModuleRecordNameString(), recordName);
+}
+
+/**
+ * @tc.name: GetModuleSerializeArrayWithSharedModules
+ * @tc.desc: Test GetModuleSerializeArray includes shared modules (line 86-91)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleSnapshotTest, GetModuleSerializeArrayWithSharedModules)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    JSHandle<SourceTextModule> normalModule = factory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    CString normalRecordName = "serArrayNormal";
+    normalModule->SetEcmaModuleFilenameString(baseFileName);
+    normalModule->SetEcmaModuleRecordNameString(normalRecordName);
+    normalModule->SetTypes(ModuleTypes::ECMA_MODULE);
+    normalModule->SetStatus(ModuleStatus::INSTANTIATED);
+    thread->GetModuleManager()->AddResolveImportedModule(normalRecordName, normalModule.GetTaggedValue());
+
+    JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
+    CString sharedRecordName = "serArrayShared";
+    sharedModule->SetEcmaModuleFilenameString(baseFileName);
+    sharedModule->SetEcmaModuleRecordNameString(sharedRecordName);
+    sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
+    sharedModule->SetTypes(ModuleTypes::ECMA_MODULE);
+    sharedModule->SetStatus(ModuleStatus::INSTANTIATED);
+    SharedModuleManager::GetInstance()->AddResolveImportedSModule(sharedRecordName, sharedModule.GetTaggedValue());
+
+    JSHandle<TaggedArray> serializeArray = MockModuleSnapshot::MockGetModuleSerializeArray(thread);
+    uint32_t normalSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    uint32_t sharedSize = SharedModuleManager::GetInstance()->GetResolvedSharedModulesSize();
+    ASSERT_EQ(serializeArray->GetLength(), normalSize + sharedSize);
+    ASSERT_GE(normalSize, static_cast<uint32_t>(1));
+    ASSERT_GE(sharedSize, static_cast<uint32_t>(1));
+}
+
 }  // namespace panda::test
