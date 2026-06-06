@@ -2659,6 +2659,12 @@ LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJS
 #ifdef USE_HWASAN
     (const_cast<EcmaVM*>(vm))->AddHandleScopeDepth();
 #endif
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    const_cast<EcmaVM *>(vm)->IncreaseOpenHandleScopes();
+    scopeLevel_ = vm->GetOpenHandleScopes();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
+
     // Simply reserve a slot on the handlescope. The escaped handle will still be retained in this slot.
     ecmascript::EcmaHandleScope::NewHandle(reinterpret_cast<JSThread *>(thread_), value);
     prevNext_ = vm->GetHandleScopeStorageNext();
@@ -2674,11 +2680,6 @@ LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJS
     heapProfiler->IncreaseScopeCount();
     heapProfiler->PushToActiveScopeStack(this, nullptr);
 #endif
-
-#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
-    const_cast<EcmaVM *>(vm)->IncreaseOpenHandleScopes();
-    scopeLevel_ = vm->GetOpenHandleScopes();
-#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
 LocalScope::~LocalScope()
@@ -2708,9 +2709,17 @@ LocalScope::~LocalScope()
 
 #if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
     if (scopeLevel_ != vm->GetOpenHandleScopes()) {
+        if (vm->GetJSOptions().EnableHandleLeakLogOutput()) {
+            // output backtrace to hilog
+            // pass 0: `this` is the scope address, not a handle to save
+            vm->HandleLeakDetect(0);
+        } else {
+            // report backtrace via restraceExt
 #ifdef HOOK_ENABLE
-        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, sizeof(JSTaggedType),
+                        TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
+        }
     }
     const_cast<EcmaVM *>(vm)->DecreaseOpenHandleScopes();
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT

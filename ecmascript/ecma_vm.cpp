@@ -71,6 +71,9 @@
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/base/gc_helper.h"
 #include "ecmascript/platform/backtrace.h"
+#if defined(ENABLE_BACKTRACE_LOCAL)
+#include "backtrace_local.h"
+#endif
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 
@@ -1196,6 +1199,44 @@ void EcmaVM::IterateGlobalEnvField(RootVisitor &visitor)
         GlobalEnv::Cast(JSTaggedValue(value).GetTaggedObject())->Iterate(visitor);
     }
 }
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+void EcmaVM::HandleLeakDetect(uintptr_t handle)
+{
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    std::string backtrace;
+    if (job::GetBacktrace(backtrace, true)) {
+        if (backtrace.find("data/storage") == std::string::npos) {
+            return;
+        }
+        auto it = std::find_if(handleLeakRecords_.begin(), handleLeakRecords_.end(),
+            [&backtrace](const HandleLeakRecord &record) { return record.backtrace == backtrace; });
+        if (it != handleLeakRecords_.end()) {
+            it->leakCount++;
+        } else {
+            if (handleLeakRecords_.size() >= MAX_BACKTRACE_RECORDS) {
+                handleLeakRecords_.pop_front();
+            }
+            handleLeakRecords_.push_back({handle, 1, backtrace});
+            LOG_ECMA(ERROR) << "LOCAL_HANDLE_LEAK " << backtrace;
+        }
+    }
+#endif // ENABLE_BACKTRACE_LOCAL
+}
+
+#if defined(ENABLE_BACKTRACE_LOCAL)
+void EcmaVM::ClearHandleLeakRecords()
+{
+    handleLeakRecords_.clear();
+}
+
+auto EcmaVM::GetHandleLeakRecords() const
+    -> const std::deque<HandleLeakRecord>&
+{
+    return handleLeakRecords_;
+}
+#endif // ENABLE_BACKTRACE_LOCAL
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 
 uintptr_t *EcmaVM::ExpandHandleStorage()
 {

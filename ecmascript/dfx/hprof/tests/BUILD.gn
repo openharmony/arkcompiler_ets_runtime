@@ -368,6 +368,30 @@ host_unittest_action("LocalHandleLeakDetectTest") {
   ]
 }
 
+host_unittest_action("HandleLeakLogOutputTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "handle_leak_log_output_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
+  external_deps += hiviewdfx_ext_deps
+
+  cflags_cc = [
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-nested-anon-types",
+    "-Wno-variadic-macros",
+  ]
+}
+
 host_unittest_action("GlobalHandleLeakDetectTest") {
   module_out_path = module_output_path
 

@@ -72,9 +72,17 @@ EcmaHandleScope::~EcmaHandleScope()
 
 #if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
     if (scopeLevel_ != vm->GetOpenHandleScopes()) {
+        if (vm->GetJSOptions().EnableHandleLeakLogOutput()) {
+            // output backtrace to hilog
+            // pass 0: `this` is the scope address, not a handle to save
+            vm->HandleLeakDetect(0);
+        } else {
+            // report backtrace via restraceExt
 #ifdef HOOK_ENABLE
-        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, sizeof(JSTaggedType),
+                        TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
+        }
     }
     const_cast<EcmaVM *>(vm)->DecreaseOpenHandleScopes();
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
@@ -133,9 +141,14 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
 
 #ifdef ENABLE_HITRACE_LOCAL_HANDLE_DETECT
     if (vm->GetOpenHandleScopes() == 0) {
+        if (vm->GetJSOptions().EnableHandleLeakLogOutput()) {
+            vm->HandleLeakDetect(reinterpret_cast<uintptr_t>(result));
+        } else {
 #ifdef HOOK_ENABLE
-        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)result, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)result, sizeof(JSTaggedType),
+                        TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
+        }
     }
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
     return reinterpret_cast<uintptr_t>(result);
@@ -168,9 +181,14 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
 
 #ifdef ENABLE_HITRACE_LOCAL_HANDLE_DETECT
     if (vm->GetOpenHandleScopes() == 0) {
+        if (vm->GetJSOptions().EnableHandleLeakLogOutput()) {
+            vm->HandleLeakDetect(reinterpret_cast<uintptr_t>(result));
+        } else {
 #ifdef HOOK_ENABLE
-        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)result, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)result, sizeof(JSTaggedType),
+                        TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
+        }
     }
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
     return reinterpret_cast<uintptr_t>(result);
