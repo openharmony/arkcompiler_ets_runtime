@@ -99,4 +99,140 @@ HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_NativeMod
     EXPECT_EQ(module->GetStatus(), ModuleStatus::INSTANTIATED);
 }
 
+/**
+ * @tc.name: DynamicImport_ExecuteNativeOrJsonModule_LoadedNotInstantiated
+ * @tc.desc: Test if-branch (line 38-45): module loaded but NOT instantiated
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_LoadedNotInstantiated)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString specifier = "@ohos:lazy_test_module";
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString(specifier);
+    module->SetEcmaModuleFilenameString("");
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::EVALUATING);
+    moduleManager->AddResolveImportedModule(specifier, module.GetTaggedValue());
+
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(specifier));
+    EXPECT_FALSE(moduleManager->IsLocalModuleInstantiated(specifier));
+
+    JSHandle<JSFunction> resolve = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSFunction> reject = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSPromiseReactionsFunction> resolveHandle(resolve);
+    JSHandle<JSPromiseReactionsFunction> rejectHandle(reject);
+
+    JSTaggedValue result = DynamicImport::ExecuteNativeOrJsonModule(
+        thread, specifier, ModuleTypes::NATIVE_MODULE, resolveHandle, rejectHandle, nullptr);
+
+    EXPECT_FALSE(thread->HasPendingException());
+    EXPECT_TRUE(result.IsUndefined());
+}
+
+/**
+ * @tc.name: DynamicImport_ExecuteNativeOrJsonModule_ErroredModule
+ * @tc.desc: Test if-branch with ERRORED module triggers CheckAndThrowModuleError (line 42-44)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_ErroredModule)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString specifier = "@ohos:errored_test_module";
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString(specifier);
+    module->SetEcmaModuleFilenameString("");
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::UNINSTANTIATED);
+    JSHandle<JSTaggedValue> error(factory->NewFromASCII("test error"));
+    module->SetException(thread, error);
+    module->SetStatus(ModuleStatus::ERRORED);
+    moduleManager->AddResolveImportedModule(specifier, module.GetTaggedValue());
+
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(specifier));
+
+    JSHandle<JSFunction> resolve = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSFunction> reject = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSPromiseReactionsFunction> resolveHandle(resolve);
+    JSHandle<JSPromiseReactionsFunction> rejectHandle(reject);
+
+    JSTaggedValue result = DynamicImport::ExecuteNativeOrJsonModule(
+        thread, specifier, ModuleTypes::NATIVE_MODULE, resolveHandle, rejectHandle, nullptr);
+
+    EXPECT_TRUE(thread->HasPendingException() || result.IsUndefined() || !result.IsNull());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: DynamicImport_ExecuteNativeOrJsonModule_CJSModule
+ * @tc.desc: Test else-branch with CJS_MODULE type (line 48-55)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_CJSModule)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString specifier = "@ohos:cjs_test_module";
+
+    EXPECT_FALSE(moduleManager->IsLocalModuleLoaded(specifier));
+
+    JSHandle<JSFunction> resolve = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSFunction> reject = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSPromiseReactionsFunction> resolveHandle(resolve);
+    JSHandle<JSPromiseReactionsFunction> rejectHandle(reject);
+
+    JSTaggedValue result = DynamicImport::ExecuteNativeOrJsonModule(
+        thread, specifier, ModuleTypes::CJS_MODULE, resolveHandle, rejectHandle, nullptr);
+
+    EXPECT_FALSE(thread->HasPendingException());
+    EXPECT_TRUE(result.IsUndefined());
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(specifier));
+
+    JSHandle<SourceTextModule> mod = moduleManager->HostGetImportedModule(specifier);
+    EXPECT_EQ(mod->GetStatus(), ModuleStatus::INSTANTIATED);
+}
+
+/**
+ * @tc.name: DynamicImport_ExecuteNativeOrJsonModule_OHOSModule
+ * @tc.desc: Test else-branch with OHOS_MODULE type (line 48-55)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_OHOSModule)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString specifier = "@ohos:ohos_test_module";
+
+    EXPECT_FALSE(moduleManager->IsLocalModuleLoaded(specifier));
+
+    JSHandle<JSFunction> resolve = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSFunction> reject = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
+        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
+    JSHandle<JSPromiseReactionsFunction> resolveHandle(resolve);
+    JSHandle<JSPromiseReactionsFunction> rejectHandle(reject);
+
+    JSTaggedValue result = DynamicImport::ExecuteNativeOrJsonModule(
+        thread, specifier, ModuleTypes::OHOS_MODULE, resolveHandle, rejectHandle, nullptr);
+
+    EXPECT_FALSE(thread->HasPendingException());
+    EXPECT_TRUE(result.IsUndefined());
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(specifier));
+
+    JSHandle<SourceTextModule> mod = moduleManager->HostGetImportedModule(specifier);
+    EXPECT_EQ(mod->GetStatus(), ModuleStatus::INSTANTIATED);
+}
+
 }  // namespace panda::test

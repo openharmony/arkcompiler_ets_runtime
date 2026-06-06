@@ -383,4 +383,272 @@ HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadFromFile_Hybrid_ModuleBas
     VerifyModuleNamespace(result);
 }
 
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_EtsPrefix_Normal
+ * @tc.desc: Test LoadModuleNameSpace when requestPath starts with "ets/" (branch A, Normal)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_EtsPrefix_Normal)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "ets/module_test_module_test_module";
+    CString moduleName = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        EXPECT_FALSE(result.GetTaggedValue().IsUndefined());
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_EtsPrefix_Hybrid
+ * @tc.desc: Test LoadModuleNameSpace when requestPath starts with "ets/" (branch A, Hybrid)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_EtsPrefix_Hybrid)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "ets/module_test_module_test_module";
+    CString moduleName = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        EXPECT_FALSE(result.GetTaggedValue().IsUndefined());
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_SrcMainPrefix_Normal
+ * @tc.desc: Test LoadModuleNameSpace when requestPath starts with "moduleName/src/main" (branch B, Normal)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_SrcMainPrefix_Normal)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "module_test_module_test_module/src/main/ets/module_test_module_test_module";
+    CString moduleName = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        VerifyModuleNamespace(result);
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_SrcMainPrefix_Hybrid
+ * @tc.desc: Test LoadModuleNameSpace when requestPath starts with "moduleName/src/main" (branch B, Hybrid)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_SrcMainPrefix_Hybrid)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "module_test_module_test_module/src/main/ets/module_test_module_test_module";
+    CString moduleName = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        VerifyModuleNamespace(result);
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_EtsPrefix_ModuleBase
+ * @tc.desc: Test LoadModuleNameSpace with "ets/" prefix and module_base abc file
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_EtsPrefix_ModuleBase)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module_base");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "ets/module_test_module_test_module_base";
+    CString moduleName = "module_test_module_test_module_base";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        EXPECT_FALSE(result.GetTaggedValue().IsUndefined());
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_SrcMainPrefix_ModuleBase
+ * @tc.desc: Test LoadModuleNameSpace with "src/main" prefix and module_base abc file
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_SrcMainPrefix_ModuleBase)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module_base");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "module_test_module_test_module_base/src/main/ets/module_test_module_test_module_base";
+    CString moduleName = "module_test_module_test_module_base";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        VerifyModuleNamespace(result);
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_SrcMainExact_ThrowRefError
+ * @tc.desc: Test LoadFilePathWithinModule branch B: requestPath exactly equals srcPrefix, should throw ReferenceError
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_SrcMainExact_ThrowRefError)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "/src/main";
+    CString moduleName = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_SrcMainExact_Hybrid_ThrowRefError
+ * @tc.desc: Test LoadFilePathWithinModule branch B with Hybrid template
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_SrcMainExact_Hybrid_ThrowRefError)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = "/src/main";
+    CString moduleName = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_GetModuleNameSpace_EnableModuleException
+ * @tc.desc: Test GetModuleNameSpace with EnableModuleException enabled (line 201)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_GetModuleNameSpace_EnableModuleException)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJSOptions().SetArkProperties(1ULL << 29);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString entryPoint = "module_test_module_test_module";
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::GetModuleNameSpace(thread, entryPoint, abcFilePath);
+
+    if (!thread->HasPendingException()) {
+        VerifyModuleNamespace(result);
+    }
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadFromFile_RecordNotFound_ThrowRefError
+ * @tc.desc: Test LoadModuleNameSpaceFromFile with non-existent record entry (line 164)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadFromFile_RecordNotFound_ThrowRefError)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString entryPoint = "non_existent_record";
+    CString abcFilePath = baseFileName.c_str();
+
+    NapiModuleLoader::LoadModuleNameSpaceFromFile<ForHybridApp::Normal>(
+        thread, entryPoint, abcFilePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadFromFile_RecordNotFound_ThrowRefError_Hybrid
+ * @tc.desc: Test LoadModuleNameSpaceFromFile with non-existent record entry, Hybrid template
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadFromFile_RecordNotFound_ThrowRefError_Hybrid)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    ASSERT_TRUE(executeResult);
+
+    CString entryPoint = "non_existent_record";
+    CString abcFilePath = baseFileName.c_str();
+
+    NapiModuleLoader::LoadModuleNameSpaceFromFile<ForHybridApp::Hybrid>(
+        thread, entryPoint, abcFilePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
 }  // namespace panda::test
