@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_MODULE_VALUE_ACCESSOR_H
 #define ECMASCRIPT_MODULE_VALUE_ACCESSOR_H
 
-#include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
@@ -102,7 +101,6 @@ protected:
 
     friend class DeprecatedModuleValueAccessor;
     friend class RuntimeStubs;
-    friend class tooling::DebuggerApi;
 };
 class DeprecatedModuleValueAccessor {
 public:

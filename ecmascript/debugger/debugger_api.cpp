@@ -30,7 +30,6 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/module_value_accessor.h"
-#include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -506,6 +505,10 @@ JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *ecmaVm)
         if (module.IsUndefined()) {
             continue;
         }
+        if (SourceTextModule::IsSendableFunctionModule(module)) {
+            CString recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordNameString();
+            module = thread->GetModuleManager()->TryGetImportedModule(recordName).GetTaggedValue();
+        }
         return module;
     }
     UNREACHABLE();
@@ -544,17 +547,8 @@ JSHandle<JSTaggedValue> DebuggerApi::GetImportModule(const EcmaVM *ecmaVm,
                 currentModule->GetTaggedObject())->GetEnvironment(thread);
             environment.Update(moduleEnvironment);
             JSTaggedValue resolvedBinding = environment->Get(thread, idx);
-            if (resolvedBinding.IsResolvedIndexBinding()) {
-                ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-                importModule.Update(binding->GetModule(thread));
-            } else if (resolvedBinding.IsResolvedRecordIndexBinding()) {
-                JSHandle<ResolvedRecordIndexBinding> resolvBindingHandle(thread, resolvedBinding);
-                JSHandle<SourceTextModule> resolveModule = ModuleValueAccessor::GetResolvedModule
-                    <true, ResolvedRecordIndexBinding>(thread, JSHandle<SourceTextModule>::Cast(currentModule),
-                    resolvBindingHandle, ModulePathHelper::Utf8ConvertToString(thread,
-                    resolvBindingHandle->GetModuleRecord(thread)));
-                importModule.Update(resolveModule);
-            }
+            ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+            importModule.Update(binding->GetModule(thread));
             name = EcmaStringAccessor(importName).ToStdString(thread);
             return importModule;
         }
@@ -850,6 +844,9 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
         }
         JSTaggedValue moduleValue =
             ModuleValueAccessor::GetModuleValueOuter(thread, idx, currentModule);
+        if (moduleValue.IsHole()) {
+            moduleValue = JSTaggedValue::Undefined();
+        }
         Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
         Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);
         PropertyAttribute descriptor(value, true, true, true);
