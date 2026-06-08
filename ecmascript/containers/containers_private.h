@@ -50,40 +50,45 @@ class ContainersPrivate : public base::BuiltinsBase {
 public:
     static JSTaggedValue Load(EcmaRuntimeCallInfo *msg);
 
-    static JSHandle<JSFunction> NewTreeSetConstructor(const JSHandle<GlobalEnv> &env, JSThread *thread,
-                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                                      const char *name, int length);
-    static void InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env, JSThread *thread);
-    
+    static void InitializeContainer(const JSHandle<GlobalEnv> &env);
+
 private:
-    static JSHandle<JSFunction> NewContainerConstructor(JSThread *thread, const JSHandle<JSObject> &prototype,
+    static JSHandle<JSTaggedValue> InitializeTreeSet(const JSHandle<GlobalEnv> &env);
+    static JSHandle<JSTaggedValue> InitializeArrayList(const JSHandle<GlobalEnv> &env);
+    static JSHandle<JSTaggedValue> InitializeHashMap(const JSHandle<GlobalEnv> &env);
+    static JSHandle<JSTaggedValue> InitializeHashSet(const JSHandle<GlobalEnv> &env);
+    static JSHandle<JSTaggedValue> InitializeList(const JSHandle<GlobalEnv> &env);
+    static JSHandle<JSTaggedValue> InitializeLinkedList(const JSHandle<GlobalEnv> &env);
+
+    static JSHandle<JSFunction> NewContainerConstructor(const JSHandle<GlobalEnv> &env,
+                                                        const JSHandle<JSObject> &prototype,
                                                         EcmaEntrypoint ctorFunc, const char *name, int length);
-    static JSHandle<JSFunction> NewFunction(JSThread *thread, const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func,
+    static JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env,
+                                            const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func,
                                             int length, kungfu::BuiltinsStubCSigns::ID builtinId =
                                             BUILTINS_STUB_ID(INVALID));
-    static void SetFrozenFunction(JSThread *thread, const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func,
+    static void SetFrozenFunction(const JSHandle<GlobalEnv> &env,
+                                  const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func,
                                   int length, kungfu::BuiltinsStubCSigns::ID builtinId =
                                   BUILTINS_STUB_ID(INVALID));
     static void SetFrozenConstructor(JSThread *thread, const JSHandle<JSObject> &obj, const char *keyChar,
                                      JSHandle<JSTaggedValue> &value);
-    static JSHandle<JSTaggedValue> CreateGetter(JSThread *thread, EcmaEntrypoint func, const char *name,
-                                                int length);
+    static JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env,
+                                                EcmaEntrypoint func, const char *name, int length);
     static void SetGetter(JSThread *thread, const JSHandle<JSObject> &obj,
                           const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &getter);
-    static void SetFunctionAtSymbol(JSThread *thread, const JSHandle<GlobalEnv> &env,
+    static void SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env,
                                     const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &symbol,
                                     const char *name, EcmaEntrypoint func, int length);
-    static void SetStringTagSymbol(JSThread *thread, const JSHandle<GlobalEnv> &env,
+    static void SetStringTagSymbol(const JSHandle<GlobalEnv> &env,
                                    const JSHandle<JSObject> &obj, const char *key);
 
     static JSTaggedValue InitializeContainer(JSThread *thread, const JSHandle<JSObject> &obj, InitializeFunction func,
                                              const char *name);
-    static JSHandle<JSTaggedValue> InitializeArrayList(JSThread *thread);
-    static void InitializeArrayListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
-    static JSHandle<JSTaggedValue> InitializeHashMap(JSThread *thread);
-    static void InitializeHashMapIterator(JSThread *thread);
-    static JSHandle<JSTaggedValue> InitializeHashSet(JSThread *thread);
-    static void InitializeHashSetIterator(JSThread *thread);
+    static void InitializeArrayListIterator(const JSHandle<GlobalEnv> &env);
+    static void InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env);
+    static void InitializeHashMapIterator(const JSHandle<GlobalEnv> &env);
+    static void InitializeHashSetIterator(const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeLightWeightMap(JSThread *thread);
     static void InitializeLightWeightMapIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeLightWeightSet(JSThread *thread);
@@ -102,10 +107,8 @@ private:
     static void InitializeDequeIterator(JSThread *thread,  const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeStack(JSThread *thread);
     static void InitializeStackIterator(JSThread *thread);
-    static JSHandle<JSTaggedValue> InitializeList(JSThread *thread);
-    static JSHandle<JSTaggedValue> InitializeLinkedList(JSThread *thread);
-    static void InitializeLinkedListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
-    static void InitializeListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
+    static void InitializeLinkedListIterator(const JSHandle<GlobalEnv> &env);
+    static void InitializeListIterator(const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeBuffer(JSThread *thread);
 };
 }  // namespace panda::ecmascript::containers

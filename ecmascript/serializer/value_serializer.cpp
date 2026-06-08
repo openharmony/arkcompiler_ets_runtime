@@ -59,6 +59,11 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_ARRAY_BUFFER:
         case JSType::JS_SHARED_ARRAY_BUFFER:
         case JSType::JS_API_TREE_SET:
+        case JSType::JS_API_ARRAY_LIST:
+        case JSType::JS_API_HASH_MAP:
+        case JSType::JS_API_HASH_SET:
+        case JSType::JS_API_LIST:
+        case JSType::JS_API_LINKED_LIST:
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:

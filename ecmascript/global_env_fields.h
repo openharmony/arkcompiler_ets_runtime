@@ -275,7 +275,12 @@
     V(JSTaggedValue, ElementHOLE_TAGGEDProtoClass, ELEMENT_HOLE_TAGGED_PROTO_HCLASS_INDEX)          \
     V(JSTaggedValue, ModuleManagerNativePointer, MODULE_MANAGER_NATIVE_POINTER_INDEX)               \
     V(JSTaggedValue, DetectorDependentInfos, DETECTOR_DEPENDENT_INFOS_INDEX)                        \
-    V(JSTaggedValue, TreeSetConstructor, TREE_SET_CONSTRUCTOR)
+    V(JSTaggedValue, TreeSetConstructor, TREE_SET_CONSTRUCTOR)                                      \
+    V(JSTaggedValue, ArrayListConstructor, ARRAY_LIST_CONSTRUCTOR)                                  \
+    V(JSTaggedValue, HashMapConstructor, HASH_MAP_CONSTRUCTOR)                                      \
+    V(JSTaggedValue, HashSetConstructor, HASH_SET_CONSTRUCTOR)                                      \
+    V(JSTaggedValue, ListConstructor, LIST_CONSTRUCTOR)                                             \
+    V(JSTaggedValue, LinkedListConstructor, LINKED_LIST_CONSTRUCTOR)
 
 #define GLOBAL_ENV_CONTAINER_ITERATORS(V)                                                           \
     /* non ECMA standard jsapi containers iterators */                                              \
