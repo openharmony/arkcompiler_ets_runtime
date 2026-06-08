@@ -20,98 +20,90 @@
 #include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
 #include "ecmascript/arksteed/arksteed_framestate_new.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
+#include "ecmascript/arksteed/arksteed_pgo_context.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 
 namespace panda::ecmascript::arksteed {
-using CallSignature = kungfu::CallSignature;
-using CommonStubCSigns = kungfu::CommonStubCSigns;
-using RuntimeStubCSigns = kungfu::RuntimeStubCSigns;
-
 class GraphBuilderNew {
 public:
-    GraphBuilderNew(Graph *destGraph,
+    GraphBuilderNew(JSThread *compilerThread,
+                    Graph *destGraph,
                     uintptr_t glueAddr,
                     BytecodePreprocessorNew *preproc,
                     BytecodeAnalysisNew *analysis);
 
     bool Run();
 
-    Chunk *GetChunk() const
-    {
-        return preproc_->GetChunk();
-    }
-
-    uint32_t GetNumLocalVRegs() const
-    {
-        return preproc_->GetNumLocalVRegs();
-    }
-    uint32_t GetNumParamVRegs() const
-    {
-        return preproc_->GetNumParamVRegs();
-    }
-    uint32_t GetNumVRegs() const
-    {
-        return preproc_->GetNumVRegs();
-    }
-
 private:
     using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
-    using BytecodeInfo = BytecodePreprocessorNew::BytecodeInfo;
-    using CommonStubID = CommonStubCSigns::ID;
-    using RuntimeStubID = RuntimeStubCSigns::ID;
+    using CommonStubID = kungfu::CommonStubCSigns::ID;
+    using RuntimeStubID = kungfu::RuntimeStubCSigns::ID;
 
     struct CatchBlockInputData;
     struct BytecodeVisitor;
 
+    VRegIDType LexicalEnvIndex() const
+    {
+        return VRegOfLexicalEnv(numLocal_, numParams_).GetId();
+    }
+    VRegIDType AccIndex() const
+    {
+        return VRegOfAcc(numLocal_, numParams_).GetId();
+    }
+
     void DebugLog();
-    void InitializeBasicBlocks();
-    void InitializeGlobalsAndParameters();
-    void FinalizeStartBasicBlock(BCFrameState &frameState);
-    void ProcessBasicBlock(BCFrameState &frameState, uint32_t rpoIndex);
-    void ProcessCatchBlockHead(BCFrameState &frameState, uint32_t rpoIndex);
-    void VisitBytecode(uint32_t rpoIndex, BCFrameState *frameState, const BytecodeInfo *bcInfo);
-    void FinalizeBasicBlockRelations();
+    void InitializeStartBlock(SharedBCFrameState frameState);
+    void ProcessDeadBasicBlock(uint32_t rpoIndex);
+    void ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
+    void ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex);
+    void VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
 
-    void InitFrameState(BCFrameState &framestate, uint32_t rpoIndex);
-    void InitFrameStateForLoopHeader(BCFrameState &framestate, uint32_t rpoIndex);
-    void InitFrameStateForCatchBlockHeader(BCFrameState &framestate, uint32_t rpoIndex);
+    void InitFrameState(SharedBCFrameState framestate, uint32_t rpoIndex);
+    void InitFrameStateForLoopHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
+    void InitFrameStateForCatchBlockHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
 
-    void WriteBackFrameStateToLoopHeader(BCFrameState &current, uint32_t rpoIndex);
-    void MergeFrameState(BCFrameState &dest, uint32_t rpoIndex, uint32_t predecessorIndex);
-
-    uint32_t AppendCatchBlockInputs(const BCFrameState &current, uint32_t catchBlockIndex);
-
-    template <class VertexT, class... Args>
-    VertexT *NewVertex(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args);
-
-    template <class VertexT, class... Args>
-    VertexT *NewVertex(BB *owner, const ChunkVector<ValueVertex *> &inputs, Args &&...args);
-
-    template <class VertexT, class... Args>
-    VertexT *NewVertexNoInput(BB *owner, Args &&...args);
+    void WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex);
+    void MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
+                         uint32_t actualPredIndex, uint32_t actualNumPreds);
 
     PhiVertex *NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg);
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    PhiVertex *NewPhiVertexWith(BB *owner, const InputRange &inputs, VRegIDType vreg);
 
+    // VertexT should be neither control vertex nor Phi
+    template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    VertexT *NewVertex(BB *owner, const InputRange &inputs, Args &&...args);
+
+    JumpVertex *FinishBlockWithJump(BB *owner, BB *target);
+    JumpLoopVertex *FinishBlockWithJumpLoop(BB *owner, BB *target);
+    BranchIfTrueVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
+
+    // VertexT should be control vertex
     template <class VertexT, class... Args>
-    VertexT *NewControlVertex(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args);
+    VertexT *FinishBlockWith(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args);
 
-    template <class VertexT>
-    VertexT *FinalizeNonControlVertex(BB *owner, VertexT *vertex);
-
-    template <class VertexT>
-    VertexT *FinalizeControlVertex(BB *owner, VertexT *vertex);
-
-    ValueVertex *GetGlue() const;
-    ValueVertex *GetUndefinedValue() const;
+    BB *NewBlock();
+    BB *ActivateNonCatchBlock(uint32_t rpoIndex);
+    BB *ActivateCatchBlock(CatchBlockInputData **inputData, uint32_t rpoIndex);
+    LoadTaggedFieldVertex *ActivateGlobalEnv();
 
     Graph *graph_;
     uintptr_t glueAddr_;
     BytecodePreprocessorNew *preproc_;
     BytecodeAnalysisNew *analysis_;
 
+    ArkSteedPGOContext pgoContext_;
+
+    // Frequently used fields. Cached for performance.
+    uint32_t numLocal_;   // Equivalent to preproc_->GetNumLocalRegs()
+    uint32_t numParams_;  // Equivalent to preproc_->GetNumParamRegs()
+    Chunk *chunk_;        // Equivalent to preproc_->GetChunk()
+
     // Constants frequently used
     ValueVertex *glue_ = nullptr;
     ValueVertex *undefinedValue_ = nullptr;
+    InitialValueVertex *initialLexicalEnv_ = nullptr;
+    LoadTaggedFieldVertex *lazyGlobalEnv_ = nullptr;
 
     ChunkVector<BB *> blocks_;
     ChunkVector<CondensedBCFrameState> frameStates_;

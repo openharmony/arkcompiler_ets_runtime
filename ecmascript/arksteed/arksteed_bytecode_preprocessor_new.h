@@ -22,6 +22,8 @@
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::arksteed {
+using BytecodeInfo = kungfu::BytecodeInfo;
+
 class BytecodePreprocessorNew {
 public:
     static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
@@ -67,6 +69,7 @@ public:
 
         bool ContainsBytecode(uint32_t bcIndex) const;
         bool HasFallthrough() const;
+        bool IsFallthrough() const;
         bool IsJump() const;
         bool IsConditionalJump() const;
         bool IsDead() const;
@@ -74,16 +77,6 @@ public:
         bool IsCatchBlockHeader() const;
         bool IsEndOfLoop() const;
         bool IsSynthetic() const;
-    };
-
-    struct BytecodeInfo {
-        // Offset bytes inside this method.
-        uint32_t offset;
-        // Which block it belongs to.
-        uint32_t blockIndex;
-        // Parsing result of current bytecode instruction.
-        // For jump instructions, only opcode metadata is loaded into details.
-        kungfu::BytecodeInfo details;
     };
 
     BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *chunk);
@@ -103,11 +96,6 @@ public:
     const BasicBlockInfo *GetBasicBlockByRPO(uint32_t rpoIndex) const
     {
         return rpoList_[rpoIndex];
-    }
-
-    const BasicBlockInfo *GetBasicBlockByBCOrder(uint32_t blockIndex) const
-    {
-        return &basicBlocks_[blockIndex];
     }
 
     const BytecodeInfo *GetBytecode(uint32_t bcIndex) const
@@ -148,7 +136,7 @@ public:
 private:
     struct LoopCanonicalizer;
 
-    uint32_t JumpTargetBcIndexOfBytecode(uint32_t bcIndex);
+    uint32_t JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uint32_t bcOffset);
     uint32_t AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors);
 
     bool CollectBytecodeInfo();
@@ -181,6 +169,8 @@ private:
     ChunkVector<const BasicBlockInfo *> rpoList_;
 
     // Auxiliary data
+    ChunkVector<uint32_t> bcOffsets_;
+    ChunkVector<uint32_t> bcBlockIndices_;
     ChunkVector<uint32_t> bcIndexOfOffset_;
     ChunkVector<uint32_t> jumpTargetBcIndices_;
     ChunkVector<uint32_t> loopHeaders_;
@@ -200,6 +190,11 @@ inline bool BytecodePreprocessorNew::BasicBlockInfo::ContainsBytecode(uint32_t b
 inline bool BytecodePreprocessorNew::BasicBlockInfo::HasFallthrough() const
 {
     return fallthroughBlock != nullptr;
+}
+
+inline bool BytecodePreprocessorNew::BasicBlockInfo::IsFallthrough() const
+{
+    return fallthroughBlock != nullptr && jumpBlock == nullptr;
 }
 
 inline bool BytecodePreprocessorNew::BasicBlockInfo::IsJump() const

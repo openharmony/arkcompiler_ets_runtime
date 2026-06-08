@@ -18,16 +18,11 @@ function call_compiled_lambda_3(x: number): number {
     const foo = (a: number, b: number) => a * b;
     if (!compiled) {
         ArkTools.arkSteedCompileSync(foo);
-        // Do not remove this spin-loop. This is already part of the test case
         compiled = true;
     }
     return foo(x - 1, x + 2);
 }
 
-(async () => {
-    await ArkTools.arkSteedCompileSync(call_compiled_lambda_3);
-    // TODO: Remove this spin-loop
-})().then(() => {
-    print(call_compiled_lambda_3(-2.5));
-    print(call_compiled_lambda_3(15));
-});
+ArkTools.arkSteedCompileSync(call_compiled_lambda_3);
+print(call_compiled_lambda_3(-2.5));
+print(call_compiled_lambda_3(15));

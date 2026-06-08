@@ -83,7 +83,7 @@ public:
     // GetParam(index), SetParam(index, newValue)
     VIRTUAL_REGISTER_GETTER_SETTER(Param, index < numParams_, VRegOfParam(numLocal_, index).GetId(), VRegIDType index)
     // GetEnv(), SetEnv(newValue)
-    VIRTUAL_REGISTER_GETTER_SETTER(Env, true, VRegOfEnv(numLocal_, numParams_).GetId())
+    VIRTUAL_REGISTER_GETTER_SETTER(Env, true, VRegOfLexicalEnv(numLocal_, numParams_).GetId())
     // GetAcc(), SetAcc(newValue)
     VIRTUAL_REGISTER_GETTER_SETTER(Acc, true, VRegOfAcc(numLocal_, numParams_).GetId())
 
@@ -117,7 +117,7 @@ public:
 
 class CondensedFrameState {
 public:
-    // Layout: [Local (filtered out if dead)] [Params] [Env] [Acc (filtered out if dead)]
+    // Layout: [Local (filtered out if dead)] [Params] [LexicalEnv] [GlobalEnv] [Acc (filtered out if dead)]
     CondensedFrameState(const LivenessBitSet *liveness, Chunk *chunk)
         : liveness_(liveness), liveRegisters_(chunk->NewArray<ValueVertex *>(liveness->NumLiveVRegs()))
     {
@@ -206,7 +206,7 @@ public:
 
     VirtualRegister VRegOfEnv() const
     {
-        return arksteed::VRegOfEnv(liveness_->NumLocalVRegs(), liveness_->NumParamVRegs());
+        return arksteed::VRegOfLexicalEnv(liveness_->NumLocalVRegs(), liveness_->NumParamVRegs());
     }
     VirtualRegister VRegOfAcc() const
     {

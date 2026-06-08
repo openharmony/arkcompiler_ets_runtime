@@ -17,11 +17,10 @@
 
 namespace panda::ecmascript::arksteed {
 using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
-using BytecodeInfo = BytecodePreprocessorNew::BytecodeInfo;
 
 BytecodeAnalysisNew::BytecodeAnalysisNew(const BytecodePreprocessorNew *parent)
     : parent_(parent),
-      accIndex_(VRegOfAcc(parent_->GetNumLocalVRegs(), parent_->GetNumParamVRegs()).GetId()),
+      numVRegs_(parent->GetNumVRegs()),
       liveIn_(parent->GetChunk()),
       liveOut_(parent->GetChunk()),
       ueSet_(parent->GetChunk()),
@@ -34,7 +33,7 @@ bool BytecodeAnalysisNew::Run()
     for (auto *dest : {&liveIn_, &liveOut_, &ueSet_, &killSet_}) {
         dest->reserve(numBlocks);
         for (uint32_t i = 0; i < numBlocks; i++) {
-            dest->emplace_back(GetChunk(), accIndex_ + 1);
+            dest->emplace_back(GetChunk(), numVRegs_);
         }
     }
 
@@ -45,6 +44,7 @@ bool BytecodeAnalysisNew::Run()
     while (UpdateLiveness()) {
         numIterations++;
     }
+    ExpandKillSet();
     FinalizeWithFixedParamsAndEnv();
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "Liveness analysis done. " << numIterations << " iterations used.";
@@ -52,19 +52,21 @@ bool BytecodeAnalysisNew::Run()
     return true;
 }
 
-void BytecodeAnalysisNew::UpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex)
+void BytecodeAnalysisNew::UpdateUpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex)
 {
-    if (info->details.AccIn() && !TestAcc(killSet_[blockIndex])) {
+    if (info->AccIn() && !TestAcc(killSet_[blockIndex])) {
         SetAcc(ueSet_[blockIndex]);
     }
-    if (info->details.EnvIn() && !TestEnv(killSet_[blockIndex])) {
-        SetEnv(ueSet_[blockIndex]);
+    VRegIDType lexicalEnv = numVRegs_ - EXTRA_VREG_COUNT + LEXICAL_ENV_EXTRA_INDEX;
+    if (info->EnvIn() && !TestVReg(killSet_[blockIndex], lexicalEnv)) {
+        SetVReg(ueSet_[blockIndex], lexicalEnv);
     }
-    if (info->details.ThisObjectIn()) {
-        SetVReg(ueSet_[blockIndex], GetNumLocalVRegs() + 2);  // 2 : a2, which is this object
+    if (info->ThisObjectIn()) {
+        VRegIDType thisObj = VRegOfParam(GetNumLocalVRegs(), THIS_OBJECT_PARAM_INDEX).GetId();
+        SetVReg(ueSet_[blockIndex], thisObj);
     }
-    for (size_t i = 0, n = info->details.inputs.size(); i < n; i++) {
-        const auto &in = info->details.inputs[i];
+    for (size_t i = 0, n = info->inputs.size(); i < n; i++) {
+        const auto &in = info->inputs[i];
         if (!std::holds_alternative<VirtualRegister>(in)) {
             continue;
         }
@@ -75,16 +77,31 @@ void BytecodeAnalysisNew::UpwardExposedSet(const BytecodeInfo *info, uint32_t bl
     }
 }
 
-void BytecodeAnalysisNew::KillSet(const BytecodeInfo *info, uint32_t blockIndex)
+void BytecodeAnalysisNew::UpdateKillSet(const BytecodeInfo *info, uint32_t blockIndex)
 {
-    if (info->details.AccOut()) {
+    if (info->AccOut()) {
         SetAcc(killSet_[blockIndex]);
     }
-    if (info->details.EnvOut()) {
-        SetEnv(killSet_[blockIndex]);
+    if (info->EnvOut()) {
+        VRegIDType lexicalEnv = numVRegs_ - EXTRA_VREG_COUNT + LEXICAL_ENV_EXTRA_INDEX;
+        SetVReg(killSet_[blockIndex], lexicalEnv);
     }
-    for (VRegIDType out : info->details.vregOut) {
+    for (VRegIDType out : info->vregOut) {
         SetVReg(killSet_[blockIndex], out);
+    }
+}
+
+void BytecodeAnalysisNew::ExpandKillSet()
+{
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(blockIndex);
+
+        while (curBlock->loopHeaderBlock != nullptr) {
+            uint32_t headerBlockIndex = curBlock->loopHeaderBlock->rpoIndex;
+            killSet_[headerBlockIndex].Union(killSet_[blockIndex]);
+            curBlock = curBlock->loopHeaderBlock;
+        }
     }
 }
 
@@ -96,8 +113,8 @@ void BytecodeAnalysisNew::InitializeUEAndKillSets()
 
         for (uint32_t bcIndex = curBlock->startBcIndex; bcIndex <= curBlock->endBcIndex; ++bcIndex) {
             const BytecodeInfo *curBc = parent_->GetBytecode(bcIndex);
-            UpwardExposedSet(curBc, blockIndex);
-            KillSet(curBc, blockIndex);
+            UpdateUpwardExposedSet(curBc, blockIndex);
+            UpdateKillSet(curBc, blockIndex);
         }
     }
 }
@@ -112,16 +129,13 @@ void BytecodeAnalysisNew::InitializeLiveIn()
 
 void BytecodeAnalysisNew::FinalizeWithFixedParamsAndEnv()
 {
-    VRegIDType firstParamVReg = GetNumLocalVRegs();
-    VRegIDType callTarget = firstParamVReg;     //     a0, which is call target
-    VRegIDType newTarget = firstParamVReg + 1;  // 1 : a1, which is new target
-    VRegIDType env = firstParamVReg + GetNumParamVRegs();
+    VRegIDType callTarget = VRegOfParam(GetNumLocalVRegs(), CALL_TARGET_PARAM_INDEX).GetId();
+    VRegIDType newTarget = VRegOfParam(GetNumLocalVRegs(), NEW_TARGET_PARAM_INDEX).GetId();
 
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
-        // These virtual registers may be used implicitly by GraphBuilder,
-        // even if EnvIn(), HasFuncIn() or HasNewTargetIn() is false
-        for (VRegIDType vregIndex : {callTarget, newTarget, env}) {
+        // These virtual registers may be used implicitly by GraphBuilder. Mark them as always-live.
+        for (VRegIDType vregIndex : {callTarget, newTarget}) {
             liveIn_[blockIndex].SetBit(vregIndex);
             liveOut_[blockIndex].SetBit(vregIndex);
         }
@@ -131,7 +145,7 @@ void BytecodeAnalysisNew::FinalizeWithFixedParamsAndEnv()
 bool BytecodeAnalysisNew::UpdateLiveness()
 {
     bool hasChange = false;
-    kungfu::BitSet temp(GetChunk(), accIndex_ + 1);
+    kungfu::BitSet temp(GetChunk(), numVRegs_);
 
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t i = numBlocks - 1; i != static_cast<uint32_t>(-1); i--) {
@@ -191,27 +205,12 @@ std::string BytecodeAnalysisNew::DumpBitset(const kungfu::BitSet &bitset) const
     out << '[';
 
     bool first = true;
-    for (VRegIDType i = 0; i < GetNumLocalVRegs(); i++) {
+    for (VRegIDType i = 0; i < numVRegs_; i++) {
         if (!TestVReg(bitset, i)) {
             continue;
         }
         first ? (void)(first = false) : (void)(out << ", ");
-        out << 'v' << i;
-    }
-    for (VRegIDType i = 0; i < GetNumParamVRegs(); i++) {
-        if (!TestVReg(bitset, GetNumLocalVRegs() + i)) {
-            continue;
-        }
-        first ? (void)(first = false) : (void)(out << ", ");
-        out << 'a' << i;
-    }
-    if (TestVReg(bitset, accIndex_ - 1)) {
-        first ? (void)(first = false) : (void)(out << ", ");
-        out << "env";
-    }
-    if (TestAcc(bitset)) {
-        first ? (void)(first = false) : (void)(out << ", ");
-        out << "acc";
+        out << VRegDisplayString(VirtualRegister(i), GetNumLocalVRegs(), GetNumParamVRegs());
     }
 
     out << ']';

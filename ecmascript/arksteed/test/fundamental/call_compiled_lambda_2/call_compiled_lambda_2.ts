@@ -20,17 +20,12 @@ function call_compiled_lambda_2(x: number, y: number): number {
     };
     if (!compiled) {
         ArkTools.arkSteedCompileSync(foo);
-        // Do not remove this spin-loop. This is already part of the test case
         compiled = true;
     }
     return foo(x, y);
 }
 
-(async () => {
-    await ArkTools.arkSteedCompileSync(call_compiled_lambda_2);
-    // TODO: Remove this spin-loop
-})().then(() => {
-    print(call_compiled_lambda_2(24, 36));
-    print(call_compiled_lambda_2(15, 48));
-    print(call_compiled_lambda_2(20, 12));
-});
+ArkTools.arkSteedCompileSync(call_compiled_lambda_2);
+print(call_compiled_lambda_2(24, 36));
+print(call_compiled_lambda_2(15, 48));
+print(call_compiled_lambda_2(20, 12));

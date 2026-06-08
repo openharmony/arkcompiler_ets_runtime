@@ -37,6 +37,8 @@ BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *
       basicBlocks_(chunk),
       bytecodes_(chunk),
       rpoList_(chunk),
+      bcOffsets_(chunk),
+      bcBlockIndices_(chunk),
       bcIndexOfOffset_(chunk),
       jumpTargetBcIndices_(chunk),
       loopHeaders_(chunk),
@@ -45,7 +47,7 @@ BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *
 
 bool BytecodePreprocessorNew::Run()
 {
-    if (CollectBytecodeInfo()) {
+    if (!CollectBytecodeInfo()) {
         return false;
     }
     CollectTryCatchBlockInfo();
@@ -59,12 +61,12 @@ bool BytecodePreprocessorNew::Run()
     return true;
 }
 
-uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex)
+uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uint32_t bcOffset)
 {
     // Used by READ_INST_*_0() macros below
-    const uint8_t *pc = env_->GetMethodPcStart() + bytecodes_[bcIndex].offset;
+    const uint8_t *pc = env_->GetMethodPcStart() + bcOffset;
     int32_t jumpOffset = 0;
-    switch (bytecodes_[bcIndex].details.GetOpcode()) {
+    switch (bytecodes_[bcIndex].GetOpcode()) {
         case kungfu::EcmaOpcode::JEQZ_IMM8:
         case kungfu::EcmaOpcode::JNEZ_IMM8:
         case kungfu::EcmaOpcode::JMP_IMM8:
@@ -84,7 +86,7 @@ uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex)
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    uint32_t jumpTargetOffset = static_cast<uint32_t>(bytecodes_[bcIndex].offset + jumpOffset);
+    uint32_t jumpTargetOffset = static_cast<uint32_t>(bcOffset + jumpOffset);
     return bcIndexOfOffset_[jumpTargetOffset];
 }
 
@@ -132,7 +134,7 @@ bool BytecodePreprocessorNew::CollectBytecodeInfo()
     BytecodeInstruction bcIns(startPc);
     BytecodeInstruction bcInsLast = bcIns.JumpTo(bcSizeBytes);
 
-    VRegIDType envVRegIndex = VRegOfEnv(numLocalVRegs_, numParamVRegs_).GetId();
+    VRegIDType envVRegIndex = VRegOfLexicalEnv(numLocalVRegs_, numParamVRegs_).GetId();
     auto makeBytecodeDetails = [startPc, envVRegIndex](uint32_t curOffset) {
         kungfu::BytecodeInfo res;
         res.SetMetaData(g_bytecodes.GetBytecodeMetaData(startPc + curOffset));
@@ -148,11 +150,8 @@ bool BytecodePreprocessorNew::CollectBytecodeInfo()
         uint32_t curOffset = static_cast<uint32_t>(curPc - startPc);
         bcIndexOfOffset_[curOffset] = static_cast<uint32_t>(bytecodes_.size());
 
-        bytecodes_.emplace_back(BytecodeInfo{
-            .offset = curOffset,
-            .blockIndex = NULL_INDEX,
-            .details = makeBytecodeDetails(curOffset),
-        });
+        bytecodes_.push_back(makeBytecodeDetails(curOffset));
+        bcOffsets_.push_back(curOffset);
     }
 
     uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
@@ -161,8 +160,8 @@ bool BytecodePreprocessorNew::CollectBytecodeInfo()
 
     jumpTargetBcIndices_.resize(bcCount, NULL_INDEX);
     for (uint32_t i = 0; i < bcCount; i++) {
-        if (bytecodes_[i].details.IsJump()) {
-            jumpTargetBcIndices_[i] = JumpTargetBcIndexOfBytecode(i);
+        if (bytecodes_[i].IsJump()) {
+            jumpTargetBcIndices_[i] = JumpTargetBcIndexOfBytecode(i, bcOffsets_[i]);
         }
     }
     return true;
@@ -237,10 +236,10 @@ void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockSt
             nextIsBlockStart = false;
         }
         const BytecodeInfo &curBcInfo = bytecodes_[i];
-        if (curBcInfo.details.IsJump()) {
+        if (curBcInfo.IsJump()) {
             blockStartMarks[jumpTargetBcIndices_[i]] = START_OF_NON_CATCH_BLOCK;
             nextIsBlockStart = true;
-        } else if (curBcInfo.details.IsThrow() || curBcInfo.details.IsReturn()) {
+        } else if (curBcInfo.IsThrow() || curBcInfo.IsReturn()) {
             nextIsBlockStart = true;
         }
     }
@@ -276,6 +275,7 @@ void BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &bloc
         blockCount += 1;
     };
 
+    bcBlockIndices_.resize(bcCount);
     for (uint32_t i = 0; i < bcCount; i++) {
         if (i > 0 && blockStartMarks[i] != NOT_START_OF_BLOCK) {
             appendBasicBlock(i);
@@ -284,7 +284,7 @@ void BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &bloc
             AppendSyntheticJump(blockCount + 1, 0);
             blockCount += 1;
         }
-        bytecodes_[i].blockIndex = blockCount;
+        bcBlockIndices_[i] = blockCount;
     }
     appendBasicBlock(bcCount);
 }
@@ -300,20 +300,20 @@ void BytecodePreprocessorNew::InitializeBlockEdges()
         ASSERT(curBlock.startBcIndex <= curBlock.endBcIndex && "Expects at least 1 bytecode instruction");
 
         const BytecodeInfo &lastBc = bytecodes_[curBlock.endBcIndex];
-        bool isJump = lastBc.details.IsJump();
-        bool isUnconditionalJump = isJump && !lastBc.details.IsCondJump();
+        bool isJump = lastBc.IsJump();
+        bool isUnconditionalJump = isJump && !lastBc.IsCondJump();
         if (isJump) {
             uint32_t jumpTargetBcIndex = jumpTargetBcIndices_[curBlock.endBcIndex];
-            uint32_t jumpTargetBlockIndex = bytecodes_[jumpTargetBcIndex].blockIndex;
+            uint32_t jumpTargetBlockIndex = bcBlockIndices_[jumpTargetBcIndex];
             curBlock.jumpBlock = BLOCK_INDEX_TO_PTR(jumpTargetBlockIndex);
         }
-        if (!lastBc.details.IsReturn() && !lastBc.details.IsThrow() && !isUnconditionalJump) {
+        if (!lastBc.IsReturn() && !lastBc.IsThrow() && !isUnconditionalJump) {
             ASSERT(i + 1 < blockCount && "Malformed bytecode");
             curBlock.fallthroughBlock = BLOCK_INDEX_TO_PTR(i + 1);
         }
         bool throws = false;
         for (uint32_t j = curBlock.startBcIndex; j <= curBlock.endBcIndex; j++) {
-            if (bytecodes_[j].details.IsGeneral() && !bytecodes_[j].details.NoThrow()) {
+            if (bytecodes_[j].IsGeneral() && !bytecodes_[j].NoThrow()) {
                 throws = true;
                 break;
             }
@@ -334,7 +334,7 @@ void BytecodePreprocessorNew::InitializeBlockEdges()
             }
         }
         if (innermostTryBlock != nullptr) {
-            uint32_t catchBlockIndex = bytecodes_[innermostTryBlock->catchBcIndex].blockIndex - 1;
+            uint32_t catchBlockIndex = bcBlockIndices_[innermostTryBlock->catchBcIndex] - 1;
             curBlock.catchBlock = BLOCK_INDEX_TO_PTR(catchBlockIndex);
             basicBlocks_[catchBlockIndex].catchPredecessors.push_back(BLOCK_INDEX_TO_PTR(i));
         }
@@ -787,10 +787,7 @@ std::string BytecodePreprocessorNew::Dump() const
     for (size_t i = 0, bcCount = bytecodes_.size(); i < bcCount; i++) {
         const BytecodeInfo &curBc = bytecodes_[i];
         out << "\n[" << std::setw(3) << i << "] opcode = ";  // 3: width for bytecode index
-        out << kungfu::GetEcmaOpcodeStr(curBc.details.GetOpcode());
-
-        out << ", offset = " << PrintIndex(curBc.offset);
-        out << ", blockIndex = " << PrintIndex(curBc.blockIndex);
+        out << kungfu::GetEcmaOpcodeStr(curBc.GetOpcode());
     }
 
     out << DumpBasicBlocksString();

@@ -122,14 +122,17 @@ bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGl
 
     BytecodePreprocessorNew preproc(jitCompilationEnv_.get(), chunk_.get());
     if (!preproc.Run()) {
+        LOG_COMPILER(WARN) << "JIT compilation halts due to bytecode preprocessing error.";
         return false;
     }
     BytecodeAnalysisNew analysis(&preproc);
     if (!analysis.Run()) {
+        LOG_COMPILER(WARN) << "JIT compilation halts due to bytecode analysis error.";
         return false;
     }
-    GraphBuilderNew graphBuilder(graph_, hostGlueAddr, &preproc, &analysis);
+    GraphBuilderNew graphBuilder(compilerThread, graph_, hostGlueAddr, &preproc, &analysis);
     if (!graphBuilder.Run()) {
+        LOG_COMPILER(WARN) << "JIT compilation halts due to graph building error.";
         return false;
     }
 #else

@@ -20,7 +20,6 @@ function call_function_4(x: number): number {
 }
 
 ArkTools.arkSteedCompileSync(call_function_4);
-// TODO: Remove this spin-loop
 
 print(call_function_4(0));
 print(call_function_4(1));

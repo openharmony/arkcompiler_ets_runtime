@@ -230,7 +230,7 @@ void BytecodeAnalysis::DumpLiveness() const
             out << 'v' << reg.GetId();
         } else if (reg.GetId() < numLocal_ + numParams_) {
             out << 'a' << reg.GetId() - numLocal_;
-        } else if (reg == VRegOfEnv(numLocal_, numParams_)) {
+        } else if (reg == VRegOfLexicalEnv(numLocal_, numParams_)) {
             out << "env";
         } else if (reg == VRegOfAcc(numLocal_, numParams_)) {
             out << "acc";

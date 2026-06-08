@@ -37,6 +37,12 @@ public:
     {
         return liveOut_[blockRpoIndex];
     }
+    // If current block B is a loop header,
+    // then KillSet(B) = Union of every KillSet(C) where C is inside the loop.
+    const kungfu::BitSet &GetKillSet(uint32_t blockRpoIndex) const
+    {
+        return killSet_[blockRpoIndex];
+    }
 
     VRegIDType GetNumLocalVRegs() const
     {
@@ -48,7 +54,7 @@ public:
     }
     VRegIDType GetNumVRegs() const
     {
-        return arksteed::NumVRegs(GetNumLocalVRegs(), GetNumParamVRegs());
+        return numVRegs_;
     }
 
     Chunk *GetChunk() const
@@ -59,52 +65,46 @@ public:
     std::string Dump() const;
 
 private:
-    void UpwardExposedSet(const BytecodePreprocessorNew::BytecodeInfo *info, uint32_t blockIndex);
-    void KillSet(const BytecodePreprocessorNew::BytecodeInfo *info, uint32_t blockIndex);
+    void UpdateUpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex);
+    void UpdateKillSet(const BytecodeInfo *info, uint32_t blockIndex);
+
     void InitializeUEAndKillSets();
     void InitializeLiveIn();
+    void ExpandKillSet();
     void FinalizeWithFixedParamsAndEnv();
 
     bool UpdateLiveness();
     void UpdateLiveIn(uint32_t blockIndex);
 
-    void SetEnv(kungfu::BitSet &bitset)
-    {
-        bitset.SetBit(accIndex_ - 1);
-    }
     void SetAcc(kungfu::BitSet &bitset)
     {
-        bitset.SetBit(accIndex_);
+        bitset.SetBit(numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX);
     }
     void SetVReg(kungfu::BitSet &bitset, VRegIDType vreg)
     {
-        ASSERT(vreg < accIndex_);
+        ASSERT(vreg < numVRegs_);
         bitset.SetBit(vreg);
     }
 
     void ClearAcc(kungfu::BitSet &bitset)
     {
-        bitset.ClearBit(accIndex_);
+        bitset.ClearBit(numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX);
     }
 
-    bool TestEnv(const kungfu::BitSet &bitset) const
-    {
-        return bitset.TestBit(accIndex_ - 1);
-    }
     bool TestAcc(const kungfu::BitSet &bitset) const
     {
-        return bitset.TestBit(accIndex_);
+        return bitset.TestBit(numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX);
     }
     bool TestVReg(const kungfu::BitSet &bitset, VRegIDType vreg) const
     {
-        ASSERT(vreg < accIndex_);
+        ASSERT(vreg < numVRegs_);
         return bitset.TestBit(vreg);
     }
 
     std::string DumpBitset(const kungfu::BitSet &bitset) const;
 
     const BytecodePreprocessorNew *parent_;
-    VRegIDType accIndex_;
+    VRegIDType numVRegs_;
     ChunkVector<kungfu::BitSet> liveIn_;
     ChunkVector<kungfu::BitSet> liveOut_;
     // Upward-exposed virtual registers

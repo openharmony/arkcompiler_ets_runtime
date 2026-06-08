@@ -21,7 +21,6 @@ function call_function_5(x: number): string {
 }
 
 ArkTools.arkSteedCompileSync(call_function_5);
-// TODO: Remove this spin-loop
 
 print(call_function_5(-2.5));
 print(call_function_5(15));

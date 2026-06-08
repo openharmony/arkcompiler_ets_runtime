@@ -49,7 +49,7 @@ std::string LivenessBitSet::Dump() const
         }
     }
 
-    if (Test(VRegOfEnv(NumLocalVRegs(), NumParamVRegs()).GetId())) {
+    if (Test(VRegOfLexicalEnv(NumLocalVRegs(), NumParamVRegs()).GetId())) {
         first ? (void)(first = false) : (void)(out << ", ");
         out << "env";
     }

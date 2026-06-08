@@ -77,7 +77,7 @@ public:
             liveness_.SetBit(VRegOfParam(numLocal, i).GetId());
         }
         // Env is always live by default
-        liveness_.SetBit(VRegOfEnv(numLocal, numParams).GetId());
+        liveness_.SetBit(VRegOfLexicalEnv(numLocal, numParams).GetId());
     }
 
     // Use CopyFrom() instead.

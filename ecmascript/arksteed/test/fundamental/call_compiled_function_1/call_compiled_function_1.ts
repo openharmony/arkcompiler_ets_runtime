@@ -20,11 +20,8 @@ function call_compiled_function_1(x: number): number {
     return foo(x);
 }
 
-(async () => {
-    await ArkTools.arkSteedCompileSync(foo);  // Callee is JIT-compiled as well
-    await ArkTools.arkSteedCompileSync(call_compiled_function_1);
-    // TODO: Remove this spin-loop
-})().then(() => {
-    print(call_compiled_function_1(-2.5));
-    print(call_compiled_function_1(15));
-});
+ArkTools.arkSteedCompileSync(foo);  // Callee is JIT-compiled as well
+ArkTools.arkSteedCompileSync(call_compiled_function_1);
+
+print(call_compiled_function_1(-2.5));
+print(call_compiled_function_1(15));
