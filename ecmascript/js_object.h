@@ -394,6 +394,8 @@ public:
                                                  size_t nativeBindingsize = 0,
                                                  Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCountOnHashField(const JSThread *thread) const;
+    static int32_t GetObjectHash(const JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+    static int32_t GetObjectHashCode(const JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static void SetNativePointerFieldCountOnHashField(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       int32_t count);
 
