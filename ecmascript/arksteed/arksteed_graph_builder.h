@@ -21,11 +21,12 @@
 
 #include "ecmascript/arksteed/arksteed_bytecode_context.h"
 #include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
+#include "ecmascript/arksteed/arksteed_compile_info_facts.h"
 #include "ecmascript/arksteed/arksteed_compiler.h"
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_helper.h"
-#include "ecmascript/arksteed/arksteed_known_node_aspect.h"
+#include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
 #include "ecmascript/arksteed/arksteed_pgo_context.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
@@ -56,10 +57,11 @@ public:
           profileTypeInfo_(profileTypeInfo),
           bytecodeContext_(graph->GetChunk()),
           mergeStates_(graph->GetChunk()),
+          mergeFacts_(graph->GetChunk()),
           predecessorCountReductions_(graph->GetChunk()),
           jumpTargets_(graph->GetChunk()),
-          knownNodeAspect_(graph->GetChunk()->New<KnownNodeAspect>(graph->GetChunk())),
           currentFrameState_(nullptr),
+          currentFacts_(nullptr),
           bytecodeAnalysis_(nullptr)
     {}
 
@@ -228,6 +230,23 @@ public:
     {
         return currentFrameState_;
     }
+    CompileInfoFacts *CurrentFacts()
+    {
+        return currentFacts_;
+    }
+    const CompileInfoFacts *CurrentFacts() const
+    {
+        return currentFacts_;
+    }
+
+    template <typename VertexT>
+    void CheckSideEffect(VertexT *vertex)
+    {
+        constexpr VertexProperties props = VertexT::PROPERTIES;
+        if constexpr (props.CanWrite()) {
+            currentFacts_->MarkPossibleSideEffect(ArkSteedSideEffectClassifier::Classify(vertex));
+        }
+    }
 
     //==========================================================================
     //                              Block Completion
@@ -335,7 +354,6 @@ private:
     void LowerCallStubWithICPreserveAcc(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     ValueVertex *NewCommonStubCall(std::initializer_list<ValueVertex *> args, const CommonStubCSigns::ID stubId);
     void ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args) const;
-    void ClearKnownNodeAspectsAfterSideEffect();
 
     std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const;
     std::optional<JSTaggedValue> TryGetNameFromConstDataId(uint16_t constDataId) const;
@@ -399,6 +417,7 @@ private:
     bool TryBuildLoadNamedProperty(ValueVertex *receiver, uint16_t constDataId);
 
     void MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex);
+    void MergeCurrentFactsTo(uint32_t destIndex);
     void StartNewBlock(BB *predecessor, MergePointFrameState *mergeState, BBRef *refsToBlock);
     void StartNewBlockWithMergeState(uint32_t index);
     void ProcessMergePointPredecessors(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock);
@@ -428,23 +447,27 @@ private:
             uint32_t predecessorCount_;
             MergePointFrameState *variableMergeState_ = nullptr;
             LivenessBitSet *mergeLiveSet_ = nullptr;
+            CompileInfoFacts *factsMergeState_ = nullptr;
             BBRef ref_;
         };
 
         class LoopLabel {
         public:
-            LoopLabel(ArkSteedSubGraphBuilder *subBuilder, MergePointFrameState *mergeState, BBRef *loopHeaderRef,
-                      BB *loopHeaderBlock)
+            LoopLabel(ArkSteedSubGraphBuilder *subBuilder, MergePointFrameState *mergeState,
+                      CompileInfoFacts *factsMergeState, BBRef *loopHeaderRef, BB *loopHeaderBlock)
                 : subBuilder_(subBuilder),
                   mergeState_(mergeState),
+                  factsMergeState_(factsMergeState),
                   loopHeaderRef_(loopHeaderRef),
                   loopHeaderBlock_(loopHeaderBlock)
-            {}
+            {
+            }
 
         private:
             friend class ArkSteedSubGraphBuilder;
             [[maybe_unused]] ArkSteedSubGraphBuilder *subBuilder_;
             MergePointFrameState *mergeState_;
+            CompileInfoFacts *factsMergeState_;
             BBRef *loopHeaderRef_;
             [[maybe_unused]] BB *loopHeaderBlock_;
         };
@@ -614,6 +637,7 @@ private:
     void InitializeGlobalsAndParameters();
 
     void InitializeCurrentFrameState();
+    void InitializeCurrentFacts();
 
     void BuildMergeStates();
 
@@ -622,9 +646,10 @@ private:
     void ValidateAfterBuilding();
 
     uint32_t PredecessorCount(uint32_t index) const;
-    void ReduceBytecodePredecessorCount(uint32_t index, uint32_t num = 1);
-    void MarkDeadLoopBackedge(uint32_t index);
-    void MarkDeadPredecessorsForSuccessors(uint32_t index, const BytecodeInfo &bytecodeInfo);
+    void PruneDeadEdges(uint32_t index, const BytecodeInfo &bytecodeInfo);
+    void PruneUntakenBranchForKnownCondition(bool takeJumpTarget, const BranchBuilder &builder);
+    void PruneDeadPredecessor(uint32_t targetIndex);
+    void PruneDeadLoopBackedge(uint32_t loopHeaderIndex);
     const LivenessBitSet *GetInLivenessFor(uint32_t index) const;
     void ValidateMergeStateAfterBuilding(uint32_t index, MergePointFrameState *mergeState);
 
@@ -796,14 +821,15 @@ private:
     BytecodeContext bytecodeContext_;
     BytecodeIterator iterator_;
     ChunkVector<MergePointFrameState *> mergeStates_;
+    ChunkVector<CompileInfoFacts *> mergeFacts_;
     ChunkVector<uint32_t> predecessorCountReductions_;
     ChunkVector<BBRef> jumpTargets_;
-    KnownNodeAspect *knownNodeAspect_ {nullptr};
     BB *startBlock_{nullptr};
 
     MethodLiteral *method_{nullptr};
 
     InterpreterFrameState *currentFrameState_{nullptr};
+    CompileInfoFacts *currentFacts_{nullptr};
     BytecodeAnalysis *bytecodeAnalysis_{nullptr};
 
     VRegIDType numLocal_;

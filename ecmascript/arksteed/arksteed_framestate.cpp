@@ -20,12 +20,12 @@
 
 namespace panda::ecmascript::arksteed {
 
-void InterpreterFrameState::CopyFrom(const MergePointFrameState &mergeState)
+void InterpreterFrameState::CopyFrom(MergePointFrameState &mergeState)
 {
     ASSERT(NumLocalVRegs() == mergeState.NumLocalVRegs());
     ASSERT(NumParamVRegs() == mergeState.NumParamVRegs());
-    mergeState.FrameState().ForEach([this](const ValueVertex *vertex, VirtualRegister reg) {
-        Set(reg, const_cast<ValueVertex *>(vertex));
+    mergeState.FrameState().ForEach([this](ValueVertex *vertex, VirtualRegister reg) {
+        Set(reg, vertex);
     });
 }
 

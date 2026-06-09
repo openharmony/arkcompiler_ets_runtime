@@ -112,7 +112,7 @@ class InterpreterFrameState : public VirtualRegisterArray<ValueVertex *> {
 public:
     using VirtualRegisterArray<ValueVertex *>::VirtualRegisterArray;
 
-    void CopyFrom(const MergePointFrameState &mergeState);
+    void CopyFrom(MergePointFrameState &mergeState);
 };
 
 class CondensedFrameState {

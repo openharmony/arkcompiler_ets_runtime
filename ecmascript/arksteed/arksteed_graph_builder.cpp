@@ -154,7 +154,7 @@ public:
         }
     }
 
-    void IntersectWithKnownNodeAspects(const std::optional<std::vector<JSHClass *>> &knownMaps)
+    void IntersectWithCompileInfoFacts(const std::optional<std::vector<JSHClass *>> &knownMaps)
     {
         if (!knownMaps.has_value()) {
             return;
@@ -201,6 +201,7 @@ bool ArkSteedGraphBuilder::Build()
     SetCurrentBlock(startBlock_);
     InitializeGlobalsAndParameters();
     InitializeCurrentFrameState();
+    InitializeCurrentFacts();
     BuildMergeStates();
     if (options_.printMethodName) {
         ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
@@ -268,6 +269,13 @@ void ArkSteedGraphBuilder::InitializeCurrentFrameState()
     currentFrameState_->SetAcc(undefinedValue);
 }
 
+void ArkSteedGraphBuilder::InitializeCurrentFacts()
+{
+    currentFacts_ = GetChunk()->New<CompileInfoFacts>(GetChunk());
+    currentFacts_->EnsureType(GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED),
+                              NodeInfo::NodeType::UNDEFINED);
+}
+
 ValueVertex *ArkSteedGraphBuilder::NewCallStubWithIC(const CommonStubCSigns::ID stubId,
                                                      const std::vector<ValueVertex *> &args)
 {
@@ -279,9 +287,7 @@ ValueVertex *ArkSteedGraphBuilder::NewCallStubWithIC(const CommonStubCSigns::ID 
     allArgs.push_back(GetInt32Constant(static_cast<int>(GetICSlotId(0))));
 
     ValidateCommonStubCallArgs(stubId, allArgs);
-    ValueVertex *result = NewVertex<CallCommonStubVertex>(allArgs, stubId);
-    ClearKnownNodeAspectsAfterSideEffect();
-    return result;
+    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
 }
 
 void ArkSteedGraphBuilder::LowerCallStubWithIC(const CommonStubCSigns::ID stubId,
@@ -301,9 +307,7 @@ ValueVertex *ArkSteedGraphBuilder::NewCommonStubCall(std::initializer_list<Value
 {
     std::vector<ValueVertex *> allArgs(args);
     ValidateCommonStubCallArgs(stubId, allArgs);
-    ValueVertex *result = NewVertex<CallCommonStubVertex>(allArgs, stubId);
-    ClearKnownNodeAspectsAfterSideEffect();
-    return result;
+    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
 }
 
 void ArkSteedGraphBuilder::ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId,
@@ -332,11 +336,6 @@ void ArkSteedGraphBuilder::ValidateCommonStubCallArgs(const CommonStubCSigns::ID
             UNREACHABLE();
         }
     }
-}
-
-void ArkSteedGraphBuilder::ClearKnownNodeAspectsAfterSideEffect()
-{
-    knownNodeAspect_->ClearUnstable();
 }
 
 std::optional<JSTaggedValue> ArkSteedGraphBuilder::TryGetConstantHeapObject(ValueVertex *node) const
@@ -397,7 +396,7 @@ std::optional<std::vector<JSHClass *>> ArkSteedGraphBuilder::TryGetPossibleHClas
         }
         return std::vector<JSHClass *> { constant->GetTaggedObject()->GetClass() };
     }
-    return knownNodeAspect_->TryGetPossibleHClasses(node);
+    return currentFacts_->TryGetPossibleHClasses(node);
 }
 
 std::optional<ArkSteedGraphBuilder::NamedAccessFeedback> ArkSteedGraphBuilder::TryGetLoadObjByNameFeedback(
@@ -776,7 +775,7 @@ bool ArkSteedGraphBuilder::BuildCheckMaps(ValueVertex *object, const std::vector
 
 bool ArkSteedGraphBuilder::BuildCheckHClass(ValueVertex *object, JSHClass *hclass)
 {
-    if (knownNodeAspect_->TryGetHClass(object) == hclass) {
+    if (currentFacts_->TryGetHClass(object) == hclass) {
         return true;
     }
 
@@ -787,7 +786,7 @@ bool ArkSteedGraphBuilder::BuildCheckHClass(ValueVertex *object, JSHClass *hclas
         if (constant->GetTaggedObject()->GetClass() != hclass) {
             return false;
         }
-        knownNodeAspect_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+        currentFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
         return true;
     }
 
@@ -798,7 +797,7 @@ bool ArkSteedGraphBuilder::BuildCheckHClass(ValueVertex *object, JSHClass *hclas
     }
 
     NewVertex<CheckHClassVertex>({object}, hclass);
-    knownNodeAspect_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+    currentFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
     return true;
 }
 
@@ -820,16 +819,16 @@ bool ArkSteedGraphBuilder::BuildCheckHClasses(ValueVertex *object, const std::ve
         if (std::find(hclasses.begin(), hclasses.end(), hclass) == hclasses.end()) {
             return false;
         }
-        knownNodeAspect_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+        currentFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
         return true;
     }
 
-    std::optional<std::vector<JSHClass *>> knownHClasses = knownNodeAspect_->TryGetPossibleHClasses(object);
+    std::optional<std::vector<JSHClass *>> knownHClasses = currentFacts_->TryGetPossibleHClasses(object);
     if (mapsAreKnownFresh && knownHClasses.has_value() && ContainsSameHClasses(knownHClasses.value(), hclasses)) {
         bool allStable = std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
             return hclass != nullptr && StableHClassDependency::IsValid(hclass);
         });
-        knownNodeAspect_->RecordPossibleHClasses(object, hclasses, allStable);
+        currentFacts_->RecordPossibleHClasses(object, hclasses, allStable);
         return true;
     }
 
@@ -852,16 +851,22 @@ ValueVertex *ArkSteedGraphBuilder::BuildLoadField(ValueVertex *lookupStartObject
 ValueVertex *ArkSteedGraphBuilder::TryReuseKnownPropertyLoad(ValueVertex *lookupStartObject, uint16_t constDataId,
                                                              PropertyLookupResult plr)
 {
-    return knownNodeAspect_->TryFindLoadedProperty(KnownLoadKey::ConstDataId(lookupStartObject, constDataId, plr));
+    LoadedPropertyKey key = LoadedPropertyKey::ConstDataId(lookupStartObject, constDataId, plr);
+    if (ValueVertex *value = currentFacts_->LookupLoadedProperty(key)) {
+        return value;
+    }
+    return currentFacts_->LookupLoadedConstantProperty(key);
 }
 
 void ArkSteedGraphBuilder::RecordKnownProperty(ValueVertex *lookupStartObject, uint16_t constDataId,
                                                PropertyLookupResult plr, ValueVertex *value, bool isConst)
 {
-    if (!isConst) {
+    LoadedPropertyKey key = LoadedPropertyKey::ConstDataId(lookupStartObject, constDataId, plr);
+    if (isConst) {
+        currentFacts_->RecordLoadedConstantProperty(key, value);
         return;
     }
-    knownNodeAspect_->RecordLoadedProperty(KnownLoadKey::ConstDataId(lookupStartObject, constDataId, plr), value);
+    currentFacts_->RecordLoadedProperty(key, value);
 }
 
 ValueVertex *ArkSteedGraphBuilder::TryBuildPropertyLoad(ValueVertex *lookupStartObject, uint16_t constDataId,
@@ -977,7 +982,7 @@ bool ArkSteedGraphBuilder::TryBuildNamedAccess(ValueVertex *receiver, ValueVerte
         }
     } else {
         KnownHClassesMerger merger(feedback->maps);
-        merger.IntersectWithKnownNodeAspects(TryGetPossibleHClasses(lookupStartObject));
+        merger.IntersectWithCompileInfoFacts(TryGetPossibleHClasses(lookupStartObject));
         inferredMaps = merger.intersect_set();
     }
 
@@ -1010,6 +1015,7 @@ void ArkSteedGraphBuilder::BuildMergeStates()
     size_t n = bytecodeContext_.GetBytecodeCount();
 
     mergeStates_.assign(n, nullptr);
+    mergeFacts_.assign(n, nullptr);
     predecessorCountReductions_.assign(n, 0);
     for (iterator_.GotoStart(); !iterator_.Done(); ++iterator_) {
         auto curIndex = iterator_.Index();
@@ -1037,7 +1043,7 @@ void ArkSteedGraphBuilder::BuildBody()
         if (mergeStates_[index] != nullptr) {
             if (mergeStates_[index]->PredecessorCount() == 0) {
                 ASSERT(CurrentBlock() == nullptr);
-                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
+                PruneDeadEdges(index, bytecodeInfo);
                 continue;
             }
             if (CurrentBlock() != nullptr) {
@@ -1046,13 +1052,13 @@ void ArkSteedGraphBuilder::BuildBody()
             }
             if (mergeStates_[index]->IsUnmergedUnreachableLoop()) {
                 ASSERT(CurrentBlock() == nullptr);
-                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
+                PruneDeadEdges(index, bytecodeInfo);
                 continue;
             }
             StartNewBlockWithMergeState(index);
         } else {
             if (CurrentBlock() == nullptr) {
-                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
+                PruneDeadEdges(index, bytecodeInfo);
                 continue;
             }
         }
@@ -1100,6 +1106,10 @@ void ArkSteedGraphBuilder::ValidateMergeStateAfterBuilding(uint32_t index, Merge
                             << mergeState->PredecessorsSoFar() << " does not match PredecessorCount() which is "
                             << mergeState->PredecessorCount();
     }
+    if (mergeFacts_[index] == nullptr) {
+        LOG_COMPILER(FATAL) << "INVALID facts state for bytecode #" << index
+                            << ": merge state exists but CompileInfoFacts is missing.";
+    }
     LOG_COMPILER(DEBUG) << "OK: merge state for bytecode #" << index;
 }
 
@@ -1110,13 +1120,7 @@ ArkSteedGraphBuilder::BranchResult ArkSteedGraphBuilder::BuildBranchIfTrue(Branc
             builder.GetCurrentBranchType() == BranchType::TRUE_BRANCH ? conditionTrue : !conditionTrue;
         ASSERT(builder.GetMode() == BranchBuilder::JUMP_BYTECODE_TARGET);
 
-        uint32_t destIndex = takeJumpTarget ? builder.JumpTargetBcIndex() : builder.FallthroughBcIndex();
-        uint32_t trimmedIndex = takeJumpTarget ? builder.FallthroughBcIndex() : builder.JumpTargetBcIndex();
-        if (trimmedIndex != destIndex) {
-            ReduceBytecodePredecessorCount(trimmedIndex);
-        }
-        BB *block = FinishBlock<JumpVertex>({}, &jumpTargets_[destIndex]);
-        MergeCurrentFrameStateTo(block, destIndex);
+        PruneUntakenBranchForKnownCondition(takeJumpTarget, builder);
     };
 
     if (RootConstantVertex *root = vertex->TryCast<RootConstantVertex>()) {
@@ -3030,6 +3034,19 @@ void ArkSteedGraphBuilder::MergeCurrentFrameStateTo(BB *predecessor, uint32_t de
         mergeStates_[destIndex] = MergePointFrameState::New(destIndex, predCount, liveness, GetChunk());
     }
     mergeStates_[destIndex]->MergeFrom(*currentFrameState_, predecessor);
+    MergeCurrentFactsTo(destIndex);
+}
+
+void ArkSteedGraphBuilder::MergeCurrentFactsTo(uint32_t destIndex)
+{
+    ASSERT(mergeStates_[destIndex] != nullptr);
+
+    if (mergeFacts_[destIndex] == nullptr) {
+        mergeFacts_[destIndex] =
+            mergeStates_[destIndex]->IsLoopHeader() ? currentFacts_->CloneForLoopHeader() : currentFacts_->Clone();
+        return;
+    }
+    mergeFacts_[destIndex]->Merge(*currentFacts_);
 }
 
 ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Label::Label(ArkSteedSubGraphBuilder *subBuilder,
@@ -3075,6 +3092,11 @@ void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::MergeIntoLabel(Label *label,
             BytecodeContext::INVALID_BC_INDEX, label->predecessorCount_, label->mergeLiveSet_, builder_->GetChunk());
     }
     label->variableMergeState_->MergeFrom(*subGraphFrame_, predecessor);
+    if (label->factsMergeState_ == nullptr) {
+        label->factsMergeState_ = builder_->currentFacts_->Clone();
+    } else {
+        label->factsMergeState_->Merge(*builder_->currentFacts_);
+    }
 }
 
 void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::TrimUnmergedPredecessors(Label *label, uint32_t num)
@@ -3116,8 +3138,10 @@ void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Bind(Label *label)
     ASSERT(builder_->CurrentBlock() == nullptr);
     ASSERT(label->variableMergeState_ != nullptr);
     ASSERT(label->variableMergeState_->PredecessorsSoFar() == label->predecessorCount_);
+    ASSERT(label->factsMergeState_ != nullptr);
 
     subGraphFrame_->CopyFrom(*label->variableMergeState_);
+    builder_->currentFacts_ = label->factsMergeState_->Clone();
 
     builder_->StartNewBlock(nullptr, label->variableMergeState_, &label->ref_);
     builder_->ProcessMergePointPredecessors(label->variableMergeState_, &label->ref_, builder_->CurrentBlock());
@@ -3160,11 +3184,13 @@ ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::LoopLabel ArkSteedGraphBuilder::A
     MergePointFrameState *loopState = MergePointFrameState::NewForLoop(
         BytecodeContext::INVALID_BC_INDEX, kLoopHeaderPredecessorCount, loopHeaderLiveness, loopInfo, chunk);
     loopState->MergeFrom(*subGraphFrame_, loopPredecessor);
+    CompileInfoFacts *loopFacts = builder_->currentFacts_->CloneForLoopHeader();
     builder_->StartNewBlock(nullptr, loopState, loopHeaderRef);
     BB *loopHeaderBlock = builder_->CurrentBlock();
     builder_->ProcessMergePointPredecessors(loopState, loopHeaderRef, loopHeaderBlock);
     subGraphFrame_->CopyFrom(*loopState);
-    return LoopLabel(this, loopState, loopHeaderRef, loopHeaderBlock);
+    builder_->currentFacts_ = loopFacts->Clone();
+    return LoopLabel(this, loopState, loopFacts, loopHeaderRef, loopHeaderBlock);
 }
 
 void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::EndLoop(LoopLabel *loopLabel)
@@ -3182,6 +3208,8 @@ void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::EndLoop(LoopLabel *loopLabel
 
     BB *loopBackedge = builder_->FinishBlock<JumpLoopVertex>({}, loopLabel->loopHeaderRef_);
     loopLabel->mergeState_->MergeFrom(*subGraphFrame_, loopBackedge);
+    ASSERT(loopLabel->factsMergeState_ != nullptr);
+    loopLabel->factsMergeState_->Merge(*builder_->currentFacts_);
     ASSERT(loopLabel->mergeState_->PredecessorsSoFar() == loopLabel->mergeState_->PredecessorCount());
     loopBackedge->SetPredecessorId(loopLabel->mergeState_->PredecessorCount() - 1);
 }
@@ -3274,47 +3302,59 @@ uint32_t ArkSteedGraphBuilder::PredecessorCount(uint32_t index) const
     return staticPredecessorCount - predecessorCountReductions_[index];
 }
 
-void ArkSteedGraphBuilder::ReduceBytecodePredecessorCount(uint32_t index, uint32_t num)
+void ArkSteedGraphBuilder::PruneUntakenBranchForKnownCondition(bool takeJumpTarget, const BranchBuilder &builder)
 {
-    if (num == 0) {
+    uint32_t jumpTarget = builder.JumpTargetBcIndex();
+    uint32_t fallthrough = builder.FallthroughBcIndex();
+
+    if (takeJumpTarget) {
+        BB *block = FinishBlock<JumpVertex>({}, &jumpTargets_[jumpTarget]);
+        if (fallthrough != jumpTarget) {
+            PruneDeadPredecessor(fallthrough);
+        }
+        MergeCurrentFrameStateTo(block, jumpTarget);
         return;
     }
 
-    ASSERT(index < static_cast<uint32_t>(predecessorCountReductions_.size()));
-    ASSERT(num <= PredecessorCount(index));
-
-    predecessorCountReductions_[index] += num;
-    if (mergeStates_[index] != nullptr) {
-        mergeStates_[index]->ReducePredecessorCount(num);
+    if (jumpTarget != fallthrough) {
+        PruneDeadPredecessor(jumpTarget);
     }
 }
 
-void ArkSteedGraphBuilder::MarkDeadLoopBackedge(uint32_t index)
+void ArkSteedGraphBuilder::PruneDeadPredecessor(uint32_t targetIndex)
 {
-    if (mergeStates_[index] == nullptr && PredecessorCount(index) == 0) {
+    if (mergeStates_[targetIndex] != nullptr) {
+        mergeStates_[targetIndex]->ReducePredecessorCount();
+    }
+    predecessorCountReductions_[targetIndex]++;
+}
+
+void ArkSteedGraphBuilder::PruneDeadLoopBackedge(uint32_t loopHeaderIndex)
+{
+    if (mergeStates_[loopHeaderIndex] == nullptr && PredecessorCount(loopHeaderIndex) == 0) {
         return;
     }
 
-    ASSERT(PredecessorCount(index) > 0);
-    if (mergeStates_[index] != nullptr) {
-        ASSERT(mergeStates_[index]->IsLoopHeader());
-        ASSERT(mergeStates_[index]->PredecessorCount() == PredecessorCount(index));
-        ASSERT(mergeStates_[index]->PredecessorsSoFar() + 1 == mergeStates_[index]->PredecessorCount());
-        mergeStates_[index]->ReducePredecessorCount();
-        mergeStates_[index]->ClearIsLoop();
-        mergeStates_[index]->ClearLoopInfo();
+    ASSERT(PredecessorCount(loopHeaderIndex) > 0);
+    if (mergeStates_[loopHeaderIndex] != nullptr) {
+        MergePointFrameState *mergeState = mergeStates_[loopHeaderIndex];
+        ASSERT(mergeState->IsLoopHeader());
+        ASSERT(mergeState->PredecessorsSoFar() + 1 == mergeState->PredecessorCount());
+        mergeState->ReducePredecessorCount();
+        mergeState->ClearIsLoop();
+        mergeState->ClearLoopInfo();
     }
-    predecessorCountReductions_[index]++;
+    predecessorCountReductions_[loopHeaderIndex]++;
 }
 
-void ArkSteedGraphBuilder::MarkDeadPredecessorsForSuccessors(uint32_t index, const BytecodeInfo &bytecodeInfo)
+void ArkSteedGraphBuilder::PruneDeadEdges(uint32_t index, const BytecodeInfo &bytecodeInfo)
 {
     if (bytecodeInfo.IsCondJump()) {
         uint32_t jumpTarget = bytecodeContext_.GetJumpTargetBcIndex(index);
         uint32_t fallthrough = index + 1;
-        ReduceBytecodePredecessorCount(jumpTarget);
+        PruneDeadPredecessor(jumpTarget);
         if (fallthrough < bytecodeContext_.GetBytecodeCount() && fallthrough != jumpTarget) {
-            ReduceBytecodePredecessorCount(fallthrough);
+            PruneDeadPredecessor(fallthrough);
         }
         return;
     }
@@ -3322,9 +3362,9 @@ void ArkSteedGraphBuilder::MarkDeadPredecessorsForSuccessors(uint32_t index, con
     if (bytecodeInfo.IsJump()) {
         uint32_t jumpTarget = bytecodeContext_.GetJumpTargetBcIndex(index);
         if (bytecodeContext_.GetJumpLoop()[index]) {
-            MarkDeadLoopBackedge(jumpTarget);
+            PruneDeadLoopBackedge(jumpTarget);
         } else {
-            ReduceBytecodePredecessorCount(jumpTarget);
+            PruneDeadPredecessor(jumpTarget);
         }
         return;
     }
@@ -3332,7 +3372,7 @@ void ArkSteedGraphBuilder::MarkDeadPredecessorsForSuccessors(uint32_t index, con
     if (bytecodeInfo.needFallThrough()) {
         uint32_t nextIndex = index + 1;
         if (nextIndex < bytecodeContext_.GetBytecodeCount()) {
-            ReduceBytecodePredecessorCount(nextIndex);
+            PruneDeadPredecessor(nextIndex);
         }
     }
 }
@@ -3378,6 +3418,8 @@ void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
 
     StartNewBlock(nullptr, mergeStates_[index], &jumpTargets_[index]);
     BB *current = CurrentBlock();
+    ASSERT(mergeFacts_[index] != nullptr);
+    currentFacts_ = mergeFacts_[index]->Clone();
 
     // For all virtual registers not in LiveIn(B) where B is current basic block,
     // it is either defined in B (which will be updated to currentFrameState_ during bytecode visiting) or

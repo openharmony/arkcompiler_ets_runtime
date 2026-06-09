@@ -480,14 +480,21 @@ public:
 
     static constexpr size_t OBJECT_INDEX = 0;
     static constexpr size_t VALUE_INDEX = 1;
+    static constexpr uint32_t UNKNOWN_PROPERTY_ID = UINT32_MAX;
 
-    explicit StoreTaggedFieldVertex(uint64_t bitfield, int32_t offset)
-        : FixedInputVertexMixin(bitfield), offset_(offset)
-    {}
+    explicit StoreTaggedFieldVertex(uint64_t bitfield, int32_t offset, uint32_t propertyId = UNKNOWN_PROPERTY_ID)
+        : FixedInputVertexMixin(bitfield), offset_(offset), propertyId_(propertyId)
+    {
+    }
 
     int32_t GetOffset() const
     {
         return offset_;
+    }
+
+    uint32_t GetPropertyId() const
+    {
+        return propertyId_;
     }
 
     void SetValueLocationConstraints();
@@ -495,6 +502,7 @@ public:
 
 private:
     int32_t offset_;
+    uint32_t propertyId_;
 };
 
 /**

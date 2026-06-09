@@ -210,7 +210,7 @@ public:
     template <typename VertexT>
     void CheckSideEffect(VertexT *vertex)
     {
-        // to do: Track possible side effects
+        base_->CheckSideEffect(vertex);
     }
 
     //==========================================================================
