@@ -648,6 +648,7 @@ int32_t AotCompilerImpl::CreateAnMemfd(int32_t &outFd)
         LOG_SA(ERROR) << "memfd_create failed, errno=" << errno << " " << strerror(errno);
         return ERR_AOT_COMPILER_CALL_FAILED;
     }
+    FdsanExchangeOwnerTag(fd);
     outFd = fd;
     LOG_SA(INFO) << "created .an memfd, fd=" << fd;
     return ERR_OK;

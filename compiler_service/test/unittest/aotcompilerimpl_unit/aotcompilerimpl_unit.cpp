@@ -1151,10 +1151,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_066, TestSize.Level0)
     // Create a temp fd via memfd (or pipe as fallback)
     int fds[2] = {-1, -1};
     ASSERT_EQ(pipe(fds), 0);
+    panda::ecmascript::FdsanExchangeOwnerTag(fds[1]);
     holder.Acquire(fds[1]);
     EXPECT_EQ(holder.Get(), fds[1]);
     // Clean up: holder takes ownership of fds[1], close fds[0] manually
-    close(fds[0]);
+    panda::ecmascript::Close(fds[0]);
 }
 
 /**
@@ -1167,6 +1168,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_067, TestSize.Level0)
     FdHolder holder;
     int fds[2] = {-1, -1};
     ASSERT_EQ(pipe(fds), 0);
+    panda::ecmascript::FdsanExchangeOwnerTag(fds[1]);
     holder.Acquire(fds[1]);
     EXPECT_GE(holder.Get(), 0);
 
@@ -1175,7 +1177,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_067, TestSize.Level0)
 
     // Verify the fd was actually closed — writing to read end should fail (broken pipe)
     // or we can verify by checking fds[0] is still valid but the pipe is broken
-    close(fds[0]);
+    panda::ecmascript::Close(fds[0]);
 }
 
 /**
@@ -1188,13 +1190,14 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_068, TestSize.Level0)
     FdHolder holder;
     int fds[2] = {-1, -1};
     ASSERT_EQ(pipe(fds), 0);
+    panda::ecmascript::FdsanExchangeOwnerTag(fds[1]);
     holder.Acquire(fds[1]);
     holder.Reset();
     EXPECT_EQ(holder.Get(), -1);
     // Second Reset should be a no-op (fd already -1)
     holder.Reset();
     EXPECT_EQ(holder.Get(), -1);
-    close(fds[0]);
+    panda::ecmascript::Close(fds[0]);
 }
 
 /**
@@ -1209,6 +1212,8 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_069, TestSize.Level0)
     int fds2[2] = {-1, -1};
     ASSERT_EQ(pipe(fds1), 0);
     ASSERT_EQ(pipe(fds2), 0);
+    panda::ecmascript::FdsanExchangeOwnerTag(fds1[1]);
+    panda::ecmascript::FdsanExchangeOwnerTag(fds2[1]);
 
     holder.Acquire(fds1[1]);
     EXPECT_EQ(holder.Get(), fds1[1]);
@@ -1219,8 +1224,8 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_069, TestSize.Level0)
 
     holder.Reset();
     EXPECT_EQ(holder.Get(), -1);
-    close(fds1[0]);
-    close(fds2[0]);
+    panda::ecmascript::Close(fds1[0]);
+    panda::ecmascript::Close(fds2[0]);
 }
 
 /**
@@ -1232,6 +1237,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_070, TestSize.Level0)
 {
     int fds[2] = {-1, -1};
     ASSERT_EQ(pipe(fds), 0);
+    panda::ecmascript::FdsanExchangeOwnerTag(fds[1]);
     int writeFd = fds[1];
     int readFd = fds[0];
     {
@@ -1244,7 +1250,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_070, TestSize.Level0)
     char c = 'x';
     ssize_t ret = write(writeFd, &c, 1);
     EXPECT_EQ(ret, -1);
-    close(readFd);
+    panda::ecmascript::Close(readFd);
 }
 
 /**
@@ -1589,7 +1595,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_CreateAnMemfd_001, TestSize.Le
     const char data[] = "memfd test";
     ssize_t written = write(memfd, data, sizeof(data));
     EXPECT_EQ(written, static_cast<ssize_t>(sizeof(data)));
-    close(memfd);
+    panda::ecmascript::Close(memfd);
 }
 
 /**
