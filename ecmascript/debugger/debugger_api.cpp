@@ -316,35 +316,12 @@ bool DebuggerApi::GetSingleStepStatus(JSDebugger *debugger)
 
 int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged)
 {
-    if (!tagged->IsECMAObject()) {
-        return 0;
-    }
-    JSThread *thread = ecmaVM->GetJSThread();
-    bool hasHash = ECMAObject::Cast(tagged->GetTaggedObject())->HasHash(thread);
-    if (!hasHash) {
-        int32_t hash = base::RandomGenerator::GenerateIdentityHash();
-        auto ecmaObj = ECMAObject::Cast(tagged->GetTaggedObject());
-        JSHandle<ECMAObject> ecmaObjHandle(thread, ecmaObj);
-        ECMAObject::SetHash(thread, hash, ecmaObjHandle);
-        return hash;
-    } else {
-        return ECMAObject::Cast(tagged->GetTaggedObject())->GetHash(thread);
-    }
+    return ECMAObject::GetObjectHash(ecmaVM->GetJSThread(), tagged);
 }
 
 int32_t DebuggerApi::GetObjectHashCode(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged)
 {
-    if (!tagged->IsECMAObject()) {
-        return 0;
-    }
-    JSThread *thread = ecmaVM->GetJSThread();
-    int32_t hash = ECMAObject::Cast(tagged->GetTaggedObject())->GetHash(thread);
-    if (hash == 0) {
-        hash = base::RandomGenerator::GenerateIdentityHash();
-        auto ecmaObjHandle = JSHandle<ECMAObject>::Cast(tagged);
-        ECMAObject::SetHash(thread, hash, ecmaObjHandle);
-    }
-    return hash;
+    return ECMAObject::GetObjectHashCode(ecmaVM->GetJSThread(), tagged);
 }
 
 void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className)
