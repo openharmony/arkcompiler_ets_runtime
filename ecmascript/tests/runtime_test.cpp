@@ -206,4 +206,26 @@ HWTEST_F_L0(RuntimeTest, FullGCInBackgroundMode)
     fullGc->RunPhases();
     ASSERT_FALSE(Runtime::GetInstance()->IsInBackground());
 }
+
+HWTEST_F_L0(RuntimeTest, ExecuteTaskpoolShrinkCallback)
+{
+    bool callbackCalled = false;
+    bool callbackValue = false;
+    Runtime::GetInstance()->SetTaskpoolShrinkCallback(nullptr);
+    Runtime::GetInstance()->ExecuteTaskpoolShrinkCallback(true);
+    ASSERT_FALSE(callbackCalled);
+    ASSERT_FALSE(callbackValue);
+
+    Runtime::GetInstance()->SetTaskpoolShrinkCallback(
+        [&callbackCalled, &callbackValue](bool inBackground) {
+            callbackCalled = true;
+            callbackValue = inBackground;
+        });
+
+    Runtime::GetInstance()->ExecuteTaskpoolShrinkCallback(true);
+    ASSERT_TRUE(callbackCalled);
+    ASSERT_TRUE(callbackValue);
+
+    Runtime::GetInstance()->SetTaskpoolShrinkCallback(nullptr);
+}
 }

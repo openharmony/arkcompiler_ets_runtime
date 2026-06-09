@@ -45,6 +45,7 @@ using AppFreezeFilterCallback =
     std::function<bool(const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig)>;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
+using TaskPoolShrinkCallback = std::function<void(bool inBackground)>;
 
 class Runtime {
 public:
@@ -387,6 +388,19 @@ public:
         return isProcDumpInSharedOOMEnabled_.load(std::memory_order_acquire);
     }
 
+    void SetTaskpoolShrinkCallback(TaskPoolShrinkCallback callback)
+    {
+        taskpoolShrinkCallback_ = callback;
+    }
+
+    void ExecuteTaskpoolShrinkCallback(bool inBackground)
+    {
+        if (taskpoolShrinkCallback_ == nullptr) {
+            return;
+        }
+        taskpoolShrinkCallback_(inBackground);
+    }
+
     bool IsInBackground() const
     {
         return inBackground_;
@@ -537,6 +551,7 @@ private:
 
     bool inBackground_ {false};
     bool isMainProcess_ {false};
+    TaskPoolShrinkCallback taskpoolShrinkCallback_ {nullptr};
 
     friend class EcmaVM;
     friend class JSThread;
