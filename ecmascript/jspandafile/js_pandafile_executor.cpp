@@ -15,6 +15,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
+#include "constpool_snapshot.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -44,6 +45,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
+
     // If it is an old record, delete the bundleName and moduleName
     if (!jsPandaFile->IsBundlePack() && !vm->IsNormalizedOhmUrlPack() && IsStaticImport(executeType) &&
         !vm->GetBundleName().empty()) {

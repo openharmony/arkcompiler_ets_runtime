@@ -38,6 +38,7 @@
 #include "ecmascript/napi/jsnapi_class_creation_helper.h"
 #include "ecmascript/ohos/adapter/modulemanager/module_pkg_parser.h"
 #include "ecmascript/ohos/js_pandafile_snapshot_interfaces.h"
+#include "ecmascript/ohos/constpool_snapshot_interfaces.h"
 #include "ecmascript/ohos/module_snapshot_interfaces.h"
 #include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
@@ -6653,10 +6654,15 @@ void JSNApi::ModuleSerialize(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     JSRuntimeOptions &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
-    if (options.DisableJSPandaFileAndModuleSnapshot() || options.DisableModuleSnapshot()) {
+    if (options.DisableJSPandaFileAndModuleSnapshot()) {
         return;
     }
     ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+    ecmascript::ohos::ConstPoolSnapshotInterfaces::Serialize(vm, path);
+
+    if (options.DisableModuleSnapshot()) {
+        return;
+    }
     ecmascript::ohos::ModuleSnapshotInterfaces::Serialize(vm, path);
 }
 

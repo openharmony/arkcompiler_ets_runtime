@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <memory>
 #include <thread>
 
 #include "libpandabase/utils/utf.h"
@@ -47,8 +48,8 @@
 
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/serializer/base_deserializer.h"
-#include "ecmascript/serializer/module_deserializer.h"
-#include "ecmascript/serializer/module_serializer.h"
+#include "ecmascript/serializer/file_deserializer.h"
+#include "ecmascript/serializer/file_serializer.h"
 
 using namespace panda::ecmascript;
 using namespace testing::ext;
@@ -1415,7 +1416,7 @@ public:
     void ModuleDeserialierTest1(SerializeData* data)
     {
         Init();
-        ModuleDeserializer deserializer(thread, data);
+        FileDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
@@ -1459,7 +1460,7 @@ public:
     void ModuleDeserialierTest2(SerializeData* data)
     {
         Init();
-        ModuleDeserializer deserializer(thread, data);
+        FileDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
@@ -1494,7 +1495,7 @@ public:
     void ModuleDeserialierTest3(SerializeData* data)
     {
         Init();
-        ModuleDeserializer deserializer(thread, data);
+        FileDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
@@ -1515,7 +1516,7 @@ public:
     void ModuleDeserialierTest4(SerializeData* data)
     {
         Init();
-        ModuleDeserializer deserializer(thread, data);
+        FileDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
@@ -1611,7 +1612,7 @@ public:
     void SourceTextModuleMutableFieldsTest(SerializeData* data)
     {
         Init();
-        ModuleDeserializer deserializer(thread, data);
+        FileDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
@@ -1669,6 +1670,11 @@ public:
         ecmaVm = nullptr;
         scope = nullptr;
         TestHelper::CreateEcmaVMWithScope(ecmaVm, thread, scope);
+    }
+
+    std::unique_ptr<FileSerializer> CreateModuleSerializer()
+    {
+        return std::make_unique<FileSerializer>(thread, FileSerializer::SourceTextModuleFilter);
     }
 
     JSThread *thread {nullptr};
@@ -3640,7 +3646,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModule)
     indirectExportEntries->Set(thread, 0, indirectExportEntry);
     module->SetIndirectExportEntries(thread, indirectExportEntries);
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -3652,7 +3658,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModule)
         ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
-    delete serializer;
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleFileNameEmpty)
@@ -3660,7 +3665,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleFileNameEmpty)
     auto vm = thread->GetEcmaVM();
     ObjectFactory *objectFactory = vm->GetFactory();
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -3714,7 +3719,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleStatusCheck)
     module8->SetStatus(ModuleStatus::ERRORED);
     serializerArray->Set(thread, 7, module8);
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(serializerArray),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -3726,7 +3731,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleStatusCheck)
         ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
-    delete serializer;
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleLazy)
@@ -3746,7 +3750,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleLazy)
     module->SetLazyImportArray(lazyImportArray);
     JSHandle<TaggedArray> moduleRequestArray = objectFactory->NewTaggedArray(5);
     module->SetModuleRequests(thread, moduleRequestArray);
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -3759,7 +3763,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleLazy)
         ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
-    delete serializer;
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
@@ -3793,7 +3796,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
     JSHandle<ResolvedIndexBinding> resolvedIndexBinding = objectFactory->NewResolvedIndexBindingRecord(module1, 0);
     environmentArray->Set(thread, 3, resolvedIndexBinding.GetTaggedValue());
     module->SetEnvironment(thread, environmentArray);
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -3805,7 +3808,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
         ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
-    delete serializer;
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeJSHClass)
@@ -3832,13 +3834,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSHClass)
     dependentInfos->Set(thread, 1, func.GetTaggedValue());
     hclass->SetDependentInfos(thread, dependentInfos.GetTaggedValue());
     // serialize check
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(hclass),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize js hclass fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
-    delete serializer;
 }
 
 HWTEST_F_L0(JSSerializerTest, DeserializeAllObjectTypes)
@@ -3864,7 +3865,7 @@ HWTEST_F_L0(JSSerializerTest, DeserializeAllObjectTypes)
     jsSet->SetLinkedSet(thread, linkedSet);
     
     // Serialize all objects
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsObject),
                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
@@ -3885,9 +3886,8 @@ HWTEST_F_L0(JSSerializerTest, DeserializeAllObjectTypes)
                                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSSet fail";
-    
+
     std::unique_ptr<SerializeData> data = serializer->Release();
-    delete serializer;
 }
 
 HWTEST_F_L0(JSSerializerTest, SerializeLargeArrayForMultipleRegions)
@@ -4062,7 +4062,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleMutableFields)
     JSHandle<ModuleNamespace> ns = objectFactory->NewModuleNamespace();
     module->SetNamespace(thread, ns.GetTaggedValue());
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
@@ -4074,7 +4074,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleMutableFields)
         ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
-    delete serializer;
 }
 
 HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothNotEmpty)
@@ -4088,13 +4087,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothNotEmpty)
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(res);
     std::unique_ptr<SerializeData> data = serializer->Release();
-    delete serializer;
 }
 
 HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameEmptyRecordNotEmpty)
@@ -4106,13 +4104,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameEmptyRecordNo
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(res);
     std::unique_ptr<SerializeData> data = serializer->Release();
-    delete serializer;
 }
 
 HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameNotEmptyRecordEmpty)
@@ -4124,13 +4121,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameNotEmptyRecor
     module->SetEcmaModuleFilenameString(baseFileName);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(res);
     std::unique_ptr<SerializeData> data = serializer->Release();
-    delete serializer;
 }
 
 HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothEmpty)
@@ -4140,11 +4136,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothEmpty)
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
-    ValueSerializer *serializer = new ModuleSerializer(thread);
+    auto serializer = CreateModuleSerializer();
     bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_FALSE(res);
-    delete serializer;
 }
 }  // namespace panda::test

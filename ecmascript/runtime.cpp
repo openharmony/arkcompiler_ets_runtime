@@ -638,6 +638,23 @@ std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> Runtime::Fin
     return iter->second;
 }
 
+void Runtime::ForEachConstpools(const JSPandaFile* jsPandaFile, const ForEachCallback<JSTaggedValue>& cb)
+{
+    if (!cb) {
+        return;
+    }
+    auto constpools = FindConstpools(jsPandaFile);
+    if (!constpools.has_value()) {
+        return;
+    }
+    LockHolder lock(constpoolLock_);
+    auto& constpoolMap = constpools->get();
+    auto total = constpoolMap.size();
+    for (auto& it : constpoolMap) {
+        cb(it.first, it.second, total);
+    }
+}
+
 void Runtime::IteratorNativeDeleteInSharedGC(WeakVisitor &visitor)
 {
     auto iterator = globalSharedConstpools_.begin();

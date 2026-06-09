@@ -224,6 +224,7 @@ public:
                                                 int32_t index = 0);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
+    void ForEachConstpools(const JSPandaFile* jsPandaFile, const ForEachCallback<JSTaggedValue>& cb);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
 
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);

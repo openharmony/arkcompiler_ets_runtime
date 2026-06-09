@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,24 +13,23 @@
  * limitations under the License.
  */
 
-#include "ecmascript/serializer/module_deserializer.h"
+#include "file_deserializer.h"
 
 namespace panda::ecmascript {
-
-uintptr_t ModuleDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
+uintptr_t FileDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
 {
     uintptr_t res = BaseDeserializer::DeserializeTaggedObject(space);
-    JSType type = reinterpret_cast<TaggedObject *>(res)->GetClass()->GetObjectType();
+    JSType type = reinterpret_cast<TaggedObject*>(res)->GetClass()->GetObjectType();
     // String need remove duplicates if string table can find
     if (type == JSType::LINE_STRING) {
         size_t resIndex = objectVector_.size() - 1;
-        EcmaStringTable *stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
-        EcmaString *str = reinterpret_cast<EcmaString *>(res);
+        EcmaStringTable* stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
+        EcmaString* str = reinterpret_cast<EcmaString*>(res);
         EcmaStringAccessor(str).ClearInternString();
-        EcmaString *strInTable = stringTable->GetOrInternFlattenStringNoGC(thread_->GetEcmaVM(), str);
+        EcmaString* strInTable = stringTable->GetOrInternFlattenStringNoGC(thread_->GetEcmaVM(), str);
         res = ToUintPtr(strInTable);
         objectVector_[resIndex] = res;
     }
     return res;
 }
-}
+} // namespace panda::ecmascript

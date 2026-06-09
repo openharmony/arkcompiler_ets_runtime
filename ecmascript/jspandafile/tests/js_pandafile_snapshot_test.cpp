@@ -67,7 +67,7 @@ public:
     {
         CString path = GetSnapshotPath();
         CString fileName = path + "entry" + JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME.data();
-        if (remove(fileName.c_str()) != 0) {
+        if (FileExist(fileName.c_str()) && remove(fileName.c_str()) != 0) {
             GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
         }
         CString stateFilePath = path + ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME.data();
@@ -85,7 +85,7 @@ public:
     {
         CString path = GetSnapshotPath();
         CString fileName = path + "entry" + JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME.data();
-        if (remove(fileName.c_str()) != 0) {
+        if (FileExist(fileName.c_str()) && remove(fileName.c_str()) != 0) {
             GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
         }
         ModulesSnapshotHelper::g_featureState_ = disabledFeature;

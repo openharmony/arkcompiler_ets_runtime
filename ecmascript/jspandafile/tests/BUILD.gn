@@ -112,7 +112,10 @@ host_unittest_action("JSPandaFileTest") {
   }
 
   if (!run_with_qemu) {
-    sources += [ "js_pandafile_snapshot_test.cpp" ]
+    sources += [
+      "constpool_snapshot_test.cpp",
+      "js_pandafile_snapshot_test.cpp",
+    ]
   }
 
   configs = [

@@ -28,7 +28,7 @@ void JSPandaFileSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &p
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PandaFileSnapshotInterfaces::Serialize", "");
     if (ModulesSnapshotHelper::IsPandafileSnapshotDisabled(path)) {
         LOG_ECMA(DEBUG) << "Serialize: PandaFile Snapshot is not enabled";
-        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::HandleCorruptedFile(path, CString(JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME));
         return;
     }
     CString version = OhosVersionInfoTools::GetRomVersion();
