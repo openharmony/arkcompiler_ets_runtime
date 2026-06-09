@@ -18,6 +18,14 @@
 #include "ecmascript/compiler/assembler_module.h"
 
 namespace panda::ecmascript::kungfu {
+
+// Template factory for runtime ASM stubs: no captured state needed.
+template <typename StubT>
+static void *ASMStubBuilderFactory(void * /*arg*/, void * /*data*/)
+{
+    return static_cast<void *>(new StubT());
+}
+
 CallSignature RuntimeStubCSigns::callSigns_[RuntimeStubCSigns::NUM_OF_RTSTUBS_WITHOUT_GC];
 CallSignature RuntimeStubCSigns::optimizedCallSign_;
 CallSignature RuntimeStubCSigns::optimizedFastCallSign_;
@@ -38,12 +46,12 @@ void RuntimeStubCSigns::Initialize()
     RUNTIME_ASM_STUB_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
 
-#define INIT_ASM_SIGNATURES(name)                                                     \
-    callSigns_[RuntimeStubCSigns::ID_##name].SetName(std::string("RTStub_") + #name); \
-    callSigns_[RuntimeStubCSigns::ID_##name].SetConstructor(                          \
-        []([[maybe_unused]] void* arg) {                                              \
-            return static_cast<void*>(new name##Stub());                              \
-    });
+#define INIT_ASM_SIGNATURES(name)                                                         \
+    {                                                                                     \
+        callSigns_[RuntimeStubCSigns::ID_##name].SetName(std::string("RTStub_") + #name); \
+        callSigns_[RuntimeStubCSigns::ID_##name].SetConstructor(                          \
+            TargetConstructor(ASMStubBuilderFactory<name##Stub>, nullptr));               \
+    }
 
     RUNTIME_ASM_STUB_LIST(INIT_ASM_SIGNATURES)
 #undef INIT_ASM_SIGNATURES

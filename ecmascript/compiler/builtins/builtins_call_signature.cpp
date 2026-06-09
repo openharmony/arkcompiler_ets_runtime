@@ -18,21 +18,29 @@
 #include "ecmascript/global_env_fields.h"
 
 namespace panda::ecmascript::kungfu {
+
+// Template factory for builtins stubs: takes an extra Gate::InvalidGateRef arg.
+template <typename BuilderT>
+static void *BuiltinStubBuilderFactory(void *env, void *data)
+{
+    return static_cast<void *>(
+        new BuilderT(static_cast<CallSignature *>(data),
+                     static_cast<Environment *>(env), Gate::InvalidGateRef));
+}
+
 CallSignature BuiltinsStubCSigns::callSigns_[BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS_EXTEND];
 CallSignature BuiltinsStubCSigns::builtinsCSign_;
 CallSignature BuiltinsStubCSigns::builtinsWithArgvCSign_;
 
 void BuiltinsStubCSigns::Initialize()
 {
-#define COMMON_INIT(name)                                               \
-    callSigns_[ID_##name].SetID(ID_##name);                             \
-    callSigns_[ID_##name].SetName(std::string("BuiltinStub_") + #name); \
-    callSigns_[ID_##name].SetConstructor(                               \
-    [](void* env) {                                                     \
-        return static_cast<void*>(                                      \
-            new name##StubBuilder(&callSigns_[ID_##name],               \
-                static_cast<Environment*>(env), Gate::InvalidGateRef)); \
-    });
+#define COMMON_INIT(name)                                                                             \
+    {                                                                                                 \
+        callSigns_[ID_##name].SetID(ID_##name);                                                       \
+        callSigns_[ID_##name].SetName(std::string("BuiltinStub_") + #name);                           \
+        callSigns_[ID_##name].SetConstructor(                                                         \
+            TargetConstructor(BuiltinStubBuilderFactory<name##StubBuilder>, &callSigns_[ID_##name])); \
+    }
 
 #define INIT_BUILTINS_METHOD(name)                                   \
     BuiltinsCallSignature::Initialize(&callSigns_[ID_##name]);       \

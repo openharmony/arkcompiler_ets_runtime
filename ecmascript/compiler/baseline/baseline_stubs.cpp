@@ -269,14 +269,13 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
 void BaselineStubCSigns::Initialize()
 {
 #define INIT_SIGNATURES(name)                                                              \
-    name##CallSignature::Initialize(&callSigns_[name]);                                    \
-    callSigns_[name].SetID(name);                                                          \
-    callSigns_[name].SetName(std::string("BaselineStub_") + #name);                        \
-    callSigns_[name].SetConstructor(                                                       \
-        [](void* env) {                                                                    \
-            return static_cast<void*>(                                                     \
-                new name##StubBuilder(&callSigns_[name], static_cast<Environment*>(env))); \
-        });
+    {                                                                                      \
+        name##CallSignature::Initialize(&callSigns_[name]);                                \
+        callSigns_[name].SetID(name);                                                      \
+        callSigns_[name].SetName(std::string("BaselineStub_") + #name);                    \
+        callSigns_[name].SetConstructor(                                                   \
+            TargetConstructor(StubBuilderFactory<name##StubBuilder>, &callSigns_[name]));  \
+    }
 
     BASELINE_STUB_ID_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES

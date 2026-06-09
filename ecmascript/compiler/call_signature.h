@@ -17,7 +17,6 @@
 #define ECMASCRIPT_COMPILER_CALL_SIGNATURE_H
 
 #include <array>
-#include <functional>
 #include <memory>
 
 #include "ecmascript/base/config.h"
@@ -33,9 +32,55 @@ enum class ArgumentsOrder {
     DEFAULT_ORDER,  // Push Arguments in stack from right -> left
 };
 
+// Lightweight replacement for std::function<void*(void*)>.
+// Avoids type-erasure overhead per stub (~956 unique lambda closures → a few template factories).
+class TargetConstructor {
+public:
+    using FactoryFn = void *(*)(void *env, void *data);
+
+    TargetConstructor() : fn_(nullptr), data_(nullptr) {}
+    TargetConstructor(std::nullptr_t) : fn_(nullptr), data_(nullptr) {}  // NOLINT
+    TargetConstructor(FactoryFn fn, void *data) : fn_(fn), data_(data) {}
+
+    void *operator()(void *env) const
+    {
+        return fn_(env, data_);
+    }
+
+    explicit operator bool() const
+    {
+        return fn_ != nullptr;
+    }
+
+    bool operator==(std::nullptr_t) const
+    {
+        return fn_ == nullptr;
+    }
+
+    bool operator!=(std::nullptr_t) const
+    {
+        return fn_ != nullptr;
+    }
+
+private:
+    FactoryFn fn_;
+    void *data_;
+};
+
+class CallSignature;
+class Environment;
+
+// Shared template factory for stubs with (CallSignature*, Environment*) constructor.
+// Used by BC, Common, and Baseline stubs. Replaces per-stub lambda closures.
+template <typename BuilderT>
+static inline void *StubBuilderFactory(void *env, void *data)
+{
+    return static_cast<void *>(
+        new BuilderT(static_cast<CallSignature *>(data), static_cast<Environment *>(env)));
+}
+
 class CallSignature {
 public:
-    using TargetConstructor = std::function<void *(void *)>;
     enum class TargetKind : uint8_t {
         COMMON_STUB = 0,
         RUNTIME_STUB,

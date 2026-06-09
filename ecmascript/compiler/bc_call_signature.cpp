@@ -23,16 +23,14 @@ CallSignature BytecodeStubCSigns::bcDebuggerHandlerCSign_;
 
 void BytecodeStubCSigns::Initialize()
 {
-#define INIT_SIGNATURES(name)                                               \
-    BytecodeHandlerCallSignature::Initialize(&callSigns_[name]);            \
-    callSigns_[name].SetID(ID_##name);                                      \
-    callSigns_[name].SetName(std::string("BCStub_") + #name);               \
-    callSigns_[name].SetConstructor(                                        \
-    [](void* env) {                                                         \
-        return static_cast<void*>(                                          \
-            new name##StubBuilder(&callSigns_[name],                        \
-                static_cast<Environment*>(env)));                           \
-    });
+#define INIT_SIGNATURES(name)                                                             \
+    {                                                                                     \
+        BytecodeHandlerCallSignature::Initialize(&callSigns_[name]);                      \
+        callSigns_[name].SetID(ID_##name);                                                \
+        callSigns_[name].SetName(std::string("BCStub_") + #name);                         \
+        callSigns_[name].SetConstructor(                                                  \
+            TargetConstructor(StubBuilderFactory<name##StubBuilder>, &callSigns_[name])); \
+    }
 
     INTERPRETER_BC_STUB_LIST(INIT_SIGNATURES)
 #if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
@@ -59,15 +57,14 @@ void BytecodeStubCSigns::Initialize()
 #undef INIT_SIGNATURES
 
 #define INIT_HELPER_SIGNATURES(name)                                                        \
-    BytecodeHandlerCallSignature::Initialize(&callSigns_[name]);                            \
-    callSigns_[name].SetID(ID_##name);                                                      \
-    callSigns_[name].SetName(std::string("BCStub_") + #name);                               \
-    callSigns_[name].SetTargetKind(CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);     \
-    callSigns_[name].SetConstructor(                                                        \
-    [](void* env) {                                                                         \
-        return static_cast<void*>(                                                          \
-            new name##StubBuilder(&callSigns_[name], static_cast<Environment*>(env)));      \
-    });
+    {                                                                                       \
+        BytecodeHandlerCallSignature::Initialize(&callSigns_[name]);                        \
+        callSigns_[name].SetID(ID_##name);                                                  \
+        callSigns_[name].SetName(std::string("BCStub_") + #name);                           \
+        callSigns_[name].SetTargetKind(CallSignature::TargetKind::BYTECODE_HELPER_HANDLER); \
+        callSigns_[name].SetConstructor(                                                    \
+            TargetConstructor(StubBuilderFactory<name##StubBuilder>, &callSigns_[name]));   \
+    }
 
     ASM_INTERPRETER_BC_HELPER_STUB_LIST(INIT_HELPER_SIGNATURES)
 #undef INIT_HELPER_SIGNATURES
