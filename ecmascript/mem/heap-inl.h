@@ -642,57 +642,6 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
     return object;
 }
 
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-inline bool Heap::GetStsTriggerXGC([[maybe_unused]] const char *callerName)
-{
-    auto *runtime = Runtime::GetInstance();
-    if (runtime != nullptr) {
-        auto *stsIface = runtime->GetSTSVMInterface();
-        if (stsIface != nullptr) {
-            LOG_GC(INFO) << callerName << " trigger XGC from dynamic side";
-            return true;
-        }
-    }
-    LOG_GC(INFO) << callerName << " XGC skipped: STSVMInterface is null";
-    return false;
-}
-
-inline bool Heap::TryTriggerUnifiedGCMark([[maybe_unused]] const char *callerName)
-{
-    auto *sharedHeap = SharedHeap::GetInstance();
-    bool unifiedGcTriggered =
-        sharedHeap->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread_);
-    LOG_GC(INFO) << callerName << " XGC trigger result: unified=" << unifiedGcTriggered;
-    return unifiedGcTriggered;
-}
-
-inline bool Heap::TryTriggerXGC([[maybe_unused]] const char *callerName)
-{
-    if (TryTriggerUnifiedGCMark(callerName)) {
-        bool etsGcTriggered = Runtime::GetInstance()->GetSTSVMInterface()->TriggerXGC();
-        if (!etsGcTriggered) {
-            SharedHeap::GetInstance()->NotifyUnifiedGCInterrupt();
-        }
-        SharedHeap::GetInstance()->WaitGCFinished(thread_);
-        return etsGcTriggered;
-    }
-    return false;
-}
-
-inline bool Heap::TryTriggerXGCAndReclaim(const char *callerName)
-{
-    if (GetStsTriggerXGC(callerName)) {
-        bool xgcTriggered = TryTriggerXGC(callerName);
-        LOG_GC(INFO) << callerName << " XGC trigger result: " << xgcTriggered;
-        if (xgcTriggered) {
-            CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
-        }
-        return xgcTriggered;
-    }
-    return false;
-}
-#endif
-
 TaggedObject *Heap::AllocateHugeObject(size_t size)
 {
     if (UNLIKELY(g_isEnableCMCGC)) {
