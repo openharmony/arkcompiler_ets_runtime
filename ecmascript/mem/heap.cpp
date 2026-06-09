@@ -931,11 +931,11 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
     EcmaVM *vm = thread->GetEcmaVM();
-    if (!thread->IsThrowingOOMError()) {
-        vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
-            GetHeapObjectSize(), eventConfig, spaceType, lastAllocObjSize, heapType);
+    if (thread->IsThrowingOOMError()) {
         return;
     }
+    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
+        GetHeapObjectSize(), eventConfig, spaceType, lastAllocObjSize, heapType);
     if (!shouldDump) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
@@ -2112,11 +2112,11 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
-    if (!thread_->IsThrowingOOMError()) {
-        GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
-                                                    spaceType, lastAllocObjSize, heapType);
+    if (thread_->IsThrowingOOMError()) {
         return;
     }
+    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
+                                                spaceType, lastAllocObjSize, heapType);
     if (!shouldDump) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
