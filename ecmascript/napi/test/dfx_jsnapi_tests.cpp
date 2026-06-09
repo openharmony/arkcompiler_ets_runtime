@@ -98,6 +98,26 @@ bool MatchJSONLineHeader(std::fstream &fs, const std::string filePath, int lineN
     return false;
 }
 
+bool IsEmptyFile(const std::string &filePath)
+{
+    std::fstream fs(filePath, std::ios::in | std::ios::binary);
+    if (!fs.is_open()) {
+        return false;
+    }
+    return fs.peek() == std::fstream::traits_type::eof();
+}
+
+bool CreateEmptyFile(const std::string &filePath)
+{
+    std::fstream outputString(filePath, std::ios::out);
+    if (!outputString.is_open()) {
+        return false;
+    }
+    outputString.close();
+    outputString.clear();
+    return true;
+}
+
 HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_001)
 {
     const std::string filePath = "DFXJSNApiTests_json_001.heapsnapshot";
@@ -1519,5 +1539,114 @@ HWTEST_F_L0(DFXJSNApiTests, MergeGCStatisticForDFX002)
     EXPECT_FLOAT_EQ(merged.totalPause, 0.0f);
     EXPECT_FLOAT_EQ(averagePause, 0.0f);
     EXPECT_STREQ(merged.lastType, "UnknownType");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_HybridEnv_NoFile)
+{
+    // languageEnv=HYBRID routes to PerformHybridHeapDump.
+    // Without a real hybrid runtime, it returns false and no snapshot is written.
+    const std::string filePath = "DFXJSNApiTests_hybrid_nofile.heapsnapshot";
+    ASSERT_TRUE(CreateEmptyFile(filePath));
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.languageEnv = ecmascript::LanguageEnv::HYBRID;
+    DFXJSNApi::DumpHeapSnapshot(vm_, filePath, dumpOption);
+
+    EXPECT_TRUE(IsEmptyFile(filePath));
+    std::remove(filePath.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_StaticEnv_NoFile)
+{
+    // languageEnv=STATIC also routes to PerformHybridHeapDump.
+    // Without a real hybrid runtime, it returns false and no snapshot is written.
+    const std::string filePath = "DFXJSNApiTests_static_nofile.heapsnapshot";
+    ASSERT_TRUE(CreateEmptyFile(filePath));
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.languageEnv = ecmascript::LanguageEnv::STATIC;
+    DFXJSNApi::DumpHeapSnapshot(vm_, filePath, dumpOption);
+
+    EXPECT_TRUE(IsEmptyFile(filePath));
+    std::remove(filePath.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_DumpOption)
+{
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    bool result = DFXJSNApi::PerformHybridHeapDump(vm_, dumpOption);
+    EXPECT_FALSE(result) << "PerformHybridHeapDump should fail without an attached STS runtime";
+}
+
+HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_WithStream)
+{
+    const std::string filePath = "DFXJSNApiTests_perform_stream.heapsnapshot";
+    ASSERT_TRUE(CreateEmptyFile(filePath));
+    ecmascript::FileStream stream(filePath);
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    bool result = DFXJSNApi::PerformHybridHeapDump(vm_, &stream, dumpOption);
+    EXPECT_FALSE(result) << "PerformHybridHeapDump with stream should fail without an attached STS runtime";
+    EXPECT_TRUE(IsEmptyFile(filePath));
+    std::remove(filePath.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_ValidatesOptionFlags)
+{
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.dumpDynamicHeap = true;
+    dumpOption.dumpStaticHeap = true;
+
+    bool result = DFXJSNApi::PerformHybridHeapDump(vm_, dumpOption);
+    EXPECT_FALSE(result) << "Caller-specified heap flags should not make hybrid dump succeed without STS runtime";
+    EXPECT_TRUE(dumpOption.dumpDynamicHeap);
+    EXPECT_TRUE(dumpOption.dumpStaticHeap);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_Tid_HybridEnv)
+{
+    // DumpHeapSnapshot(vm, dumpOption, tid) with languageEnv=HYBRID
+    // routes to ScheduleHybridHeapDump which is a no-op in non-hybrid.
+    // Should not crash and should not produce output.
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.languageEnv = ecmascript::LanguageEnv::HYBRID;
+    uint32_t tid = vm_->GetTid();
+    ASSERT_NE(tid, 0U);
+    EXPECT_FALSE(vm_->IsWorkerThread());
+    DFXJSNApi::DumpHeapSnapshot(vm_, dumpOption, tid);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_Tid_StaticEnv)
+{
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.languageEnv = ecmascript::LanguageEnv::STATIC;
+    uint32_t tid = vm_->GetTid();
+    ASSERT_NE(tid, 0U);
+    EXPECT_FALSE(vm_->IsWorkerThread());
+    DFXJSNApi::DumpHeapSnapshot(vm_, dumpOption, tid);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_DynamicDefault_StillWorks)
+{
+    // Verify DYNAMIC (default) languageEnv still routes to old path and works
+    const std::string filePath = "DFXJSNApiTests_dynamic_default.heapsnapshot";
+    std::fstream outputString(filePath, std::ios::out);
+    outputString.close();
+    outputString.clear();
+
+    std::fstream inputFile {};
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    ASSERT_EQ(dumpOption.languageEnv, ecmascript::LanguageEnv::DYNAMIC);
+    DFXJSNApi::DumpHeapSnapshot(vm_, filePath, dumpOption);
+    EXPECT_TRUE(MatchJSONLineHeader(inputFile, filePath, 1, "{\"snapshot\":"));
+    std::remove(filePath.c_str());
 }
 } // namespace panda::test

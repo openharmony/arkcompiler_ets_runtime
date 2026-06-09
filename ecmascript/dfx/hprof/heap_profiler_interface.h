@@ -27,6 +27,7 @@ class Progress;
 class Stream;
 struct SamplingInfo;
 enum class DumpFormat { JSON, BINARY, OTHER };
+enum class LanguageEnv : uint8_t { DYNAMIC = 0, STATIC = 1, HYBRID = 2 };
 struct DumpSnapShotOption {
     DumpFormat dumpFormat; // dumpformat like JSON BINARY and OTHER
     bool isVmMode = true; // vmMode do more dump.
@@ -42,8 +43,11 @@ struct DumpSnapShotOption {
     bool isForSharedOOM = false;   // for shared heap oom dump
     bool isProcDump = false;  // whether need process dump
     bool isClearNodeIdCache = false;  // whether clear node id map cache after dump
+    bool dumpDynamicHeap = false;     // whether to dump dynamic (ArkTS) heap
+    bool dumpStaticHeap = false;      // whether to dump static heap
     std::string spaceType = "";  // space type for raw heap dump
     std::string heapType = "";  // heap type: local heap or shared heap
+    LanguageEnv languageEnv = LanguageEnv::DYNAMIC;  // language environment selection
 };
 
 enum class RawHeapDumpCropLevel {

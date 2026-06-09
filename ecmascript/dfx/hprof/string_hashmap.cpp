@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <string_view>
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 
 #include "ecmascript/mem/native_area_allocator.h"
@@ -85,6 +86,21 @@ StringKey StringHashMap::GenerateStringKey(const CString *cstr) const
 CString *StringHashMap::GetString(const CString &cstr)
 {
     return FindOrInsertString(&cstr);
+}
+
+CString *StringHashMap::GetString(const char *str)
+{
+    StringKey key = std::hash<std::string_view>{}(std::string_view(str));
+    auto it = hashmap_.find(key);
+    if (it != hashmap_.end()) {
+        return it->second;
+    }
+    index_++;
+    auto *newStr = const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->New<CString>(str);
+    hashmap_.emplace(key, newStr);
+    orderedKey_.emplace_back(key);
+    indexMap_.emplace(key, index_);
+    return newStr;
 }
 
 void StringHashMap::Clear()

@@ -24,6 +24,9 @@
 #include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
+#if defined(PANDA_JS_ETS_HYBRID_MODE)
+#include "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.h"
+#endif
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -66,6 +69,11 @@ using ecmascript::g_isEnableCMCGC;
 using ecmascript::JSFunction;
 using ecmascript::JSPandaFileExecutor;
 using ecmascript::SourceTextModule;
+using Runtime = ecmascript::Runtime;
+using LanguageEnv = ecmascript::LanguageEnv;
+#if defined(PANDA_JS_ETS_HYBRID_MODE)
+using HybridHeapProfiler = ecmascript::HybridHeapProfiler;
+#endif
 sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
@@ -74,7 +82,11 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileStream stream(path);
-    DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
+    if (dumpOption.languageEnv == LanguageEnv::DYNAMIC) {
+        DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
+    } else {
+        PerformHybridHeapDump(vm, &stream, dumpOption);
+    }
 #else
     if (callback) {
         callback(static_cast<uint8_t>(ecmascript::DumpHeapSnapshotStatus::FORK_FAILED));
@@ -193,7 +205,11 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
     sem_init(&g_heapdumpCnt, 0, THREAD_COUNT);
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
-    DumpHeapSnapshotWithVm(vm, dumpOption, tid);
+    if (dumpOption.languageEnv == LanguageEnv::DYNAMIC) {
+        DumpHeapSnapshotWithVm(vm, dumpOption, tid);
+    } else {
+        ScheduleHybridHeapDump(vm, dumpOption, tid);
+    }
 }
 
 void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
@@ -248,6 +264,108 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
         delete work;
     }
 #endif
+#endif
+}
+
+bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
+                                      [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
+    auto *hybridProfiler = HybridHeapProfiler::GetInstance();
+    if (hybridProfiler == nullptr) {
+        LOG_ECMA(ERROR) << "PerformHybridHeapDump: HybridHeapProfiler not available";
+        return false;
+    }
+    return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), nullptr,
+                                const_cast<DumpSnapShotOption &>(dumpOption));
+#endif
+    return false;
+}
+
+bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
+                                      [[maybe_unused]] Stream *stream,
+                                      [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
+    auto *hybridProfiler = HybridHeapProfiler::GetInstance();
+    if (hybridProfiler == nullptr) {
+        LOG_ECMA(ERROR) << "PerformHybridHeapDump: HybridHeapProfiler not available";
+        return false;
+    }
+    return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), stream,
+                                const_cast<DumpSnapShotOption &>(dumpOption));
+#endif
+    return false;
+}
+
+void DFXJSNApi::ScheduleHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
+                                       [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                       [[maybe_unused]] uint32_t tid)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
+    uint32_t mainTid = vm->GetTid();
+
+    if (tid == 0) {
+        // Dump all: main -> hybrid, workers -> dynamic
+        ScheduleHybridDumpOnLoop(vm, dumpOption, mainTid);
+        DumpSnapShotOption dynamicOption = dumpOption;
+        const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) {
+            DumpHeapSnapshotWithVm(workerVm, dynamicOption, workerVm->GetTid());
+        });
+    } else if (tid == mainTid) {
+        // Dump main thread: always hybrid
+        ScheduleHybridDumpOnLoop(vm, dumpOption, mainTid);
+    } else {
+        EcmaVM *workerVm = const_cast<EcmaVM *>(vm)->GetWorkerVm(tid);
+        if (workerVm != nullptr) {
+            // Dump worker: HybridHeapProfiler decides dynamic/hybrid via flags
+            ScheduleHybridDumpOnLoop(workerVm, dumpOption, tid);
+        } else {
+            // No EcmaVM: static-only dump on main VM's loop
+            ScheduleHybridDumpOnLoop(vm, dumpOption, tid);
+        }
+    }
+#endif
+}
+
+void DFXJSNApi::ScheduleHybridDumpOnLoop([[maybe_unused]] const EcmaVM *vm,
+                                         [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                         [[maybe_unused]] uint32_t tid)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+    if (loop == nullptr || uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DFXJSNApi::ScheduleHybridDumpOnLoop: loop nullptr or dead";
+        return;
+    }
+
+    struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
+    dumpStruct->vm = vm;
+    dumpStruct->dumpOption = dumpOption;
+    dumpStruct->tid = tid;
+
+    uv_work_t *work = new(std::nothrow) uv_work_t;
+    if (work == nullptr) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DFXJSNApi::ScheduleHybridDumpOnLoop: work alloc failed";
+        delete dumpStruct;
+        return;
+    }
+    work->data = static_cast<void *>(dumpStruct);
+
+    int ret = uv_queue_work(loop, work, [](uv_work_t *) {},
+        [](uv_work_t *work, int32_t) {
+            struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
+            // tid matches this VM → hybrid/dynamic dump; tid mismatch → static-only dump
+            const EcmaVM *targetVm = (dump->vm->GetTid() == dump->tid) ? dump->vm : nullptr;
+            PerformHybridHeapDump(targetVm, dump->dumpOption);
+            delete dump;
+            delete work;
+        });
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DFXJSNApi::ScheduleHybridDumpOnLoop: uv_queue_work fail, ret " << ret;
+        delete dumpStruct;
+        delete work;
+    }
 #endif
 }
 

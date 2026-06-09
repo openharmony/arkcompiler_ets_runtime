@@ -1292,6 +1292,12 @@ if (!is_mingw && !is_mac && target_os != "ios") {
       "ecmascript/base/block_hook_scope.cpp",
       "ecmascript/dfx/tracing/tracing.cpp",
     ]
+    if (ark_js_hybrid) {
+      ecma_profiler_source += [
+        "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.cpp",
+        "ecmascript/dfx/hprof/hybrid/hybrid_heap_snapshot.cpp",
+      ]
+    }
   }
 }
 

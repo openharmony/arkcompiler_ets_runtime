@@ -55,13 +55,14 @@ enum class NodeType {
     SLICEDSTRING,
     SYMBOL,
     BIGINT,
+    CLASS,
     FRAMEWORK,
     ROOT,
     DEFAULT = NATIVE,
 };
 
 enum class EdgeType {
-    CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, NATIVE, NATIVE_STRING, DEFAULT = PROPERTY
+    CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, NATIVE, NATIVE_STRING, XREF, DEFAULT = PROPERTY
 };
 
 class HprofNode {
@@ -154,6 +155,14 @@ public:
     {
         isLive_ = isLive;
     }
+    bool IsDynamic() const
+    {
+        return isDynamic_;
+    }
+    void SetDynamic(bool isDynamic)
+    {
+        isDynamic_ = isDynamic;
+    }
     void SetTraceId(uint32_t traceId)
     {
         traceId_ = traceId;
@@ -179,6 +188,7 @@ private:
     uint32_t traceId_ {0};
     JSTaggedType address_ {0};
     bool isLive_ {true};
+    bool isDynamic_ {true};  // true = dynamic heap node, false = static heap node
 };
 
 class Edge {
@@ -419,7 +429,12 @@ public:
         : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
           captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()) {}
-    ~HeapSnapshot();
+    HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const DumpSnapShotOption &dumpOption,
+                 const bool trackAllocations, EntryIdMap *entryIdMap, NativeAreaAllocator *allocator)
+        : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
+          captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
+          entryIdMap_(entryIdMap), chunk_(allocator) {}
+    virtual ~HeapSnapshot();
     bool BuildUp(bool isSimplify = false);
     bool Verify();
 
@@ -545,11 +560,43 @@ public:
         return stringTable_->InsertStrAndGetStringId(str);
     }
 
-private:
-    void FillNodes(bool isInFinish = false, bool isSimplify = false);
+protected:
+    virtual void FillNodes(bool isInFinish = false, bool isSimplify = false);
     HprofNode *GenerateNode(JSTaggedValue entry, size_t size = 0,
                             bool isInFinish = false, bool isSimplify = false, bool isBinMod = false,
                             bool needProxySuffix = false);
+    HprofNode *InsertNodeUnique(HprofNode *node);
+    Edge *InsertEdgeUnique(Edge *edge);
+    HprofNode *CreateSpecificSyntheticRoot(const CUnorderedSet<HprofNode *> &specificRootSet,
+                                        const CString &rootNamePrefix, size_t insertPosition);
+    void ProcessNativeEdge(const Reference &it, HprofNode *entryFrom);
+    void ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify);
+    void ProcessNativeStringEdge(const Reference &it, HprofNode *entryFrom);
+    void ReindexAllNodes();
+
+    const EcmaVM *vm_;
+    StringHashMap *stringTable_ {nullptr};
+    bool isVmMode_ {true};
+
+private:
+    bool isPrivate_ {false};
+    bool captureNumericValue_ {false};
+    bool trackAllocations_ {false};
+
+protected:
+    uint32_t nodeCount_ {0};
+    HeapEntryMap entryMap_;
+    EntryIdMap* entryIdMap_;
+    Chunk chunk_;
+    CVector<HprofNode *> nodes_ {};
+    CUnorderedSet<HprofNode *> localHandleRoots_ {};
+    CUnorderedSet<HprofNode *> globalHandleRoots_ {};
+    CUnorderedSet<HprofNode *> vmRoots_ {};
+    CUnorderedSet<HprofNode *> frameRoots_ {};
+    // The address of the native pointer storing the reference to the ArkTS object
+    CVector<HprofNode *> nativeAddressNodes_ {};
+
+private:
     HprofNode *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod);
     HprofNode *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     HprofNode *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
@@ -562,29 +609,21 @@ private:
     HprofNode *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
     void FillGlobalEdges();
-    void ProcessNativeEdge(const Reference &it, HprofNode *entryFrom);
-    void ProcessNativeStringEdge(const Reference &it, HprofNode *entryFrom);
-    void ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify);
     void RenameFunction(const CString &edgeName, HprofNode *entryFrom, HprofNode *entryTo);
     CString ParseFunctionName(TaggedObject *obj, bool isRawHeap = false);
     const CString ParseObjectName(TaggedObject *obj);
 
-    HprofNode *InsertNodeUnique(HprofNode *node);
     void EraseNodeUnique(HprofNode *node);
-    Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
     void CreateSyntheticRootToRootEdges(HprofNode *syntheticRoot, CVector<Edge *> &rootEdges);
     HprofNode *InsertNodeAt(size_t pos, HprofNode *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
-    HprofNode *CreateSpecificSyntheticRoot(const CUnorderedSet<HprofNode *> &specificRootSet,
-                                           const CString &rootNamePrefix, size_t insertPosition);
     void CreateSyntheticRootToSpecificSyntheticRootEdge(HprofNode *syntheticRoot, HprofNode *handleSyntheticRoot,
                                                         CVector<Edge *> &rootEdges);
     void CreateSpecificSyntheticRootToRootEdges(HprofNode *specificSyntheticRoot,
                                                 const CUnorderedSet<HprofNode *> &specificRootSet,
                                                 CVector<Edge *> &rootEdges);
-    void ReindexAllNodes();
 
     void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
     void LogLeakedLocalHandleBackTrace(common::RefField<> &refField);
@@ -705,38 +744,21 @@ private:
         Fn onMark_;
     };
 
-    CVector<HprofNode *> nodes_ {};
     CVector<Edge *> edges_ {};
-    CUnorderedSet<HprofNode *> localHandleRoots_ {};
-    CUnorderedSet<HprofNode *> globalHandleRoots_ {};
-    CUnorderedSet<HprofNode *> vmRoots_ {};
-    CUnorderedSet<HprofNode *> frameRoots_ {};
     CUnorderedSet<HprofNode *> globalObjectRoots_ {};
     CMap<uintptr_t, JSTaggedType> globalHandleAddrMap_ {};
-    // The address of the native pointer storing the reference to the ArkTS object
-    CVector<HprofNode *> nativeAddressNodes_ {};
     CVector<TimeStamp> timeStamps_ {};
-    uint32_t nodeCount_ {0};
     uint32_t edgeCount_ {0};
     size_t totalNodesSize_ {0};
-    HeapEntryMap entryMap_;
     HeapRootVisitor rootVisitor_;
-    const EcmaVM *vm_;
-    StringHashMap *stringTable_ {nullptr};
-    bool isVmMode_ {true};
-    bool isPrivate_ {false};
-    bool captureNumericValue_ {false};
     HprofNode* privateStringNode_ {nullptr};
-    bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
     CMap<MethodLiteral *, FunctionInfo> stackInfo_;
     CMap<std::string, int> scriptIdMap_;
     TraceTree traceTree_;
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
-    EntryIdMap* entryIdMap_;
     CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap_;
-    Chunk chunk_;
     friend class HeapSnapShotFriendTest;
 };
 

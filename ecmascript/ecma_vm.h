@@ -98,6 +98,7 @@ using PGOProfiler = pgo::PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
 class HeapProfiler;
+class HybridHeapProfiler;
 #endif
 namespace job {
 class MicroJobQueue;
@@ -836,6 +837,10 @@ public:
     HeapProfilerInterface *GetHeapProfile();
     void  SetHeapProfile(HeapProfilerInterface *heapProfile) { heapProfile_ = heapProfile; }
     HeapProfilerInterface *GetOrNewHeapProfile();
+#if defined(PANDA_JS_ETS_HYBRID_MODE)
+    void DeleteHybridHeapProfile();
+    HybridHeapProfiler *GetOrNewHybridHeapProfiler();
+#endif // PANDA_JS_ETS_HYBRID_MODE
     void StartHeapTracking();
     void StopHeapTracking();
 #endif
@@ -1771,6 +1776,7 @@ private:
     bool isBundlePack_ {true};
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
+    HybridHeapProfiler *hybridHeapProfiler_ {nullptr};
 #endif
     CString assetPath_;
     CString bundleName_;

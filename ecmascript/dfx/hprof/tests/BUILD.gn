@@ -407,6 +407,45 @@ host_unittest_action("GlobalRefTrackTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("HybridHeapSnapshotTest") {
+  module_out_path = module_output_path
+  sources = []
+  if (ark_js_hybrid) {
+    sources += [
+      "hybrid_heap_snapshot_test.cpp",
+    ]
+  }
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test/"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir + "/abc_files/")
+  }
+
+  test_js_dir = rebase_path(test_js_path)
+  defines = [
+    "OHOS_UNIT_TEST",
+    "HPROF_TEST_JS_FILES_DIR=\"${test_js_dir}\"",
+    "HPROF_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
   deps = [
@@ -421,6 +460,7 @@ group("unittest") {
     ":HeapTrackerThirdTest",
     ":JSMetadataTest",
     ":RawHeapTranslateTest",
+    ":HybridHeapSnapshotTest",
   ]
 
   # TODO: CMC-GC UT FIX LATER
@@ -448,6 +488,7 @@ group("host_unittest") {
     ":HeapTrackerFirstTestAction",
     ":HeapTrackerSecondTestAction",
     ":HeapTrackerThirdTestAction",
+    ":HybridHeapSnapshotTestAction",
     ":JSMetadataTestAction",
     ":RawHeapTranslateTestAction",
   ]
@@ -462,6 +503,7 @@ group("host_unittest") {
       ":HeapTrackerFirstTestAction",
       ":HeapTrackerSecondTestAction",
       ":HeapTrackerThirdTestAction",
+      ":HybridHeapSnapshotTestAction",
       ":JSMetadataTestAction",
       ":RawHeapTranslateTestAction",
     ]

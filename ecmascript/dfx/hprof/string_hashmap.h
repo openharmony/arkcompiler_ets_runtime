@@ -64,6 +64,7 @@ public:
      * For external call to use this StringTable
      */
     CString *GetString(const CString &cstr);
+    CString *GetString(const char *str);
 
 private:
     StringKey GenerateStringKey(const CString *cstr) const;
