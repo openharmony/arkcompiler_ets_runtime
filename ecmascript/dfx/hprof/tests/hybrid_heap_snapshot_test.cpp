@@ -167,6 +167,17 @@ public:
         return isAttached_;
     }
 
+    bool UnionStackIsEmpty(bool *isEmpty) override
+    {
+        return isEmpty;
+    }
+
+    bool ForEachFrameInUnionStack(const std::function<void(const void *frame, bool isStaticFrame)> &callback) override
+    {
+        (void)callback;
+        return true;
+    }
+
     void AddStaticNode(uint64_t addr, const std::string &name,
                        arkplatform::StaticNodeType type, size_t size, size_t nativeSize = 0)
     {

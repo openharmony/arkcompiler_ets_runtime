@@ -846,4 +846,46 @@ void Runtime::IterateSendableGlobalStorage(RootVisitor &visitor)
         hasCheckedGlobalCount = true;
     }
 }
+
+bool Runtime::ForEachFrameInUnionStack([[maybe_unused]] const EcmaVM *vm,
+    [[maybe_unused]] const std::function<void(const void *frame, bool isStaticFrame)> &callback)
+{
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    auto vmOperator = vm->GetCrossVMOperator();
+    if (vmOperator == nullptr) {
+        LOG_ECMA(ERROR) << "Get vmOperator failed";
+        return false;
+    }
+    auto stsVMInterface = vmOperator->GetSTSVMInterface();
+    if (stsVMInterface == nullptr) {
+        LOG_ECMA(ERROR) << "Get stsVMInterface failed";
+        return false;
+    }
+    return stsVMInterface->ForEachFrameInUnionStack(callback);
+#else
+    LOG_ECMA(ERROR) << "Not in hybrid mode";
+    return false;
+#endif
+}
+
+bool Runtime::UnionStackIsEmpty([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] bool *isEmpty)
+{
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    auto vmOperator = vm->GetCrossVMOperator();
+    if (vmOperator == nullptr) {
+        LOG_ECMA(ERROR) << "Get vmOperator failed";
+        return false;
+    }
+    auto stsVMInterface = vmOperator->GetSTSVMInterface();
+    if (stsVMInterface == nullptr) {
+        LOG_ECMA(ERROR) << "Get stsVMInterface failed";
+        return false;
+    }
+    return stsVMInterface->UnionStackIsEmpty(isEmpty);
+#else
+    LOG_ECMA(ERROR) << "Not in hybrid mode";
+    return false;
+#endif
+}
+
 }  // namespace panda::ecmascript

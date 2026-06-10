@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,4 +133,8 @@ bool CrossVMOperator::EcmaVMInterfaceImpl::ForEachDynamicFrame(void *currFrameSP
     return true;
 }
 
+const void *CrossVMOperator::EcmaVMInterfaceImpl::GetEcmaVM() const
+{
+    return static_cast<const void *>(vm_);
+}
 }  // namespace panda::ecmascript

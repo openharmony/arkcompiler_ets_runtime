@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -169,6 +169,9 @@ public:
     static void DisableFirstTimeFlag(JSDebugger *debugger);
     static void SetSymbolicBreakpoint(JSDebugger *debugger, const std::unordered_set<std::string> &functionNamesSet);
     static void RemoveSymbolicBreakpoint(JSDebugger *debugger, const std::string &functionName);
+    static bool ForEachFrameInUnionStack(const EcmaVM *ecmaVm,
+                                         const std::function<void(const void *frame, bool isStaticFrame)> &callback);
+    static bool UnionStackIsEmpty(const EcmaVM *ecmaVm, bool *isEmpty);
 
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);
