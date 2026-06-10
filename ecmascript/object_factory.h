@@ -948,12 +948,12 @@ public:
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord();
 
     JSHandle<ResolvedRecordIndexBinding> NewSResolvedRecordIndexBindingRecord(
-        const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index);
+        const CString &moduleRecord, const CString &abcFileName, int32_t index);
 
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
 
     JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(
-        const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName);
+        const CString &moduleRecord, const JSHandle<JSTaggedValue> &bindingName);
 
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 

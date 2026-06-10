@@ -3949,19 +3949,21 @@ void ResolvedIndexBinding::Dump(const JSThread *thread, std::ostream &os) const
 void ResolvedRecordIndexBinding::Dump(const JSThread *thread, std::ostream &os) const
 {
     os << " - Module: ";
-    GetModuleRecord(thread).Dump(thread, os);
+    os << GetModuleRecordNameString();
     os << "\n";
     os << " - AbcFileName: ";
-    GetAbcFileName(thread).Dump(thread, os);
+    os << GetAbcFileNameString();
     os << "\n";
     os << " - Index: " << GetIndex();
+    os << "\n";
+    os << " - IsUpdatedFromResolvedRecordBinding: " << GetIsUpdatedFromResolvedRecordBinding();
     os << "\n";
 }
 
 void ResolvedRecordBinding::Dump(const JSThread *thread, std::ostream &os) const
 {
     os << " - Module: ";
-    GetModuleRecord(thread).Dump(thread, os);
+    os << GetModuleRecordNameString();
     os << "\n";
     os << " - BindingName: ";
     GetBindingName(thread).Dump(thread, os);
@@ -6335,14 +6337,20 @@ void ResolvedIndexBinding::DumpForSnapshot(const JSThread *thread, std::vector<R
 
 void ResolvedRecordIndexBinding::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord(thread));
-    vec.emplace_back(CString("AbcFileName"), GetAbcFileName(thread));
+    JSTaggedValue moduleRecordValue(reinterpret_cast<JSTaggedType>(GetModuleRecordName()));
+    vec.emplace_back(CString("ModuleRecord"), moduleRecordValue, EdgeType::NATIVE_STRING);
+    CString *abcFileNamePtr = reinterpret_cast<CString *>(GetAbcFileName());
+    JSTaggedValue abcNameValue(reinterpret_cast<JSTaggedType>(abcFileNamePtr));
+    vec.emplace_back(CString("AbcFileName"), abcNameValue, EdgeType::NATIVE_STRING);
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+    vec.emplace_back(CString("IsUpdatedFromResolvedRecordBinding"),
+                     JSTaggedValue(GetIsUpdatedFromResolvedRecordBinding()));
 }
 
 void ResolvedRecordBinding::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord(thread));
+    JSTaggedValue moduleRecordValue(reinterpret_cast<JSTaggedType>(GetModuleRecordName()));
+    vec.emplace_back(CString("ModuleRecord"), moduleRecordValue, EdgeType::NATIVE_STRING);
     vec.emplace_back(CString("BindingName"), GetBindingName(thread));
 }
 

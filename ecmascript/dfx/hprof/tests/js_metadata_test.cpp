@@ -385,8 +385,8 @@ public:
             {JSType::RESOLVEDBINDING_RECORD, {"Module", "BindingName", "RESOLVEDBINDING_RECORD"}},
             {JSType::RESOLVEDINDEXBINDING_RECORD, {"Module", "Index", "BitField", "RESOLVEDINDEXBINDING_RECORD"}},
             {JSType::RESOLVEDRECORDBINDING_RECORD, {"ModuleRecord", "BindingName", "RESOLVEDRECORDBINDING_RECORD"}},
-            {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, {"ModuleRecord",
-                                                         "AbcFileName", "RESOLVEDRECORDINDEXBINDING_RECORD"}},
+            {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, {"ModuleRecord", "AbcFileName", "Index", "BitField",
+                                                         "RESOLVEDRECORDINDEXBINDING_RECORD"}},
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"ResolveFunction", "RejectFunction", "RESOLVING_FUNCTIONS_RECORD"}},
             {JSType::SENDABLE_ENV, {"SENDABLE_ENV"}},
             {JSType::SFUNCTION_ENV, {"SFUNCTION_ENV"}},
@@ -986,6 +986,8 @@ public:
             {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, {
                 ResolvedRecordIndexBinding::MODULE_RECORD_INDEX_OFFSET,
                 ResolvedRecordIndexBinding::ABC_FILE_NAME,
+                ResolvedRecordIndexBinding::INDEX_OFFSET,
+                ResolvedRecordIndexBinding::BIT_FIELD_OFFSET,
                 ResolvedRecordIndexBinding::SIZE - ResolvedRecordIndexBinding::MODULE_RECORD_INDEX_OFFSET}},
             {JSType::RESOLVING_FUNCTIONS_RECORD, {
                 ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET,
@@ -1715,7 +1717,9 @@ public:
                 ResolvedRecordBinding::SIZE - ResolvedRecordBinding::BINDING_NAME_OFFSET}},
             {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, {
                 ResolvedRecordIndexBinding::ABC_FILE_NAME - ResolvedRecordIndexBinding::MODULE_RECORD_INDEX_OFFSET,
-                ResolvedRecordIndexBinding::INDEX_OFFSET - ResolvedRecordIndexBinding::ABC_FILE_NAME}},
+                ResolvedRecordIndexBinding::INDEX_OFFSET - ResolvedRecordIndexBinding::ABC_FILE_NAME,
+                ResolvedRecordIndexBinding::BIT_FIELD_OFFSET - ResolvedRecordIndexBinding::INDEX_OFFSET,
+                ResolvedRecordIndexBinding::END_OFFSET - ResolvedRecordIndexBinding::BIT_FIELD_OFFSET}},
             {JSType::RESOLVING_FUNCTIONS_RECORD, {
                 ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET,
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET}},

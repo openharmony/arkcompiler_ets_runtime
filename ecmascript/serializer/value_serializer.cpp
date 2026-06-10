@@ -18,6 +18,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/base/array_helper.h"
+#include "ecmascript/module/js_shared_module.h"
 
 namespace panda::ecmascript {
 
@@ -284,6 +285,20 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         }
         case JSType::SOURCE_TEXT_MODULE_RECORD: {
             if (!SerializeModuleCNativeObjects(object)) {
+                notSupport_ = true;
+                return;
+            }
+            break;
+        }
+        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD: {
+            if (!SerializeResolvedRecordIndexBindingNativeObjects(object)) {
+                notSupport_ = true;
+                return;
+            }
+            break;
+        }
+        case JSType::RESOLVEDRECORDBINDING_RECORD: {
+            if (!SerializeResolvedRecordBindingNativeObjects(object)) {
                 notSupport_ = true;
                 return;
             }
@@ -614,5 +629,49 @@ bool ValueSerializer::SerializeModuleCNativeObjects(TaggedObject *object)
     }
     return true;
 }
-}  // namespace panda::ecmascript
 
+bool ValueSerializer::SerializeResolvedRecordIndexBindingNativeObjects(TaggedObject *object)
+{
+    ResolvedRecordIndexBinding *binding = ResolvedRecordIndexBinding::Cast(object);
+    const CString *moduleRecord = binding->GetModuleRecordName();
+    ASSERT(moduleRecord != nullptr);
+    data_->WriteEncodeFlag(EncodeFlag::MODULE_RECORD_NAME);
+    if (!moduleRecord->empty()) {
+        data_->WriteUint32(moduleRecord->size());
+        data_->WriteRawData(reinterpret_cast<uint8_t *>(const_cast<char *>(moduleRecord->data())),
+                            moduleRecord->size());
+    } else {
+        data_->WriteUint32(0);
+    }
+
+    // AbcFileName is an optional lazy-load hint, not the module identity key.
+    // Serialize both nullptr and empty CString as length 0, matching SourceTextModule native string fields.
+    CString abcFileName = binding->GetAbcFileNameString();
+    data_->WriteEncodeFlag(EncodeFlag::MODULE_FILE_NAME);
+    if (!abcFileName.empty()) {
+        data_->WriteUint32(abcFileName.size());
+        data_->WriteRawData(reinterpret_cast<uint8_t *>(abcFileName.data()), abcFileName.size());
+    } else {
+        data_->WriteUint32(0);
+    }
+
+    return true;
+}
+
+bool ValueSerializer::SerializeResolvedRecordBindingNativeObjects(TaggedObject *object)
+{
+    ResolvedRecordBinding *binding = ResolvedRecordBinding::Cast(object);
+    const CString *moduleRecord = binding->GetModuleRecordName();
+    ASSERT(moduleRecord != nullptr);
+    data_->WriteEncodeFlag(EncodeFlag::MODULE_RECORD_NAME);
+    if (!moduleRecord->empty()) {
+        data_->WriteUint32(moduleRecord->size());
+        data_->WriteRawData(reinterpret_cast<uint8_t *>(const_cast<char *>(moduleRecord->data())),
+                            moduleRecord->size());
+    } else {
+        data_->WriteUint32(0);
+    }
+
+    return true;
+}
+}  // namespace panda::ecmascript

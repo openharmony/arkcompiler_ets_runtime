@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/module/module_value_accessor.h"
 
 #include "ecmascript/module/module_logger.h"
@@ -20,10 +21,88 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript {
+namespace {
+// fast path to upgrade name-binding to index-binding
+// follow ModuleValueAccessor::GetNativeOrCjsModuleValue native-module path
+bool TryGetNativeModuleExportIndex(JSThread *thread, JSTaggedValue resolvedModule, JSTaggedValue bindingName,
+                                   int32_t &index)
+{
+    SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
+    if (!SourceTextModule::IsNativeModule(module->GetTypes())) {
+        return false;
+    }
+    JSTaggedValue exports = module->GetModuleValue(thread, 0, false);
+    if (UNLIKELY(!exports.IsJSObject())) {
+        return false;
+    }
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (UNLIKELY(JSTaggedValue::SameValue(thread,
+        bindingName, thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue()))) {
+        index = SourceTextModule::UNDEFINED_INDEX;
+        return true;
+    }
+
+    // refs: ObjectFastOperator::GetPropertyByValue
+    ASSERT(bindingName.IsString() && EcmaStringAccessor(bindingName).IsInternString());
+    if (UNLIKELY(ObjectFastOperator::TryToElementsIndex(thread, bindingName) >= 0)) {
+        return false;
+    }
+    JSObject *obj = JSObject::Cast(exports.GetTaggedObject());
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties(thread).GetTaggedObject());
+    if (!properties->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        int entry = JSHClass::FindPropertyEntry(thread, jsHclass, bindingName);
+        if (entry == -1) {
+            return false;
+        }
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout(thread).GetTaggedObject());
+        PropertyAttributes attr(layoutInfo->GetAttr(thread, entry));
+        JSTaggedValue value = obj->GetProperty(thread, jsHclass, attr);
+        if (UNLIKELY(value.IsHole())) {
+            return false;
+        }
+        index = entry;
+        return true;
+    }
+    NameDictionary *dict = NameDictionary::Cast(properties);
+    int entry = dict->FindEntry(thread, bindingName);
+    if (entry == -1) {
+        return false;
+    }
+    JSTaggedValue value = dict->GetValue(thread, entry);
+    if (UNLIKELY(value.IsHole())) {
+        return false;
+    }
+    index = entry;
+    return true;
+}
+
+bool UpdateSendableRecordBindingToRecordIndex(JSThread *thread, JSHandle<SourceTextModule> module,
+                                              JSHandle<ResolvedRecordBinding> binding,
+                                              int32_t index, int32_t slot)
+{
+    JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment(thread));
+    if (UNLIKELY(!moduleEnvironment->IsTaggedArray())) {
+        return false;
+    }
+    const CString *moduleRecord = binding->GetModuleRecordName();
+    ASSERT(moduleRecord != nullptr);
+    // Preserve the referencing module's abc file so a later cache miss still
+    // falls back to the correct lazy-load path for this sendable binding.
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<ResolvedRecordIndexBinding> recordBinding =
+        factory->NewSResolvedRecordIndexBindingRecord(*moduleRecord, module->GetEcmaModuleFilenameString(), index);
+    recordBinding->SetIsUpdatedFromResolvedRecordBinding(true);
+    JSHandle<TaggedArray>::Cast(moduleEnvironment)->Set(thread, slot, JSHandle<JSTaggedValue>::Cast(recordBinding));
+    return true;
+}
+} // namespace
+
 JSTaggedValue ModuleValueAccessor::GetModuleValueInner(JSThread *thread, int32_t index)
 {
     JSTaggedValue currentModule = GetCurrentModule(thread);
@@ -147,12 +226,14 @@ JSTaggedValue ModuleValueAccessor::GetNativeOrCjsModuleValue(JSThread *thread, J
         bindingName, thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue()))) {
         return exports.GetTaggedValue();
     }
-    // need fix
-    return JSHandle<JSTaggedValue>(thread, SlowRuntimeStub::LdObjByName(thread,
-                                                                        exports.GetTaggedValue(),
-                                                                        bindingName,
-                                                                        false,
-                                                                        JSTaggedValue::Undefined())).GetTaggedValue();
+    if (exports->IsJSObject()) {
+        JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, exports.GetTaggedValue(), bindingName);
+        if (!result.IsHole()) {
+            return result;
+        }
+    }
+    return SlowRuntimeStub::LdObjByName(thread, exports.GetTaggedValue(), bindingName, false,
+                                        JSTaggedValue::Undefined());
 }
 void ModuleValueAccessor::StoreModuleValue(JSThread *thread, int32_t index, JSTaggedValue value)
 {
@@ -357,10 +438,24 @@ template JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding<false>(con
 template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordIndexBinding(const GetModuleValueFromBindingInfo &info)
 {
-    JSHandle<ResolvedRecordIndexBinding> binding(info.thread, info.resolvedBinding);
+    ResolvedRecordIndexBinding *rawBinding =
+        ResolvedRecordIndexBinding::Cast(info.resolvedBinding.GetTaggedObject());
+    if (info.isSendable) { // need fix: Check whether the 'info.isSendable' can be deleted
+        JSTaggedValue moduleValue = JSTaggedValue::Hole();
+        // The if judgments of isLazy and EVALUATED are equivalent.
+        // The if judgment of EVALUATED already exists in TryGetEvaluatedImportedModuleValueByIndex.
+        if (TryGetEvaluatedImportedModuleValueByIndex(info.thread, rawBinding->GetModuleRecordName(),
+                                                      rawBinding->GetIndex(), moduleValue)) {
+            return moduleValue;
+        }
+    }
+
+    JSHandle<ResolvedRecordIndexBinding> binding(info.thread, rawBinding);
+    const CString *moduleRecordName = binding->GetModuleRecordName();
+    ASSERT(moduleRecordName != nullptr);
+    const CString &requestModuleRecordName = *moduleRecordName;
     JSHandle<SourceTextModule> resolvedModule = GetResolvedModule<isLazy, ResolvedRecordIndexBinding>(
-        info.thread, info.module, binding,
-        ModulePathHelper::Utf8ConvertToString(info.thread, binding->GetModuleRecord(info.thread)));
+        info.thread, info.module, binding, requestModuleRecordName);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, info.isSendable);
     return GetModuleValue(info.thread, resolvedModule, binding->GetIndex());
@@ -375,12 +470,25 @@ template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding(const GetModuleValueFromBindingInfo &info)
 {
     JSHandle<ResolvedRecordBinding> binding(info.thread, info.resolvedBinding);
+    const CString *moduleRecordName = binding->GetModuleRecordName();
+    ASSERT(moduleRecordName != nullptr);
+    const CString &requestModuleRecordName = *moduleRecordName;
     JSHandle<SourceTextModule> resolvedModule = GetResolvedModule<isLazy, ResolvedRecordBinding>(
-        info.thread, info.module, binding,
-        ModulePathHelper::Utf8ConvertToString(info.thread, binding->GetModuleRecord(info.thread)));
+        info.thread, info.module, binding, requestModuleRecordName);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, info.isSendable);
-    return GetNativeOrCjsModuleValue(info.thread, resolvedModule, binding->GetBindingName(info.thread));
+    JSTaggedValue bindingName = binding->GetBindingName(info.thread);
+    if (info.isSendable) { // need fix: Check whether the 'info.isSendable' can be deleted
+        int32_t exportIndex = SourceTextModule::UNDEFINED_INDEX;
+        bool canUpdate = TryGetNativeModuleExportIndex(info.thread, resolvedModule.GetTaggedValue(),
+                                                       bindingName, exportIndex);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
+        if (canUpdate) {
+            (void)UpdateSendableRecordBindingToRecordIndex(info.thread, info.module, binding, exportIndex,
+                                                           info.index);
+        }
+    }
+    return GetNativeOrCjsModuleValue(info.thread, resolvedModule, bindingName);
 }
 
 template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding<true>(
@@ -443,25 +551,13 @@ void ModuleValueAccessor::EvaluateModuleIfNeeded(JSThread* thread, JSHandle<Sour
 template void ModuleValueAccessor::EvaluateModuleIfNeeded<true>(JSThread *, JSHandle<SourceTextModule>);
 template void ModuleValueAccessor::EvaluateModuleIfNeeded<false>(JSThread *, JSHandle<SourceTextModule>);
 
-void ModuleValueAccessor::LogModuleLoadInfo(JSThread* thread, JSHandle<SourceTextModule> module,
-    JSHandle<SourceTextModule> requiredModule, int32_t index, bool isSendable)
-{
-    if (isSendable) {
-        return;
-    }
-    ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    if (moduleLogger != nullptr) {
-        moduleLogger->InsertModuleLoadInfo(module, requiredModule, index);
-    }
-}
 JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule)
 {
     JSHandle<SourceTextModule> module(thread, resolvedModule);
     // if cjsModule is not JSObject, means cjs uses default exports.
-    JSMutableHandle<JSTaggedValue> exports(thread, thread->GlobalConstants()->GetUndefined());
     ModuleTypes moduleType = module->GetTypes();
     if (SourceTextModule::IsNativeModule(moduleType)) {
-        exports.Update(module->GetModuleValue(thread, 0, false));
+        JSHandle<JSTaggedValue> exports(thread, module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
             LOG_ECMA(WARN) << "Load native module failed: " << SourceTextModule::GetModuleName(resolvedModule);
         }
@@ -470,7 +566,8 @@ JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thr
     if (SourceTextModule::IsCjsModule(moduleType)) {
         CString cjsModuleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
         JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
-        exports.Update(CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue());
+        JSHandle<JSTaggedValue> exports(thread,
+            CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue());
         if (exports->IsHole()) {
             CString errorMsg =
                 "Loading cjs module:" + SourceTextModule::GetModuleName(module.GetTaggedValue()) + ", failed";
@@ -480,7 +577,7 @@ JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thr
         }
         return exports;
     }
-    return exports;
+    return thread->GlobalConstants()->GetHandledUndefined();
 }
 
 template <bool isLazy, typename BindingType>
@@ -501,7 +598,7 @@ JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule(JSThread* thre
     }
     CString fileName;
     if constexpr (std::is_same<BindingType, ResolvedRecordIndexBinding>::value) {
-        fileName = ModulePathHelper::Utf8ConvertToString(thread, binding->GetAbcFileName(thread));
+        fileName = binding->GetAbcFileNameString();
     } else {
         fileName = module->GetEcmaModuleFilenameString();
     }
@@ -527,6 +624,26 @@ template JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule<false
     JSHandle<SourceTextModule>, JSHandle<ResolvedRecordBinding>, const CString &);
 template JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule<true, ResolvedRecordBinding>(JSThread*,
     JSHandle<SourceTextModule>, JSHandle<ResolvedRecordBinding>, const CString &);
+
+// fast path of ModuleValueAccessor::GetModuleValueFromRecordIndexBinding<isLazy = false>
+bool ModuleValueAccessor::TryGetEvaluatedImportedModuleValueByIndex(JSThread *thread,
+    const CString *moduleRecord, int32_t index, JSTaggedValue &result)
+{
+    ASSERT(moduleRecord != nullptr);
+    JSTaggedValue resolvedModule = JSTaggedValue::Undefined();
+    (void)thread->GetModuleManager()->TryGetImportedModuleTaggedValue(*moduleRecord, resolvedModule);
+    if (resolvedModule.IsUndefined()) {
+        return false;
+    }
+    ASSERT(resolvedModule.IsSourceTextModule());
+    SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
+    if (module->GetStatus() < ModuleStatus::EVALUATED) {
+        return false;
+    }
+    JSHandle<SourceTextModule> moduleHandle(thread, module);
+    result = ModuleValueAccessor::GetModuleValue(thread, moduleHandle, index);
+    return true;
+}
 
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueInner(JSThread* thread, JSTaggedValue key)
 {

@@ -2192,11 +2192,12 @@ DEF_RUNTIME_STUBS(GetResolvedRecordIndexBindingModule)
         GetHArg<ResolvedRecordIndexBinding>(argv, argc, 1); // 1: means the first parameter
     JSTaggedType argModuleManager = GetTArg(argv, argc, 2);  // 2: means the second parameter
     ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(argModuleManager);
-    JSTaggedValue recordName = GetArg(argv, argc, 3); // 3: means the third parameter
-    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(thread, recordName);
+    const CString *recordName = binding->GetModuleRecordName();
+    ASSERT(recordName != nullptr);
+    const CString &recordNameStr = *recordName;
     if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
-        CString fileName = ModulePathHelper::Utf8ConvertToString(thread, (binding->GetAbcFileName(thread)));
+        CString fileName = binding->GetAbcFileNameString();
         if (!JSPandaFileExecutor::LazyExecuteModule(thread,
             recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_START
             if (thread->HasPendingException()) {
@@ -2227,10 +2228,13 @@ DEF_RUNTIME_STUBS(GetResolvedRecordBindingModule)
 {
     RUNTIME_STUBS_HEADER(GetResolvedRecordBindingModule);
     JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
-    JSTaggedType argModuleManager = GetTArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<ResolvedRecordBinding> binding =
+        GetHArg<ResolvedRecordBinding>(argv, argc, 1); // 1: means the first parameter
+    JSTaggedType argModuleManager = GetTArg(argv, argc, 2);  // 2: means the second parameter
     ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(argModuleManager);
-    JSTaggedValue recordName = GetArg(argv, argc, 2); // 2: means the second parameter
-    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(thread, recordName);
+    const CString *recordName = binding->GetModuleRecordName();
+    ASSERT(recordName != nullptr);
+    const CString &recordNameStr = *recordName;
     if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = module->GetEcmaModuleFilenameString();

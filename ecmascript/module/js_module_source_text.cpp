@@ -1425,7 +1425,10 @@ JSTaggedValue SourceTextModule::GetValueFromExportObject(JSThread *thread, JSHan
         JSHClass *jsHclass = obj->GetJSHClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout(thread).GetTaggedObject());
         PropertyAttributes attr = layoutInfo->GetAttr(thread, index);
-        value = obj->GetProperty(thread, jsHclass, attr);
+        // Expand JSObject::GetProperty here to optimize duplicate GetProperties
+        value = attr.IsInlinedProps() ?
+            obj->GetPropertyInlinedPropsWithRep(thread, jsHclass, attr.GetOffset(), attr) :
+            properties->Get(thread, attr.GetOffset() - jsHclass->GetInlinedProperties());
     } else {
         NameDictionary *dict = NameDictionary::Cast(properties);
         value = dict->GetValue(thread, index);
@@ -2329,6 +2332,17 @@ JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByIndexBinding(JSThread* 
         return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedBindingRecord(resolvedModule, bindingName));
     }
     return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(resolvedModule, bindingName));
+}
+
+JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByRecordIndexBinding(JSThread* thread,
+    JSHandle<ResolvedRecordIndexBinding> binding)
+{
+    const CString *moduleRecordName = binding->GetModuleRecordName();
+    ASSERT(moduleRecordName != nullptr);
+    JSHandle<SourceTextModule> resolvedModule = thread->GetModuleManager()->HostGetImportedModule(*moduleRecordName);
+    JSHandle<JSTaggedValue> bindingName = GetBindingNameByIndex(thread, resolvedModule, binding->GetIndex());
+    return JSHandle<JSTaggedValue>::Cast(
+        thread->GetEcmaVM()->GetFactory()->NewSResolvedRecordBindingRecord(*moduleRecordName, bindingName));
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,

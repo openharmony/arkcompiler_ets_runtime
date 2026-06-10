@@ -3,11 +3,6 @@
     "node_name": "ResolvedRecordBinding",
     "offsets": [
         {
-            "name": "ModuleRecord",
-            "offset": 0,
-            "size": 8
-        },
-        {
             "name": "BindingName",
             "offset": 8,
             "size": 8

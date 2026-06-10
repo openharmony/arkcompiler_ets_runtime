@@ -65,6 +65,7 @@ public:
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
+    bool TryGetImportedModuleTaggedValue(const CString &referencing, JSTaggedValue &module);
     JSHandle<JSTaggedValue> TryGetSendableModule(const CString& referencing);
     void Iterate(RootVisitor &v);
 

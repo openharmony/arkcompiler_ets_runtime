@@ -26,6 +26,7 @@
 namespace panda::ecmascript {
 using ResolvedMultiMap = CUnorderedMultiMap<CString *, JSHandle<JSTaggedValue>>;
 struct StateVisit;
+class ResolvedRecordIndexBinding;
 enum class ModuleStatus : uint8_t {
     // don't change order
     UNINSTANTIATED = 0x0,
@@ -457,6 +458,8 @@ public:
     static JSHandle<JSTaggedValue> CreateBindingByIndexBinding(JSThread* thread,
                                                                JSHandle<ResolvedIndexBinding> binding,
                                                                bool isShared);
+    static JSHandle<JSTaggedValue> CreateBindingByRecordIndexBinding(JSThread* thread,
+                                                                     JSHandle<ResolvedRecordIndexBinding> binding);
 
     static JSHandle<SourceTextModule> LoadJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                      const CString &filename, CString recordName);

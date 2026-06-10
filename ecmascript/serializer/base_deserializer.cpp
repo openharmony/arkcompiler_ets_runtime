@@ -22,6 +22,8 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "mem/mem.h"
 
@@ -245,6 +247,19 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         }
         module->SetException(thread_, thread_->GlobalConstants()->GetHole());
         module->SetCycleRoot(thread_, JSTaggedValue(module));
+    } else if (object->GetClass()->IsResolvedRecordIndexBinding()) {
+        auto *binding = reinterpret_cast<ResolvedRecordIndexBinding *>(object);
+        SharedModuleManager *sharedModuleManager = SharedModuleManager::GetInstance();
+        const CString *moduleRecordNamePtr =
+            sharedModuleManager->GetOrInsertResolvedSendableBindingName(moduleRecordName);
+        const CString *abcFileNamePtr = sharedModuleManager->GetOrInsertResolvedSendableBindingName(moduleFileName);
+        binding->SetModuleRecordName(moduleRecordNamePtr);
+        binding->SetAbcFileNameString(abcFileNamePtr);
+    } else if (object->GetClass()->IsResolvedRecordBinding()) {
+        auto *binding = reinterpret_cast<ResolvedRecordBinding *>(object);
+        const CString *moduleRecordNamePtr =
+            SharedModuleManager::GetInstance()->GetOrInsertResolvedSendableBindingName(moduleRecordName);
+        binding->SetModuleRecordName(moduleRecordNamePtr);
     }
 #ifdef USE_CMC_GC
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
@@ -1085,4 +1100,3 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
 }
 
 }  // namespace panda::ecmascript
-

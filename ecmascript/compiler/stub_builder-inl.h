@@ -4640,12 +4640,6 @@ inline GateRef StubBuilder::GetIdxOfResolvedRecordIndexBinding(GateRef resolvedB
     return LoadPrimitive(VariableType::INT32(), resolvedBinding, indexOffset);
 }
 
-inline GateRef StubBuilder::GetModuleRecord(GateRef glue, GateRef resolvedBinding)
-{
-    GateRef moduleRecordIdxOffset = IntPtr(ResolvedRecordIndexBinding::MODULE_RECORD_INDEX_OFFSET);
-    return Load(VariableType::JS_ANY(), glue, resolvedBinding, moduleRecordIdxOffset);
-}
-
 inline GateRef StubBuilder::GetBindingName(GateRef glue, GateRef resolvedBinding)
 {
     GateRef bindingNameOffset = IntPtr(ResolvedRecordBinding::BINDING_NAME_OFFSET);
