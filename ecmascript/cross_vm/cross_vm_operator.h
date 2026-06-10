@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -67,6 +67,7 @@ private:
         JSTaggedType *GetTopFrameSPFromDynamic() const override;
         bool ForEachDynamicFrame(void *currFrameSP, void *toFrameSP,
                                  const std::function<void(const void *)> &cb) const override;
+        const void *GetEcmaVM() const override;
 
     private:
         [[maybe_unused]] EcmaVM *vm_ {nullptr};

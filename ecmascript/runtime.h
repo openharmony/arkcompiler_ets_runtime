@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -359,7 +359,12 @@ public:
         return stsVMInterface_;
     }
 #endif
-    
+
+    bool ForEachFrameInUnionStack([[maybe_unused]] const EcmaVM *vm,
+        [[maybe_unused]] const std::function<void(const void *frame, bool isStaticFrame)> &callback);
+
+    bool UnionStackIsEmpty([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] bool *isEmpty);
+
     uint32_t AddIncompatibleEvent(DFXHiSysEvent::IncompatibleType type)
     {
         WriteLockHolder lock(incompatibleEventLock_);
