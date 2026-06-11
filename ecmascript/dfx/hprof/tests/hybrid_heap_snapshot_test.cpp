@@ -84,6 +84,13 @@ public:
 
     void NotifyWaiters() override {}
 
+    bool GetStaticFrameInfo(const void *frame, arkplatform::HybridFrameInfo &frameInfo) override
+    {
+        (void)frame;
+        (void)frameInfo;
+        return false;
+    }
+
     bool AttachCurrentThread() override
     {
         return true;

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,7 +45,7 @@ public:
         return cpu_profiler.StartCpuProfilerForInfo();
     }
 
-    bool StopCpuProfilerForInfoTest(std::unique_ptr<struct ProfileInfo> &profileInfo)
+    bool StopCpuProfilerForInfoTest(std::unique_ptr<ProfileInfo> &profileInfo)
     {
         return cpu_profiler.StopCpuProfilerForInfo(profileInfo);
     }
@@ -63,6 +63,41 @@ public:
     bool GetStackBeforeCallNapiTest(JSThread *thread)
     {
         return cpu_profiler.GetStackBeforeCallNapi(thread);
+    }
+
+    void ProcessHybridStackTest(JSThread *thread)
+    {
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        cpu_profiler.ProcessHybridStack(thread);
+#else
+        return;
+#endif
+    }
+
+    void ProcessStaticFrameTest(const void *frame)
+    {
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        cpu_profiler.ProcessStaticFrame(frame);
+#else
+        return;
+#endif
+    }
+
+    void ProcessDynamicFrameTest(const void *frame, JSThread *thread)
+    {
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        cpu_profiler.ProcessDynamicFrame(frame, thread);
+#else
+        return;
+#endif
+    }
+
+    int GetFrameStackLengthTest()
+    {
+        if (cpu_profiler.generator_ != nullptr) {
+            return cpu_profiler.generator_->GetframeStackLength();
+        }
+        return 0;
     }
 
 private:
@@ -195,4 +230,132 @@ HWTEST_F_L0(CpuProfilerTest, TestCpuProfilerHasSameName)
     }
     ASSERT_TRUE(res);
 }
+
+/**
+ * @tc.name: CpuProfilerHybridStackTest_ProcessStaticFrame_NullPointer
+ * @tc.desc: Test the handling of null pointers in ProcessStaticFrame.
+             A null pointer input should not cause a crash, and the function should return safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessStaticFrame_NullPointer)
+{
+    int interval = 500;
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
+
+    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ASSERT_TRUE(started);
+
+    int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    cpuProfilerFriend.ProcessStaticFrameTest(nullptr);
+
+    int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    EXPECT_EQ(frameCountBefore, frameCountAfter);
+
+    std::unique_ptr<ProfileInfo> profileInfo;
+    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+}
+
+/**
+ * @tc.name: CpuProfilerHybridStackTest_ProcessDynamicFrame_NullPointer
+ * @tc.desc: Test the handling of null pointers in ProcessDynamicFrame.
+             A null pointer input should not cause a crash, and the function should return safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessDynamicFrame_NullPointer)
+{
+    int interval = 500;
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
+
+    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ASSERT_TRUE(started);
+
+    int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    cpuProfilerFriend.ProcessDynamicFrameTest(nullptr, thread);
+
+    int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    EXPECT_EQ(frameCountBefore, frameCountAfter);
+
+    std::unique_ptr<ProfileInfo> profileInfo;
+    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+}
+
+/**
+ * @tc.name: CpuProfilerHybridStackTest_ProcessHybridStack_NullThread
+ * @tc.desc: Test the handling of null threads in ProcessHybridStack.
+             A null thread input should not cause a crash, and the function should return safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_NullThread)
+{
+    int interval = 500;
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
+
+    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ASSERT_TRUE(started);
+
+    int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    cpuProfilerFriend.ProcessHybridStackTest(nullptr);
+
+    int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    EXPECT_EQ(frameCountBefore, frameCountAfter);
+
+    std::unique_ptr<ProfileInfo> profileInfo;
+    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+}
+
+/**
+ * @tc.name: CpuProfilerHybridStackTest_ProcessHybridStack_NormalThread
+ * @tc.desc: Test the handling of normal threads in ProcessHybridStack.
+ *           The length of the frame stack should remain consistent after normal thread processing(not hybrid stack).
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_NormalThread)
+{
+    int interval = 500;
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
+
+    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ASSERT_TRUE(started);
+
+    int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    cpuProfilerFriend.ProcessHybridStackTest(thread);
+
+    int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
+
+    EXPECT_GE(frameCountAfter, frameCountBefore);
+
+    std::unique_ptr<ProfileInfo> profileInfo;
+    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+}
+
+/**
+ * @tc.name: CpuProfilerHybridStackTest_ProfileInfoValidity
+ * @tc.desc: Test the basic validity of the ProfileInfo structure.
+ *           The nodeCount should be >= 0, and the nodes array should be valid.
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProfileInfoValidity)
+{
+    int interval = 500;
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
+
+    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ASSERT_TRUE(started);
+
+    std::unique_ptr<ProfileInfo> profileInfo;
+    bool stopped = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+    ASSERT_TRUE(stopped);
+    ASSERT_NE(profileInfo, nullptr);
+
+    EXPECT_GE(profileInfo->nodeCount, 0);
+    EXPECT_LE(profileInfo->nodeCount, MAX_NODE_COUNT);
+}
+
 }  // namespace panda::test

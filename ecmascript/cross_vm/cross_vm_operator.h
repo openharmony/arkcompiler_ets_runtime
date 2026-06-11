@@ -21,6 +21,7 @@
 #include "libpandabase/macros.h"
 
 #include "hybrid/ecma_vm_interface.h"
+#include "hybrid/hybrid_frame_info.h"
 #include "hybrid/sts_vm_interface.h"
 
 namespace panda::ecmascript {
@@ -49,6 +50,10 @@ public:
         return ecmaVMInterface_.get();
     }
 
+    bool UnionStackIsEmpty(bool *isEmpty) const;
+    bool ForEachFrameInUnionStack(const std::function<void(const void *frame, bool isStaticFrame)> &callback) const;
+    bool GetStaticFrameInfo(const void *frame, arkplatform::HybridFrameInfo &frameInfo) const;
+
     void MarkFromObject(JSTaggedType value, std::function<void(uintptr_t)> &visitor);
     void MarkFromObject(JSTaggedType value);
     bool IsObjectAlive(JSTaggedType value);
@@ -64,6 +69,7 @@ private:
 
         bool StartXRefMarking() override;
         void NotifyXGCInterruption() override;
+        bool GetDynamicFrameInfo(const void *dynamicFramePtr, arkplatform::HybridFrameInfo &frameInfo) override;
         JSTaggedType *GetTopFrameSPFromDynamic() const override;
         bool ForEachDynamicFrame(void *currFrameSP, void *toFrameSP,
                                  const std::function<void(const void *)> &cb) const override;

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -579,6 +579,37 @@ void SamplesRecord::PostFrame()
 void SamplesRecord::PostNapiFrame()
 {
     samplesQueue_->PostNapiFrame(napiFrameInfoTemps_, napiFrameStack_);
+}
+
+void SamplesRecord::PostHybridStackFrame(const arkplatform::HybridFrameInfo &frameInfo)
+{
+    struct MethodKey methodKey = {};
+    methodKey.methodIdentifier = frameInfo.nativePtr;
+    methodKey.deoptType = kungfu::DeoptType::NONE;
+    methodKey.state = RunningState::OTHER;
+
+    if (stackInfoMap_.count(methodKey) == 0) {
+        struct FrameInfoTemp frameInfoTemp = {};
+        frameInfoTemp.scriptId = frameInfo.scriptId;
+        frameInfoTemp.lineNumber = frameInfo.lineNumber;
+        frameInfoTemp.columnNumber = frameInfo.columnNumber;
+
+        const char *functionName =
+            frameInfo.GetFunctionName().empty() ? "anonymous" : frameInfo.GetFunctionName().data();
+        if (JsStackGetter::CheckAndCopy(frameInfoTemp.functionName, sizeof(frameInfoTemp.functionName), functionName) &&
+            JsStackGetter::CheckAndCopy(frameInfoTemp.url, sizeof(frameInfoTemp.url), frameInfo.GetUrl().data())) {
+            frameInfoTemp.methodKey = methodKey;
+            if (UNLIKELY(!PushStackInfo(frameInfoTemp))) {
+                return;
+            }
+        }
+    }
+
+    if (UNLIKELY(!PushFrameStack(methodKey))) {
+        return;
+    }
+
+    PostFrame();
 }
 
 void SamplesRecord::ResetFrameLength()

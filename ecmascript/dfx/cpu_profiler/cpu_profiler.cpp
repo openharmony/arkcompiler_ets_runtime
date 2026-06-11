@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#endif
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"
@@ -309,6 +312,67 @@ void CpuProfiler::GetStackAfterCallNapi(JSThread *thread)
     GetStackCallNapi(thread, false);
 }
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+void CpuProfiler::ProcessStaticFrame(const void *frame)
+{
+    arkplatform::HybridFrameInfo frameInfo;
+
+    auto *crossVMOperator = vm_->GetCrossVMOperator();
+    if (crossVMOperator == nullptr || !crossVMOperator->GetStaticFrameInfo(frame, frameInfo)) {
+        LOG_ECMA(ERROR) << "CpuProfiler::ProcessStaticFrame, GetStaticFrameInfo failed";
+        return;
+    }
+
+    generator_->PostHybridStackFrame(frameInfo);
+}
+
+void CpuProfiler::ProcessDynamicFrame(const void *frame, JSThread *thread)
+{
+    if (frame == nullptr) {
+        LOG_ECMA(ERROR) << "CpuProfiler::ProcessDynamicFrame, frame is nullptr";
+        return;
+    }
+
+    auto *frameHandler = static_cast<FrameHandler *>(const_cast<void *>(frame));
+    FrameIterator it(frameHandler->GetSp(), thread);
+    GetStack(it);
+}
+
+void CpuProfiler::ProcessHybridStack(JSThread *thread)
+{
+    if (thread == nullptr) {
+        LOG_ECMA(ERROR) << "CpuProfiler::ProcessHybridStack, thread is nullptr";
+        return;
+    }
+
+    // Use ForEachFrameInUnionStack API to iterate over the hybrid stack.
+    size_t staticFrameCount = 0;
+    size_t dynamicFrameCount = 0;
+
+    auto *crossVMOperator = vm_->GetCrossVMOperator();
+    if (crossVMOperator != nullptr) {
+        crossVMOperator->ForEachFrameInUnionStack(
+            [this, thread, &staticFrameCount, &dynamicFrameCount](const void *frame, bool isStaticFrame) {
+                if (frame == nullptr) {
+                    LOG_ECMA(WARN) << "CpuProfiler::ProcessHybridStack, frame is nullptr, isStaticFrame="
+                                   << isStaticFrame;
+                    return;
+                }
+                if (isStaticFrame) {
+                    ProcessStaticFrame(frame);
+                    staticFrameCount++;
+                } else {
+                    ProcessDynamicFrame(frame, thread);
+                    dynamicFrameCount++;
+                }
+            });
+    }
+
+    LOG_ECMA(INFO) << "CpuProfiler::ProcessHybridStack, processed " << staticFrameCount
+                   << " static frames and " << dynamicFrameCount << " dynamic frames";
+}
+#endif
+
 bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
 {
     [[maybe_unused]] CallNapiScope scope(this);
@@ -400,6 +464,25 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         }
         return;
     }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    // Check whether the current stack is a hybrid(dynamic/static) stack.
+    EcmaVM *vm = thread->GetEcmaVM();
+    bool isEmpty = true;
+    auto *crossVMOperator = vm->GetCrossVMOperator();
+    if (crossVMOperator != nullptr) {
+        crossVMOperator->UnionStackIsEmpty(&isEmpty);
+    }
+    if (!isEmpty) {
+        // Process the hybrid stack.
+        profiler->ProcessHybridStack(thread);
+
+        if (profiler->generator_->SemPost(0) != 0) {
+            LOG_ECMA(ERROR) << "sem_[0] post failed";
+        }
+        return;
+    }
+#endif
 
     uint64_t pc = 0;
     if (thread->IsAsmInterpreter()) {
