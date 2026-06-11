@@ -1241,7 +1241,7 @@ HWTEST_F_L0(ModuleSnapshotTest, DeserializeDataWithSharedModule)
 
     ASSERT_TRUE(ModuleSnapshot::DeserializeData(vm, path, version));
 
-    JSHandle<SourceTextModule> deserializedModule = thread->GetModuleManager()->HostGetImportedModule(recordName);
+    JSHandle<SourceTextModule> deserializedModule = thread->GetModuleManager()->GetImportedModule(recordName);
     EXPECT_TRUE(SourceTextModule::IsSharedModule(deserializedModule));
     EXPECT_EQ(deserializedModule->GetEcmaModuleRecordNameString(), recordName);
 }
