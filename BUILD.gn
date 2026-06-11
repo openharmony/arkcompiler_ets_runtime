@@ -835,6 +835,7 @@ ecma_source = [
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/bit_helper.cpp",
   "ecmascript/string/base_string_table.cpp",
+  "ecmascript/string/chained_hash_map.cpp",
   "ecmascript/string/base_string.cpp",
   "ecmascript/string/composite_base_class.cpp",
   "ecmascript/string/external_string_table.cpp",

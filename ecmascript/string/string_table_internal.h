@@ -21,7 +21,7 @@
 #include "common_components/taskpool/task.h"
 #include "thread/thread_holder.h"
 #include "ecmascript/string/base_string_table.h"
-#include "ecmascript/string/hashtriemap.h"
+#include "ecmascript/string/chained_hash_map.h"
 
 namespace panda::ecmascript {
 using WeakRefFieldVisitor = std::function<bool(common::RefField<> &)>;
@@ -113,7 +113,7 @@ private:
     IteratorPtr iter_{};
     BaseStringTableInternal<true>* stringTable_;
     std::atomic<uint32_t> PendingTaskCount_{0U};
-    std::array<std::vector<HashTrieMapEntry*>, TrieMapConfig::ROOT_SIZE> waitFreeEntries_{};
+    std::array<std::vector<ChainedHashMapEntry*>, ChainedHashMapConfig::SWEEP_PARTITION_COUNT> waitFreeEntries_{};
     common::Mutex sweepWeakRefMutex_{};
     bool sweepWeakRefFinished_{true};
     common::ConditionVariable sweepWeakRefCV_{};
@@ -122,11 +122,11 @@ template<bool ConcurrentSweep>
 class BaseStringTableInternal {
 public:
     using HandleCreator = BaseStringTableInterface<BaseStringTableImpl>::HandleCreator;
-    using HashTrieMapType = HashTrieMap<BaseStringTableMutex>;
-    using HashTrieMapInUseScopeType = HashTrieMapInUseScope<BaseStringTableMutex>;
-    using HashTrieMapOperationType = std::conditional_t<ConcurrentSweep,
-        HashTrieMapOperation<BaseStringTableMutex, common::ThreadHolder, TrieMapConfig::NeedSlotBarrierCMC>,
-        HashTrieMapOperation<BaseStringTableMutex, common::ThreadHolder, TrieMapConfig::NoSlotBarrier>>;
+    using ChainedHashMapType = ChainedHashMap<BaseStringTableMutex>;
+    using ChainedHashMapInUseScopeType = ChainedHashMapInUseScope<BaseStringTableMutex>;
+    using ChainedHashMapOperationType = std::conditional_t<ConcurrentSweep,
+        ChainedHashMapOperation<BaseStringTableMutex, common::ThreadHolder, ChainedHashMapConfig::NeedSlotBarrierCMC>,
+        ChainedHashMapOperation<BaseStringTableMutex, common::ThreadHolder, ChainedHashMapConfig::NoSlotBarrier>>;
 
     template <bool B = ConcurrentSweep, std::enable_if_t<B, int> = 0>
     BaseStringTableInternal(): cleaner_(new BaseStringTableCleaner(this)) {}
@@ -158,9 +158,9 @@ public:
 
     BaseString *TryGetInternString(const common::ReadOnlyHandle<BaseString> &string);
 
-    HashTrieMapType &GetHashTrieMap()
+    ChainedHashMapType &GetChainedHashMap()
     {
-        return hashTrieMap_;
+        return chainedHashMap_;
     }
 
     BaseStringTableCleaner *GetCleaner()
@@ -169,8 +169,8 @@ public:
     }
 
     template <bool B = ConcurrentSweep, std::enable_if_t<B, int> = 0>
-    void SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t rootID,
-                      std::vector<HashTrieMapEntry*>& waitDeleteEntries);
+    void SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t partitionID,
+                      std::vector<ChainedHashMapEntry*>& waitDeleteEntries);
 
     template <bool B = ConcurrentSweep, std::enable_if_t<B, int> = 0>
     void CleanUp();
@@ -178,7 +178,7 @@ public:
     template <bool B = ConcurrentSweep, std::enable_if_t<!B, int> = 0>
     void SweepWeakRef(const WeakRefFieldVisitor& visitor);
 private:
-    HashTrieMapType hashTrieMap_{};
+    ChainedHashMapType chainedHashMap_{};
     BaseStringTableCleaner* cleaner_ = nullptr;
     static BaseString* AllocateLineStringObject(size_t size);
     static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = 32 * common::KB;

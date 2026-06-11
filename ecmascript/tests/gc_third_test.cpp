@@ -866,35 +866,37 @@ void TestStringTable(JSThread *thread, EcmaStringTable *stringTable)
 
 HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest1)
 {
-    EcmaStringTable *stringTable = Runtime::GetInstance()->GetEcmaStringTable();
-    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
-        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable->GetHashTrieMap());
+    EcmaStringTable* stringTable = Runtime::GetInstance()->GetEcmaStringTable();
+    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+            stringTable->GetChainedHashMap());
     stringTable->GetCleaner()->SetEnableConcurrentSweep(true);
 
     {
         RuntimeLockHolder(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-        hashTrieMap->StartSweeping();
-        ASSERT_TRUE(hashTrieMap->IsSweeping());
+        chainedHashMap->StartSweeping();
+        ASSERT_TRUE(chainedHashMap->IsSweeping());
     }
     TestStringTable(thread, stringTable);
 
     {
         RuntimeLockHolder(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-        hashTrieMap->FinishSweeping();
-        ASSERT_FALSE(hashTrieMap->IsSweeping());
+        chainedHashMap->FinishSweeping();
+        ASSERT_FALSE(chainedHashMap->IsSweeping());
     }
     TestStringTable(thread, stringTable);
 }
 
 HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest2)
 {
-    SharedHeap *sHeap = SharedHeap::GetInstance();
-    EcmaStringTable *stringTable = Runtime::GetInstance()->GetEcmaStringTable();
-    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
-        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable->GetHashTrieMap());
+    SharedHeap* sHeap = SharedHeap::GetInstance();
+    EcmaStringTable* stringTable = Runtime::GetInstance()->GetEcmaStringTable();
+    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+            stringTable->GetChainedHashMap());
     stringTable->GetCleaner()->SetEnableConcurrentSweep(true);
 
-    hashTrieMap->IncreaseInuseCount();
+    chainedHashMap->IncreaseInuseCount();
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
 
@@ -903,7 +905,7 @@ HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest2)
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
 
-    hashTrieMap->DecreaseInuseCount();
+    chainedHashMap->DecreaseInuseCount();
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
 
@@ -913,7 +915,7 @@ HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest2)
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
 
     RuntimeLockHolder(thread, sHeap->GetSuspensionRequestMutex());
-    ASSERT_FALSE(hashTrieMap->IsSweeping());
+    ASSERT_FALSE(chainedHashMap->IsSweeping());
 }
 
 #ifndef USE_CMC_GC

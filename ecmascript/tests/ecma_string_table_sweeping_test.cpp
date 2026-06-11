@@ -26,8 +26,8 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/runtime_lock.h"
-#include "ecmascript/string/hashtriemap.h"
-#include "ecmascript/string/hashtriemap-inl.h"
+#include "ecmascript/string/chained_hash_map.h"
+#include "ecmascript/string/chained_hash_map-inl.h"
 #include "ecmascript/tests/test_helper.h"
 #include "common_components/taskpool/taskpool.h"
 
@@ -35,12 +35,12 @@ using namespace panda::ecmascript;
 
 namespace panda::test {
 
-using HashTrieMapType = DisableCMCGCConcurrentSweepTrait::HashTrieMapType;
-using HashTrieMapTypeNormal = DisableCMCGCNormalTrait::HashTrieMapType;
-using HashTrieMapInUseScopeType = DisableCMCGCConcurrentSweepTrait::HashTrieMapInUseScopeType;
-using HashTrieMapInUseScopeTypeNormal = DisableCMCGCNormalTrait::HashTrieMapInUseScopeType;
-using HashTrieMapOperationNormalType = DisableCMCGCNormalTrait::HashTrieMapOperationType;
-using HashTrieMapOperationConcurrentSweepType = DisableCMCGCConcurrentSweepTrait::HashTrieMapOperationType;
+using ChainedHashMapType = DisableCMCGCConcurrentSweepTrait::ChainedHashMapType;
+using ChainedHashMapTypeNormal = DisableCMCGCNormalTrait::ChainedHashMapType;
+using ChainedHashMapInUseScopeType = DisableCMCGCConcurrentSweepTrait::ChainedHashMapInUseScopeType;
+using ChainedHashMapInUseScopeTypeNormal = DisableCMCGCNormalTrait::ChainedHashMapInUseScopeType;
+using ChainedHashMapOperationNormalType = DisableCMCGCNormalTrait::ChainedHashMapOperationType;
+using ChainedHashMapOperationConcurrentSweepType = DisableCMCGCConcurrentSweepTrait::ChainedHashMapOperationType;
 
 class EcmaStringTableSweepingTest : public BaseTestWithScope<false> {
 public:
@@ -222,52 +222,64 @@ protected:
         return len;
     }
 
-    template<typename VisitorFunc>
-    void DoSweepingWithClearNode(HashTrieMapType &hashTrieMap, VisitorFunc visitor)
+    uint32_t CountToSpaceEntries(ChainedHashMapType &chainedHashMap)
     {
-        RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-        hashTrieMap.StartSweeping();
-
-        HashTrieMapOperationConcurrentSweepType concurrentSweepOp(&hashTrieMap);
-
-        std::vector<HashTrieMapEntry*> waitDeleteEntries;
-        std::vector<HashTrieMapSlotCheckInfo> waitCheckAndFreeHeadEntries;
-
-        for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; ++i) {
-            auto root = hashTrieMap.GetRoot(i).load(std::memory_order_acquire);
-            if (root != nullptr) {
-                for (uint32_t j = 0; j < TrieMapConfig::INDIRECT_SIZE; ++j) {
-                    concurrentSweepOp.ClearNodeFromGC(root, j, visitor, waitDeleteEntries,
-                                                      waitCheckAndFreeHeadEntries);
+        uint32_t count = 0;
+        for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+            for (ChainedHashMapEntry* entry = chainedHashMap.GetBucket(i).load(std::memory_order_acquire);
+                 entry != nullptr; entry = entry->Overflow().load(std::memory_order_acquire)) {
+                if (entry->IsToSpaceObject()) {
+                    count++;
                 }
             }
         }
+        return count;
+    }
 
-        for (HashTrieMapEntry* entry : waitDeleteEntries) {
+    template<typename VisitorFunc>
+    void DoSweepingWithClearNode(ChainedHashMapType &chainedHashMap, VisitorFunc visitor)
+    {
+        RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        chainedHashMap.StartSweeping();
+
+        ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
+
+        std::vector<ChainedHashMapEntry*> waitDeleteEntries;
+        std::vector<ChainedHashMapSlotCheckInfo> waitCheckAndFreeHeadEntries;
+
+        for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+            auto bucketHead = chainedHashMap.GetBucket(i).load(std::memory_order_acquire);
+            if (bucketHead != nullptr) {
+                concurrentSweepOp.ClearNodeFromGC(bucketHead, i, visitor, waitDeleteEntries,
+                                                  waitCheckAndFreeHeadEntries);
+            }
+        }
+
+        for (ChainedHashMapEntry* entry : waitDeleteEntries) {
             delete entry;
         }
         waitDeleteEntries.clear();
 
-        hashTrieMap.CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries);
+        chainedHashMap.CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries);
 
-        hashTrieMap.FinishSweeping();
-        hashTrieMap.ClearToSpaceTagForFreshEntries();
+        chainedHashMap.ClearToSpaceTagForFreshEntries();
+        chainedHashMap.FinishSweeping();
     }
 
-    void DoSweepingWithClearNodeKeepAll(HashTrieMapType &hashTrieMap)
+    void DoSweepingWithClearNodeKeepAll(ChainedHashMapType &chainedHashMap)
     {
         auto visitorKeep = [](TaggedObject *header) -> TaggedObject* {
             return header;
         };
-        DoSweepingWithClearNode(hashTrieMap, visitorKeep);
+        DoSweepingWithClearNode(chainedHashMap, visitorKeep);
     }
 
-    void DoSweepingWithClearNodeClearAll(HashTrieMapType &hashTrieMap)
+    void DoSweepingWithClearNodeClearAll(ChainedHashMapType &chainedHashMap)
     {
         auto visitorClear = [](TaggedObject *header) -> TaggedObject* {
             return nullptr;
         };
-        DoSweepingWithClearNode(hashTrieMap, visitorClear);
+        DoSweepingWithClearNode(chainedHashMap, visitorClear);
     }
 };
 
@@ -380,60 +392,60 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, SharedHeap_AlternatingGCtypesWithString
 }
 
 /**
- * @tc.name: HashTrieMap_SweepingFlagConsistencyTest
- * @tc.desc: Test HashTrieMap sweeping flag consistency. Verify that IsSweeping() returns
+ * @tc.name: ChainedHashMap_SweepingFlagConsistencyTest
+ * @tc.desc: Test ChainedHashMap sweeping flag consistency. Verify that IsSweeping() returns
            correct state before, during, and after sweeping operations.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_SweepingFlagConsistencyTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_SweepingFlagConsistencyTest)
 {
-    HashTrieMapType hashTrieMap;
+    ChainedHashMapType chainedHashMap;
 
     for (int round = 0; round < 100; ++round) {
-        ASSERT_FALSE(hashTrieMap.IsSweeping());
+        ASSERT_FALSE(chainedHashMap.IsSweeping());
 
-        hashTrieMap.StartSweeping();
-        ASSERT_TRUE(hashTrieMap.IsSweeping());
+        chainedHashMap.StartSweeping();
+        ASSERT_TRUE(chainedHashMap.IsSweeping());
 
-        hashTrieMap.FinishSweeping();
-        ASSERT_FALSE(hashTrieMap.IsSweeping());
+        chainedHashMap.FinishSweeping();
+        ASSERT_FALSE(chainedHashMap.IsSweeping());
     }
 }
 
 /**
- * @tc.name: HashTrieMapInUseScope_StackUnwindingTest
- * @tc.desc: Test HashTrieMapInUseScope stack unwinding behavior. Verify that in-use scope
+ * @tc.name: ChainedHashMapInUseScope_StackUnwindingTest
+ * @tc.desc: Test ChainedHashMapInUseScope stack unwinding behavior. Verify that in-use scope
            correctly manages the in-use flag during normal execution and exception scenarios.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMapInUseScope_StackUnwindingTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMapInUseScope_StackUnwindingTest)
 {
-    HashTrieMapType hashTrieMap;
+    ChainedHashMapType chainedHashMap;
 
     for (int round = 0; round < 100; ++round) {
-        uint32_t outerCount = hashTrieMap.GetInuseCount();
+        uint32_t outerCount = chainedHashMap.GetInuseCount();
 
-        HashTrieMapInUseScopeType outerScope(&hashTrieMap);
-        ASSERT_EQ(hashTrieMap.GetInuseCount(), outerCount + 1);
+        ChainedHashMapInUseScopeType outerScope(&chainedHashMap);
+        ASSERT_EQ(chainedHashMap.GetInuseCount(), outerCount + 1);
 
         {
-            HashTrieMapInUseScopeType innerScope1(&hashTrieMap);
-            ASSERT_EQ(hashTrieMap.GetInuseCount(), outerCount + 2);
+            ChainedHashMapInUseScopeType innerScope1(&chainedHashMap);
+            ASSERT_EQ(chainedHashMap.GetInuseCount(), outerCount + 2);
 
             {
-                HashTrieMapInUseScopeType innerScope2(&hashTrieMap);
-                ASSERT_EQ(hashTrieMap.GetInuseCount(), outerCount + 3);
+                ChainedHashMapInUseScopeType innerScope2(&chainedHashMap);
+                ASSERT_EQ(chainedHashMap.GetInuseCount(), outerCount + 3);
             }
 
-            ASSERT_EQ(hashTrieMap.GetInuseCount(), outerCount + 2);
+            ASSERT_EQ(chainedHashMap.GetInuseCount(), outerCount + 2);
         }
 
-        ASSERT_EQ(hashTrieMap.GetInuseCount(), outerCount + 1);
+        ASSERT_EQ(chainedHashMap.GetInuseCount(), outerCount + 1);
     }
 
-    ASSERT_EQ(hashTrieMap.GetInuseCount(), 0U);
+    ASSERT_EQ(chainedHashMap.GetInuseCount(), 0U);
 }
 
 /**
@@ -470,32 +482,32 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_ReadBarrierMultipleObjectsT
 }
 
 /**
- * @tc.name: HashTrieMapEntry_ToSpaceTagBasicTest
- * @tc.desc: Test HashTrieMapEntry ToSpace tag basic operations. Verify that
+ * @tc.name: ChainedHashMapEntry_ToSpaceTagBasicTest
+ * @tc.desc: Test ChainedHashMapEntry ToSpace tag basic operations. Verify that
            ToSpace tag can be set, cleared, and checked correctly.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMapEntry_ToSpaceTagBasicTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMapEntry_ToSpaceTagBasicTest)
 {
     char nameBuf[32];
 
     for (int round = 0; round < 100; ++round) {
         int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "tospace_%d", round);
         if (ret < 0) {
-            LOG_ECMA(ERROR) << "snprintf_s failed in HashTrieMapEntry_ToSpaceTagBasicTest";
+            LOG_ECMA(ERROR) << "snprintf_s failed in ChainedHashMapEntry_ToSpaceTagBasicTest";
             continue;
         }
         EcmaString *str = EcmaStringAccessor::CreateFromUtf8(thread->GetEcmaVM(),
             reinterpret_cast<const uint8_t*>(nameBuf), strlen(nameBuf), true);
 
-        HashTrieMapEntry entry(str->ToBaseString(), true);
+        ChainedHashMapEntry entry(str->ToBaseString(), true);
         ASSERT_TRUE(entry.IsToSpaceObject());
 
         entry.ClearToSpaceTag();
         ASSERT_FALSE(entry.IsToSpaceObject());
 
-        HashTrieMapEntry entry2(str->ToBaseString(), false);
+        ChainedHashMapEntry entry2(str->ToBaseString(), false);
         ASSERT_FALSE(entry2.IsToSpaceObject());
     }
 }
@@ -1028,14 +1040,14 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_IsSweepingTest)
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
+    ChainedHashMapType *chainedHashMap = reinterpret_cast<ChainedHashMapType *>(stringTable->GetChainedHashMap());
 
     for (int round = 0; round < 10; ++round) {
         ASSERT_FALSE(stringTable->IsSweeping());
 
         {
             RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
+            chainedHashMap->StartSweeping();
         }
         ASSERT_TRUE(stringTable->IsSweeping());
 
@@ -1043,11 +1055,11 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_IsSweepingTest)
 
         {
             RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
+            chainedHashMap->FinishSweeping();
         }
         ASSERT_FALSE(stringTable->IsSweeping());
 
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
+        chainedHashMap->ClearToSpaceTagForFreshEntries();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
@@ -1056,7 +1068,7 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_IsSweepingTest)
 /**
  * @tc.name: StringTable_IsInUseTest
  * @tc.desc: Test StringTable IsInUse functionality. Verify that IsInUse() correctly
-           reflects the in-use state during HashTrieMapInUseScope.
+           reflects the in-use state during ChainedHashMapInUseScope.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -1065,13 +1077,13 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_IsInUseTest)
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
+    ChainedHashMapType *chainedHashMap = reinterpret_cast<ChainedHashMapType *>(stringTable->GetChainedHashMap());
 
     for (int round = 0; round < 10; ++round) {
         ASSERT_FALSE(stringTable->IsInUse());
 
         {
-            HashTrieMapInUseScopeType scope(hashTrieMap);
+            ChainedHashMapInUseScopeType scope(chainedHashMap);
             ASSERT_TRUE(stringTable->IsInUse());
 
             InternMultipleUtf8Strings(stringTable, 100, "inuse_test", round);
@@ -1367,29 +1379,29 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, SharedHeap_PrepareByJSThreadTest)
 }
 
 /**
- * @tc.name: HashTrieMap_ClearTest
- * @tc.desc: Test HashTrieMap Clear functionality. Verify that
-           HashTrieMap can be cleared correctly after inserting entries.
+ * @tc.name: ChainedHashMap_ClearTest
+ * @tc.desc: Test ChainedHashMap Clear functionality. Verify that
+           ChainedHashMap can be cleared correctly after inserting entries.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearTest)
 {
-    HashTrieMapTypeNormal hashTrieMap;
-    HashTrieMapOperationNormalType operation(&hashTrieMap);
-    HashTrieMapInUseScopeTypeNormal inUseScope(&hashTrieMap);
+    ChainedHashMapTypeNormal chainedHashMap;
+    ChainedHashMapOperationNormalType operation(&chainedHashMap);
+    ChainedHashMapInUseScopeTypeNormal inUseScope(&chainedHashMap);
 
     for (int i = 0; i < 100; ++i) {
         char nameBuf[32];
         int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "clear_test_%d", i);
         if (ret < 0) {
-            LOG_ECMA(ERROR) << "snprintf_s failed in HashTrieMap_ClearTest";
+            LOG_ECMA(ERROR) << "snprintf_s failed in ChainedHashMap_ClearTest";
             continue;
         }
         uint8_t utf8Data[32];
         errno_t memcpyRet = memcpy_s(utf8Data, sizeof(utf8Data), nameBuf, strlen(nameBuf));
         if (memcpyRet != EOK) {
-            LOG_ECMA(ERROR) << "memcpy_s failed in HashTrieMap_ClearTest";
+            LOG_ECMA(ERROR) << "memcpy_s failed in ChainedHashMap_ClearTest";
             continue;
         }
         uint32_t utf8Len = strlen(nameBuf);
@@ -1399,60 +1411,74 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearTest)
     }
 
     bool hasNonEmptyRoot = false;
-    for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; ++i) {
-        auto root = hashTrieMap.GetRoot(i).load(std::memory_order_acquire);
-        if (root != nullptr) {
+    for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+        auto bucketHead = chainedHashMap.GetBucket(i).load(std::memory_order_acquire);
+        if (bucketHead != nullptr) {
             hasNonEmptyRoot = true;
             break;
         }
     }
     ASSERT_TRUE(hasNonEmptyRoot);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 
-    for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; ++i) {
-        auto root = hashTrieMap.GetRoot(i).load(std::memory_order_acquire);
-        ASSERT_EQ(root, nullptr);
+    for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+        auto bucketHead = chainedHashMap.GetBucket(i).load(std::memory_order_acquire);
+        ASSERT_EQ(bucketHead, nullptr);
     }
 }
 
 /**
- * @tc.name: HashTrieMap_GetOrCreateRootTest
- * @tc.desc: Test HashTrieMap GetOrCreateRoot functionality. Verify that
-           roots can be created and retrieved correctly.
+ * @tc.name: ChainedHashMap_RootBucketStateTest
+ * @tc.desc: Test ChainedHashMap root bucket state. Verify roots are empty before
+          insertion and after Clear.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_GetOrCreateRootTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_RootBucketStateTest)
 {
-    HashTrieMapType hashTrieMap;
+    ChainedHashMapType chainedHashMap;
 
-    for (int round = 0; round < 100; ++round) {
-        for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; ++i) {
-            auto root = hashTrieMap.GetOrCreateRoot(i);
-            ASSERT_NE(root, nullptr);
-            ASSERT_EQ(root, hashTrieMap.GetRoot(i).load(std::memory_order_acquire));
+    for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+        ASSERT_EQ(chainedHashMap.GetBucket(i).load(std::memory_order_acquire), nullptr);
+    }
+
+    ChainedHashMapOperationNormalType operation(&chainedHashMap);
+    ChainedHashMapInUseScopeTypeNormal inUseScope(&chainedHashMap);
+    uint8_t utf8Data[] = "root_bucket_state";
+    BaseString *result = LoadOrStoreUtf8String(operation, utf8Data, sizeof(utf8Data) - 1);
+    ASSERT_NE(result, nullptr);
+
+    bool hasNonEmptyRoot = false;
+    for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+        if (chainedHashMap.GetBucket(i).load(std::memory_order_acquire) != nullptr) {
+            hasNonEmptyRoot = true;
+            break;
         }
+    }
+    ASSERT_TRUE(hasNonEmptyRoot);
 
-        hashTrieMap.Clear();
+    chainedHashMap.Clear();
+    for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
+        ASSERT_EQ(chainedHashMap.GetBucket(i).load(std::memory_order_acquire), nullptr);
     }
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_NormalInsertUtf8
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_NormalInsertUtf8
  * @tc.desc: Test ClearNodeFromGC with Normal mode insertion for UTF8 strings. Use Normal mode
- *           (NoSlotBarrierDynamic) HashTrieMapOperation to insert UTF8 strings via LoadOrStore,
+ *           (NoSlotBarrierDynamic) ChainedHashMapOperation to insert UTF8 strings via LoadOrStore,
  *           these entries have no ToSpace tag. Then use ConcurrentSweep mode (NeedSlotBarrier)
- *           HashTrieMapOperation to call ClearNodeFromGC.
+ *           ChainedHashMapOperation to call ClearNodeFromGC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NormalInsertUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_NormalInsertUtf8Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
     for (int i = 0; i < 100; ++i) {
         char nameBuf[32];
@@ -1473,26 +1499,28 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NormalInser
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_ConcurrentSweepInsertUtf8
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_ConcurrentSweepInsertUtf8
  * @tc.desc: Test ClearNodeFromGC with ConcurrentSweep mode insertion for UTF8 strings. Start sweeping first,
- *           then use ConcurrentSweep mode (NeedSlotBarrier) HashTrieMapOperation to insert UTF8 strings
+ *           then use ConcurrentSweep mode (NeedSlotBarrier) ChainedHashMapOperation to insert UTF8 strings
  *           via LoadOrStore. These entries are created with ToSpace tag during sweeping.
- *           Then call ClearNodeFromGC to clear these entries.
+ *           Then sweep these entries with a keep-all visitor and clear their to-space tags.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_ConcurrentSweepInsertUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_ConcurrentSweepInsertUtf8Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationConcurrentSweepType concurrentSweepOp(&hashTrieMap);
+    ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
+
+    chainedHashMap.StartSweeping();
 
     for (int i = 0; i < 100; ++i) {
         char nameBuf[32];
@@ -1513,26 +1541,29 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_ConcurrentS
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 100U);
 
-    hashTrieMap.Clear();
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 0U);
+
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_MixedInsertUtf8
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_MixedInsertUtf8
  * @tc.desc: Test ClearNodeFromGC with mixed mode insertion for UTF8 strings. First use Normal mode
  *           (NoSlotBarrierDynamic) to insert UTF8 entries without ToSpace tag, then start sweeping and
  *           use ConcurrentSweep mode (NeedSlotBarrier) to insert UTF8 entries with ToSpace tag.
- *           Finally call ClearNodeFromGC.
+ *           Finally sweep entries with a keep-all visitor and clear their to-space tags.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_MixedInsertUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_MixedInsertUtf8Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
     for (int i = 0; i < 50; ++i) {
         char nameBuf[32];
@@ -1553,7 +1584,9 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_MixedInsert
         ASSERT_NE(result, nullptr);
     }
 
-    HashTrieMapOperationConcurrentSweepType concurrentSweepOp(&hashTrieMap);
+    ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
+
+    chainedHashMap.StartSweeping();
 
     for (int i = 50; i < 100; ++i) {
         char nameBuf[32];
@@ -1574,26 +1607,29 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_MixedInsert
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 50U);
 
-    hashTrieMap.Clear();
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 0U);
+
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_NormalInsertUtf16
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_NormalInsertUtf16
  * @tc.desc: Test ClearNodeFromGC with Normal mode insertion for UTF16 strings. Use Normal mode
- *           (NoSlotBarrierDynamic) HashTrieMapOperation to insert UTF16 strings via LoadOrStore,
+ *           (NoSlotBarrierDynamic) ChainedHashMapOperation to insert UTF16 strings via LoadOrStore,
  *           these entries have no ToSpace tag. Then use ConcurrentSweep mode (NeedSlotBarrier)
- *           HashTrieMapOperation to call ClearNodeFromGC.
+ *           ChainedHashMapOperation to call ClearNodeFromGC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NormalInsertUtf16Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_NormalInsertUtf16Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
     for (int i = 0; i < 100; ++i) {
         uint16_t utf16Data[16];
@@ -1603,26 +1639,28 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NormalInser
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_ConcurrentSweepInsertUtf16
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_ConcurrentSweepInsertUtf16
  * @tc.desc: Test ClearNodeFromGC with ConcurrentSweep mode insertion for UTF16 strings. Start sweeping first,
- *           then use ConcurrentSweep mode (NeedSlotBarrier) HashTrieMapOperation to insert UTF16 strings
+ *           then use ConcurrentSweep mode (NeedSlotBarrier) ChainedHashMapOperation to insert UTF16 strings
  *           via LoadOrStore. These entries are created with ToSpace tag during sweeping.
- *           Then call ClearNodeFromGC to clear these entries.
+ *           Then sweep these entries with a keep-all visitor and clear their to-space tags.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_ConcurrentSweepInsertUtf16Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_ConcurrentSweepInsertUtf16Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationConcurrentSweepType concurrentSweepOp(&hashTrieMap);
+    ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
+
+    chainedHashMap.StartSweeping();
 
     for (int i = 0; i < 100; ++i) {
         uint16_t utf16Data[20];
@@ -1632,26 +1670,29 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_ConcurrentS
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 100U);
 
-    hashTrieMap.Clear();
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 0U);
+
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_MixedInsertUtf16
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_MixedInsertUtf16
  * @tc.desc: Test ClearNodeFromGC with mixed mode insertion for UTF16 strings. First use Normal mode
  *           (NoSlotBarrierDynamic) to insert UTF16 entries without ToSpace tag, then start sweeping and
  *           use ConcurrentSweep mode (NeedSlotBarrier) to insert UTF16 entries with ToSpace tag.
- *           Finally call ClearNodeFromGC.
+ *           Finally sweep entries with a keep-all visitor and clear their to-space tags.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_MixedInsertUtf16Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_MixedInsertUtf16Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
     for (int i = 0; i < 50; ++i) {
         uint16_t utf16Data[16];
@@ -1661,7 +1702,9 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_MixedInsert
         ASSERT_NE(result, nullptr);
     }
 
-    HashTrieMapOperationConcurrentSweepType concurrentSweepOp(&hashTrieMap);
+    ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
+
+    chainedHashMap.StartSweeping();
 
     for (int i = 50; i < 100; ++i) {
         uint16_t utf16Data[20];
@@ -1671,26 +1714,29 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_MixedInsert
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 50U);
 
-    hashTrieMap.Clear();
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
+    ASSERT_EQ(CountToSpaceEntries(chainedHashMap), 0U);
+
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_NoAtomicMarkUtf8
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_NoAtomicMarkUtf8
  * @tc.desc: Test ClearNodeFromGC without AtomicMark for UTF8 strings. Use Normal mode (NoSlotBarrierDynamic)
- *           HashTrieMapOperation to insert UTF8 strings via LoadOrStore without calling AtomicMark
+ *           ChainedHashMapOperation to insert UTF8 strings via LoadOrStore without calling AtomicMark
  *           on the string objects. The visitor returns nullptr to simulate unmarked objects
  *           being cleared during GC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NoAtomicMarkUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_NoAtomicMarkUtf8Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
     for (int i = 0; i < 100; ++i) {
         char nameBuf[32];
@@ -1711,28 +1757,28 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NoAtomicMar
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeClearAll(hashTrieMap);
+    DoSweepingWithClearNodeClearAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_AllAtomicMarkUtf8
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_AllAtomicMarkUtf8
  * @tc.desc: Test ClearNodeFromGC with all entries AtomicMarked for UTF8 strings. Use Normal mode
- *           (NoSlotBarrierDynamic) HashTrieMapOperation to insert UTF8 strings via LoadOrStore,
+ *           (NoSlotBarrierDynamic) ChainedHashMapOperation to insert UTF8 strings via LoadOrStore,
  *           and call AtomicMark on all string objects. The visitor checks the mark bit and returns
  *           the object if marked, simulating all objects surviving during GC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_AllAtomicMarkUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_AllAtomicMarkUtf8Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
-    hashTrieMap.GetMutex().Lock();
+    chainedHashMap.GetMutex().Lock();
     for (int i = 0; i < 100; ++i) {
         char nameBuf[32];
         int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "all_mark_utf8_%d", i);
@@ -1749,33 +1795,33 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_AllAtomicMa
         uint32_t utf8Len = strlen(nameBuf);
 
         BaseString *result = LoadOrStoreUtf8StringWithAtomicMark<
-            HashTrieMapOperationNormalType, false>(normalOp, utf8Data, utf8Len);
+            ChainedHashMapOperationNormalType, false>(normalOp, utf8Data, utf8Len);
         ASSERT_NE(result, nullptr);
     }
-    hashTrieMap.GetMutex().Unlock();
+    chainedHashMap.GetMutex().Unlock();
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_PartialAtomicMarkUtf8
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_PartialAtomicMarkUtf8
  * @tc.desc: Test ClearNodeFromGC with partial entries AtomicMarked for UTF8 strings. Use Normal mode
- *           (NoSlotBarrierDynamic) HashTrieMapOperation to insert UTF8 strings via LoadOrStore.
+ *           (NoSlotBarrierDynamic) ChainedHashMapOperation to insert UTF8 strings via LoadOrStore.
  *           Half of the entries are AtomicMarked and half are not. The visitor checks the mark bit,
  *           simulating partial objects surviving during GC while others are cleared.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_PartialAtomicMarkUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_PartialAtomicMarkUtf8Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
-    hashTrieMap.GetMutex().Lock();
+    chainedHashMap.GetMutex().Lock();
     for (int i = 0; i < 50; ++i) {
         char nameBuf[32];
         int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "partial_yes_utf8_%d", i);
@@ -1792,7 +1838,7 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_PartialAtom
         uint32_t utf8Len = strlen(nameBuf);
 
         BaseString *result = LoadOrStoreUtf8StringWithAtomicMark<
-            HashTrieMapOperationNormalType, false>(normalOp, utf8Data, utf8Len);
+            ChainedHashMapOperationNormalType, false>(normalOp, utf8Data, utf8Len);
         ASSERT_NE(result, nullptr);
     }
 
@@ -1812,31 +1858,31 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_PartialAtom
         uint32_t utf8Len = strlen(nameBuf);
 
         BaseString *result = LoadOrStoreUtf8String<
-            HashTrieMapOperationNormalType, false>(normalOp, utf8Data, utf8Len);
+            ChainedHashMapOperationNormalType, false>(normalOp, utf8Data, utf8Len);
         ASSERT_NE(result, nullptr);
     }
-    hashTrieMap.GetMutex().Unlock();
+    chainedHashMap.GetMutex().Unlock();
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_NoAtomicMarkUtf16
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_NoAtomicMarkUtf16
  * @tc.desc: Test ClearNodeFromGC without AtomicMark for UTF16 strings. Use Normal mode (NoSlotBarrierDynamic)
- *           HashTrieMapOperation to insert UTF16 strings via LoadOrStore without calling AtomicMark
+ *           ChainedHashMapOperation to insert UTF16 strings via LoadOrStore without calling AtomicMark
  *           on the string objects. The visitor returns nullptr to simulate unmarked objects
  *           being cleared during GC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NoAtomicMarkUtf16Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_NoAtomicMarkUtf16Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
     for (int i = 0; i < 100; ++i) {
         uint16_t utf16Data[8];
@@ -1846,66 +1892,66 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_NoAtomicMar
         ASSERT_NE(result, nullptr);
     }
 
-    DoSweepingWithClearNodeClearAll(hashTrieMap);
+    DoSweepingWithClearNodeClearAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_AllAtomicMarkUtf16
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_AllAtomicMarkUtf16
  * @tc.desc: Test ClearNodeFromGC with all entries AtomicMarked for UTF16 strings. Use Normal mode
- *           (NoSlotBarrierDynamic) HashTrieMapOperation to insert UTF16 strings via LoadOrStore,
+ *           (NoSlotBarrierDynamic) ChainedHashMapOperation to insert UTF16 strings via LoadOrStore,
  *           and call AtomicMark on all string objects. The visitor checks the mark bit and returns
  *           the object if marked, simulating all objects surviving during GC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_AllAtomicMarkUtf16Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_AllAtomicMarkUtf16Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
-    hashTrieMap.GetMutex().Lock();
+    chainedHashMap.GetMutex().Lock();
     for (int i = 0; i < 100; ++i) {
         uint16_t utf16Data[16];
         uint32_t utf16Len = MakeUtf16DataFromAsciiWithNumber(utf16Data, "all_", i);
 
         BaseString *result = LoadOrStoreUtf16StringWithAtomicMark<
-            HashTrieMapOperationNormalType, false>(normalOp, utf16Data, utf16Len);
+            ChainedHashMapOperationNormalType, false>(normalOp, utf16Data, utf16Len);
         ASSERT_NE(result, nullptr);
     }
-    hashTrieMap.GetMutex().Unlock();
+    chainedHashMap.GetMutex().Unlock();
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 /**
- * @tc.name: HashTrieMap_ClearNodeFromGC_PartialAtomicMarkUtf16
+ * @tc.name: ChainedHashMap_ClearNodeFromGC_PartialAtomicMarkUtf16
  * @tc.desc: Test ClearNodeFromGC with partial entries AtomicMarked for UTF16 strings. Use Normal mode
- *           (NoSlotBarrierDynamic) HashTrieMapOperation to insert UTF16 strings via LoadOrStore.
+ *           (NoSlotBarrierDynamic) ChainedHashMapOperation to insert UTF16 strings via LoadOrStore.
  *           Half of the entries are AtomicMarked and half are not. The visitor checks the mark bit,
  *           simulating partial objects surviving during GC while others are cleared.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_PartialAtomicMarkUtf16Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_PartialAtomicMarkUtf16Test)
 {
-    HashTrieMapType hashTrieMap;
-    HashTrieMapInUseScopeType inUseScope(&hashTrieMap);
+    ChainedHashMapType chainedHashMap;
+    ChainedHashMapInUseScopeType inUseScope(&chainedHashMap);
 
-    HashTrieMapOperationNormalType normalOp(&hashTrieMap);
+    ChainedHashMapOperationNormalType normalOp(&chainedHashMap);
 
-    hashTrieMap.GetMutex().Lock();
+    chainedHashMap.GetMutex().Lock();
     for (int i = 0; i < 50; ++i) {
         uint16_t utf16Data[24];
         uint32_t utf16Len = MakeUtf16DataFromAsciiWithNumber(utf16Data, "partial_yes_", i);
 
         BaseString *result = LoadOrStoreUtf16StringWithAtomicMark<
-            HashTrieMapOperationNormalType, false>(normalOp, utf16Data, utf16Len);
+            ChainedHashMapOperationNormalType, false>(normalOp, utf16Data, utf16Len);
         ASSERT_NE(result, nullptr);
     }
 
@@ -1914,14 +1960,14 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMap_ClearNodeFromGC_PartialAtom
         uint32_t utf16Len = MakeUtf16DataFromAsciiWithNumber(utf16Data, "partial_no_", i);
 
         BaseString *result = LoadOrStoreUtf16String<
-            HashTrieMapOperationNormalType, false>(normalOp, utf16Data, utf16Len);
+            ChainedHashMapOperationNormalType, false>(normalOp, utf16Data, utf16Len);
         ASSERT_NE(result, nullptr);
     }
-    hashTrieMap.GetMutex().Unlock();
+    chainedHashMap.GetMutex().Unlock();
 
-    DoSweepingWithClearNodeKeepAll(hashTrieMap);
+    DoSweepingWithClearNodeKeepAll(chainedHashMap);
 
-    hashTrieMap.Clear();
+    chainedHashMap.Clear();
 }
 
 }  // namespace panda::test

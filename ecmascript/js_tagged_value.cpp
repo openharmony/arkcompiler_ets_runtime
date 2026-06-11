@@ -1816,7 +1816,7 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
     return false;
 }
 
-JSTaggedNumber JSTaggedValue::StringToNumber(JSThread *thread, JSTaggedValue tagged)
+JSTaggedNumber JSTaggedValue::StringToNumber(JSThread* thread, JSTaggedValue tagged)
 {
     EcmaStringAccessor strAccessor(tagged);
     size_t strLen = strAccessor.GetLength();
@@ -1824,9 +1824,11 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSThread *thread, JSTaggedValue tag
         return JSTaggedNumber(0);
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
-        IntegerCache *cache = nullptr;
-        if ((strLen <= IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
-            cache = IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
+        IntegerCache* cache = nullptr;
+        BaseString* baseString = EcmaString::Cast(tagged)->ToBaseString();
+        if ((strLen <= IntegerCache::MAX_INTEGER_CACHE_SIZE) && baseString->IsLineString()
+            && strAccessor.IsInternString()) {
+            cache = IntegerCache::Extract(baseString);
             if (cache->IsInteger()) {
                 return JSTaggedNumber(cache->GetInteger());
             }
@@ -1842,8 +1844,8 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSThread *thread, JSTaggedValue tag
     }
     CVector<uint8_t> buf;
     common::Span<const uint8_t> str = strAccessor.ToUtf8Span(thread, buf);
-    double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
-                                                  base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
+    double d = base::NumberHelper::StringToDouble(
+        str.begin(), str.end(), 0, base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);
 }
 

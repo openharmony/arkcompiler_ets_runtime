@@ -3434,9 +3434,9 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
     return JSTaggedValue::True().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetOrInternStringFromHashTrieTable)
+DEF_RUNTIME_STUBS(GetOrInternStringFromHashTable)
 {
-    RUNTIME_STUBS_HEADER(GetOrInternStringFromHashTrieTable);
+    RUNTIME_STUBS_HEADER(GetOrInternStringFromHashTable);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     ASSERT(value->IsString());
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, value);

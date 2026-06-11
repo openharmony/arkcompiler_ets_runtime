@@ -19,7 +19,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/string/hashtriemap-inl.h"
+#include "ecmascript/string/chained_hash_map-inl.h"
 
 namespace panda::ecmascript {
 void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
@@ -47,8 +47,8 @@ void EcmaStringTableCleaner::WaitSweepWeakRefTaskFinished()
 void EcmaStringTableCleaner::PostConcurrentSweepWeakRefTask(const WeakRootVisitor &visitor)
 {
     StartSweepWeakRefTask();
-    reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(
-        stringTable_->GetHashTrieMap())->StartSweeping();
+    reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType *>(
+        stringTable_->GetChainedHashMap())->StartSweeping();
     iter_ = std::make_shared<std::atomic<uint32_t>>(0U);
     const uint32_t postTaskCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     for (uint32_t i = 0U; i < postTaskCount; ++i) {
@@ -77,7 +77,7 @@ void EcmaStringTableCleaner::ProcessSweepWeakRef(IteratorPtr &iter, EcmaStringTa
                                                  const WeakRootVisitor &visitor)
 {
     uint32_t index = 0U;
-    while ((index = GetNextIndexId(iter)) < TrieMapConfig::ROOT_SIZE) {
+    while ((index = GetNextIndexId(iter)) < ChainedHashMapConfig::SWEEP_PARTITION_COUNT) {
         cleaner->stringTable_->SweepWeakRef(visitor, index);
         if (ReduceCountAndCheckFinish(cleaner)) {
             cleaner->SignalSweepWeakRefTaskFinish();
@@ -89,9 +89,9 @@ void EcmaStringTableCleaner::ProcessConcurrentSweepWeakRef(IteratorPtr &iter, Ec
                                                            const WeakRootVisitor &visitor)
 {
     uint32_t index = 0U;
-    while ((index = GetNextIndexId(iter)) < TrieMapConfig::ROOT_SIZE) {
-        std::vector<HashTrieMapEntry*>& waitFreeEntries = cleaner->waitFreeEntries_[index];
-        for (const HashTrieMapEntry* entry : waitFreeEntries) {
+    while ((index = GetNextIndexId(iter)) < ChainedHashMapConfig::SWEEP_PARTITION_COUNT) {
+        std::vector<ChainedHashMapEntry*>& waitFreeEntries = cleaner->waitFreeEntries_[index];
+        for (const ChainedHashMapEntry* entry : waitFreeEntries) {
             delete entry;
         }
         waitFreeEntries.clear();
@@ -107,7 +107,7 @@ void EcmaStringTableCleaner::StartSweepWeakRefTask()
 {
     // No need lock here, only the daemon thread will reset the state.
     sweepWeakRefFinished_ = SweepState::SWEEPING;
-    PendingTaskCount_.store(TrieMapConfig::ROOT_SIZE, std::memory_order_relaxed);
+    PendingTaskCount_.store(ChainedHashMapConfig::SWEEP_PARTITION_COUNT, std::memory_order_relaxed);
 }
 
 void EcmaStringTableCleaner::WaitSweepWeakRefTask()
@@ -140,35 +140,38 @@ void EcmaStringTableCleaner::SignalSweepWeakRefTaskPending()
     sweepWeakRefCV_.SignalAll();
 }
 
-void EcmaStringTableCleaner::SuspendAllAndFinishSweeping(JSThread *thread)
+void EcmaStringTableCleaner::SuspendAllAndFinishSweeping(JSThread* thread)
 {
     SuspendAllScope scope(thread);
     ProcessCheckAndFreeHeadEntries();
-    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
-        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable_->GetHashTrieMap());
-    hashTrieMap->ClearToSpaceTagForFreshEntries();
-    hashTrieMap->FinishSweeping();
+    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+            stringTable_->GetChainedHashMap());
+    chainedHashMap->ClearToSpaceTagForFreshEntries();
+    chainedHashMap->FinishSweeping();
 }
 
-void EcmaStringTableCleaner::SuspendAllAndFinishSweepingByDaemonThread(DaemonThread *dThread)
+void EcmaStringTableCleaner::SuspendAllAndFinishSweepingByDaemonThread(DaemonThread* dThread)
 {
     ThreadManagedScope runningScope(dThread);
     SuspendAllScope scope(dThread);
     ProcessCheckAndFreeHeadEntries();
-    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
-        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable_->GetHashTrieMap());
-    hashTrieMap->ClearToSpaceTagForFreshEntries();
-    hashTrieMap->FinishSweeping();
+    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+            stringTable_->GetChainedHashMap());
+    chainedHashMap->ClearToSpaceTagForFreshEntries();
+    chainedHashMap->FinishSweeping();
 }
 
 void EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
-        "EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries", "");
-    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
-        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable_->GetHashTrieMap());
-    for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
-        hashTrieMap->CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries_[i]);
+    ECMA_BYTRACE_NAME(
+        HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries", "");
+    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+            stringTable_->GetChainedHashMap());
+    for (uint32_t i = 0; i < ChainedHashMapConfig::SWEEP_PARTITION_COUNT; i++) {
+        chainedHashMap->CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries_[i]);
     }
 }
 
@@ -190,10 +193,10 @@ bool EcmaStringTableCleaner::ConcurrentSweepWeakRefTask::Run([[maybe_unused]] ui
 template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternFlattenString(EcmaVM* vm, EcmaString* string)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
@@ -211,19 +214,19 @@ EcmaString* EcmaStringTableImpl::GetOrInternFlattenString(EcmaVM* vm, EcmaString
     auto readBarrierForLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = hashTrieMapOperation.template Load(std::move(readBarrierForLoad), hashcode,
-                                                         string->ToBaseString());
-    if (loadResult.value != nullptr) {
-        return EcmaString::FromBaseString(loadResult.value);
+    auto *existing = chainedHashMapOperation.template Load(std::move(readBarrierForLoad), hashcode,
+                                                           string->ToBaseString());
+    if (existing != nullptr) {
+        return EcmaString::FromBaseString(existing);
     }
     JSHandle<EcmaString> stringHandle(thread, string);
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(thread);
     auto readBarrierForStoreOrLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    BaseString *result = hashTrieMapOperation.template StoreOrLoad<
+    BaseString *result = chainedHashMapOperation.template StoreOrLoad<
         true, decltype(readBarrierForStoreOrLoad), common::ReadOnlyHandle<BaseString>>(
-        holder, std::move(readBarrierForStoreOrLoad), hashcode, loadResult, stringHandle);
+        holder, std::move(readBarrierForStoreOrLoad), hashcode, stringHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -231,10 +234,10 @@ EcmaString* EcmaStringTableImpl::GetOrInternFlattenString(EcmaVM* vm, EcmaString
 template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternFlattenStringNoGC(EcmaVM* vm, EcmaString* string)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
@@ -252,15 +255,15 @@ EcmaString* EcmaStringTableImpl::GetOrInternFlattenStringNoGC(EcmaVM* vm, EcmaSt
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = hashTrieMapOperation.template Load(readBarrier, hashcode, string->ToBaseString());
-    if (loadResult.value != nullptr) {
-        return EcmaString::FromBaseString(loadResult.value);
+    auto *existing = chainedHashMapOperation.template Load(readBarrier, hashcode, string->ToBaseString());
+    if (existing != nullptr) {
+        return EcmaString::FromBaseString(existing);
     }
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
     JSHandle<EcmaString> stringHandle(thread, string);
-    BaseString* result = hashTrieMapOperation.template StoreOrLoad<
+    BaseString* result = chainedHashMapOperation.template StoreOrLoad<
         false, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
-        holder, std::move(readBarrier), hashcode, loadResult, stringHandle);
+        holder, std::move(readBarrier), hashcode, stringHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -269,23 +272,23 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternStringFromCompressedSubString(
     EcmaVM* vm, const JSHandle<EcmaString>& string, uint32_t offset, uint32_t utf8Len)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     const uint8_t* utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
     JSThread *thread = vm->GetAssociatedJSThread();
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = hashTrieMapOperation.template Load(std::move(readBarrier), hashcode, string, offset, utf8Len);
-    if (loadResult.value != nullptr) {
-        return EcmaString::FromBaseString(loadResult.value);
+    auto *existing = chainedHashMapOperation.template Load(std::move(readBarrier), hashcode, string, offset, utf8Len);
+    if (existing != nullptr) {
+        return EcmaString::FromBaseString(existing);
     }
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.template StoreOrLoad(
-        holder, hashcode, loadResult,
+    BaseString *result = chainedHashMapOperation.template StoreOrLoad(
+        holder, hashcode,
         [vm, string, offset, utf8Len, hashcode]() -> common::ReadOnlyHandle<BaseString> {
             EcmaString* str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len,
                 MemSpaceType::SHARED_OLD_SPACE);
@@ -315,10 +318,10 @@ EcmaString* EcmaStringTableImpl::GetOrInternStringFromCompressedSubString(
 template <typename Traits>
 EcmaString *EcmaStringTableImpl::GetOrInternString(EcmaVM *vm, EcmaString *string)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
@@ -333,15 +336,15 @@ EcmaString *EcmaStringTableImpl::GetOrInternString(EcmaVM *vm, EcmaString *strin
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = hashTrieMapOperation.template Load(readBarrier, hashcode, strFlat->ToBaseString());
-    if (loadResult.value != nullptr) {
-        return EcmaString::FromBaseString(loadResult.value);
+    auto *existing = chainedHashMapOperation.template Load(readBarrier, hashcode, strFlat->ToBaseString());
+    if (existing != nullptr) {
+        return EcmaString::FromBaseString(existing);
     }
     JSHandle<EcmaString> strFlatHandle(thread, strFlat);
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString* result = hashTrieMapOperation.template StoreOrLoad<
+    BaseString* result = chainedHashMapOperation.template StoreOrLoad<
         true, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
-        holder, std::move(readBarrier), hashcode, loadResult, strFlatHandle);
+        holder, std::move(readBarrier), hashcode, strFlatHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -350,10 +353,10 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const JSHandle<EcmaString>& firstString,
                                                    const JSHandle<EcmaString>& secondString)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     bool signalState = vm->GetJsDebuggerManager()->GetSignalState();
     if (UNLIKELY(signalState)) {
         return GetOrInternStringThreadUnsafe<Traits>(vm, firstString, secondString);
@@ -365,7 +368,7 @@ EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const JSHandle<Ec
     ASSERT(EcmaStringAccessor(firstFlat).NotTreeString());
     ASSERT(EcmaStringAccessor(secondFlat).NotTreeString());
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.template LoadOrStore<true>(
+    BaseString *result = chainedHashMapOperation.template LoadOrStore<true>(
         holder, hashcode,
         [vm, hashcode, thread, firstFlat, secondFlat]() {
             JSHandle<EcmaString> concatHandle(
@@ -397,10 +400,10 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const uint8_t* utf8Data, uint32_t utf8Len,
                                                    bool canBeCompress, [[maybe_unused]] MemSpaceType type)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(IsSMemSpace(type));
     bool signalState = vm->GetJsDebuggerManager()->GetSignalState();
     if (UNLIKELY(signalState)) {
@@ -408,7 +411,7 @@ EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const uint8_t* ut
     }
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    BaseString *result = hashTrieMapOperation.template LoadOrStore<true>(
+    BaseString *result = chainedHashMapOperation.template LoadOrStore<true>(
         holder, hashcode,
         [vm, hashcode, utf8Data, utf8Len, canBeCompress, type]() {
             EcmaString* value = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
@@ -434,34 +437,38 @@ EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const uint8_t* ut
     return EcmaString::FromBaseString(result);
 }
 
-template <typename Traits>
-EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const uint8_t* utf8Data, uint32_t utf16Len,
+template<typename Traits>
+EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm,
+                                                   const uint8_t* utf8Data,
+                                                   uint32_t utf16Len,
                                                    MemSpaceType type)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType*>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType*>(GetChainedHashMap()));
     ASSERT(IsSMemSpace(type));
     ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
     JSThread* thread = vm->GetJSThread();
     EcmaString* str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
     uint32_t hashcode = EcmaStringAccessor(str).GetHashcode(thread);
-    auto readBarrierForLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
+    auto readBarrierForLoad = [thread](const void* obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = hashTrieMapOperation.template Load(std::move(readBarrierForLoad), hashcode, str->ToBaseString());
-    if (loadResult.value != nullptr) {
-        return EcmaString::FromBaseString(loadResult.value);
+    auto* existing = chainedHashMapOperation.template Load(
+        std::move(readBarrierForLoad), hashcode, str->ToBaseString());
+    if (existing != nullptr) {
+        return EcmaString::FromBaseString(existing);
     }
     JSHandle<EcmaString> strHandle(thread, str);
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    auto readBarrierForStoreOrLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
+    auto readBarrierForStoreOrLoad = [thread](const void* obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    BaseString* result = hashTrieMapOperation.template StoreOrLoad<
-        true, decltype(readBarrierForStoreOrLoad), common::ReadOnlyHandle<BaseString>>(
-        holder, std::move(readBarrierForStoreOrLoad), hashcode, loadResult, strHandle);
+    BaseString* result = chainedHashMapOperation.template StoreOrLoad<true,
+                                                                      decltype(readBarrierForStoreOrLoad),
+                                                                      common::ReadOnlyHandle<BaseString>>(
+        holder, std::move(readBarrierForStoreOrLoad), hashcode, strHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -470,13 +477,13 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const uint16_t* utf16Data, uint32_t utf16Len,
                                                    bool canBeCompress)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t*>(utf16Data), utf16Len);
-    BaseString *result = hashTrieMapOperation.template LoadOrStore<true>(
+    BaseString *result = chainedHashMapOperation.template LoadOrStore<true>(
         holder, hashcode,
         [vm, utf16Data, utf16Len, canBeCompress, hashcode]() {
             EcmaString* value = EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress,
@@ -506,17 +513,17 @@ EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, const uint16_t* u
 template <typename Traits>
 EcmaString *EcmaStringTableImpl::TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     uint32_t hashcode = EcmaStringAccessor(*string).GetHashcode(thread);
     EcmaString *str = *string;
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return EcmaString::FromBaseString(
-        hashTrieMapOperation.template Load<false>(std::move(readBarrier), hashcode, str->ToBaseString()));
+        chainedHashMapOperation.template Load<false>(std::move(readBarrier), hashcode, str->ToBaseString()));
 }
 
 // used in jit thread, which unsupport create jshandle
@@ -524,15 +531,15 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternStringWithoutJSHandleForJit(EcmaVM* vm, const uint8_t* utf8Data,
     uint32_t utf8Len, bool canBeCompress, MemSpaceType type)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(IsSMemSpace(type));
     ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.LoadOrStoreForJit(
+    BaseString *result = chainedHashMapOperation.LoadOrStoreForJit(
         holder, hashcode,
         [vm, utf8Data, utf8Len, canBeCompress, type, hashcode]() {
             EcmaString *value = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
@@ -562,10 +569,10 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternStringWithoutJSHandleForJit(EcmaVM* vm, const uint8_t* utf8Data,
     uint32_t utf16Len, MemSpaceType type)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(vm->GetJSThread()->IsJitThread());
     ASSERT(IsSMemSpace(type));
     type = (type == MemSpaceType::SHARED_NON_MOVABLE) ? type : MemSpaceType::SHARED_OLD_SPACE;
@@ -574,7 +581,7 @@ EcmaString* EcmaStringTableImpl::GetOrInternStringWithoutJSHandleForJit(EcmaVM* 
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(u16Buffer.data(), utf16Len);
     const uint16_t *utf16Data = u16Buffer.data();
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.LoadOrStoreForJit(
+    BaseString *result = chainedHashMapOperation.LoadOrStoreForJit(
         holder, hashcode,
         [vm, u16Buffer, utf16Len, hashcode, type]() {
             EcmaString *value = EcmaStringAccessor::CreateFromUtf16(vm, u16Buffer.data(), utf16Len, false, type);
@@ -599,52 +606,40 @@ EcmaString* EcmaStringTableImpl::GetOrInternStringWithoutJSHandleForJit(EcmaVM* 
 }
 
 template <typename Traits, std::enable_if_t<!Traits::ConcurrentSweep, int>>
-void EcmaStringTableImpl::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID)
+void EcmaStringTableImpl::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    ASSERT(rootID >= 0 && rootID < TrieMapConfig::ROOT_SIZE);
-    auto *root_node = reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap())->
-        root_[rootID].load(std::memory_order_relaxed);
-    if (root_node == nullptr) {
-        return;
-    }
-    for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
-        hashTrieMapOperation.ClearNodeFromGC(root_node, index, visitor);
-    }
+    auto *chainedHashMap = reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap());
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(chainedHashMap);
+    chainedHashMap->ForEachBucketHeadInPartition(partitionID, [&](ChainedHashMapEntry* bucketHead, uint32_t index) {
+        chainedHashMapOperation.ClearNodeFromGC(bucketHead, index, visitor);
+    });
 }
 
 template <typename Traits, std::enable_if_t<Traits::ConcurrentSweep, int>>
-void EcmaStringTableImpl::ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID,
-                                                 std::vector<HashTrieMapEntry*>& waitDeleteEntries,
-                                                 std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+void EcmaStringTableImpl::ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
+                                                 std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
+                                                 std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    ASSERT(rootID >= 0 && rootID < TrieMapConfig::ROOT_SIZE);
-    auto *root_node = reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap())->
-        root_[rootID].load(std::memory_order_relaxed);
-    if (root_node == nullptr) {
-        return;
-    }
-    for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
-        hashTrieMapOperation.ClearNodeFromGC(root_node, index, visitor, waitDeleteEntries,
-                                             waitCheckAndFreeHeadEntries);
-    }
+    auto *chainedHashMap = reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap());
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(chainedHashMap);
+    chainedHashMap->ForEachBucketHeadInPartition(partitionID, [&](ChainedHashMapEntry* bucketHead, uint32_t index) {
+        chainedHashMapOperation.ClearNodeFromGC(
+            bucketHead, index, visitor, waitDeleteEntries, waitCheckAndFreeHeadEntries);
+    });
 }
 
 template <typename Traits>
 bool EcmaStringTableImpl::CheckStringTableValidity(JSThread *thread)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     bool isValid = true;
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    hashTrieMapOperation.Range(std::move(readBarrier), isValid);
+    chainedHashMapOperation.Range(std::move(readBarrier), isValid);
     return isValid;
 }
 
@@ -666,10 +661,10 @@ EcmaString* EcmaStringTableImpl::GetOrInternStringThreadUnsafe(
     EcmaVM* vm, const JSHandle<EcmaString> firstString,
     const JSHandle<EcmaString> secondString)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(vm->GetJsDebuggerManager()->GetSignalState());
     JSThread *thread = vm->GetJSThreadNoCheck();
     JSHandle<EcmaString> firstFlat(thread, EcmaStringAccessor::Flatten(vm, firstString));
@@ -678,7 +673,7 @@ EcmaString* EcmaStringTableImpl::GetOrInternStringThreadUnsafe(
     ASSERT(EcmaStringAccessor(firstFlat).NotTreeString());
     ASSERT(EcmaStringAccessor(secondFlat).NotTreeString());
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.template LoadOrStore<false>(
+    BaseString *result = chainedHashMapOperation.template LoadOrStore<false>(
         holder, hashcode,
         [hashcode, thread, vm, firstFlat, secondFlat]() {
             JSHandle<EcmaString> concatHandle(
@@ -712,14 +707,14 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl::GetOrInternStringThreadUnsafe(EcmaVM* vm, const uint8_t* utf8Data,
                                                                uint32_t utf8Len, bool canBeCompress)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     ASSERT(vm->GetJsDebuggerManager()->GetSignalState());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.template LoadOrStore<false>(
+    BaseString *result = chainedHashMapOperation.template LoadOrStore<false>(
         holder, hashcode,
         [vm, utf8Data, utf8Len, canBeCompress, hashcode]() {
             EcmaString *value = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress,
@@ -898,26 +893,26 @@ EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, const JSHandle
     return impl_.TryGetInternString<DisableCMCGCNormalTrait>(thread, string);
 }
 
-void EcmaStringTable::SweepWeakRef(const WeakRootVisitor& visitor, uint32_t rootID)
+void EcmaStringTable::SweepWeakRef(const WeakRootVisitor& visitor, uint32_t partitionID)
 {
 #ifdef USE_CMC_GC
     if (enableCMCGC_) {
         UNREACHABLE();
     }
 #endif
-    impl_.SweepWeakRef<DisableCMCGCNormalTrait>(visitor, rootID);
+    impl_.SweepWeakRef<DisableCMCGCNormalTrait>(visitor, partitionID);
 }
 
-void EcmaStringTable::ConcurrentSweepWeakRef(const WeakRootVisitor& visitor, uint32_t rootID,
-                                             std::vector<HashTrieMapEntry*>& waitDeleteEntries,
-                                             std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+void EcmaStringTable::ConcurrentSweepWeakRef(const WeakRootVisitor& visitor, uint32_t partitionID,
+                                             std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
+                                             std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
 {
 #ifdef USE_CMC_GC
     if (enableCMCGC_) {
         UNREACHABLE();
     }
 #endif
-    impl_.ConcurrentSweepWeakRef<DisableCMCGCConcurrentSweepTrait>(visitor, rootID, waitDeleteEntries,
+    impl_.ConcurrentSweepWeakRef<DisableCMCGCConcurrentSweepTrait>(visitor, partitionID, waitDeleteEntries,
                                                                    waitCheckAndFreeHeadEntries);
 }
 
