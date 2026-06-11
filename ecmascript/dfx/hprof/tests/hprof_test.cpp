@@ -399,6 +399,14 @@ HWTEST_F_L0(HProfTest, TestSetDumpFormatInRandomNum)
         EcmaVM *vm = instance;
         size_t maxEnumNum = static_cast<size_t>(DumpFormat::OTHER) + 1;
         DumpFormat dumpFormat = static_cast<DumpFormat>(size % maxEnumNum);
+
+        // 在arm32平台上跳过BINARY格式，因为binary dump不被支持
+#if defined(PANDA_TARGET_ARM32)
+        if (dumpFormat == DumpFormat::BINARY) {
+            dumpFormat = DumpFormat::JSON;  // 强制使用JSON格式
+        }
+#endif
+
         DumpSnapShotOption dumpOption;
         dumpOption.dumpFormat = dumpFormat;
         dumpOption.isVmMode = true;
