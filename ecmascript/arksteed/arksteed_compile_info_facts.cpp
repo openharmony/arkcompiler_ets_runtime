@@ -225,6 +225,8 @@ CompileInfoFacts::CompileInfoFacts(Chunk *chunk)
       nodeInfos_(chunk),
       loadedProperties_(chunk),
       loadedConstantProperties_(chunk),
+      loadedEnvSlots_(chunk),
+      loadedEnvConstants_(chunk),
       availableExpressions_(chunk)
 {
     ASSERT(chunk_ != nullptr);
@@ -236,6 +238,8 @@ CompileInfoFacts *CompileInfoFacts::Clone() const
     copy->nodeInfos_.insert(nodeInfos_.begin(), nodeInfos_.end());
     copy->CopyLoadedProperties(copy->loadedProperties_, loadedProperties_);
     copy->CopyLoadedProperties(copy->loadedConstantProperties_, loadedConstantProperties_);
+    copy->CopyEnvSlots(copy->loadedEnvSlots_, loadedEnvSlots_);
+    copy->CopyEnvSlots(copy->loadedEnvConstants_, loadedEnvConstants_);
     for (const auto &entry : availableExpressions_) {
         const AvailableExpression &expression = entry.second;
         copy->availableExpressions_.emplace(entry.first, AvailableExpression {
@@ -247,6 +251,7 @@ CompileInfoFacts *CompileInfoFacts::Clone() const
                                                          });
     }
     copy->effectEpoch_ = effectEpoch_;
+    copy->envSlotAliasMode_ = envSlotAliasMode_;
     return copy;
 }
 
@@ -263,8 +268,10 @@ CompileInfoFacts *CompileInfoFacts::CloneForLoopHeader() const
         }
     }
     copy->CopyLoadedProperties(copy->loadedConstantProperties_, loadedConstantProperties_);
+    copy->CopyEnvSlots(copy->loadedEnvConstants_, loadedEnvConstants_);
     copy->effectEpoch_ = effectEpoch_;
     copy->IncrementEffectEpoch();
+    copy->envSlotAliasMode_ = EnvSlotAliasMode::NONE;
     return copy;
 }
 
@@ -284,7 +291,10 @@ void CompileInfoFacts::Merge(const CompileInfoFacts &other)
     if (effectEpoch_ != other.effectEpoch_) {
         AdvanceEpochAfterMerge(other.effectEpoch_);
     }
+    MergeEnvSlots(loadedEnvSlots_, other.loadedEnvSlots_);
+    MergeEnvSlots(loadedEnvConstants_, other.loadedEnvConstants_);
     MergeAvailableExpressions(other);
+    envSlotAliasMode_ = MergeEnvSlotAliasMode(envSlotAliasMode_, other.envSlotAliasMode_);
 }
 
 NodeInfo *CompileInfoFacts::GetOrCreateInfoFor(ValueVertex *node)
@@ -455,6 +465,84 @@ void CompileInfoFacts::ClearLoadedPropertiesForKey(PropertyKey key)
     }
 }
 
+void CompileInfoFacts::RecordEnvSlot(ValueVertex *env, int32_t slot, ValueVertex *value)
+{
+    ASSERT(env != nullptr);
+    ASSERT(value != nullptr);
+    loadedEnvSlots_[EnvSlotKey(env, slot)] = value;
+    UpdateEnvSlotAliasMode(env);
+}
+
+ValueVertex *CompileInfoFacts::LookupEnvSlot(ValueVertex *env, int32_t slot) const
+{
+    auto it = loadedEnvSlots_.find(EnvSlotKey(env, slot));
+    return it == loadedEnvSlots_.end() ? nullptr : it->second;
+}
+
+void CompileInfoFacts::RecordEnvConstant(ValueVertex *env, int32_t slot, ValueVertex *value)
+{
+    ASSERT(env != nullptr);
+    ASSERT(value != nullptr);
+    loadedEnvConstants_[EnvSlotKey(env, slot)] = value;
+}
+
+ValueVertex *CompileInfoFacts::LookupEnvConstant(ValueVertex *env, int32_t slot) const
+{
+    auto it = loadedEnvConstants_.find(EnvSlotKey(env, slot));
+    return it == loadedEnvConstants_.end() ? nullptr : it->second;
+}
+
+CompileInfoFacts::ClearedEnvSlotKeys CompileInfoFacts::ClearAliasedEnvSlotsFor(ValueVertex *env, int32_t slot,
+                                                                               ValueVertex *newValue)
+{
+    ClearedEnvSlotKeys cleared(chunk_);
+    if (env == nullptr || slot < 0) {
+        OnSideEffect();
+        return cleared;
+    }
+
+    // Lexical-env bytecodes write user variable slots. The parent/global-env
+    // fields are tracked as constants and do not invalidate cached user slots.
+    if (IsEnvConstantFieldOffset(slot)) {
+        return cleared;
+    }
+
+    UpdateEnvSlotAliasMode(env);
+    if (envSlotAliasMode_ != EnvSlotAliasMode::MAY_ALIAS) {
+        return cleared;
+    }
+
+    for (auto it = loadedEnvSlots_.begin(); it != loadedEnvSlots_.end();) {
+        const EnvSlotKey &key = it->first;
+        if (key.GetSlot() == slot && key.GetEnv() != env && EnvMayAlias(key.GetEnv(), env) && it->second != newValue) {
+            cleared.emplace_back(key);
+            it = loadedEnvSlots_.erase(it);
+            continue;
+        }
+        ++it;
+    }
+    return cleared;
+}
+
+void CompileInfoFacts::ClearEnvSlotsFor(ValueVertex *env)
+{
+    if (env == nullptr) {
+        return;
+    }
+    bool erased = false;
+    for (auto it = loadedEnvSlots_.begin(); it != loadedEnvSlots_.end();) {
+        if (it->first.GetEnv() == env) {
+            it = loadedEnvSlots_.erase(it);
+            erased = true;
+            continue;
+        }
+        ++it;
+    }
+    if (erased) {
+        RecomputeEnvSlotAliasMode();
+    }
+}
+
 void CompileInfoFacts::AddExpression(uint32_t hash, ValueVertex *node, const ExpressionInputs &inputs,
                                      const ExpressionOptions &options, bool needsEpochCheck)
 {
@@ -509,6 +597,10 @@ void CompileInfoFacts::MarkPossibleSideEffect(const SideEffectDescriptor &effect
             }
             IncrementEffectEpoch();
             return;
+        case SideEffectKind::ENV_SLOT_WRITE:
+            ClearAliasedEnvSlotsFor(effect.env, effect.envSlot, effect.envSlotValue);
+            IncrementEffectEpoch();
+            return;
         case SideEffectKind::MAP_TRANSITION:
             ClearUnstable();
             IncrementEffectEpoch();
@@ -540,12 +632,17 @@ void CompileInfoFacts::ClearAll()
     nodeInfos_.clear();
     loadedProperties_.clear();
     loadedConstantProperties_.clear();
+    loadedEnvSlots_.clear();
+    loadedEnvConstants_.clear();
     availableExpressions_.clear();
+    envSlotAliasMode_ = EnvSlotAliasMode::NONE;
 }
 
 void CompileInfoFacts::OnSideEffect()
 {
     ClearUnstable();
+    loadedEnvSlots_.clear();
+    envSlotAliasMode_ = EnvSlotAliasMode::NONE;
     IncrementEffectEpoch();
 }
 
@@ -654,6 +751,18 @@ void CompileInfoFacts::MergeLoadedProperties(LoadedPropertyMap &target, const Lo
     }
 }
 
+void CompileInfoFacts::MergeEnvSlots(LoadedEnvSlots &target, const LoadedEnvSlots &other)
+{
+    for (auto it = target.begin(); it != target.end();) {
+        auto otherIt = other.find(it->first);
+        if (otherIt == other.end() || otherIt->second != it->second) {
+            it = target.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 void CompileInfoFacts::MergeAvailableExpressions(const CompileInfoFacts &other)
 {
     for (auto it = availableExpressions_.begin(); it != availableExpressions_.end();) {
@@ -681,6 +790,53 @@ void CompileInfoFacts::CopyLoadedProperties(LoadedPropertyMap &target, const Loa
 {
     ASSERT(target.empty());
     target.insert(source.begin(), source.end());
+}
+
+void CompileInfoFacts::CopyEnvSlots(LoadedEnvSlots &target, const LoadedEnvSlots &source) const
+{
+    ASSERT(target.empty());
+    target.insert(source.begin(), source.end());
+}
+
+void CompileInfoFacts::UpdateEnvSlotAliasMode(ValueVertex *env)
+{
+    if (envSlotAliasMode_ == EnvSlotAliasMode::MAY_ALIAS) {
+        return;
+    }
+    EnvSlotAliasMode mode = EnvSlotAliasMode::MAY_ALIAS;
+    if (env != nullptr && env->Is<InitialValueVertex>()) {
+        mode = EnvSlotAliasMode::CURRENT_ENV_ONLY;
+    } else if (env != nullptr && (env->Is<ConstantVertex>() || env->Is<TaggedConstantVertex>())) {
+        mode = EnvSlotAliasMode::CONSTANT_ENV_ONLY;
+    }
+    envSlotAliasMode_ = MergeEnvSlotAliasMode(envSlotAliasMode_, mode);
+}
+
+void CompileInfoFacts::RecomputeEnvSlotAliasMode()
+{
+    envSlotAliasMode_ = EnvSlotAliasMode::NONE;
+    for (const auto &entry : loadedEnvSlots_) {
+        UpdateEnvSlotAliasMode(entry.first.GetEnv());
+    }
+}
+
+bool CompileInfoFacts::EnvMayAlias(ValueVertex *lhs, ValueVertex *rhs) const
+{
+    return lhs != rhs;
+}
+
+EnvSlotAliasMode CompileInfoFacts::MergeEnvSlotAliasMode(EnvSlotAliasMode lhs, EnvSlotAliasMode rhs)
+{
+    if (lhs == rhs) {
+        return lhs;
+    }
+    if (lhs == EnvSlotAliasMode::NONE) {
+        return rhs;
+    }
+    if (rhs == EnvSlotAliasMode::NONE) {
+        return lhs;
+    }
+    return EnvSlotAliasMode::MAY_ALIAS;
 }
 
 }  // namespace panda::ecmascript::arksteed

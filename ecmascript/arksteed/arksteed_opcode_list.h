@@ -55,6 +55,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(StoreToAddress)           \
     V(LoadTaggedField)          \
     V(StoreTaggedField)         \
+    V(StoreEnvSlot)             \
     V(LoadException)            \
     COMMON_VALUE_VERTEX_LIST(V) \
     CONVERSION_VERTEX_LIST(V)
@@ -69,6 +70,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(ThrowUndefinedIfHole)         \
     V(ThrowUndefinedIfHoleWithName) \
     V(CheckHClass)                  \
+    V(SetValueWithBarrier)          \
     V(GapMove)                      \
     V(ConstantGapMove)
 

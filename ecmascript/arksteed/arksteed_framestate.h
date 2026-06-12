@@ -355,25 +355,25 @@ private:
 
 struct LoopEffects {
     explicit LoopEffects(int loopHeader, Chunk *zone)
-        : contextSlotWritten(zone), objectsWritten(zone), keysCleared(zone)
+        : envSlotWritten(zone), objectsWritten(zone), keysCleared(zone)
     {}
-    ChunkVector<uint32_t> contextSlotWritten;
+    ChunkVector<uint32_t> envSlotWritten;
     ChunkVector<ValueVertex *> objectsWritten;
     ChunkVector<uint32_t> keysCleared;
     bool unstableAspectsCleared = false;
-    bool mayHaveAliasingContexts = false;
+    bool mayHaveAliasingEnvs = false;
 
     void Merge(const LoopEffects *other)
     {
         if (!unstableAspectsCleared) {
             unstableAspectsCleared = other->unstableAspectsCleared;
         }
-        if (!mayHaveAliasingContexts) {
-            mayHaveAliasingContexts = other->mayHaveAliasingContexts;
+        if (!mayHaveAliasingEnvs) {
+            mayHaveAliasingEnvs = other->mayHaveAliasingEnvs;
         }
-        contextSlotWritten.insert(contextSlotWritten.end(),
-                                  other->contextSlotWritten.begin(),
-                                  other->contextSlotWritten.end());
+        envSlotWritten.insert(envSlotWritten.end(),
+                                  other->envSlotWritten.begin(),
+                                  other->envSlotWritten.end());
         objectsWritten.insert(objectsWritten.end(), other->objectsWritten.begin(), other->objectsWritten.end());
         keysCleared.insert(keysCleared.end(), other->keysCleared.begin(), other->keysCleared.end());
     }

@@ -29,6 +29,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::arksteed {
@@ -265,7 +266,8 @@ void ArkSteedGraphBuilder::InitializeCurrentFrameState()
         currentFrameState_->SetLocal(i, undefinedValue);
     }
     // Fixed header lexicalEnv is at [fp - 24], i.e. slot -3 in word units.
-    currentFrameState_->SetEnv(NewVertexNoInput<InitialValueVertex>(-3));
+    initialLexicalEnv_ = NewVertexNoInput<InitialValueVertex>(-3);
+    currentFrameState_->SetEnv(initialLexicalEnv_);
     currentFrameState_->SetAcc(undefinedValue);
 }
 
@@ -303,11 +305,12 @@ void ArkSteedGraphBuilder::LowerCallStubWithICPreserveAcc(const CommonStubCSigns
 }
 
 ValueVertex *ArkSteedGraphBuilder::NewCommonStubCall(std::initializer_list<ValueVertex *> args,
-                                                     const CommonStubCSigns::ID stubId)
+                                                     const CommonStubCSigns::ID stubId,
+                                                     SideEffectKind sideEffectKind)
 {
     std::vector<ValueVertex *> allArgs(args);
     ValidateCommonStubCallArgs(stubId, allArgs);
-    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
+    return NewVertex<CallCommonStubVertex>(allArgs, stubId, sideEffectKind);
 }
 
 void ArkSteedGraphBuilder::ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId,
@@ -2679,14 +2682,60 @@ void ArkSteedGraphBuilder::LowerStOwnByName()
     NewCommonStubCall({glue, receiver, propKey, accValue, globalEnv}, CommonStubCSigns::StOwnByName);
 }
 
+int32_t ArkSteedGraphBuilder::GetLexicalEnvSlotOffset(uint16_t slot) const
+{
+    return static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                (LexicalEnv::RESERVED_ENV_LENGTH + slot) * JSTaggedValue::TaggedTypeSize());
+}
+
+int32_t ArkSteedGraphBuilder::GetLexicalEnvParentOffset() const
+{
+    return static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                LexicalEnv::PARENT_ENV_INDEX * JSTaggedValue::TaggedTypeSize());
+}
+
+ValueVertex *ArkSteedGraphBuilder::BuildEnvSlotLoad(ValueVertex *env, int32_t offset)
+{
+    ASSERT(env != nullptr);
+    bool isConstantField = IsEnvConstantFieldOffset(offset);
+    ValueVertex *cached = nullptr;
+    if (isConstantField) {
+        cached = currentFacts_->LookupEnvConstant(env, offset);
+    } else {
+        cached = currentFacts_->LookupEnvSlot(env, offset);
+    }
+    if (cached != nullptr) {
+        return cached;
+    }
+
+    ValueVertex *value = NewVertex<LoadTaggedFieldVertex>({env}, offset);
+    if (isConstantField) {
+        currentFacts_->RecordEnvConstant(env, offset, value);
+    } else {
+        currentFacts_->RecordEnvSlot(env, offset, value);
+    }
+    return value;
+}
+
+ValueVertex *ArkSteedGraphBuilder::BuildLexicalEnvAtLevel(ValueVertex *baseEnv, uint16_t level)
+{
+    ValueVertex *env = baseEnv;
+    for (uint16_t i = 0; i < level; ++i) {
+        env = BuildEnvSlotLoad(env, GetLexicalEnvParentOffset());
+    }
+    return env;
+}
+
 void ArkSteedGraphBuilder::LowerNewLexicalEnv()
 {
     ValueVertex *glue = GetGlue();
     ValueVertex *parent = LoadRegister(1);
-    ValueVertex *scope = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *newEnv = NewCommonStubCall({glue, parent, scope}, CommonStubCSigns::NewLexicalEnv);
+    ValueVertex *numVars = GetInt32Constant(static_cast<int>(GetImmediate(0)));
+    ValueVertex *newEnv = NewCommonStubCall({glue, parent, numVars}, CommonStubCSigns::NewLexicalEnv,
+                                            SideEffectKind::SAFE_CALL);
     currentFrameState_->SetAcc(newEnv);
     currentFrameState_->SetEnv(newEnv);
+    currentFacts_->RecordEnvConstant(newEnv, GetLexicalEnvParentOffset(), parent);
 }
 
 void ArkSteedGraphBuilder::LowerNewLexicalEnvWithName()
@@ -2694,19 +2743,23 @@ void ArkSteedGraphBuilder::LowerNewLexicalEnvWithName()
     ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
     ValueVertex *level = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
     ValueVertex *slotId = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
+    ValueVertex *parent = LoadRegister(2);  // 2: env register index
     ValueVertex *newEnv = NewVertex<CallRuntimeVertex>(
-        {level, slotId, LoadRegister(2), jsFunc},  // 2: env register index
-        RTSTUB_ID(OptNewLexicalEnvWithName));
+        {level, slotId, parent, jsFunc},
+        RTSTUB_ID(OptNewLexicalEnvWithName),
+        SideEffectKind::SAFE_CALL);
     currentFrameState_->SetAcc(newEnv);
     currentFrameState_->SetEnv(newEnv);
+    currentFacts_->RecordEnvConstant(newEnv, GetLexicalEnvParentOffset(), parent);
 }
 
 void ArkSteedGraphBuilder::LowerPopLexicalEnv()
 {
     ValueVertex *currentEnv = LoadRegister(0);
-    ValueVertex *parentEnv = GetValueFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
+    ValueVertex *parentEnv = BuildEnvSlotLoad(currentEnv, GetLexicalEnvParentOffset());
     currentFrameState_->SetAcc(parentEnv);
     currentFrameState_->SetEnv(parentEnv);
+    currentFacts_->ClearEnvSlotsFor(currentEnv);
 }
 
 void ArkSteedGraphBuilder::LowerLdSuperByValue()
@@ -2823,21 +2876,25 @@ void ArkSteedGraphBuilder::LowerStSuperByName()
 
 void ArkSteedGraphBuilder::LowerLdLexVar()
 {
-    ValueVertex *level = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *slot = GetInt32Constant(static_cast<int>(GetImmediate(1)));
+    uint16_t level = static_cast<uint16_t>(GetImmediate(0));
+    uint16_t slot = static_cast<uint16_t>(GetImmediate(1));
     ValueVertex *lexicalEnv = LoadRegister(2);  // 2: lexicalEnv register index
-    ValueVertex *glue = GetGlue();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, level, slot, lexicalEnv}, CommonStubCSigns::LdLexVar));
+    ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
+    currentFrameState_->SetAcc(BuildEnvSlotLoad(targetEnv, GetLexicalEnvSlotOffset(slot)));
 }
 
 void ArkSteedGraphBuilder::LowerStLexVar()
 {
-    ValueVertex *level = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *slot = GetInt32Constant(static_cast<int>(GetImmediate(1)));
+    uint16_t level = static_cast<uint16_t>(GetImmediate(0));
+    uint16_t slot = static_cast<uint16_t>(GetImmediate(1));
     ValueVertex *lexicalEnv = LoadRegister(2);  // 2: lexicalEnv register index
     ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *glue = GetGlue();
-    NewCommonStubCall({glue, level, slot, lexicalEnv, value}, CommonStubCSigns::StLexVar);
+    ASSERT(value != nullptr);
+    ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
+    int32_t offset = GetLexicalEnvSlotOffset(slot);
+    NewVertex<StoreEnvSlotVertex>({targetEnv, value}, offset);
+    NewVertex<SetValueWithBarrierVertex>({GetGlue(), targetEnv, value}, offset);
+    currentFacts_->RecordEnvSlot(targetEnv, offset, value);
 }
 
 void ArkSteedGraphBuilder::LowerDefineClassWithBuffer()

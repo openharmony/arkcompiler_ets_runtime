@@ -21,6 +21,7 @@
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
+#include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
@@ -559,6 +560,41 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldVertex>(StoreT
     auto obj = GetInputRegister(storeField, StoreTaggedFieldVertex::OBJECT_INDEX);
     auto value = GetInputRegister(storeField, StoreTaggedFieldVertex::VALUE_INDEX);
     assembler_->StoreField(value, obj, storeField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreEnvSlotVertex>(StoreEnvSlotVertex *storeEnvSlot)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeEnvSlot->GetId() << ": StoreEnvSlotVertex";
+#endif
+    auto env = GetInputRegister(storeEnvSlot, StoreEnvSlotVertex::ENV_INDEX);
+    auto value = GetInputRegister(storeEnvSlot, StoreEnvSlotVertex::VALUE_INDEX);
+    assembler_->StoreField(value, env, storeEnvSlot->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<SetValueWithBarrierVertex>(
+    SetValueWithBarrierVertex *setValueWithBarrier)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << setValueWithBarrier->GetId() << ": SetValueWithBarrierVertex";
+#endif
+    auto value = GetInputRegister(setValueWithBarrier, SetValueWithBarrierVertex::VALUE_INDEX);
+    Label done;
+    {
+        TemporaryRegisterScope scope(assembler_);
+        ArkSteedRegister scratch = scope.AcquireScratch();
+        assembler_->Move(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        assembler_->And(scratch, value);
+        assembler_->Compare(scratch, 0);
+        assembler_->JumpIf(Condition::COND_NOT_ZERO, &done);
+    }
+    assembler_->Move(ArkSteedAssembler::GetParameterRegister(2),
+                     static_cast<int64_t>(setValueWithBarrier->GetOffset()));
+    assembler_->CallCommonStub(CommonStubCSigns::SetValueWithBarrier);
+    safepointBuilder_->DefineSafepoint(assembler_->GetPcOffset());
+    assembler_->Bind(&done);
 }
 
 // ========================================= Non-Value Opcode =========================================

@@ -505,6 +505,58 @@ private:
     uint32_t propertyId_;
 };
 
+class StoreEnvSlotVertex : public FixedInputVertexMixin<2, ValueVertex, StoreEnvSlotVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp();
+
+    static constexpr auto INPUT_TYPES = detail::InputTypes<2>(ValueRepresentation::TAGGED, ValueRepresentation::TAGGED);
+
+    static constexpr size_t ENV_INDEX = 0;
+    static constexpr size_t VALUE_INDEX = 1;
+
+    explicit StoreEnvSlotVertex(uint64_t bitfield, int32_t offset) : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+class SetValueWithBarrierVertex : public FixedInputVertexMixin<3, NonControlVertex, SetValueWithBarrierVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Call();
+
+    static constexpr auto INPUT_TYPES =
+        detail::InputTypes<3>(ValueRepresentation::INT_PTR, ValueRepresentation::TAGGED,
+                              ValueRepresentation::TAGGED);
+
+    static constexpr size_t GLUE_INDEX = 0;
+    static constexpr size_t OBJECT_INDEX = 1;
+    static constexpr size_t VALUE_INDEX = 2;
+
+    explicit SetValueWithBarrierVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
 /**
  * CallRuntime vertex - for runtime function calls
  */
@@ -512,7 +564,13 @@ class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex>, pu
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
-    CallRuntimeVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id) : VertexMixin(bitfield), runtimeId_(id) {}
+    CallRuntimeVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id,
+                      SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+        : VertexMixin(bitfield), runtimeId_(id), sideEffectKind_(sideEffectKind)
+    {
+        // Only UNKNOWN_CALL and SAFE_CALL are supported by now.
+        ASSERT(sideEffectKind_ == SideEffectKind::UNKNOWN_CALL || sideEffectKind_ == SideEffectKind::SAFE_CALL);
+    }
 
     kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
     {
@@ -521,6 +579,10 @@ public:
     size_t GetArgCount() const
     {
         return GetInputCount();
+    }
+    SideEffectKind GetSideEffectKind() const
+    {
+        return sideEffectKind_;
     }
 
     void SetValueLocationConstraints();
@@ -531,6 +593,7 @@ public:
 
 private:
     kungfu::RuntimeStubCSigns::ID runtimeId_;
+    SideEffectKind sideEffectKind_;
 };
 
 class CallVertex : public VertexMixin<ValueVertex, CallVertex> {
@@ -575,7 +638,13 @@ class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVerte
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
-    CallCommonStubVertex(uint64_t bitfield, uint32_t stubId) : VertexMixin(bitfield), stubId_(stubId) {}
+    CallCommonStubVertex(uint64_t bitfield, uint32_t stubId,
+                         SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+        : VertexMixin(bitfield), stubId_(stubId), sideEffectKind_(sideEffectKind)
+    {
+        // Only UNKNOWN_CALL and SAFE_CALL are supported by now.
+        ASSERT(sideEffectKind_ == SideEffectKind::UNKNOWN_CALL || sideEffectKind_ == SideEffectKind::SAFE_CALL);
+    }
 
     uint32_t GetStubId() const
     {
@@ -584,6 +653,10 @@ public:
     size_t GetArgCount() const
     {
         return GetInputCount();
+    }
+    SideEffectKind GetSideEffectKind() const
+    {
+        return sideEffectKind_;
     }
 
     void SetValueLocationConstraints();
@@ -598,6 +671,7 @@ public:
 
 private:
     uint32_t stubId_;
+    SideEffectKind sideEffectKind_;
 };
 
 //==============================================================================

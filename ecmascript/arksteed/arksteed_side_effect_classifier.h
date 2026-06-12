@@ -29,21 +29,31 @@ public:
         uint32_t propertyId = vertex->GetPropertyId();
         PropertyKey key = propertyId != StoreTaggedFieldVertex::UNKNOWN_PROPERTY_ID ? PropertyKey::Named(propertyId)
                                                                                     : PropertyKey::Unknown();
-        return SideEffectDescriptor {
-            SideEffectKind::FIELD_WRITE,
-            vertex->GetInput(StoreTaggedFieldVertex::OBJECT_INDEX),
-            key,
-        };
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreTaggedFieldVertex::OBJECT_INDEX);
+        descriptor.propertyKey = key;
+        return descriptor;
     }
 
-    static SideEffectDescriptor Classify(CallRuntimeVertex *)
+    static SideEffectDescriptor Classify(StoreEnvSlotVertex *vertex)
     {
-        return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::ENV_SLOT_WRITE;
+        descriptor.env = vertex->GetInput(StoreEnvSlotVertex::ENV_INDEX);
+        descriptor.envSlot = vertex->GetOffset();
+        descriptor.envSlotValue = vertex->GetInput(StoreEnvSlotVertex::VALUE_INDEX);
+        return descriptor;
     }
 
-    static SideEffectDescriptor Classify(CallCommonStubVertex *)
+    static SideEffectDescriptor Classify(CallRuntimeVertex *vertex)
     {
-        return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
+        return SideEffectDescriptor {vertex->GetSideEffectKind()};
+    }
+
+    static SideEffectDescriptor Classify(CallCommonStubVertex *vertex)
+    {
+        return SideEffectDescriptor {vertex->GetSideEffectKind()};
     }
 
     template <typename VertexT>

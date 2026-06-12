@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_ARKSTEED_VERTEX_H
 #define ECMASCRIPT_ARKSTEED_VERTEX_H
 
+#include <cstdint>
+
 #include "common_interfaces/base/bit_field.h"
 #include "ecmascript/arksteed/arksteed_opcode_list.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
@@ -36,6 +38,16 @@ class BranchControlVertex;
 class InputLocation;
 class Input;
 class ConstInput;
+
+enum class SideEffectKind : uint8_t {
+    NO_SIDE_EFFECT,
+    FIELD_WRITE,
+    ELEMENTS_WRITE,
+    ENV_SLOT_WRITE,
+    MAP_TRANSITION,
+    UNKNOWN_CALL,
+    SAFE_CALL,
+};
 
 // A singly linked list that temporarily stores predecessors referring to this block.
 // All predecessors point to the same target block after Bind() is called.

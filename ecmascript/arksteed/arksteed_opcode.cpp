@@ -331,6 +331,30 @@ void StoreTaggedFieldVertex::Dump(std::ostream &output) const
     output << "  StoreTaggedField: offset=" << offset_;
 }
 
+void StoreEnvSlotVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(ENV_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void StoreEnvSlotVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreEnvSlot: offset=" << offset_;
+}
+
+void SetValueWithBarrierVertex::SetValueLocationConstraints()
+{
+    UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
+    UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
+    UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
+}
+
+void SetValueWithBarrierVertex::Dump(std::ostream &output) const
+{
+    output << "  SetValueWithBarrier: offset=" << offset_;
+}
+
 // ========================================= Control Opcode =========================================
 
 void JumpVertex::SetValueLocationConstraints() {}

@@ -86,14 +86,28 @@ public:
     {
         return glue_;
     }
-    ValueVertex *GetGlobalEnv() const
+    template <typename Callback>
+    ValueVertex *CreateEntryBlockValue(Callback &&callback)
     {
-        // to do: optimize
-        ASSERT(currentFrameState_ != nullptr);
-        ValueVertex *lexicalEnv = currentFrameState_->GetEnv();
-        int32_t globalEnvOffset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE);
-        return const_cast<ArkSteedGraphBuilder *>(this)->NewVertex<LoadTaggedFieldVertex>({lexicalEnv},
-                                                                                          globalEnvOffset);
+        // Callback must only build side-effect-free values that are function-wide constants.
+        ASSERT(startBlock_ != nullptr);
+
+        BB *savedBlock = CurrentBlock();
+        SetCurrentBlock(startBlock_);
+        ValueVertex *result = std::forward<Callback>(callback)();
+        SetCurrentBlock(savedBlock);
+        return result;
+    }
+    ValueVertex *GetGlobalEnv()
+    {
+        ASSERT(initialLexicalEnv_ != nullptr);
+        if (globalEnv_ == nullptr) {
+            globalEnv_ = CreateEntryBlockValue([this]() {
+                int32_t globalEnvOffset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE);
+                return NewVertex<LoadTaggedFieldVertex>({initialLexicalEnv_}, globalEnvOffset);
+            });
+        }
+        return globalEnv_;
     }
 
     ValueVertex *GetSharedConstPool()
@@ -352,7 +366,8 @@ private:
     ValueVertex *NewCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     void LowerCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
     void LowerCallStubWithICPreserveAcc(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
-    ValueVertex *NewCommonStubCall(std::initializer_list<ValueVertex *> args, const CommonStubCSigns::ID stubId);
+    ValueVertex *NewCommonStubCall(std::initializer_list<ValueVertex *> args, const CommonStubCSigns::ID stubId,
+                                   SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL);
     void ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args) const;
 
     std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const;
@@ -759,6 +774,12 @@ private:
     void LowerNewLexicalEnv();
     void LowerNewLexicalEnvWithName();
     void LowerPopLexicalEnv();
+
+    int32_t GetLexicalEnvSlotOffset(uint16_t slot) const;
+    int32_t GetLexicalEnvParentOffset() const;
+    ValueVertex *BuildEnvSlotLoad(ValueVertex *env, int32_t offset);
+    ValueVertex *BuildLexicalEnvAtLevel(ValueVertex *baseEnv, uint16_t level);
+
     void LowerLdSuperByValue();
     void LowerStSuperByValue();
     void LowerTryStGlobalByName();
@@ -816,6 +837,8 @@ private:
     ArkSteedPGOContext pgoContext_;
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     ValueVertex *glue_{nullptr};
+    ValueVertex *initialLexicalEnv_{nullptr};
+    ValueVertex *globalEnv_{nullptr};
     ArkSteedCompilationOptions options_;
     // to do: Huge object. Consider referencing instead of copying
     BytecodeContext bytecodeContext_;

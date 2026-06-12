@@ -24,8 +24,11 @@
 #include <tuple>
 #include <vector>
 
+#include "ecmascript/arksteed/arksteed_vertex.h"
+#include "ecmascript/base_env.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "libpandabase/macros.h"
 
@@ -355,25 +358,65 @@ struct LoadedPropertyKeyCompare {
     bool operator()(const LoadedPropertyKey &lhs, const LoadedPropertyKey &rhs) const;
 };
 
-enum class SideEffectKind : uint8_t {
-    NO_SIDE_EFFECT,
-    FIELD_WRITE,
-    ELEMENTS_WRITE,
-    MAP_TRANSITION,
-    UNKNOWN_CALL,
-    SAFE_CALL,
+class EnvSlotKey {
+public:
+    EnvSlotKey(ValueVertex *env, int32_t slot) : env_(env), slot_(slot) {}
+
+    ValueVertex *GetEnv() const
+    {
+        return env_;
+    }
+
+    int32_t GetSlot() const
+    {
+        return slot_;
+    }
+
+    bool operator<(const EnvSlotKey &other) const
+    {
+        if (std::less<ValueVertex *>()(env_, other.env_)) {
+            return true;
+        }
+        if (std::less<ValueVertex *>()(other.env_, env_)) {
+            return false;
+        }
+        return slot_ < other.slot_;
+    }
+
+private:
+    ValueVertex *env_;
+    int32_t slot_;
+};
+
+inline bool IsEnvConstantFieldOffset(int32_t offset)
+{
+    constexpr int32_t taggedSize = static_cast<int32_t>(JSTaggedValue::TaggedTypeSize());
+    constexpr int32_t dataOffset = static_cast<int32_t>(TaggedArray::DATA_OFFSET);
+    return offset == dataOffset + static_cast<int32_t>(BaseEnv::GLOBAL_ENV_INDEX) * taggedSize ||
+           offset == dataOffset + static_cast<int32_t>(LexicalEnv::PARENT_ENV_INDEX) * taggedSize;
+}
+
+enum class EnvSlotAliasMode : uint8_t {
+    NONE,
+    CURRENT_ENV_ONLY,
+    CONSTANT_ENV_ONLY,
+    MAY_ALIAS,
 };
 
 struct SideEffectDescriptor {
     SideEffectKind kind {SideEffectKind::NO_SIDE_EFFECT};
     ValueVertex *receiver {nullptr};
     PropertyKey propertyKey {PropertyKey::Unknown()};
+    ValueVertex *env {nullptr};
+    int32_t envSlot {-1};
+    ValueVertex *envSlotValue {nullptr};
 };
 
 class CompileInfoFacts {
 public:
     using ExpressionInputs = ChunkVector<ValueVertex *>;
     using ExpressionOptions = ChunkVector<uint64_t>;
+    using ClearedEnvSlotKeys = ChunkVector<EnvSlotKey>;
 
     explicit CompileInfoFacts(Chunk *chunk);
 
@@ -431,6 +474,13 @@ public:
     void ClearLoadedPropertiesForReceiver(ValueVertex *receiver);
     void ClearLoadedPropertiesForKey(PropertyKey key);
 
+    void RecordEnvSlot(ValueVertex *env, int32_t slot, ValueVertex *value);
+    ValueVertex *LookupEnvSlot(ValueVertex *env, int32_t slot) const;
+    void RecordEnvConstant(ValueVertex *env, int32_t slot, ValueVertex *value);
+    ValueVertex *LookupEnvConstant(ValueVertex *env, int32_t slot) const;
+    ClearedEnvSlotKeys ClearAliasedEnvSlotsFor(ValueVertex *env, int32_t slot, ValueVertex *newValue);
+    void ClearEnvSlotsFor(ValueVertex *env);
+
     void AddExpression(uint32_t hash, ValueVertex *node, const ExpressionInputs &inputs,
                        const ExpressionOptions &options, bool needsEpochCheck);
     ValueVertex *FindExpression(uint32_t hash, VertexOpcode opcode, const ExpressionInputs &inputs,
@@ -443,6 +493,16 @@ public:
     void OnSideEffect();
     void IncrementEffectEpoch();
 
+    EnvSlotAliasMode GetEnvSlotAliasMode() const
+    {
+        return envSlotAliasMode_;
+    }
+
+    void SetEnvSlotAliasMode(EnvSlotAliasMode mode)
+    {
+        envSlotAliasMode_ = mode;
+    }
+
     uint32_t GetEffectEpoch() const
     {
         return effectEpoch_;
@@ -451,7 +511,7 @@ public:
     bool Empty() const
     {
         return nodeInfos_.empty() && loadedProperties_.empty() && loadedConstantProperties_.empty() &&
-               availableExpressions_.empty();
+               loadedEnvSlots_.empty() && loadedEnvConstants_.empty() && availableExpressions_.empty();
     }
 
 private:
@@ -460,6 +520,7 @@ private:
 
     using NodeInfos = ChunkMap<ValueVertex *, NodeInfo>;
     using LoadedPropertyMap = ChunkMap<LoadedPropertyKey, ValueVertex *, LoadedPropertyKeyCompare>;
+    using LoadedEnvSlots = ChunkMap<EnvSlotKey, ValueVertex *>;
 
     struct AvailableExpression {
         ValueVertex *node {nullptr};
@@ -478,15 +539,25 @@ private:
     ValueVertex *LookupLoadedProperty(const LoadedPropertyMap &map, const LoadedPropertyKey &key) const;
     void RecordLoadedProperty(LoadedPropertyMap &map, const LoadedPropertyKey &key, ValueVertex *value);
     void MergeLoadedProperties(LoadedPropertyMap &target, const LoadedPropertyMap &other);
+    void MergeEnvSlots(LoadedEnvSlots &target, const LoadedEnvSlots &other);
     void MergeAvailableExpressions(const CompileInfoFacts &other);
     void CopyLoadedProperties(LoadedPropertyMap &target, const LoadedPropertyMap &source) const;
+    void CopyEnvSlots(LoadedEnvSlots &target, const LoadedEnvSlots &source) const;
+    void UpdateEnvSlotAliasMode(ValueVertex *env);
+    void RecomputeEnvSlotAliasMode();
+    bool EnvMayAlias(ValueVertex *lhs, ValueVertex *rhs) const;
+
+    static EnvSlotAliasMode MergeEnvSlotAliasMode(EnvSlotAliasMode lhs, EnvSlotAliasMode rhs);
 
     Chunk *chunk_;
     NodeInfos nodeInfos_;
     LoadedPropertyMap loadedProperties_;
     LoadedPropertyMap loadedConstantProperties_;
+    LoadedEnvSlots loadedEnvSlots_;
+    LoadedEnvSlots loadedEnvConstants_;
     ChunkMap<uint32_t, AvailableExpression> availableExpressions_;
     uint32_t effectEpoch_ {0};
+    EnvSlotAliasMode envSlotAliasMode_ {EnvSlotAliasMode::NONE};
 };
 
 }  // namespace panda::ecmascript::arksteed
