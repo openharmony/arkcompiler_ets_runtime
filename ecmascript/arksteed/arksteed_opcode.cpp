@@ -234,6 +234,7 @@ void CallRuntimeVertex::Dump(std::ostream &output) const
 void CallVertex::SetValueLocationConstraints()
 {
     DefineAsFixed(this, 0);
+    SetTemporariesNeeded(1);
     UseRegister(Arg(TARGET_INDEX));
     for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
         UseAny(Arg(i));

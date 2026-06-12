@@ -265,7 +265,7 @@ void ArkSteedCodeGenerator::StoreStubStackArgument(const Vertex *callVertex, int
         ArkSteedAssembler::MemoryOperand srcMem = assembler_->ToMemOperand(operand);
         assembler_->MoveRepr(MachineRepresentation::Tagged, destMem, srcMem);
     } else if (operand.IsConstant()) {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(assembler_);
         ArkSteedRegister scratch = scope.AcquireScratch();
         LoadConstantToRegister(callVertex->Arg(paramIdx).vertex(), scratch);
         assembler_->MoveRepr(MachineRepresentation::Tagged, destMem, scratch);
@@ -286,7 +286,7 @@ int ArkSteedCodeGenerator::PrepareCommonStubStackArguments(const Vertex *callVer
         StoreStubStackArgument(callVertex, paramIdx, destMem);
     }
     if (reservedSlotCount > stackArgCount) {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(assembler_);
         ArkSteedRegister scratch = scope.AcquireScratch();
         assembler_->Move(scratch, static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED));
         assembler_->MoveRepr(MachineRepresentation::Tagged, assembler_->GetCallArgSlot(stackArgCount), scratch);
@@ -301,7 +301,7 @@ int ArkSteedCodeGenerator::PrepareRuntimeStubStackArguments(const Vertex *callVe
     assembler_->ReserveCallArgSlots(reservedSlotCount);
 
     {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(assembler_);
         ArkSteedRegister scratch = scope.AcquireScratch();
         assembler_->Move(scratch, static_cast<int64_t>(runtimeId));
         assembler_->MoveRepr(MachineRepresentation::Word64,
@@ -349,7 +349,7 @@ void ArkSteedCodeGenerator::PrepareArkSteedCall(CallVertex *call, ArkSteedRegist
     const uint32_t totalArgc = userArgc + NUM_MANDATORY_JSFUNC_ARGS;
 
     {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(assembler_);
         ArkSteedRegister scratch = scope.AcquireScratch();
         LoadSteedExpectedArgc(target, scratch);
         ComputeSteedCallSlotCount(call, scratch);
@@ -381,7 +381,7 @@ void ArkSteedCodeGenerator::PrepareArkSteedCall(CallVertex *call, ArkSteedRegist
 
 void ArkSteedCodeGenerator::FreeArkSteedCallFrame(CallVertex *call)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister scratch = scope.AcquireScratch();
     assembler_->MoveRepr(MachineRepresentation::Tagged, scratch,
                          assembler_->GetCallArgSlot(CallVertex::TARGET_INDEX + CALL_ARG1));
@@ -394,7 +394,7 @@ void ArkSteedCodeGenerator::EmitCallArkSteed(CallVertex *call, ArkSteedRegister 
 {
     PrepareArkSteedCall(call, target);
     {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(assembler_);
         ArkSteedRegister codeEntry = scope.AcquireScratch();
         assembler_->PrepareSteedCalleeContext(target, codeEntry);
         assembler_->Call(codeEntry);
@@ -422,7 +422,7 @@ int ArkSteedCodeGenerator::PrepareTrampolineArguments(CallVertex *call)
     assembler_->ReserveCallArgSlots(static_cast<int32_t>(reservedSlotCount));
 
     {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(assembler_);
         ArkSteedRegister scratch = scope.AcquireScratch();
         assembler_->Move(scratch, static_cast<int64_t>(totalArgc));
         assembler_->MoveRepr(MachineRepresentation::Word64,
@@ -629,7 +629,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckHClassVertex>(CheckHClass
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << checkHClass->GetId() << ": CheckHClassVertex";
 #endif
     auto receiver = GetInputRegister(checkHClass, CheckHClassVertex::RECEIVER_INDEX);
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister expectedHClass = scope.AcquireScratch();
     assembler_->LoadTaggedValue(expectedHClass, JSTaggedValue(checkHClass->GetExpectedHClass()).GetRawData());
     assembler_->CompareField(receiver, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET), expectedHClass);
@@ -836,7 +836,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTrueVertex>(BranchIfTrueV
 
     auto cond = GetInputRegister(jumpIf, 0);
     // to do: optimize
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister scratch = scope.AcquireScratch();
     assembler_->LoadTaggedValue(scratch, JSTaggedValue::True().GetRawData());
     assembler_->Compare(cond, scratch);
@@ -957,6 +957,10 @@ void ArkSteedCodeGenerator::ProcessValueVertex(ValueVertex *valueVertex)
 void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
 {
     RecordVertexComment(vertex);
+    TemporaryRegisterScope temporaryScope(assembler_);
+    temporaryScope.Include(vertex->GetRegallocInfo()->GetGeneralTemporaries());
+    temporaryScope.IncludeDouble(vertex->GetRegallocInfo()->GetDoubleTemporaries());
+
     switch (vertex->GetOpcode()) {
 #define PROCESS_VERTEX_CASE(Type)                                \
         case VertexOpcode::Type:                                 \
@@ -991,6 +995,10 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
 void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
 {
     RecordVertexComment(vertex);
+    TemporaryRegisterScope temporaryScope(assembler_);
+    temporaryScope.Include(vertex->GetRegallocInfo()->GetGeneralTemporaries());
+    temporaryScope.IncludeDouble(vertex->GetRegallocInfo()->GetDoubleTemporaries());
+
     switch (vertex->GetOpcode()) {
 #define PROCESS_VERTEX_CASE(Type)                             \
         case VertexOpcode::Type:                              \

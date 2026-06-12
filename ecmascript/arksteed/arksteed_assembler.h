@@ -38,6 +38,7 @@ using Label = panda::ecmascript::Label;
 
 class ArkSteedAssembler;
 class ScratchRegisterScope;
+class TemporaryRegisterScope;
 
 // =============================================================================
 // Condition - Platform-agnostic condition codes
@@ -249,6 +250,8 @@ public:
     }
 
 private:
+    friend class TemporaryRegisterScope;
+
 #if defined(PANDA_TARGET_AMD64)
     using PlatformAssembler = x64::AssemblerX64;
 #elif defined(PANDA_TARGET_ARM64)
@@ -260,12 +263,83 @@ private:
     bool enableComments_ = false;
     bool hasFrame_ = false;
     uint32_t taggedStackSlots_ = 0;
+    TemporaryRegisterScope *temporaryRegisterScope_ = nullptr;
     CommentList comments_;
     [[maybe_unused]] JSThread *compilerThread_;
     JSThread *entryThread_;
 
     NO_COPY_SEMANTIC(ArkSteedAssembler);
     NO_MOVE_SEMANTIC(ArkSteedAssembler);
+};
+
+class TemporaryRegisterScope {
+public:
+    explicit TemporaryRegisterScope(ArkSteedAssembler *assembler) : assembler_(assembler)
+    {
+        previous_ = assembler_->temporaryRegisterScope_;
+        if (previous_ != nullptr) {
+            available_ = previous_->available_;
+            availableDouble_ = previous_->availableDouble_;
+            fixedAvailable_ = previous_->fixedAvailable_;
+            fixedAvailableDouble_ = previous_->fixedAvailableDouble_;
+        } else {
+#if defined(PANDA_TARGET_AMD64)
+            fixedAvailable_.Set(x64::r10);
+            fixedAvailableDouble_.Set(x64::xmm15);
+#elif defined(PANDA_TARGET_ARM64)
+            fixedAvailable_.Set(aarch64::x16);
+            fixedAvailable_.Set(aarch64::x17);
+            fixedAvailableDouble_.Set(aarch64::d30);
+            fixedAvailableDouble_.Set(aarch64::d31);
+#endif
+        }
+        assembler_->temporaryRegisterScope_ = this;
+    }
+
+    ~TemporaryRegisterScope()
+    {
+        ASSERT(assembler_->temporaryRegisterScope_ == this);
+        assembler_->temporaryRegisterScope_ = previous_;
+    }
+
+    NO_COPY_SEMANTIC(TemporaryRegisterScope);
+    NO_MOVE_SEMANTIC(TemporaryRegisterScope);
+
+    void Include(const ArkSteedRegList &registers)
+    {
+        available_ |= registers;
+    }
+
+    void IncludeDouble(const ArkDoubleRegList &registers)
+    {
+        availableDouble_ |= registers;
+    }
+
+    ArkSteedRegister AcquireScratch()
+    {
+        if (!fixedAvailable_.IsEmpty()) {
+            return fixedAvailable_.PopFirst();
+        }
+        ASSERT(!available_.IsEmpty());
+        return available_.PopFirst();
+    }
+
+    ArkSteedDoubleRegister AcquireDoubleScratch()
+    {
+        if (!fixedAvailableDouble_.IsEmpty()) {
+            return fixedAvailableDouble_.PopFirst();
+        }
+        ASSERT(!availableDouble_.IsEmpty());
+        return availableDouble_.PopFirst();
+    }
+
+private:
+    ArkSteedAssembler *assembler_;
+    TemporaryRegisterScope *previous_ = nullptr;
+    ArkSteedRegList available_;
+    ArkDoubleRegList availableDouble_;
+    ArkSteedRegList fixedAvailable_;
+    ArkDoubleRegList fixedAvailableDouble_;
 };
 
 }  // namespace panda::ecmascript::arksteed

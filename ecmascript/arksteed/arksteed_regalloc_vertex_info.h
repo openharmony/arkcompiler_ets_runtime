@@ -120,7 +120,7 @@ public:
     std::array<RegisterT, N> TakeTemporaries() const
     {
         RegListBase<RegisterT> temporaries = GetTemporaries<RegisterT>();
-        ASSERT(temporaries.Count() <= N);
+        ASSERT(temporaries.Count() >= N);
 
         std::array<RegisterT, N> res;
         for (size_t i = 0; i < N; i++) {

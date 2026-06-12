@@ -57,7 +57,7 @@ inline void ArkSteedAssembler::Branch(Condition condition, Label *ifTrue, bool f
 }
 void ArkSteedAssembler::CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ASSERT(entryThread_ != nullptr);
     Address address = entryThread_->GetRTInterface(static_cast<size_t>(kungfu::RuntimeStubCSigns::ID_CallRuntime));
     auto scratch = scope.AcquireScratch();
@@ -71,7 +71,7 @@ void ArkSteedAssembler::CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId)
 }
 void ArkSteedAssembler::CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ASSERT(entryThread_ != nullptr);
     Address address = entryThread_->GetRTInterface(static_cast<size_t>(stubId));
     auto scratch = scope.AcquireScratch();
@@ -85,7 +85,7 @@ void ArkSteedAssembler::CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId)
 }
 inline void ArkSteedAssembler::CallCommonStub(uint32_t stubId)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ASSERT(entryThread_ != nullptr);
     Address address = entryThread_->GetFastStubEntry(stubId);
     auto scratch = scope.AcquireScratch();

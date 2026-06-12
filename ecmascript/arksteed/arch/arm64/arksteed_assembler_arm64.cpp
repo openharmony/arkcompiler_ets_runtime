@@ -214,7 +214,7 @@ void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int32_t immediate)
 
 void ArkSteedAssembler::CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     LoadField(scratch, base, offset);
     Compare(scratch, rhs);
@@ -236,7 +236,7 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 
 void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, value);
     And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
@@ -246,7 +246,7 @@ void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label 
 
 void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister hclass = scope.AcquireScratch();
     ArkSteedRegister objectType = scope.AcquireScratch();
     LoadField(hclass, value, TaggedObject::HCLASS_OFFSET);
@@ -261,7 +261,7 @@ void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *targe
 
 void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister hclass = scope.AcquireScratch();
     ArkSteedRegister bitfield = scope.AcquireScratch();
     Label notClassConstructor;
@@ -275,7 +275,7 @@ void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *t
 
 void ArkSteedAssembler::JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister bitfield = scope.AcquireScratch();
     LoadField(bitfield, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
     assembler_.Tbz(bitfield, JSFunctionBase::IsCompiledCodeBit::START_BIT, target);
@@ -394,7 +394,7 @@ void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount
     Compare(fillSlotCount, 0);
     JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &fillDone);
 
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     constexpr int32_t SLOT_INDEX_SHIFT = 3;
     const int32_t firstUndefinedArgBaseSlot = static_cast<int32_t>(NUM_MANDATORY_JSFUNC_ARGS + userArgc);

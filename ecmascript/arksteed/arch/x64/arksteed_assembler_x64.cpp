@@ -134,8 +134,7 @@ void ArkSteedAssembler::Or(ArkSteedRegister dst, int64_t immediate)
     if (immediate >= INT32_MIN && immediate <= INT32_MAX) {
         assembler_.Or(x64::Immediate(static_cast<int32_t>(immediate)), dst);
     } else {
-        // Use temp register for 64-bit immediate
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(this);
         auto scratch = scope.AcquireScratch();
         assembler_.Movabs(static_cast<uint64_t>(immediate), scratch);
         assembler_.Orq(scratch, dst);
@@ -152,7 +151,7 @@ void ArkSteedAssembler::And(ArkSteedRegister dst, int64_t immediate)
     if (immediate >= INT32_MIN && immediate <= INT32_MAX) {
         assembler_.Andq(x64::Immediate(static_cast<int32_t>(immediate)), dst);
     } else {
-        ScratchRegisterScope scope;
+        TemporaryRegisterScope scope(this);
         auto scratch = scope.AcquireScratch();
         assembler_.Movabs(static_cast<uint64_t>(immediate), scratch);
         assembler_.And(scratch, dst);
@@ -248,7 +247,7 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 
 void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, value);
     assembler_.Shrq(x64::Immediate(static_cast<int32_t>(JSTaggedValue::TAG_BITS_SHIFT)), scratch);
@@ -262,7 +261,7 @@ void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label 
 
 void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     LoadField(scratch, value, TaggedObject::HCLASS_OFFSET);
     And(scratch, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
@@ -276,7 +275,7 @@ void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *targe
 
 void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Label notClassConstructor;
     LoadField(scratch, jsFunc, TaggedObject::HCLASS_OFFSET);
@@ -291,7 +290,7 @@ void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *t
 
 void ArkSteedAssembler::JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister bitfield = scope.AcquireScratch();
     LoadField(bitfield, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
     assembler_.Btq(x64::Immediate(JSFunctionBase::IsCompiledCodeBit::START_BIT), bitfield);
