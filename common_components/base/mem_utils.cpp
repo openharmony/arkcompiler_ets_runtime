@@ -19,6 +19,7 @@
 namespace common {
 void MemorySet(uintptr_t dest, size_t size, int c, size_t count)
 {
+    LOGF_CHECK(size == count) << "MemorySet: destMax must equal count";
     uintptr_t destAddress = dest;
     while (size != 0) {
         size_t sizePerChunk = size > SECUREC_MEM_MAX_LEN ? SECUREC_MEM_MAX_LEN : size;
@@ -33,6 +34,7 @@ void MemorySet(uintptr_t dest, size_t size, int c, size_t count)
 
 void MemoryCopy(uintptr_t dest, size_t size, const uintptr_t src, size_t count)
 {
+    LOGF_CHECK(size == count) << "MemoryCopy: destMax must equal count";
     uintptr_t destAddress = dest;
     uintptr_t srcAddress = src;
     while (size != 0) {

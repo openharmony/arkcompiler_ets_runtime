@@ -104,7 +104,6 @@ public:
     static std::vector<CString> Split(CString& source, char separator = ' ');
 
     static CString Strip(CString& source, char separator = ' ');
-    static char* BaseName(const CString& path);
 
     CString& ToLowerCase()
     {

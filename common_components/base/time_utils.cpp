@@ -55,16 +55,25 @@ void SleepForNano(uint64_t ns) { std::this_thread::sleep_for(std::chrono::nanose
 
 #ifndef NDEBUG
 // format: yyyy-mm-dd hh:mm::ss
-static inline CString GetDate(const char* format)
+static CString GetDate(const char* format)
 {
     std::time_t time = std::time(nullptr);
-    std::tm* now = std::localtime(&time);
-    if (UNLIKELY_CC(now == nullptr)) {
+    if (time == static_cast<std::time_t>(-1)) {
         return CString();
     }
+    struct tm tm;
+#ifdef _WIN64
+    if (localtime_s(&tm, &time) != 0) {
+        return CString();
+    }
+#else
+    if (localtime_r(&time, &tm) == nullptr) {
+        return CString();
+    }
+#endif
 
     std::array<char, 100> buffer; // the array length is 100
-    if (std::strftime(buffer.data(), buffer.size(), format, now)) {
+    if (std::strftime(buffer.data(), buffer.size(), format, &tm)) {
         return CString(buffer.data());
     }
     return CString();

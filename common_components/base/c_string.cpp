@@ -260,7 +260,7 @@ CString& CString::Truncate(size_t index)
 
 CString& CString::Insert(size_t index, const char* addStr)
 {
-    if (index >= length_ || *addStr == '\0') {
+    if (index >= length_ || addStr == nullptr || *addStr == '\0') {
         LOG_COMMON(ERROR) << "CString::Insert input parameter error";
         return *this;
     }
@@ -346,8 +346,6 @@ std::vector<CString> CString::Split(CString& source, char separator)
     }
     return tokens;
 }
-
-char* CString::BaseName(const CString& path) { return basename(path.str_); }
 
 // helpers for logging one line with no more than 256 characters
 CString CString::FormatString(const char* format, ...)
