@@ -290,6 +290,9 @@ config("common_components_common_config") {
       "PANDA_ENABLE_GLOBAL_REGISTER_VARIABLES",
       "PANDA_USE_32_BIT_POINTER",
     ]
+    if (!is_mingw && !is_mac && target_os != "ios" && !is_arkui_x) {
+      defines += [ "EXCLUDE_C_INTERPRETER" ]
+    }
   } else if (current_cpu == "x86") {
     defines += [ "PANDA_TARGET_X86" ]
   } else if (current_cpu == "amd64" || current_cpu == "x64" ||
