@@ -397,6 +397,16 @@ public:
         inBackground_ = inBackground;
     }
 
+    static void SetFork(bool isFork)
+    {
+        isFork_ = isFork;
+    }
+
+    static bool GetFork()
+    {
+        return isFork_;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -537,6 +547,8 @@ private:
 
     bool inBackground_ {false};
     bool isMainProcess_ {false};
+
+    static bool isFork_;
 
     friend class EcmaVM;
     friend class JSThread;

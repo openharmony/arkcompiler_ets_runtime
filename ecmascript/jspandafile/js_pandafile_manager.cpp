@@ -24,6 +24,7 @@
 
 #include "constpool_snapshot.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -501,14 +502,18 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
         UNREACHABLE();
     }
 
-    auto iter = extractors_.find(jsPandaFile);
-    if (iter == extractors_.end()) {
+    auto *extractors = &extractors_;
+    if (Runtime::GetFork()) {
+        static std::unordered_map<const JSPandaFile *, std::unique_ptr<DebugInfoExtractor>> forkExtractors;
+        extractors = &forkExtractors;
+    }
+    auto iter = extractors->find(jsPandaFile);
+    if (iter == extractors->end()) {
         auto extractorPtr = std::make_unique<DebugInfoExtractor>(jsPandaFile);
         DebugInfoExtractor *extractor = extractorPtr.get();
-        extractors_[jsPandaFile] = std::move(extractorPtr);
+        (*extractors)[jsPandaFile] = std::move(extractorPtr);
         return extractor;
     }
-
     return iter->second.get();
 }
 

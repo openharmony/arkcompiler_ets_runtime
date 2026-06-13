@@ -190,6 +190,11 @@ private:
         LocalVariableTable localVariableTable;
     };
 
+    CUnorderedMap<uint32_t, MethodDebugInfo> &GetMethodInfo()
+    {
+        static CUnorderedMap<uint32_t, MethodDebugInfo> methods;
+        return methods;
+    }
     std::recursive_mutex mutex_;
     CUnorderedMap<uint32_t, MethodDebugInfo> methods_;
     const JSPandaFile *jsPandaFile_ {nullptr};
