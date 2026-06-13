@@ -218,19 +218,19 @@ public:
         return dropframeManager_.CheckIsSendableMethod();
     }
 
-    void EnableObjectHashDisplay()
+    void EnableRunningTestcases()
     {
-        isObjHashDisplayEnabled_ = true;
+        isRunningTestcases_ = true;
     }
 
-    void DisableObjectHashDisplay()
+    void DisableRunningTestcases()
     {
-        isObjHashDisplayEnabled_ = false;
+        isRunningTestcases_ = false;
     }
 
-    bool IsObjHashDisplayEnabled()
+    bool IsRunningTestcases()
     {
-        return isObjHashDisplayEnabled_;
+        return isRunningTestcases_;
     }
     
     void EnableSerializationTimeoutCheck()
@@ -269,7 +269,7 @@ private:
     bool isMixedDebugEnabled_ { false };
     bool isMixedStackEnabled_ { false };
     bool isSignalInterrupt_ {false};
-    bool isObjHashDisplayEnabled_ { true };
+    bool isRunningTestcases_ { false };
     bool asyncStackTrace_ {false};
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
