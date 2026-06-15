@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -62,22 +62,22 @@ bool is_native_function_frame(unsigned int frame_type)
 uintptr_t calc_pc_addr_from_fp_addr(uintptr_t fp_addr, unsigned int frame_type)
 {
     uintptr_t type_addr = fp_addr - sizeof(uintptr_t);
-    uintptr_t addr = type_addr - (uintptr_t)frame_offset_table64[frame_type].type_offset;
-    addr += (uintptr_t)frame_offset_table64[frame_type].pc_offset;
+    uintptr_t addr = type_addr - static_cast<uintptr_t>(frame_offset_table64[frame_type].type_offset);
+    addr += static_cast<uintptr_t>(frame_offset_table64[frame_type].pc_offset);
     return addr;
 }
 
 uintptr_t calc_fp_addr_from_fp_addr(uintptr_t fp_addr, unsigned int frame_type)
 {
     uintptr_t type_addr = fp_addr - sizeof(uintptr_t);
-    uintptr_t addr = type_addr - (uintptr_t)frame_offset_table64[frame_type].type_offset;
-    addr += (uintptr_t)frame_offset_table64[frame_type].fp_offset;
+    uintptr_t addr = type_addr - static_cast<uintptr_t>(frame_offset_table64[frame_type].type_offset);
+    addr += static_cast<uintptr_t>(frame_offset_table64[frame_type].fp_offset);
     return addr;
 }
 
 uintptr_t clear_lazy_deopt_flag(uintptr_t frame_type_raw)
 {
-    return (frame_type_raw & (uintptr_t)(~(1UL << LAZY_DEOPT_FLAG_BIT1)));
+    return (frame_type_raw & static_cast<uintptr_t>(~(1UL << LAZY_DEOPT_FLAG_BIT1)));
 }
 
 int next_ark_frame(unwind_user_context_s *ctx, uintptr_t fp_addr, unsigned int curr_frame_type,
@@ -91,7 +91,7 @@ int next_ark_frame(unwind_user_context_s *ctx, uintptr_t fp_addr, unsigned int c
 
     if (is_entry_frame(curr_frame_type)) {
         next_fp_addr = fp_addr;
-        next_pc_addr = (uintptr_t)(fp_addr + sizeof(uintptr_t));
+        next_pc_addr = static_cast<uintptr_t>(fp_addr + sizeof(uintptr_t));
     } else {
         if (is_js_function_frame(curr_frame_type) || is_native_function_frame(curr_frame_type)) {
             next_pc_addr = calc_pc_addr_from_fp_addr(fp_addr, curr_frame_type);
@@ -120,7 +120,7 @@ int next_ark_frame(unwind_user_context_s *ctx, uintptr_t fp_addr,
     uintptr_t frame_type = 0UL;
     while (err == E_OK) {
         bool frame_avail = false;
-        uintptr_t type_addr = (uintptr_t)(fp_addr - sizeof(uintptr_t));
+        uintptr_t type_addr = static_cast<uintptr_t>(fp_addr - sizeof(uintptr_t));
         err = ctx->read_mem(ctx, type_addr, &frame_type, sizeof(uintptr_t));
         if (err == E_OK) {
             frame_type = clear_lazy_deopt_flag(frame_type);
@@ -130,12 +130,12 @@ int next_ark_frame(unwind_user_context_s *ctx, uintptr_t fp_addr,
             }
         }
         if (err == E_OK) {
-            err = next_ark_frame(ctx, fp_addr, (unsigned int)frame_type, frame, &frame_avail);
+            err = next_ark_frame(ctx, fp_addr, static_cast<unsigned int>(frame_type), frame, &frame_avail);
         }
         if (err == E_OK) {
             fp_addr = frame->fp;
             if (frame_avail) {
-                *ret_frame_type = (unsigned int)frame_type;
+                *ret_frame_type = static_cast<unsigned int>(frame_type);
                 break;
             }
         }

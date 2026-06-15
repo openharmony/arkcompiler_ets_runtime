@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -551,7 +551,7 @@ bool ZipFile::UnzipWithInflated(const ZipEntry &zipEntry, const uint16_t extraSi
 
         inflateLen = UNZIP_BUF_OUT_LEN - zstream.avail_out;
         if (inflateLen > 0) {
-            dest.write((const char *)bufOut, inflateLen);
+            dest.write(reinterpret_cast<const char *>(bufOut), inflateLen);
             zstream.next_out = bufOut;
             zstream.avail_out = UNZIP_BUF_OUT_LEN;
             errorTimes = 0;

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -108,7 +108,6 @@ void SourceMap::Init(const std::string& hapPath)
 void SourceMap::SplitSourceMap()
 {
     std::string_view data = std::string_view(reinterpret_cast<char*>(dataPtr_.get()), dataLen_);
-    std::string_view url;
 
     size_t pos = SOURCEMAP_START_LEN;
     while (pos != std::string_view::npos) {
