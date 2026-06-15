@@ -53,4 +53,22 @@
     let view = new BigInt64Array(buf);
     assert_equal(Atomics.wait(view, 0, true), "not-equal");
 }
+{
+    const evil = {
+        valueOf() {
+            ArkTools.forceFullGC();
+            return 0x41;
+        },
+        [Symbol.toPrimitive]() {
+            ArkTools.forceFullGC();
+            return 1n;
+        }
+    }
+    const view = new BigInt64Array(1)
+    let done = false;
+    Atomics.add(view, 0, evil);
+    Atomics.compareExchange(view, 0, 0n, evil);
+    done = true;
+    assert_equal(done, true);
+}
 test_end();
