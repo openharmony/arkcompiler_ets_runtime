@@ -412,6 +412,12 @@ public:
         return glueData_.exception_;
     }
 
+    // last exception will not clear when clear exception
+    JSTaggedValue GetLastException() const
+    {
+        return glueData_.lastException_;
+    }
+
     bool HasPendingException() const
     {
         return !glueData_.exception_.IsHole();
@@ -1281,6 +1287,7 @@ public:
                                                  base::AlignedPointer,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
+                                                 JSTaggedValue,
                                                  base::AlignedUint32,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1341,6 +1348,7 @@ public:
             HeapCurrentEndIndex,
             AllocBufferIndex,
             StateAndFlagsIndex,
+            LastExceptionIndex,
             ExceptionIndex,
             ExtraErrorMessageIndex,
             JsonErrorPositionIndex,
@@ -1422,6 +1430,11 @@ public:
         static size_t GetStateAndFlagsOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
+        }
+
+        static size_t GetLastExceptionOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::LastExceptionIndex)>(isArch32);
         }
 
         static size_t GetExceptionOffset(bool isArch32)
@@ -1729,6 +1742,8 @@ public:
         alignas(EAS) uintptr_t heapCurrentEnd_ {0};
         alignas(EAS) uintptr_t allocBuffer_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
+        // cache of last exception, will not clear when clear exception
+        alignas(EAS) JSTaggedValue lastException_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue extraErrorMessage_ {JSTaggedValue::Hole()};
         alignas(EAS) uint32_t jsonErrorPosition_ {0};

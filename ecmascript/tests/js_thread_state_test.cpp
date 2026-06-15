@@ -19,6 +19,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
@@ -371,5 +372,72 @@ HWTEST_F_L0(StateTransitioningTest, SuspendOtherNativeTransferToRunningTest)
     while (CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE)) {}
     EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::RUNNING));
     DestroyAllVMs();
+}
+
+// LastException Tests
+HWTEST_F_L0(StateTransitioningTest, LastException_InitiallyHole)
+{
+    EXPECT_TRUE(thread->GetLastException().IsHole());
+    EXPECT_TRUE(thread->GetException().IsHole());
+    EXPECT_FALSE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(StateTransitioningTest, SetException_UpdatesBothExceptionAndLastException)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSObject> errorObj = factory->GetJSError(ErrorType::TYPE_ERROR, "test error");
+    JSTaggedValue exceptionValue = errorObj.GetTaggedValue();
+
+    thread->SetException(exceptionValue);
+
+    EXPECT_TRUE(thread->GetException().IsJSError());
+    EXPECT_TRUE(thread->GetLastException().IsJSError());
+    EXPECT_EQ(thread->GetException(), thread->GetLastException());
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+HWTEST_F_L0(StateTransitioningTest, ClearException_OnlyClearsExceptionNotLastException)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSObject> errorObj = factory->GetJSError(ErrorType::TYPE_ERROR, "test error");
+    JSTaggedValue exceptionValue = errorObj.GetTaggedValue();
+
+    thread->SetException(exceptionValue);
+    EXPECT_TRUE(thread->HasPendingException());
+
+    thread->ClearException();
+
+    EXPECT_TRUE(thread->GetException().IsHole());
+    EXPECT_FALSE(thread->HasPendingException());
+    // lastException should still hold the previous exception value
+    EXPECT_TRUE(thread->GetLastException().IsJSError());
+    EXPECT_EQ(thread->GetLastException(), exceptionValue);
+}
+
+HWTEST_F_L0(StateTransitioningTest, MultipleSetException_UpdatesLastExceptionToLatest)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSObject> errorObj1 = factory->GetJSError(ErrorType::TYPE_ERROR, "first error");
+    JSHandle<JSObject> errorObj2 = factory->GetJSError(ErrorType::RANGE_ERROR, "second error");
+    JSTaggedValue exceptionValue1 = errorObj1.GetTaggedValue();
+    JSTaggedValue exceptionValue2 = errorObj2.GetTaggedValue();
+
+    thread->SetException(exceptionValue1);
+    EXPECT_EQ(thread->GetException(), exceptionValue1);
+    EXPECT_EQ(thread->GetLastException(), exceptionValue1);
+
+    thread->ClearException();
+    EXPECT_TRUE(thread->GetException().IsHole());
+    EXPECT_EQ(thread->GetLastException(), exceptionValue1);
+
+    // Set a different exception, lastException should update to the new one
+    thread->SetException(exceptionValue2);
+    EXPECT_EQ(thread->GetException(), exceptionValue2);
+    EXPECT_EQ(thread->GetLastException(), exceptionValue2);
+
+    thread->ClearException();
+    EXPECT_TRUE(thread->GetException().IsHole());
+    EXPECT_EQ(thread->GetLastException(), exceptionValue2);
 }
 }  // namespace panda::test

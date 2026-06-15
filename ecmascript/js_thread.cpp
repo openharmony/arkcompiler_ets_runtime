@@ -329,6 +329,7 @@ ThreadId JSThread::GetCurrentThreadId()
 
 void JSThread::SetException(JSTaggedValue exception)
 {
+    glueData_.lastException_ = exception;
     glueData_.exception_ = exception;
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
     if (vm_->GetJSOptions().EnableExceptionBacktrace()) {
@@ -539,6 +540,9 @@ void JSThread::ClearMegaIC()
 
 void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
 {
+    if (!glueData_.lastException_.IsHole()) {
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.lastException_)));
+    }
     if (!glueData_.exception_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
