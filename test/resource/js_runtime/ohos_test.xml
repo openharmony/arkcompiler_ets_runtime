@@ -4171,4 +4171,9 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="HybridHeapSnapshotTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
 </configuration>
