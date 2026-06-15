@@ -2012,14 +2012,13 @@ CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 void CommonStubCSigns::Initialize()
 {
 #define INIT_SIGNATURES(name)                                                              \
-    name##CallSignature::Initialize(&callSigns_[name]);                                    \
-    callSigns_[name].SetID(name);                                                          \
-    callSigns_[name].SetName(std::string("COStub_") + #name);                              \
-    callSigns_[name].SetConstructor(                                                       \
-        [](void* env) {                                                                    \
-            return static_cast<void*>(                                                     \
-                new name##StubBuilder(&callSigns_[name], static_cast<Environment*>(env))); \
-        });
+    {                                                                                      \
+        name##CallSignature::Initialize(&callSigns_[name]);                                \
+        callSigns_[name].SetID(name);                                                      \
+        callSigns_[name].SetName(std::string("COStub_") + #name);                          \
+        callSigns_[name].SetConstructor(                                                   \
+            TargetConstructor(StubBuilderFactory<name##StubBuilder>, &callSigns_[name]));  \
+    }
 
     COMMON_STUB_ID_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
@@ -2029,10 +2028,7 @@ void CommonStubCSigns::Initialize()
     callSigns_[name].SetID(name);                                                          \
     callSigns_[name].SetName(std::string("COStub_") + #name);                              \
     callSigns_[name].SetConstructor(                                                       \
-        [](void* env) {                                                                    \
-            return static_cast<void*>(                                                     \
-                new name##StubBuilder(&callSigns_[name], static_cast<Environment*>(env))); \
-        });                                                                                \
+        TargetConstructor(StubBuilderFactory<name##StubBuilder>, &callSigns_[name]));      \
     callSigns_[name].SetStwCopyStub(true);                                                 \
     callSigns_[name].SetTargetKind(CallSignature::TargetKind::COMMON_STW_COPY_STUB);
 
