@@ -294,9 +294,13 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
                 [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
                 JSHandle<JSTaggedValue> funcName(                               \
                     thread, GET_STR_FROM_CACHE(stringId));                      \
-                std::string message = JSTaggedValue::ExceptionToString(         \
+                std::string name = JSTaggedValue::ExceptionToString(            \
                     thread, funcName);                                          \
-                message.append(" is not callable");                             \
+                JSHandle<JSTaggedValue> funcHandle(thread, funcValue);          \
+                std::string value = JSTaggedValue::ExceptionToString(           \
+                    thread, funcHandle);                                        \
+                std::string message = base::ConcatToStdString(                  \
+                    name, " is not callable, ", name, " is ", value);           \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
                     ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
                 thread->SetException(error.GetTaggedValue());                   \
