@@ -1485,4 +1485,133 @@ HWTEST_F_L0(JSObjectTest, CreateObjectFromProperties)
     SharedHeapVerification(sHeap, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     EXPECT_TRUE(newObj->GetClass()->IsDictionaryMode());
 }
+
+HWTEST_F_L0(JSObjectTest, GetObjectHash_ReturnZeroForNonECMAObject)
+{
+    // Test with undefined
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_EQ(ECMAObject::GetObjectHash(thread, undefined), 0);
+
+    // Test with null
+    JSHandle<JSTaggedValue> nullValue(thread, JSTaggedValue::Null());
+    EXPECT_EQ(ECMAObject::GetObjectHash(thread, nullValue), 0);
+
+    // Test with integer
+    JSHandle<JSTaggedValue> intValue(thread, JSTaggedValue(42));
+    EXPECT_EQ(ECMAObject::GetObjectHash(thread, intValue), 0);
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHash_GenerateHashWhenNoHash)
+{
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> obj =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+
+    // New object has no hash (HasHash returns false)
+    EXPECT_FALSE(ECMAObject::Cast(obj.GetTaggedValue().GetTaggedObject())->HasHash(thread));
+
+    // GetObjectHash should generate and set a new hash
+    int32_t hash = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj));
+    EXPECT_GT(hash, 0);
+
+    // After GetObjectHash, the object should have a hash
+    EXPECT_TRUE(ECMAObject::Cast(obj.GetTaggedValue().GetTaggedObject())->HasHash(thread));
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHash_ReturnExistingHash)
+{
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> obj =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+
+    // First call generates a hash
+    int32_t hash1 = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj));
+
+    // Second call should return the same hash
+    int32_t hash2 = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj));
+    EXPECT_EQ(hash1, hash2);
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHash_DifferentObjectsHaveDifferentHashes)
+{
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> obj1 =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    JSHandle<JSObject> obj2 =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+
+    int32_t hash1 = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj1));
+    int32_t hash2 = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj2));
+
+    // Hashes should be positive
+    EXPECT_GT(hash1, 0);
+    EXPECT_GT(hash2, 0);
+    // Two different objects should (very likely) have different hashes
+    EXPECT_NE(hash1, hash2);
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHashCode_ReturnZeroForNonECMAObject)
+{
+    // Test with undefined
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_EQ(ECMAObject::GetObjectHashCode(thread, undefined), 0);
+
+    // Test with null
+    JSHandle<JSTaggedValue> nullValue(thread, JSTaggedValue::Null());
+    EXPECT_EQ(ECMAObject::GetObjectHashCode(thread, nullValue), 0);
+
+    // Test with integer
+    JSHandle<JSTaggedValue> intValue(thread, JSTaggedValue(42));
+    EXPECT_EQ(ECMAObject::GetObjectHashCode(thread, intValue), 0);
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHashCode_GenerateHashWhenHashIsZero)
+{
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> obj =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+
+    // New object's GetHash returns 0
+    EXPECT_EQ(ECMAObject::Cast(obj.GetTaggedValue().GetTaggedObject())->GetHash(thread), 0);
+
+    // GetObjectHashCode should generate and set a new hash
+    int32_t hash = ECMAObject::GetObjectHashCode(thread, JSHandle<JSTaggedValue>(obj));
+    EXPECT_GT(hash, 0);
+
+    // After GetObjectHashCode, the object's hash should be non-zero
+    EXPECT_NE(ECMAObject::Cast(obj.GetTaggedValue().GetTaggedObject())->GetHash(thread), 0);
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHashCode_ReturnExistingHashWhenNotZero)
+{
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> obj =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+
+    // First call generates a hash
+    int32_t hash1 = ECMAObject::GetObjectHashCode(thread, JSHandle<JSTaggedValue>(obj));
+
+    // Second call should return the same hash
+    int32_t hash2 = ECMAObject::GetObjectHashCode(thread, JSHandle<JSTaggedValue>(obj));
+    EXPECT_EQ(hash1, hash2);
+}
+
+HWTEST_F_L0(JSObjectTest, GetObjectHashAndGetObjectHashCode_ConsistentResults)
+{
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> obj =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+
+    // Both methods should return the same hash for the same object
+    int32_t hashFromGetObjectHash = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj));
+    int32_t hashFromGetObjectHashCode = ECMAObject::GetObjectHashCode(thread, JSHandle<JSTaggedValue>(obj));
+    EXPECT_EQ(hashFromGetObjectHash, hashFromGetObjectHashCode);
+
+    // Create another object and call in reverse order
+    JSHandle<JSObject> obj2 =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    int32_t hash2FromGetObjectHashCode = ECMAObject::GetObjectHashCode(thread, JSHandle<JSTaggedValue>(obj2));
+    int32_t hash2FromGetObjectHash = ECMAObject::GetObjectHash(thread, JSHandle<JSTaggedValue>(obj2));
+    EXPECT_EQ(hash2FromGetObjectHashCode, hash2FromGetObjectHash);
+}
 }  // namespace panda::test
