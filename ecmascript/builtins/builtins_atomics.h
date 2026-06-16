@@ -128,11 +128,11 @@ private:
     static JSTaggedValue HandleWithInt32(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
                                          EcmaRuntimeCallInfo *argv, const callbackfun &op, int32_t &tag);
     template<typename callbackfun>
-    static JSTaggedValue HandleWithBigInt64(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-        EcmaRuntimeCallInfo *argv, const callbackfun &op, int64_t &tag, bool &lossless);
+    static JSTaggedValue HandleWithBigInt64(JSThread *thread, uint32_t size, JSHandle<JSTaggedValue> arrayBuffer,
+        uint32_t indexedPosition, EcmaRuntimeCallInfo *argv, const callbackfun &op, int64_t &tag, bool &lossless);
     template<typename callbackfun>
-    static JSTaggedValue HandleWithBigUint64(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-        EcmaRuntimeCallInfo *argv, const callbackfun &op, uint64_t &tag, bool &lossless);
+    static JSTaggedValue HandleWithBigUint64(JSThread *thread, uint32_t size, JSHandle<JSTaggedValue> arrayBuffer,
+        uint32_t indexedPosition, EcmaRuntimeCallInfo *argv, const callbackfun &op, uint64_t &tag, bool &lossless);
 
     static constexpr int ARGS_NUMBER = 2;
 };
