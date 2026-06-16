@@ -164,6 +164,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                 JSHandle<JSTaggedValue> val(thread, completion->GetValue(thread));
                 JSTaggedValue promise = PromiseResolve(thread, val);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 JSHandle<JSPromise> handPromise(thread, promise);
                 // 3. Let stepsFulfilled be the algorithm steps defined in
                 //    AsyncGeneratorResumeNext Return Processor Fulfilled Functions.

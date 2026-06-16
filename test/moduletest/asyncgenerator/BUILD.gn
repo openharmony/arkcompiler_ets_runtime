@@ -33,6 +33,10 @@ host_moduletest_action("asyncgeneratorreturnstackoverflow") {
   deps = []
 }
 
+host_moduletest_action("asyncgeneratorexception") {
+  deps = []
+}
+
 host_moduletest_action("asyncgenerator") {
   extra_modules = [
     "asyncgeneratornext",
@@ -40,6 +44,7 @@ host_moduletest_action("asyncgenerator") {
     "asyncgeneratorthrow",
     "asyncgeneratoryieldstar",
     "asyncgeneratorreturnstackoverflow",
+    "asyncgeneratorexception",
   ]
   deps = [
     ":gen_asyncgeneratornext_abc",
@@ -47,5 +52,6 @@ host_moduletest_action("asyncgenerator") {
     ":gen_asyncgeneratorthrow_abc",
     ":gen_asyncgeneratoryieldstar_abc",
     ":gen_asyncgeneratorreturnstackoverflow_abc",
+    ":gen_asyncgeneratorexception_abc",
   ]
 }
