@@ -88,7 +88,10 @@ bool TryReadPrototypeStoreHandler(const ArkSteedHeapBroker *broker, JSThread *co
 bool TryReadStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
                          const ArkSteedHandlerRef &handler, ParsedStoreHandler *result)
 {
-    JSTaggedValue cachedHandler = handler;
+    JSTaggedValue cachedHandler;
+    if (!broker->TryResolveRef(handler, &cachedHandler)) {
+        return false;
+    }
     if (cachedHandler.IsInt()) {
         result->handlerInfo = cachedHandler.GetLargeUInt();
         return true;
@@ -127,7 +130,10 @@ bool TryReadPrototypeLoadHandler(const ArkSteedHeapBroker *broker, JSThread *com
 bool TryReadLoadHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
                         const ArkSteedHandlerRef &handler, ParsedLoadHandler *result)
 {
-    JSTaggedValue cachedHandler = handler;
+    JSTaggedValue cachedHandler;
+    if (!broker->TryResolveRef(handler, &cachedHandler)) {
+        return false;
+    }
     if (cachedHandler.IsInt()) {
         result->handlerInfo = cachedHandler.GetLargeUInt();
         return true;
@@ -208,7 +214,7 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     info->holderIsReceiver = parsed.holderIsReceiver;
     info->hasNotFoundProtoCellGuard = parsed.hasProtoCell && HandlerBase::IsNonExist(parsed.handlerInfo);
     info->guards.holder = parsed.holder;
-    info->guards.hasHolder = !parsed.holderIsReceiver && !parsed.holder.IsUndefined();
+    info->guards.hasHolder = !parsed.holderIsReceiver && parsed.holder.IsSafeForCompile();
     info->guards.holderIsReceiver = parsed.holderIsReceiver;
     info->guards.hasNotFoundProtoCellGuard = info->hasNotFoundProtoCellGuard;
     FillNamedAccessInfo(caseFeedback, parsed.handlerInfo, parsed.protoCell, parsed.hasProtoCell, info);

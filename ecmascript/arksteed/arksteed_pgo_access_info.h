@@ -196,7 +196,7 @@ struct PropertyAccessInfo {
 
     bool HasHolder() const
     {
-        return !holderIsReceiver && !holder.IsUndefined();
+        return !holderIsReceiver && holder.IsSafeForCompile();
     }
 
     bool HasTransitionHClass() const

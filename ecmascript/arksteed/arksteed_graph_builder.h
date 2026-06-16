@@ -199,11 +199,26 @@ public:
     ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
     {
         ASSERT(ref.IsSafeForCompile());
-        if (!ref.IsHeapObject()) {
-            return GetTaggedConstant(ref.Value().GetRawData());
+        JSTaggedValue value;
+        if (!TryResolveHeapRef(ref, &value)) {
+            return nullptr;
         }
-        LOG_COMPILER(FATAL) << "AccessInfo heap objects are compile-time only and must not be embedded in codegen.";
-        UNREACHABLE();
+        return GetTaggedConstant(value.GetRawData());
+    }
+
+    bool TryResolveHeapRef(const ArkSteedHeapRef &ref, JSTaggedValue *value) const
+    {
+        return pgoContext_.GetBroker()->TryResolveRef(ref, value);
+    }
+
+    bool TryResolveHClassRef(const ArkSteedHClassRef &ref, JSHClass **hclass) const
+    {
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (hclass == nullptr || !TryResolveHeapRef(ref, &value) || !value.IsJSHClass()) {
+            return false;
+        }
+        *hclass = JSHClass::Cast(value.GetTaggedObject());
+        return true;
     }
 
     ICSlotIdType GetICSlotId(int index) const

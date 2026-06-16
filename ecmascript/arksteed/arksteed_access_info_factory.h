@@ -36,7 +36,8 @@ public:
                               JitCompilationEnv *env, ArkSteedHeapBroker *broker)
         : compilerThread_(compilerThread), bytecodeInfo_(bytecodeInfo), env_(env),
           broker_(broker == nullptr ? &ownedBroker_ : broker),
-          feedbackReader_(compilerThread_, bytecodeInfo_, broker_)
+          feedbackReader_(compilerThread_, bytecodeInfo_, broker_),
+          dependencyRecorder_(compilerThread_, env_, broker_)
     {}
 
     bool TryBuildNamedStoreAccessInfo(int slotIndex, NamedStoreAccessSet *access) const;
@@ -55,7 +56,7 @@ private:
     ArkSteedHeapBroker ownedBroker_ {compilerThread_, env_};
     ArkSteedHeapBroker *broker_ {nullptr};
     ArkSteedFeedbackReader feedbackReader_;
-    ArkSteedPGODependencyRecorder dependencyRecorder_ {compilerThread_, env_};
+    ArkSteedPGODependencyRecorder dependencyRecorder_;
 };
 
 }  // namespace panda::ecmascript::arksteed

@@ -155,6 +155,16 @@ public:
         return name->IsSafeForCompile();
     }
 
+    bool TryResolveRef(const ArkSteedHeapRef &ref, JSTaggedValue *value) const
+    {
+        if (!ref.IsSafeForCompile() || value == nullptr) {
+            return false;
+        }
+        SerializingScope scope(this, "ArkSteedHeapBroker::TryResolveRef");
+        *value = ref.ValueAllowHandleDeref();
+        return true;
+    }
+
     JSThread *GetCompilerThread() const
     {
         return compilerThread_;
@@ -212,7 +222,7 @@ private:
         if (!value.IsHeapObject()) {
             return allowPrimitive ? ArkSteedHeapRef(value, true) : ArkSteedHeapRef();
         }
-        return ArkSteedHeapRef(value, true);
+        return ArkSteedHeapRef(JSHandle<JSTaggedValue>(compilerThread_, value));
     }
 
     JSThread *compilerThread_ {nullptr};

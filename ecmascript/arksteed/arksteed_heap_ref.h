@@ -34,10 +34,13 @@ public:
 
     JSTaggedValue Value() const
     {
-        if (handle_.GetAddress() != 0U) {
-            return handle_.GetTaggedValue();
-        }
+        ASSERT(!HasHandle());
         return value_;
+    }
+
+    bool HasHandle() const
+    {
+        return handle_.GetAddress() != 0U;
     }
 
     bool IsUndefined() const
@@ -82,15 +85,22 @@ public:
         return !(*this == other);
     }
 
-    operator JSTaggedValue() const
-    {
-        return Value();
-    }
+    operator JSTaggedValue() const = delete;
 
 private:
+    JSTaggedValue ValueAllowHandleDeref() const
+    {
+        if (HasHandle()) {
+            return handle_.GetTaggedValue();
+        }
+        return value_;
+    }
+
     JSTaggedValue value_ {JSTaggedValue::Undefined()};
     JSHandle<JSTaggedValue> handle_ {};
     bool stable_ {false};
+
+    friend class ArkSteedHeapBroker;
 };
 
 using ArkSteedObjectRef = ArkSteedHeapRef;
