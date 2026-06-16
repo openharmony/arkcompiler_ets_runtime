@@ -21,6 +21,11 @@ constexpr uint32_t NAMED_IC_POLY_CASE_WIDTH = 2;
 
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const
 {
+    if (bytecodeInfo_.slotId.GetId() != panda::ecmascript::kungfu::ICSlotId::INVALID_ID) {
+        *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
+        return true;
+    }
+
     if (index < 0 || static_cast<size_t>(index) >= bytecodeInfo_.inputs.size()) {
         return false;
     }

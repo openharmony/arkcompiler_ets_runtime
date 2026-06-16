@@ -67,7 +67,7 @@ private:
                                NamedICCaseSnapshot *icCase) const;
 
     JSThread *compilerThread_ {nullptr};
-    const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo_;
+    panda::ecmascript::kungfu::BytecodeInfo bytecodeInfo_;
     ArkSteedHeapBroker *broker_ {nullptr};
 };
 

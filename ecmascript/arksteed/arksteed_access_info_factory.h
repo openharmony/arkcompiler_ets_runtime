@@ -50,7 +50,7 @@ private:
     bool RegisterDependencies(const PropertyAccessSet &access) const;
 
     JSThread *compilerThread_ {nullptr};
-    const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo_;
+    panda::ecmascript::kungfu::BytecodeInfo bytecodeInfo_;
     JitCompilationEnv *env_ {nullptr};
     ArkSteedHeapBroker ownedBroker_ {compilerThread_, env_};
     ArkSteedHeapBroker *broker_ {nullptr};
