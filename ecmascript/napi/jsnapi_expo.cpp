@@ -160,6 +160,7 @@ using Concurrent = ecmascript::Concurrent;
 using EnableAotJitListHelper = ecmascript::ohos::EnableAotJitListHelper;
 using PGOProfilerManager = ecmascript::pgo::PGOProfilerManager;
 using AotRuntimeInfo = ecmascript::ohos::AotRuntimeInfo;
+using SourceTextModule = ecmascript::SourceTextModule;
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 using HeapProfiler = ecmascript::HeapProfiler;
 using HeapProfilerInterface = ecmascript::HeapProfilerInterface;
@@ -7184,6 +7185,45 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, co
         ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(thread, ohmurl.c_str(),
             fileName.c_str());
     return JSNApiHelper::ToLocal<ObjectRef>(result);
+}
+
+/*
+ * ohmUrl : @normalized:N&&&entryPath&version
+ */
+bool JSNApi::GetOhmurlByObject(EcmaVM *vm, const Local<JSValueRef> object, std::string &moduleName,
+                               std::string &ohmurl)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope scope(thread);
+    if (!vm->IsNormalizedOhmUrlPack()) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> function = JSNApiHelper::ToJSHandle(object);
+    if (!function->IsJSFunction()) {
+        LOG_ECMA(WARN) << "GetOhmurlByObject: The object is not a function.";
+        return false;
+    }
+    JSHandle<JSTaggedValue> module(thread, JSHandle<JSFunction>::Cast(function)->GetModule(thread));
+    if (!module->IsSourceTextModule()) {
+        LOG_ECMA(WARN) << "GetOhmurlByObject: The module is not ets file.";
+        return false;
+    }
+    JSHandle<SourceTextModule> srcModule = JSHandle<SourceTextModule>::Cast(module);
+    ecmascript::CString moduleFileName = srcModule->GetEcmaModuleFilenameString();
+    ecmascript::CString moduleRecordName = srcModule->GetEcmaModuleRecordNameString();
+    if (moduleFileName.empty() || moduleRecordName.empty()) {
+        LOG_ECMA(WARN) << "GetOhmurlByObject: The module file name or record name is empty";
+        return false;
+    }
+    ecmascript::CString bundleName = ModulePathHelper::GetBundleNameWithRecordName(vm, moduleRecordName);
+    if (bundleName != vm->GetBundleName()) {
+        LOG_ECMA(WARN) << "GetOhmurlByObject: This function does not support cross-bundle HSP.";
+        return false;
+    }
+    moduleName = ModulePathHelper::GetModuleNameWithBaseFile(moduleFileName);
+    ohmurl = ecmascript::base::ConcatToStdString(ModulePathHelper::PREFIX_NORMALIZED_NOT_SO,
+        PathHelper::NORMALIZED_OHMURL_TAG, PathHelper::NORMALIZED_OHMURL_TAG, moduleRecordName);
+    return true;
 }
 
 uintptr_t JSNApi::GetSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)

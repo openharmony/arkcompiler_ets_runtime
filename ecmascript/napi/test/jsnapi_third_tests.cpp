@@ -150,6 +150,7 @@ public:
 
 protected:
     void RegisterStringCacheTable();
+    void SetupNormalizedOhmUrlPack();
     std::shared_ptr<JSPandaFile> NewMockJSPandaFile(const char *data, const CString &filename,
         const CString &targetFileName, CString &entryPoint) const;
 
@@ -167,6 +168,22 @@ void JSNApiTests::RegisterStringCacheTable()
     } else {
         ASSERT_TRUE(res);
     }
+}
+
+void JSNApiTests::SetupNormalizedOhmUrlPack()
+{
+    std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
+    std::vector<std::string> entryList = {
+        "entry",
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    pkgList["entry"] = {entryList};
+    JSNApi::SetpkgContextInfoList(vm_, pkgList);
 }
 
 std::shared_ptr<JSPandaFile> JSNApiTests::NewMockJSPandaFile(const char *data,
@@ -5018,5 +5035,152 @@ HWTEST_F_L0(JSNApiTests, GetModuleNameSpaceWithOhmurlForHybridApp)
     Local<ObjectRef> res = JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurl);
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(res);
     EXPECT_TRUE(obj.GetTaggedValue() != JSTaggedValue::Undefined());
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_NotNormalizedOhmUrlPack)
+{
+    LocalScope scope(vm_);
+    std::string moduleName;
+    std::string ohmurl;
+    Local<JSValueRef> object = JSValueRef::Undefined(vm_);
+    bool result = JSNApi::GetOhmurlByObject(vm_, object, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_ObjectNotJSFunction)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+
+    std::string moduleName;
+    std::string ohmurl;
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    bool result = JSNApi::GetOhmurlByObject(vm_, obj, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_FunctionNotInModule)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+
+    Local<FunctionRef> func = FunctionRef::New(vm_, FunctionCallback);
+    std::string moduleName;
+    std::string ohmurl;
+    bool result = JSNApi::GetOhmurlByObject(vm_, func, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_ModuleNotSourceTextModule)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
+    JSHandle<JSTaggedValue> nonModuleValue(thread_, JSTaggedValue::Undefined());
+    func->SetModule(thread_, nonModuleValue.GetTaggedValue());
+
+    Local<JSValueRef> funcLocal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(func));
+    std::string moduleName;
+    std::string ohmurl;
+    bool result = JSNApi::GetOhmurlByObject(vm_, funcLocal, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_EmptyModuleFilename)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+
+    JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
+    testModule->SetEcmaModuleRecordNameString("entry&entry/Index&");
+    testModule->SetEcmaModuleFilenameString("");
+
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
+    func->SetModule(thread_, testModule.GetTaggedValue());
+
+    Local<JSValueRef> funcLocal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(func));
+    std::string moduleName;
+    std::string ohmurl;
+    bool result = JSNApi::GetOhmurlByObject(vm_, funcLocal, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_EmptyModuleRecordName)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+
+    JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
+    testModule->SetEcmaModuleFilenameString("/data/storage/el1/bundle/com.application.demo/entry/ets/modules.abc");
+    testModule->SetEcmaModuleRecordNameString("");
+
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
+    func->SetModule(thread_, testModule.GetTaggedValue());
+
+    Local<JSValueRef> funcLocal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(func));
+    std::string moduleName;
+    std::string ohmurl;
+    bool result = JSNApi::GetOhmurlByObject(vm_, funcLocal, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_CrossBundleHsp)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+    JSNApi::SetBundleName(vm_, "com.application.demo");
+
+    JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
+    testModule->SetEcmaModuleFilenameString("/data/storage/el1/bundle/com.application.demo1/crosshsp/ets/modules.abc");
+    CString crossHspRecordName = "@normalized:N&crosshsp&com.application.demo1&crosshsp/Index&";
+    testModule->SetEcmaModuleRecordNameString(crossHspRecordName);
+
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
+    func->SetModule(thread_, testModule.GetTaggedValue());
+
+    Local<JSValueRef> funcLocal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(func));
+    std::string moduleName;
+    std::string ohmurl;
+    bool result = JSNApi::GetOhmurlByObject(vm_, funcLocal, moduleName, ohmurl);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(moduleName, "");
+    EXPECT_EQ(ohmurl, "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_Success)
+{
+    LocalScope scope(vm_);
+    SetupNormalizedOhmUrlPack();
+    JSNApi::SetBundleName(vm_, "com.application.demo");
+
+    JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
+    CString filename = "/data/storage/el1/bundle/com.application.demo/entry/ets/modules.abc";
+    CString recordName = "com.application.demo&entry/Index&";
+    testModule->SetEcmaModuleFilenameString(filename);
+    testModule->SetEcmaModuleRecordNameString(recordName);
+
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
+    func->SetModule(thread_, testModule.GetTaggedValue());
+
+    Local<JSValueRef> funcLocal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(func));
+    std::string moduleName;
+    std::string ohmurl;
+    bool result = JSNApi::GetOhmurlByObject(vm_, funcLocal, moduleName, ohmurl);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(moduleName, "entry");
+    EXPECT_EQ(ohmurl, "@normalized:N&&com.application.demo&entry/Index&");
 }
 } // namespace panda::test
