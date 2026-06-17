@@ -2374,6 +2374,7 @@ JSHandle<SourceTextModule> SourceTextModule::LoadJsonModule(JSThread *thread, co
 {
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(
         ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, filename));
+    module->SetEcmaModuleRecordNameString(recordName);
     EvaluateJsonModule(thread, module, jsPandaFile, recordName);
     return module;
 }
