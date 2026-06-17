@@ -19,6 +19,13 @@
 #include "ecmascript/compiler/aot_file/gdb_jit.h"
 
 namespace panda::ecmascript {
+
+#if defined(STUB_FUNCTION_REORDERING)
+struct StubIndexMapping {
+    uint32_t runtimePosition;   // Actual position in stub.an
+    uint32_t compileTimeIndex;  // Original enum index
+};
+#endif
 class PUBLIC_API StubFileInfo : public AOTFileInfo {
 public:
     StubFileInfo() = default;
@@ -106,7 +113,24 @@ public:
     void Dump() const DUMP_API_ATTR;
 
     void Destroy() override {};
+#if defined(STUB_FUNCTION_REORDERING)
+    void AddIndexMapping(uint32_t compileTimeIndex, uint32_t runtimePosition)
+    {
+        bcStubIndexMap_[compileTimeIndex] = runtimePosition;
+#ifndef NDEBUG
+        LOG_ECMA(DEBUG) << "Mapping Enum: " << compileTimeIndex << " pos: " << runtimePosition;
+#endif
+    };
+    const std::unordered_map<uint32_t, uint32_t> &GetBCStubIndexMap() const
+    {
+        return bcStubIndexMap_;
+    }
+    uint32_t GetRuntimeStubIndex(uint32_t compileTimeIndex) const;
+#endif
 private:
+#if defined(STUB_FUNCTION_REORDERING)
+    std::unordered_map<uint32_t, uint32_t> bcStubIndexMap_;
+#endif
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 6;
 
     bool MmapLoad(const std::string &fileName);

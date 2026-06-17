@@ -38,6 +38,9 @@ declare_args() {
   # Enable cache miss-based instruction prefetch.
   ets_runtime_feature_enable_inst_prefetch = false
 
+  # Enable reordering of stub functions.
+  ets_runtime_feature_enable_stub_function_reordering = true
+
   # Set pgo profdata path.
   ets_runtime_feature_pgo_path = ""
 

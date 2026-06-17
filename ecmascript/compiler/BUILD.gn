@@ -642,6 +642,10 @@ action("gen_stub_file") {
         " --compiler-target-triple=aarch64-unknown-linux-gnu" +
         " --compiler-log=allasm" + " --log-level=info"
   }
+  if (ets_runtime_feature_enable_stub_function_reordering) {
+     stub_option += " --stub-ordering-file=" + rebase_path(js_root) +
+                    "/ecmascript/compiler/stub-function-ordering.txt"
+  }
   stub_option += " --enable-force-gc=false"
 
   if (host_cpu == "arm64") {

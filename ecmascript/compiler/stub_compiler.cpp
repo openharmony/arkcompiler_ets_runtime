@@ -127,6 +127,65 @@ bool StubCompiler::BuildStubModuleAndSave() const
     NativeAreaAllocator allocator;
     StubFileGenerator generator(log, logList, triple_, concurrentCompile_);
 
+#if defined(STUB_FUNCTION_REORDERING)
+    LOG_COMPILER(INFO) << "=============== compiling baseline stubs ===============";
+    LOptions baselineOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* baselineM = generator.AddModule(&allocator, "baseline_stub", triple_, baselineOp, log->OutputASM(),
+                                            StubFileKind::BASELINE);
+    if (!baselineM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(baselineM->GetModule()), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling builtins stubs ===============";
+    LOptions builtinOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* builtinM = generator.AddModule(&allocator, "builtin_stub", triple_, builtinOp, log->OutputASM(),
+                                           StubFileKind::BUILTIN);
+    if (!builtinM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(builtinM->GetModule()), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
+    LOptions stubOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
+    Module* stubM = generator.AddModule(&allocator, "bc_stub", triple_, stubOp, log->OutputASM(), StubFileKind::BC);
+    if (!stubM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(stubM->GetModule()), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
+    LOptions comOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* comM = generator.AddModule(&allocator, "com_stub", triple_, comOp, log->OutputASM(), StubFileKind::COM);
+    if (!comM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(comM->GetModule()), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling builtins stwcopy stubs ===============";
+    LOptions builtinStwCopyOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* builtinStwCopyM = generator.AddModule(&allocator, "builtin_stwcopy_stub", triple_, builtinStwCopyOp,
+                                                  log->OutputASM(), StubFileKind::BUILTIN_STW_COPY);
+    if (!builtinStwCopyM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(builtinStwCopyM->GetModule()), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling merged stubs ===============";
+    LOptions mergedOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
+    Module *mergedM = generator.AddModule(&allocator, "merged_stub", triple_, mergedOp, log->OutputASM(),
+                                          StubFileKind::MERGED, GetStubOrderingFile(), generator.GetStubInfo());
+    if (!mergedM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule *>(mergedM->GetModule()), &allocator);
+#else
     LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
     LOptions stubOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
     Module* stubM = generator.AddModule(&allocator, "bc_stub", triple_, stubOp, log->OutputASM(), StubFileKind::BC);
@@ -184,6 +243,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         return false;
     }
     RunPipeline(static_cast<LLVMModule*>(baselineM->GetModule()), &allocator);
+#endif
 
     generator.SaveStubFile(filePath_);
     return true;
@@ -211,6 +271,9 @@ int main(const int argc, const char **argv)
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
     size_t optLevel = runtimeOptions.GetOptLevel();
+#if defined(STUB_FUNCTION_REORDERING)
+    std::string stubOrderingFile = runtimeOptions.GetStubOrderingFile();
+#endif
     size_t relocMode = runtimeOptions.GetRelocMode();
     std::string logOption = runtimeOptions.GetCompilerLogOption();
     std::string methodsList = runtimeOptions.GetMethodsListForLog();
@@ -218,9 +281,13 @@ int main(const int argc, const char **argv)
 
     panda::ecmascript::kungfu::CompilerLog logOpt(logOption);
     panda::ecmascript::kungfu::MethodLogList logList(methodsList);
+#if defined(STUB_FUNCTION_REORDERING)
+    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, stubOrderingFile, optLevel, relocMode, &logOpt,
+                                                     &logList, concurrentCompile);
+#else
     panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &logOpt, &logList,
                                                      concurrentCompile);
-
+#endif
     bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;
     return res ? 0 : -1;

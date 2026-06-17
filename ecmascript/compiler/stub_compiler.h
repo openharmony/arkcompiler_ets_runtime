@@ -24,10 +24,19 @@
 namespace panda::ecmascript::kungfu {
 class StubCompiler {
 public:
+#if defined(STUB_FUNCTION_REORDERING)
+    StubCompiler(std::string &triple, std::string &filePath,
+               const std::string &stubOrder, size_t optLevel, size_t relocMode,
+               CompilerLog *log, MethodLogList *logList, bool concurrentCompile)
+#else
     StubCompiler(std::string &triple, std::string &filePath, size_t optLevel, size_t relocMode,
                  CompilerLog *log, MethodLogList *logList, bool concurrentCompile)
+#endif
         : triple_(triple),
           filePath_(filePath),
+#if defined(STUB_FUNCTION_REORDERING)
+          stubOrderingFile_(stubOrder),
+#endif
           optLevel_(optLevel),
           relocMode_(relocMode),
           log_(log),
@@ -49,11 +58,21 @@ public:
     {
         return logList_;
     }
+
+#if defined(STUB_FUNCTION_REORDERING)
+    std::string GetStubOrderingFile() const
+    {
+        return stubOrderingFile_;
+    }
+#endif
 private:
     void RunPipeline(LLVMModule *module, NativeAreaAllocator *allocator) const;
     void InitializeCS() const;
     std::string triple_ {};
     std::string filePath_ {};
+#if defined(STUB_FUNCTION_REORDERING)
+    std::string stubOrderingFile_ {};
+#endif
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
     CompilerLog *log_ {nullptr};

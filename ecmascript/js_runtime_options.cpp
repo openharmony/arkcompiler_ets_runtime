@@ -153,6 +153,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--startup-time:                       Print the start time of command execution. Default: 'false'\n"
     "--stub-file:                          Path of file includes common stubs module compiled by stub compiler. \n"
     "                                      Default: 'stub.an'\n"
+#if defined(STUB_FUNCTION_REORDERING)
+    "--stub-ordering-file:                 Path of file that includes symbolic order of stubs to go in stub.an. \n"
+#endif
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
     "--enable-mutant-array:                Enable transition between mutant array and tagged array. Default: 'false'\n"
@@ -331,6 +334,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
+#if defined(STUB_FUNCTION_REORDERING)
+        {"stub-ordering-file", required_argument, nullptr, OPTION_STUB_ORDERING_FILE},
+#endif
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
@@ -991,6 +997,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_STUB_FILE:
                 SetStubFile(optarg);
                 break;
+#if defined(STUB_FUNCTION_REORDERING)
+            case OPTION_STUB_ORDERING_FILE:
+                SetStubOrderingFile(optarg);
+                break;
+#endif
             case OPTION_COMPILER_TARGET_TRIPLE:
                 SetTargetTriple(optarg);
                 break;

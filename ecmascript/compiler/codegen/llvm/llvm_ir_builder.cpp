@@ -3265,10 +3265,140 @@ void LLVMModule::SetUpForBaselineStubs()
     InitialLLVMFuncTypeAndFuncByModuleCSigns();
 }
 
+#if defined(STUB_FUNCTION_REORDERING)
+class StubOrderingReader {
+public:
+    // Read order from file, ignoring empty lines
+    static std::vector<std::string> ReadOrderFromFile(const std::string &filename)
+    {
+        std::vector<std::string> order;
+        if (filename.empty()) {
+            return order;
+        }
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            LOG_COMPILER(ERROR) << "Cannot open file: " + filename;
+            return order;
+        }
+        std::string line;
+        while (std::getline(file, line)) {
+            // Trim whitespace and skip empty lines
+            Trim(line);
+            if (!line.empty()) {
+                order.push_back(line);
+            }
+        }
+        return order;
+    }
+
+private:
+    // Helper function to trim whitespace
+    static void Trim(std::string &str)
+    {
+        size_t first = str.find_first_not_of(" \t\n\r\v\f");
+        if (first != std::string::npos) {
+            size_t last = str.find_last_not_of(" \t\n\r\v\f");
+            str = str.substr(first, (last - first + 1));
+        } else {
+            str.clear();
+        }
+    }
+};
+
+class StubSorter {
+public:
+    StubSorter(std::string stubOrderFile) : stubOrderFile_(stubOrderFile) {}
+    // Create a lookup map for faster key-based access
+    std::unordered_map<std::string, const CallSignature *> createLookupMap(
+        const std::vector<const CallSignature *> &stubs)
+    {
+        std::unordered_map<std::string, const CallSignature *> lookup;
+        lookup.reserve(stubs.size());
+        for (const auto &stub : stubs) {
+            if (stub) {
+                lookup[stub->GetName()] = stub;
+            }
+        }
+        return lookup;
+    }
+    // Order stubs based on specified order, preserving original order for
+    // remaining stubs
+    std::vector<const CallSignature *> Sort(const std::vector<const CallSignature *> &originalStubs)
+    {
+        std::vector<std::string> stubOrder = StubOrderingReader::ReadOrderFromFile(stubOrderFile_);
+        // Return early if no order specified.
+        if (stubOrder.size() == 0) {
+            return originalStubs;
+        }
+        // Create lookup map for O(1) access
+        auto lookup = createLookupMap(originalStubs);
+        // Result vector with pre-allocated capacity
+        std::vector<const CallSignature *> sortedStubs;
+        sortedStubs.reserve(originalStubs.size());
+        // Track which stubs have been added
+        std::unordered_set<std::string> addedKeys;
+        addedKeys.reserve(originalStubs.size());
+        // First pass: Add stubs in the specified order
+        for (const auto &key : stubOrder) {
+            auto it = lookup.find(key);
+            if (it != lookup.end() && addedKeys.find(key) == addedKeys.end()) {
+                sortedStubs.push_back(it->second);
+                addedKeys.insert(key);
+            }
+        }
+        // Second pass: Add remaining stubs in their original order
+        for (const auto &stub : originalStubs) {
+            if (stub && addedKeys.find(stub->GetName()) == addedKeys.end()) {
+                sortedStubs.push_back(stub);
+                addedKeys.insert(stub->GetName());
+            }
+        }
+        return sortedStubs;
+    }
+
+private:
+    std::string stubOrderFile_;
+};
+
+void LLVMModule::SetUpForMergedStubs(const std::string &stubOrderingFile, StubFileInfo *stubInfo)
+{
+    std::vector<const CallSignature *> mergedCallSigns;
+    // We just focus on StwCopy variant for now. This vector can include
+    // other stub types later.
+    mergedCallSigns.reserve(BytecodeStubCSigns::NUM_OF_STUBS);
+    // The stub layout follows this sequence.
+    BytecodeStubCSigns::GetStwCopyCSigns(mergedCallSigns);
+    StubSorter sorter(stubOrderingFile);
+    std::vector<const CallSignature *> sortedStubs = sorter.Sort(mergedCallSigns);
+    ASSERT(sortedStubs.size() == mergedCallSigns.size() && "Sorted list should have same size as original list");
+    LOG_COMPILER(INFO) << "Sorted Stubs:" << sortedStubs.size();
+    callSigns_ = std::move(sortedStubs);
+    InitialLLVMFuncTypeAndFuncByModuleCSigns();
+}
+#endif
+
 LLVMValueRef LLVMModule::AddAndGetFunc(const CallSignature *stubDescriptor)
 {
     auto funcType = GetFuncType(stubDescriptor);
+#if defined(STUB_FUNCTION_REORDERING)
+    // When function reordering is enabled, all stub functions are generated in
+    // a single merged module, which was created with FPFlag::RESERVE_FP. For
+    // BCStub functions, we need to apply the effect of FPFlag::ELIM_FP here,
+    // to ensure that the usage of the frame pointer is consistent with the
+    // normal stub.an when function reordering is disabled.
+    auto func =
+        LLVMAddFunction(module_, stubDescriptor->GetName().c_str(), funcType);
+    if (stubDescriptor->GetName().find("BCStub") == 0) {
+        const char *attrName = "frame-pointer";
+        const char *attrValue = "none";
+        auto attr = LLVMCreateStringAttribute(
+            context_, attrName, strlen(attrName), attrValue, strlen(attrValue));
+        LLVMAddAttributeAtIndex(func, LLVMAttributeFunctionIndex, attr);
+    }
+    return func;
+#else
     return LLVMAddFunction(module_, stubDescriptor->GetName().c_str(), funcType);
+#endif
 }
 
 LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
