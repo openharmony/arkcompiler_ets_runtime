@@ -177,13 +177,8 @@ void GraphBuilderNew::DebugLog()
     if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
         return;
     }
-    JitCompilationEnv *env = preproc_->GetEnv();
-    MethodLiteral *method = preproc_->GetMethod();
-    const char *recordName = method->GetRecordNameWithSymbol(env->GetJSPandaFile(), method->GetMethodId());
-    const char *methodName = method->GetMethodName(env->GetJSPandaFile(), method->GetMethodId());
-
-    LOG_COMPILER(DEBUG) << "arksteed::GraphBuilder: Starts compiling " << recordName << " :: " << methodName;
-    LOG_COMPILER(DEBUG) << "NumLocalVRegs = " << numLocal_ << ", NumParamVRegs = " << numParams_;
+    LOG_COMPILER(DEBUG) << "arksteed::GraphBuilder: Starts graph building with "
+                           "NumLocalVRegs = " << numLocal_ << ", NumParamVRegs = " << numParams_;
 
     std::string dumpStr = preproc_->Dump();
     std::istringstream preprocStream(dumpStr);
@@ -312,7 +307,8 @@ void GraphBuilderNew::InitFrameStateForLoopHeader(SharedBCFrameState frameState,
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
     ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2 : One is entry, the other is loop-back
 
-    kungfu::BitSet phiCandidates = analysis_->GetLiveIn(rpoIndex);
+    kungfu::BitSet phiCandidates(chunk_, frameState.NumVRegs());
+    phiCandidates.CopyFrom(analysis_->GetLiveIn(rpoIndex));
     phiCandidates.Intersect(analysis_->GetKillSet(rpoIndex));
 
     for (uint32_t vregIndex = 0, n = frameState.NumVRegs(); vregIndex < n; vregIndex++) {
@@ -544,9 +540,13 @@ struct GraphBuilderNew::BytecodeVisitor {
             case kungfu::EcmaOpcode::MOV_V4_V4:
             case kungfu::EcmaOpcode::MOV_V8_V8:
             case kungfu::EcmaOpcode::MOV_V16_V16:
+                frameState.Set(bcInfo->vregOut[0], LoadRegister(bcInfo, 0));
+                break;
             case kungfu::EcmaOpcode::STA_V8:
+                frameState.Set(bcInfo->vregOut[0], frameState.GetAcc());
+                break;
             case kungfu::EcmaOpcode::LDA_V8:
-                LowerMoveValues(bcInfo);
+                frameState.SetAcc(LoadRegister(bcInfo, 0));
                 break;
             case kungfu::EcmaOpcode::LDFUNCTION:
                 frameState.SetAcc(LoadParam(CALL_TARGET_PARAM_INDEX));
@@ -1078,27 +1078,6 @@ struct GraphBuilderNew::BytecodeVisitor {
                 break;
             default:
                 UNREACHABLE();
-        }
-    }
-
-    // -------- Category #1: Register Moves --------
-
-    void LowerMoveValues(const BytecodeInfo *bcInfo)
-    {
-        ValueVertex *vertex = nullptr;
-        // Get input value
-        if (bcInfo->AccIn()) {
-            vertex = frameState.GetAcc();
-        } else {
-            ASSERT(!bcInfo->inputs.empty());
-            vertex = LoadRegister(bcInfo, 0);
-        }
-        // Set output value
-        if (bcInfo->AccOut()) {
-            frameState.SetAcc(vertex);
-        } else {
-            ASSERT(!bcInfo->vregOut.empty());
-            frameState.Set(bcInfo->vregOut[0], vertex);
         }
     }
 

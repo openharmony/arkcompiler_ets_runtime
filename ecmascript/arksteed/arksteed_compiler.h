@@ -89,6 +89,9 @@ public:
     }
 
 private:
+    void DebugLogOnCompilationStart();
+    void DebugLogOnCompilationDone();
+
     ArkSteedTask *arkSteedTask_;
     JSHandle<JSFunction> jsFunction_;
     int32_t offset_;

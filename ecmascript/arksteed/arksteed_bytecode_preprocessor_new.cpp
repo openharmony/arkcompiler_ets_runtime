@@ -229,25 +229,31 @@ void BytecodePreprocessorNew::BuildBasicBlocks()
 
 void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
+    // Catch block as higher priority than non-catch block
+    auto markNonCatchBlockStart = [&blockStartMarks](uint32_t index) {
+        if (blockStartMarks[index] != START_OF_CATCH_BLOCK) {
+            blockStartMarks[index] = START_OF_NON_CATCH_BLOCK;
+        }
+    };
     bool nextIsBlockStart = false;
     for (uint32_t i = 0; i < bcCount; i++) {
         if (nextIsBlockStart) {
-            blockStartMarks[i] = START_OF_NON_CATCH_BLOCK;
+            markNonCatchBlockStart(i);
             nextIsBlockStart = false;
         }
         const BytecodeInfo &curBcInfo = bytecodes_[i];
         if (curBcInfo.IsJump()) {
-            blockStartMarks[jumpTargetBcIndices_[i]] = START_OF_NON_CATCH_BLOCK;
+            markNonCatchBlockStart(jumpTargetBcIndices_[i]);
             nextIsBlockStart = true;
         } else if (curBcInfo.IsThrow() || curBcInfo.IsReturn()) {
             nextIsBlockStart = true;
         }
     }
-    blockStartMarks[0] = START_OF_NON_CATCH_BLOCK;
+    markNonCatchBlockStart(0);
     for (const TryBlockInfo &tryBlock : tryBlocks_) {
-        blockStartMarks[tryBlock.startBcIndex] = START_OF_NON_CATCH_BLOCK;
+        markNonCatchBlockStart(tryBlock.startBcIndex);
         if (tryBlock.endBcIndex + 1 < bcCount) {
-            blockStartMarks[tryBlock.endBcIndex + 1] = START_OF_NON_CATCH_BLOCK;
+            markNonCatchBlockStart(tryBlock.endBcIndex + 1);
         }
         blockStartMarks[tryBlock.catchBcIndex] = START_OF_CATCH_BLOCK;
     }

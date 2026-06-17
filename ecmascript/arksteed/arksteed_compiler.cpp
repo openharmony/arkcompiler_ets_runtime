@@ -115,6 +115,32 @@ ArkSteedCompilerTask *ArkSteedCompilerTask::CreateJitCompilerTask(ArkSteedTask *
     return new (std::nothrow) ArkSteedCompilerTask(arkSteedTask);
 }
 
+void ArkSteedCompilerTask::DebugLogOnCompilationStart()
+{
+    if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
+        return;
+    }
+    JitCompilationEnv *env = jitCompilationEnv_.get();
+    MethodLiteral *method = env->GetMethodLiteral();
+    const char *recordName = method->GetRecordNameWithSymbol(env->GetJSPandaFile(), method->GetMethodId());
+    const char *methodName = method->GetMethodName(env->GetJSPandaFile(), method->GetMethodId());
+
+    LOG_COMPILER(DEBUG) << "ArkSteedCompilerTask: Starts compiling " << recordName << " :: " << methodName;
+}
+
+void ArkSteedCompilerTask::DebugLogOnCompilationDone()
+{
+    if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
+        return;
+    }
+    JitCompilationEnv *env = jitCompilationEnv_.get();
+    MethodLiteral *method = env->GetMethodLiteral();
+    const char *recordName = method->GetRecordNameWithSymbol(env->GetJSPandaFile(), method->GetMethodId());
+    const char *methodName = method->GetMethodName(env->GetJSPandaFile(), method->GetMethodId());
+
+    LOG_COMPILER(DEBUG) << "ArkSteedCompilerTask: Finishes compiling " << recordName << " :: " << methodName;
+}
+
 bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr)
 {
 #ifdef ARKSTEED_REFACTORED
@@ -164,6 +190,8 @@ void ArkSteedCompilerTask::RunPreRegallocProcessors()
 
 bool ArkSteedCompilerTask::Compile()
 {
+    DebugLogOnCompilationStart();
+
     ArkSteedCompileTimeScope totalScope(arkSteedTask_);
     NativeAreaAllocator *allocator = arkSteedTask_->GetCompilerVM()->GetNativeAreaAllocator();
     chunk_ = std::make_unique<Chunk>(allocator);
@@ -214,6 +242,7 @@ bool ArkSteedCompilerTask::Compile()
         LogAsm(assembler_);
     }
 
+    DebugLogOnCompilationDone();
     return true;
 }
 

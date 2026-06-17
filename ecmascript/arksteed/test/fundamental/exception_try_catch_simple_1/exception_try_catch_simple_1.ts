@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function exception_try_catch_simple(should_throw)
+
+function exception_try_catch_simple_1(should_throw)
 {
     let result = 0;
 
@@ -28,10 +29,9 @@ function exception_try_catch_simple(should_throw)
     return result;
 }
 
-ArkTools.arkSteedCompileSync(exception_try_catch_simple);
+ArkTools.arkSteedCompileSync(exception_try_catch_simple_1);
 
-
-let output = exception_try_catch_simple(true);
+let output = exception_try_catch_simple_1(true);
 print(output);
-output = exception_try_catch_simple(false);
+output = exception_try_catch_simple_1(false);
 print(output);
