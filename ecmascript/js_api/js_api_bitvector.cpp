@@ -120,7 +120,7 @@ bool JSAPIBitVector::Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVe
     }
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
-    for (int index = startIndex; index <= endIndex; index++) {
+    for (int index = startIndex; index < endIndex; index++) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
         uint32_t elementId = pair.first;
         uint32_t bitId = pair.second;
