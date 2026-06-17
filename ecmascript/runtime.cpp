@@ -41,6 +41,7 @@ using namespace panda;
 int32_t Runtime::vmCount_ = 0;
 int32_t Runtime::destroyCount_ = 0;
 bool Runtime::firstVmCreated_ = false;
+bool Runtime::isFork_ = false;
 Mutex *Runtime::vmCreationLock_ = new Mutex();
 Runtime *Runtime::instance_ = nullptr;
 common::BaseRuntime *Runtime::baseInstance_ = nullptr;

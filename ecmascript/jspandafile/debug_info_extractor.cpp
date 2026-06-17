@@ -17,6 +17,7 @@
 
 #include "debug_data_accessor-inl.h"
 #include "line_number_program.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 using panda::panda_file::ClassDataAccessor;
@@ -183,14 +184,15 @@ const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(const panda_file::
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const LineNumberTable EMPTY_LINE_TABLE {};
 
-    auto iter = methods_.find(methodId.GetOffset());
-    if (iter == methods_.end()) {
+    auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+    auto iter = methods.find(methodId.GetOffset());
+    if (iter == methods.end()) {
         if (!ExtractorMethodDebugInfo(methodId)) {
             return EMPTY_LINE_TABLE;
         }
-        return methods_[methodId.GetOffset()].lineNumberTable;
+        return methods[methodId.GetOffset()].lineNumberTable;
     }
-    ASSERT(iter != methods_.end());
+    ASSERT(iter != methods.end());
     return iter->second.lineNumberTable;
 }
 
@@ -199,14 +201,15 @@ const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(const panda_fi
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const ColumnNumberTable EMPTY_COLUMN_TABLE {};
 
-    auto iter = methods_.find(methodId.GetOffset());
-    if (iter == methods_.end()) {
+    auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+    auto iter = methods.find(methodId.GetOffset());
+    if (iter == methods.end()) {
         if (!ExtractorMethodDebugInfo(methodId)) {
             return EMPTY_COLUMN_TABLE;
         }
-        return methods_[methodId.GetOffset()].columnNumberTable;
+        return methods[methodId.GetOffset()].columnNumberTable;
     }
-    ASSERT(iter != methods_.end());
+    ASSERT(iter != methods.end());
     return iter->second.columnNumberTable;
 }
 
@@ -215,14 +218,15 @@ const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const LocalVariableTable EMPTY_VARIABLE_TABLE {};
 
-    auto iter = methods_.find(methodId.GetOffset());
-    if (iter == methods_.end()) {
+    auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+    auto iter = methods.find(methodId.GetOffset());
+    if (iter == methods.end()) {
         if (!ExtractorMethodDebugInfo(methodId)) {
             return EMPTY_VARIABLE_TABLE;
         }
-        return methods_[methodId.GetOffset()].localVariableTable;
+        return methods[methodId.GetOffset()].localVariableTable;
     }
-    ASSERT(iter != methods_.end());
+    ASSERT(iter != methods.end());
     return iter->second.localVariableTable;
 }
 
@@ -231,14 +235,15 @@ const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::Ent
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const std::string sourceFile = "";
 
-    auto iter = methods_.find(methodId.GetOffset());
-    if (iter == methods_.end()) {
+    auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+    auto iter = methods.find(methodId.GetOffset());
+    if (iter == methods.end()) {
         if (!ExtractorMethodDebugInfo(methodId)) {
             return sourceFile;
         }
-        return methods_[methodId.GetOffset()].sourceFile;
+        return methods[methodId.GetOffset()].sourceFile;
     }
-    ASSERT(iter != methods_.end());
+    ASSERT(iter != methods.end());
     return iter->second.sourceFile;
 }
 
@@ -247,14 +252,15 @@ const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::Ent
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const std::string sourceCode = "";
 
-    auto iter = methods_.find(methodId.GetOffset());
-    if (iter == methods_.end()) {
+    auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+    auto iter = methods.find(methodId.GetOffset());
+    if (iter == methods.end()) {
         if (!ExtractorMethodDebugInfo(methodId)) {
             return sourceCode;
         }
-        return methods_[methodId.GetOffset()].sourceCode;
+        return methods[methodId.GetOffset()].sourceCode;
     }
-    ASSERT(iter != methods_.end());
+    ASSERT(iter != methods.end());
     return iter->second.sourceCode;
 }
 
@@ -310,7 +316,8 @@ void DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File &pandaF
 
     MethodDebugInfo methodDebugInfo = {sourceFile, sourceCode, handler.GetLineNumberTable(),
         handler.GetColumnNumberTable(), handler.GetLocalVariableTable()};
-    methods_.emplace(offset, std::move(methodDebugInfo));
+    auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+    methods.emplace(offset, std::move(methodDebugInfo));
 }
 
 void DebugInfoExtractor::Extract()
@@ -339,8 +346,9 @@ void DebugInfoExtractor::Extract()
                 return;
             }
 
-            auto iter = methods_.find(offset);
-            if (iter != methods_.end()) {
+            auto &methods = Runtime::GetFork() ? GetMethodInfo() : methods_;
+            auto iter = methods.find(offset);
+            if (iter != methods.end()) {
                 return;
             }
 

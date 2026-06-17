@@ -158,7 +158,7 @@ JSPandaFile::~JSPandaFile()
         delete each.second;
     }
     jsRecordInfo_.clear();
-    
+
     if (pf_ != nullptr) {
         delete pf_;
         CallReleaseSecureMemFunc(fileMapper_);
@@ -445,15 +445,21 @@ std::pair<std::string_view, bool> JSPandaFile::GetMethodName(EntityId methodId)
 {
     LockHolder lock(methodNameMapMutex_);
     uint32_t id = methodId.GetOffset();
-    auto iter = methodNameMap_.find(id);
-    if (iter != methodNameMap_.end()) {
+
+    auto *methodNameMap = &methodNameMap_;
+    if (Runtime::GetFork()) {
+        static std::unordered_map<uint32_t, panda_file::File::StringData> forkMethodNameMap;
+        methodNameMap = &forkMethodNameMap;
+    }
+    auto iter = methodNameMap->find(id);
+    if (iter != methodNameMap->end()) {
         panda_file::StringData sd = iter->second;
         return {std::string_view(utf::Mutf8AsCString(sd.data), sd.utf16_length), sd.is_ascii};
     }
 
     panda_file::MethodDataAccessor mda(*pf_, methodId);
     auto sd = GetStringData(mda.GetNameId());
-    methodNameMap_.emplace(id, sd);
+    methodNameMap->emplace(id, sd);
     return {std::string_view(utf::Mutf8AsCString(sd.data), sd.utf16_length), sd.is_ascii};
 }
 
@@ -469,16 +475,22 @@ CString JSPandaFile::GetRecordName(EntityId methodId)
 {
     LockHolder lock(recordNameMapMutex_);
     uint32_t id = methodId.GetOffset();
-    auto iter = recordNameMap_.find(id);
-    if (iter != recordNameMap_.end()) {
+
+    auto *recordNameMap = &recordNameMap_;
+    if (Runtime::GetFork()) {
+        static CUnorderedMap<uint32_t, CString> forkRecordNameMap;
+        recordNameMap = &forkRecordNameMap;
+    }
+    auto iter = recordNameMap->find(id);
+    if (iter != recordNameMap->end()) {
         return iter->second;
     }
 
     panda_file::MethodDataAccessor mda(*pf_, methodId);
     panda_file::ClassDataAccessor cda(*pf_, mda.GetClassId());
     CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-    auto name =  JSPandaFile::ParseEntryPoint(desc);
-    recordNameMap_.emplace(id, name);
+    auto name = JSPandaFile::ParseEntryPoint(desc);
+    recordNameMap->emplace(id, name);
     return name;
 }
 

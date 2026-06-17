@@ -28,6 +28,7 @@
 #include "ecmascript/platform/backtrace.h"
 #include "ecmascript/platform/process.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -209,6 +210,16 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
 #endif
 }
 
+static void ChildHandler(void)
+{
+    Runtime::SetFork(true);
+}
+
+static void InitFork()
+{
+    pthread_atfork(nullptr, nullptr, ChildHandler);
+}
+
 void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
     if (!TryStartOOMDump()) {
@@ -228,6 +239,8 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const Dump
     appPid_ = getpid();
     appTid_ = syscall(SYS_gettid);
     pid_t pid = -1;
+    static std::once_flag flag;
+    std::call_once(flag, InitFork);
     // fork for oom
     if ((pid = fork()) < 0) {
         LOG_ECMA(ERROR) << "DumpHeapSnapshotFromSharedGCForOOM fork failed: " << strerror(errno);
@@ -555,6 +568,8 @@ pid_t HeapProfiler::ForkAndPerformDump(Stream *stream,
                                        const DumpSnapShotOption &dumpOption,
                                        Progress *progress)
 {
+    static std::once_flag flag;
+    std::call_once(flag, InitFork);
     appPid_ = getpid();
     appTid_ = syscall(SYS_gettid);
     pid_t pid = fork();
