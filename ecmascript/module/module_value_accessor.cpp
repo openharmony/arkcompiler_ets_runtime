@@ -15,6 +15,7 @@
 #include "ecmascript/module/module_value_accessor.h"
 
 #include "ecmascript/module/module_logger.h"
+#include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -463,7 +464,8 @@ JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thr
     if (SourceTextModule::IsNativeModule(moduleType)) {
         exports.Update(module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
-            LOG_ECMA(WARN) << "Load native module failed: " << SourceTextModule::GetModuleName(resolvedModule);
+            CString moduleName = SourceTextModule::GetModuleName(resolvedModule);
+            ModuleMessageHelper::PrintNativeModuleLoadFailure(thread, moduleName);
         }
         return exports;
     }

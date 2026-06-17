@@ -225,6 +225,9 @@ public:
     static bool LoadHookModule(const EcmaVM *vm);
     static void SetEnableRuntimeAsyncStack(EcmaVM *vm, bool state);
     static bool GetEnableRuntimeAsyncStack(const EcmaVM *vm);
+    // module
+    static void InsertSoLoadFailure(EcmaVM *vm,
+        Local<StringRef> moduleName, const std::string &failureInfo);
 };
 }
 #endif

@@ -48,6 +48,7 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/module/module_value_accessor.h"
+#include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/time.h"
 #include "common_components/heap/allocator/region_desc.h"
@@ -5254,7 +5255,9 @@ void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedVal
 void RuntimeStubs::LoadNativeModuleFailed(JSTaggedValue curModule)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    LOG_ECMA(WARN) << "Load native module failed: " << SourceTextModule::GetModuleName(curModule);
+    JSThread *thread = JSThread::GetCurrent();
+    CString moduleName = SourceTextModule::GetModuleName(curModule);
+    ModuleMessageHelper::PrintNativeModuleLoadFailure(thread, moduleName);
 }
 
 JSTaggedValue RuntimeStubs::GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index)
