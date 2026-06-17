@@ -22,6 +22,50 @@
 
 namespace panda::ecmascript::arksteed {
 
+namespace {
+
+bool SameAsInput(ValueVertex *vertex, const Input &input)
+{
+    const ValueLocation &result = vertex->GetRegallocInfo()->GetResult();
+    if (!result.IsUnallocated()) {
+        return false;
+    }
+    UnallocatedState operand = UnallocatedState::Cast(result.GetOperand());
+    return operand.HasSameAsInputPolicy() && input == Input(vertex, operand.GetInputIndex());
+}
+
+const InstructionOperand &InputHint(Vertex *resultVertex, const Input &input)
+{
+    ValueVertex *valueVertex = resultVertex->TryCast<ValueVertex>();
+    if (valueVertex != nullptr && SameAsInput(valueVertex, input)) {
+        return valueVertex->GetRegallocInfo()->GetHint();
+    }
+    return input.vertex()->GetRegallocInfo()->GetHint();
+}
+
+template <typename RegisterT>
+RegisterT GetAllocatedRegister(const InstructionOperand &operand)
+{
+    if (!operand.IsAnyRegister()) {
+        return RegisterT::Invalid();
+    }
+
+    AllocatedState allocated = AllocatedState::Cast(operand);
+    if constexpr (std::is_same_v<RegisterT, ArkSteedRegister>) {
+        if (operand.IsRegister()) {
+            return allocated.GetRegister();
+        }
+    } else {
+        static_assert(std::is_same_v<RegisterT, ArkSteedDoubleRegister>);
+        if (operand.IsDoubleRegister()) {
+            return allocated.GetDoubleRegister();
+        }
+    }
+    return RegisterT::Invalid();
+}
+
+}  // namespace
+
 // =============================================================================
 // ArkSteedRegisterAllocator implementation
 // =============================================================================
@@ -499,7 +543,7 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
     vertex->GetRegallocInfo()->ClearHint();
 }
 
-void ArkSteedRegisterAllocator::AssignArbitraryRegisterInput(Vertex * /*resultVertex*/, const Input &input)
+void ArkSteedRegisterAllocator::AssignArbitraryRegisterInput(Vertex *resultVertex, const Input &input)
 {
     // Already assigned in AssignFixedInput
     const InstructionOperand &operand = input.GetOperand();
@@ -515,7 +559,13 @@ void ArkSteedRegisterAllocator::AssignArbitraryRegisterInput(Vertex * /*resultVe
 
     ValueVertex *vertex = input.vertex();
     InstructionOperand location;  // Default type is INVALID
-    InstructionOperand resultHint = InstructionOperand();  // to do: Temporary
+    // Only use the hint if it helps with the result's allocation due to
+    // same-as-input policy. Otherwise this doesn't affect regalloc.
+    InstructionOperand resultHint = InstructionOperand();
+    ValueVertex *valueVertex = resultVertex->TryCast<ValueVertex>();
+    if (valueVertex != nullptr && SameAsInput(valueVertex, input)) {
+        resultHint = valueVertex->GetRegallocInfo()->GetHint();
+    }
     if (vertex->GetMachineRepresentation() == MachineRepresentation::Float64) {
         location = doubleRegisters_.TryChooseInputRegister(vertex, resultHint);
     } else {
@@ -525,7 +575,7 @@ void ArkSteedRegisterAllocator::AssignArbitraryRegisterInput(Vertex * /*resultVe
     if (location.IsInvalid()) {
         // Otherwise, allocate a register for the vertex and load it in from there.
         InstructionOperand existingLocation = vertex->GetRegallocInfo()->GetAllocation();
-        InstructionOperand hint;  // to do: Temporary
+        const InstructionOperand &hint = InputHint(resultVertex, input);
         AllocatedState allocation = AllocateRegister(vertex, hint);
         ASSERT(existingLocation != allocation);
         AddMoveBeforeCurrentVertex(vertex, existingLocation, allocation);
@@ -663,7 +713,10 @@ RegListBase<RegisterT> ArkSteedRegisterAllocator::GetReservedRegisters(Vertex *v
 
     RegListBase<RegisterT> reserved;
 
-    // to do: Add hint
+    RegisterT hintReg = GetRegisterHint<RegisterT>(hint);
+    if (hintReg.IsValid()) {
+        reserved.Set(hintReg);
+    }
 
     ASSERT(result.IsUnallocated());
     const UnallocatedState &operand = UnallocatedState::Cast(result.GetOperand());
@@ -847,8 +900,11 @@ void ArkSteedRegisterAllocator::DropRegisterValue(RegisterSnapshot<RegisterT> &r
 
     // Try to move the value to another register
     if (!registers.UnblockedFreeIsEmpty() && !forceSpill) {
-        // to do: use hint
         RegisterT targetReg = registers.UnblockedFree().First();
+        RegisterT hintReg = GetRegisterHint<RegisterT>(vertexInfo->GetHint());
+        if (hintReg.IsValid() && registers.UnblockedFree().Has(hintReg)) {
+            targetReg = hintReg;
+        }
         registers.RemoveFromFree(targetReg);
         registers.SetValueWithoutBlocking(targetReg, vertex);
 
@@ -915,15 +971,97 @@ AllocatedState ArkSteedRegisterAllocator::AllocateRegister(ValueVertex *vertex, 
 {
     auto *vertexInfo = vertex->GetRegallocInfo();
     if (vertexInfo->IsDoubleRegister()) {
-        return AllocateRegisterInternal(doubleRegisters_, vertex);
+        return AllocateRegisterInternal(doubleRegisters_, vertex, hint);
     } else {
-        return AllocateRegisterInternal(generalRegisters_, vertex);
+        return AllocateRegisterInternal(generalRegisters_, vertex, hint);
     }
 }
 
 AllocatedState ArkSteedRegisterAllocator::AllocateRegisterAtEnd(ValueVertex *vertex)
 {
-    return AllocateRegister(vertex);
+    auto *vertexInfo = vertex->GetRegallocInfo();
+    const InstructionOperand &hint = vertexInfo->GetHint();
+    if (vertexInfo->IsDoubleRegister()) {
+        EnsureFreeRegisterAtEnd(doubleRegisters_, hint);
+        return doubleRegisters_.AllocateRegister(vertex, hint);
+    }
+    EnsureFreeRegisterAtEnd(generalRegisters_, hint);
+    return generalRegisters_.AllocateRegister(vertex, hint);
+}
+
+template <typename RegisterT>
+RegisterT ArkSteedRegisterAllocator::FindReusableBlockedInputRegister(RegisterSnapshot<RegisterT> &registers,
+                                                                      RegisterT hintReg)
+{
+    RegisterT fallback = RegisterT::Invalid();
+    for (int i = 0; i < currentVertex_->GetInputCount(); i++) {
+        RegisterT reg = GetAllocatedRegister<RegisterT>(currentVertex_->GetInputLocation(i)->GetOperand());
+        if (!reg.IsValid()) {
+            continue;
+        }
+        if (!registers.Free().Has(reg) || !registers.IsBlocked(reg)) {
+            continue;
+        }
+        if (reg == hintReg) {
+            return reg;
+        }
+        if (!fallback.IsValid()) {
+            fallback = reg;
+        }
+    }
+    return fallback;
+}
+
+template <typename RegisterT>
+RegisterT ArkSteedRegisterAllocator::FindLastUseBlockedRegister(RegisterSnapshot<RegisterT> &registers,
+                                                                RegisterT hintReg)
+{
+    RegisterT fallback = RegisterT::Invalid();
+    for (RegisterT reg : (registers.Blocked() - registers.Free())) {
+        ValueVertex *value = registers.GetValue(reg);
+        if (value == nullptr || !IsCurrentVertexLastUse(value)) {
+            continue;
+        }
+        if (reg == hintReg) {
+            return reg;
+        }
+        if (!fallback.IsValid()) {
+            fallback = reg;
+        }
+    }
+    return fallback;
+}
+
+template <typename RegisterT>
+void ArkSteedRegisterAllocator::EnsureFreeRegisterAtEnd(RegisterSnapshot<RegisterT> &registers,
+                                                        const InstructionOperand &hint)
+{
+    if (!registers.UnblockedFreeIsEmpty()) {
+        return;
+    }
+
+    RegisterT hintReg = GetRegisterHint<RegisterT>(hint);
+
+    // Last-use inputs are freed during UpdateUse but remain blocked until the current vertex finishes.
+    // They are safe result registers, unlike arbitrary free-and-blocked temporaries.
+    RegisterT reg = FindReusableBlockedInputRegister(registers, hintReg);
+    if (reg.IsValid()) {
+        registers.Unblock(reg);
+        return;
+    }
+
+    reg = FindLastUseBlockedRegister(registers, hintReg);
+    if (reg.IsValid()) {
+        DropRegisterValueAtEnd(registers, reg);
+        return;
+    }
+
+    reg = hintReg;
+    if (!reg.IsValid() || registers.Free().Has(reg)) {
+        reg = PickRegisterToFree<RegisterT>(registers.Empty());
+    }
+    ASSERT(reg.IsValid());
+    DropRegisterValueAtEnd(registers, reg);
 }
 
 template <typename RegisterT>
@@ -960,20 +1098,21 @@ template AllocatedState ArkSteedRegisterAllocator::ForceAllocate(RegisterSnapsho
 
 template <typename RegisterT>
 AllocatedState ArkSteedRegisterAllocator::AllocateRegisterInternal(RegisterSnapshot<RegisterT> &registers,
-                                                                   ValueVertex *vertex)
+                                                                   ValueVertex *vertex,
+                                                                   const InstructionOperand &hint)
 {
     if (registers.UnblockedFreeIsEmpty()) {
         RegListBase<RegisterT> emptyReserved;
         FreeUnblockedRegister(registers, emptyReserved);
     }
     // Allocate from unblocked free registers
-    return registers.AllocateRegister(vertex, InstructionOperand());  // to do: Temporary hint
+    return registers.AllocateRegister(vertex, hint);
 }
 
 template AllocatedState ArkSteedRegisterAllocator::AllocateRegisterInternal(
-    RegisterSnapshot<ArkSteedRegister> &registers, ValueVertex *vertex);
+    RegisterSnapshot<ArkSteedRegister> &registers, ValueVertex *vertex, const InstructionOperand &hint);
 template AllocatedState ArkSteedRegisterAllocator::AllocateRegisterInternal(
-    RegisterSnapshot<ArkSteedDoubleRegister> &registers, ValueVertex *vertex);
+    RegisterSnapshot<ArkSteedDoubleRegister> &registers, ValueVertex *vertex, const InstructionOperand &hint);
 
 AllocatedState ArkSteedRegisterAllocator::ForceAllocate(ArkSteedRegister reg, ValueVertex *vertex)
 {
@@ -1039,7 +1178,7 @@ AllocatedState ArkSteedRegisterAllocator::ForceAllocate(const Input &input, Valu
     } else {
         // Input is in memory, allocate a register
         const InstructionOperand source = inputLocation->GetOperand();
-        AllocatedState target = AllocateRegister(vertex);
+        AllocatedState target = AllocateRegister(vertex, vertex->GetRegallocInfo()->GetHint());
         AddMoveBeforeCurrentVertex(vertex, source, target);
         return target;
     }
@@ -1052,16 +1191,34 @@ void ArkSteedRegisterAllocator::AllocateSpillSlot(ValueVertex *vertex)
 
     MachineRepresentation rep = vertexInfo->GetRepresentation();
     bool isTagged = (rep == MachineRepresentation::Tagged);
+    bool doubleSlot = (rep == MachineRepresentation::Float64);
 
     SpillLocations &slots = isTagged ? tagged_ : untagged_;
-    uint32_t freeSlot = slots.top++;
+    uint32_t freeSlot = slots.top;
+    bool reuseSlot = false;
+    // Reuse a freed slot whose previous value died before this one starts.
+    if (vertexInfo->HasValidLiveRange()) {
+        VertexId start = vertexInfo->GetLiveRange().start;
+        for (size_t i = slots.freeSlots.size(); i > 0; --i) {
+            SpillInfo &slot = slots.freeSlots[i - 1];
+            if (slot.doubleSlot == doubleSlot && slot.freedAtPosition < start) {
+                freeSlot = slot.slotIndex;
+                slots.freeSlots.erase(slots.freeSlots.begin() + static_cast<std::ptrdiff_t>(i - 1));
+                reuseSlot = true;
+                break;
+            }
+        }
+    }
+    if (!reuseSlot) {
+        freeSlot = slots.top++;
+    }
 
     AllocatedState spillSlot(AllocatedState::STACK_SLOT, rep, freeSlot);
     vertexInfo->SetSpillSlot(spillSlot);
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "NEW SLOT: v" << vertex->GetId() << " assigned to " << spillSlot.Description();
+    LOG_COMPILER(DEBUG) << (reuseSlot ? "REUSE SLOT: v" : "NEW SLOT: v") << vertex->GetId() << " assigned to "
+                        << spillSlot.Description();
 #endif
-    // to do: slot resuse
 }
 
 void ArkSteedRegisterAllocator::AllocateFixedSlotResult(ValueVertex *vertex)
@@ -1170,6 +1327,24 @@ void ArkSteedRegisterAllocator::TryAllocateToInput(PhiVertex *phi)
     // Try allocate phis to a register used by any of the inputs
     uint32_t inputCount = phi->GetInputCount();
     bool isDoublePhi = phi->GetRegallocInfo()->IsDoubleRegister();
+    // Hint-based preference is currently only implemented for general registers.
+    if (!isDoublePhi) {
+        ArkSteedRegister hintReg = GetRegisterHint<ArkSteedRegister>(phi->GetRegallocInfo()->GetHint());
+        // Prefer the hinted register if one of the incoming values already uses it.
+        for (uint32_t i = 0; i < inputCount; i++) {
+            Input input(phi, i);
+            if (!input.GetOperand().IsRegister()) {
+                continue;
+            }
+            if (input.GetLocation()->GetAssignedGeneralRegister() == hintReg &&
+                generalRegisters_.UnblockedFree().Has(hintReg)) {
+                phi->GetRegallocInfo()->SetResultAllocated(ForceAllocate(hintReg, phi));
+                return;
+            }
+        }
+    }
+
+    // Otherwise, fall back to the first reusable incoming register.
     for (uint32_t i = 0; i < inputCount; i++) {
         Input input(phi, i);
         if (isDoublePhi && input.GetOperand().IsDoubleRegister()) {
@@ -1201,7 +1376,9 @@ void ArkSteedRegisterAllocator::FreeRegistersUsedBy(ValueVertex *vertex)
 bool ArkSteedRegisterAllocator::IsCurrentVertexLastUse(ValueVertex *vertex)
 {
     ASSERT(vertex != nullptr);
-    return vertex->GetRegallocInfo()->HasNoMoreUses();
+    // Uses the fixed live-range end, not HasNoMoreUses(): reuse callers run
+    // before UpdateUse() advances the dynamic next-use for the current input.
+    return vertex->GetRegallocInfo()->GetEndId() == currentVertex_->GetId();
 }
 
 void ArkSteedRegisterAllocator::VerifyInputs(Vertex * /*vertex*/)  // to do:
@@ -1511,7 +1688,18 @@ void ArkSteedRegisterAllocator::UpdateUse(ValueVertex *vertex, InputLocation *in
 
     // If a value is dead, make sure it's cleared
     FreeRegistersUsedBy(vertex);
-    // to do: slot reuse
+
+    if (vertexInfo->IsSpilled()) {
+        // Value is dead: return its spill slot to the pool for later reuse.
+        AllocatedState spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
+        if (spillSlot.GetIndex() >= 0) {
+            bool isTagged = (spillSlot.GetRepresentation() == MachineRepresentation::Tagged);
+            bool doubleSlot = (spillSlot.GetRepresentation() == MachineRepresentation::Float64);
+            SpillLocations &slots = isTagged ? tagged_ : untagged_;
+            slots.freeSlots.emplace_back(static_cast<uint32_t>(spillSlot.GetIndex()), vertexInfo->GetEndId(),
+                                         doubleSlot);
+        }
+    }
 }
 
 template <typename Function>
@@ -1642,11 +1830,11 @@ void ArkSteedRegisterAllocator::TryAllocatePhisToRegister(ChunkVector<PhiVertex 
         }
         if (phiInfo->IsDoubleRegister()) {
             if (!doubleRegisters_.UnblockedFreeIsEmpty()) {
-                phiInfo->SetResultAllocated(AllocateRegister(phi));
+                phiInfo->SetResultAllocated(AllocateRegister(phi, phiInfo->GetHint()));
             }
         } else {
             if (!generalRegisters_.UnblockedFreeIsEmpty()) {
-                phiInfo->SetResultAllocated(AllocateRegister(phi));
+                phiInfo->SetResultAllocated(AllocateRegister(phi, phiInfo->GetHint()));
             }
         }
 #ifndef NDEBUG

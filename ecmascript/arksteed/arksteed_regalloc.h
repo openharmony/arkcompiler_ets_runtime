@@ -37,6 +37,27 @@ class InputLocation;
 class RegallocValueVertexInfo;
 class InstructionOperand;
 
+template <typename RegisterT>
+RegisterT GetRegisterHint(const InstructionOperand &hint)
+{
+    if (!hint.IsUnallocated()) {
+        return RegisterT::Invalid();
+    }
+
+    const UnallocatedState operand = UnallocatedState::Cast(hint);
+    if constexpr (std::is_same_v<RegisterT, ArkSteedRegister>) {
+        if (operand.HasFixedRegisterPolicy()) {
+            return ArkSteedRegister::FromCode(operand.GetFixedRegisterIndex());
+        }
+    } else {
+        static_assert(std::is_same_v<RegisterT, ArkSteedDoubleRegister>);
+        if (operand.HasFixedFPRegisterPolicy()) {
+            return ArkSteedDoubleRegister::FromCode(operand.GetFixedRegisterIndex());
+        }
+    }
+    return RegisterT::Invalid();
+}
+
 // =============================================================================
 // RegisterSnapshot - Manages register state during code generation
 // =============================================================================
@@ -203,15 +224,16 @@ public:
     // Allocate a register for the given vertex
     AllocatedState AllocateRegister(ValueVertex *vertex, const InstructionOperand &hint)
     {
-        // to do: use hint
         ASSERT(!UnblockedFreeIsEmpty());
-        RegisterT reg = UnblockedFree().First();
+        RegisterT reg = GetRegisterHint<RegisterT>(hint);
+        if (!reg.IsValid() || !UnblockedFree().Has(reg)) {
+            reg = UnblockedFree().First();
+        }
         RemoveFromFree(reg);
         SetValue(reg, vertex);
         return OperandForVertexRegister(vertex, reg);
     }
 
-    // to do: hint not use now
     InstructionOperand TryChooseInputRegister(ValueVertex *vertex, const InstructionOperand &hint)
     {
         auto *vertexInfo = vertex->GetRegallocInfo();
@@ -227,7 +249,10 @@ public:
         // Prefer to return an existing blocked register
         RegTList blockedResult = resultRegisters & blocked_;
         if (!blockedResult.IsEmpty()) {
-            RegisterT reg = blockedResult.First();
+            RegisterT reg = GetRegisterHint<RegisterT>(hint);
+            if (!reg.IsValid() || !blockedResult.Has(reg)) {
+                reg = blockedResult.First();
+            }
             return OperandForVertexRegister(vertex, reg);
         }
         // Otherwise use the first result register
@@ -402,11 +427,19 @@ private:
     AllocatedState AllocateRegisterAtEnd(ValueVertex *vertex);
 
     template <typename RegisterT>
+    void EnsureFreeRegisterAtEnd(RegisterSnapshot<RegisterT> &registers, const InstructionOperand &hint);
+    template <typename RegisterT>
+    RegisterT FindReusableBlockedInputRegister(RegisterSnapshot<RegisterT> &registers, RegisterT hintReg);
+    template <typename RegisterT>
+    RegisterT FindLastUseBlockedRegister(RegisterSnapshot<RegisterT> &registers, RegisterT hintReg);
+
+    template <typename RegisterT>
     AllocatedState ForceAllocate(RegisterSnapshot<RegisterT> &registers, RegisterT reg, ValueVertex *vertex);
 
     // Template helper to allocate register
     template <typename RegisterT>
-    AllocatedState AllocateRegisterInternal(RegisterSnapshot<RegisterT> &registers, ValueVertex *vertex);
+    AllocatedState AllocateRegisterInternal(RegisterSnapshot<RegisterT> &registers, ValueVertex *vertex,
+                                            const InstructionOperand &hint);
 
     AllocatedState ForceAllocate(ArkSteedRegister reg, ValueVertex *vertex);
     AllocatedState ForceAllocate(ArkSteedDoubleRegister reg, ValueVertex *vertex);

@@ -379,6 +379,10 @@ public:
     }
     void SetHint(const InstructionOperand &hint)
     {
+        // First hint wins; later hints are ignored.
+        if (HasHint()) {
+            return;
+        }
         hint_ = hint;
     }
     void ClearHint()

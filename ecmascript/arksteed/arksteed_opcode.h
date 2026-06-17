@@ -2301,8 +2301,10 @@ inline void UseSlot(Input input)
 
 inline void UseFixed(Input input, uint32_t regCode)
 {
-    input.GetLocation()->GetOperand() =
-        UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode, NO_VREG);
+    UnallocatedState fixedRegister(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode, NO_VREG);
+    input.GetLocation()->GetOperand() = fixedRegister;
+    // Hint the input's vertex towards this register to avoid a later move.
+    input.vertex()->GetRegallocInfo()->SetHint(fixedRegister);
 }
 
 }  // namespace panda::ecmascript::arksteed
