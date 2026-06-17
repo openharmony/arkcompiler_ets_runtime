@@ -41,7 +41,8 @@
         uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);                                     \
     static bool IsObjectAlive(const EcmaVM *vm, uintptr_t addr);                                           \
     static bool IsValidHeapObject(const EcmaVM *vm, uintptr_t addr);                                       \
-    static void InitHybridVMEnv(EcmaVM *vm)
+    static void InitHybridVMEnv(EcmaVM *vm);                                                               \
+    static void SetHybridVMFlag(EcmaVM *vm, bool isHybrid)
 
 #define JSNAPI_PRIVATE_HYBRID_EXTENSION()                                                                  \
     static uintptr_t GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);                    \
