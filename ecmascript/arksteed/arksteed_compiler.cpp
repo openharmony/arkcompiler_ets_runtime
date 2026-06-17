@@ -25,7 +25,6 @@
 #include "ecmascript/arksteed/arksteed_regalloc_processors.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/arksteed/arksteed_task.h"
-#include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/compiler/jit_compiler.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/mem/machine_code.h"
@@ -209,7 +208,6 @@ bool ArkSteedCompilerTask::Compile()
     auto *compilerThread = arkSteedTask_->GetCompilerThread();
     auto *hostThread = arkSteedTask_->GetHostThread();
     uintptr_t hostGlueAddr = hostThread->GetGlueAddr();
-    EcmaHandleScope handleScope(compilerThread);
 
     if (!BuildGraph(compilerThread, hostGlueAddr)) {
         return false;

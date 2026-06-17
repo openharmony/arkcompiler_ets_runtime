@@ -203,6 +203,10 @@ public:
         if (!TryResolveHeapRef(ref, &value)) {
             return nullptr;
         }
+        if (value.IsHeapObject()) {
+            LOG_COMPILER(FATAL) << "AccessInfo heap objects are compile-time only and must not be embedded in codegen.";
+            UNREACHABLE();
+        }
         return GetTaggedConstant(value.GetRawData());
     }
 

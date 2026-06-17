@@ -222,7 +222,7 @@ private:
         if (!value.IsHeapObject()) {
             return allowPrimitive ? ArkSteedHeapRef(value, true) : ArkSteedHeapRef();
         }
-        return ArkSteedHeapRef(JSHandle<JSTaggedValue>(compilerThread_, value));
+        return ArkSteedHeapRef(env_->NewJSHandle(value));
     }
 
     JSThread *compilerThread_ {nullptr};
