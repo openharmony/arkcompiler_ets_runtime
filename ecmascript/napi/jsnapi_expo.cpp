@@ -7214,6 +7214,11 @@ void JSNApi::DisposeSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     ecmascript::Runtime::GetInstance()->DisposeSendableGlobalHandle(addr);
 }
 
+void JSNApi::SetTaskpoolShrinkCallback(const EcmaVM *vm, TaskPoolShrinkCallback callback)
+{
+    ecmascript::Runtime::GetInstance()->SetTaskpoolShrinkCallback(callback);
+}
+
 // ---------------------------------- Promise -------------------------------------
 Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler)
 {

@@ -154,6 +154,7 @@ using DeviceDisconnectCallback = std::function<bool()>;
 using QueueType = ecmascript::job::QueueType;
 using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 using StopPreLoadSoCallback = std::function<void()>;
+using TaskPoolShrinkCallback = std::function<void(bool inBackground)>;
 
 #define ECMA_DISALLOW_COPY(className)      \
     className(const className &) = delete; \
@@ -2119,6 +2120,7 @@ public:
     static void StoreGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr, void *ref);
     static void EraseGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr);
     static void *FindGlobalRefMapping(const EcmaVM *vm, uintptr_t slotAddr);
+    static void SetTaskpoolShrinkCallback(const EcmaVM *vm, TaskPoolShrinkCallback callback);
 
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:

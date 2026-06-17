@@ -788,6 +788,7 @@ void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->ChangeGCParams(inBackground);
     ecmascript::Jit::GetInstance()->ChangeTaskPoolState(inBackground);
     ecmascript::Runtime::GetInstance()->SetInBackground(inBackground);
+    ecmascript::Runtime::GetInstance()->ExecuteTaskpoolShrinkCallback(inBackground);
 }
 
 void DFXJSNApi::NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback)
