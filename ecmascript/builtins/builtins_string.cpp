@@ -2322,46 +2322,6 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
                                         resultString.size()).GetTaggedValue();
 }
 
-uint32_t BuiltinsString::HandleStringToList(JSThread *thread, JSHandle<JSObject> arrayHandle,
-    JSHandle<EcmaString> iteratedString, uint32_t totalElements)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    uint32_t index = 0;
-    if (EcmaStringAccessor(iteratedString).IsUtf8()) {
-        while (index < totalElements) {
-            uint16_t c = EcmaStringAccessor(iteratedString).Get(thread, index);
-            JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
-            ElementAccessor::Set(thread, arrayHandle, index, newStr, true);
-            index++;
-            thread->CheckSafepointIfSuspended();
-        }
-        return totalElements;
-    }
-    uint32_t dstIndex = 0;
-    static constexpr uint32_t SINGLE_UTF16_UNIT_LEN = 1;
-    static constexpr uint32_t SURROGATE_PAIR_LEN = 2;
-    static constexpr uint32_t UTF16_CODE_UNIT_BUF_SIZE = 2;
-    while (index < totalElements) {
-        uint16_t lead = EcmaStringAccessor(iteratedString).Get(thread, index);
-        uint16_t utf16Buf[UTF16_CODE_UNIT_BUF_SIZE] = {lead, 0};
-        uint32_t utf16BufLen = SINGLE_UTF16_UNIT_LEN;
-        if (common::utf_helper::IsUTF16HighSurrogate(lead) && index + 1 < totalElements) {
-            uint16_t trail = EcmaStringAccessor(iteratedString).Get(thread, index + 1);
-            if (common::utf_helper::IsUTF16LowSurrogate(trail)) {
-                utf16Buf[SINGLE_UTF16_UNIT_LEN] = trail;
-                utf16BufLen = SURROGATE_PAIR_LEN;
-                index++;
-            }
-        }
-        JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(utf16Buf, utf16BufLen);
-        ElementAccessor::Set(thread, arrayHandle, dstIndex, newStr, true);
-        index++;
-        dstIndex++;
-        thread->CheckSafepointIfSuspended();
-    }
-    return dstIndex;
-}
-
 JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString> &str)
 {
     JSHandle<StringToListResultCache> cacheTable(thread->GetGlobalEnv()->GetStringToListResultCache());
@@ -2381,9 +2341,17 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
     uint32_t totalElements = EcmaStringAccessor(iteratedString).GetLength();
     JSHandle<TaggedArray> elements = (oldElements->GetLength() < totalElements) ?
         factory->ExtendArray(oldElements, totalElements) : oldElements;
+    uint32_t index = 0;
     newArrayHandle->SetElements(thread, elements);
-    uint32_t dstIndex = HandleStringToList(thread, newArrayHandle, iteratedString, totalElements);
-    JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, dstIndex);
+    while (index < totalElements) {
+        uint16_t c = EcmaStringAccessor(iteratedString).Get(thread, index);
+        JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
+        ElementAccessor::Set(thread, newArrayHandle, index, newStr, true);
+        index++;
+        thread->CheckSafepointIfSuspended();
+    }
+    JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, totalElements);
+
     StringToListResultCache::SetCachedResult(thread, cacheTable, str, elements);
 
     return newArrayHandle.GetTaggedValue();
@@ -2410,9 +2378,16 @@ JSTaggedValue BuiltinsString::StringToSList(JSThread *thread, JSHandle<EcmaStrin
         (oldElements->GetLength() < totalElements)
             ? factory->ExtendArray(oldElements, totalElements, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE)
             : oldElements;
+    uint32_t index = 0;
     newSharedArrayHandle->SetElements(thread, elements);
-    uint32_t dstIndex = HandleStringToList(thread, newSharedArrayHandle, iteratedString, totalElements);
-    JSHandle<JSSharedArray>(newSharedArrayHandle)->SetArrayLength(thread, dstIndex);
+    while (index < totalElements) {
+        uint16_t c = EcmaStringAccessor(iteratedString).Get(thread, index);
+        JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
+        ElementAccessor::Set(thread, newSharedArrayHandle, index, newStr, true);
+        index++;
+        thread->CheckSafepointIfSuspended();
+    }
+    JSHandle<JSSharedArray>(newSharedArrayHandle)->SetArrayLength(thread, totalElements);
 
     StringToListResultCache::SetCachedResult(thread, cacheTable, str, elements);
     newSharedArrayHandle->GetJSHClass()->SetExtensible(false);
