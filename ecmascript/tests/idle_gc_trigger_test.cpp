@@ -439,6 +439,7 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
     sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    sheap->Prepare(false);
     ASSERT_TRUE(freeze);
     delete trigger;
 }
