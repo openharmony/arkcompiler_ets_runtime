@@ -13,13 +13,18 @@
  * limitations under the License.
  */
 
+#include <climits>
+#include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <securec.h>
+#include <string>
+#include <system_error>
+
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/map.h"
 #include "jsnapi_expo.h"
-#include <string>
-#include <string_view>
-#include <fstream>
 
 #define private public
 #define protected public
@@ -30,13 +35,6 @@
 #undef protected
 
 #include "gtest/gtest.h"
-
-#include <climits>
-#include <cstdint>
-#include <cstdio>
-#include <fstream>
-#include <string>
-#include <system_error>
 
 namespace panda::test {
 using namespace panda::ecmascript;
@@ -427,7 +425,7 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ReadDataInfo_Success)
 
     size_t bufferSize = sizeof(ModulesSnapshotHelper::SerializeDataInfo) + 64;
     std::vector<uint8_t> buffer(bufferSize, 0);
-    memcpy(buffer.data(), &writeInfo, sizeof(writeInfo));
+    ASSERT_EQ(memcpy_s(buffer.data(), bufferSize, &writeInfo, sizeof(writeInfo)), EOK);
 
     MemMap memMap(buffer.data(), bufferSize);
     FileMemMapReader reader(memMap, []() {}, "ReadDataInfo_Success");
@@ -470,7 +468,7 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ReadDataInfo_WithIncompleteDataTrue)
 
     size_t bufferSize = sizeof(ModulesSnapshotHelper::SerializeDataInfo) + 64;
     std::vector<uint8_t> buffer(bufferSize, 0);
-    memcpy(buffer.data(), &writeInfo, sizeof(writeInfo));
+    ASSERT_EQ(memcpy_s(buffer.data(), bufferSize, &writeInfo, sizeof(writeInfo)), EOK);
 
     MemMap memMap(buffer.data(), bufferSize);
     FileMemMapReader reader(memMap, []() {}, "ReadDataInfo_IncompleteData");
@@ -739,7 +737,7 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ReadDataInfo_AdvancesReadPointer)
 
     size_t bufferSize = sizeof(ModulesSnapshotHelper::SerializeDataInfo) + 128;
     std::vector<uint8_t> buffer(bufferSize, 0);
-    memcpy(buffer.data(), &writeInfo, sizeof(writeInfo));
+    ASSERT_EQ(memcpy_s(buffer.data(), bufferSize, &writeInfo, sizeof(writeInfo)), EOK);
 
     MemMap memMap(buffer.data(), bufferSize);
     FileMemMapReader reader(memMap, []() {}, "ReadDataInfo_AdvancesReadPointer");
@@ -776,7 +774,7 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ReadDataInfo_BufferExactlySized)
     // Buffer of exactly sizeof(SerializeDataInfo) — no extra padding
     size_t bufferSize = sizeof(ModulesSnapshotHelper::SerializeDataInfo);
     std::vector<uint8_t> buffer(bufferSize, 0);
-    memcpy(buffer.data(), &writeInfo, sizeof(writeInfo));
+    ASSERT_EQ(memcpy_s(buffer.data(), bufferSize, &writeInfo, sizeof(writeInfo)), EOK);
 
     MemMap memMap(buffer.data(), bufferSize);
     FileMemMapReader reader(memMap, []() {}, "ReadDataInfo_BufferExactlySized");
@@ -862,7 +860,7 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ReadDataInfo_WithMaxNumericValues)
 
     size_t bufferSize = sizeof(ModulesSnapshotHelper::SerializeDataInfo) + 64;
     std::vector<uint8_t> buffer(bufferSize, 0);
-    memcpy(buffer.data(), &writeInfo, sizeof(writeInfo));
+    ASSERT_EQ(memcpy_s(buffer.data(), bufferSize, &writeInfo, sizeof(writeInfo)), EOK);
 
     MemMap memMap(buffer.data(), bufferSize);
     FileMemMapReader reader(memMap, []() {}, "ReadDataInfo_MaxNumericValues");

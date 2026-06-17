@@ -49,6 +49,7 @@ public:
         // +--------------------------------------+ <- data
         // |      System Version Code             |
         // |      Description                     |
+        // |      [Padding] (optional)            |
         // +--------------------------------------+
         static constexpr const size_t TERMINATE_CHAR_COUNT = 2;
         static constexpr size_t Sizeof() { return offsetof(SnapshotVersionInfo, buffer_); }
@@ -71,7 +72,12 @@ public:
             return reinterpret_cast<const SnapshotVersionInfo*>(buffer);
         }
 
-        size_t Size() const { return Sizeof() + romVerLength_ + descLength_ + TERMINATE_CHAR_COUNT; }
+        size_t Size() const
+        {
+            constexpr const size_t alignment = sizeof(uint64_t);
+            size_t rawSize = Sizeof() + romVerLength_ + descLength_ + TERMINATE_CHAR_COUNT;
+            return AlignUp(rawSize, alignment);
+        }
         std::string_view GetRomVersion() const { return std::string_view(buffer_, romVerLength_); }
         std::string_view GetDescription() const { return std::string_view(buffer_ + romVerLength_ + 1, descLength_); }
 
