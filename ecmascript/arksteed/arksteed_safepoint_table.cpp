@@ -19,21 +19,114 @@
 
 #include <algorithm>
 #include <cstring>
+#include <numeric>
+#include <unordered_map>
 
 namespace panda::ecmascript::arksteed {
+namespace {
+constexpr size_t DEOPT_ENTRY_SIZE = 2;  // <id, value>
+
+#if defined(PANDA_TARGET_AMD64)
+constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AMD64;
+#elif defined(PANDA_TARGET_ARM64)
+constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AARCH64;
+#else
+constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AMD64;
+#endif
+
+void EncodeDeoptValue(std::vector<uint8_t> *out, const kungfu::ARKDeopt &deopt)
+{
+    std::vector<uint8_t> bytes;
+    size_t byteSize = 0;
+    kungfu::LLVMStackMapType::EncodeVRegsInfo(bytes, byteSize, deopt.id, deopt.kind);
+    out->insert(out->end(), bytes.begin(), bytes.begin() + byteSize);
+
+    bytes.clear();
+    byteSize = 0;
+    if (std::holds_alternative<kungfu::LLVMStackMapType::DwarfRegAndOffsetType>(deopt.value)) {
+        auto [reg, offset] = std::get<kungfu::LLVMStackMapType::DwarfRegAndOffsetType>(deopt.value);
+        kungfu::LLVMStackMapType::EncodeRegAndOffset(bytes, byteSize, reg, offset, TARGET_TRIPLE);
+    } else if (std::holds_alternative<kungfu::LLVMStackMapType::LargeInt>(deopt.value)) {
+        kungfu::LLVMStackMapType::EncodeData(bytes, byteSize,
+                                             static_cast<kungfu::LLVMStackMapType::LargeInt>(
+                                                 std::get<kungfu::LLVMStackMapType::LargeInt>(deopt.value)));
+    } else {
+        kungfu::LLVMStackMapType::EncodeData(bytes, byteSize,
+                                             static_cast<kungfu::LLVMStackMapType::IntType>(
+                                                 std::get<kungfu::LLVMStackMapType::IntType>(deopt.value)));
+    }
+    out->insert(out->end(), bytes.begin(), bytes.begin() + byteSize);
+}
+
+std::vector<uint8_t> EncodeDeopts(const std::vector<kungfu::ARKDeopt> &deopts)
+{
+    std::vector<uint8_t> out;
+    for (const auto &deopt : deopts) {
+        EncodeDeoptValue(&out, deopt);
+    }
+    return out;
+}
+
+ArkSteedSafepointEntry NewEntry(uint32_t pcOffset)
+{
+    ArkSteedSafepointEntry entry {};
+    entry.pcOffset = pcOffset;
+    return entry;
+}
+
+using DeoptSideTable = std::vector<std::vector<kungfu::ARKDeopt>>;
+
+std::unordered_map<const ArkSteedSafepointTableBuilder *, DeoptSideTable> &GetDeoptSideTables()
+{
+    static std::unordered_map<const ArkSteedSafepointTableBuilder *, DeoptSideTable> tables;
+    return tables;
+}
+
+DeoptSideTable &GetDeoptSideTable(const ArkSteedSafepointTableBuilder *builder)
+{
+    return GetDeoptSideTables()[builder];
+}
+
+DeoptSideTable &GetSyncedDeoptSideTable(const ArkSteedSafepointTableBuilder *builder, size_t entryCount)
+{
+    DeoptSideTable &deoptEntries = GetDeoptSideTable(builder);
+    deoptEntries.resize(entryCount);
+    return deoptEntries;
+}
+}  // namespace
 
 // ============================================================================
 // Builder
 // ============================================================================
 
+ArkSteedSafepointTableBuilder::~ArkSteedSafepointTableBuilder()
+{
+    GetDeoptSideTables().erase(this);
+}
+
 ArkSteedSafepointTableBuilder::Safepoint ArkSteedSafepointTableBuilder::DefineSafepoint(uint32_t pcOffset)
 {
-    ArkSteedSafepointEntry entry;
-    entry.pcOffset = pcOffset;
-    entry.numExtraSpillSlots = 0;
-    entry.taggedRegisterIndexes = 0;
-    entries_.push_back(entry);
+    DeoptSideTable &deoptEntries = GetDeoptSideTable(this);
+    if (entries_.empty()) {
+        deoptEntries.clear();
+    }
+    entries_.push_back(NewEntry(pcOffset));
+    deoptEntries.emplace_back();
     return Safepoint(&entries_.back());
+}
+
+void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts)
+{
+    DeoptSideTable &deoptEntries = GetDeoptSideTable(this);
+    if (entries_.empty()) {
+        deoptEntries.clear();
+    }
+    std::sort(deopts.begin(), deopts.end(), [](const kungfu::ARKDeopt &lhs, const kungfu::ARKDeopt &rhs) {
+        return lhs.id < rhs.id;
+    });
+    entries_.push_back(NewEntry(pcOffset));
+    entries_.back().deoptNum = static_cast<uint16_t>(deopts.size() * DEOPT_ENTRY_SIZE);
+    deoptEntries.push_back(std::move(deopts));
 }
 
 void ArkSteedSafepointTableBuilder::SetFrameSlots(uint32_t tagged, uint32_t untagged)
@@ -44,11 +137,18 @@ void ArkSteedSafepointTableBuilder::SetFrameSlots(uint32_t tagged, uint32_t unta
 
 size_t ArkSteedSafepointTableBuilder::GetTableSize() const
 {
-    return sizeof(ArkSteedSafepointHeader) + entries_.size() * sizeof(ArkSteedSafepointEntry);
+    size_t size = sizeof(ArkSteedSafepointHeader) + entries_.size() * sizeof(ArkSteedSafepointEntry);
+    const auto &deoptEntries = GetSyncedDeoptSideTable(this, entries_.size());
+    for (const auto &deopts : deoptEntries) {
+        size += EncodeDeopts(deopts).size();
+    }
+    return size;
 }
 
 void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
 {
+    const auto &deoptEntries = GetSyncedDeoptSideTable(this, entries_.size());
+    ASSERT(entries_.size() == deoptEntries.size());
     auto *header = reinterpret_cast<ArkSteedSafepointHeader *>(buffer);
     header->numEntries = static_cast<uint32_t>(entries_.size());
     header->numTaggedSlots = numTaggedSlots_;
@@ -57,14 +157,23 @@ void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
 
     auto *entryBuffer = reinterpret_cast<ArkSteedSafepointEntry *>(buffer + sizeof(ArkSteedSafepointHeader));
 
-    // Copy entries sorted by pcOffset
-    std::vector<ArkSteedSafepointEntry> sorted = entries_;
-    std::sort(sorted.begin(), sorted.end(), [](const ArkSteedSafepointEntry &a, const ArkSteedSafepointEntry &b) {
-        return a.pcOffset < b.pcOffset;
+    std::vector<size_t> order(entries_.size());
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [this](size_t lhs, size_t rhs) {
+        return entries_[lhs].pcOffset < entries_[rhs].pcOffset;
     });
 
-    for (size_t i = 0; i < sorted.size(); i++) {
-        entryBuffer[i] = sorted[i];
+    uint32_t deoptOffset =
+        static_cast<uint32_t>(sizeof(ArkSteedSafepointHeader) + entries_.size() * sizeof(ArkSteedSafepointEntry));
+    for (size_t i = 0; i < order.size(); i++) {
+        size_t index = order[i];
+        entryBuffer[i] = entries_[index];
+        auto encodedDeopts = EncodeDeopts(deoptEntries[index]);
+        if (!encodedDeopts.empty()) {
+            entryBuffer[i].deoptOffset = deoptOffset;
+            std::memcpy(buffer + deoptOffset, encodedDeopts.data(), encodedDeopts.size());
+            deoptOffset += static_cast<uint32_t>(encodedDeopts.size());
+        }
     }
 }
 
@@ -89,6 +198,7 @@ ArkSteedSafepointTable::ArkSteedSafepointTable(const uint8_t *data, size_t size)
     if (data == nullptr || size < sizeof(ArkSteedSafepointHeader)) {
         return;
     }
+    data_ = data;
     header_ = reinterpret_cast<const ArkSteedSafepointHeader *>(data);
     size_t expectedSize = sizeof(ArkSteedSafepointHeader) + header_->numEntries * sizeof(ArkSteedSafepointEntry);
     if (size < expectedSize) {
@@ -120,6 +230,52 @@ const ArkSteedSafepointEntry *ArkSteedSafepointTable::FindEntry(uint32_t pcOffse
         return nullptr;
     }
     return &entries_[lo - 1];
+}
+
+void ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const
+{
+    const ArkSteedSafepointEntry *entry = FindEntry(pcOffset);
+    if (entry == nullptr || entry->pcOffset != pcOffset || entry->deoptNum == 0) {
+        return;
+    }
+
+    uint32_t offset = entry->deoptOffset;
+    ASSERT(entry->deoptNum % DEOPT_ENTRY_SIZE == 0);
+    for (uint32_t i = 0; i < entry->deoptNum; i += DEOPT_ENTRY_SIZE) {
+        auto [vregsInfo, vregsInfoSize, infoIsFull] =
+            panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
+        (void)infoIsFull;
+        kungfu::LLVMStackMapType::KindType kindType;
+        kungfu::ARKDeopt deopt;
+        kungfu::LLVMStackMapType::DecodeVRegsInfo(vregsInfo, deopt.id, kindType);
+        offset += vregsInfoSize;
+        ASSERT(kindType == kungfu::LLVMStackMapType::CONSTANT_TYPE ||
+               kindType == kungfu::LLVMStackMapType::OFFSET_TYPE);
+        if (kindType == kungfu::LLVMStackMapType::CONSTANT_TYPE) {
+            auto [constant, constantSize, constIsFull] =
+                panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
+            (void)constIsFull;
+            if (constant > INT32_MAX || constant < INT32_MIN) {
+                deopt.kind = kungfu::LocationTy::Kind::CONSTANTNDEX;
+                deopt.value = static_cast<kungfu::LLVMStackMapType::LargeInt>(constant);
+            } else {
+                deopt.kind = kungfu::LocationTy::Kind::CONSTANT;
+                deopt.value = static_cast<kungfu::LLVMStackMapType::IntType>(constant);
+            }
+            offset += constantSize;
+        } else {
+            auto [regOffset, regOffsetSize, regOffIsFull] =
+                panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
+            (void)regOffIsFull;
+            kungfu::LLVMStackMapType::DwarfRegType reg;
+            kungfu::LLVMStackMapType::OffsetType stackOffset;
+            kungfu::LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, stackOffset);
+            deopt.kind = kungfu::LocationTy::Kind::INDIRECT;
+            deopt.value = std::make_pair(reg, stackOffset);
+            offset += regOffsetSize;
+        }
+        deopts.emplace_back(deopt);
+    }
 }
 
 }  // namespace panda::ecmascript::arksteed

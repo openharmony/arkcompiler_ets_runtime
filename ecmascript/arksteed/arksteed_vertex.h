@@ -985,6 +985,8 @@ void Vertex::ForAllInputsInRegallocAssignmentOrder(Function &&f)
                     }
                     break;
                 case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT:
+                case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT:
+                case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
                     if (category == InputAllocationPolicy::ANY) {
                         f(input);
                     }
@@ -995,10 +997,8 @@ void Vertex::ForAllInputsInRegallocAssignmentOrder(Function &&f)
                         f(input);
                     }
                     break;
-                case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT:
                 case UnallocatedState::ExtendedPolicy::SAME_AS_INPUT:
                 case UnallocatedState::ExtendedPolicy::NONE:
-                case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
                     UNREACHABLE();
                     break;
             }

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "ecmascript/common.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -30,10 +31,13 @@ namespace panda::ecmascript::arksteed {
 //     uint32_t numTaggedSlots      (function-level, same for all safepoints)
 //     uint32_t numUntaggedSlots
 //     uint32_t reserved
-//   Entry[] (8 bytes each, sorted by pcOffset ascending):
+//   Entry[] (16 bytes each, sorted by pcOffset ascending):
 //     uint32_t pcOffset            (return address offset from code start)
 //     uint16_t numExtraSpillSlots  (extra pushed slots at this safepoint)
 //     uint16_t taggedRegisterIndexes (bitmap: which pushed regs are tagged)
+//     uint32_t deoptOffset         (relative to the table start; 0 if absent)
+//     uint16_t deoptNum            (encoded pairs: <id, value>)
+//     uint16_t reserved
 //
 // GC scanning:
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
@@ -52,11 +56,14 @@ struct ArkSteedSafepointEntry {
     uint32_t pcOffset;
     uint16_t numExtraSpillSlots;
     uint16_t taggedRegisterIndexes;
+    uint32_t deoptOffset;
+    uint16_t deoptNum;
+    uint16_t reserved;
 };
 #pragma pack()
 
 static_assert(sizeof(ArkSteedSafepointHeader) == 16, "Header must be 16 bytes");  // 16: header size in bytes
-static_assert(sizeof(ArkSteedSafepointEntry) == 8, "Entry must be 8 bytes");  // 8: entry size in bytes
+static_assert(sizeof(ArkSteedSafepointEntry) == 16, "Entry must be 16 bytes");  // 16: entry size in bytes
 
 // ============================================================================
 // Builder — used during compilation to collect safepoint entries
@@ -64,6 +71,8 @@ static_assert(sizeof(ArkSteedSafepointEntry) == 8, "Entry must be 8 bytes");  //
 
 class PUBLIC_API ArkSteedSafepointTableBuilder {
 public:
+    ~ArkSteedSafepointTableBuilder();
+
     class Safepoint {
     public:
         void DefineTaggedRegister(int pushedRegIndex)
@@ -83,6 +92,7 @@ public:
     };
 
     Safepoint DefineSafepoint(uint32_t pcOffset);
+    void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts);
     void SetFrameSlots(uint32_t tagged, uint32_t untagged);
 
     size_t GetTableSize() const;
@@ -122,6 +132,7 @@ public:
     }
 
     const ArkSteedSafepointEntry *FindEntry(uint32_t pcOffset) const;
+    void GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const;
 
     bool IsValid() const
     {
@@ -131,6 +142,7 @@ public:
 private:
     const ArkSteedSafepointHeader *header_ = nullptr;
     const ArkSteedSafepointEntry *entries_ = nullptr;
+    const uint8_t *data_ = nullptr;
 };
 
 }  // namespace panda::ecmascript::arksteed

@@ -379,6 +379,15 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
                 jsFunction = it.GetFunction();
                 break;
             }
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            case FrameType::STEED_FUNCTION_FRAME: {
+                auto frame = it.GetFrame<SteedFunctionFrame>();
+                frame->GetDeoptBundleInfo(it, deoptBundle);
+                AssistCollectDeoptBundleVec(it, frame);
+                jsFunction = it.GetFunction();
+                break;
+            }
+#endif
             case FrameType::ASM_BRIDGE_FRAME: {
                 auto sp = reinterpret_cast<uintptr_t*>(it.GetSp());
                 static constexpr size_t TYPE_GLUE_SLOT = 2; // 2: skip type & glue

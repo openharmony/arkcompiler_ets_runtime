@@ -260,16 +260,32 @@ void CallCommonStubVertex::Dump(std::ostream &output) const
     output << "  CallCommonStub (id=" << stubId_ << ") with " << GetInputCount() << " args";
 }
 
+void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
+    UseRegister(Arg(RECEIVER_INDEX));
+    for (int i = RECEIVER_INDEX + 1; i < GetInputCount(); i++) {
+        UseSlot(Arg(i));
+    }
+}
+
+void DeoptIfHClassMismatchVertex::Dump(std::ostream &output) const
+{
+    output << "  DeoptIfHClassMismatch: expected=0x"
+           << std::hex << reinterpret_cast<uintptr_t>(expectedHClass_) << std::dec
+           << ", pc=" << GetBytecodeOffset();
+}
+
 void DeoptVertex::SetValueLocationConstraints()
 {
     for (int i = 0; i < GetInputCount(); i++) {
-        UseAny(Arg(i));
+        UseSlot(Arg(i));
     }
 }
 
 void DeoptVertex::Dump(std::ostream &output) const
 {
-    output << "  Deopt";
+    output << "  Deopt (type=" << static_cast<int>(deoptType_) << ", pc=" << GetBytecodeOffset() << ")";
 }
 
 // ========================================= Slow Value Opcode =========================================
@@ -435,16 +451,6 @@ void ThrowUndefinedIfHoleWithNameVertex::SetValueLocationConstraints()
 void ThrowUndefinedIfHoleWithNameVertex::Dump(std::ostream &output) const
 {
     output << "  ThrowUndefinedIfHoleWithName (id=" << static_cast<int>(runtimeId_) << ")";
-}
-
-void CheckHClassVertex::SetValueLocationConstraints()
-{
-    UseRegister(Arg(RECEIVER_INDEX));
-}
-
-void CheckHClassVertex::Dump(std::ostream &output) const
-{
-    output << "  CheckHClass: expected=0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClass_) << std::dec;
 }
 
 void GapMoveVertex::SetValueLocationConstraints()

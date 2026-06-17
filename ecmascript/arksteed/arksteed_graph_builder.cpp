@@ -670,6 +670,7 @@ ArkSteedGraphBuilder::NamedLoadAccessInfoOpt ArkSteedGraphBuilder::TryGetConstan
         .receiverHClass = hclass,
         .holderHClass = hclass,
         .lookupStartObjectHClasses = {hclass},
+        .handler = std::nullopt,
         .plr = plr,
         .isConst = plr.IsFound() && !plr.IsWritable() && StableHClassDependency::IsValid(hclass),
     };
@@ -799,7 +800,14 @@ bool ArkSteedGraphBuilder::BuildCheckHClass(ValueVertex *object, JSHClass *hclas
         }
     }
 
-    NewVertex<CheckHClassVertex>({object}, hclass);
+    std::vector<ValueVertex *> checkInputs {object};
+    std::vector<ValueVertex *> deoptInputs;
+    ChunkVector<VRegIDType> deoptVRegs {chunk_};
+    BuildCurrentFrameStateForDeopt(&deoptInputs, &deoptVRegs);
+    checkInputs.insert(checkInputs.end(), deoptInputs.begin(), deoptInputs.end());
+    NewVertex<DeoptIfHClassMismatchVertex>(
+        checkInputs, hclass, std::move(deoptVRegs), CurrentBytecodeOffset());
+
     currentFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
     return true;
 }
@@ -2216,6 +2224,40 @@ void ArkSteedGraphBuilder::LowerReturn(kungfu::EcmaOpcode opcode)
         value = currentFrameState_->GetAcc();
     }
     FinishBlock<ReturnVertex>({value});
+}
+
+uint32_t ArkSteedGraphBuilder::CurrentBytecodeOffset() const
+{
+    return bytecodeContext_.GetPcOffset(bytecodeContext_.GetPcOffsets()[iterator_.Index()]);
+}
+
+void ArkSteedGraphBuilder::BuildCurrentFrameStateForDeopt(std::vector<ValueVertex *> *inputs,
+                                                          ChunkVector<VRegIDType> *vregIds)
+{
+    ASSERT(inputs != nullptr);
+    ASSERT(vregIds != nullptr);
+    ASSERT(currentFrameState_ != nullptr);
+    ValueVertex *undefinedValue = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    auto add = [&](int32_t id, ValueVertex *value) {
+        vregIds->emplace_back(id);
+        inputs->emplace_back(value == nullptr ? undefinedValue : value);
+    };
+
+    add(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX), currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX));
+    add(static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX), currentFrameState_->GetParam(NEW_TARGET_PARAM_INDEX));
+    add(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX), currentFrameState_->GetParam(THIS_OBJECT_PARAM_INDEX));
+    add(static_cast<int32_t>(SpecVregIndex::ENV_INDEX), currentFrameState_->GetEnv());
+    add(static_cast<int32_t>(SpecVregIndex::ACC_INDEX), currentFrameState_->GetAcc());
+    add(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), NewVertex<ToTaggedIntVertex>({GetActualArgc()}));
+    add(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
+        GetInt32Constant(static_cast<int32_t>(CurrentBytecodeOffset())));
+
+    for (VRegIDType index = 0; index < numLocal_; index++) {
+        add(static_cast<int32_t>(VRegOfLocal(index).GetId()), currentFrameState_->GetLocal(index));
+    }
+    for (VRegIDType index = 0; index < numParams_; index++) {
+        add(static_cast<int32_t>(VRegOfParam(numLocal_, index).GetId()), currentFrameState_->GetParam(index));
+    }
 }
 
 void ArkSteedGraphBuilder::LowerThrow()

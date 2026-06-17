@@ -16,9 +16,13 @@
 #ifndef ECMASCRIPT_ARKSTEED_OPCODE_H
 #define ECMASCRIPT_ARKSTEED_OPCODE_H
 
+#include <utility>
+#include <vector>
+
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/arksteed/arksteed_vreg.h"
+#include "ecmascript/compiler/deopt_type.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -197,6 +201,33 @@ public:
 private:
     BB *caughtBy_ = nullptr;
     uint32_t catchPredIndex_ = static_cast<uint32_t>(-1);
+};
+
+class DeoptimizableMixin {
+public:
+    DeoptimizableMixin(ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : deoptVRegs_(std::move(deoptVRegs)), bytecodeOffset_(bytecodeOffset)
+    {}
+
+    VRegIDType GetDeoptVReg(uint32_t index) const
+    {
+        ASSERT(index < deoptVRegs_.size());
+        return deoptVRegs_[index];
+    }
+
+    const ChunkVector<VRegIDType> &GetDeoptVRegs() const
+    {
+        return deoptVRegs_;
+    }
+
+    uint32_t GetBytecodeOffset() const
+    {
+        return bytecodeOffset_;
+    }
+
+private:
+    ChunkVector<VRegIDType> deoptVRegs_;
+    uint32_t bytecodeOffset_;
 };
 
 //==============================================================================
@@ -624,7 +655,7 @@ public:
 
     void VerifyInputs() const
     {
-        ASSERT(GetInputCount() == FIRST_ARG_INDEX + actualArgc_);
+        ASSERT(GetInputCount() == static_cast<int>(FIRST_ARG_INDEX + actualArgc_));
     }
 
 private:
@@ -678,44 +709,68 @@ private:
 // Load/Store Vertices
 //==============================================================================
 
-/**
- * Deoptimize vertex
- */
-class DeoptVertex : public VertexMixin<ValueVertex, DeoptVertex> {
+class DeoptIfHClassMismatchVertex : public VertexMixin<NonControlVertex, DeoptIfHClassMismatchVertex>,
+                                    public DeoptimizableMixin {
 public:
-    enum class Reason {
-        DIVISION_BY_ZERO,
-        NEGATIVE_ZERO,
-        STACK_OVERFLOW,
-        HEAP_MISMATCH,
-        TYPE_MISMATCH,
-        OUT_OF_BOUNDS,
-        NULL_POINTER,
-        UNDEFINED_VALUE
-    };
+    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt() | VertexProperties::CanReadProp();
 
-    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt();
+    static constexpr size_t RECEIVER_INDEX = 0;
 
-    explicit DeoptVertex(uint64_t bitfield, Reason reason) : VertexMixin(bitfield), reason_(reason) {}
+    explicit DeoptIfHClassMismatchVertex(uint64_t bitfield,
+                                         JSHClass *expectedHClass,
+                                         ChunkVector<VRegIDType> deoptVRegs,
+                                         uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          DeoptimizableMixin(std::move(deoptVRegs), bytecodeOffset),
+          expectedHClass_(expectedHClass)
+    {}
 
-    Reason GetReason() const
+    JSHClass *GetExpectedHClass() const
     {
-        return reason_;
+        return expectedHClass_;
     }
 
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
 
-    // VerifyInputs: Variable-input vertex must validate frame state completeness
     void VerifyInputs() const
     {
-        // Deopt saves execution state, input count should match frame state requirements
-        // Frame state: at minimum needs function, context, and accumulator
-        ASSERT(GetInputCount() >= 3);  // 3: minimum inputs for frame state
+        ASSERT(expectedHClass_ != nullptr);
+        ASSERT(GetInputCount() == static_cast<int>(GetDeoptVRegs().size() + 1));
     }
 
 private:
-    Reason reason_;
+    JSHClass *expectedHClass_;
+};
+
+class DeoptVertex : public VertexMixin<NonControlVertex, DeoptVertex>, public DeoptimizableMixin {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt();
+
+    explicit DeoptVertex(uint64_t bitfield,
+                         kungfu::DeoptType type,
+                         ChunkVector<VRegIDType> deoptVRegs,
+                         uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          DeoptimizableMixin(std::move(deoptVRegs), bytecodeOffset),
+          deoptType_(type)
+    {}
+
+    kungfu::DeoptType GetDeoptType() const
+    {
+        return deoptType_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == static_cast<int>(GetDeoptVRegs().size()));
+    }
+
+private:
+    kungfu::DeoptType deoptType_;
 };
 
 //==============================================================================
@@ -1088,36 +1143,6 @@ private:
     kungfu::RuntimeStubCSigns::ID runtimeId_;
 };
 
-class CheckHClassVertex : public FixedInputVertexMixin<1, NonControlVertex, CheckHClassVertex> {
-public:
-    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt() | VertexProperties::CanReadProp();
-
-    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::TAGGED);
-
-    static constexpr size_t RECEIVER_INDEX = 0;
-
-    explicit CheckHClassVertex(uint64_t bitfield, JSHClass *expectedHClass)
-        : FixedInputVertexMixin(bitfield), expectedHClass_(expectedHClass)
-    {}
-
-    JSHClass *GetExpectedHClass() const
-    {
-        return expectedHClass_;
-    }
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-    void VerifyInputs() const
-    {
-        FixedInputVertexMixin::VerifyInputs();
-        ASSERT(expectedHClass_ != nullptr);
-    }
-
-private:
-    JSHClass *expectedHClass_;
-};
-
 class GapMoveVertex : public FixedInputVertexMixin<0, NonControlVertex, GapMoveVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
@@ -1308,6 +1333,13 @@ inline void UseAndClobberRegister(Input input)
 inline void UseAny(Input input)
 {
     input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT,
+                                                         UnallocatedState::LifetimeFlag::USED_AT_END,
+                                                         NO_VREG);
+}
+
+inline void UseSlot(Input input)
+{
+    input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT,
                                                          UnallocatedState::LifetimeFlag::USED_AT_END,
                                                          NO_VREG);
 }

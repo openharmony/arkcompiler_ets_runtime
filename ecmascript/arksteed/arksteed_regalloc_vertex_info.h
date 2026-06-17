@@ -316,6 +316,12 @@ public:
                 return AllocatedState(LocationState::LocationKind::REGISTER, GetRepresentation(), reg.Code());
             }
         }
+        if (!IsLoadable()) {
+            const InstructionOperand &resultOp = result_.GetOperand();
+            if (resultOp.IsAllocated()) {
+                return resultOp;
+            }
+        }
         ASSERT(IsLoadable());
         return spillSlot_;
     }

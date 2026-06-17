@@ -1033,7 +1033,18 @@ void SteedFunctionFrame::IterateSafePointTable(const FrameIterator& it, RootVisi
 void SteedFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it,
     std::vector<kungfu::ARKDeopt>& deopts) const
 {
-    it.CollectArkDeopt(deopts);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+    MachineCode *machineCode = MachineCode::Cast(JSTaggedValue(machineCodeSlot.GetTaggedType()).GetTaggedObject());
+    uint8_t *safepointTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    uint32_t safepointTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    arksteed::ArkSteedSafepointTable safepointTable(safepointTableAddr, safepointTableSize);
+    if (!safepointTable.IsValid()) {
+        LOG_ECMA(ERROR) << "ArkSteedSafepointTable is invalid";
+        return;
+    }
+    safepointTable.GetDeoptInfo(static_cast<uint32_t>(it.GetOptimizedReturnAddr()), deopts);
+#endif
 }
 
 void SteedFunctionFrame::GetFuncCalleeRegAndOffset(

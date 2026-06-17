@@ -103,6 +103,11 @@ public:
         return &bytecodes_[bcIndex];
     }
 
+    uint32_t GetBytecodeOffset(uint32_t bcIndex) const
+    {
+        return bcOffsets_[bcIndex];
+    }
+
     VRegIDType GetNumLocalVRegs() const
     {
         return numLocalVRegs_;

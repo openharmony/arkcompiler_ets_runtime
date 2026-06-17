@@ -369,6 +369,8 @@ private:
     ValueVertex *NewCommonStubCall(std::initializer_list<ValueVertex *> args, const CommonStubCSigns::ID stubId,
                                    SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL);
     void ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args) const;
+    uint32_t CurrentBytecodeOffset() const;
+    void BuildCurrentFrameStateForDeopt(std::vector<ValueVertex *> *inputs, ChunkVector<VRegIDType> *vregIds);
 
     std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const;
     std::optional<JSTaggedValue> TryGetNameFromConstDataId(uint16_t constDataId) const;

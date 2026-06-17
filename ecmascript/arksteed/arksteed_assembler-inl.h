@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_ASSEMBLER_INL_H
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/js_tagged_value.h"
 
 // Include platform-specific implementations
 #if defined(PANDA_TARGET_AMD64)
@@ -89,6 +90,25 @@ inline void ArkSteedAssembler::CallCommonStub(uint32_t stubId)
     ASSERT(entryThread_ != nullptr);
     Address address = entryThread_->GetFastStubEntry(stubId);
     auto scratch = scope.AcquireScratch();
+    Move(scratch, static_cast<uint64_t>(address));
+    Call(scratch);
+}
+
+inline void ArkSteedAssembler::CallDeoptHandler(kungfu::DeoptType deoptType)
+{
+    ScratchRegisterScope scope;
+    ASSERT(entryThread_ != nullptr);
+    Address address = entryThread_->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+    auto scratch = scope.AcquireScratch();
+#if defined(PANDA_TARGET_AMD64)
+    Move(x64::rdi, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+    Move(x64::rsi, static_cast<uint64_t>(deoptType));
+    Move(x64::rdx, JSTaggedValue::Undefined().GetRawData());
+#elif defined(PANDA_TARGET_ARM64)
+    Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+    Move(aarch64::x1, static_cast<uint64_t>(deoptType));
+    Move(aarch64::x2, JSTaggedValue::Undefined().GetRawData());
+#endif
     Move(scratch, static_cast<uint64_t>(address));
     Call(scratch);
 }

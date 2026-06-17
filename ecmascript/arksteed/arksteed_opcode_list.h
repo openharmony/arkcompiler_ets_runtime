@@ -47,7 +47,6 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(Call)                         \
     V(CallRuntime)                  \
     V(CallCommonStub)               \
-    V(Deopt)                        \
     V(Phi)
 
 #define VALUE_VERTEX_LIST(V)    \
@@ -69,7 +68,8 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(ThrowIfNotObject)             \
     V(ThrowUndefinedIfHole)         \
     V(ThrowUndefinedIfHoleWithName) \
-    V(CheckHClass)                  \
+    V(DeoptIfHClassMismatch)        \
+    V(Deopt)                        \
     V(SetValueWithBarrier)          \
     V(GapMove)                      \
     V(ConstantGapMove)

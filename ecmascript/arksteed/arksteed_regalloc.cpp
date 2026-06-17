@@ -391,7 +391,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
     AssignFixedTemporaries(vertex);
     for (int i = 0; i < vertex->GetInputCount(); i++) {
         Input input(vertex, i);
-        if (input.GetOperand().IsAllocated()) {
+        if (!input.GetOperand().IsUnallocated()) {
             continue;
         }
         AssignArbitraryRegisterInput(vertex, input);
@@ -405,7 +405,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
     AssignArbitraryTemporaries(vertex);
     for (int i = 0; i < vertex->GetInputCount(); i++) {
         Input input(vertex, i);
-        if (input.GetOperand().IsAllocated()) {
+        if (!input.GetOperand().IsUnallocated()) {
             continue;
         }
         AssignAnyInput(input);
@@ -457,10 +457,32 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
             break;
         }
 
+        case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT: {
+            if (location.IsConstant()) {
+                input.GetLocation()->GetOperand() = location;
+                return;
+            }
+            if (location.IsAnyStackSlot()) {
+                input.GetLocation()->GetOperand() = location;
+                UpdateUse(vertex, input.GetLocation());
+                return;
+            }
+
+            ASSERT(location.IsRegister());
+            if (!vertex->GetRegallocInfo()->IsSpilled()) {
+                AllocateSpillSlot(vertex);
+            }
+            AllocatedState spillSlot = AllocatedState::Cast(vertex->GetRegallocInfo()->GetSpillSlot());
+            input.GetLocation()->SetAllocated(spillSlot);
+            AddMoveBeforeCurrentVertex(vertex, location, spillSlot);
+            UpdateUse(vertex, input.GetLocation());
+            vertex->GetRegallocInfo()->ClearHint();
+            return;
+        }
+
         case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT:
         case UnallocatedState::ExtendedPolicy::SAME_AS_INPUT:
         case UnallocatedState::ExtendedPolicy::NONE:
-        case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
             UNREACHABLE();
     }
 
@@ -529,10 +551,22 @@ void ArkSteedRegisterAllocator::AssignAnyInput(const Input &input)
     const InstructionOperand &operand = input.GetOperand();
     ASSERT(operand.IsUnallocated());
 
-    ASSERT(UnallocatedState::Cast(operand).GetExtendedPolicy() ==
-           UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT);
-
+    auto policy = UnallocatedState::Cast(operand).GetExtendedPolicy();
     ValueVertex *vertex = input.vertex();
+    if (policy == UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT) {
+        InstructionOperand location = vertex->GetRegallocInfo()->GetAllocation();
+        if (!location.IsAnyStackSlot() && !location.IsConstant()) {
+            Spill(vertex);
+            location = vertex->GetRegallocInfo()->GetSpillSlot();
+        }
+        ASSERT(location.IsAnyStackSlot() || location.IsConstant());
+        input.GetLocation()->InjectLocation(location);
+        UpdateUse(vertex, input.GetLocation());
+        return;
+    }
+
+    ASSERT(policy == UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT ||
+           policy == UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT);
     InstructionOperand location = vertex->GetRegallocInfo()->GetAllocation();
 
     input.GetLocation()->InjectLocation(location);
@@ -1029,14 +1063,17 @@ void ArkSteedRegisterAllocator::AllocateVertexResult(ValueVertex *vertex)
     ASSERT(!vertex->Is<PhiVertex>());
 
     auto *vertexInfo = vertex->GetRegallocInfo();
-    vertexInfo->SetNoSpill();
 
     auto &resultLocation = vertexInfo->GetResult();
     UnallocatedState &operand = static_cast<UnallocatedState &>(resultLocation.GetOperand());
 
     if (operand.GetBasicPolicy() == UnallocatedState::BasicPolicy::FIXED_SLOT) {
+        vertexInfo->SetNoSpill();
         AllocateFixedSlotResult(vertex);
         return;
+    }
+    if (operand.GetExtendedPolicy() != UnallocatedState::ExtendedPolicy::NONE) {
+        vertexInfo->SetNoSpill();
     }
 
     AllocateByPolicy(vertex, operand);
@@ -1173,6 +1210,13 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVert
 
         if (vertex != nullptr) {
             hasChange = true;
+            if (target->PredecessorCount() > 1 && !vertex->GetRegallocInfo()->IsLoadable()) {
+                AllocatedState source(
+                    LocationState::LocationKind::REGISTER, vertex->GetMachineRepresentation(), reg.Code());
+                AllocateSpillSlot(vertex);
+                AddMoveBeforeCurrentVertex(
+                    vertex, source, AllocatedState::Cast(vertex->GetRegallocInfo()->GetSpillSlot()));
+            }
 #ifndef NDEBUG
             LOG_COMPILER(DEBUG) << '\t' << (std::is_same_v<decltype(reg), ArkSteedDoubleRegister> ? "fr" : "r")
                                 << static_cast<unsigned>(reg.Code()) << " <- v" << vertex->GetId();
@@ -1208,7 +1252,14 @@ void ArkSteedRegisterAllocator::CreateRegisterMerge(RegisterSnapshot<RegisterT> 
 
     InstructionOperand infoSoFar;
     if (vertex == nullptr) {
-        auto *incomingInfo = (incoming->GetRegallocInfo());
+        auto *incomingInfo = incoming->GetRegallocInfo();
+        if (!incomingInfo->IsLoadable()) {
+            AllocatedState source(
+                LocationState::LocationKind::REGISTER, incoming->GetMachineRepresentation(), reg.Code());
+            AllocateSpillSlot(incoming);
+            AddMoveBeforeCurrentVertex(
+                incoming, source, AllocatedState::Cast(incomingInfo->GetSpillSlot()));
+        }
         infoSoFar = incomingInfo->GetSpillSlot();
     } else {
         infoSoFar = registerOperand;

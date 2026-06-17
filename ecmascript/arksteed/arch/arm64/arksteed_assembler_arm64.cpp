@@ -447,9 +447,16 @@ void ArkSteedAssembler::Prologue(Graph *graph)
     }
 
     if (untaggedSlots > 0) {
-        assembler_.Sub(aarch64::sp,
-                       aarch64::sp,
-                       aarch64::Operand(aarch64::Immediate(untaggedSlots * sizeof(uint64_t))));
+        // Fill untagged slots with VALUE_UNDEFINED for GC safety.
+        size_t untaggedHalf = untaggedSlots / 2U;
+        for (size_t i = 0; i < untaggedHalf; i++) {
+            Push(tmp, tmp);
+        }
+        if ((untaggedSlots & 1U) != 0) {
+            aarch64::MemoryOperand slot(aarch64::sp, -static_cast<int32_t>(FRAME_SLOT_SIZE),
+                                         aarch64::AddrMode::PREINDEX);
+            assembler_.Str(tmp, slot);
+        }
     }
     SetHasFrame(true);
 }

@@ -22,6 +22,7 @@
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
@@ -205,6 +206,85 @@ struct GetRegister<ArkSteedDoubleRegister> {
 bool IsGapMoveVertex(Vertex *vertex)
 {
     return vertex->Is<GapMoveVertex>() || vertex->Is<ConstantGapMoveVertex>();
+}
+
+kungfu::ARKDeopt MakeConstantDeopt(int32_t id, int64_t value)
+{
+    kungfu::ARKDeopt deopt;
+    deopt.id = static_cast<kungfu::LLVMStackMapType::VRegId>(id);
+    if (value > INT32_MAX || value < INT32_MIN) {
+        deopt.kind = kungfu::LocationTy::Kind::CONSTANTNDEX;
+        deopt.value = static_cast<kungfu::LLVMStackMapType::LargeInt>(value);
+    } else {
+        deopt.kind = kungfu::LocationTy::Kind::CONSTANT;
+        deopt.value = static_cast<kungfu::LLVMStackMapType::IntType>(value);
+    }
+    return deopt;
+}
+
+int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
+{
+    switch (value->GetOpcode()) {
+        case VertexOpcode::Constant:
+            return static_cast<int64_t>(value->Cast<ConstantVertex>()->GetValue().GetRawData());
+        case VertexOpcode::TaggedConstant:
+            return static_cast<int64_t>(value->Cast<TaggedConstantVertex>()->GetValue());
+        case VertexOpcode::RootConstant: {
+            switch (value->Cast<RootConstantVertex>()->GetIndex()) {
+                case RootConstantVertex::RootIndex::UNDEFINED:
+                    return static_cast<int64_t>(JSTaggedValue::Undefined().GetRawData());
+                case RootConstantVertex::RootIndex::NULL_VALUE:
+                    return static_cast<int64_t>(JSTaggedValue::Null().GetRawData());
+                case RootConstantVertex::RootIndex::TRUE_VALUE:
+                    return static_cast<int64_t>(JSTaggedValue::True().GetRawData());
+                case RootConstantVertex::RootIndex::FALSE_VALUE:
+                    return static_cast<int64_t>(JSTaggedValue::False().GetRawData());
+                default:
+                    UNREACHABLE();
+            }
+        }
+        case VertexOpcode::BooleanConstant:
+            return value->Cast<BooleanConstantVertex>()->GetValue()
+                       ? static_cast<int64_t>(JSTaggedValue::True().GetRawData())
+                       : static_cast<int64_t>(JSTaggedValue::False().GetRawData());
+        case VertexOpcode::Int32Constant:
+            if (vregId == static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX) ||
+                vregId == static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH)) {
+                return value->Cast<Int32ConstantVertex>()->GetValue();
+            }
+            return static_cast<int64_t>(JSTaggedValue(value->Cast<Int32ConstantVertex>()->GetValue()).GetRawData());
+        case VertexOpcode::IntPtrConstant:
+            if (vregId == static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX) ||
+                vregId == static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH)) {
+                return static_cast<int64_t>(value->Cast<IntPtrConstantVertex>()->GetValue());
+            }
+            return static_cast<int64_t>(JSTaggedValue(static_cast<int>(value->Cast<IntPtrConstantVertex>()->GetValue()))
+                                            .GetRawData());
+        default:
+            UNREACHABLE();
+    }
+}
+
+void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *vertex, int inputIndex,
+                      int32_t vregId, ArkSteedAssembler *assembler)
+{
+    const InputLocation *loc = vertex->GetInputLocation(inputIndex);
+    const InstructionOperand &operand = loc->GetOperand();
+    if (operand.IsConstant()) {
+        deopts->emplace_back(MakeConstantDeopt(vregId, GetConstantForDeopt(vertex->GetInput(inputIndex), vregId)));
+        return;
+    }
+
+    ASSERT(operand.IsAnyStackSlot());
+    auto stackSlot = AllocatedState::Cast(operand);
+    kungfu::ARKDeopt deoptValue;
+    deoptValue.id = static_cast<kungfu::LLVMStackMapType::VRegId>(vregId);
+    deoptValue.kind = kungfu::LocationTy::Kind::INDIRECT;
+    int32_t offset =
+        assembler->GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
+    deoptValue.value = std::make_pair(static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GCStackMapRegisters::FP),
+                                      static_cast<kungfu::LLVMStackMapType::OffsetType>(offset));
+    deopts->emplace_back(deoptValue);
 }
 }  // namespace
 
@@ -480,11 +560,61 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallVertex>(CallVertex *call)
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(DeoptIfHClassMismatchVertex *checkHClass)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << checkHClass->GetId() << ": DeoptIfHClassMismatchVertex";
+#endif
+    constexpr int RECEIVER_INDEX = static_cast<int>(DeoptIfHClassMismatchVertex::RECEIVER_INDEX);
+    ASSERT(safepointBuilder_ != nullptr);
+    auto temporaries = checkHClass->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister actualHClass = temporaries.First();
+    temporaries.PopFirst();
+    ArkSteedRegister expectedHClass = temporaries.First();
+    ArkSteedRegister receiver = GetInputRegister(checkHClass, RECEIVER_INDEX);
+    Label deopt;
+    Label pass;
+    assembler_->Move(actualHClass, receiver);
+    assembler_->Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    assembler_->And(actualHClass, expectedHClass);
+    assembler_->Compare(actualHClass, 0);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+
+    assembler_->LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
+    assembler_->Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    assembler_->And(actualHClass, expectedHClass);
+    assembler_->Move(expectedHClass, reinterpret_cast<uint64_t>(checkHClass->GetExpectedHClass()) &
+                                    TaggedStateWord::ADDRESS_MASK);
+    assembler_->Compare(actualHClass, expectedHClass);
+    assembler_->JumpIf(Condition::COND_EQUAL, &pass);
+
+    assembler_->Bind(&deopt);
+    std::vector<kungfu::ARKDeopt> deopts;
+    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
+    for (int index = 0; index < static_cast<int>(checkHClass->GetDeoptVRegs().size()); index++) {
+        AppendDeoptInput(&deopts, checkHClass, RECEIVER_INDEX + 1 + index,
+                         checkHClass->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
+    }
+    assembler_->CallDeoptHandler(kungfu::DeoptType::KEYMISSMATCH);
+    safepointBuilder_->DefineDeoptSafepoint(assembler_->GetPcOffset(), std::move(deopts));
+
+    assembler_->Bind(&pass);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptVertex>(DeoptVertex *deopt)
 {
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << deopt->GetId() << ": DeoptVertex [UNIMPLEMENTED]";
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << deopt->GetId() << ": DeoptVertex";
 #endif
+    ASSERT(safepointBuilder_ != nullptr);
+    std::vector<kungfu::ARKDeopt> deopts;
+    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
+    for (int index = 0; index < deopt->GetInputCount(); index++) {
+        AppendDeoptInput(&deopts, deopt, index, deopt->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
+    }
+    assembler_->CallDeoptHandler(deopt->GetDeoptType());
+    safepointBuilder_->DefineDeoptSafepoint(assembler_->GetPcOffset(), std::move(deopts));
 }
 
 template <>
@@ -656,26 +786,6 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ThrowUndefinedIfHoleWithNameVe
     assembler_->CallRuntime(throwIfHoleWithName->GetRuntimeId());
     assembler_->FreeCallArgSlots(stackArgCount);
     safepointBuilder_->DefineSafepoint(assembler_->GetPcOffset());
-}
-
-template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<CheckHClassVertex>(CheckHClassVertex *checkHClass)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << checkHClass->GetId() << ": CheckHClassVertex";
-#endif
-    auto receiver = GetInputRegister(checkHClass, CheckHClassVertex::RECEIVER_INDEX);
-    TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister expectedHClass = scope.AcquireScratch();
-    assembler_->LoadTaggedValue(expectedHClass, JSTaggedValue(checkHClass->GetExpectedHClass()).GetRawData());
-    assembler_->CompareField(receiver, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET), expectedHClass);
-
-    Label done;
-    assembler_->JumpIf(Condition::COND_EQUAL, &done);
-
-    assembler_->Epilogue();
-    assembler_->Return();
-    assembler_->Bind(&done);
 }
 
 template <>

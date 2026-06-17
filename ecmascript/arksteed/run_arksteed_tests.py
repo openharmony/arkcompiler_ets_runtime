@@ -428,6 +428,7 @@ class RunContext:
     print_graph: bool = False
     check_live_range_flag: bool = False
     hotness_threshold: int = 1
+    enable_heap_verify: bool = False
 
 
 def run_command_real_time(
@@ -547,7 +548,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--print-graph",
         action="store_true",
-        default=True,
         help="Enable ArkSteed graph printing during test execution",
     )
     parser.add_argument(
@@ -595,6 +595,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=1,
         help="Hotness threshold for JIT compilation (passed to --compiler-jit-hotness-threshold)",
+    )
+    parser.add_argument(
+        "--enable-heap-verify",
+        action="store_true",
+        default=False,
+        help="Enable heap verification in ark_js_vm (passes --enable-heap-verify=true)",
     )
     parser.add_argument(
         "--external-repo",
@@ -1256,6 +1262,7 @@ def run_ark_vm(
     log_components: Optional[str] = None,
     print_graph: bool = False,
     hotness_threshold: int = 1,
+    enable_heap_verify: bool = False,
     timeout: int = DEFAULT_EXECUTION_TIMEOUT,
 ) -> Tuple[Optional[CommandResult], str, str, bool]:
     """Use ark_js_vm to execute .abc file, return (result, cmd_str, ld_library_path, timed_out)."""
@@ -1277,6 +1284,8 @@ def run_ark_vm(
         cmd.append("--compiler-arksteed-print-graph=true")
     cmd.append("--compiler-arksteed-print-method-name=false")
     cmd.append("--open-ark-tools=true")
+    if enable_heap_verify:
+        cmd.append("--enable-heap-verify=true")
     cmd.extend([f"--entry-point={entry_point}", str(abc_path)])
     cmd_str = " ".join(cmd)
 
@@ -1400,6 +1409,7 @@ def execute_test_case(
         ctx.log_components,
         ctx.print_graph,
         ctx.hotness_threshold,
+        ctx.enable_heap_verify,
         DEFAULT_EXECUTION_TIMEOUT,
     )
 
@@ -1426,7 +1436,7 @@ def check_live_range_only(
 ) -> TestResult:
     """Check result for app_preheat test case (live range only, no output comparison)."""
     if check_live_range_flag and actual_output:
-        lr_ok, lr_errors, lr_ok_count, lr_error_msgs = check_live_range(actual_output)
+        lr_ok, lr_errors, lr_ok_count, _ = check_live_range(actual_output)
         if not lr_ok:
             return TestResult(
                 test.case_name,
@@ -1472,7 +1482,7 @@ def check_standard_test_result(
             returncode,
         )
 
-    if actual_output:
+    if check_live_range_flag and actual_output:
         lr_ok, lr_errors, lr_ok_count, lr_error_msgs = check_live_range(actual_output)
         if not lr_ok:
             return TestResult(
@@ -1606,58 +1616,6 @@ def _handle_execution_failure(
         output,
         result.returncode,
     )
-
-
-def _single_case_package_root(test: TestCase) -> Optional[Path]:
-    """Return the top-level package root for a single-file test."""
-    if test.ts_file is None:
-        return None
-    return _package_root_for(test.ts_file)
-
-
-def _entry_point_for_single_source(source_path: Path, package_root: Path) -> str:
-    """Derive the VM entry point for a source file inside a package root."""
-    rel = source_path.relative_to(package_root)
-    return rel.with_suffix("").as_posix()
-
-
-def _build_package_file_info(
-    package_root: Path,
-    source_overrides: Optional[Dict[Path, Path]] = None,
-) -> Tuple[Path, List[Path]]:
-    """Build a temporary fileInfo.txt for every source file in a package tree."""
-    source_overrides = source_overrides or {}
-    temp_file = tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        suffix=".txt",
-        delete=False,
-        prefix=f"arksteed_{package_root.name}_pkg_fileInfo_",
-    )
-    temp_path = Path(temp_file.name)
-    try:
-        for source_path in sorted(
-            list(package_root.rglob("*.js")) + list(package_root.rglob("*.ts"))
-        ):
-            if not source_path.is_file():
-                continue
-            if "embeddedDocs" in source_path.parts:
-                continue
-            file_source = source_overrides.get(source_path, source_path)
-            try:
-                rel_source = file_source.relative_to(package_root.parent).as_posix()
-            except ValueError:
-                rel_source = file_source.as_posix()
-            record_name = source_path.relative_to(package_root).with_suffix("").as_posix()
-            script_kind = _guess_script_kind(file_source)
-            file_spec = rel_source if rel_source.startswith("/") else f"./{rel_source}"
-            temp_file.write(
-                f"{file_spec};{record_name};{script_kind};xxx;yyy\n"
-            )
-        temp_file.flush()
-    finally:
-        temp_file.close()
-    return temp_path, [temp_path]
 
 
 def run_test_case(
@@ -2530,6 +2488,7 @@ def main() -> None:
         print_graph=print_graph,
         check_live_range_flag=check_live_range_flag,
         hotness_threshold=args.hotness_threshold,
+        enable_heap_verify=args.enable_heap_verify,
     )
 
     all_failed = 0
