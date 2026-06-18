@@ -209,7 +209,6 @@ PatchErrorCode QuickFixManager::UnloadPatch(JSThread *thread, const std::string 
 JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId)
 {
 #if defined(CROSS_PLATFORM) && !defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    LOG_ECMA(INFO) << "CheckAndGetPatch is not supported in cross-platform mode without debugger";
     return JSTaggedValue::Hole();
 #else
     if (methodInfos_.empty()) {

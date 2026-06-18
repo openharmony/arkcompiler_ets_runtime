@@ -3237,6 +3237,39 @@ int32_t ECMAObject::GetNativePointerFieldCountOnHashField(const JSThread *thread
     return len;
 }
 
+//static
+int32_t ECMAObject::GetObjectHash(const JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    if (!tagged->IsECMAObject()) {
+        return 0;
+    }
+    bool hasHash = ECMAObject::Cast(tagged->GetTaggedObject())->HasHash(thread);
+    if (!hasHash) {
+        int32_t hash = base::RandomGenerator::GenerateIdentityHash();
+        auto ecmaObj = ECMAObject::Cast(tagged->GetTaggedObject());
+        JSHandle<ECMAObject> ecmaObjHandle(thread, ecmaObj);
+        ECMAObject::SetHash(thread, hash, ecmaObjHandle);
+        return hash;
+    } else {
+        return ECMAObject::Cast(tagged->GetTaggedObject())->GetHash(thread);
+    }
+}
+
+//static
+int32_t ECMAObject::GetObjectHashCode(const JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    if (!tagged->IsECMAObject()) {
+        return 0;
+    }
+    int32_t hash = ECMAObject::Cast(tagged->GetTaggedObject())->GetHash(thread);
+    if (hash == 0) {
+        hash = base::RandomGenerator::GenerateIdentityHash();
+        auto ecmaObjHandle = JSHandle<ECMAObject>::Cast(tagged);
+        ECMAObject::SetHash(thread, hash, ecmaObjHandle);
+    }
+    return hash;
+}
+
 // static
 void ECMAObject::SetNativePointerFieldCountOnHashField(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                        int32_t count)
