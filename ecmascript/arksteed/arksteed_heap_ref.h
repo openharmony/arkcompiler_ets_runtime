@@ -43,20 +43,11 @@ public:
         return handle_.GetAddress() != 0U;
     }
 
-    bool IsUndefined() const
-    {
-        return Value().IsUndefined();
-    }
+    bool IsUndefined() const = delete;
 
-    bool IsHeapObject() const
-    {
-        return Value().IsHeapObject();
-    }
+    bool IsHeapObject() const = delete;
 
-    bool IsInt() const
-    {
-        return Value().IsInt();
-    }
+    bool IsInt() const = delete;
 
     bool IsStable() const
     {
@@ -70,20 +61,11 @@ public:
 
     bool IsSafeToEmbed() const = delete;
 
-    uint64_t GetLargeUInt() const
-    {
-        return Value().GetLargeUInt();
-    }
+    uint64_t GetLargeUInt() const = delete;
 
-    bool operator==(const ArkSteedHeapRef &other) const
-    {
-        return Value() == other.Value();
-    }
+    bool operator==(const ArkSteedHeapRef &other) const = delete;
 
-    bool operator!=(const ArkSteedHeapRef &other) const
-    {
-        return !(*this == other);
-    }
+    bool operator!=(const ArkSteedHeapRef &other) const = delete;
 
     operator JSTaggedValue() const = delete;
 
