@@ -158,8 +158,10 @@ void SharedConcurrentMarker::Reset(bool clearGCBits)
             region->ClearMarkGCBitset();
             region->ResetAliveObject();
             region->ClearCrossRegionRSet();
+            region->ClearGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
         };
         sHeap_->EnumerateOldSpaceRegions(callback);
+        sWorkManager_->FinishBase();
     }
 }
 
@@ -184,6 +186,7 @@ void SharedConcurrentMarker::InitializeMarking()
     bool needCSet = (gcType_ == TriggerGCType::SHARED_PARTIAL_GC);
     sHeap_->EnumerateOldSpaceRegions([needCSet](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
+        ASSERT(!current->InSCollectSet());
         current->ResetAliveObject();
         if (needCSet && current->InSharedOldSpace()) {
             current->SetGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
@@ -214,6 +217,10 @@ void SharedConcurrentMarker::FinishMarking(float spendTime)
 void SharedConcurrentMarker::HandleMarkingFinished()
 {
     sHeap_->WaitSensitiveStatusFinished();
-    sHeap_->DaemonCollectGarbage(gcType_, GCReason::HANDLE_MARKING_FINISHED);
+    if (gcType_ == TriggerGCType::SHARED_PARTIAL_GC) {
+        sHeap_->DaemonCollectGarbageWithFlip(gcType_, GCReason::HANDLE_MARKING_FINISHED);
+    } else {
+        sHeap_->DaemonCollectGarbage(gcType_, GCReason::HANDLE_MARKING_FINISHED);
+    }
 }
 }  // namespace panda::ecmascript

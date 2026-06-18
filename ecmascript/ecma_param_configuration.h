@@ -108,6 +108,7 @@ public:
             maxJSSerializerSize_ = 8_MB;
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 10_MB;
+            sIncObjSizeThresholdInSensitive_ = 20_MB;
             incObjSizeThresholdInSensitive_ = 20_MB;
             semiSpaceCommittedSizeThresholdForCmsInSensitive_ = 50_MB;
             stepNativeSizeInc_ = 128_MB;
@@ -136,6 +137,7 @@ public:
             maxJSSerializerSize_ = 16_MB;
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 40_MB;
+            sIncObjSizeThresholdInSensitive_ = 40_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
             semiSpaceCommittedSizeThresholdForCmsInSensitive_ = 100_MB;
             stepNativeSizeInc_ = 256_MB;
@@ -164,6 +166,7 @@ public:
             maxJSSerializerSize_ = 16_MB;
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 40_MB;
+            sIncObjSizeThresholdInSensitive_ = 80_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
             semiSpaceCommittedSizeThresholdForCmsInSensitive_ = 100_MB;
             stepNativeSizeInc_ = 300_MB;
@@ -284,6 +287,11 @@ public:
         return incObjSizeThresholdInSensitive_;
     }
 
+    size_t GetSIncObjSizeThresholdInSensitive() const
+    {
+        return sIncObjSizeThresholdInSensitive_;
+    }
+
     size_t GetSemiSpaceCommittedSizeThresholdForCmsInSensitive() const
     {
         return semiSpaceCommittedSizeThresholdForCmsInSensitive_;
@@ -393,6 +401,7 @@ private:
     size_t sharedHeapLimitGrowingFactor_ {0};
     size_t sharedHeapLimitGrowingStep_ {0};
     size_t incObjSizeThresholdInSensitive_ {0};
+    size_t sIncObjSizeThresholdInSensitive_ {0};
     size_t semiSpaceCommittedSizeThresholdForCmsInSensitive_ {0};
     size_t stepNativeSizeInc_ {0};
     size_t nativeSizeOvershoot_ {0};

@@ -17,6 +17,8 @@
 #define ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_EVACUATOR_H
 
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/rset_worklist_handler-inl.h"
+#include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
 class SharedGCEvacuator {
@@ -26,6 +28,64 @@ public:
     NO_COPY_SEMANTIC(SharedGCEvacuator);
     NO_MOVE_SEMANTIC(SharedGCEvacuator);
     void Evacuate();
+
+    void ProcessAndWaitSRegionUpdateFinished()
+    {
+        ProcessWorkloads(MAIN_THREAD_INDEX);
+    }
+
+    void CollectLocalVMRSet(EcmaVM *localVM)
+    {
+        Heap *heap = const_cast<Heap*>(localVM->GetHeap());
+        RSetWorkListHandler *handler = new RSetWorkListHandler(heap, localVM->GetJSThreadNoCheck());
+        heap->SetRSetWorkListHandler(handler);
+        handler->GetOwnerThreadUnsafe()->SetProcessingLocalToSharedRset(true);
+        rSetHandlers_.emplace_back(handler);
+    }
+
+    void MergeBackAndResetRSetWorkListHandler()
+    {
+        for (RSetWorkListHandler *handler : rSetHandlers_) {
+            handler->MergeBack();
+            delete handler;
+        }
+        rSetHandlers_.clear();
+    }
+
+    void ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
+    {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCEvacuator::ProcessRSet", "");
+        ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
+        ASSERT(JSThread::GetCurrent()->IsInRunningState());
+        auto visitor = [this](void *mem) -> bool {
+            ObjectSlot slot(ToUintPtr(mem));
+            return UpdateObjectSlot(slot);
+        };
+        handler->ProcessAll(visitor);
+        handler->WaitFinishedThenMergeBack();
+    }
+
+    void ProcessLocalToShareRSet()
+    {
+        auto visitor = [this](void *mem) -> bool {
+            ObjectSlot slot(ToUintPtr(mem));
+            return UpdateObjectSlot(slot);
+        };
+        for (RSetWorkListHandler *handler : rSetHandlers_) {
+            ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCEvacuator::ProcessRSet", "");
+            handler->ProcessAll(visitor);
+            // The localThread may have been released or reused.
+            auto localThread = handler->GetOwnerThreadUnsafe();
+            Runtime::GetInstance()->GCIterateThreadList([localThread](JSThread *thread) {
+                if (localThread == thread) {
+                    thread->SetProcessingLocalToSharedRset(false);
+                    return;
+                }
+            });
+        }
+    }
+
+    void FlipUpdateLocalRoot(EcmaVM *vm);
 private:
     void EvacuateRegions();
     void UpdateReference();
@@ -158,6 +218,7 @@ private:
 
     SharedHeap *sHeap_ {nullptr};
     std::array<SharedTlabAllocator*, common::MAX_TASKPOOL_THREAD_NUM + 1> sTlabs_ {};
+    std::vector<RSetWorkListHandler*> rSetHandlers_ {};
     Mutex lock_;
     ConditionVariable condition_;
     std::vector<std::unique_ptr<Workload>> workloads_;

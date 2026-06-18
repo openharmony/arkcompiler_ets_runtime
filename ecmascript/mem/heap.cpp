@@ -28,14 +28,15 @@
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_gc_evacuator.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/shared_heap/global_gc.h"
 #include "ecmascript/mem/shared_heap/global_gc_marker.h"
 #include "ecmascript/mem/shared_heap/shared_gc.h"
-#include "ecmascript/mem/shared_heap/shared_full_gc.h"
-#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
+#include "ecmascript/mem/shared_heap/shared_partial_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
@@ -234,6 +235,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     heapRegionAllocator_ = heapRegionAllocator;
     shouldVerifyHeap_ = option.EnableHeapVerify();
     parallelGC_ = option.EnableParallelGC();
+    concurrentMarkEnabled_ = option.EnableConcurrentMark();
     optionalLogEnabled_ = option.EnableOptionalLog();
     size_t maxHeapSize = config_.GetMaxHeapSize();
     recordSensitiveSize_ = maxHeapSize;
@@ -303,6 +305,10 @@ void SharedHeap::Destroy()
         delete sharedGC_;
         sharedGC_ = nullptr;
     }
+    if (sharedPartialGC_ != nullptr) {
+        delete sharedPartialGC_;
+        sharedPartialGC_ = nullptr;
+    }
     if (globalGC_ != nullptr) {
         delete globalGC_;
         globalGC_ = nullptr;
@@ -367,11 +373,16 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
     sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_);
-    sConcurrentMarker_ = new SharedConcurrentMarker(option.EnableSharedConcurrentMark() ?
+    bool concurrentMarkerEnabled = option.EnableSharedConcurrentMark();
+#if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
+    concurrentMarkerEnabled = false;
+#endif
+    sConcurrentMarker_ = new SharedConcurrentMarker(concurrentMarkerEnabled ?
         EnableConcurrentMarkType::ENABLE : EnableConcurrentMarkType::CONFIG_DISABLE);
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
     sharedGC_ = new SharedGC(this);
+    sharedPartialGC_ = new SharedPartialGC(this);
     globalGCWorkManager_ = new GlobalGCWorkManager(this, totalThreadNum + 1);
     globalGCMarker_ = new GlobalGCMarker();
     globalGC_ = new GlobalGC(this);
@@ -479,12 +490,35 @@ void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
     }
 }
 
+bool SharedHeap::NeedSwitchRBStub() const
+{
+    return sharedPartialGC_ && sharedPartialGC_->IsConcurrentUpdating();
+}
+
+void SharedHeap::DaemonCollectGarbageWithFlip([[maybe_unused]]TriggerGCType gcType, GCReason gcReason)
+{
+    ASSERT(gcType == TriggerGCType::SHARED_PARTIAL_GC);
+    ASSERT(JSThread::GetCurrent() == dThread_);
+    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
+    Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
+    RuntimeLock(dThread_, suspensionRequestMutex);
+    sharedPartialGC_->RunFlip(gcReason);
+    InvokeSharedNativePointerCallbacks();
+    // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
+    if (sharedPartialGC_->IsConcurrentProcessStringTable()) {
+        Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->
+            WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThread(dThread_);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    }
+    RuntimeUnLock(suspensionRequestMutex);
+}
+
 void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
 {
-    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
         gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC);
     ASSERT(JSThread::GetCurrent() == dThread_);
+    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
     RuntimeLock(dThread_, suspensionRequestMutex);
     {
@@ -541,6 +575,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
 void SharedHeap::WaitAllTasksFinished(JSThread *thread)
 {
     WaitGCFinished(thread);
+    sharedPartialGC_->WaitConcurrentUpdateFinished(thread);
     sSweeper_->WaitAllTaskFinished();
     Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
     WaitClearTaskFinished();
@@ -548,6 +583,7 @@ void SharedHeap::WaitAllTasksFinished(JSThread *thread)
 
 void SharedHeap::WaitAllTasksFinishedAfterAllJSThreadEliminated()
 {
+    sharedPartialGC_->WaitConcurrentUpdateFinished();
     WaitGCFinishedAfterAllJSThreadEliminated();
     sSweeper_->WaitAllTaskFinished();
     Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
@@ -586,6 +622,7 @@ void SharedHeap::Prepare(bool inTriggerGCThread)
     } else {
         sSweeper_->WaitAllTaskFinished();
     }
+    sharedPartialGC_->WaitConcurrentUpdateFinished();
     Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
     WaitClearTaskFinished();
 }
@@ -598,6 +635,7 @@ void SharedHeap::PrepareByJSThread(JSThread *thread, bool inTriggerGCThread)
     } else {
         sSweeper_->WaitAllTaskFinished();
     }
+    sharedPartialGC_->WaitConcurrentUpdateFinished(thread);
     Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
     WaitClearTaskFinished();
 }
@@ -664,6 +702,7 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
     }
     sHugeObjectSpace_->ReclaimHugeRegion();
     sOldSpace_->ReclaimCSets();
+    sWorkManager_->FinishBase();
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
@@ -703,7 +742,11 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
         globalGCWorkManager_ = new GlobalGCWorkManager(this, totalThreadNum + 1);
         UpdateWorkManager(sWorkManager_);
     }
-    sConcurrentMarker_->ConfigConcurrentMark(option.EnableSharedConcurrentMark());
+    bool concurrentMarkerEnabled = option.EnableSharedConcurrentMark();
+#if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
+    concurrentMarkerEnabled = false;
+#endif
+    sConcurrentMarker_->ConfigConcurrentMark(concurrentMarkerEnabled);
     sSweeper_->ConfigConcurrentSweep(option.EnableConcurrentSweep());
 }
 
@@ -713,6 +756,7 @@ void SharedHeap::UpdateWorkManager(SharedGCWorkManager *sWorkManager)
     sharedGCMarker_->ResetWorkManager(sWorkManager);
     sharedGCMovableMarker_->ResetWorkManager(sWorkManager);
     sharedGC_->ResetWorkManager(sWorkManager);
+    sharedPartialGC_->ResetWorkManager(sWorkManager);
     sharedFullGC_->ResetWorkManager(sWorkManager);
     globalGC_->ResetWorkManager(globalGCWorkManager_);
 }
@@ -1234,9 +1278,15 @@ void Heap::ProcessSharedGCMarkingLocalBuffer()
 void Heap::ProcessSharedGCRSetWorkList()
 {
     if (sharedGCData_.rSetWorkListHandler_ != nullptr) {
-        ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
         ASSERT(this == sharedGCData_.rSetWorkListHandler_->GetHeap());
-        sHeap_->GetSharedGCMarker()->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        if (sHeap_->GetSharedPartialGC()->IsConcurrentUpdating()) {
+            ASSERT(thread_->NeedReadBarrier());
+            sHeap_->GetSharedGCEvacuator()
+                ->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        } else {
+            ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
+            sHeap_->GetSharedGCMarker()->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        }
         // The current thread may end earlier than the deamon thread.
         // To ensure the accuracy of the state range, set true is executed on js thread and deamon thread.
         // Reentrant does not cause exceptions because all the values are set to false.
@@ -1834,7 +1884,10 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         CheckOngoingConcurrentMarking();
         concurrentMarker_->Reset();
-        thread_->SwitchAllStub(true);
+        if (!SharedHeap::GetInstance()->GetSharedPartialGC()->IsConcurrentUpdating()) {
+            thread_->SetReadBarrierState(false);
+            thread_->SwitchAllStub(true);
+        }
         markType_ = MarkType::MARK_YOUNG;
     }
     CollectGarbageImpl(gcType, reason);
