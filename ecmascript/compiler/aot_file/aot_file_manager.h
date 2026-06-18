@@ -225,10 +225,17 @@ private:
     void LoadingBaselineStubsLog(size_t id, Address entry);
     void LoadingRuntimeStubsLog(size_t id, Address entry);
     static void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
+#if ENABLE_MEMORY_OPTIMIZATION
+    void InitializeStubEntries(const StubFileInfo &stubInfo);
+    static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
+                                                   const StubFileInfo &stubInfo,
+                                                   const AsmInterParsedOption &asmInterOpt);
+#else
     void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
     static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
                                                    const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
                                                    const AsmInterParsedOption &asmInterOpt);
+#endif
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     AIDatum aiDatum_ {};
