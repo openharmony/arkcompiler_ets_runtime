@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,6 +104,13 @@ public:
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     // siginfo_t may be undefined on some platforms
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
+#endif
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    // Hybrid stack processing methods
+    void ProcessHybridStack(JSThread *thread);
+    void ProcessStaticFrame(const void *frame);
+    void ProcessDynamicFrame(const void *frame, JSThread *thread);
 #endif
 
     bool StartCpuProfilerForInfo();
