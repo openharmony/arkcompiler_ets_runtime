@@ -268,8 +268,6 @@ public:
     }
     static JSTaggedValue StringToList(JSThread *thread, JSHandle<EcmaString> &str);
     static JSTaggedValue StringToSList(JSThread *thread, JSHandle<EcmaString> &str);
-    static uint32_t HandleStringToList(JSThread *thread, JSHandle<JSObject> arrayHandle,
-        JSHandle<EcmaString> iteratedString, uint32_t totalElements);
 
 private:
 #define BUILTIN_STRING_FUNCTION_ENTRY(name, method, length, builtinId) \

@@ -1612,76 +1612,6 @@ function subSendableArrayTest() {
     print(array.__proto__["push"](1));
 }
 
-function sharedArrayFromStringTest() {
-    const str11 = '👨‍👩‍👧‍👦❤️🇨🇳';
-    print(SendableArray.from<string>(str11));
-    // Unicode ArrayFrom
-    const arrayFromStr = '\ud83d\udc0e\ud83d\udc71\u2764'
-    print(SendableArray.from<string>(arrayFromStr))
-
-    // UTF-8 ASCII String ArrayFrom
-    const asciiStr = "Hello";
-    print(SendableArray.from<string>(asciiStr));
-
-    // UTF-8 Latin-1 String ArrayFrom
-    const latinStr = "\u00e9\u00f1\u00fc";
-    print(SendableArray.from<string>(latinStr));
-
-    // UTF-16 BMP String ArrayFrom (CJK)
-    const cjkStr = "\u4f60\u597d\u4e16\u754c";
-    print(SendableArray.from<string>(cjkStr));
-
-    // UTF-16 Surrogate Pair ArrayFrom (Emoji)
-    const emojiStr = "\ud83d\ude00\ud83c\udf89";
-    print(SendableArray.from<string>(emojiStr));
-
-    // Mixed ASCII and Surrogate Pairs
-    const mixedAsciiEmoji = "A\ud83d\ude00Z";
-    print(SendableArray.from<string>(mixedAsciiEmoji));
-
-    // Mixed CJK and Surrogate Pairs
-    const mixedCjkEmoji = "\u4f60\ud83d\ude00\u597d";
-    print(SendableArray.from<string>(mixedCjkEmoji));
-
-    // Consecutive Surrogate Pairs
-    const multiEmoji = "\ud83d\udc68\ud83d\udc69\ud83d\udc67\ud83d\udc66";
-    print(SendableArray.from<string>(multiEmoji));
-
-    // Surrogate Pair at Start
-    const startEmoji = "\ud83c\udf89party";
-    print(SendableArray.from<string>(startEmoji));
-
-    // Surrogate Pair at End
-    const endEmoji = "party\ud83c\udf89";
-    print(SendableArray.from<string>(endEmoji));
-
-    // Single Surrogate Pair
-    const singleEmoji = "\ud83d\udc0e";
-    print(SendableArray.from<string>(singleEmoji));
-
-    // Single BMP CJK Character
-    const singleCjk = "\u4e2d";
-    print(SendableArray.from<string>(singleCjk));
-
-    // Various Unicode Blocks ArrayFrom
-    const greekStr = "\u03b1\u03b2\u03b3";
-    print(SendableArray.from<string>(greekStr));
-    const cyrillicStr = "\u0430\u0431\u0432";
-    print(SendableArray.from<string>(cyrillicStr));
-    const arabicStr = "\u0627\u0628\u062a";
-    print(SendableArray.from<string>(arabicStr));
-    const mathStr = "\u2200\u2203\u2205";
-    print(SendableArray.from<string>(mathStr));
-
-    // Combining Characters ArrayFrom
-    const combining = "e\u0301";
-    print(SendableArray.from<string>(combining));
-
-    // Supplementary Plane Characters ArrayFrom
-    const musicStr = "\ud834\udd1e";
-    print(SendableArray.from<string>(musicStr));
-}
-
 at()
 
 entries()
@@ -1772,4 +1702,3 @@ toStringTest();
 toLocaleStringTest();
 subSendableArrayTest();
 allApiTest();
-sharedArrayFromStringTest();
