@@ -35,6 +35,9 @@ declare_args() {
   # Enable pgo for building.
   ets_runtime_feature_enable_codemerge = false
 
+  # Enable back annotation for building
+  ets_runtime_feature_enable_back_annotation = false
+
   # Enable cache miss-based instruction prefetch.
   ets_runtime_feature_enable_inst_prefetch = false
 
