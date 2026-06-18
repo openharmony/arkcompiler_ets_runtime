@@ -116,11 +116,43 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest001)
 HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest002)
 {
     ObjectFactory *factory = instance->GetFactory();
+    CString moduleRecord = "moduleRecord";
     JSHandle<ResolvedRecordBinding> record = factory->NewSResolvedRecordBindingRecord(
-        factory->NewFromASCII("moduleRecord"),
+        moduleRecord,
         JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("bindName")));
     ASSERT_EQ(record->GetBindingName(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("bindName"))->GetRawData());
+}
+
+HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedRecordBindingKeepsEmptyModuleRecord)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    CString emptyModuleRecord = "";
+    CString emptyAbcFileName = "";
+    JSHandle<JSTaggedValue> bindingName = JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("bindName"));
+
+    JSHandle<ResolvedRecordIndexBinding> defaultIndexRecord = factory->NewSResolvedRecordIndexBindingRecord();
+    EXPECT_EQ(defaultIndexRecord->GetModuleRecordName(), nullptr);
+    EXPECT_FALSE(defaultIndexRecord->GetIsUpdatedFromResolvedRecordBinding());
+
+    JSHandle<ResolvedRecordBinding> defaultNameRecord = factory->NewSResolvedRecordBindingRecord();
+    EXPECT_EQ(defaultNameRecord->GetModuleRecordName(), nullptr);
+
+    JSHandle<ResolvedRecordIndexBinding> indexRecord =
+        factory->NewSResolvedRecordIndexBindingRecord(emptyModuleRecord, emptyAbcFileName, 0);
+    const CString *indexModuleRecord = indexRecord->GetModuleRecordName();
+    ASSERT_NE(indexModuleRecord, nullptr);
+    EXPECT_TRUE(indexModuleRecord->empty());
+    const CString *indexAbcFileName = reinterpret_cast<const CString *>(indexRecord->GetAbcFileName());
+    ASSERT_NE(indexAbcFileName, nullptr);
+    EXPECT_TRUE(indexAbcFileName->empty());
+    EXPECT_FALSE(indexRecord->GetIsUpdatedFromResolvedRecordBinding());
+
+    JSHandle<ResolvedRecordBinding> nameRecord =
+        factory->NewSResolvedRecordBindingRecord(emptyModuleRecord, bindingName);
+    const CString *nameModuleRecord = nameRecord->GetModuleRecordName();
+    ASSERT_NE(nameModuleRecord, nullptr);
+    EXPECT_TRUE(nameModuleRecord->empty());
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, CopySArrayTest001)

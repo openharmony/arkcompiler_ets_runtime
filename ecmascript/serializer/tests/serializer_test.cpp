@@ -1529,18 +1529,16 @@ public:
         JSHandle<TaggedArray> environmentArray(thread, module->GetEnvironment(thread));
         // check sendable binding
         ObjectFactory *objectFactory = ecmaVm->GetFactory();
-        JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8("sendable binding recordName");
-        JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8("sendable binding baseFileNameHdl");
         ResolvedRecordIndexBinding *recordIndexBinding =
             ResolvedRecordIndexBinding::Cast(environmentArray->Get(thread, 0).GetTaggedObject());
-        EXPECT_EQ(recordIndexBinding->GetModuleRecord(thread), recordNameHdl.GetTaggedValue());
-        EXPECT_EQ(recordIndexBinding->GetAbcFileName(thread), baseFileNameHdl.GetTaggedValue());
+        EXPECT_EQ(recordIndexBinding->GetModuleRecordNameString(), "sendable binding recordName");
+        EXPECT_EQ(recordIndexBinding->GetAbcFileNameString(), "sendable binding baseFileNameHdl");
         EXPECT_EQ(recordIndexBinding->GetIndex(), 0);
 
         JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
         ResolvedRecordBinding *nameBinding =
             ResolvedRecordBinding::Cast(environmentArray->Get(thread, 1).GetTaggedObject());
-        EXPECT_EQ(nameBinding->GetModuleRecord(thread), recordNameHdl.GetTaggedValue());
+        EXPECT_EQ(nameBinding->GetModuleRecordNameString(), "sendable binding recordName");
         EXPECT_EQ(nameBinding->GetBindingName(thread), val.GetTaggedValue());
         // check normal binding
         ResolvedBinding *resolvedBinding =
@@ -3775,20 +3773,20 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
     module->SetStatus(ModuleStatus::EVALUATED);
     JSHandle<TaggedArray> environmentArray = objectFactory->NewTaggedArray(4);
     // sendable binding
-    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8("sendable binding recordName");
-    JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8("sendable binding baseFileNameHdl");
+    CString recordName = "sendable binding recordName";
+    CString baseFileName1 = "sendable binding baseFileNameHdl";
     JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
-        objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
+        objectFactory->NewSResolvedRecordIndexBindingRecord(recordName, baseFileName1, 0);
     environmentArray->Set(thread, 0, recordIndexBinding.GetTaggedValue());
 
     JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
     JSHandle<ResolvedRecordBinding> nameBinding =
-        objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
+        objectFactory->NewSResolvedRecordBindingRecord(recordName, val);
     environmentArray->Set(thread, 1, nameBinding.GetTaggedValue());
     // mormal binding
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName1 = "modules1.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName1);
+    CString baseFileName2 = "modules1.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName2);
     module1->SetStatus(ModuleStatus::EVALUATED);
     JSHandle<ResolvedBinding> resolvedBinding = objectFactory->NewResolvedBindingRecord(module1, val);
     environmentArray->Set(thread, 2, resolvedBinding.GetTaggedValue());

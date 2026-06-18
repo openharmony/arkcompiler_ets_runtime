@@ -23,13 +23,11 @@
 
 namespace panda::ecmascript {
 /**
- * A concurrent-safe hash map for use as a GC root container.
+ * A hash map for use as a GC root container.
  * All stored values are wrapped in GCRoot with CMCGC.
  *
- * Safe for concurrent access between GC threads and mutator threads
- *
- * IMPORTANT: Do not attempt to cache iterators or references outside
- * of the provided interface - they can become invalid after the lock is released.
+ * This container is not thread-safe. Callers must provide synchronization when
+ * the same map can be accessed from multiple threads.
  */
 #if ENABLE_LATEST_OPTIMIZATION
 template <class Key, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
@@ -112,7 +110,6 @@ private:
     static constexpr double DELETION_THRESHOLD = 0.3;
     static constexpr size_t EMPTY_MARK = static_cast<size_t>(-1);
 
-    mutable std::mutex lock_;
     std::unique_ptr<Entry[]> table_;
     size_t capacity_;
     size_t size_;
@@ -128,7 +125,10 @@ private:
             return EMPTY_MARK;
         }
         size_t hash = hasher_(key) & HASH_MASK;
-        size_t index = hash % capacity_;
+        // assert capacity_ is 2^n
+        ASSERT((capacity_ & (capacity_ - 1)) == 0);
+        size_t mask = capacity_ - 1;
+        size_t index = hash & mask;
         size_t startIndex = index;
         do {
             Entry& entry = table_[index];
@@ -140,7 +140,7 @@ private:
                 break;
             }
             // Deleted state, continue probing
-            index = (index + 1) % capacity_;
+            index = (index + 1) & mask;
         } while (index != startIndex);
         return EMPTY_MARK;
     }
@@ -150,7 +150,10 @@ private:
     size_t FindInsertPosition(const K& key, size_t hash, bool& found) const
     {
         found = false;
-        size_t index = hash % capacity_;
+        // assert capacity_ is 2^n
+        ASSERT((capacity_ & (capacity_ - 1)) == 0);
+        size_t mask = capacity_ - 1;
+        size_t index = hash & mask;
         size_t startIndex = index;
         size_t firstDeleted = EMPTY_MARK;
         do {
@@ -169,7 +172,7 @@ private:
                 // Prefer deleted position, otherwise use empty position
                 return (firstDeleted != EMPTY_MARK) ? firstDeleted : index;
             }
-            index = (index + 1) % capacity_;
+            index = (index + 1) & mask;
         } while (index != startIndex);
         // Table full (shouldn't happen due to resizing)
         return EMPTY_MARK;
@@ -188,6 +191,7 @@ private:
         if (newCapacity < MIN_CAPACITY) {
             newCapacity = MIN_CAPACITY;
         }
+        ASSERT((newCapacity & (newCapacity - 1)) == 0);
         auto newTable = std::make_unique<Entry[]>(newCapacity);
         // Reinsert occupied elements (skip deleted states)
         for (size_t i = 0; i < capacity_; ++i) {
@@ -195,9 +199,10 @@ private:
             if (oldEntry.IsOccupied()) {
                 size_t hash = oldEntry.GetHash();
                 ASSERT(newCapacity != 0);
-                size_t newIndex = hash % newCapacity;
+                size_t newMask = newCapacity - 1;
+                size_t newIndex = hash & newMask;
                 while (newTable[newIndex].IsOccupied()) {
-                    newIndex = (newIndex + 1) % newCapacity;
+                    newIndex = (newIndex + 1) & newMask;
                 }
                 newTable[newIndex] = std::move(oldEntry);
             }
@@ -249,8 +254,7 @@ public:
     ModuleManagerMap& operator=(const ModuleManagerMap&) = delete;
 
     ModuleManagerMap(ModuleManagerMap&& other) noexcept
-        : lock_(),
-          table_(std::move(other.table_)),
+        : table_(std::move(other.table_)),
           capacity_(other.capacity_),
           size_(other.size_),
           deletedCount_(other.deletedCount_),
@@ -266,7 +270,6 @@ public:
     ModuleManagerMap& operator=(ModuleManagerMap&& other) noexcept
     {
         if (this != &other) {
-            std::lock_guard<std::mutex> lock(lock_);
             table_ = std::move(other.table_);
             capacity_ = other.capacity_;
             size_ = other.size_;
@@ -288,7 +291,6 @@ public:
       */
     void Insert(const Key &key, JSTaggedValue value)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         // Check if expansion is needed
         if ((size_ + 1) > capacity_ * MAX_LOAD_FACTOR) {
             Rehash(capacity_ * GROW_FACTOR);
@@ -319,14 +321,12 @@ public:
       * The try_emplace ensure a GCRoot constructor is only trigger
       * if the insertion actually happen.
       *
-      * Note: Returns bool instead of <iterator,bool> for thread safety.
-      * Exposing iterators would be unsafe as they become invalid
-      * once the lock is released.
+      * Note: Returns bool instead of <iterator,bool>. Exposing iterators would
+      * be unsafe as they can become invalid after later mutations.
       */
     template <typename K>
     bool Emplace(const K &key, JSTaggedValue value)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         if ((size_ + 1) > capacity_ * MAX_LOAD_FACTOR) {
             Rehash(capacity_ * GROW_FACTOR);
         }
@@ -350,19 +350,28 @@ public:
     /**
       * Safely retrieves a value by key with readbarrier.
       *
-      * The returned value is obtained via GCRoot::Read(), ensuring proper
-      * read barriers are applied for concurrent GC safety. The value is
-      * returned by copy to avoid dangling references after lock release.
+      * The returned value is obtained via GCRoot::Read(), ensuring proper read
+      * barriers are applied when needed. The value is returned by copy.
       */
     template <typename K>
     std::optional<JSTaggedValue> Find(const K& key)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         size_t pos = FindPosition(key);
         if (pos != EMPTY_MARK) {
             return std::make_optional(table_[pos].value.Read());
         }
         return std::nullopt;
+    }
+
+    template <typename K>
+    bool FindValue(const K& key, JSTaggedValue &value)
+    {
+        size_t pos = FindPosition(key);
+        if (pos == EMPTY_MARK) {
+            return false;
+        }
+        value = table_[pos].value.Read();
+        return true;
     }
 
     /**
@@ -371,7 +380,6 @@ public:
     template <typename Func>
     void ForEach(Func &&fn)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         for (size_t i = 0; i < capacity_; ++i) {
             Entry& entry = table_[i];
             if (entry.IsOccupied()) {
@@ -386,7 +394,6 @@ public:
     template <typename Func>
     void ForEachValue(Func &&fn)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         for (size_t i = 0; i < capacity_; ++i) {
             Entry& entry = table_[i];
             if (entry.IsOccupied()) {
@@ -400,7 +407,6 @@ public:
      */
     void Erase(const Key &key)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         size_t pos = FindPosition(key);
         if (pos != EMPTY_MARK) {
             Entry& entry = table_[pos];
@@ -424,7 +430,6 @@ public:
      */
     size_t Size() const
     {
-        std::lock_guard<std::mutex> lock(lock_);
         return size_;
     }
 
@@ -433,7 +438,6 @@ public:
      */
     void Clear()
     {
-        std::lock_guard<std::mutex> lock(lock_);
         // Always shrink to initial capacity when clearing
         if (capacity_ != INITIAL_CAPACITY) {
             table_ = std::make_unique<Entry[]>(INITIAL_CAPACITY);
@@ -452,7 +456,6 @@ public:
 template <class Key, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
 class ModuleManagerMap {
     using UnderlyingMap = CUnorderedMap<Key, GCRoot, Hash, KeyEqual>;
-    mutable std::mutex lock_;
     // Underlying storage with GCRoot values
     UnderlyingMap map_;
 
@@ -463,7 +466,6 @@ public:
      */
     void Insert(const Key &key, JSTaggedValue value)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         map_[key] = GCRoot(value);
     }
 
@@ -473,39 +475,45 @@ public:
      * The try_emplace ensure a GCRoot constructor is only trigger
      * if the insertion actually happen
      *
-     * Note: Returns bool instead of <iterator,bool> for thread safety.
-     * Exposing iterators would be unsafe as they become invalid
-     * once the lock is released.
+     * Note: Returns bool instead of <iterator,bool>. Exposing iterators would
+     * be unsafe as they can become invalid after later mutations.
      */
     template <typename K>
     bool Emplace(const K &key, JSTaggedValue value)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         return map_.try_emplace(key, value).second;
     }
 
     /**
      * Safely retrieves a value by key with readbarrier.
      *
-     * The returned value is obtained via GCRoot::Read(), ensuring proper
-     * read barriers are applied for concurrent GC safety. The value is
-     * returned by copy to avoid dangling references after lock release.
+     * The returned value is obtained via GCRoot::Read(), ensuring proper read
+     * barriers are applied when needed. The value is returned by copy.
      */
     template <typename K>
     std::optional<JSTaggedValue> Find(const K &key)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         auto it = map_.find(key);
         return it == map_.end() ? std::nullopt : std::make_optional(it->second.Read());
     }
 
+    template <typename K>
+    bool FindValue(const K &key, JSTaggedValue &value)
+    {
+        auto it = map_.find(key);
+        if (it == map_.end()) {
+            return false;
+        }
+        value = it->second.Read();
+        return true;
+    }
+
     /**
-     * Applies a function to each key-value pair while holding the lock.
+     * Applies a function to each key-value pair.
      */
     template <typename Func>
     void ForEach(Func &&fn)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         for (auto it = map_.begin(); it != map_.end(); ++it) {
             fn(it);
         }
@@ -513,19 +521,16 @@ public:
 
     void Erase(const Key &key)
     {
-        std::lock_guard<std::mutex> lock(lock_);
         map_.erase(key);
     }
 
     size_t Size() const
     {
-        std::lock_guard<std::mutex> lock(lock_);
         return map_.size();
     }
 
     void Clear()
     {
-        std::lock_guard<std::mutex> lock(lock_);
         map_.clear();
     }
 };

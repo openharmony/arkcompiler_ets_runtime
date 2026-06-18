@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/signal_manager.h"
 #include "ecmascript/serializer/file_deserializer.h"
@@ -86,7 +87,7 @@ JSHandle<TaggedArray> ModuleSnapshot::GetModuleSerializeArray(JSThread *thread)
 {
     ModuleManager *moduleManager = thread->GetModuleManager();
     uint32_t normalModuleSize = moduleManager->GetResolvedModulesSize();
-    uint32_t sharedModuleSize = SharedModuleManager::GetInstance()->GetResolvedSharedModulesSize();
+    uint32_t sharedModuleSize = SharedModuleManager::GetInstance()->GetResolvedSharedModulesSize(thread);
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<TaggedArray> serializerArray = factory->NewTaggedArray(normalModuleSize + sharedModuleSize);
@@ -100,6 +101,7 @@ void ModuleSnapshot::RestoreUpdatedBinding(JSThread* thread, JSHandle<TaggedArra
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<SourceTextModule> module(thread, globalConstants->GetUndefined());
     JSMutableHandle<ResolvedIndexBinding> indexBinding(thread, globalConstants->GetUndefined());
+    JSMutableHandle<ResolvedRecordIndexBinding> recordIndexBinding(thread, globalConstants->GetUndefined());
     JSMutableHandle<TaggedArray> environment(thread, globalConstants->GetUndefined());
     for (uint32_t moduleIdx = 0; moduleIdx < serializeArray->GetLength(); ++moduleIdx) {
         module.Update(serializeArray->Get(thread, moduleIdx));
@@ -117,6 +119,12 @@ void ModuleSnapshot::RestoreUpdatedBinding(JSThread* thread, JSHandle<TaggedArra
                 indexBinding.Update(binding);
                 JSHandle<JSTaggedValue> nameBinding =
                     SourceTextModule::CreateBindingByIndexBinding(thread, indexBinding, isShared);
+                environment->Set(thread, bindingIdx, nameBinding);
+            } else if (binding.IsResolvedRecordIndexBinding() &&
+                ResolvedRecordIndexBinding::Cast(binding)->GetIsUpdatedFromResolvedRecordBinding()) {
+                recordIndexBinding.Update(binding);
+                JSHandle<JSTaggedValue> nameBinding =
+                    SourceTextModule::CreateBindingByRecordIndexBinding(thread, recordIndexBinding);
                 environment->Set(thread, bindingIdx, nameBinding);
             }
         }

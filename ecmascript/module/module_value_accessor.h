@@ -87,17 +87,27 @@ protected:
 
     template <bool isLazy>
     static void EvaluateModuleIfNeeded(JSThread *thread, JSHandle<SourceTextModule> module);
-    static void LogModuleLoadInfo(JSThread *thread,
-                                  JSHandle<SourceTextModule> module,
-                                  JSHandle<SourceTextModule> requiredModule,
-                                  int32_t index,
-                                  bool isSendable);
+
+    inline static void LogModuleLoadInfo(JSThread* thread, JSHandle<SourceTextModule> module,
+        JSHandle<SourceTextModule> requiredModule, int32_t index, bool isSendable)
+    {
+        if (isSendable) {
+            return;
+        }
+        ModuleLogger *moduleLogger = thread->GetModuleLogger();
+        if (moduleLogger != nullptr) {
+            moduleLogger->InsertModuleLoadInfo(module, requiredModule, index);
+        }
+    }
 
     template <bool isLazy, typename BindingType>
     static JSHandle<SourceTextModule> GetResolvedModule(JSThread *thread,
                                                         JSHandle<SourceTextModule> module,
                                                         JSHandle<BindingType> binding,
                                                         const CString& requestModuleRecordName);
+
+    static bool TryGetEvaluatedImportedModuleValueByIndex(JSThread *thread,
+        const CString *moduleRecord, int32_t index, JSTaggedValue &result);
 
     friend class DeprecatedModuleValueAccessor;
     friend class RuntimeStubs;

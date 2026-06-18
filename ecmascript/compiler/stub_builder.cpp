@@ -13006,21 +13006,17 @@ GateRef StubBuilder::UpdateBindingAndGetModuleValue(GateRef glue, GateRef module
 
 GateRef StubBuilder::GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
 {
-    GateRef recordName = GetModuleRecord(glue, resolvedBinding);
-    RecordNameMustBeString(glue, recordName);
     GateRef moduleManager = GetModuleManager(glue);
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordIndexBindingModule),
-                                 {module, resolvedBinding, moduleManager, recordName});
+                                 {module, resolvedBinding, moduleManager});
     return result;
 }
 
 GateRef StubBuilder::GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
 {
-    GateRef recordName = GetModuleRecord(glue, resolvedBinding);
-    RecordNameMustBeString(glue, recordName);
     GateRef moduleManager = GetModuleManager(glue);
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordBindingModule),
-                                 {module, moduleManager, recordName});
+                                 {module, resolvedBinding, moduleManager});
     return result;
 }
 

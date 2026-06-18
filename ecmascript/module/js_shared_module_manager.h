@@ -25,6 +25,10 @@
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tagged_dictionary.h"
 
+namespace panda::test {
+class ModuleSnapshotTest;
+}
+
 namespace panda::ecmascript {
 struct StateVisit {
     Mutex mutex;
@@ -39,7 +43,9 @@ public:
 
     void Destroy()
     {
+        // Called after the last VM is destroyed and shared GC tasks are finished.
         resolvedSharedModules_.Clear();
+        ClearResolvedSendableBindingNameStorage();
     }
 
     void Iterate(RootVisitor &v);
@@ -64,37 +70,18 @@ public:
     void AddToResolvedModulesAndCreateSharedModuleMutex(JSThread *thread, const CString &recordName,
                                                         JSTaggedValue module);
 
-    inline bool AddResolveImportedSModule(const CString &recordName, JSTaggedValue module)
-    {
-        return resolvedSharedModules_.Emplace(recordName, module);
-    }
-
-    inline void UpdateResolveImportedSModule(const CString &recordName, JSTaggedValue module)
-    {
-        resolvedSharedModules_.Insert(recordName, module);
-    }
     void SharedNativeObjDestroy();
+
+    const CString *GetOrInsertResolvedSendableBindingName(const CString &recordName);
 
     RecursiveMutex& GetSharedMutex()
     {
         return sharedMutex_;
     }
 
-    inline uint32_t GetResolvedSharedModulesSize()
-    {
-        return resolvedSharedModules_.Size();
-    }
+    uint32_t GetResolvedSharedModulesSize(JSThread *thread);
 
-    void AddSharedSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
-    {
-#if ENABLE_LATEST_OPTIMIZATION
-        resolvedSharedModules_.ForEachValue(
-            [thread, &idx, &serializerArray](GCRoot& root) { serializerArray->Set(thread, idx++, root.Read()); });
-#else
-        resolvedSharedModules_.ForEach(
-            [thread, &idx, &serializerArray](auto it) { serializerArray->Set(thread, idx++, it->second.Read()); });
-#endif
-    }
+    void AddSharedSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx);
 
 private:
     SharedModuleManager() = default;
@@ -110,18 +97,31 @@ private:
     bool TryInsertInSModuleManager(JSThread *thread, const CString &recordName,
         const JSHandle<SourceTextModule> &moduleRecord);
 
+    // Caller must hold mutex_.
+    bool AddResolveImportedSModuleUnsafe(const CString &recordName, JSTaggedValue module)
+    {
+        return resolvedSharedModules_.Emplace(recordName, module);
+    }
+
+    void ClearResolvedSendableBindingNameStorage();
+
     static constexpr uint32_t DEFAULT_DICTIONARY_CAPACITY = 4;
 #if ENABLE_LATEST_OPTIMIZATION
     ModuleManagerMap<CString, CStringHash> resolvedSharedModules_;
 #else
     ModuleManagerMap<CString> resolvedSharedModules_;
 #endif
+    // Stores interned names used by resolved record bindings. Pointers to std::unordered_set elements stay valid
+    // across rehash and are released only when the manager is destroyed.
+    CUnorderedSet<CString, CStringHash> resolvedSendableBindingNameStorage_;
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
+    Mutex resolvedSendableBindingNameMutex_;
     RecursiveMutex sharedMutex_;
 
     friend class SourceTextModule;
     friend class ModuleManager;
+    friend class panda::test::ModuleSnapshotTest;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_SHARED_MODULE_MANAGER_H

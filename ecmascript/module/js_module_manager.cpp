@@ -366,6 +366,12 @@ JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(const CString& refer
     return JSHandle<JSTaggedValue>(thread, entry.value());
 }
 
+// no handle created
+bool ModuleManager::TryGetImportedModuleTaggedValue(const CString &referencing, JSTaggedValue &module)
+{
+    return resolvedModules_.FindValue(referencing, module);
+}
+
 JSHandle<JSTaggedValue> ModuleManager::TryGetSendableModule(const CString& referencing)
 {
     JSThread *thread = vm_->GetJSThread();

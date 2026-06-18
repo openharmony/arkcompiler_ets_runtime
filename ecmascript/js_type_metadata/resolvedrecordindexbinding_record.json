@@ -2,16 +2,6 @@
     "name": "RESOLVEDRECORDINDEXBINDING_RECORD",
     "node_name": "ResolvedRecordIndexBinding",
     "offsets": [
-        {
-            "name": "ModuleRecord",
-            "offset": 0,
-            "size": 8
-        },
-        {
-            "name": "AbcFileName",
-            "offset": 8,
-            "size": 8
-        }
     ],
     "end_offset": 24,
     "parents": [

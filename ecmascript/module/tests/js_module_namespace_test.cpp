@@ -561,8 +561,8 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_GetProperty_ResolvedRecordIndex
 
     // 创建 ResolvedRecordIndexBinding 对象
     // 这个对象包含 ModuleRecord 和 AbcFileName 字段
-    JSHandle<EcmaString> moduleRecord = factory->NewFromASCII("testModule");
-    JSHandle<EcmaString> abcFileName = factory->NewFromASCII("test.abc");
+    CString moduleRecord = "testModule";
+    CString abcFileName = "test.abc";
     int32_t index = 0;
     JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
         factory->NewSResolvedRecordIndexBindingRecord(moduleRecord, abcFileName, index);
@@ -576,8 +576,7 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_GetProperty_ResolvedRecordIndex
     // 因此这个测试用例主要是验证对象创建和类型检查逻辑
 
     // 验证绑定对象的字段
-    JSTaggedValue storedModuleRecord = recordIndexBinding->GetModuleRecord(thread);
-    EXPECT_EQ(recordIndexBinding->GetModuleRecord(thread), moduleRecord.GetTaggedValue());
+    EXPECT_EQ(recordIndexBinding->GetModuleRecordNameString(), "testModule");
 }
 
 /**
@@ -607,7 +606,7 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_GetProperty_ResolvedRecordBindi
 
     // 创建 ResolvedRecordBinding 对象
     // 这个对象包含 ModuleRecord 和 BindingName 字段
-    JSHandle<EcmaString> moduleRecord = factory->NewFromASCII("testModule");
+    CString moduleRecord = "testModule";
     JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("testBinding"));
 
     JSHandle<ResolvedRecordBinding> recordBinding = factory->NewSResolvedRecordBindingRecord(moduleRecord, bindingName);
@@ -615,7 +614,7 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_GetProperty_ResolvedRecordBindi
     // 验证创建的对象类型正确
     EXPECT_TRUE(bindingValue->IsResolvedRecordBinding());
     // 验证绑定对象的字段
-    EXPECT_EQ(recordBinding->GetModuleRecord(thread), moduleRecord.GetTaggedValue());
+    EXPECT_EQ(recordBinding->GetModuleRecordNameString(), "testModule");
     EXPECT_EQ(recordBinding->GetBindingName(thread), bindingName.GetTaggedValue());
 }
 
@@ -631,8 +630,8 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_GetProperty_BindingRecordTypeSw
 
     // 创建测试用的绑定记录对象
     // 1. 创建 ResolvedRecordIndexBinding 对象
-    JSHandle<EcmaString> moduleRecord1 = factory->NewFromASCII("module1");
-    JSHandle<EcmaString> abcFileName = factory->NewFromASCII("abc1.abc");
+    CString moduleRecord1 = "module1";
+    CString abcFileName = "abc1.abc";
     JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
         factory->NewSResolvedRecordIndexBindingRecord(moduleRecord1, abcFileName, 0);
 
@@ -640,7 +639,7 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_GetProperty_BindingRecordTypeSw
     EXPECT_EQ(recordIndexBinding->GetClass()->GetObjectType(), JSType::RESOLVEDRECORDINDEXBINDING_RECORD);
 
     // 2. 创建 ResolvedRecordBinding 对象
-    JSHandle<EcmaString> moduleRecord2 = factory->NewFromASCII("module2");
+    CString moduleRecord2 = "module2";
     JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("binding"));
     JSHandle<ResolvedRecordBinding> recordBinding =
         factory->NewSResolvedRecordBindingRecord(moduleRecord2, bindingName);

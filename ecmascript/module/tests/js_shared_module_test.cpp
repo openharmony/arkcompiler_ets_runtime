@@ -233,8 +233,8 @@ HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_ResolvedIndexBinding)
 HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_ResolvedRecordIndexBinding)
 {
     ObjectFactory *factory = instance->GetFactory();
-    JSHandle<EcmaString> record = factory->NewFromASCII("recIdxModule");
-    JSHandle<EcmaString> fileName = factory->NewFromASCII("recIdxModule.js");
+    CString record = "recIdxModule";
+    CString fileName = "recIdxModule.js";
     JSHandle<JSTaggedValue> binding = JSHandle<JSTaggedValue>::Cast(
         factory->NewSResolvedRecordIndexBindingRecord(record, fileName, 0));
     JSHandle<TaggedArray> env = factory->NewTaggedArray(1);
@@ -274,7 +274,7 @@ HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_NonSharedIndexBinding)
 HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_ResolvedRecordBinding)
 {
     ObjectFactory *factory = instance->GetFactory();
-    JSHandle<EcmaString> record = factory->NewFromASCII("recBindModule");
+    CString record = "recBindModule";
     JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("bindName"));
     JSHandle<JSTaggedValue> binding = JSHandle<JSTaggedValue>::Cast(
         factory->NewSResolvedRecordBindingRecord(record, bindingName));

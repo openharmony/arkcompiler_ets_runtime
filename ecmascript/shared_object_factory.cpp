@@ -18,6 +18,8 @@
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -1035,42 +1037,57 @@ JSHandle<ResolvedBinding> ObjectFactory::NewSResolvedBindingRecord(const JSHandl
 
 JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord()
 {
-    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
-    JSHandle<EcmaString> ecmaModule(undefinedValue);
-    JSHandle<EcmaString> fileName(undefinedValue);
-    int32_t index = 0;
-    return NewSResolvedRecordIndexBindingRecord(ecmaModule, fileName, index);
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
+    obj->SetModuleRecordName(nullptr);
+    obj->SetAbcFileNameString(nullptr);
+    obj->SetIndex(0);
+    obj->SetIsUpdatedFromResolvedRecordBinding(false);
+    return obj;
 }
 
 JSHandle<ResolvedRecordIndexBinding> ObjectFactory::NewSResolvedRecordIndexBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, const JSHandle<EcmaString> &abcFileName, int32_t index)
+    const CString &moduleRecord, const CString &abcFileName, int32_t index)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordIndexBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordIndexBinding> obj(thread_, header);
-    obj->SetModuleRecord(thread_, moduleRecord);
-    obj->SetAbcFileName(thread_, abcFileName);
+    SharedModuleManager *sharedModuleManager = SharedModuleManager::GetInstance();
+    const CString *moduleRecordPtr = sharedModuleManager->GetOrInsertResolvedSendableBindingName(moduleRecord);
+    const CString *abcFileNamePtr = sharedModuleManager->GetOrInsertResolvedSendableBindingName(abcFileName);
+    obj->SetModuleRecordName(moduleRecordPtr);
+    obj->SetAbcFileNameString(abcFileNamePtr);
     obj->SetIndex(index);
+    obj->SetIsUpdatedFromResolvedRecordBinding(false);
     return obj;
 }
 
 JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
 {
     JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
-    JSHandle<EcmaString> ecmaModule(undefinedValue);
     JSHandle<JSTaggedValue> bindingName(undefinedValue);
-    return NewSResolvedRecordBindingRecord(ecmaModule, bindingName);
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedRecordBinding> obj(thread_, header);
+    obj->SetModuleRecordName(nullptr);
+    obj->SetBindingName(thread_, bindingName);
+    return obj;
 }
 
 JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord(
-    const JSHandle<EcmaString> &moduleRecord, const JSHandle<JSTaggedValue> &bindingName)
+    const CString &moduleRecord, const JSHandle<JSTaggedValue> &bindingName)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordBindingClass().GetTaggedObject()));
     JSHandle<ResolvedRecordBinding> obj(thread_, header);
-    obj->SetModuleRecord(thread_, moduleRecord);
+    const CString *moduleRecordPtr =
+        SharedModuleManager::GetInstance()->GetOrInsertResolvedSendableBindingName(moduleRecord);
+    obj->SetModuleRecordName(moduleRecordPtr);
     obj->SetBindingName(thread_, bindingName);
     return obj;
 }

@@ -73,6 +73,8 @@ private:
 
     // process SourceTextModule fields
     bool SerializeModuleCNativeObjects(TaggedObject *object);
+    bool SerializeResolvedRecordIndexBindingNativeObjects(TaggedObject *object);
+    bool SerializeResolvedRecordBindingNativeObjects(TaggedObject *object);
 protected:
     void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
     bool notSupport_ {false};
