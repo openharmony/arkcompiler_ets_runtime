@@ -107,9 +107,7 @@ enum CommandValues {
     OPTION_HELP,
     OPTION_ENABLE_ARK_TOOLS,
     OPTION_STUB_FILE,
-#if defined(STUB_FUNCTION_REORDERING)
     OPTION_STUB_ORDERING_FILE,
-#endif
     OPTION_ENABLE_FORCE_GC,
     OPTION_ENABLE_CMC_GC,
     OPTION_ENABLE_CMC_GC_CONCURRENT_ROOT_MARKING,
@@ -386,7 +384,6 @@ public:
         stubFile_ = std::move(value);
     }
 
-#if defined(STUB_FUNCTION_REORDERING)
     std::string GetStubOrderingFile() const
     {
         return stubOrderingFile_;
@@ -396,7 +393,6 @@ public:
     {
         stubOrderingFile_ = std::move(value);
     }
-#endif
 
     void SetCompilerPkgJsonInfo(std::string pkgJsonInfo)
     {
@@ -453,12 +449,10 @@ public:
         return WasOptionSet(OPTION_STUB_FILE);
     }
 
-#if defined(STUB_FUNCTION_REORDERING)
     bool WasStubOrderingFileSet() const
     {
         return WasOptionSet(OPTION_STUB_ORDERING_FILE);
     }
-#endif
 
     void SetEnableAOT(bool value)
     {
@@ -2652,9 +2646,7 @@ private:
     bool enableArkTools_ {true};
     bool openArkTools_ {false};
     std::string stubFile_ {"stub.an"};
-#if defined(STUB_FUNCTION_REORDERING)
     std::string stubOrderingFile_ {""};
-#endif
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
     int anFd_ {-1};
