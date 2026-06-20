@@ -21,6 +21,98 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
+
+// Configuration for the 5th root group (globalRef) when crafting rawheap binary.
+//   emit         - false: omit the group entirely (old-binary / backward-compat)
+//   trackingOff  - true : emit 0xFFFFFFFF sentinel, no payload (tracking disabled)
+//   entries      - (refAddr, heapObjAddr) pairs written as the payload. Ignored
+//                  when emit=false or trackingOff=true.
+struct GlobalRefGroupConfig {
+    bool emit {true};
+    bool trackingOff {false};
+    std::vector<std::pair<uint64_t, uint64_t>> entries;
+};
+
+namespace {
+// Heap pointer alignment used for V1 root addresses (i*8 layout).
+constexpr uint64_t ROOT_ADDR_ALIGN_V1 = 8;
+// V2 object-table item is 24 bytes: syntheticAddr(u32) + size(u32) + nodeId(u64)
+// + nativeSize(u32) + type(u32). Mirrors rawheap_translate::AddrTableItemV2.
+constexpr uint32_t V2_OBJECT_TABLE_ITEM_SIZE = 24;
+
+// Emit the 5th root group header (and optional payload). When useU32HeapAddr is
+// true (V2), heapObjAddr is written as u32; otherwise u64 (V1). refAddr is u64
+// in both versions.
+void WriteGlobalRefGroupPayload(BinaryWriter &writer, const GlobalRefGroupConfig &cfg,
+                                bool useU32HeapAddr)
+{
+    if (!cfg.emit) {
+        return;
+    }
+    if (cfg.trackingOff) {
+        writer.WriteUInt32(rawheap_translate::GLOBAL_REF_TRACK_OFF_MARK);
+        return;
+    }
+    writer.WriteUInt32(static_cast<uint32_t>(cfg.entries.size()));
+    for (const auto &e : cfg.entries) {
+        writer.WriteUInt64(e.first);
+        if (useU32HeapAddr) {
+            writer.WriteUInt32(static_cast<uint32_t>(e.second));
+        } else {
+            writer.WriteUInt64(e.second);
+        }
+    }
+}
+
+// Emit the string table: rootCnt strings, each bound to one root address. V1
+// roots are u64 (i * ROOT_ADDR_ALIGN_V1); V2 roots are u32 synthetic (i).
+void WriteStringTable(BinaryWriter &writer, uint32_t rootCnt, bool useU32Roots)
+{
+    writer.WriteUInt32(rootCnt);
+    writer.WriteUInt32(0);
+    for (uint32_t i = 1; i <= rootCnt; i++) {
+        std::string str = "test_root_" + std::to_string(i);
+        writer.WriteUInt32(str.size());
+        writer.WriteUInt32(1);
+        if (useU32Roots) {
+            writer.WriteUInt32(i);
+        } else {
+            writer.WriteUInt64(i * ROOT_ADDR_ALIGN_V1);
+        }
+        writer.WriteBinBlock(const_cast<char *>(str.c_str()), str.size() + 1);
+    }
+}
+
+// Emit the V2 object table. Each entry maps syntheticAddr=i to a node so that
+// AddGlobalHandleObjectNodes' FindNode can resolve heapObjAddr in [1..rootCnt].
+// When withEdges is true, each object is given size=sizeof(uint64_t) (one edge
+// slot) and a 4-byte heap-pointer payload is appended after the table — this is
+// the minimum needed to drive RawHeapTranslateV2::Translate to completion,
+// because Translate's per-node hclass lookup calls GetNextEdgeTo once. Without
+// edges, GetNextEdgeTo returns nullptr on the first heap object and Translate
+// bails out. The edge encodes syntheticAddr=1: the low byte (0x01) doubles as
+// GetNextEdgeTo's tag (heap pointer — ZERO/INTL/DOUB bits clear) and the full
+// 4-byte little-endian value resolves via FindNode(1).
+void WriteV2ObjectTable(BinaryWriter &writer, uint32_t rootCnt, bool withEdges = false)
+{
+    writer.WriteUInt32(rootCnt);
+    writer.WriteUInt32(V2_OBJECT_TABLE_ITEM_SIZE);
+    for (uint32_t i = 1; i <= rootCnt; i++) {
+        writer.WriteUInt32(i);     // syntheticAddr
+        writer.WriteUInt32(withEdges ? static_cast<uint32_t>(sizeof(uint64_t)) : 0);  // size
+        writer.WriteUInt64(i);     // nodeId
+        writer.WriteUInt32(0);     // nativeSize
+        writer.WriteUInt32(0);     // type
+    }
+    if (withEdges) {
+        for (uint32_t i = 1; i <= rootCnt; i++) {
+            writer.WriteUInt32(1);
+        }
+    }
+    writer.WriteUInt64(0);
+}
+}  // namespace
+
 class RawHeapTranslateTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -130,40 +222,64 @@ public:
 
     void WriteTestData(BinaryWriter &writer)
     {
-        // write version
+        GlobalRefGroupConfig disabled;
+        disabled.emit = false;
+        WriteTestDataWithGlobalRef(writer, disabled);
+    }
+
+    // Emit a rawheap binary that includes 4 (empty) root groups and a configurable
+    // 5th globalRef group. Root addresses are i*ROOT_ADDR_ALIGN_V1 (i=1..10);
+    // FindNode in AddGlobalHandleObjectNodes resolves heapObjAddr values that match.
+    void WriteTestDataWithGlobalRef(BinaryWriter &writer, const GlobalRefGroupConfig &cfg)
+    {
         char version[sizeof(uint64_t)] = "1.0.0";
         writer.WriteBinBlock(version, sizeof(uint64_t));
 
         uint32_t rootOffset = writer.GetCurrentFileSize();
         AddSectionRecord(rootOffset);
 
-        // write root table
-        int rootCnt = 10;                           // root count
-        writer.WriteUInt32(rootCnt);
-        writer.WriteUInt32(sizeof(uint64_t));       // size of object identifier
-
+        constexpr int rootCnt = 10;
+        writer.WriteUInt32(rootCnt);                       // root count
+        writer.WriteUInt32(sizeof(uint64_t));              // size of object identifier
         for (uint64_t i = 1; i <= rootCnt; i++) {
-            writer.WriteUInt64(i * 8);                  // 8: 8-byte alignment root identifier
+            writer.WriteUInt64(i * ROOT_ADDR_ALIGN_V1);
         }
+        // sections_[1] covers ONLY root table header + root identifiers (mirrors
+        // RawHeapDumpV1::DumpRootTable). The 4 root groups + 5th globalRef group
+        // below are trailing data the parser discovers via
+        // sections_[2] - sections_[0] - sections_[1].
         AddSectionRecord(writer.GetCurrentFileSize() - rootOffset);
+
+        // 4 empty root groups (LocalHandle / GlobalHandle / VM / Frame).
+        writer.WriteUInt32(0);
+        writer.WriteUInt32(0);
+        writer.WriteUInt32(0);
+        writer.WriteUInt32(0);
+
+        // V1: heapObjAddr and root addresses are u64.
+        WriteGlobalRefGroupPayload(writer, cfg, false);
 
         uint32_t strOffset = writer.GetCurrentFileSize();
         AddSectionRecord(strOffset);
-
-        // write string table, there is empty
-        writer.WriteUInt32(rootCnt);     // string count
-        writer.WriteUInt32(0);      // unused int32
-
-        for (int i = 1; i <= rootCnt; i++) {
-            std::string str = "test_root_" + std::to_string(i);
-            writer.WriteUInt32(str.size());                     // size of current string
-            writer.WriteUInt32(1);                              // object count
-            writer.WriteUInt64(i * 8);                              // 8: 8-byte alignment object identifier
-            writer.WriteBinBlock(const_cast<char *>(str.c_str()), str.size() + 1);      // string
-        }
-
+        WriteStringTable(writer, rootCnt, false);
         AddSectionRecord(writer.GetCurrentFileSize() - strOffset);
         writer.EndOfWriteBinBlock();
+    }
+
+    void AddGlobalHandleObjectNodes()
+    {
+        if (rawheap_ == nullptr) {
+            return;
+        }
+        rawheap_->AddGlobalHandleObjectNodes();
+    }
+
+    bool IsGlobalRefTrackingEnabled() const
+    {
+        if (rawheap_ == nullptr) {
+            return false;
+        }
+        return rawheap_->globalRefTrackingEnabled_;
     }
 
 private:
@@ -225,55 +341,72 @@ public:
 
     void WriteTestData(BinaryWriter &writer)
     {
-        // write version
+        GlobalRefGroupConfig disabled;
+        disabled.emit = false;
+        WriteTestDataWithGlobalRef(writer, disabled);
+    }
+
+    // V2 counterpart: writes version, root table (with 4 empty root groups and a
+    // configurable 5th globalRef group), string table, and object table. Root
+    // addresses are u32 values 1..10; object table maps syntheticAddr=i to a node,
+    // so AddGlobalHandleObjectNodes' FindNode will resolve heapObjAddr in [1..10].
+    // When withEdges is true, the object table is emitted with valid edge payload
+    // so that Translate() can run to completion (see WriteV2ObjectTable).
+    void WriteTestDataWithGlobalRef(BinaryWriter &writer, const GlobalRefGroupConfig &cfg,
+                                    bool withEdges = false)
+    {
         char version[sizeof(uint64_t)] = "2.0.0";
         writer.WriteBinBlock(version, sizeof(uint64_t));
 
         uint32_t rootOffset = writer.GetCurrentFileSize();
         AddSectionRecord(rootOffset);
 
-        // write root table header: count + identifier size
-        int rootCnt = 10;
+        constexpr int rootCnt = 10;
         writer.WriteUInt32(rootCnt);
         writer.WriteUInt32(sizeof(uint32_t));  // identifier size: 4 bytes for V2
-
-        // write root addresses
         for (uint32_t i = 1; i <= rootCnt; i++) {
             writer.WriteUInt32(i);
         }
+        // sections_[1] = root table header + root identifiers only (mirrors
+        // RawHeapDumpV2::DumpRootTable). The 4 root groups + 5th globalRef group
+        // below are discovered via sections_[2] - sections_[0] - sections_[1].
         AddSectionRecord(writer.GetCurrentFileSize() - rootOffset);
+
+        // 4 empty root groups.
+        writer.WriteUInt32(0);
+        writer.WriteUInt32(0);
+        writer.WriteUInt32(0);
+        writer.WriteUInt32(0);
+
+        // V2: heapObjAddr and root addresses are u32.
+        WriteGlobalRefGroupPayload(writer, cfg, true);
 
         uint32_t strOffset = writer.GetCurrentFileSize();
         AddSectionRecord(strOffset);
-
-        // write string table, there is empty
-        writer.WriteUInt32(rootCnt);    // string count
-        writer.WriteUInt32(0);          // unused int32
-
-        for (int i = 1; i <= rootCnt; i++) {
-            std::string str = "test_root_" + std::to_string(i);
-            writer.WriteUInt32(str.size());                     // size of current string
-            writer.WriteUInt32(1);                              // object count
-            writer.WriteUInt32(i);                              // object identifier
-            writer.WriteBinBlock(const_cast<char *>(str.c_str()), str.size() + 1);      // string
-        }
+        WriteStringTable(writer, rootCnt, true);
         AddSectionRecord(writer.GetCurrentFileSize() - strOffset);
 
         uint32_t objectOffset = writer.GetCurrentFileSize();
-        writer.WriteUInt32(rootCnt);
-        writer.WriteUInt32(24);     // 24: sizeof addr table
-        for (int i = 1; i <= rootCnt; i++) {
-            writer.WriteUInt32(i);
-            writer.WriteUInt32(0);
-            writer.WriteUInt64(i);
-            writer.WriteUInt32(0);
-            writer.WriteUInt32(0);
-        }
-        writer.WriteUInt64(0);
-
+        WriteV2ObjectTable(writer, rootCnt, withEdges);
         AddSectionRecord(objectOffset);
         AddSectionRecord(writer.GetCurrentFileSize() - objectOffset);
         writer.EndOfWriteBinBlock();
+    }
+
+    void AddGlobalHandleObjectNodes()
+    {
+        if (rawheap_ == nullptr) {
+            return;
+        }
+        rawheap_->AddGlobalHandleObjectNodes();
+    }
+
+    bool IsGlobalRefTrackingEnabled() const
+    {
+        if (rawheap_ == nullptr) {
+            return false;
+        }
+        return rawheap_->globalRefTrackingEnabled_;
     }
 
 private:
@@ -677,6 +810,525 @@ HWTEST_F_L0(RawHeapTranslateTest, SourceTextModuleMetaDataParse)
     }
     ASSERT_TRUE(foundEcmaModuleFileName) << "EcmaModuleFileName field not found in SOURCE_TEXT_MODULE metadata";
     ASSERT_TRUE(foundEcmaModuleRecordName) << "EcmaModuleRecordName field not found in SOURCE_TEXT_MODULE metadata";
+}
+
+// =============================================================================
+// GlobalHandleObject / globalRef group parsing (V1 + V2).
+//
+// These tests replace the original GlobalRefTrackTest dump+translate integration
+// tests with translate-only tests: they craft the rawheap binary by hand (via
+// BinaryWriter + GlobalRefGroupConfig), drive the parser directly, then invoke
+// AddGlobalHandleObjectNodes to materialize the GlobalHandleObject subtree.
+// This works on every platform (including ARM32, where HeapProfiler::BinaryDump
+// is a no-op) because no EcmaVM or dumper is involved.
+//
+// Root address conventions in the crafted binary:
+//   V1: roots are i*8 for i=1..10  -> nodesMap_ keys {8,16,24,...,80}
+//   V2: roots are i   for i=1..10  -> nodesMap_ keys {1,2,...,10} via object table
+// heapObjAddr in a globalRef entry must fall in those keys for FindNode to succeed.
+// =============================================================================
+
+namespace {
+// Look up a node's name via the string table.
+std::string NodeName(rawheap_translate::StringHashMap *strTable, const rawheap_translate::Node *node)
+{
+    auto key = strTable->GetKeyByStringId(node->strId);
+    return strTable->GetStringByKey(key);
+}
+
+// Return true if any node's name starts with "GlobalHandleObject".
+// Skips nodes whose strId is below CUSTOM_STRID_START — those are either
+// unconfigured (e.g. V2 metadataNode_ when the binary has no metadata,
+// which leaves strId at the Node default of 1) or reserved. Calling
+// GetKeyByStringId on them would underflow orderedKey_.
+std::string GetGlobalHandleObjectNodeName(const std::vector<rawheap_translate::Node *> &nodes,
+                                          rawheap_translate::StringHashMap *strTable)
+{
+    for (const auto *n : nodes) {
+        if (n->strId < rawheap_translate::StringHashMap::CUSTOM_STRID_START) {
+            continue;
+        }
+        std::string name = NodeName(strTable, n);
+        if (name.rfind("GlobalHandleObject", 0) == 0) {
+            return name;
+        }
+    }
+    return "";
+}
+
+bool HasNodeWithName(const std::vector<rawheap_translate::Node *> &nodes,
+                     rawheap_translate::StringHashMap *strTable,
+                     const std::string &expectedName)
+{
+    for (const auto *n : nodes) {
+        if (n->strId < rawheap_translate::StringHashMap::CUSTOM_STRID_START) {
+            continue;
+        }
+        if (NodeName(strTable, n) == expectedName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool HasGlobalHandleObjectNode(const std::vector<rawheap_translate::Node *> &nodes,
+                               rawheap_translate::StringHashMap *strTable)
+{
+    return !GetGlobalHandleObjectNodeName(nodes, strTable).empty();
+}
+}  // namespace
+
+// V1 basic: two valid entries -> GlobalHandleObject[2] with 2 ReferenceAddress children.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefBasic)
+{
+    const std::string filename = "rawheap_v1_gref_basic.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.entries = {{0xaaa0, 8}, {0xbbb0, 16}};  // heapObjAddr 8 and 16 are valid roots
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_TRUE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 18U);  // 1 synthetic + 4 root groups + 10 roots + 1 GHO + 2 virtuals
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[2]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xaaa0"));
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xbbb0"));
+}
+
+// V1 "filter" equivalent: the dumper would have already dropped non-heap entries,
+// so the binary contains only the one survivor. Verifies parser handles count=1.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefFiltersNonHeapObject)
+{
+    const std::string filename = "rawheap_v1_gref_filter.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.entries = {{0xccc0, 8}};  // single valid entry (non-heap already filtered by dumper)
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 17U);  // 15 base + 1 GHO + 1 virtual
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[1]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xccc0"));
+}
+
+// V1 "weak tag" equivalent: the dumper strips the weak bit before writing
+// heapObjAddr, so on the parse side weak- and strong-originated entries look
+// identical. Test verifies the parser handles the cleaned addresses correctly.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefStripsWeakTag)
+{
+    const std::string filename = "rawheap_v1_gref_weak.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    // Both heapObjAddrs are post-strip aligned heap addresses (8 and 16).
+    cfg.entries = {{0xddd0, 8}, {0xeee0, 16}};
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 18U);
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[2]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xddd0"));
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xeee0"));
+}
+
+// V1 orphan: entry whose heapObjAddr is not in the root set. With the new design,
+// all entries get a virtual node at parse time (no pre-filtering); the
+// virtualNode -> heapObj property edge is built later in Translate, which is
+// not exercised here. Verifies the translator does not crash and both virtual
+// nodes are materialized.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefDropsOrphanEntry)
+{
+    const std::string filename = "rawheap_v1_gref_orphan.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    // First entry valid (root 8); second entry orphan (1024 is not a root address).
+    cfg.entries = {{0xaaa0, 8}, {0xbbb0, 1024}};
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 18U);  // 15 base + 1 GHO + 2 virtuals (orphan not filtered at parse time)
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[2]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xaaa0"));
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xbbb0"));
+}
+
+// V1 tracking-off: dumper emits the 0xFFFFFFFF sentinel, no payload. Translator
+// must NOT add a GlobalHandleObject node (tracking disabled flag stays false).
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefTrackingOff)
+{
+    const std::string filename = "rawheap_v1_gref_off.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.trackingOff = true;
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_FALSE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 15U);  // base layout only, no GHO
+    ASSERT_FALSE(HasGlobalHandleObjectNode(nodes, helper.GetStringTable()));
+}
+
+// V1 tracking-on but no mappings: count=0 (no sentinel, no payload). Translator
+// still adds GlobalHandleObject[0] with zero children to surface the empty state.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefTrackingOnNoRef)
+{
+    const std::string filename = "rawheap_v1_gref_noref.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;  // count=0, tracking on
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_TRUE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 16U);  // 15 base + 1 GHO[0]
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[0]");
+}
+
+// V1 backward-compat: rawheap predates the 5th group entirely. Translator must
+// treat absence as "no tracking info" and skip GlobalHandleObject creation.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1GlobalRefBackwardCompat)
+{
+    const std::string filename = "rawheap_v1_gref_old.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.emit = false;  // no 5th group at all
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_FALSE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 15U);
+    ASSERT_FALSE(HasGlobalHandleObjectNode(nodes, helper.GetStringTable()));
+}
+
+// V2 basic: two valid entries -> GlobalHandleObject[2] with 2 ReferenceAddress children.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2GlobalRefBasic)
+{
+    const std::string filename = "rawheap_v2_gref_basic.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(nullptr);
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.entries = {{0xaaa0, 1}, {0xbbb0, 2}};  // heapObjAddr 1 and 2 are valid roots
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_TRUE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    // 1 synthetic + 4 root groups + 1 metadata + 10 roots + 1 GHO + 2 virtuals = 19
+    ASSERT_EQ(nodes.size(), 19U);
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[2]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xaaa0"));
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xbbb0"));
+}
+
+// V2 "filter" equivalent: single valid entry post-filter.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2GlobalRefFiltersNonHeapObject)
+{
+    const std::string filename = "rawheap_v2_gref_filter.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(nullptr);
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.entries = {{0xccc0, 1}};
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+
+    auto nodes = *helper.GetNodes();
+    // 16 base (1 synthetic + 4 root groups + 1 metadata + 10 roots) + 1 GHO + 1 virtual = 18
+    ASSERT_EQ(nodes.size(), 18U);
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[1]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xccc0"));
+}
+
+// V2 "weak tag" equivalent: two post-strip entries.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2GlobalRefStripsWeakTag)
+{
+    const std::string filename = "rawheap_v2_gref_weak.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(nullptr);
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.entries = {{0xddd0, 1}, {0xeee0, 2}};
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+
+    auto nodes = *helper.GetNodes();
+    // 16 base + 1 GHO + 2 virtuals = 19
+    ASSERT_EQ(nodes.size(), 19U);
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[2]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xddd0"));
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xeee0"));
+}
+
+// V2 tracking-on but no mappings: count=0 -> GlobalHandleObject[0].
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2GlobalRefTrackingOnNoRef)
+{
+    const std::string filename = "rawheap_v2_gref_noref.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(nullptr);
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_TRUE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    // 16 base + 1 GHO[0] = 17
+    ASSERT_EQ(nodes.size(), 17U);
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[0]");
+}
+
+// V2 backward-compat: rawheap predates the 5th group. No GlobalHandleObject.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2GlobalRefBackwardCompat)
+{
+    const std::string filename = "rawheap_v2_gref_old.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(nullptr);
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.emit = false;
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_FALSE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 16U);  // base layout + globalHandleObject slot (unconfigured)
+    ASSERT_FALSE(HasGlobalHandleObjectNode(nodes, helper.GetStringTable()));
+}
+
+// Regression: drive RawHeapTranslateV2::Translate end-to-end with global ref
+// tracking on. Existing V2 tests only exercise Parse; Translate's loop reads
+// the flat mem_ edge stream in lockstep with nodes_, so any off-by-one in the
+// loop start (e.g. assuming GHO sits at index 6 when it actually sits at
+// 6+heapObjCount) desyncs the stream and surfaces as Translate returning false.
+// This test runs Translate with tracking on and asserts success.
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2TranslateWithGlobalRef)
+{
+    const std::string filename = "rawheap_v2_translate_gref.rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(metaParser.get());
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    GlobalRefGroupConfig cfg;
+    cfg.entries = {{0xaaa0, 1}};
+    // withEdges=true emits one valid heap-pointer edge per object so that
+    // GetNextEdgeTo can resolve an hclass for every heap object.
+    helper.WriteTestDataWithGlobalRef(writer, cfg, true);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_TRUE(helper.IsGlobalRefTrackingEnabled());
+
+    ASSERT_TRUE(rawheap.Translate());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(GetGlobalHandleObjectNodeName(nodes, helper.GetStringTable()), "GlobalHandleObject[1]");
+    ASSERT_TRUE(HasNodeWithName(nodes, helper.GetStringTable(), "ReferenceAddress:0xaaa0"));
+}
+
+// Focused regression: a rawheap with NO GlobalHandleObject data — whether because
+// the 5th group is entirely absent (old binary) or carries the 0xFFFFFFFF sentinel
+// (tracking off) — must parse without crashing and must not synthesize any node
+// whose name starts with "GlobalHandleObject". Covers both V1 and V2.
+static void ParseV1NoGlobalHandleObject(const std::string &tag, const GlobalRefGroupConfig &cfg)
+{
+    SCOPED_TRACE("V1 case: " + tag);
+    std::string filename = "rawheap_v1_no_gho_" + tag + ".rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV1 rawheap(nullptr);
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_FALSE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 15U);
+    ASSERT_FALSE(HasGlobalHandleObjectNode(nodes, helper.GetStringTable()))
+        << "V1 case '" << tag << "' should not produce any GlobalHandleObject node";
+}
+
+static void ParseV2NoGlobalHandleObject(const std::string &tag, const GlobalRefGroupConfig &cfg)
+{
+    SCOPED_TRACE("V2 case: " + tag);
+    std::string filename = "rawheap_v2_no_gho_" + tag + ".rawheap";
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_FALSE(fd == -1);
+    FileDescriptorStream stream(fd);
+    BinaryWriter writer(&stream);
+    rawheap_translate::RawHeapTranslateV2 rawheap(nullptr);
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+    helper.WriteTestDataWithGlobalRef(writer, cfg);
+
+    rawheap_translate::FileReader file;
+    ASSERT_TRUE(file.Initialize(filename));
+    ASSERT_TRUE(helper.ReadObjectTable(file));
+    ASSERT_TRUE(helper.ReadRootTable(file));
+    ASSERT_TRUE(helper.ReadStringTable(file));
+    ASSERT_FALSE(helper.IsGlobalRefTrackingEnabled());
+
+    auto nodes = *helper.GetNodes();
+    ASSERT_EQ(nodes.size(), 16U);  // base layout + globalHandleObject slot (unconfigured)
+    ASSERT_FALSE(HasGlobalHandleObjectNode(nodes, helper.GetStringTable()))
+        << "V2 case '" << tag << "' should not produce any GlobalHandleObject node";
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, ParseRawheapWithoutGlobalHandleObjectData)
+{
+    GlobalRefGroupConfig absent;
+    absent.emit = false;
+    GlobalRefGroupConfig sentinel;
+    sentinel.trackingOff = true;
+
+    ASSERT_NO_FATAL_FAILURE(ParseV1NoGlobalHandleObject("absent", absent));
+    ASSERT_NO_FATAL_FAILURE(ParseV1NoGlobalHandleObject("sentinel", sentinel));
+    ASSERT_NO_FATAL_FAILURE(ParseV2NoGlobalHandleObject("absent", absent));
+    ASSERT_NO_FATAL_FAILURE(ParseV2NoGlobalHandleObject("sentinel", sentinel));
 }
 
 }  // namespace panda::test

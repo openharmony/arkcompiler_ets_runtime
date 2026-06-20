@@ -2529,5 +2529,101 @@ HWTEST_F_L0(HeapDumpTest, TestGlobalRefInHeapSnapshot)
 
     JSNApi::SetTrackGlobalRef(false);
 }
+
+#ifndef PANDA_TARGET_ARM32
+// Covers WriteGlobalRefGroup's tracking-off branch in the rawheap dumper
+// (rawheap_dump.cpp): when track-global-ref is disabled, the dumper must emit
+// the GLOBAL_REF_TRACK_OFF_MARK sentinel as the globalRef group count and skip
+// the payload. The translator then sees the sentinel and produces no
+// GlobalHandleObject node. Translate-side coverage exists in
+// rawheap_translate_test.cpp via crafted bytes; this test exercises the
+// dump-side writer end-to-end.
+HWTEST_F_L0(HeapDumpTest, TestRawHeapGlobalRefTrackingOff)
+{
+    ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::string rawHeapPath("test_rawheap_global_ref_off.rawheap");
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_rawheap_global_ref_off.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_FALSE(tester.MatchHeapDumpString(heapsnapshotPath, "\"GlobalHandleObject"))
+        << "Tracking off but GlobalHandleObject node appeared in snapshot";
+}
+
+// Covers WriteGlobalRefGroup's tracking-on branch in the rawheap dumper
+// (rawheap_dump.cpp): the non-ProcDump path via
+// vm_->GetAssociatedJSThread()->IterateGlobalRefMappings. With tracking enabled
+// and at least one global ref stored, the dumper writes count + payload; the
+// translator then builds the GlobalHandleObject subtree with one
+// ReferenceAddress child per surviving entry.
+HWTEST_F_L0(HeapDumpTest, TestRawHeapGlobalRefTrackingOn)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    JSNApi::SetTrackGlobalRef(true);
+
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
+    int fakeRef = 1;
+    thread_->StoreGlobalRefMapping(globalObj.GetSlotAddress(), &fakeRef);
+
+    std::string rawHeapPath("test_rawheap_global_ref_on.rawheap");
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::ostringstream oss;
+    oss << "ReferenceAddress:0x" << std::hex << reinterpret_cast<uintptr_t>(&fakeRef);
+
+    std::string heapsnapshotPath("test_rawheap_global_ref_on.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"GlobalHandleObject[1]\""))
+        << "GlobalHandleObject[1] node not found in snapshot";
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, oss.str()))
+        << "ReferenceAddress for the stored global ref not found in snapshot";
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"JSObject\""))
+        << "Target heap object referenced by global ref not found in snapshot";
+
+    JSNApi::SetTrackGlobalRef(false);
+}
+
+// Same as TestRawHeapGlobalRefTrackingOn but exercises the V2 rawheap dump
+// path: SetRawHeapDumpCropLevel(LEVEL_V2) makes the dumper emit 4-byte
+// synthetic addresses. WriteGlobalRefGroup itself is format-agnostic, but the
+// V2 translator (RawHeapTranslateV2) reads the globalRef group back through a
+// different code path, so this end-to-end test verifies the V2 path doesn't
+// drop the GlobalHandleObject subtree.
+HWTEST_F_L0(HeapDumpTest, TestRawHeapGlobalRefTrackingOnV2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    JSNApi::SetTrackGlobalRef(true);
+
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
+    int fakeRef = 1;
+    thread_->StoreGlobalRefMapping(globalObj.GetSlotAddress(), &fakeRef);
+
+    std::string rawHeapPath("test_rawheap_global_ref_on_v2.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::DEFAULT);
+
+    std::string heapsnapshotPath("test_rawheap_global_ref_on_v2.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    JSNApi::SetTrackGlobalRef(false);
+}
+#endif  // PANDA_TARGET_ARM32
 #endif
 }
