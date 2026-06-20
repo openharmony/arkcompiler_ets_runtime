@@ -14,8 +14,10 @@
  */
 
 #include <chrono>
+#include <sstream>
 #include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
+#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
 
 namespace rawheap_translate {
 RawHeap::~RawHeap()
@@ -203,6 +205,13 @@ Node *RawHeap::CreateNode()
     return node;
 }
 
+Node *RawHeap::CreateNodeAt(size_t pos)
+{
+    Node *node = new Node(nodeIndex_++);
+    nodes_.insert(nodes_.begin() + pos, node);
+    return node;
+}
+
 void RawHeap::InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type)
 {
     Edge *edge = new Edge(toNode, indexOrStrId, type);
@@ -326,13 +335,38 @@ bool RawHeapTranslateV1::Parse(FileReader &file, uint32_t rawheapFileSize)
     return true;
 }
 
+bool RawHeapTranslateV1::BuildGlobalRefEdge(Node *node, StringId objectStrId)
+{
+    if (node->type == ROOT) {
+        return true;
+    }
+    auto refIt = refAddrStrIdMap_.find(node->strId);
+    if (refIt == refAddrStrIdMap_.end()) {
+        return false;
+    }
+    auto entryIt = globalRefEntries_.find(refIt->second);
+    if (entryIt != globalRefEntries_.end()) {
+        Node *target = FindNode(entryIt->second);
+        if (target != nullptr) {
+            InsertEdge(target, objectStrId, EdgeType::PROPERTY);
+            return true;
+        }
+    }
+    return true;
+}
+
 bool RawHeapTranslateV1::Translate()
 {
     FillNodes();
     auto nodes = GetNodes();
     size_t cnt = nodes->size();
+    StringId objectStrId = InsertAndGetStringId("JSObject");
+
     for (size_t i = 5; i < cnt; i++) {  // 5:normal node start from 5 (synthetic + 4 root groups)
         Node *node = (*nodes)[i];
+        if (BuildGlobalRefEdge(node, objectStrId)) {
+            continue;
+        }
         if (!node->hclass || !node->data) {
             continue;
         }
@@ -344,6 +378,7 @@ bool RawHeapTranslateV1::Translate()
     }
 
     AddPrimitiveNodes();
+
     LOG_INFO_ << "success!";
     return true;
 }
@@ -474,6 +509,143 @@ bool RawHeapTranslateV1::ReadFrameRoots(FileReader &file)
     return true;
 }
 
+constexpr uint64_t REF_ADDR_SIZE = 8;
+
+struct GlobalRefGroupLoc {
+    uint64_t offset = 0;
+    uint32_t entryCount = 0;
+    bool enabled = false;
+};
+
+bool HasSpaceForEntries(uint64_t remainingSpace, uint64_t usedSpace,
+                        uint32_t entryCount, uint64_t heapObjWidth)
+{
+    uint64_t expectedSize = HANDLE_COUNT_ADDR_SIZE + entryCount * (REF_ADDR_SIZE + heapObjWidth);
+    return remainingSpace - usedSpace >= expectedSize;
+}
+
+// Locate the 5th root group (global-ref entries) inside the root section.
+// The count field is always present; GLOBAL_REF_TRACK_OFF_MARK means tracking
+// is off and no payload follows.
+bool LocateGlobalRefGroup(FileReader &file,
+                          const std::vector<uint32_t> &sections,
+                          uint64_t usedSpace,
+                          uint64_t heapObjWidth,
+                          GlobalRefGroupLoc &out)
+{
+    // 2: string table start from sections[2]
+    uint64_t remainingSpace = sections[2] - sections[0] - sections[1];
+    if (remainingSpace <= usedSpace) {
+        return false;
+    }
+
+    out.offset = sections[0] + sections[1] + usedSpace;
+    if (!file.CheckAndGetHeaderAt(out.offset, 0)) {
+        return false;
+    }
+
+    out.entryCount = file.GetHeaderLeft();
+    if (out.entryCount == GLOBAL_REF_TRACK_OFF_MARK) {
+        // New-format dumper always emits count; 0xFFFFFFFF means tracking is off.
+        out.enabled = false;
+        return true;
+    }
+    if (!HasSpaceForEntries(remainingSpace, usedSpace, out.entryCount, heapObjWidth)) {
+        return false;
+    }
+    out.enabled = true;
+    return true;
+}
+
+bool ReadGlobalRefEntryPayload(FileReader &file, uint32_t entryCount, uint64_t heapObjWidth,
+                               std::unordered_map<uint64_t, uint64_t> &outEntries)
+{
+    outEntries.clear();
+    outEntries.reserve(entryCount);
+    char refBuf[REF_ADDR_SIZE] = {0};
+    char heapBuf[sizeof(uint64_t)] = {0};
+    for (uint32_t i = 0; i < entryCount; ++i) {
+        if (!file.Read(refBuf, REF_ADDR_SIZE) || !file.Read(heapBuf, heapObjWidth)) {
+            LOG_ERROR_ << "read global ref entry error!";
+            return false;
+        }
+        uint64_t refAddr = ByteToU64(refBuf);
+        uint64_t heapObjAddr = (heapObjWidth == sizeof(uint32_t))
+            ? ByteToU32(heapBuf)
+            : ByteToU64(heapBuf);
+        outEntries.emplace(refAddr, heapObjAddr);
+    }
+    return true;
+}
+
+struct GlobalRefParseResult {
+    std::unordered_map<uint64_t, uint64_t> entries;  // refAddr -> heapObjAddr
+    bool enabled = false;
+};
+
+bool ReadGlobalRefEntriesImpl(FileReader &file,
+                              const std::vector<uint32_t> &sections,
+                              uint64_t usedSpace,
+                              uint64_t heapObjWidth,
+                              GlobalRefParseResult &out)
+{
+    GlobalRefGroupLoc loc;
+    if (!LocateGlobalRefGroup(file, sections, usedSpace, heapObjWidth, loc)) {
+        out.enabled = loc.enabled;
+        return true;
+    }
+    out.enabled = loc.enabled;
+    if (!loc.enabled) {
+        // Tracking off (new format sentinel). Count field consumed, no entries follow.
+        return true;
+    }
+    file.Seek(loc.offset + HANDLE_COUNT_ADDR_SIZE);
+    return ReadGlobalRefEntryPayload(file, loc.entryCount, heapObjWidth, out.entries);
+}
+
+bool RawHeapTranslateV1::ReadGlobalRefEntries(FileReader &file)
+{
+    uint64_t usedSpace = (localHandleRoots_.size() + globalHandleRoots_.size() +
+                          vmRoots_.size() + frameRoots_.size()) * ADDRESS_SIZE_V1 +
+                         4 * HANDLE_COUNT_ADDR_SIZE;  // 4: four count fields
+    GlobalRefParseResult result;
+    if (!ReadGlobalRefEntriesImpl(file, sections_, usedSpace, sizeof(uint64_t), result)) {
+        return false;
+    }
+    globalRefEntries_ = std::move(result.entries);
+    globalRefTrackingEnabled_ = result.enabled;
+    return true;
+}
+
+void RawHeap::DoAddGlobalHandleObjectNodes(const std::unordered_map<uint64_t, uint64_t> &globalRefEntries)
+{
+    constexpr NodeType OBJECT_TYPE = 3;  // matches NodeType::OBJECT in heap_snapshot enum
+    size_t n = globalRefEntries.size();
+    if (n == 0) {
+        return;
+    }
+
+    uint32_t index = 0;
+    for (const auto &[refAddr, heapObjAddr] : globalRefEntries) {
+        Node *virtNode = CreateNode();
+        std::ostringstream oss;
+        oss << "ReferenceAddress:0x" << std::hex << refAddr;
+        StringId strId = InsertAndGetStringId(oss.str());
+        virtNode->strId = strId;
+        virtNode->type = OBJECT_TYPE;
+        virtNode->edgeCount = 1;  // property edge to heapObj built later in Translate
+        refAddrStrIdMap_[strId] = refAddr;
+        InsertEdge(virtNode, index, EdgeType::ELEMENT);  // GHO -> virtualNode
+        ++index;
+        (void)heapObjAddr;
+    }
+}
+
+void RawHeapTranslateV1::AddGlobalHandleObjectNodes()
+{
+    DoAddGlobalHandleObjectNodes(globalRefEntries_);
+}
+
 bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
 {
     if (!file.CheckAndGetHeaderAt(sections_[0], sizeof(uint64_t))) {
@@ -506,6 +678,10 @@ bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
     }
 
     if (!ReadFrameRoots(file)) {
+        return false;
+    }
+
+    if (!ReadGlobalRefEntries(file)) {
         return false;
     }
 
@@ -653,6 +829,13 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
         InsertEdge(metadataNode, strId, type);
     }
 
+    if (globalRefTrackingEnabled_) {
+        Node *globalHandleObject = CreateNode();
+        CreateRootNode(globalHandleObject, "GlobalHandleObject", globalRefEntries_.size());
+        syntheticRoot->edgeCount++;
+        InsertEdge(globalHandleObject, strId, type);
+    }
+
     for (auto addr : roots) {
         if (IsHeapObject(addr)) {
             Node *root = FindOrCreateNode(addr);
@@ -664,6 +847,9 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
     AddHandleRootEdges(globalHandleRoots_);
     AddHandleRootEdges(vmRoots_);
     AddHandleRootEdges(frameRoots_);
+    if (globalRefTrackingEnabled_) {
+        AddGlobalHandleObjectNodes();
+    }
     if (metadataNode != nullptr) {
         AddMetadataPropertyNode(metadataNode, spaceType_, "spaceType");
         AddMetadataPropertyNode(metadataNode, heapType_, "heapType");
@@ -1120,13 +1306,40 @@ bool RawHeapTranslateV2::Parse(FileReader &file, uint32_t rawheapFileSize)
            ReadObjectTable(file) && ReadRootTable(file) && ReadStringTable(file);
 }
 
+bool RawHeapTranslateV2::BuildGlobalRefEdge(Node *node, StringId objectStrId)
+{
+    if (node->type == ROOT) {
+        return true;
+    }
+    auto refIt = refAddrStrIdMap_.find(node->strId);
+    if (refIt == refAddrStrIdMap_.end()) {
+        return false;
+    }
+    auto entryIt = globalRefEntries_.find(refIt->second);
+    if (entryIt != globalRefEntries_.end()) {
+        Node *target = FindNode(static_cast<uint32_t>(entryIt->second));
+        if (target != nullptr) {
+            InsertEdge(target, objectStrId, EdgeType::PROPERTY);
+            return true;
+        }
+    }
+    return true;
+}
+
 bool RawHeapTranslateV2::Translate()
 {
     FillNodes();
     auto nodes = GetNodes();
     size_t size = nodes->size();
-    for (size_t i = 6; i < size; ++i) {  // 6:normal node start from 6 (synthetic + 4 root groups + 1 metadata)
+    StringId objectStrId = InsertAndGetStringId("JSObject");
+    // 6:normal node start from 6 (synthetic + 4 root groups + 1 metadata).
+    // GHO and virtual ReferenceAddress nodes live at indices 6+H.. and are
+    // skipped via type==ROOT / refAddrStrIdMap_ — they don't consume mem_.
+    for (size_t i = 6; i < size; ++i) {
         Node *node = (*nodes)[i];
+        if (BuildGlobalRefEdge(node, objectStrId)) {
+            continue;
+        }
         Node *hclass = GetNextEdgeTo();
         if (hclass == nullptr) {
             LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
@@ -1143,6 +1356,7 @@ bool RawHeapTranslateV2::Translate()
     }
 
     AddPrimitiveNodes();
+
     LOG_INFO_ << "success!";
     return true;
 }
@@ -1271,6 +1485,20 @@ bool RawHeapTranslateV2::ReadFrameRoots(FileReader &file)
     return true;
 }
 
+bool RawHeapTranslateV2::ReadGlobalRefEntries(FileReader &file)
+{
+    uint64_t usedSpace = (localHandleRoots_.size() + globalHandleRoots_.size() +
+                          vmRoots_.size() + frameRoots_.size()) * ADDRESS_SIZE_V2 +
+                         4 * HANDLE_COUNT_ADDR_SIZE;  // 4: four count fields
+    GlobalRefParseResult result;
+    if (!ReadGlobalRefEntriesImpl(file, sections_, usedSpace, sizeof(uint32_t), result)) {
+        return false;
+    }
+    globalRefEntries_ = std::move(result.entries);
+    globalRefTrackingEnabled_ = result.enabled;
+    return true;
+}
+
 bool RawHeapTranslateV2::ReadRootTable(FileReader &file)
 {
     if (!file.CheckAndGetHeaderAt(sections_[0], sizeof(uint32_t))) {
@@ -1297,6 +1525,10 @@ bool RawHeapTranslateV2::ReadRootTable(FileReader &file)
     }
 
     if (!ReadFrameRoots(file)) {
+        return false;
+    }
+
+    if (!ReadGlobalRefEntries(file)) {
         return false;
     }
 
@@ -1345,6 +1577,7 @@ bool RawHeapTranslateV2::ReadObjectTable(FileReader &file)
     vmRoot_ = CreateNode();
     frameRoot_ = CreateNode();
     metadataNode_ = CreateNode();
+
     uint32_t tableSize = file.GetHeaderLeft() * file.GetHeaderRight();
     // 5: index in sections means the total size of object table
     memSize_ = sections_[5] - tableSize - sizeof(uint64_t);
@@ -1456,6 +1689,13 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
         InsertEdge(metadataNode_, strId, type);
     }
 
+    if (globalRefTrackingEnabled_) {
+        globalHandleObject_ = CreateNodeAt(GLOBAL_HANDLE_OBJECT_OFFSET);
+        CreateRootNode(globalHandleObject_, "GlobalHandleObject", globalRefEntries_.size());
+        syntheticRoot_->edgeCount++;
+        InsertEdge(globalHandleObject_, strId, type);
+    }
+
     for (auto addr : roots) {
         Node *root = FindNode(addr);
         if (root == nullptr) {
@@ -1468,11 +1708,19 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
     AddHandleRootEdges(globalHandleRoots_);
     AddHandleRootEdges(vmRoots_);
     AddHandleRootEdges(frameRoots_);
+    if (globalRefTrackingEnabled_) {
+        AddGlobalHandleObjectNodes();
+    }
     if (!spaceType_.empty() || !heapType_.empty()) {
         AddMetadataPropertyNode(metadataNode_, spaceType_, "spaceType");
         AddMetadataPropertyNode(metadataNode_, heapType_, "heapType");
         AddMetadataPropertyNode(metadataNode_, vmType_, "vmType");
     }
+}
+
+void RawHeapTranslateV2::AddGlobalHandleObjectNodes()
+{
+    DoAddGlobalHandleObjectNodes(globalRefEntries_);
 }
 
 Node *RawHeapTranslateV2::FindNode(uint32_t addr)
