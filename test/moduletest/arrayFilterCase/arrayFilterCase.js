@@ -164,4 +164,22 @@
     assert_equal(result4, [2, 4, undefined]);
 }
 
+{
+    const src = Array.from({ length: 10 }, (_, i) => i);
+    const sink = new Proxy([], {
+        defineProperty(target, prop, desc) {
+            while (src.length) src.pop();
+            return Reflect.defineProperty(target, prop, desc);
+        }
+    });
+    src.constructor = {
+        [Symbol.species]: function () {
+            return sink;
+        }
+    };
+
+    src.filter(() => true);
+    assert_equal(src.length, 0);
+}
+
 test_end();
