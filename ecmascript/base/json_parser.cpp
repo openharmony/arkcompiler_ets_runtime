@@ -1545,7 +1545,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseCachedObjectKey(uint32_t offset, ui
         return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
     }
     bool shouldCache = strLength <= K_UTF8_OBJECT_KEY_CACHE_MAX_LEN;
-    PackedKey128 packed;
+    PackedKey128 packed = {};
     size_t cacheIndex = 0;
     if (shouldCache) {
         packed = PackUtf8ObjectKeyBytes(utf8Data, strLength);
@@ -1811,7 +1811,7 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseCachedObjectKey(const uint16_t *ut
         return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
     }
     bool shouldCache = strLength <= K_UTF16_OBJECT_KEY_CACHE_MAX_LEN;
-    PackedKey128 packed;
+    PackedKey128 packed = {};
     size_t cacheIndex = 0;
     if (shouldCache) {
         packed = PackUtf16ObjectKeyCodeUnits(utf16Data, strLength);
