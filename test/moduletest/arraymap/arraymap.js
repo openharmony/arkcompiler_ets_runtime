@@ -86,3 +86,14 @@ print(result == instance);
   });
   print(result4); // [2, 4, 6, 8, 10]
 }
+
+{
+  const arr = [, , , , , 1, 1, 1, 1, 1];
+  function Species() {
+    while (arr.length > 5) arr.pop();
+    return [];
+  }
+  arr.constructor = { [Symbol.species]: Species };
+  arr.map(x => x);
+  print(arr.length);
+}
