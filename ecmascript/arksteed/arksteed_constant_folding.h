@@ -18,6 +18,8 @@
 
 #include <cstdint>
 
+#include "ecmascript/js_tagged_value.h"
+
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedGraphBuilder;
@@ -49,6 +51,9 @@ enum class UnaryFoldOp : uint8_t { NEG, INC, DEC, NOT, TO_NUMBER, TO_NUMERIC };
 bool TryConstFoldBinary(ArkSteedGraphBuilder *builder, ValueVertex *lhs, ValueVertex *rhs, BinaryFoldOp op);
 bool TryConstFoldUnary(ArkSteedGraphBuilder *builder, ValueVertex *input, UnaryFoldOp op);
 bool TryFoldToBooleanConstant(ValueVertex *vertex, bool *result);
+
+bool TryFoldBinaryConstant(ValueVertex *lhs, ValueVertex *rhs, BinaryFoldOp op, JSTaggedValue *result);
+bool TryFoldUnaryConstant(ValueVertex *input, UnaryFoldOp op, JSTaggedValue *result);
 
 }  // namespace panda::ecmascript::arksteed
 

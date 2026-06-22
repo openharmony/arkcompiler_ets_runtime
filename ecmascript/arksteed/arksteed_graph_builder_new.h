@@ -51,6 +51,11 @@ private:
         return VRegOfAcc(numLocal_, numParams_).GetId();
     }
 
+    JSRuntimeOptions *GetOptions() const
+    {
+        return &preproc_->GetEnv()->GetJSOptions();
+    }
+
     void DebugLog();
     void InitializeStartBlock(SharedBCFrameState frameState);
     void ProcessDeadBasicBlock(uint32_t rpoIndex);

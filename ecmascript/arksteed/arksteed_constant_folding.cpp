@@ -535,4 +535,14 @@ bool TryFoldToBooleanConstant(ValueVertex *vertex, bool *result)
     return true;
 }
 
+bool TryFoldBinaryConstant(ValueVertex *lhs, ValueVertex *rhs, BinaryFoldOp op, JSTaggedValue *result)
+{
+    return TryFoldBinary(lhs, rhs, op, result);
+}
+
+bool TryFoldUnaryConstant(ValueVertex *input, UnaryFoldOp op, JSTaggedValue *result)
+{
+    return TryFoldUnary(input, op, result);
+}
+
 }  // namespace panda::ecmascript::arksteed

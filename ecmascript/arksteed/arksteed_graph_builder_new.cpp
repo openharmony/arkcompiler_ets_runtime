@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/arksteed/arksteed_graph_builder_new.h"
+#include "ecmascript/arksteed/arksteed_constant_folding.h"
 #include "ecmascript/arksteed/arksteed_framestate.h"
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/lexical_env.h"
 
@@ -211,6 +213,11 @@ void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
     // -3 : Fixed header lexicalEnv is at slot -3 in word units.
     initialLexicalEnv_ = NewVertex<InitialValueVertex>(blocks_[0], {}, -3);
     frameState.SetLexicalEnv(initialLexicalEnv_);
+
+    if (GetOptions()->GetCompilerArkSteedPrintMethodName()) {
+        ValueVertex *jsFunc = frameState.Get(VRegOfParam(numLocal_, CALL_TARGET_PARAM_INDEX).GetId());
+        NewVertex<CallRuntimeVertex>(blocks_[0], {jsFunc}, RTSTUB_ID(PrintMethodName));
+    }
 
     FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
 }
@@ -1123,24 +1130,44 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerInc()
     {
         ValueVertex *x = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(x, UnaryFoldOp::INC, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Inc));
     }
 
     void LowerDec()
     {
         ValueVertex *x = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(x, UnaryFoldOp::DEC, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Dec));
     }
 
     void LowerNeg()
     {
         ValueVertex *x = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(x, UnaryFoldOp::NEG, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Neg));
     }
 
     void LowerNot()
     {
         ValueVertex *x = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(x, UnaryFoldOp::NOT, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Not));
     }
 
@@ -1189,6 +1216,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ADD, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Add));
     }
 
@@ -1196,6 +1228,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SUB, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Sub));
     }
 
@@ -1203,6 +1240,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::MUL, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Mul));
     }
 
@@ -1210,6 +1252,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::DIV, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Div));
     }
 
@@ -1231,6 +1278,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHL, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Shl));
     }
 
@@ -1238,6 +1290,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHR, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Shr));
     }
 
@@ -1245,6 +1302,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ASHR, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Ashr));
     }
 
@@ -1252,6 +1314,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::AND, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::And));
     }
 
@@ -1259,6 +1326,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::OR, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Or));
     }
 
@@ -1266,6 +1338,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::XOR, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Xor));
     }
 
@@ -1275,6 +1352,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::EQ, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Equal));
     }
 
@@ -1282,6 +1364,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::NOT_EQ, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::NotEqual));
     }
 
@@ -1289,6 +1376,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::LESS, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Less));
     }
 
@@ -1296,6 +1388,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::LESS_EQ, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::LessEq));
     }
 
@@ -1303,6 +1400,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::GREATER, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Greater));
     }
 
@@ -1310,6 +1412,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::GREATER_EQ, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::GreaterEq));
     }
 
@@ -1317,6 +1424,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::STRICT_NOT_EQ, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::StrictNotEqual));
     }
 
@@ -1324,6 +1436,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::STRICT_EQ, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::StrictEqual));
     }
 
@@ -1331,16 +1448,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *value = frameState.GetAcc();
         ValueVertex *result = nullptr;
-        if (auto *asConstant = value->TryCast<RootConstantVertex>(); asConstant != nullptr) {
-            auto id = asConstant->GetIndex();
-
-            if (id == RootConstantVertex::RootIndex::TRUE_VALUE) {
-                LOG_COMPILER(DEBUG) << "LowerIsTrue(): TRUE -> TRUE";
-                result = self->graph_->GetRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
-            } else if (id == RootConstantVertex::RootIndex::FALSE_VALUE) {
-                LOG_COMPILER(DEBUG) << "LowerIsTrue(): FALSE -> FALSE";
-                result = self->graph_->GetRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
-            }
+        bool toBoolean = false;
+        if (TryFoldToBooleanConstant(value, &toBoolean)) {
+            auto root = toBoolean ? RootConstantVertex::RootIndex::TRUE_VALUE
+                                  : RootConstantVertex::RootIndex::FALSE_VALUE;
+            result = self->graph_->GetRootConstant(root);
         }
         if (result == nullptr) {
             result = CommonStubCall({glue, value}, CommonStubCSigns::ToBooleanTrue);
@@ -1352,16 +1464,11 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *value = frameState.GetAcc();
         ValueVertex *result = nullptr;
-        if (auto *asConstant = value->TryCast<RootConstantVertex>(); asConstant != nullptr) {
-            auto id = asConstant->GetIndex();
-
-            if (id == RootConstantVertex::RootIndex::TRUE_VALUE) {
-                LOG_COMPILER(DEBUG) << "LowerIsFalse(): TRUE -> FALSE";
-                result = self->graph_->GetRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
-            } else if (id == RootConstantVertex::RootIndex::FALSE_VALUE) {
-                LOG_COMPILER(DEBUG) << "LowerIsFalse(): FALSE -> TRUE";
-                result = self->graph_->GetRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
-            }
+        bool toBoolean = false;
+        if (TryFoldToBooleanConstant(value, &toBoolean)) {
+            auto root = toBoolean ? RootConstantVertex::RootIndex::FALSE_VALUE
+                                  : RootConstantVertex::RootIndex::TRUE_VALUE;
+            result = self->graph_->GetRootConstant(root);
         }
         if (result == nullptr) {
             result = CommonStubCall({glue, value}, CommonStubCSigns::ToBooleanFalse);
@@ -1374,12 +1481,22 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerToNumber()
     {
         ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMBER, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumber)));
     }
 
     void LowerToNumeric()
     {
         ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMERIC, &folded)) {
+            frameState.SetAcc(TaggedConstant(folded));
+            return;
+        }
         frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumeric)));
     }
 
@@ -2412,6 +2529,23 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *argc = ActualArgc();
         return self->NewVertex<ToTaggedIntVertex>(currentBlock, {argc});
+    }
+
+    ValueVertex *TaggedConstant(JSTaggedValue value)
+    {
+        if (value.IsTrue()) {
+            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
+        }
+        if (value.IsFalse()) {
+            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
+        }
+        if (value.IsNull()) {
+            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::NULL_VALUE);
+        }
+        if (value.IsUndefined()) {
+            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+        }
+        return self->graph_->GetTaggedConstant(value.GetRawData());
     }
 
     void MergeCurrentFrameStateToCatchBlock(ThrowableMixin *mixin)
