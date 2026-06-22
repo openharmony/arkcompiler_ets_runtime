@@ -81,7 +81,7 @@ public:
     void ProcessVertex(VertexT *vertex, [[maybe_unused]] const ArkSteedState &state)
     {
         // Verify all inputs have valid opcodes
-        for (int i = 0; i < vertex->GetInputCount(); i++) {
+        for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
             ValueVertex *input = vertex->GetInput(i);
             ASSERT(input != nullptr);
             VertexOpcode opcode = input->GetOpcode();

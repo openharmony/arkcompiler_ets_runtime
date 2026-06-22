@@ -419,10 +419,10 @@ private:
     void MergeRegisterValues(ControlVertex *control, BB *target, int predecessorId);
     template <typename RegisterT>
     void MergeRegisterState(RegisterSnapshot<RegisterT> &registers, RegisterT reg, RegisterState &state,
-                            ControlVertex *control, BB *target, int predecessorId, int predecessorCount);
+                            ControlVertex *control, BB *target, uint32_t predecessorId, uint32_t predecessorCount);
     template <typename RegisterT>
     void CreateRegisterMerge(RegisterSnapshot<RegisterT> &registers, RegisterT reg, RegisterState &state,
-                             ControlVertex *control, BB *target, int predecessorId, int predecessorCount,
+                             ControlVertex *control, BB *target, uint32_t predecessorId, uint32_t predecessorCount,
                              ValueVertex *vertex, ValueVertex *incoming, const AllocatedState &registerOperand);
     void InitializeConditionalBranchTarget(ControlVertex *controlVertex, BB *target);
     void InitializeEmptyBlockRegisterValues(ControlVertex *source, BB *target);

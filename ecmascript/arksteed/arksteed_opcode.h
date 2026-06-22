@@ -33,7 +33,6 @@ using VirtualRegister = kungfu::VirtualRegister;
 class BB;
 class ArkSteedState;
 class ArkSteedAssembler;
-class MergePointFrameState;
 
 /**
  * CRTP Mixin Classes for ArkSteed Opcodes
@@ -128,7 +127,7 @@ public:
         return FIXED_INPUT_COUNT > 0;
     }
 
-    constexpr int GetInputCount() const
+    constexpr uint32_t GetInputCount() const
     {
         return FIXED_INPUT_COUNT;
     }
@@ -142,12 +141,12 @@ public:
     {
         if constexpr (FIXED_INPUT_COUNT != 0) {
             // Verify runtime input count matches compile-time count
-            ASSERT(this->GetInputCount() == static_cast<int>(FIXED_INPUT_COUNT));
+            ASSERT(this->GetInputCount() == static_cast<uint32_t>(FIXED_INPUT_COUNT));
 
             // Verify input types if defined in derived class
             if constexpr (HasInputTypes<Derived>::value) {
                 static_assert(FIXED_INPUT_COUNT == Derived::INPUT_TYPES.size());
-                for (int i = 0; i < static_cast<int>(FIXED_INPUT_COUNT); ++i) {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(FIXED_INPUT_COUNT); ++i) {
                     CheckValueInput(i, Derived::INPUT_TYPES[i]);
                 }
             }
@@ -160,7 +159,7 @@ protected:
         : VertexMixin<Base, Derived>(bitfield, std::forward<Args>(args)...)
     {}
 
-    inline void CheckValueInput(int index, ValueRepresentation expectedRepr) const
+    inline void CheckValueInput(uint32_t index, ValueRepresentation expectedRepr) const
     {
         const ValueVertex *input = this->GetInput(index);
         ASSERT(input != nullptr);
@@ -233,73 +232,6 @@ private:
 //==============================================================================
 // Constant Value Vertices
 //==============================================================================
-
-class ConstantVertex : public FixedInputVertexMixin<0, ValueVertex, ConstantVertex> {
-public:
-    using OutputRegister = ArkSteedRegister;
-    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
-
-    ConstantVertex(uint64_t bitfield, JSTaggedValue value) : FixedInputVertexMixin(bitfield), value_(value) {}
-
-    JSTaggedValue GetValue() const
-    {
-        return value_;
-    }
-
-    void DoLoadToRegister(ArkSteedAssembler *, OutputRegister) const;
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    JSTaggedValue value_;
-};
-
-class RootConstantVertex : public FixedInputVertexMixin<0, ValueVertex, RootConstantVertex> {
-public:
-    using OutputRegister = ArkSteedRegister;
-    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
-
-    enum class RootIndex : uint8_t {
-        UNDEFINED = 0,
-        NULL_VALUE,
-        TRUE_VALUE,
-        FALSE_VALUE,
-    };
-
-    RootConstantVertex(uint64_t bitfield, RootIndex index) : FixedInputVertexMixin(bitfield), index_(index) {}
-
-    RootIndex GetIndex() const
-    {
-        return index_;
-    }
-
-    void DoLoadToRegister(ArkSteedAssembler *, OutputRegister) const;
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    RootIndex index_;
-};
-
-class BooleanConstantVertex : public FixedInputVertexMixin<0, ValueVertex, BooleanConstantVertex> {
-public:
-    using OutputRegister = ArkSteedRegister;
-    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
-
-    BooleanConstantVertex(uint64_t bitfield, bool value) : FixedInputVertexMixin(bitfield), value_(value) {}
-
-    bool GetValue() const
-    {
-        return value_;
-    }
-
-    void DoLoadToRegister(ArkSteedAssembler *, OutputRegister) const;
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    bool value_;
-};
 
 class Int32ConstantVertex : public FixedInputVertexMixin<0, ValueVertex, Int32ConstantVertex> {
 public:
@@ -655,7 +587,7 @@ public:
 
     void VerifyInputs() const
     {
-        ASSERT(GetInputCount() == static_cast<int>(FIRST_ARG_INDEX + actualArgc_));
+        ASSERT(GetInputCount() == static_cast<uint32_t>(FIRST_ARG_INDEX + actualArgc_));
     }
 
 private:
@@ -736,7 +668,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(expectedHClass_ != nullptr);
-        ASSERT(GetInputCount() == static_cast<int>(GetDeoptVRegs().size() + 1));
+        ASSERT(GetInputCount() == static_cast<uint32_t>(GetDeoptVRegs().size() + 1));
     }
 
 private:
@@ -766,7 +698,7 @@ public:
 
     void VerifyInputs() const
     {
-        ASSERT(GetInputCount() == static_cast<int>(GetDeoptVRegs().size()));
+        ASSERT(GetInputCount() == static_cast<uint32_t>(GetDeoptVRegs().size()));
     }
 
 private:
@@ -781,34 +713,31 @@ class UnconditionalControlVertex : public ControlVertex {
 public:
     BB *Target() const
     {
-        return target_.BlockRef();
+        return target_;
     }
     void SetTarget(BB *block)
     {
-        target_.SetBlockRef(block);
+        target_ = block;
     }
 
-    int GetPredecessorId() const
+    uint32_t GetPredecessorId() const
     {
         return predecessorId_;
     }
 
-    void SetPredecessorId(int id)
+    void SetPredecessorId(uint32_t id)
     {
         predecessorId_ = id;
     }
 
 protected:
-    explicit UnconditionalControlVertex(uint64_t bitfield, BBRef *targetRefs)
-        : ControlVertex(bitfield), target_(targetRefs), predecessorId_(0)
-    {}
     explicit UnconditionalControlVertex(uint64_t bitfield, BB *target)
         : ControlVertex(bitfield), target_(target), predecessorId_(0)
     {}
 
 private:
-    BBRef target_;
-    int predecessorId_;
+    BB *target_;
+    uint32_t predecessorId_;
 };
 
 /**
@@ -819,10 +748,7 @@ private:
 template <typename Derived>
 class UnconditionalControlVertexT : public FixedInputVertexMixin<0, UnconditionalControlVertex, Derived> {
 protected:
-    explicit UnconditionalControlVertexT(uint64_t bitfield, BBRef *targetRefs)
-        : FixedInputVertexMixin<0, UnconditionalControlVertex, Derived>(bitfield, targetRefs)
-    {}
-    explicit UnconditionalControlVertexT(uint64_t bitfield, BB *target)
+    UnconditionalControlVertexT(uint64_t bitfield, BB *target)
         : FixedInputVertexMixin<0, UnconditionalControlVertex, Derived>(bitfield, target)
     {}
 };
@@ -831,35 +757,32 @@ class BranchControlVertex : public ControlVertex {
 public:
     BB *IfTrue() const
     {
-        return ifTrue_.BlockRef();
+        return ifTrue_;
     }
 
     BB *IfFalse() const
     {
-        return ifFalse_.BlockRef();
+        return ifFalse_;
     }
 
     void SetIfTrue(BB *block)
     {
-        ifTrue_.SetBlockRef(block);
+        ifTrue_ = block;
     }
 
     void SetIfFalse(BB *block)
     {
-        ifFalse_.SetBlockRef(block);
+        ifFalse_ = block;
     }
 
 protected:
-    BranchControlVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
-        : ControlVertex(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
-    {}
     BranchControlVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : ControlVertex(bitfield), ifTrue_(ifTrue), ifFalse_(ifFalse)
     {}
 
 private:
-    BBRef ifTrue_;
-    BBRef ifFalse_;
+    BB *ifTrue_;
+    BB *ifFalse_;
 };
 
 /**
@@ -869,9 +792,6 @@ private:
 template <size_t InputCount, typename Derived>
 class BranchControlVertexT : public FixedInputVertexMixin<InputCount, BranchControlVertex, Derived> {
 protected:
-    BranchControlVertexT(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
-        : FixedInputVertexMixin<InputCount, BranchControlVertex, Derived>(bitfield, ifTrue, ifFalse)
-    {}
     BranchControlVertexT(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : FixedInputVertexMixin<InputCount, BranchControlVertex, Derived>(bitfield, ifTrue, ifFalse)
     {}
@@ -885,10 +805,6 @@ protected:
 class BranchIfTrueVertex : public BranchControlVertexT<1, BranchIfTrueVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
-
-    BranchIfTrueVertex(uint64_t bitfield, BBRef *ifTrue, BBRef *ifFalse)
-        : BranchControlVertexT(bitfield, ifTrue, ifFalse)
-    {}
 
     BranchIfTrueVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : BranchControlVertexT(bitfield, ifTrue, ifFalse)
@@ -905,7 +821,6 @@ class JumpVertex : public UnconditionalControlVertexT<JumpVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
-    JumpVertex(uint64_t bitfield, BBRef *targetRefs) : UnconditionalControlVertexT(bitfield, targetRefs) {}
     JumpVertex(uint64_t bitfield, BB *target) : UnconditionalControlVertexT(bitfield, target) {}
 
     void SetValueLocationConstraints();
@@ -918,7 +833,6 @@ class JumpLoopVertex : public UnconditionalControlVertexT<JumpLoopVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
-    explicit JumpLoopVertex(uint64_t bitfield, BBRef *targetRefs) : UnconditionalControlVertexT(bitfield, targetRefs) {}
     explicit JumpLoopVertex(uint64_t bitfield, BB *target) : UnconditionalControlVertexT(bitfield, target) {}
 
     void SetValueLocationConstraints();
@@ -1202,13 +1116,13 @@ class PhiVertex : public VertexMixin<ValueVertex, PhiVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
 
-    explicit PhiVertex(uint64_t bitfield, MergePointFrameState *mergeState, VirtualRegister owner)
-        : VertexMixin(bitfield), mergeState_(mergeState), owner_(owner)
+    explicit PhiVertex(uint64_t bitfield, VirtualRegister owner)
+        : VertexMixin(bitfield), owner_(owner)
     {}
 
-    int GetPredecessorCount() const
+    uint32_t GetPredecessorCount() const
     {
-        return GetInputCount();
+        return static_cast<uint32_t>(GetInputCount());
     }
     const ValueVertex *GetPredecessor(int index) const
     {
@@ -1217,12 +1131,6 @@ public:
     void SetPredecessor(int index, ValueVertex *value)
     {
         SetInput(index, value);
-    }
-    // Note: Remove this field after refactoring (from ArkSteed* to *New) is fully done.
-    //       It's no more used in the new implementation.
-    MergePointFrameState *GetMergePointState() const
-    {
-        return mergeState_;
     }
     VirtualRegister GetOwner() const
     {
@@ -1236,13 +1144,11 @@ public:
     {
         ASSERT(GetInputCount() > 0);
         ValueRepresentation repr = GetInput(0)->GetValueRepresentation();
-        for (int i = 1; i < GetInputCount(); ++i) {
+        for (uint32_t i = 1, n = GetInputCount(); i < n; ++i) {
             ASSERT(GetInput(i)->GetValueRepresentation() == repr);
         }
     }
 
-    // Note: Remove this field after refactoring (from ArkSteed* to *New) is fully done.
-    MergePointFrameState *const mergeState_;
     const VirtualRegister owner_;
 };
 

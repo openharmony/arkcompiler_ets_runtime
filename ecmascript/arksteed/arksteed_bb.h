@@ -21,7 +21,6 @@
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "libpandabase/macros.h"
-#include "utils/span.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -29,7 +28,6 @@ class ControlVertex;
 class NonControlVertex;
 class ValueVertex;
 class PhiVertex;
-class MergePointFrameState;
 class RegisterMergeState;
 
 constexpr uint32_t INVALID_BLOCK_ID = static_cast<uint32_t>(-1);
@@ -77,7 +75,6 @@ public:
         controlVertex_ = vertex;
     }
 
-    // Note: phis_ is only maintained by GraphBuilderNew. Unused in the old implementation.
     void AddPhiVertex(PhiVertex *vertex)
     {
         phis_.push_back(vertex);
@@ -108,13 +105,28 @@ public:
         return vertices_;
     }
 
-    bool IsLoopHeader() const { return isLoopHeader_; }
-    void SetLoopHeader(bool v) { isLoopHeader_ = v; }
+    bool IsLoopHeader() const
+    {
+        return isLoopHeader_;
+    }
+    void SetIsLoopHeader(bool v)
+    {
+        isLoopHeader_ = v;
+    }
 
-    bool IsExceptionHandler() const { return isExceptionHandler_; }
-    void SetExceptionHandler(bool v) { isExceptionHandler_ = v; }
+    bool IsExceptionHandler() const
+    {
+        return isExceptionHandler_;
+    }
+    void SetIsExceptionHandler(bool v)
+    {
+        isExceptionHandler_ = v;
+    }
 
-    bool HasRegisterMerge() const { return registerMergeState_ != nullptr; }
+    bool HasRegisterMergeState() const
+    {
+        return registerMergeState_ != nullptr;
+    }
 
     RegisterMergeState *GetRegisterMergeState()
     {
@@ -122,17 +134,38 @@ public:
         return registerMergeState_;
     }
 
-    void SetRegisterMergeState(RegisterMergeState *state) { registerMergeState_ = state; }
+    void SetRegisterMergeState(RegisterMergeState *state)
+    {
+        registerMergeState_ = state;
+    }
 
-    bool HasPhi() const { return !phis_.empty(); }
+    bool HasPhi() const
+    {
+        return !phis_.empty();
+    }
 
-    const ChunkVector<PhiVertex *> &GetPhis() const { return phis_; }
-    ChunkVector<PhiVertex *> &GetPhis() { return phis_; }
+    const ChunkVector<PhiVertex *> &GetPhis() const
+    {
+        return phis_;
+    }
+    ChunkVector<PhiVertex *> &GetPhis()
+    {
+        return phis_;
+    }
 
-    void AddPredecessor(BB *pred) { predecessors_.push_back(pred); }
+    void AddPredecessor(BB *pred)
+    {
+        predecessors_.push_back(pred);
+    }
 
-    Span<BB *> GetPredecessors() { return {predecessors_.data(), predecessors_.size()}; }
-    Span<const BB *const> GetPredecessors() const { return {predecessors_.data(), predecessors_.size()}; }
+    ChunkVector<BB *> &GetPredecessors()
+    {
+        return predecessors_;
+    }
+    const ChunkVector<BB *> &GetPredecessors() const
+    {
+        return predecessors_;
+    }
 
     template <class Callback>
     void ForEachPredecessor(Callback callback) const
@@ -154,52 +187,87 @@ public:
         }
     }
 
-    BB *GetPredecessor(uint32_t index) { return predecessors_[index]; }
-    const BB *GetPredecessor(uint32_t index) const { return predecessors_[index]; }
+    BB *GetPredecessor(uint32_t index) 
+    {
+        return predecessors_[index];
+    }
+    const BB *GetPredecessor(uint32_t index) const
+    {
+        return predecessors_[index];
+    }
 
-    uint32_t PredecessorCount() const { return predecessorCount_; }
-    void SetPredecessorCount(uint32_t n) { predecessorCount_ = n; }
-
-    void SetSinglePredecessor(BB *predecessor) { predecessor_ = predecessor; }
+    uint32_t PredecessorCount() const
+    {
+        return static_cast<uint32_t>(predecessors_.size());
+    }
 
     Label *GetLabel()
     {
         return &label_;
     }
 
-    int GetPredecessorId() const;
-    void SetPredecessorId(int id);
+    uint32_t GetPredecessorId() const
+    {
+        return controlVertex_->Cast<UnconditionalControlVertex>()->GetPredecessorId();
+    }
+    void SetPredecessorId(uint32_t id)
+    {
+        controlVertex_->Cast<UnconditionalControlVertex>()->SetPredecessorId(id);
+    }
 
-    uint32_t GetFirstId() const;
-    uint32_t GetFirstNonPhiId() const;
-    uint32_t GetFirstNonGapMoveId() const;
+    uint32_t GetFirstId() const
+    {
+        if (HasPhi()) {
+            return GetPhis().front()->GetId();
+        }
+        return GetFirstNonPhiId();
+    }
+
+    uint32_t GetFirstNonPhiId() const
+    {
+        if (!vertices_.empty()) {
+            return vertices_.front()->GetId();
+        }
+        return controlVertex_->GetId();
+    }
+
+    uint32_t GetFirstNonGapMoveId() const
+    {
+        if (HasPhi()) {
+            return GetPhis().front()->GetId();
+        }
+        for (NonControlVertex *vertex : vertices_) {
+            ASSERT(vertex != nullptr);
+            VertexOpcode opcode = vertex->GetOpcode();
+            if (opcode != VertexOpcode::GapMove && opcode != VertexOpcode::ConstantGapMove) {
+                return vertex->GetId();
+            }
+        }
+        return controlVertex_->GetId();
+    }
 
 private:
     explicit BB(Chunk *chunk)
         : id_(INVALID_BLOCK_ID),
           deferred_(false),
+          isLoopHeader_(false),
+          isExceptionHandler_(false),
           controlVertex_(nullptr),
           phis_(chunk),
           vertices_(chunk),
           predecessors_(chunk),
-          isLoopHeader_(false),
-          isExceptionHandler_(false),
-          registerMergeState_(nullptr),
-          predecessorCount_(0),
-          predecessor_(nullptr)
+          registerMergeState_(nullptr)
     {}
 
     uint32_t id_;
     bool deferred_;
+    bool isLoopHeader_;
+    bool isExceptionHandler_;
     ControlVertex *controlVertex_;
     ChunkVector<PhiVertex *> phis_;
     ChunkVector<NonControlVertex *> vertices_;
     ChunkVector<BB *> predecessors_;
-    bool isLoopHeader_;
-    bool isExceptionHandler_;
     RegisterMergeState *registerMergeState_;
-    uint32_t predecessorCount_ = 0;
-    BB *predecessor_ = nullptr;
     Label label_;
 };
 

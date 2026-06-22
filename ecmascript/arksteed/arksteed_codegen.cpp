@@ -225,28 +225,8 @@ kungfu::ARKDeopt MakeConstantDeopt(int32_t id, int64_t value)
 int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
 {
     switch (value->GetOpcode()) {
-        case VertexOpcode::Constant:
-            return static_cast<int64_t>(value->Cast<ConstantVertex>()->GetValue().GetRawData());
         case VertexOpcode::TaggedConstant:
             return static_cast<int64_t>(value->Cast<TaggedConstantVertex>()->GetValue());
-        case VertexOpcode::RootConstant: {
-            switch (value->Cast<RootConstantVertex>()->GetIndex()) {
-                case RootConstantVertex::RootIndex::UNDEFINED:
-                    return static_cast<int64_t>(JSTaggedValue::Undefined().GetRawData());
-                case RootConstantVertex::RootIndex::NULL_VALUE:
-                    return static_cast<int64_t>(JSTaggedValue::Null().GetRawData());
-                case RootConstantVertex::RootIndex::TRUE_VALUE:
-                    return static_cast<int64_t>(JSTaggedValue::True().GetRawData());
-                case RootConstantVertex::RootIndex::FALSE_VALUE:
-                    return static_cast<int64_t>(JSTaggedValue::False().GetRawData());
-                default:
-                    UNREACHABLE();
-            }
-        }
-        case VertexOpcode::BooleanConstant:
-            return value->Cast<BooleanConstantVertex>()->GetValue()
-                       ? static_cast<int64_t>(JSTaggedValue::True().GetRawData())
-                       : static_cast<int64_t>(JSTaggedValue::False().GetRawData());
         case VertexOpcode::Int32Constant:
             if (vregId == static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX) ||
                 vregId == static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH)) {
@@ -311,9 +291,6 @@ void ArkSteedCodeGenerator::LoadConstantToRegister(const ValueVertex *constVerte
 {
     ASSERT(constVertex != nullptr);
     switch (constVertex->GetOpcode()) {
-        case VertexOpcode::Constant:
-            constVertex->Cast<ConstantVertex>()->DoLoadToRegister(assembler_, reg);
-            break;
         case VertexOpcode::Int32Constant:
             constVertex->Cast<Int32ConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
@@ -322,12 +299,6 @@ void ArkSteedCodeGenerator::LoadConstantToRegister(const ValueVertex *constVerte
             break;
         case VertexOpcode::TaggedConstant:
             constVertex->Cast<TaggedConstantVertex>()->DoLoadToRegister(assembler_, reg);
-            break;
-        case VertexOpcode::RootConstant:
-            constVertex->Cast<RootConstantVertex>()->DoLoadToRegister(assembler_, reg);
-            break;
-        case VertexOpcode::BooleanConstant:
-            constVertex->Cast<BooleanConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
         default:
             UNREACHABLE();
@@ -610,7 +581,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptVertex>(DeoptVertex *deop
     ASSERT(safepointBuilder_ != nullptr);
     std::vector<kungfu::ARKDeopt> deopts;
     deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    for (int index = 0; index < deopt->GetInputCount(); index++) {
+    for (uint32_t index = 0, n = deopt->GetInputCount(); index < n; index++) {
         AppendDeoptInput(&deopts, deopt, index, deopt->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
     }
     assembler_->CallDeoptHandler(deopt->GetDeoptType());
@@ -722,7 +693,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<SetValueWithBarrierVertex>(
     }
     assembler_->Move(ArkSteedAssembler::GetParameterRegister(2),
                      static_cast<int64_t>(setValueWithBarrier->GetOffset()));
-    assembler_->CallCommonStub(CommonStubCSigns::SetValueWithBarrier);
+    assembler_->CallCommonStub(kungfu::CommonStubCSigns::SetValueWithBarrier);
     safepointBuilder_->DefineSafepoint(assembler_->GetPcOffset());
     assembler_->Bind(&done);
 }
@@ -1019,7 +990,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<ThrowVertex>(ThrowVertex *throws)
     BB *catchBlock = throws->CaughtBy();
     if (catchBlock != nullptr) {
         uint32_t catchPredId = throws->GetCatchPredecessorIndex();
-        DeconstructPhisInSuccessor(catchBlock, static_cast<int>(catchPredId));
+        DeconstructPhisInSuccessor(catchBlock, catchPredId);
         assembler_->Jump(catchBlock->GetLabel());
     } else {
         assembler_->ReturnWithPendingException();
@@ -1046,7 +1017,7 @@ void ArkSteedCodeGenerator::Generate()
 
     assembler_->Prologue(graph_);
 
-    for (int i = 0, numBlocks = graph_->NumBlocks(); i < numBlocks; ++i) {
+    for (uint32_t i = 0, numBlocks = graph_->NumBlocks(); i < numBlocks; ++i) {
         BB *curBlock = (*graph_)[i];
         currentLayoutNextBlock_ = (i + 1 < numBlocks) ? (*graph_)[i + 1] : nullptr;
 #ifndef NDEBUG
@@ -1129,7 +1100,7 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
         if (BB *catchBlock = CatchBlockOf(vertex)) {
             Label noException;
             assembler_->BranchIfNoPendingException(&noException);
-            DeconstructPhisInSuccessor(catchBlock, static_cast<int>(CatchPredecessorIndexOf(vertex)));
+            DeconstructPhisInSuccessor(catchBlock, CatchPredecessorIndexOf(vertex));
             assembler_->Jump(catchBlock->GetLabel());
             assembler_->Bind(&noException);
         } else {
@@ -1161,9 +1132,9 @@ void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
     }
 }
 
-void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, int predecessorId)
+void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, uint32_t predecessorId)
 {
-    if (!successor->HasPhi() && !successor->HasRegisterMerge()) {
+    if (!successor->HasPhi() && !successor->HasRegisterMergeState()) {
         return;
     }
     // Gap moves are part of the current block's code (preparing for jump to successor)
@@ -1234,7 +1205,7 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
     const ArkSteedRegList &registersSetByPhis, const ArkDoubleRegList &doubleRegistersSetByPhis,
     ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves)
 {
-    if (!successor->HasRegisterMerge()) {
+    if (!successor->HasRegisterMergeState()) {
         return;
     }
     RegisterMergeState &registerState = *successor->GetRegisterMergeState();
@@ -1368,7 +1339,7 @@ void ArkSteedCodeGenerator::RecordBlockComment(BB *block)
     }
 
     // Print predecessors for merge blocks with their colors
-    if (block->HasRegisterMerge()) {
+    if (block->HasRegisterMergeState()) {
         const auto &predecessors = block->GetPredecessors();
         if (!predecessors.empty()) {
             ss << " <-- [";
@@ -1503,7 +1474,7 @@ int ArkSteedCodeGenerator::GetBlockColorIndex(int blockId) const
 // Only called when code comments are enabled to minimize JIT compilation overhead
 void ArkSteedCodeGenerator::ComputeBlockColors()
 {
-    int numBlocks = graph_->NumBlocks();
+    uint32_t numBlocks = graph_->NumBlocks();
     if (numBlocks <= 0) {
         return;
     }
@@ -1518,8 +1489,8 @@ void ArkSteedCodeGenerator::ComputeBlockColors()
 
 void ArkSteedCodeGenerator::BuildBlockAdjacencyList(std::vector<std::vector<int>> *adjacentBlocks)
 {
-    int numBlocks = graph_->NumBlocks();
-    for (int i = 0; i < numBlocks; ++i) {
+    uint32_t numBlocks = graph_->NumBlocks();
+    for (uint32_t i = 0; i < numBlocks; ++i) {
         BB *block = (*graph_)[i];
         int blockId = block->GetId();
 
@@ -1568,8 +1539,8 @@ void ArkSteedCodeGenerator::BuildBlockAdjacencyList(std::vector<std::vector<int>
 
 void ArkSteedCodeGenerator::AssignBlockColors(const std::vector<std::vector<int>> &adjacentBlocks)
 {
-    int numBlocks = graph_->NumBlocks();
-    for (int i = 0; i < numBlocks; ++i) {
+    uint32_t numBlocks = graph_->NumBlocks();
+    for (uint32_t i = 0; i < numBlocks; ++i) {
         BB *block = (*graph_)[i];
         int blockId = block->GetId();
 

@@ -277,7 +277,7 @@ void GraphBuilderNew::DebugLog()
 void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
 {
     glue_ = graph_->GetIntPtrConstant(glueAddr_);
-    undefinedValue_ = graph_->GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+    undefinedValue_ = graph_->GetTaggedConstant(JSTaggedValue::VALUE_UNDEFINED);
 
     compileInfoFacts_[0] = chunk_->New<CompileInfoFacts>(chunk_);
     compileInfoFacts_[0]->EnsureType(undefinedValue_, NodeInfo::NodeType::UNDEFINED);
@@ -289,14 +289,14 @@ void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
         int32_t slotIndex = static_cast<int32_t>(i + CALL_TARGET_FP_SLOT_INDEX);
         auto *v = NewVertex<InitialValueVertex>(blocks_[0], {}, slotIndex);
         graph_->AddParameter(v);
-        frameState.Set(VRegOfParam(numLocal_, i).GetId(), v);
+        frameState.Set(VRegOfParam(numLocal_, i), v);
     }
     // -3 : Fixed header lexicalEnv is at slot -3 in word units.
     initialLexicalEnv_ = NewVertex<InitialValueVertex>(blocks_[0], {}, -3);
     frameState.SetLexicalEnv(initialLexicalEnv_);
 
     if (GetOptions()->GetCompilerArkSteedPrintMethodName()) {
-        ValueVertex *jsFunc = frameState.Get(VRegOfParam(numLocal_, CALL_TARGET_PARAM_INDEX).GetId());
+        ValueVertex *jsFunc = frameState.Get(VRegOfParam(numLocal_, CALL_TARGET_PARAM_INDEX));
         NewVertex<CallRuntimeVertex>(compileInfoFacts_[0], blocks_[0], {jsFunc}, RTSTUB_ID(PrintMethodName));
     }
 
@@ -336,7 +336,7 @@ void GraphBuilderNew::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t 
     }
     InitCompileInfoFacts(rpoIndex);
     if (bcBlock->IsLoopHeader()) {
-        blocks_[rpoIndex]->SetLoopHeader(true);
+        blocks_[rpoIndex]->SetIsLoopHeader(true);
     }
     bcBlock->IsLoopHeader()
         ? InitFrameStateForLoopHeader(frameState, rpoIndex)
@@ -360,7 +360,7 @@ void GraphBuilderNew::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t 
 
 void GraphBuilderNew::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
-    blocks_[rpoIndex]->SetExceptionHandler(true);
+    blocks_[rpoIndex]->SetIsExceptionHandler(true);
     InitCompileInfoFactsForCatchBlock(rpoIndex);
     InitFrameStateForCatchBlockHeader(frameState, rpoIndex);
 
@@ -533,8 +533,7 @@ void GraphBuilderNew::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex
 
 PhiVertex *GraphBuilderNew::NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg)
 {
-    // nullptr: Old MergePointFrameState pointer. To be removed after refactoring done.
-    PhiVertex *phi = PhiVertex::New(chunk_, numPredecessors, nullptr, VirtualRegister(vreg));
+    PhiVertex *phi = PhiVertex::New(chunk_, numPredecessors, VirtualRegister(vreg));
     phi->SetOwner(owner);
     owner->AddPhiVertex(phi);
     REGISTER_VERTEX_TO_LABELLER(phi);
@@ -586,8 +585,6 @@ JumpVertex *GraphBuilderNew::FinishBlockWithJump(BB *owner, BB *target)
     auto *jumpVertex = FinishBlockWith<JumpVertex>(owner, {}, target);
     jumpVertex->SetPredecessorId(target->PredecessorCount());
     target->AddPredecessor(owner);
-    // TODO: For legacy code only. To be removed.
-    target->SetPredecessorCount(target->PredecessorCount() + 1);
     return jumpVertex;
 }
 
@@ -596,8 +593,6 @@ JumpLoopVertex *GraphBuilderNew::FinishBlockWithJumpLoop(BB *owner, BB *target)
     auto *jumpLoopVertex = FinishBlockWith<JumpLoopVertex>(owner, {}, target);
     jumpLoopVertex->SetPredecessorId(target->PredecessorCount());
     target->AddPredecessor(owner);
-    // TODO: For legacy code only. To be removed.
-    target->SetPredecessorCount(target->PredecessorCount() + 1);
     return jumpLoopVertex;
 }
 
@@ -607,9 +602,6 @@ BranchIfTrueVertex *GraphBuilderNew::FinishBlockWithBranch(
     auto *branchVertex = FinishBlockWith<BranchIfTrueVertex>(owner, {input}, targetIfTrue, targetIfFalse);
     targetIfTrue->AddPredecessor(owner);
     targetIfFalse->AddPredecessor(owner);
-    // TODO: For legacy code only. To be removed.
-    targetIfTrue->SetPredecessorCount(targetIfTrue->PredecessorCount() + 1);
-    targetIfFalse->SetPredecessorCount(targetIfFalse->PredecessorCount() + 1);
     return branchVertex;
 }
 
@@ -720,16 +712,16 @@ struct GraphBuilderNew::BytecodeVisitor {
                 LowerLdTaggedConstant(base::NumberHelper::GetPositiveInfinity());
                 break;
             case kungfu::EcmaOpcode::LDUNDEFINED:
-                LowerLdRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_UNDEFINED);
                 break;
             case kungfu::EcmaOpcode::LDNULL:
-                LowerLdRootConstant(RootConstantVertex::RootIndex::NULL_VALUE);
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_NULL);
                 break;
             case kungfu::EcmaOpcode::LDTRUE:
-                LowerLdRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_TRUE);
                 break;
             case kungfu::EcmaOpcode::LDFALSE:
-                LowerLdRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_FALSE);
                 break;
             case kungfu::EcmaOpcode::LDHOLE:
                 LowerLdTaggedConstant(JSTaggedValue::VALUE_HOLE);
@@ -1243,11 +1235,6 @@ struct GraphBuilderNew::BytecodeVisitor {
         frameState.SetAcc(self->graph_->GetTaggedConstant(taggedValue));
     }
 
-    void LowerLdRootConstant(RootConstantVertex::RootIndex index)
-    {
-        frameState.SetAcc(self->graph_->GetRootConstant(index));
-    }
-
     void LowerLdaiImm32(const BytecodeInfo *bcInfo)
     {
         frameState.SetAcc(TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0)));
@@ -1280,10 +1267,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *x = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(x, UnaryFoldOp::INC, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Inc));
+        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Inc));
     }
 
     void LowerDec()
@@ -1291,10 +1278,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *x = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(x, UnaryFoldOp::DEC, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Dec));
+        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Dec));
     }
 
     void LowerNeg()
@@ -1302,10 +1289,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *x = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(x, UnaryFoldOp::NEG, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Neg));
+        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Neg));
     }
 
     void LowerNot()
@@ -1313,10 +1300,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *x = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(x, UnaryFoldOp::NOT, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubCSigns::Not));
+        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Not));
     }
 
     // -------- Category #4: Binary Arithmetic --------
@@ -1333,7 +1320,7 @@ struct GraphBuilderNew::BytecodeVisitor {
 
         // Dummy logic: if (x) acc <- x + y
         //              else   acc <- x + y
-        ValueVertex *xIsTrue = CommonStubCall({glue, x}, CommonStubCSigns::ToBooleanTrue);
+        ValueVertex *xIsTrue = CommonStubCall({glue, x}, CommonStubID::ToBooleanTrue);
         // Submit currentBlock to the graph.
         // Note: Blocks should be submitted to the graph by RPO order.
         self->FinishBlockWithBranch(currentBlock, xIsTrue, trueBranch, falseBranch);
@@ -1341,14 +1328,14 @@ struct GraphBuilderNew::BytecodeVisitor {
         // Bind currentBlock to trueBranch
         currentBlock = trueBranch;
         // Add result1 to currentBlock (which is trueBranch)
-        ValueVertex *result1 = CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Add);
+        ValueVertex *result1 = CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Add);
         // Submit currentBlock (which is trueBranch) to the graph.
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         // Bind currentBlock to falseBranch
         currentBlock = falseBranch;
         // Add result2 to currentBlock (which is falseBranch)
-        ValueVertex *result2 = CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Add);
+        ValueVertex *result2 = CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Add);
         // Submit currentBlock (which is falseBranch) to the graph.
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
@@ -1366,10 +1353,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ADD, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Add));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Add));
     }
 
     void LowerSub2(const BytecodeInfo *bcInfo)
@@ -1378,10 +1365,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SUB, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Sub));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Sub));
     }
 
     void LowerMul2(const BytecodeInfo *bcInfo)
@@ -1390,10 +1377,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::MUL, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Mul));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Mul));
     }
 
     void LowerDiv2(const BytecodeInfo *bcInfo)
@@ -1402,17 +1389,17 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::DIV, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Div));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Div));
     }
 
     void LowerMod2(const BytecodeInfo *bcInfo)
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Mod));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Mod));
     }
 
     void LowerExp(const BytecodeInfo *bcInfo)
@@ -1428,10 +1415,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHL, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Shl));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Shl));
     }
 
     void LowerShr2(const BytecodeInfo *bcInfo)
@@ -1440,10 +1427,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHR, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Shr));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Shr));
     }
 
     void LowerAshr2(const BytecodeInfo *bcInfo)
@@ -1452,10 +1439,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ASHR, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Ashr));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Ashr));
     }
 
     void LowerAnd2(const BytecodeInfo *bcInfo)
@@ -1464,10 +1451,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::AND, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::And));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::And));
     }
 
     void LowerOr2(const BytecodeInfo *bcInfo)
@@ -1476,10 +1463,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::OR, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Or));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Or));
     }
 
     void LowerXor2(const BytecodeInfo *bcInfo)
@@ -1488,10 +1475,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::XOR, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Xor));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Xor));
     }
 
     // -------- Category #5: Comparisons --------
@@ -1502,10 +1489,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::EQ, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Equal));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Equal));
     }
 
     void LowerNotEq(const BytecodeInfo *bcInfo)
@@ -1514,10 +1501,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::NOT_EQ, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::NotEqual));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::NotEqual));
     }
 
     void LowerLess(const BytecodeInfo *bcInfo)
@@ -1526,10 +1513,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::LESS, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Less));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Less));
     }
 
     void LowerLessEq(const BytecodeInfo *bcInfo)
@@ -1538,10 +1525,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::LESS_EQ, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::LessEq));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::LessEq));
     }
 
     void LowerGreater(const BytecodeInfo *bcInfo)
@@ -1550,10 +1537,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::GREATER, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::Greater));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Greater));
     }
 
     void LowerGreaterEq(const BytecodeInfo *bcInfo)
@@ -1562,10 +1549,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::GREATER_EQ, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::GreaterEq));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::GreaterEq));
     }
 
     void LowerStrictNotEq(const BytecodeInfo *bcInfo)
@@ -1574,10 +1561,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::STRICT_NOT_EQ, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::StrictNotEqual));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::StrictNotEqual));
     }
 
     void LowerStrictEq(const BytecodeInfo *bcInfo)
@@ -1586,10 +1573,10 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::STRICT_EQ, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubCSigns::StrictEqual));
+        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::StrictEqual));
     }
 
     void LowerIsTrue()
@@ -1598,12 +1585,11 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *result = nullptr;
         bool toBoolean = false;
         if (TryFoldToBooleanConstant(value, &toBoolean)) {
-            auto root = toBoolean ? RootConstantVertex::RootIndex::TRUE_VALUE
-                                  : RootConstantVertex::RootIndex::FALSE_VALUE;
-            result = self->graph_->GetRootConstant(root);
+            uint64_t value = toBoolean ? JSTaggedValue::VALUE_TRUE : JSTaggedValue::VALUE_FALSE;
+            result = self->graph_->GetTaggedConstant(value);
         }
         if (result == nullptr) {
-            result = CommonStubCall({glue, value}, CommonStubCSigns::ToBooleanTrue);
+            result = CommonStubCall({glue, value}, CommonStubID::ToBooleanTrue);
         }
         frameState.SetAcc(result);
     }
@@ -1614,12 +1600,11 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *result = nullptr;
         bool toBoolean = false;
         if (TryFoldToBooleanConstant(value, &toBoolean)) {
-            auto root = toBoolean ? RootConstantVertex::RootIndex::FALSE_VALUE
-                                  : RootConstantVertex::RootIndex::TRUE_VALUE;
-            result = self->graph_->GetRootConstant(root);
+            uint64_t value = toBoolean ? JSTaggedValue::VALUE_FALSE : JSTaggedValue::VALUE_TRUE;
+            result = self->graph_->GetTaggedConstant(value);
         }
         if (result == nullptr) {
-            result = CommonStubCall({glue, value}, CommonStubCSigns::ToBooleanFalse);
+            result = CommonStubCall({glue, value}, CommonStubID::ToBooleanFalse);
         }
         frameState.SetAcc(result);
     }
@@ -1631,7 +1616,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMBER, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
         frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumber)));
@@ -1642,7 +1627,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMERIC, &folded)) {
-            frameState.SetAcc(TaggedConstant(folded));
+            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
             return;
         }
         frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumeric)));
@@ -1665,7 +1650,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         }
         ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
         frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, id, GlobalEnv()}, CommonStubCSigns::GetPropertyByName));
+            bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName));
     }
 
     void LowerStObjByName(const BytecodeInfo *bcInfo)
@@ -1677,7 +1662,7 @@ struct GraphBuilderNew::BytecodeVisitor {
             return;
         }
         ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
-        CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubCSigns::SetPropertyByName);
+        CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
     }
 
     void LowerLdObjByValue(const BytecodeInfo *bcInfo)
@@ -1685,7 +1670,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = frameState.GetAcc();
         frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, key, GlobalEnv()}, CommonStubCSigns::GetPropertyByValue));
+            bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue));
     }
 
     void LowerStObjByValue(const BytecodeInfo *bcInfo)
@@ -1693,14 +1678,14 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = LoadRegister(bcInfo, 2);  // 2: key register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubCSigns::SetPropertyByValue);
+        CommonStubCallWithIC(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
     }
 
     void LowerLdObjByIndex(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(CommonStubCall({glue, receiver, index, GlobalEnv()}, CommonStubCSigns::LdObjByIndex));
+        frameState.SetAcc(CommonStubCall({glue, receiver, index, GlobalEnv()}, CommonStubID::LdObjByIndex));
     }
 
     void LowerStObjByIndex(const BytecodeInfo *bcInfo)
@@ -1708,7 +1693,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, receiver, index, value, GlobalEnv()}, CommonStubCSigns::StObjByIndex);
+        CommonStubCall({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StObjByIndex);
     }
 
     void LowerLdThisByValue(const BytecodeInfo *bcInfo)
@@ -1716,7 +1701,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *key = frameState.GetAcc();
         frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, key, GlobalEnv()}, CommonStubCSigns::GetPropertyByValue));
+            bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue));
     }
 
     void LowerStThisByValue(const BytecodeInfo *bcInfo)
@@ -1724,7 +1709,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *key = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubCSigns::SetPropertyByValue);
+        CommonStubCallWithIC(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
     }
 
     void LowerLdThisByName(const BytecodeInfo *bcInfo)
@@ -1732,7 +1717,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, id, GlobalEnv()}, CommonStubCSigns::GetPropertyByName));
+            bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName));
     }
 
     void LowerStThisByName(const BytecodeInfo *bcInfo)
@@ -1740,7 +1725,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubCSigns::SetPropertyByName);
+        CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
     }
 
     void LowerLdSuperByValue(const BytecodeInfo *bcInfo)
@@ -1784,7 +1769,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *key = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, receiver, key, value, GlobalEnv()}, CommonStubCSigns::StOwnByValue);
+        CommonStubCall({glue, receiver, key, value, GlobalEnv()}, CommonStubID::StOwnByValue);
     }
 
     void LowerStOwnByIndex(const BytecodeInfo *bcInfo)
@@ -1792,7 +1777,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, receiver, index, value, GlobalEnv()}, CommonStubCSigns::StOwnByIndex);
+        CommonStubCall({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StOwnByIndex);
     }
 
     void LowerStOwnByName(const BytecodeInfo *bcInfo)
@@ -1801,7 +1786,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *propKey = StringFromConstPool(stringId);
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *accValue = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubCSigns::StOwnByName);
+        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByName);
     }
 
     void LowerStOwnByValueWithNameSet(const BytecodeInfo *bcInfo)
@@ -1809,7 +1794,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *propKey = LoadRegister(bcInfo, 1);
         ValueVertex *accValue = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubCSigns::StOwnByValueWithNameSet);
+        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByValueWithNameSet);
     }
 
     void LowerStOwnByNameWithNameSet(const BytecodeInfo *bcInfo)
@@ -1818,33 +1803,33 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *propKey = StringFromConstPool(stringId);
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *accValue = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubCSigns::StOwnByNameWithNameSet);
+        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByNameWithNameSet);
     }
 
     void LowerTryLdGlobalByName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {id, GlobalEnv()}, CommonStubCSigns::TryLdGlobalByName));
+        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {id, GlobalEnv()}, CommonStubID::TryLdGlobalByName));
     }
 
     void LowerTryStGlobalByName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {id, value, GlobalEnv()}, CommonStubCSigns::TryStGlobalByName);
+        CommonStubCallWithIC(bcInfo, {id, value, GlobalEnv()}, CommonStubID::TryStGlobalByName);
     }
 
     void LowerLdGlobalVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {id, GlobalEnv()}, CommonStubCSigns::LdGlobalVar));
+        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {id, GlobalEnv()}, CommonStubID::LdGlobalVar));
     }
 
     void LowerStGlobalVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {id, value, GlobalEnv()}, CommonStubCSigns::StGlobalVar);
+        CommonStubCallWithIC(bcInfo, {id, value, GlobalEnv()}, CommonStubID::StGlobalVar);
     }
 
     void LowerStConstToGlobalRecord(const BytecodeInfo *bcInfo, bool isConst)
@@ -1900,7 +1885,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func}, CommonStubCSigns::CallArg0Stub);
+            {glue, func}, CommonStubID::CallArg0Stub);
         frameState.SetAcc(result);
     }
 
@@ -1910,7 +1895,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, a0Value}, CommonStubCSigns::CallArg1Stub);
+            {glue, func, a0Value}, CommonStubID::CallArg1Stub);
         frameState.SetAcc(result);
     }
 
@@ -1921,7 +1906,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, a0Value, a1Value}, CommonStubCSigns::CallArg2Stub);
+            {glue, func, a0Value, a1Value}, CommonStubID::CallArg2Stub);
         frameState.SetAcc(result);
     }
 
@@ -1933,7 +1918,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, a0Value, a1Value, a2Value}, CommonStubCSigns::CallArg3Stub);
+            {glue, func, a0Value, a1Value, a2Value}, CommonStubID::CallArg3Stub);
         frameState.SetAcc(result);
     }
 
@@ -1943,7 +1928,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj}, CommonStubCSigns::CallThis0Stub);
+            {glue, func, thisObj}, CommonStubID::CallThis0Stub);
         frameState.SetAcc(result);
     }
 
@@ -1954,7 +1939,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj, a0Value}, CommonStubCSigns::CallThis1Stub);
+            {glue, func, thisObj, a0Value}, CommonStubID::CallThis1Stub);
         frameState.SetAcc(result);
     }
 
@@ -1966,7 +1951,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj, a0Value, a1Value}, CommonStubCSigns::CallThis2Stub);
+            {glue, func, thisObj, a0Value, a1Value}, CommonStubID::CallThis2Stub);
         frameState.SetAcc(result);
     }
 
@@ -1979,7 +1964,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
 
         ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj, a0Value, a1Value, a2Value}, CommonStubCSigns::CallThis3Stub);
+            {glue, func, thisObj, a0Value, a1Value, a2Value}, CommonStubID::CallThis3Stub);
         frameState.SetAcc(result);
     }
 
@@ -2046,14 +2031,14 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
 
-        ValueVertex *argsArray = CommonStubCall({glue, array, GlobalEnv()}, CommonStubCSigns::GetCallSpreadArgs);
+        ValueVertex *argsArray = CommonStubCall({glue, array, GlobalEnv()}, CommonStubID::GetCallSpreadArgs);
         frameState.SetAcc(RuntimeCall({func, newTarget, argsArray}, RTSTUB_ID(OptSuperCallSpread)));
     }
 
     void LowerSuperCallForwardAllArgs(const BytecodeInfo *bcInfo)
     {
         ValueVertex *func = LoadRegister(bcInfo, 0);
-        ValueVertex *superFunc = CommonStubCall({glue, func}, CommonStubCSigns::GetPrototype);
+        ValueVertex *superFunc = CommonStubCall({glue, func}, CommonStubID::GetPrototype);
         ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
         ValueVertex *taggedActualArgc = TaggedActualArgc();
 
@@ -2087,7 +2072,7 @@ struct GraphBuilderNew::BytecodeVisitor {
 
     void LowerCreateEmptyArray()
     {
-        frameState.SetAcc(CommonStubCall({glue, GlobalEnv()}, CommonStubCSigns::CreateEmptyArray));
+        frameState.SetAcc(CommonStubCall({glue, GlobalEnv()}, CommonStubID::CreateEmptyArray));
     }
 
     void LowerCreateObjectWithBuffer(const BytecodeInfo *bcInfo)
@@ -2095,7 +2080,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *index = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *obj = ObjectFromConstPool(index);
         ValueVertex *lexEnv = LoadRegister(bcInfo, 1);
-        frameState.SetAcc(CommonStubCall({glue, obj, lexEnv}, CommonStubCSigns::CreateObjectHavingMethod));
+        frameState.SetAcc(CommonStubCall({glue, obj, lexEnv}, CommonStubID::CreateObjectHavingMethod));
     }
 
     void LowerCreateObjectWithExcludedKeys(const BytecodeInfo *bcInfo)
@@ -2115,7 +2100,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *slotId = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 1));
 
         frameState.SetAcc(CommonStubCall(
-            {glue, index, jsFunc, slotId, GlobalEnv()}, CommonStubCSigns::CreateArrayWithBuffer));
+            {glue, index, jsFunc, slotId, GlobalEnv()}, CommonStubID::CreateArrayWithBuffer));
     }
 
     void LowerCreateRegExpWithLiteral(const BytecodeInfo *bcInfo)
@@ -2170,7 +2155,7 @@ struct GraphBuilderNew::BytecodeVisitor {
 
         frameState.SetAcc(CommonStubCall(
             {glue, jsFunc, methodId, length, lexicalEnv, slotId, GlobalEnv()},
-            CommonStubCSigns::Definefunc));
+            CommonStubID::Definefunc));
     }
 
     void LowerDefineClassWithBuffer(const BytecodeInfo *bcInfo)
@@ -2218,7 +2203,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *prop = StringFromConstPool(stringId);
         ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, obj, prop, value, GlobalEnv()}, CommonStubCSigns::DefineField);
+        CommonStubCall({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerDefineFieldByName(const BytecodeInfo *bcInfo)
@@ -2227,7 +2212,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *prop = StringFromConstPool(stringId);
         ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, obj, prop, value, GlobalEnv()}, CommonStubCSigns::DefineField);
+        CommonStubCall({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerDefineFieldByValue(const BytecodeInfo *bcInfo)
@@ -2235,7 +2220,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *propKey = LoadRegister(bcInfo, 0);
         ValueVertex *acc = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubCSigns::DefineField);
+        CommonStubCall({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerDefineFieldByIndex(const BytecodeInfo *bcInfo)
@@ -2243,7 +2228,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *propKey = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *acc = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubCSigns::DefineField);
+        CommonStubCall({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerCreatePrivateProperty(const BytecodeInfo *bcInfo)
@@ -2272,13 +2257,13 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerGetIterator()
     {
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, obj, GlobalEnv()}, CommonStubCSigns::GetIterator));
+        frameState.SetAcc(CommonStubCall({glue, obj, GlobalEnv()}, CommonStubID::GetIterator));
     }
 
     void LowerGetPropIterator()
     {
         ValueVertex *object = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, object, GlobalEnv()}, CommonStubCSigns::Getpropiterator));
+        frameState.SetAcc(CommonStubCall({glue, object, GlobalEnv()}, CommonStubID::Getpropiterator));
     }
 
     void LowerCloseIterator(const BytecodeInfo *bcInfo)
@@ -2299,7 +2284,7 @@ struct GraphBuilderNew::BytecodeVisitor {
     {
         ValueVertex *parent = LoadRegister(bcInfo, 1);
         ValueVertex *scope = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        ValueVertex *newEnv = CommonStubCall({glue, parent, scope}, CommonStubCSigns::NewLexicalEnv);
+        ValueVertex *newEnv = CommonStubCall({glue, parent, scope}, CommonStubID::NewLexicalEnv);
 
         frameState.SetAcc(newEnv);
         frameState.SetLexicalEnv(newEnv);
@@ -2332,7 +2317,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *level = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
         ValueVertex *slot = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
-        frameState.SetAcc(CommonStubCall({glue, level, slot, lexicalEnv}, CommonStubCSigns::LdLexVar));
+        frameState.SetAcc(CommonStubCall({glue, level, slot, lexicalEnv}, CommonStubID::LdLexVar));
     }
 
     void LowerStLexVar(const BytecodeInfo *bcInfo)
@@ -2341,7 +2326,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *slot = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, level, slot, lexicalEnv, value}, CommonStubCSigns::StLexVar);
+        CommonStubCall({glue, level, slot, lexicalEnv, value}, CommonStubID::StLexVar);
     }
 
     // -------- Category #13: Modules --------
@@ -2400,7 +2385,7 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerTypeOf()
     {
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, obj}, CommonStubCSigns::TypeOf));
+        frameState.SetAcc(CommonStubCall({glue, obj}, CommonStubID::TypeOf));
     }
 
     void LowerGetUnmappedArgs()
@@ -2410,7 +2395,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *argvTaggedArray = self->undefinedValue_;
 
         frameState.SetAcc(CommonStubCall(
-            {glue, argv, numArgs, argvTaggedArray, GlobalEnv()}, CommonStubCSigns::GetUnmappedArgs));
+            {glue, argv, numArgs, argvTaggedArray, GlobalEnv()}, CommonStubID::GetUnmappedArgs));
     }
 
     void LowerCopyRestArgs(const BytecodeInfo *bcInfo)
@@ -2426,21 +2411,21 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *prop = frameState.GetAcc();
 
         frameState.SetAcc(CommonStubCall(
-            {glue, object, prop, GlobalEnv()}, CommonStubCSigns::DeleteObjectProperty));
+            {glue, object, prop, GlobalEnv()}, CommonStubID::DeleteObjectProperty));
     }
 
     void LowerIsIn(const BytecodeInfo *bcInfo)
     {
         ValueVertex *prop = LoadRegister(bcInfo, 0);
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, prop, obj, GlobalEnv()}, CommonStubCSigns::IsIn));
+        frameState.SetAcc(CommonStubCall({glue, prop, obj, GlobalEnv()}, CommonStubID::IsIn));
     }
 
     void LowerInstanceOf(const BytecodeInfo *bcInfo)
     {
         ValueVertex *object = LoadRegister(bcInfo, 1);
         ValueVertex *target = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {object, target, GlobalEnv()}, CommonStubCSigns::Instanceof));
+        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {object, target, GlobalEnv()}, CommonStubID::Instanceof));
     }
 
     void LowerTestIn(const BytecodeInfo *bcInfo)
@@ -2568,15 +2553,15 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerJumpIfZero()
     {
         ValueVertex *acc = frameState.GetAcc();
-        if (auto *asConstant = acc->TryCast<RootConstantVertex>(); asConstant != nullptr) {
-            auto id = asConstant->GetIndex();
+        if (auto *asConstant = acc->TryCast<TaggedConstantVertex>(); asConstant != nullptr) {
+            uint64_t rawValue = asConstant->GetValue();
 
-            if (id == RootConstantVertex::RootIndex::TRUE_VALUE) {
+            if (rawValue == JSTaggedValue::VALUE_TRUE) {
                 LOG_COMPILER(DEBUG) << "LowerJumpIfZero(): TRUE -> Fallthrough";
                 self->FinishBlockWithJump(currentBlock, FallthroughTarget());
                 return;
             }
-            if (id == RootConstantVertex::RootIndex::FALSE_VALUE) {
+            if (rawValue == JSTaggedValue::VALUE_FALSE) {
                 LOG_COMPILER(DEBUG) << "LowerJumpIfZero(): FALSE -> Jump";
                 self->FinishBlockWithJump(currentBlock, JumpTarget());
                 return;
@@ -2588,15 +2573,15 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerJumpIfNonZero()
     {
         ValueVertex *acc = frameState.GetAcc();
-        if (auto *asConstant = acc->TryCast<RootConstantVertex>(); asConstant != nullptr) {
-            auto id = asConstant->GetIndex();
+        if (auto *asConstant = acc->TryCast<TaggedConstantVertex>(); asConstant != nullptr) {
+            uint64_t rawValue = asConstant->GetValue();
 
-            if (id == RootConstantVertex::RootIndex::TRUE_VALUE) {
+            if (rawValue == JSTaggedValue::VALUE_TRUE) {
                 LOG_COMPILER(DEBUG) << "LowerJumpIfNonZero(): TRUE -> Jump";
                 self->FinishBlockWithJump(currentBlock, JumpTarget());
                 return;
             }
-            if (id == RootConstantVertex::RootIndex::FALSE_VALUE) {
+            if (rawValue == JSTaggedValue::VALUE_FALSE) {
                 LOG_COMPILER(DEBUG) << "LowerJumpIfNonZero(): FALSE -> Fallthrough";
                 self->FinishBlockWithJump(currentBlock, FallthroughTarget());
                 return;
@@ -2640,30 +2625,30 @@ struct GraphBuilderNew::BytecodeVisitor {
 
     ValueVertex *LoadParam(VRegIDType paramIndex) const
     {
-        VirtualRegister vreg = VRegOfParam(self->numLocal_, paramIndex);
-        return frameState.Get(vreg.GetId());
+        VRegIDType vreg = VRegOfParam(self->numLocal_, paramIndex);
+        return frameState.Get(vreg);
     }
 
     template <class CastsTo = uint16_t>
     CastsTo GetConstDataId(const BytecodeInfo *bcInfo, int inputIndex) const
     {
-        auto *constDataId = std::get_if<ConstDataId>(bcInfo->inputs.data() + inputIndex);
+        auto *constDataId = std::get_if<kungfu::ConstDataId>(bcInfo->inputs.data() + inputIndex);
         ASSERT(constDataId != nullptr);
         return static_cast<CastsTo>(constDataId->GetId());
     }
 
-    template <class CastsTo = ICSlotIdType>
+    template <class CastsTo = kungfu::ICSlotIdType>
     CastsTo GetICSlotId(const BytecodeInfo *bcInfo, int inputIndex) const
     {
-        auto *icSlotId = std::get_if<ICSlotId>(bcInfo->inputs.data() + inputIndex);
+        auto *icSlotId = std::get_if<kungfu::ICSlotId>(bcInfo->inputs.data() + inputIndex);
         ASSERT(icSlotId != nullptr);
         return static_cast<CastsTo>(icSlotId->GetId());
     }
 
-    template <class CastsTo = ImmValueType>
+    template <class CastsTo = kungfu::ImmValueType>
     CastsTo GetImmediate(const BytecodeInfo *bcInfo, int inputIndex) const
     {
-        auto *imm = std::get_if<Immediate>(bcInfo->inputs.data() + inputIndex);
+        auto *imm = std::get_if<kungfu::Immediate>(bcInfo->inputs.data() + inputIndex);
         ASSERT(imm != nullptr);
         return static_cast<CastsTo>(imm->GetValue());
     }
@@ -2687,23 +2672,6 @@ struct GraphBuilderNew::BytecodeVisitor {
         return self->NewVertex<ToTaggedIntVertex>(currentBlock, {argc});
     }
 
-    ValueVertex *TaggedConstant(JSTaggedValue value)
-    {
-        if (value.IsTrue()) {
-            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
-        }
-        if (value.IsFalse()) {
-            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
-        }
-        if (value.IsNull()) {
-            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::NULL_VALUE);
-        }
-        if (value.IsUndefined()) {
-            return self->graph_->GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-        }
-        return self->graph_->GetTaggedConstant(value.GetRawData());
-    }
-
     std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const
     {
         if (node == nullptr || !node->IsTagged()) {
@@ -2711,9 +2679,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         }
 
         JSTaggedValue value;
-        if (auto *constant = node->TryCast<ConstantVertex>()) {
-            value = constant->GetValue();
-        } else if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
+        if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
             value = JSTaggedValue(constant->GetValue());
         } else {
             return std::nullopt;
@@ -2757,7 +2723,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         return compileInfoFacts_->TryGetPossibleHClasses(node);
     }
 
-    std::optional<NamedAccessFeedback> TryGetLoadObjByNameFeedback(ICSlotIdType slotId) const
+    std::optional<NamedAccessFeedback> TryGetLoadObjByNameFeedback(kungfu::ICSlotIdType slotId) const
     {
         ALLOW_DEREF_HANDLE;
         JSHandle<ProfileTypeInfo> profileTypeInfo = self->preproc_->GetEnv()->GetProfileTypeInfo();
@@ -2846,7 +2812,7 @@ struct GraphBuilderNew::BytecodeVisitor {
             .lookupStartObjectHClasses = {map},
             .handler = handler,
             .plr = plr,
-            .isConst = plr.IsFound() && !plr.IsWritable() && StableHClassDependency::IsValid(map),
+            .isConst = plr.IsFound() && !plr.IsWritable() && kungfu::StableHClassDependency::IsValid(map),
         };
         return IsSupportedMonoNamedLoad(accessInfo) ? NamedLoadAccessInfoOpt(std::move(accessInfo)) : std::nullopt;
     }
@@ -2861,7 +2827,7 @@ struct GraphBuilderNew::BytecodeVisitor {
             return false;
         }
         for (JSHClass *hclass : accessInfo.lookupStartObjectHClasses) {
-            if (hclass != nullptr && StableHClassDependency::IsValid(hclass) &&
+            if (hclass != nullptr && kungfu::StableHClassDependency::IsValid(hclass) &&
                 !dependencies->DependOnStableHClass(hclass)) {
                 return false;
             }
@@ -2938,10 +2904,10 @@ struct GraphBuilderNew::BytecodeVisitor {
             self->graph_->GetInt32Constant(static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex))));
 
         for (VRegIDType index = 0; index < self->numLocal_; index++) {
-            add(static_cast<int32_t>(VRegOfLocal(index).GetId()), frameState.Get(VRegOfLocal(index).GetId()));
+            add(static_cast<int32_t>(VRegOfLocal(index)), frameState.Get(VRegOfLocal(index)));
         }
         for (VRegIDType index = 0; index < self->numParams_; index++) {
-            add(static_cast<int32_t>(VRegOfParam(self->numLocal_, index).GetId()), LoadParam(index));
+            add(static_cast<int32_t>(VRegOfParam(self->numLocal_, index)), LoadParam(index));
         }
     }
 
@@ -2955,11 +2921,11 @@ struct GraphBuilderNew::BytecodeVisitor {
                 constant->GetTaggedObject()->GetClass() != hclass) {
                 return false;
             }
-            compileInfoFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+            compileInfoFacts_->RecordHClass(object, hclass, kungfu::StableHClassDependency::IsValid(hclass));
             return true;
         }
 
-        if (StableHClassDependency::IsValid(hclass)) {
+        if (kungfu::StableHClassDependency::IsValid(hclass)) {
             auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
             if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
                 return false;
@@ -2971,7 +2937,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
         self->NewVertex<DeoptIfHClassMismatchVertex>(
             currentBlock, checkInputs, hclass, std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
-        compileInfoFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+        compileInfoFacts_->RecordHClass(object, hclass, kungfu::StableHClassDependency::IsValid(hclass));
         return true;
     }
 
@@ -3001,7 +2967,7 @@ struct GraphBuilderNew::BytecodeVisitor {
             return false;
         }
         bool allStable = std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
-            return hclass != nullptr && StableHClassDependency::IsValid(hclass);
+            return hclass != nullptr && kungfu::StableHClassDependency::IsValid(hclass);
         });
         compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
         return true;
@@ -3010,7 +2976,8 @@ struct GraphBuilderNew::BytecodeVisitor {
     ValueVertex *BuildLoadField(ValueVertex *object, PropertyLookupResult plr)
     {
         if (plr.IsInlinedProps()) {
-            return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {object}, static_cast<int32_t>(plr.GetOffset()));
+            int32_t offset = static_cast<int32_t>(plr.GetOffset());
+            return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {object}, offset);
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
@@ -3094,7 +3061,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         }
 
         std::optional<NamedAccessFeedback> feedback =
-            TryGetLoadObjByNameFeedback(GetICSlotId<ICSlotIdType>(bcInfo, 0));
+            TryGetLoadObjByNameFeedback(GetICSlotId<kungfu::ICSlotIdType>(bcInfo, 0));
         if (!feedback.has_value()) {
             return false;
         }
@@ -3135,7 +3102,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         if (!plr.IsFound() || !plr.IsLocal() || !plr.IsWritable() || plr.IsAccessor()) {
             return false;
         }
-        if (StableHClassDependency::IsValid(hclass)) {
+        if (kungfu::StableHClassDependency::IsValid(hclass)) {
             auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
             if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
                 return false;
@@ -3163,7 +3130,7 @@ struct GraphBuilderNew::BytecodeVisitor {
     void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, CommonStubID id)
     {
 #ifndef NDEBUG
-        const CallSignature *signature = CommonStubCSigns::Get(id);
+        const kungfu::CallSignature *signature = kungfu::CommonStubCSigns::Get(id);
         size_t actualCount = inputs.size();
         size_t expectedCount = signature->GetParametersCount();
         if (actualCount != expectedCount) {
@@ -3274,14 +3241,14 @@ struct GraphBuilderNew::BytecodeVisitor {
     ValueVertex *StringFromConstPool(ValueVertex *stringId)
     {
         ValueVertex *constpool = SharedConstPool();
-        return CommonStubCall({glue, constpool, stringId}, CommonStubCSigns::GetStringFromConstPool);
+        return CommonStubCall({glue, constpool, stringId}, CommonStubID::GetStringFromConstPool);
     }
 
     ValueVertex *ObjectFromConstPool(ValueVertex *index)
     {
         ValueVertex *constpool = SharedConstPool();
         ValueVertex *module = ModuleFromFunction();
-        return CommonStubCall({glue, constpool, index, module}, CommonStubCSigns::GetObjectFromConstPool);
+        return CommonStubCall({glue, constpool, index, module}, CommonStubID::GetObjectFromConstPool);
     }
 
     ValueVertex *MethodFromConstPool(ValueVertex *index)

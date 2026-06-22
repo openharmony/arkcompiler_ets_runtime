@@ -49,64 +49,6 @@ enum class SideEffectKind : uint8_t {
     SAFE_CALL,
 };
 
-// A singly linked list that temporarily stores predecessors referring to this block.
-// All predecessors point to the same target block after Bind() is called.
-class BBRef {
-public:
-    BBRef() : nextRef_(nullptr) {}
-    explicit BBRef(BB *basicBlock) : basicBlock_(basicBlock) {}
-    explicit BBRef(BBRef *head) : BBRef()
-    {
-        MoveToListHead(head);
-    }
-
-    void Bind(BB *basicBlock)
-    {
-        BBRef *nextRef = SetToBlockAndReturnNext(basicBlock);
-        while (nextRef != nullptr) {
-            nextRef = nextRef->SetToBlockAndReturnNext(basicBlock);
-        }
-    }
-
-    BBRef *MoveToListHead(BBRef *head)
-    {
-        BBRef *oldNextRef = head->nextRef_;
-        nextRef_ = oldNextRef;
-        head->nextRef_ = this;
-        return oldNextRef;
-    }
-
-    BBRef *SetToBlockAndReturnNext(BB *basicBlock)
-    {
-        BBRef *ref = nextRef_;
-        basicBlock_ = basicBlock;
-        return ref;
-    }
-
-    BBRef *Reset()
-    {
-        BBRef *ref = nextRef_;
-        nextRef_ = nullptr;
-        return ref;
-    }
-
-    BB *BlockRef() const
-    {
-        return basicBlock_;
-    }
-
-    void SetBlockRef(BB *basicBlock)
-    {
-        basicBlock_ = basicBlock;
-    }
-
-private:
-    union {
-        BB *basicBlock_;
-        BBRef *nextRef_;
-    };
-};
-
 // ValueRepresentation describes the machine representation of a value
 enum class ValueRepresentation : uint8_t {
     TAGGED,         // Tagged pointer to JS objects
@@ -436,10 +378,10 @@ inline constexpr bool IsBranchControlVertex(VertexOpcode opcode)
 //        them as "n<label>:<operand>".
 class VertexInput {
 public:
-    VertexInput(ValueVertex *vertex, int index) : vertex_(vertex), index_(index) {}
+    VertexInput(ValueVertex *vertex, uint32_t index) : vertex_(vertex), index_(index) {}
 
     inline ValueVertex *GetVertex() const;
-    int GetIndex() const
+    uint32_t GetIndex() const
     {
         return index_;
     }
@@ -451,7 +393,7 @@ public:
 
 private:
     ValueVertex *vertex_;
-    int index_;
+    uint32_t index_;
 };
 
 class Vertex {
@@ -528,18 +470,18 @@ public:
         return GetInputCount() > 0;
     }
 
-    constexpr int GetInputCount() const
+    constexpr uint32_t GetInputCount() const
     {
-        return static_cast<int>(InputCountField::Decode(bitfield_));
+        return static_cast<uint32_t>(InputCountField::Decode(bitfield_));
     }
 
-    void SetInput(int index, ValueVertex *vertex);
-    ValueVertex *GetInput(int index);
-    const ValueVertex *GetInput(int index) const;
-    void ClearInput(int index);
+    void SetInput(uint32_t index, ValueVertex *vertex);
+    ValueVertex *GetInput(uint32_t index);
+    const ValueVertex *GetInput(uint32_t index) const;
+    void ClearInput(uint32_t index);
 
-    Input Arg(int index);
-    ConstInput Arg(int index) const;
+    Input Arg(uint32_t index);
+    ConstInput Arg(uint32_t index) const;
 
     // Input allocation order for register allocation
     // Iterates inputs in the order expected by the register allocator:
@@ -614,7 +556,7 @@ public:
     static Derived *New(Chunk *chunk, const Container &inputs, Args &&...args);
 
     // Reduce input count (used by Phi when merging dead control flow)
-    void ReduceInputCount(int num = 1);
+    void ReduceInputCount(uint32_t num = 1);
 
     RegallocVertexInfo *GetRegallocInfo() const
     {
@@ -785,7 +727,7 @@ protected:
 
 class Input {
 public:
-    Input(Vertex *base, int index) : base_(base), index_(index) {}
+    Input(Vertex *base, uint32_t index) : base_(base), index_(index) {}
 
     ValueVertex *vertex() const
     {
@@ -808,12 +750,12 @@ public:
 private:
     friend class ConstInput;
     Vertex *base_;
-    int index_;
+    uint32_t index_;
 };
 
 class ConstInput {
 public:
-    ConstInput(const Vertex *base, int index) : base_(base), index_(index) {}
+    ConstInput(const Vertex *base, uint32_t index) : base_(base), index_(index) {}
 
     ConstInput(const Input &input)
     {
@@ -831,15 +773,15 @@ public:
 
 private:
     const Vertex *base_;
-    int index_;
+    uint32_t index_;
 };
 
-inline Input Vertex::Arg(int index)
+inline Input Vertex::Arg(uint32_t index)
 {
     return Input(this, index);
 }
 
-inline ConstInput Vertex::Arg(int index) const
+inline ConstInput Vertex::Arg(uint32_t index) const
 {
     return ConstInput(this, index);
 }
@@ -934,25 +876,25 @@ Derived *Vertex::New(Chunk *chunk, const Container &inputs, Args &&...args)
 }
 
 // Inline implementations
-inline void Vertex::SetInput(int index, ValueVertex *vertex)
+inline void Vertex::SetInput(uint32_t index, ValueVertex *vertex)
 {
     ASSERT(index < GetInputCount());
     *GetInputPtr(index) = vertex;
 }
 
-inline ValueVertex *Vertex::GetInput(int index)
+inline ValueVertex *Vertex::GetInput(uint32_t index)
 {
     ASSERT(index < GetInputCount());
     return *GetInputPtr(index);
 }
 
-inline const ValueVertex *Vertex::GetInput(int index) const
+inline const ValueVertex *Vertex::GetInput(uint32_t index) const
 {
     ASSERT(index < GetInputCount());
     return *GetInputPtr(index);
 }
 
-inline void Vertex::ClearInput(int index)
+inline void Vertex::ClearInput(uint32_t index)
 {
     ASSERT(index < GetInputCount());
     *GetInputPtr(index) = nullptr;
@@ -973,7 +915,7 @@ template <typename Function>
 void Vertex::ForAllInputsInRegallocAssignmentOrder(Function &&f)
 {
     auto iterateInputs = [&](InputAllocationPolicy category) {
-        for (int i = 0; i < GetInputCount(); i++) {
+        for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
             Input input(this, i);
             InputLocation *location = input.GetLocation();
             const InstructionOperand &operand = location->GetOperand();

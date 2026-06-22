@@ -114,7 +114,7 @@ void GraphPrinter::PreProcessGraph(Graph *graph)
     for (BB *block : *graph) {
         blockOrder_.push_back(block);
         // Skip predecessor processing for blocks without register merge state
-        if (block->HasRegisterMerge()) {
+        if (block->HasRegisterMergeState()) {
             const auto &predecessors = block->GetPredecessors();
             for (BB *pred : predecessors) {
                 successorsMap_[pred].push_back(block);
@@ -154,7 +154,6 @@ void GraphPrinter::PrintConstants(Graph *graph)
     LOG_COMPILER(INFO) << "";
     LOG_COMPILER(INFO) << "Constants:";
 
-    PrintRootConstants(graph, labeller);
     PrintInt32Constants(graph, labeller);
     PrintIntPtrConstants(graph, labeller);
     PrintFloat64Constants(graph, labeller);
@@ -163,37 +162,8 @@ void GraphPrinter::PrintConstants(Graph *graph)
 
 bool GraphPrinter::HasConstantsToPrint(Graph *graph) const
 {
-    return !graph->GetRootConstants().empty() || !graph->GetInt32Constants().empty() ||
+    return !graph->GetInt32Constants().empty() ||
            !graph->GetFloat64Constants().empty() || !graph->GetTaggedConstants().empty();
-}
-
-void GraphPrinter::PrintRootConstants(Graph *graph, ArkSteedGraphLabeller *labeller)
-{
-    for (const auto &[index, vertex] : graph->GetRootConstants()) {
-        std::string line = "  ";
-        if (labeller != nullptr) {
-            line += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-        }
-        line += "RootConstant ";
-        switch (index) {
-            case RootConstantVertex::RootIndex::UNDEFINED:
-                line += "Undefined";
-                break;
-            case RootConstantVertex::RootIndex::NULL_VALUE:
-                line += "Null";
-                break;
-            case RootConstantVertex::RootIndex::TRUE_VALUE:
-                line += "True";
-                break;
-            case RootConstantVertex::RootIndex::FALSE_VALUE:
-                line += "False";
-                break;
-            default:
-                line += "Unknown(" + std::to_string(static_cast<int>(index)) + ")";
-                break;
-        }
-        LOG_COMPILER(INFO) << line;
-    }
 }
 
 void GraphPrinter::PrintInt32Constants(Graph *graph, ArkSteedGraphLabeller *labeller)
@@ -249,15 +219,13 @@ void GraphPrinter::PrintTaggedConstants(Graph *graph, ArkSteedGraphLabeller *lab
 
 std::string GraphPrinter::DecodeTaggedValue(uint64_t value) const
 {
-    using JSTaggedValue = ecmascript::JSTaggedValue;
-
-    // Check for tagged int
-    if ((value & JSTaggedValue::TAG_MARK) == JSTaggedValue::TAG_INT) {
-        int32_t intValue = static_cast<int32_t>(value);
-        return " (tagged int: " + std::to_string(intValue) + ")";
+    JSTaggedValue tagged(value);
+    if (tagged.IsInt()) {
+        return " (tagged int: " + std::to_string(tagged.GetInt()) + ")";
     }
-
-    // Check for special values using switch
+    if (tagged.IsDouble()) {
+        return " (tagged double: " + std::to_string(tagged.GetDouble()) + ")";
+    }
     switch (value) {
         case JSTaggedValue::VALUE_UNDEFINED:
             return " (tagged undefined)";
@@ -274,25 +242,9 @@ std::string GraphPrinter::DecodeTaggedValue(uint64_t value) const
         default:
             break;
     }
-
-    // Check for other boolean values
-    if ((value & JSTaggedValue::TAG_BOOLEAN_MASK) == JSTaggedValue::TAG_BOOLEAN_MASK) {
-        return " (tagged boolean)";
-    }
-
-    // Check for tagged double
-    // 48: double value occupies 48 bits in tagged representation
-    if (value >= JSTaggedValue::DOUBLE_ENCODE_OFFSET && value < (JSTaggedValue::DOUBLE_ENCODE_OFFSET + (1ULL << 48))) {
-        double doubleValue = base::bit_cast<double>(value - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
-        return " (tagged double: " + std::to_string(doubleValue) + ")";
-    }
-
-    // Check for heap object
-    if ((value & JSTaggedValue::TAG_HEAPOBJECT_MASK) == JSTaggedValue::TAG_OBJECT) {
+    if (tagged.IsObject()) {
         return " (tagged heap object)";
     }
-
-    // Unknown type
     return " (tagged unknown)";
 }
 
@@ -328,7 +280,7 @@ void GraphPrinter::PreProcessBlock(BB *block)
                                                               : "Other";
     LOG_COMPILER(INFO) << PrintBlockArrows(block) << "Block " << block->GetId() << " (" << blockTypeName << ')';
 
-    if (block->HasRegisterMerge()) {
+    if (block->HasRegisterMergeState()) {
         PrintPredecessors(block);
     }
 
@@ -448,7 +400,7 @@ std::string GraphPrinter::FormatVertexStubInfo(Vertex *vertex) const
 std::string GraphPrinter::FormatVertexInputs(Vertex *vertex, ArkSteedGraphLabeller *labeller) const
 {
     std::string line;
-    for (int i = 0; i < vertex->GetInputCount(); ++i) {
+    for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; ++i) {
         if (i > 0) {
             line += ", ";
         }

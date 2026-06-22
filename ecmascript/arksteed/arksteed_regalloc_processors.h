@@ -104,12 +104,12 @@ public:
         constexpr bool isCall = T::PROPERTIES.IsCall();
         constexpr bool needsRegSnapshot = T::PROPERTIES.NeedsRegisterSnapshot();
         if constexpr (isCall || needsRegSnapshot) {
-            int vertexStackArgs = static_cast<int>(vertex->GetInputCount());
+            uint32_t vertexStackArgs = vertex->GetInputCount();
             if constexpr (needsRegSnapshot) {
                 // Pessimistically assume that we'll push all registers in deferred calls.
                 vertexStackArgs += ALLOCATABLE_GENERAL_REGISTER_COUNT + ALLOCATABLE_DOUBLE_REGISTER_COUNT;
             }
-            maxCallStackArgs_ = std::max(maxCallStackArgs_, vertexStackArgs);
+            maxCallStackArgs_ = std::max<uint32_t>(maxCallStackArgs_, vertexStackArgs);
         }
     }
 
@@ -260,7 +260,7 @@ public:
     {
         BB *target = vertex->Target();
         uint32_t use = vertex->GetId();
-        int predecessorIdx = state.GetBlock()->GetPredecessorId();
+        uint32_t predecessorIdx = state.GetBlock()->GetPredecessorId();
 
         ASSERT(!loopUsedVertices_.empty());
         LoopUsedVertices loopUsedVertices = std::move(loopUsedVertices_.back());

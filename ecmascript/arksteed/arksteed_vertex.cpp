@@ -26,7 +26,7 @@ void Vertex::Print() const
 
     if (HasInputs()) {
         std::cout << " [";
-        for (int i = 0; i < GetInputCount(); ++i) {
+        for (uint32_t i = 0, n = GetInputCount(); i < n; ++i) {
             const ValueVertex *input = GetInput(i);
             if (input != nullptr) {
                 std::cout << input->GetId();
@@ -43,10 +43,10 @@ void Vertex::Print() const
     std::cout << std::endl;
 }
 
-void Vertex::ReduceInputCount(int num)
+void Vertex::ReduceInputCount(uint32_t num)
 {
     ASSERT(GetOpcode() == VertexOpcode::Phi);
-    ASSERT(GetInputCount() >= static_cast<int>(num));
+    ASSERT(GetInputCount() >= num);
     bitfield_ = InputCountField::Update(bitfield_, GetInputCount() - num);
 }
 

@@ -18,6 +18,7 @@
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_graph_builder_new.h"
 #include "ecmascript/arksteed/arksteed_codegen.h"
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_graph_printer.h"
@@ -30,12 +31,6 @@
 #include "ecmascript/compiler/jit_compiler.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/mem/machine_code.h"
-
-#ifdef ARKSTEED_REFACTORED
-#include "ecmascript/arksteed/arksteed_graph_builder_new.h"
-#else
-#include "ecmascript/arksteed/arksteed_graph_builder.h"
-#endif
 
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "ecmascript/compiler/jit_signcode.h"
@@ -145,7 +140,6 @@ void ArkSteedCompilerTask::DebugLogOnCompilationDone()
 
 bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr)
 {
-#ifdef ARKSTEED_REFACTORED
     (void)compilerThread;  // Unused
 
     BytecodePreprocessorNew preproc(jitCompilationEnv_.get(), chunk_.get());
@@ -163,12 +157,6 @@ bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGl
         LOG_COMPILER(WARN) << "JIT compilation halts due to graph building error.";
         return false;
     }
-#else
-    ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get(), profileTypeInfo_);
-    if (!graphBuilder.Build()) {
-        return false;
-    }
-#endif
     return true;
 }
 

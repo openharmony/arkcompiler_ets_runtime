@@ -658,26 +658,8 @@ NodeInfo::NodeType CompileInfoFacts::GetStaticNodeType(ValueVertex *node) const
     if (node == nullptr) {
         return NodeInfo::NodeType::UNKNOWN;
     }
-    if (auto *constant = node->TryCast<ConstantVertex>()) {
-        return NodeTypeFromJSTaggedValue(constant->GetValue());
-    }
     if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
         return NodeTypeFromJSTaggedValue(JSTaggedValue(constant->GetValue()));
-    }
-    if (auto *root = node->TryCast<RootConstantVertex>()) {
-        switch (root->GetIndex()) {
-            case RootConstantVertex::RootIndex::UNDEFINED:
-                return NodeInfo::NodeType::UNDEFINED;
-            case RootConstantVertex::RootIndex::NULL_VALUE:
-                return NodeInfo::NodeType::NULL_TYPE;
-            case RootConstantVertex::RootIndex::TRUE_VALUE:
-            case RootConstantVertex::RootIndex::FALSE_VALUE:
-                return NodeInfo::NodeType::BOOLEAN;
-        }
-        UNREACHABLE();
-    }
-    if (node->Is<BooleanConstantVertex>()) {
-        return NodeInfo::NodeType::BOOLEAN;
     }
     if (node->Is<Int32ConstantVertex>() || node->IsAnyInt32()) {
         return NodeInfo::NodeType::INT;
@@ -806,7 +788,7 @@ void CompileInfoFacts::UpdateEnvSlotAliasMode(ValueVertex *env)
     EnvSlotAliasMode mode = EnvSlotAliasMode::MAY_ALIAS;
     if (env != nullptr && env->Is<InitialValueVertex>()) {
         mode = EnvSlotAliasMode::CURRENT_ENV_ONLY;
-    } else if (env != nullptr && (env->Is<ConstantVertex>() || env->Is<TaggedConstantVertex>())) {
+    } else if (env != nullptr && env->Is<TaggedConstantVertex>()) {
         mode = EnvSlotAliasMode::CONSTANT_ENV_ONLY;
     }
     envSlotAliasMode_ = MergeEnvSlotAliasMode(envSlotAliasMode_, mode);

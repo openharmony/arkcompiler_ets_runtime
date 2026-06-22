@@ -55,21 +55,6 @@ inline ArkSteedRegister GetResultRegister(const ValueVertex *vertex)
 
 // ========================================= Common Value Opcode =========================================
 
-void ConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
-{
-    __ Move(reg, GetValue().GetRawData());
-}
-
-void ConstantVertex::SetValueLocationConstraints()
-{
-    DefineAsConstant(this);
-}
-
-void ConstantVertex::Dump(std::ostream &output) const
-{
-    output << "  Constant: 0x" << std::hex << GetValue().GetRawData() << std::dec;
-}
-
 void Int32ConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
 {
     __ Move(reg, GetValue());
@@ -128,69 +113,6 @@ void TaggedConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedReg
 void TaggedConstantVertex::Dump(std::ostream &output) const
 {
     output << "  TaggedConstant: 0x" << std::hex << GetValue() << std::dec;
-}
-
-void RootConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
-{
-    JSTaggedType value = 0;
-    switch (index_) {
-        case RootIndex::UNDEFINED:
-            value = JSTaggedValue::Undefined().GetRawData();
-            break;
-        case RootIndex::NULL_VALUE:
-            value = JSTaggedValue::Null().GetRawData();
-            break;
-        case RootIndex::TRUE_VALUE:
-            value = JSTaggedValue::True().GetRawData();
-            break;
-        case RootIndex::FALSE_VALUE:
-            value = JSTaggedValue::False().GetRawData();
-            break;
-        default:
-            UNREACHABLE();
-            break;
-    }
-    __ Move(reg, value);
-}
-
-void RootConstantVertex::SetValueLocationConstraints()
-{
-    DefineAsConstant(this);
-}
-
-void RootConstantVertex::Dump(std::ostream &output) const
-{
-    const char *name = "Unknown";
-    switch (index_) {
-        case RootIndex::UNDEFINED:
-            name = "Undefined";
-            break;
-        case RootIndex::NULL_VALUE:
-            name = "Null";
-            break;
-        case RootIndex::TRUE_VALUE:
-            name = "True";
-            break;
-        case RootIndex::FALSE_VALUE:
-            name = "False";
-            break;
-    }
-    output << "  RootConstant: " << name;
-}
-
-void BooleanConstantVertex::SetValueLocationConstraints()
-{
-    DefineAsConstant(this);
-}
-
-void BooleanConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
-{
-    __ Move(reg, GetValue());
-}
-
-void BooleanConstantVertex::Dump(std::ostream &output) const
-{
-    output << "  BooleanConstant: " << (GetValue() ? "true" : "false");
 }
 
 void InitialValueVertex::SetValueLocationConstraints()
@@ -264,7 +186,7 @@ void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
     UseRegister(Arg(RECEIVER_INDEX));
-    for (int i = RECEIVER_INDEX + 1; i < GetInputCount(); i++) {
+    for (uint32_t i = RECEIVER_INDEX + 1, n = GetInputCount(); i < n; i++) {
         UseSlot(Arg(i));
     }
 }
@@ -278,7 +200,7 @@ void DeoptIfHClassMismatchVertex::Dump(std::ostream &output) const
 
 void DeoptVertex::SetValueLocationConstraints()
 {
-    for (int i = 0; i < GetInputCount(); i++) {
+    for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
         UseSlot(Arg(i));
     }
 }

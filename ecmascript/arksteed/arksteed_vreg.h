@@ -52,28 +52,28 @@ enum ExtraVRegIndex : VRegIDType {
     EXTRA_VREG_COUNT,
 };
 
-inline VirtualRegister VRegOfLocal(VRegIDType localIndex)
+inline VRegIDType VRegOfLocal(VRegIDType localIndex)
 {
-    return VirtualRegister{localIndex};
+    return localIndex;
 }
-inline VirtualRegister VRegOfParam(VRegIDType numLocal, VRegIDType paramIndex)
+inline VRegIDType VRegOfParam(VRegIDType numLocal, VRegIDType paramIndex)
 {
-    return VirtualRegister{numLocal + paramIndex};
+    return numLocal + paramIndex;
 }
-inline VirtualRegister VRegOfLexicalEnv(VRegIDType numLocal, VRegIDType numParams)
+inline VRegIDType VRegOfLexicalEnv(VRegIDType numLocal, VRegIDType numParams)
 {
-    return VirtualRegister{numLocal + numParams + LEXICAL_ENV_EXTRA_INDEX};
+    return numLocal + numParams + LEXICAL_ENV_EXTRA_INDEX;
 }
-inline VirtualRegister VRegOfAcc(VRegIDType numLocal, VRegIDType numParams)
+inline VRegIDType VRegOfAcc(VRegIDType numLocal, VRegIDType numParams)
 {
-    return VirtualRegister{numLocal + numParams + ACC_EXTRA_INDEX};
+    return numLocal + numParams + ACC_EXTRA_INDEX;
 }
 constexpr VRegIDType NumVRegs(VRegIDType numLocal, VRegIDType numParams)
 {
     return numLocal + numParams + EXTRA_VREG_COUNT;
 }
 
-std::string VRegDisplayString(VirtualRegister vreg, VRegIDType numLocal, VRegIDType numParams);
+std::string VRegDisplayString(VRegIDType vreg, VRegIDType numLocal, VRegIDType numParams);
 }  // namespace panda::ecmascript::arksteed
 
 #endif  // ECMASCRIPT_ARKSTEED_VREG_H

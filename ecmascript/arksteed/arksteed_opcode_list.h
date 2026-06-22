@@ -31,13 +31,10 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 // List of constant value vertices (for constant folding, etc.)
 #define CONSTANT_VALUE_VERTEX_LIST(V) \
-    V(Constant)                       \
     V(Int32Constant)                  \
     V(IntPtrConstant)                 \
     V(Float64Constant)                \
-    V(TaggedConstant)                 \
-    V(RootConstant)                   \
-    V(BooleanConstant)
+    V(TaggedConstant)
 
 // List of value vertex types (must match the enum in arksteed_vertex.h)
 #define COMMON_VALUE_VERTEX_LIST(V) \

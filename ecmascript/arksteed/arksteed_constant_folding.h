@@ -22,7 +22,6 @@
 
 namespace panda::ecmascript::arksteed {
 
-class ArkSteedGraphBuilder;
 class ValueVertex;
 
 enum class BinaryFoldOp : uint8_t {
@@ -48,8 +47,6 @@ enum class BinaryFoldOp : uint8_t {
 
 enum class UnaryFoldOp : uint8_t { NEG, INC, DEC, NOT, TO_NUMBER, TO_NUMERIC };
 
-bool TryConstFoldBinary(ArkSteedGraphBuilder *builder, ValueVertex *lhs, ValueVertex *rhs, BinaryFoldOp op);
-bool TryConstFoldUnary(ArkSteedGraphBuilder *builder, ValueVertex *input, UnaryFoldOp op);
 bool TryFoldToBooleanConstant(ValueVertex *vertex, bool *result);
 
 bool TryFoldBinaryConstant(ValueVertex *lhs, ValueVertex *rhs, BinaryFoldOp op, JSTaggedValue *result);

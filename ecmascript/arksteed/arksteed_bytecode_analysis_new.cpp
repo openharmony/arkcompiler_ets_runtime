@@ -62,7 +62,7 @@ void BytecodeAnalysisNew::UpdateUpwardExposedSet(const BytecodeInfo *info, uint3
         SetVReg(ueSet_[blockIndex], lexicalEnv);
     }
     if (info->ThisObjectIn()) {
-        VRegIDType thisObj = VRegOfParam(GetNumLocalVRegs(), THIS_OBJECT_PARAM_INDEX).GetId();
+        VRegIDType thisObj = VRegOfParam(GetNumLocalVRegs(), THIS_OBJECT_PARAM_INDEX);
         SetVReg(ueSet_[blockIndex], thisObj);
     }
     for (size_t i = 0, n = info->inputs.size(); i < n; i++) {
@@ -129,8 +129,8 @@ void BytecodeAnalysisNew::InitializeLiveIn()
 
 void BytecodeAnalysisNew::FinalizeWithFixedParamsAndEnv()
 {
-    VRegIDType callTarget = VRegOfParam(GetNumLocalVRegs(), CALL_TARGET_PARAM_INDEX).GetId();
-    VRegIDType newTarget = VRegOfParam(GetNumLocalVRegs(), NEW_TARGET_PARAM_INDEX).GetId();
+    VRegIDType callTarget = VRegOfParam(GetNumLocalVRegs(), CALL_TARGET_PARAM_INDEX);
+    VRegIDType newTarget = VRegOfParam(GetNumLocalVRegs(), NEW_TARGET_PARAM_INDEX);
 
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
@@ -210,7 +210,7 @@ std::string BytecodeAnalysisNew::DumpBitset(const kungfu::BitSet &bitset) const
             continue;
         }
         first ? (void)(first = false) : (void)(out << ", ");
-        out << VRegDisplayString(VirtualRegister(i), GetNumLocalVRegs(), GetNumParamVRegs());
+        out << VRegDisplayString(i, GetNumLocalVRegs(), GetNumParamVRegs());
     }
 
     out << ']';

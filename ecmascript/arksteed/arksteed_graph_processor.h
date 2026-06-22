@@ -118,11 +118,6 @@ private:
         ArkSteedState state(nullptr);
         state.SetNextBlock(nullptr);
 
-        // Process RootConstants
-        for (const auto &[index, vertex] : graph->GetRootConstants()) {
-            derivedProcessor_.ProcessVertex(vertex, state);
-        }
-
         // Process Int32Constants
         for (const auto &[value, vertex] : graph->GetInt32Constants()) {
             derivedProcessor_.ProcessVertex(vertex, state);

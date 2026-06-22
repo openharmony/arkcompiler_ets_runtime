@@ -76,7 +76,6 @@ private:
     std::string FormatVertexAnnotations(Vertex *vertex) const;
     void PrintConstants(Graph *graph);
     bool HasConstantsToPrint(Graph *graph) const;
-    void PrintRootConstants(Graph *graph, ArkSteedGraphLabeller *labeller);
     void PrintInt32Constants(Graph *graph, ArkSteedGraphLabeller *labeller);
     void PrintIntPtrConstants(Graph *graph, ArkSteedGraphLabeller *labeller);
     void PrintFloat64Constants(Graph *graph, ArkSteedGraphLabeller *labeller);
@@ -92,7 +91,7 @@ private:
     Chunk *chunk_;
     bool hasRegallocData_;
     int totalVertices_;
-    int totalBlocks_;
+    uint32_t totalBlocks_;
     BB *currentBlock_;
     int verticesInCurrentBlock_;
 

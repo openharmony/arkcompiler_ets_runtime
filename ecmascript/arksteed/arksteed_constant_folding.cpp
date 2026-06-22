@@ -15,7 +15,7 @@
 
 #include "ecmascript/arksteed/arksteed_constant_folding.h"
 
-#include "ecmascript/arksteed/arksteed_graph_builder.h"
+#include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/base/math_helper.h"
 #include "ecmascript/base/number_helper.h"
 
@@ -30,27 +30,8 @@ struct PrimitiveConstant {
 
     static bool FromVertex(ValueVertex *vertex, PrimitiveConstant *constant)
     {
-        if (auto *raw = vertex->TryCast<ConstantVertex>()) {
-            return FromTagged(raw->GetValue(), constant);
-        }
         if (auto *tagged = vertex->TryCast<TaggedConstantVertex>()) {
             return FromTagged(JSTaggedValue(tagged->GetValue()), constant);
-        }
-        if (auto *root = vertex->TryCast<RootConstantVertex>()) {
-            switch (root->GetIndex()) {
-                case RootConstantVertex::RootIndex::TRUE_VALUE:
-                    constant->value = JSTaggedValue::True();
-                    return true;
-                case RootConstantVertex::RootIndex::FALSE_VALUE:
-                    constant->value = JSTaggedValue::False();
-                    return true;
-                case RootConstantVertex::RootIndex::NULL_VALUE:
-                    constant->value = JSTaggedValue::Null();
-                    return true;
-                case RootConstantVertex::RootIndex::UNDEFINED:
-                    constant->value = JSTaggedValue::Undefined();
-                    return true;
-            }
         }
         return false;
     }
@@ -112,23 +93,6 @@ private:
         return true;
     }
 };
-
-ValueVertex *ConstantVertexFor(ArkSteedGraphBuilder *builder, JSTaggedValue value)
-{
-    if (value.IsTrue()) {
-        return builder->GetRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
-    }
-    if (value.IsFalse()) {
-        return builder->GetRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
-    }
-    if (value.IsNull()) {
-        return builder->GetRootConstant(RootConstantVertex::RootIndex::NULL_VALUE);
-    }
-    if (value.IsUndefined()) {
-        return builder->GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-    }
-    return builder->GetTaggedConstant(value.GetRawData());
-}
 
 bool TryMakeTaggedInt32Constant(int64_t value, JSTaggedValue *result)
 {
@@ -504,26 +468,6 @@ bool TryFoldUnary(ValueVertex *input, UnaryFoldOp op, JSTaggedValue *result)
     return false;
 }
 }  // namespace
-
-bool TryConstFoldBinary(ArkSteedGraphBuilder *builder, ValueVertex *lhs, ValueVertex *rhs, BinaryFoldOp op)
-{
-    JSTaggedValue folded;
-    if (!TryFoldBinary(lhs, rhs, op, &folded)) {
-        return false;
-    }
-    builder->CurrentFrameState()->SetAcc(ConstantVertexFor(builder, folded));
-    return true;
-}
-
-bool TryConstFoldUnary(ArkSteedGraphBuilder *builder, ValueVertex *input, UnaryFoldOp op)
-{
-    JSTaggedValue folded;
-    if (!TryFoldUnary(input, op, &folded)) {
-        return false;
-    }
-    builder->CurrentFrameState()->SetAcc(ConstantVertexFor(builder, folded));
-    return true;
-}
 
 bool TryFoldToBooleanConstant(ValueVertex *vertex, bool *result)
 {

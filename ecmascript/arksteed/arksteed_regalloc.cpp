@@ -123,9 +123,6 @@ void ArkSteedRegisterAllocator::ApplyPatches(BB *block)
 
 void ArkSteedRegisterAllocator::SetupConstantLocations()
 {
-    for (const auto &[index, constant] : graph_->GetRootConstants()) {
-        constant->GetRegallocInfo()->SetConstantLocation(constant->GetId());  // to do
-    }
     for (const auto &[value, constant] : graph_->GetInt32Constants()) {
         constant->GetRegallocInfo()->SetConstantLocation(constant->GetId());
     }
@@ -142,7 +139,7 @@ void ArkSteedRegisterAllocator::SetupConstantLocations()
 
 void ArkSteedRegisterAllocator::InitializeBlockState(BB *block)
 {
-    if (block->HasRegisterMerge()) {
+    if (block->HasRegisterMergeState()) {
         if (block->IsExceptionHandler()) {
             ClearRegisterValues();
         } else {
@@ -276,7 +273,7 @@ void ArkSteedRegisterAllocator::ProcessUnconditionalControl(UnconditionalControl
     auto predecessorId = block->GetPredecessorId();
     auto *target = unconditional->Target();
 
-    if (target->HasRegisterMerge()) {
+    if (target->HasRegisterMergeState()) {
         // Not a fallthrough
         InitializeBranchTargetPhis(predecessorId, target);
         MergeRegisterValues(unconditional, target, predecessorId);
@@ -378,7 +375,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
     // the inputs could be assigned a register in AssignArbitraryRegisterInput
     // (and respectively its vertex location), therefore we wait until all
     // registers are allocated before assigning any location for these inputs.
-    for (int i = 0; i < vertex->GetInputCount(); i++) {
+    for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
         Input input(vertex, i);
         AssignFixedInput(input);
 #ifndef NDEBUG
@@ -389,7 +386,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
 #endif
     }
     AssignFixedTemporaries(vertex);
-    for (int i = 0; i < vertex->GetInputCount(); i++) {
+    for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
         Input input(vertex, i);
         if (!input.GetOperand().IsUnallocated()) {
             continue;
@@ -403,7 +400,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
 #endif
     }
     AssignArbitraryTemporaries(vertex);
-    for (int i = 0; i < vertex->GetInputCount(); i++) {
+    for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
         Input input(vertex, i);
         if (!input.GetOperand().IsUnallocated()) {
             continue;
@@ -417,7 +414,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
 #endif
     }
 
-    for (int i = 0; i < vertex->GetInputCount(); i++) {
+    for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
         Input input(vertex, i);
 #ifndef NDEBUG
         if (input.vertex()->GetRegallocInfo()->HasNoMoreUses()) {
@@ -1099,8 +1096,8 @@ void ArkSteedRegisterAllocator::AllocateVertexResult(ValueVertex *vertex)
 void ArkSteedRegisterAllocator::TryAllocateToInput(PhiVertex *phi)
 {
     // Try allocate phis to a register used by any of the inputs
-    int inputCount = phi->GetInputCount();
-    for (int i = 0; i < inputCount; i++) {
+    uint32_t inputCount = phi->GetInputCount();
+    for (uint32_t i = 0; i < inputCount; i++) {
         Input input(phi, i);
         if (input.GetOperand().IsRegister()) {
             // We assume Phi vertices only point to tagged values, and so they use a general register
@@ -1190,7 +1187,7 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetPhis(int predecessorId, BB
 
 void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVertex *control, BB *target)
 {
-    ASSERT(target->HasRegisterMerge());
+    ASSERT(target->HasRegisterMergeState());
 
     RegisterMergeState &targetState = *target->GetRegisterMergeState();
     ASSERT(!targetState.IsInitialized());
@@ -1242,8 +1239,9 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVert
 template <typename RegisterT>
 void ArkSteedRegisterAllocator::CreateRegisterMerge(RegisterSnapshot<RegisterT> &registers, RegisterT reg,
                                                     RegisterState &state, ControlVertex *control, BB *target,
-                                                    int predecessorId, int predecessorCount, ValueVertex *vertex,
-                                                    ValueVertex *incoming, const AllocatedState &registerOperand)
+                                                    uint32_t predecessorId, uint32_t predecessorCount,
+                                                    ValueVertex *vertex, ValueVertex *incoming,
+                                                    const AllocatedState &registerOperand)
 {
     auto *chunk = graph_->GetChunk();
     size_t size = sizeof(RegisterMergeInfo) + predecessorCount * sizeof(AllocatedState);
@@ -1265,7 +1263,7 @@ void ArkSteedRegisterAllocator::CreateRegisterMerge(RegisterSnapshot<RegisterT> 
         infoSoFar = registerOperand;
     }
 
-    for (int i = 0; i < predecessorCount; i++) {
+    for (uint32_t i = 0; i < predecessorCount; i++) {
         newMerge->Operand(i) = infoSoFar;
     }
 
@@ -1281,7 +1279,7 @@ void ArkSteedRegisterAllocator::CreateRegisterMerge(RegisterSnapshot<RegisterT> 
 template <typename RegisterT>
 void ArkSteedRegisterAllocator::MergeRegisterState(RegisterSnapshot<RegisterT> &registers, RegisterT reg,
                                                    RegisterState &state, ControlVertex *control, BB *target,
-                                                   int predecessorId, int predecessorCount)
+                                                   uint32_t predecessorId, uint32_t predecessorCount)
 {
     using RegType = decltype(reg);
     constexpr bool isDouble = std::is_same_v<RegType, ArkSteedDoubleRegister>;
@@ -1339,7 +1337,7 @@ void ArkSteedRegisterAllocator::MergeRegisterState(RegisterSnapshot<RegisterT> &
 
 void ArkSteedRegisterAllocator::MergeRegisterValues(ControlVertex *control, BB *target, int predecessorId)
 {
-    ASSERT(target->HasRegisterMerge());
+    ASSERT(target->HasRegisterMergeState());
     RegisterMergeState &targetState = *target->GetRegisterMergeState();
 
     if (!targetState.IsInitialized()) {
@@ -1347,7 +1345,7 @@ void ArkSteedRegisterAllocator::MergeRegisterValues(ControlVertex *control, BB *
         return InitializeBranchTargetRegisterValues(control, target);
     }
 
-    int predecessorCount = target->PredecessorCount();
+    uint32_t predecessorCount = target->PredecessorCount();
 
     auto merge = [&](auto &registers, auto reg, RegisterState &state) {
         MergeRegisterState(registers, reg, state, control, target, predecessorId, predecessorCount);
@@ -1364,7 +1362,7 @@ void ArkSteedRegisterAllocator::InitializeConditionalBranchTarget(ControlVertex 
 {
     ASSERT(!target->HasPhi());
 
-    if (target->HasRegisterMerge()) {
+    if (target->HasRegisterMergeState()) {
         // Not a fall-through branch, copy the state over.
         return InitializeBranchTargetRegisterValues(controlVertex, target);
     } else {
@@ -1603,7 +1601,7 @@ void ArkSteedRegisterAllocator::LogPhiAllocationResult(ChunkVector<PhiVertex *> 
         std::ostringstream out;
         InstructionOperand phiLoc = phi->GetRegallocInfo()->GetResult().GetOperand();
         out << "\tv" << phi->GetId() << '(' << phiLoc.Description() << ") = phi ";
-        for (int i = 0, n = phi->GetInputCount(); i < n; i++) {
+        for (uint32_t i = 0, n = phi->GetInputCount(); i < n; i++) {
             const ValueVertex *input = phi->GetInput(i);
             InstructionOperand inputLoc = phi->GetRegallocInfo()->GetInputLocation(i)->GetOperand();
             if (i > 0) {

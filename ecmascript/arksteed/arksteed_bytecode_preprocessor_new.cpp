@@ -134,7 +134,7 @@ bool BytecodePreprocessorNew::CollectBytecodeInfo()
     BytecodeInstruction bcIns(startPc);
     BytecodeInstruction bcInsLast = bcIns.JumpTo(bcSizeBytes);
 
-    VRegIDType envVRegIndex = VRegOfLexicalEnv(numLocalVRegs_, numParamVRegs_).GetId();
+    VRegIDType envVRegIndex = VRegOfLexicalEnv(numLocalVRegs_, numParamVRegs_);
     auto makeBytecodeDetails = [startPc, envVRegIndex](uint32_t curOffset) {
         kungfu::BytecodeInfo res;
         res.SetMetaData(g_bytecodes.GetBytecodeMetaData(startPc + curOffset));

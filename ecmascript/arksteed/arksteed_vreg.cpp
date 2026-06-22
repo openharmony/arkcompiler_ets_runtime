@@ -16,13 +16,13 @@
 #include "ecmascript/arksteed/arksteed_vreg.h"
 
 namespace panda::ecmascript::arksteed {
-std::string VRegDisplayString(VirtualRegister vreg, VRegIDType numLocal, VRegIDType numParams)
+std::string VRegDisplayString(VRegIDType vreg, VRegIDType numLocal, VRegIDType numParams)
 {
-    if (vreg.GetId() < numLocal) {
-        return "v" + std::to_string(vreg.GetId());
+    if (vreg < numLocal) {
+        return "v" + std::to_string(vreg);
     }
-    if (vreg.GetId() < numLocal + numParams) {
-        return "a" + std::to_string(vreg.GetId() - numLocal);
+    if (vreg < numLocal + numParams) {
+        return "a" + std::to_string(vreg - numLocal);
     }
     if (vreg == VRegOfLexicalEnv(numLocal, numParams)) {
         return "env";

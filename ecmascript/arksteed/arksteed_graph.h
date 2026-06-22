@@ -38,7 +38,6 @@ public:
         : chunk_(chunk),
           blocks_(chunk),
           parameters_(chunk),
-          rootConstants_(chunk),
           int32Constants_(chunk),
           intPtrConstants_(chunk),
           float64Constants_(chunk),
@@ -53,11 +52,6 @@ public:
     {}
 
     // ========================================= Constant Accessors =========================================
-
-    ValueVertex *GetRootConstant(RootConstantVertex::RootIndex index)
-    {
-        return GetOrAddNewConstantVertex(rootConstants_, index);
-    }
 
     ValueVertex *GetInt32Constant(int32_t value)
     {
@@ -77,11 +71,6 @@ public:
     ValueVertex *GetTaggedConstant(uint64_t value)
     {
         return GetOrAddNewConstantVertex(taggedConstants_, value);
-    }
-
-    const ChunkMap<RootConstantVertex::RootIndex, RootConstantVertex *> &GetRootConstants() const
-    {
-        return rootConstants_;
     }
 
     const ChunkMap<int32_t, Int32ConstantVertex *> &GetInt32Constants() const
@@ -104,19 +93,19 @@ public:
         return taggedConstants_;
     }
 
-    BB *operator[](int i)
+    BB *operator[](uint32_t i)
     {
         return blocks_[i];
     }
 
-    const BB *operator[](int i) const
+    const BB *operator[](uint32_t i) const
     {
         return blocks_[i];
     }
 
-    int NumBlocks() const
+    uint32_t NumBlocks() const
     {
-        return static_cast<int>(blocks_.size());
+        return static_cast<uint32_t>(blocks_.size());
     }
 
     void Add(BB *block)
@@ -163,9 +152,9 @@ public:
         parameters_.push_back(param);
     }
 
-    ValueVertex *GetParameter(int index) const
+    ValueVertex *GetParameter(uint32_t index) const
     {
-        if (index < 0 || index >= static_cast<int>(parameters_.size())) {
+        if (index >= parameters_.size()) {
             return nullptr;
         }
         return parameters_[index];
@@ -214,22 +203,22 @@ public:
     }
 
     // Max call stack args for code generation
-    void SetMaxCallStackArgs(int args)
+    void SetMaxCallStackArgs(uint32_t args)
     {
         maxCallStackArgs_ = args;
     }
 
-    int GetMaxCallStackArgs() const
+    uint32_t GetMaxCallStackArgs() const
     {
         return maxCallStackArgs_;
     }
 
-    void SetMaxDeoptedStackSize(int size)
+    void SetMaxDeoptedStackSize(uint32_t size)
     {
         maxDeoptedStackSize_ = size;
     }
 
-    int GetMaxDeoptedStackSize() const
+    uint32_t GetMaxDeoptedStackSize() const
     {
         return maxDeoptedStackSize_;
     }
@@ -258,19 +247,6 @@ public:
     void Print() const;
 
 private:
-    Chunk *chunk_;
-    ChunkVector<BB *> blocks_;
-    ChunkVector<ValueVertex *> parameters_;
-    ChunkMap<RootConstantVertex::RootIndex, RootConstantVertex *> rootConstants_;
-    ChunkMap<int32_t, Int32ConstantVertex *> int32Constants_;
-    ChunkMap<intptr_t, IntPtrConstantVertex *> intPtrConstants_;
-    ChunkMap<double, Float64ConstantVertex *> float64Constants_;
-    ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
-    int maxCallStackArgs_ = 0;
-    int maxDeoptedStackSize_ = 0;
-    uint32_t taggedStackSlots_ = 0;
-    uint32_t untaggedStackSlots_ = 0;
-
     template <typename VertexT, typename T>
     VertexT *GetOrAddNewConstantVertex(ChunkMap<T, VertexT *> &container, T constant)
     {
@@ -287,6 +263,17 @@ private:
         return vertex;
     }
 
+    Chunk *chunk_;
+    ChunkVector<BB *> blocks_;
+    ChunkVector<ValueVertex *> parameters_;
+    ChunkMap<int32_t, Int32ConstantVertex *> int32Constants_;
+    ChunkMap<intptr_t, IntPtrConstantVertex *> intPtrConstants_;
+    ChunkMap<double, Float64ConstantVertex *> float64Constants_;
+    ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
+    uint32_t maxCallStackArgs_ = 0;
+    uint32_t maxDeoptedStackSize_ = 0;
+    uint32_t taggedStackSlots_ = 0;
+    uint32_t untaggedStackSlots_ = 0;
     uint32_t maxBlockId_;
     bool hasRecursiveCalls_;
     bool mayHaveUnreachableBlocks_;

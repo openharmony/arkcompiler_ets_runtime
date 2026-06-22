@@ -46,11 +46,11 @@ private:
 
     VRegIDType LexicalEnvIndex() const
     {
-        return VRegOfLexicalEnv(numLocal_, numParams_).GetId();
+        return VRegOfLexicalEnv(numLocal_, numParams_);
     }
     VRegIDType AccIndex() const
     {
-        return VRegOfAcc(numLocal_, numParams_).GetId();
+        return VRegOfAcc(numLocal_, numParams_);
     }
 
     JSRuntimeOptions *GetOptions() const

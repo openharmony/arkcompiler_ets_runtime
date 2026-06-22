@@ -44,7 +44,7 @@ private:
     void ProcessValueVertex(ValueVertex *valueVertex);
     void ProcessNonControlVertex(NonControlVertex *vertex);
     void ProcessControlVertex(ControlVertex *vertex);
-    void DeconstructPhisInSuccessor(BB *successor, int predecessorId);
+    void DeconstructPhisInSuccessor(BB *successor, uint32_t predecessorId);
     void CollectPhiMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
                          ArkSteedRegList *registersSetByPhis, ArkDoubleRegList *doubleRegistersSetByPhis,
                          ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
