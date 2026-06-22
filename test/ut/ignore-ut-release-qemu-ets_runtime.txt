@@ -273,3 +273,5 @@ obj/arkcompiler/ets_runtime/common_components/common_runtime/tests/Base_Runtime_
 #27549
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_Sendable_TestWithQemu
 
+#35309
+obj/arkcompiler/ets_runtime/ecmascript/dfx/cpu_profiler/tests/CpuProfilerTestWithQemu
