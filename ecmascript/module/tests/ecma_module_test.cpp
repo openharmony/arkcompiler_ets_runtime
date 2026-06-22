@@ -196,6 +196,11 @@ public:
     {
         return ModuleValueAccessor::GetModuleValue(thread, module, index);
     }
+    static bool TryGetEvaluatedImportedModuleValueByIndex(JSThread *thread, const CString *moduleRecord,
+        int32_t index, JSTaggedValue &result)
+    {
+        return ModuleValueAccessor::TryGetEvaluatedImportedModuleValueByIndex(thread, moduleRecord, index, result);
+    }
 };
 class MockDeprecatedModuleValueAccessor : public DeprecatedModuleValueAccessor {
 public:
@@ -204,6 +209,52 @@ public:
         return DeprecatedModuleValueAccessor::GetModuleNamespaceInternal(thread, localName, curModule);
     }
 };
+
+namespace {
+constexpr int32_t MODULE_VALUE_INDEX = 0;
+constexpr uint32_t MODULE_VALUE_COUNT = 1;
+
+JSHandle<SourceTextModule> CreateModuleWithValue(JSThread *thread, ObjectFactory *factory, const CString &recordName,
+    const JSHandle<JSTaggedValue> &value, ModuleTypes moduleType)
+{
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetTypes(moduleType);
+    module->SetStatus(ModuleStatus::EVALUATED);
+    JSHandle<JSTaggedValue> localName(factory->NewFromASCII("localExport"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        factory->NewLocalExportEntry(localName, localName, MODULE_VALUE_INDEX, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = factory->NewTaggedArray(MODULE_VALUE_COUNT);
+    localExportEntries->Set(thread, MODULE_VALUE_INDEX, localExportEntry);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    SourceTextModule::StoreModuleValue(thread, module, MODULE_VALUE_INDEX, value);
+    return module;
+}
+
+JSHandle<SourceTextModule> CreateNativeModuleWithExports(JSThread *thread, ObjectFactory *factory,
+    const CString &recordName, const JSHandle<JSTaggedValue> &exports)
+{
+    return CreateModuleWithValue(thread, factory, recordName, exports, ModuleTypes::NATIVE_MODULE);
+}
+
+JSHandle<SourceTextModule> CreateEcmaModuleWithValue(JSThread *thread, ObjectFactory *factory,
+    const CString &recordName, const JSHandle<JSTaggedValue> &value)
+{
+    return CreateModuleWithValue(thread, factory, recordName, value, ModuleTypes::ECMA_MODULE);
+}
+
+JSHandle<SourceTextModule> CreateModuleWithRecordIndexBinding(JSThread *thread, ObjectFactory *factory,
+    const CString &recordName, const JSHandle<ResolvedRecordIndexBinding> &binding, bool isSendable)
+{
+    JSHandle<SourceTextModule> module = isSendable ? factory->NewSSourceTextModule() : factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString(recordName);
+    JSHandle<TaggedArray> envRec =
+        isSendable ? factory->NewSTaggedArray(MODULE_VALUE_COUNT) : factory->NewTaggedArray(MODULE_VALUE_COUNT);
+    envRec->Set(thread, MODULE_VALUE_INDEX, JSHandle<JSTaggedValue>::Cast(binding));
+    module->SetEnvironment(thread, envRec);
+    return module;
+}
+} // namespace
 /*
  * Feature: Module
  * Function: AddImportEntry
@@ -3213,6 +3264,255 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableRecordBindingFallbackRewriteKeepsCurrentM
         ResolvedRecordIndexBinding::Cast(updatedBinding.GetTaggedObject());
     EXPECT_EQ(recordIndexBinding->GetAbcFileNameString(), currentFile);
     EXPECT_EQ(recordIndexBinding->GetIndex(), SourceTextModule::UNDEFINED_INDEX);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetSendableRecordBindingRewriteWithNativeFastProperties)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString currentFile = "sendable_record_binding_fast_property.abc";
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetEcmaModuleFilenameString(currentFile);
+    module->SetEcmaModuleRecordNameString("sendable_record_binding_fast_property");
+    JSHandle<TaggedArray> envRec = factory->NewSTaggedArray(MODULE_VALUE_COUNT);
+    module->SetEnvironment(thread, envRec);
+
+    CString importedRecord = "@ohos:native_fast_property";
+    JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("namedExport"));
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        factory->NewSResolvedRecordBindingRecord(importedRecord, bindingName);
+    envRec->Set(thread, MODULE_VALUE_INDEX, JSHandle<JSTaggedValue>::Cast(nameBinding));
+
+    JSHandle<JSObject> exports = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("namedValue"));
+    JSObject::CreateDataPropertyOrThrow(thread, exports, bindingName, exportValue);
+    ASSERT_FALSE(thread->HasPendingException());
+    JSHandle<SourceTextModule> nativeModule =
+        CreateNativeModuleWithExports(thread, factory, importedRecord, JSHandle<JSTaggedValue>::Cast(exports));
+    moduleManager->AddResolveImportedModule(importedRecord, nativeModule.GetTaggedValue());
+
+    JSTaggedValue result = MockModuleValueAccessor::GetModuleValueFromRecordBinding<false>(
+        thread, module, nameBinding.GetTaggedValue(), MODULE_VALUE_INDEX, true);
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+
+    JSTaggedValue updatedBinding = envRec->Get(thread, MODULE_VALUE_INDEX);
+    EXPECT_TRUE(updatedBinding.IsResolvedRecordIndexBinding());
+    auto *recordIndexBinding = ResolvedRecordIndexBinding::Cast(updatedBinding.GetTaggedObject());
+    EXPECT_NE(recordIndexBinding->GetIndex(), SourceTextModule::UNDEFINED_INDEX);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetSendableRecordBindingRewriteWithNativeDictionaryProperties)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString currentFile = "sendable_record_binding_dict_property.abc";
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetEcmaModuleFilenameString(currentFile);
+    module->SetEcmaModuleRecordNameString("sendable_record_binding_dict_property");
+    JSHandle<TaggedArray> envRec = factory->NewSTaggedArray(MODULE_VALUE_COUNT);
+    module->SetEnvironment(thread, envRec);
+
+    CString importedRecord = "@ohos:native_dict_property";
+    JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("dictExport"));
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        factory->NewSResolvedRecordBindingRecord(importedRecord, bindingName);
+    envRec->Set(thread, MODULE_VALUE_INDEX, JSHandle<JSTaggedValue>::Cast(nameBinding));
+
+    JSHandle<JSObject> exports = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("dictValue"));
+    JSObject::CreateDataPropertyOrThrow(thread, exports, bindingName, exportValue);
+    ASSERT_FALSE(thread->HasPendingException());
+    JSHandle<NameDictionary> dict = JSObject::TransitionToDictionary(thread, exports);
+    ASSERT_TRUE(dict->IsDictionaryMode());
+    int entry = dict->FindEntry(thread, bindingName.GetTaggedValue());
+    ASSERT_NE(entry, -1);
+    JSHandle<SourceTextModule> nativeModule =
+        CreateNativeModuleWithExports(thread, factory, importedRecord, JSHandle<JSTaggedValue>::Cast(exports));
+    moduleManager->AddResolveImportedModule(importedRecord, nativeModule.GetTaggedValue());
+
+    JSTaggedValue result = MockModuleValueAccessor::GetModuleValueFromRecordBinding<false>(
+        thread, module, nameBinding.GetTaggedValue(), MODULE_VALUE_INDEX, true);
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+
+    JSTaggedValue updatedBinding = envRec->Get(thread, MODULE_VALUE_INDEX);
+    EXPECT_TRUE(updatedBinding.IsResolvedRecordIndexBinding());
+    auto *recordIndexBinding = ResolvedRecordIndexBinding::Cast(updatedBinding.GetTaggedObject());
+    EXPECT_EQ(recordIndexBinding->GetIndex(), entry);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetSendableRecordBindingKeepsNameBindingForNativeElementIndex)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString currentFile = "sendable_record_binding_element_index.abc";
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetEcmaModuleFilenameString(currentFile);
+    module->SetEcmaModuleRecordNameString("sendable_record_binding_element_index");
+    JSHandle<TaggedArray> envRec = factory->NewSTaggedArray(MODULE_VALUE_COUNT);
+    module->SetEnvironment(thread, envRec);
+
+    CString importedRecord = "@ohos:native_element_index";
+    JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("0"));
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        factory->NewSResolvedRecordBindingRecord(importedRecord, bindingName);
+    envRec->Set(thread, MODULE_VALUE_INDEX, JSHandle<JSTaggedValue>::Cast(nameBinding));
+
+    JSHandle<JSObject> exports = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("elementValue"));
+    JSObject::CreateDataPropertyOrThrow(thread, exports, 0, exportValue);
+    ASSERT_FALSE(thread->HasPendingException());
+    JSHandle<SourceTextModule> nativeModule =
+        CreateNativeModuleWithExports(thread, factory, importedRecord, JSHandle<JSTaggedValue>::Cast(exports));
+    moduleManager->AddResolveImportedModule(importedRecord, nativeModule.GetTaggedValue());
+
+    JSTaggedValue result = MockModuleValueAccessor::GetModuleValueFromRecordBinding<false>(
+        thread, module, nameBinding.GetTaggedValue(), MODULE_VALUE_INDEX, true);
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+    EXPECT_TRUE(envRec->Get(thread, MODULE_VALUE_INDEX).IsResolvedRecordBinding());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetNativeOrCjsModuleValueReturnsNamedPropertyFromExportsObject)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("namedExport"));
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("nativeNamedValue"));
+    JSHandle<JSObject> exports = factory->NewEmptyJSObject();
+    JSObject::CreateDataPropertyOrThrow(thread, exports, bindingName, exportValue);
+    ASSERT_FALSE(thread->HasPendingException());
+
+    CString recordName = "@ohos:native_named_value";
+    JSHandle<SourceTextModule> nativeModule =
+        CreateNativeModuleWithExports(thread, factory, recordName, JSHandle<JSTaggedValue>::Cast(exports));
+
+    JSTaggedValue result =
+        ModuleValueAccessor::GetNativeOrCjsModuleValue(thread, nativeModule, bindingName.GetTaggedValue());
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetSendableRecordIndexBindingReturnsEvaluatedImportedModuleValue)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString importedRecord = "evaluated_record_index_binding";
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("evaluatedValue"));
+    JSHandle<SourceTextModule> importedModule =
+        CreateEcmaModuleWithValue(thread, factory, importedRecord, exportValue);
+    moduleManager->AddResolveImportedModule(importedRecord, importedModule.GetTaggedValue());
+
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetEcmaModuleRecordNameString("sendable_record_index_parent");
+    CString abcFileName = "evaluated_record_index_binding.abc";
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        factory->NewSResolvedRecordIndexBindingRecord(importedRecord, abcFileName, MODULE_VALUE_INDEX);
+
+    JSTaggedValue result = MockModuleValueAccessor::GetModuleValueFromRecordIndexBinding<false>(
+        thread, module, recordIndexBinding.GetTaggedValue(), true);
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleValueOuter_ResolvedRecordIndexBinding)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString importedRecord = "outer_resolved_record_index_binding";
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("outerValue"));
+    JSHandle<SourceTextModule> importedModule =
+        CreateEcmaModuleWithValue(thread, factory, importedRecord, exportValue);
+    moduleManager->AddResolveImportedModule(importedRecord, importedModule.GetTaggedValue());
+
+    CString currentRecord = "outer_resolved_record_index_binding_parent";
+    CString abcFileName = "outer_resolved_record_index_binding.abc";
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        factory->NewSResolvedRecordIndexBindingRecord(importedRecord, abcFileName, MODULE_VALUE_INDEX);
+    JSHandle<SourceTextModule> currentModule =
+        CreateModuleWithRecordIndexBinding(thread, factory, currentRecord, recordIndexBinding, false);
+
+    JSTaggedValue result = ModuleValueAccessor::GetModuleValueOuter(
+        thread, MODULE_VALUE_INDEX, JSHandle<JSTaggedValue>::Cast(currentModule));
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueOuter_ResolvedRecordIndexBinding)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString importedRecord = "sendable_outer_resolved_record_index_binding";
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("sendableOuterValue"));
+    JSHandle<SourceTextModule> importedModule =
+        CreateEcmaModuleWithValue(thread, factory, importedRecord, exportValue);
+    moduleManager->AddResolveImportedModule(importedRecord, importedModule.GetTaggedValue());
+
+    CString currentRecord = "sendable_outer_resolved_record_index_binding_parent";
+    CString abcFileName = "sendable_outer_resolved_record_index_binding.abc";
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        factory->NewSResolvedRecordIndexBindingRecord(importedRecord, abcFileName, MODULE_VALUE_INDEX);
+    JSHandle<SourceTextModule> currentModule =
+        CreateModuleWithRecordIndexBinding(thread, factory, currentRecord, recordIndexBinding, true);
+
+    JSTaggedValue result = MockModuleValueAccessor::GetSendableModuleValueOuterInternal<false>(
+        thread, MODULE_VALUE_INDEX, currentModule.GetTaggedValue());
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueOuter_ResolvedRecordIndexBinding)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString importedRecord = "lazy_sendable_outer_resolved_record_index_binding";
+    JSHandle<JSTaggedValue> exportValue(factory->NewFromASCII("lazySendableOuterValue"));
+    JSHandle<SourceTextModule> importedModule =
+        CreateEcmaModuleWithValue(thread, factory, importedRecord, exportValue);
+    moduleManager->AddResolveImportedModule(importedRecord, importedModule.GetTaggedValue());
+
+    CString currentRecord = "lazy_sendable_outer_resolved_record_index_binding_parent";
+    CString abcFileName = "lazy_sendable_outer_resolved_record_index_binding.abc";
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        factory->NewSResolvedRecordIndexBindingRecord(importedRecord, abcFileName, MODULE_VALUE_INDEX);
+    JSHandle<SourceTextModule> currentModule =
+        CreateModuleWithRecordIndexBinding(thread, factory, currentRecord, recordIndexBinding, true);
+
+    JSTaggedValue result = MockModuleValueAccessor::GetSendableModuleValueOuterInternal<true>(
+        thread, MODULE_VALUE_INDEX, currentModule.GetTaggedValue());
+    EXPECT_EQ(result, exportValue.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, TryGetEvaluatedImportedModuleValueByIndex)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    CString missingRecord = "missing_evaluated_imported_module";
+    JSTaggedValue result = JSTaggedValue::Hole();
+    EXPECT_FALSE(MockModuleValueAccessor::TryGetEvaluatedImportedModuleValueByIndex(
+        thread, &missingRecord, MODULE_VALUE_INDEX, result));
+    EXPECT_TRUE(result.IsHole());
+
+    CString instantiatedRecord = "instantiated_imported_module";
+    JSHandle<JSTaggedValue> instantiatedValue(factory->NewFromASCII("instantiatedValue"));
+    JSHandle<SourceTextModule> instantiatedModule =
+        CreateEcmaModuleWithValue(thread, factory, instantiatedRecord, instantiatedValue);
+    instantiatedModule->SetStatus(ModuleStatus::INSTANTIATED);
+    moduleManager->AddResolveImportedModule(instantiatedRecord, instantiatedModule.GetTaggedValue());
+    EXPECT_FALSE(MockModuleValueAccessor::TryGetEvaluatedImportedModuleValueByIndex(
+        thread, &instantiatedRecord, MODULE_VALUE_INDEX, result));
+    EXPECT_TRUE(result.IsHole());
+
+    CString evaluatedRecord = "evaluated_imported_module";
+    JSHandle<JSTaggedValue> evaluatedValue(factory->NewFromASCII("evaluatedValue"));
+    JSHandle<SourceTextModule> evaluatedModule =
+        CreateEcmaModuleWithValue(thread, factory, evaluatedRecord, evaluatedValue);
+    moduleManager->AddResolveImportedModule(evaluatedRecord, evaluatedModule.GetTaggedValue());
+    EXPECT_TRUE(MockModuleValueAccessor::TryGetEvaluatedImportedModuleValueByIndex(
+        thread, &evaluatedRecord, MODULE_VALUE_INDEX, result));
+    EXPECT_EQ(result, evaluatedValue.GetTaggedValue());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromIndexBindingTest)
