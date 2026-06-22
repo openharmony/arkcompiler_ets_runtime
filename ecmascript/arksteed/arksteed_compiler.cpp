@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#define ARKSTEED_REFACTORED
+
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
 #include "ecmascript/arksteed/arksteed_assembler.h"

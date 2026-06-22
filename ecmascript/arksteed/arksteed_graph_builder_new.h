@@ -24,6 +24,8 @@
 #include "ecmascript/compiler/common_stub_csigns.h"
 
 namespace panda::ecmascript::arksteed {
+class CompileInfoFacts;
+
 class GraphBuilderNew {
 public:
     GraphBuilderNew(JSThread *compilerThread,
@@ -67,6 +69,8 @@ private:
     void InitFrameStateForLoopHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
     void InitFrameStateForCatchBlockHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
 
+    void InitCompileInfoFacts(uint32_t rpoIndex);
+    void InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex);
     void WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex);
     void MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
                          uint32_t actualPredIndex, uint32_t actualNumPreds);
@@ -78,6 +82,9 @@ private:
     // VertexT should be neither control vertex nor Phi
     template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
     VertexT *NewVertex(BB *owner, const InputRange &inputs, Args &&...args);
+
+    template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    VertexT *NewVertex(CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs, Args &&...args);
 
     JumpVertex *FinishBlockWithJump(BB *owner, BB *target);
     JumpLoopVertex *FinishBlockWithJumpLoop(BB *owner, BB *target);
@@ -93,6 +100,7 @@ private:
     LoadTaggedFieldVertex *ActivateGlobalEnv();
 
     Graph *graph_;
+    JSThread *compilerThread_;
     uintptr_t glueAddr_;
     BytecodePreprocessorNew *preproc_;
     BytecodeAnalysisNew *analysis_;
@@ -112,6 +120,7 @@ private:
 
     ChunkVector<BB *> blocks_;
     ChunkVector<CondensedBCFrameState> frameStates_;
+    ChunkVector<CompileInfoFacts *> compileInfoFacts_;
     ChunkVector<CatchBlockInputData *> catchBlockInputs_;
 };
 }  // namespace panda::ecmascript::arksteed

@@ -14,10 +14,20 @@
  */
 
 #include "ecmascript/arksteed/arksteed_graph_builder_new.h"
+
+#include <algorithm>
+
+#include "ecmascript/arksteed/arksteed_compile_info_facts.h"
 #include "ecmascript/arksteed/arksteed_constant_folding.h"
 #include "ecmascript/arksteed/arksteed_framestate.h"
+#include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/ic/ic_info.h"
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
 
 #define REGISTER_VERTEX_TO_LABELLER(vertex)                             \
@@ -83,6 +93,61 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
     }
     return true;
 }
+
+bool TryAppendHClassFromWeak(JSTaggedValue maybeWeak, std::vector<JSHClass *> &maps)
+{
+    if (!maybeWeak.IsWeak()) {
+        return false;
+    }
+    TaggedObject *referent = maybeWeak.GetWeakReferent();
+    if (referent == nullptr || !JSTaggedValue(referent).IsJSHClass()) {
+        return false;
+    }
+    JSHClass *hclass = JSHClass::Cast(referent);
+    if (std::find(maps.begin(), maps.end(), hclass) == maps.end()) {
+        maps.push_back(hclass);
+    }
+    return true;
+}
+
+class KnownHClassesMerger {
+public:
+    explicit KnownHClassesMerger(const std::vector<JSHClass *> &feedbackMaps)
+    {
+        for (JSHClass *hclass : feedbackMaps) {
+            AppendIfMissing(intersectSet_, hclass);
+        }
+    }
+
+    void IntersectWithCompileInfoFacts(const std::optional<std::vector<JSHClass *>> &knownMaps)
+    {
+        if (!knownMaps.has_value()) {
+            return;
+        }
+        std::vector<JSHClass *> intersection;
+        for (JSHClass *hclass : intersectSet_) {
+            if (std::find(knownMaps->begin(), knownMaps->end(), hclass) != knownMaps->end()) {
+                AppendIfMissing(intersection, hclass);
+            }
+        }
+        intersectSet_ = std::move(intersection);
+    }
+
+    const std::vector<JSHClass *> &GetIntersection() const
+    {
+        return intersectSet_;
+    }
+
+private:
+    static void AppendIfMissing(std::vector<JSHClass *> &maps, JSHClass *hclass)
+    {
+        if (hclass != nullptr && std::find(maps.begin(), maps.end(), hclass) == maps.end()) {
+            maps.push_back(hclass);
+        }
+    }
+
+    std::vector<JSHClass *> intersectSet_;
+};
 }  // namespace
 
 // Condensed storage: [vA, vA, vA, vB, vB, vB, vB, vB, vB, vC, vC, vC, vC]
@@ -97,9 +162,11 @@ struct GraphBuilderNew::CatchBlockInputData {
     const kungfu::BitSet *liveIn;
     // inputs[i] = List of inputs for the i-th live-in virtual register
     ChunkVector<ChunkVector<InputEntry>> inputs;
+    // Merge from all the vertices whose exceptions may be caught here
+    CompileInfoFacts *facts;
 
     explicit CatchBlockInputData(const kungfu::BitSet &liveIn, Chunk *chunk)
-        : totalCount(0), liveIn(&liveIn), inputs(chunk)
+        : totalCount(0), liveIn(&liveIn), inputs(chunk), facts(nullptr)
     {
         size_t numLive = liveIn.Count();
         inputs.reserve(numLive);
@@ -132,6 +199,15 @@ struct GraphBuilderNew::CatchBlockInputData {
         totalCount += 1;
         return curInputIndex;
     }
+
+    void AddCompileInfoFacts(const CompileInfoFacts &incoming)
+    {
+        if (facts == nullptr) {
+            facts = incoming.Clone();
+            return;
+        }
+        facts->Merge(incoming);
+    }
 };
 
 GraphBuilderNew::GraphBuilderNew(JSThread *compilerThread,
@@ -140,6 +216,7 @@ GraphBuilderNew::GraphBuilderNew(JSThread *compilerThread,
                                  BytecodePreprocessorNew *preproc,
                                  BytecodeAnalysisNew *analysis)
     : graph_(destGraph),
+      compilerThread_(compilerThread),
       glueAddr_(glueAddr),
       preproc_(preproc),
       analysis_(analysis),
@@ -149,6 +226,7 @@ GraphBuilderNew::GraphBuilderNew(JSThread *compilerThread,
       chunk_(preproc->GetChunk()),
       blocks_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
       frameStates_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      compileInfoFacts_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
       catchBlockInputs_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk())
 {}
 
@@ -201,6 +279,9 @@ void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
     glue_ = graph_->GetIntPtrConstant(glueAddr_);
     undefinedValue_ = graph_->GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
 
+    compileInfoFacts_[0] = chunk_->New<CompileInfoFacts>(chunk_);
+    compileInfoFacts_[0]->EnsureType(undefinedValue_, NodeInfo::NodeType::UNDEFINED);
+
     blocks_[0] = BB::New(chunk_);
     // caller argument area (in fp-slot words): +2 argc, +3 call-target, +4 new-target, +5 this, +6... user args.
     const int32_t CALL_TARGET_FP_SLOT_INDEX = 3;
@@ -216,7 +297,7 @@ void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
 
     if (GetOptions()->GetCompilerArkSteedPrintMethodName()) {
         ValueVertex *jsFunc = frameState.Get(VRegOfParam(numLocal_, CALL_TARGET_PARAM_INDEX).GetId());
-        NewVertex<CallRuntimeVertex>(blocks_[0], {jsFunc}, RTSTUB_ID(PrintMethodName));
+        NewVertex<CallRuntimeVertex>(compileInfoFacts_[0], blocks_[0], {jsFunc}, RTSTUB_ID(PrintMethodName));
     }
 
     FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
@@ -253,10 +334,10 @@ void GraphBuilderNew::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t 
         ProcessCatchBlockHead(frameState, rpoIndex);
         return;
     }
+    InitCompileInfoFacts(rpoIndex);
     if (bcBlock->IsLoopHeader()) {
         blocks_[rpoIndex]->SetLoopHeader(true);
     }
-
     bcBlock->IsLoopHeader()
         ? InitFrameStateForLoopHeader(frameState, rpoIndex)
         : InitFrameState(frameState, rpoIndex);
@@ -280,6 +361,7 @@ void GraphBuilderNew::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t 
 void GraphBuilderNew::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     blocks_[rpoIndex]->SetExceptionHandler(true);
+    InitCompileInfoFactsForCatchBlock(rpoIndex);
     InitFrameStateForCatchBlockHeader(frameState, rpoIndex);
 
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
@@ -367,6 +449,44 @@ void GraphBuilderNew::InitFrameStateForCatchBlockHeader(SharedBCFrameState frame
     }
 }
 
+void GraphBuilderNew::InitCompileInfoFacts(uint32_t rpoIndex)
+{
+    const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(!blockInfo->IsCatchBlockHeader() && "Use InitCompileInfoFactsForCatchBlock() instead.");
+
+    if (blockInfo->IsLoopHeader()) {
+        ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2: loop entry and loop backedge
+        uint32_t entryPredIndex = blockInfo->jumpPredecessors[0]->rpoIndex;
+        ASSERT(compileInfoFacts_[entryPredIndex] != nullptr);
+        compileInfoFacts_[rpoIndex] = compileInfoFacts_[entryPredIndex]->CloneForLoopHeader();
+        return;
+    }
+
+    CompileInfoFacts *facts = nullptr;
+    for (const BasicBlockInfo *predecessor : blockInfo->jumpPredecessors) {
+        uint32_t predRpoIndex = predecessor->rpoIndex;
+        if (blocks_[predRpoIndex] == nullptr) {
+            continue;
+        }
+        ASSERT(compileInfoFacts_[predRpoIndex] != nullptr);
+        if (facts == nullptr) {
+            facts = compileInfoFacts_[predRpoIndex]->Clone();
+        } else {
+            facts->Merge(*compileInfoFacts_[predRpoIndex]);
+        }
+    }
+    ASSERT(facts != nullptr);
+    compileInfoFacts_[rpoIndex] = facts;
+}
+
+void GraphBuilderNew::InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex)
+{
+    CatchBlockInputData *data = catchBlockInputs_[rpoIndex];
+    ASSERT(data != nullptr);
+    ASSERT(data->facts != nullptr);
+    compileInfoFacts_[rpoIndex] = data->facts;
+}
+
 void GraphBuilderNew::WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
@@ -447,6 +567,17 @@ VertexT *GraphBuilderNew::NewVertex(BB *owner, const InputRange &inputs, Args &&
     // At most one of: deopt_checkpoint, eager_deopt, lazy_deopt
     static_assert(props.IsDeoptCheckpoint() + props.CanEagerDeopt() + props.CanLazyDeopt() <= 1);
 
+    return vertex;
+}
+
+template <class VertexT, class InputRange, class... Args>
+VertexT *GraphBuilderNew::NewVertex(
+    CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs, Args &&...args)
+{
+    VertexT *vertex = NewVertex<VertexT>(owner, inputs, std::forward<Args>(args)...);
+    if constexpr (VertexT::PROPERTIES.CanWrite()) {
+        compileInfoFacts->MarkPossibleSideEffect(ArkSteedSideEffectClassifier::Classify(vertex));
+    }
     return vertex;
 }
 
@@ -538,7 +669,24 @@ LoadTaggedFieldVertex *GraphBuilderNew::ActivateGlobalEnv()
 constexpr uintptr_t NO_CATCH_BLOCK_TAG = 1;
 
 struct GraphBuilderNew::BytecodeVisitor {
-    void Visit(const BytecodeInfo *bcInfo)
+    struct NamedLoadAccessInfo {
+        JSHClass *receiverHClass {nullptr};
+        JSHClass *holderHClass {nullptr};
+        std::vector<JSHClass *> lookupStartObjectHClasses;
+        std::optional<JSTaggedValue> handler;
+        PropertyLookupResult plr;
+        bool isConst {false};
+    };
+
+    struct NamedAccessFeedback {
+        std::vector<JSHClass *> maps;
+        std::vector<JSTaggedValue> handlers;
+    };
+
+    using NamedLoadAccessInfoOpt = std::optional<NamedLoadAccessInfo>;
+    using NamedLoadAccessInfosOpt = std::optional<std::vector<NamedLoadAccessInfo>>;
+
+    void Visit(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         switch (bcInfo->GetOpcode()) {
             case kungfu::EcmaOpcode::NOP:  // Nop: Nothing to do
@@ -710,7 +858,7 @@ struct GraphBuilderNew::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
             case kungfu::EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-                LowerLdObjByName(bcInfo);
+                LowerLdObjByName(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             case kungfu::EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
@@ -1508,10 +1656,14 @@ struct GraphBuilderNew::BytecodeVisitor {
 
     // -------- Category #7: Property Access --------
 
-    void LowerLdObjByName(const BytecodeInfo *bcInfo)
+    void LowerLdObjByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         ValueVertex *receiver = frameState.GetAcc();
-        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+        uint16_t constDataId = GetConstDataId(bcInfo, 1);
+        if (TryBuildLoadNamedProperty(bcInfo, bcIndex, receiver, constDataId)) {
+            return;
+        }
+        ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
         frameState.SetAcc(CommonStubCallWithIC(
             bcInfo, {receiver, id, GlobalEnv()}, CommonStubCSigns::GetPropertyByName));
     }
@@ -1519,8 +1671,12 @@ struct GraphBuilderNew::BytecodeVisitor {
     void LowerStObjByName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 2);  // 2: receiver register index
-        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+        uint16_t constDataId = GetConstDataId(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
+        if (TryBuildStoreNamedProperty(bcInfo, receiver, constDataId, value)) {
+            return;
+        }
+        ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
         CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubCSigns::SetPropertyByName);
     }
 
@@ -2340,7 +2496,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         constexpr bool HAS_INPUT = true;
         ValueVertex *exception = frameState.GetAcc();
         auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw), HAS_INPUT);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowConstAssignment(const BytecodeInfo *bcInfo)
@@ -2349,7 +2505,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         ValueVertex *value = LoadRegister(bcInfo, 0);
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
             currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment), HAS_INPUT);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowNotExists()
@@ -2357,7 +2513,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         constexpr bool HAS_INPUT = false;
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
             currentBlock, {self->undefinedValue_}, RTSTUB_ID(ThrowThrowNotExists), HAS_INPUT);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowPatternNonCoercible()
@@ -2365,7 +2521,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         constexpr bool HAS_INPUT = false;
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
             currentBlock, {self->undefinedValue_}, RTSTUB_ID(ThrowPatternNonCoercible), HAS_INPUT);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowDeleteSuperProperty()
@@ -2373,7 +2529,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         constexpr bool HAS_INPUT = false;
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
             currentBlock, {self->undefinedValue_}, RTSTUB_ID(ThrowDeleteSuperProperty), HAS_INPUT);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowIfNotObject(const BytecodeInfo *bcInfo)
@@ -2404,7 +2560,7 @@ struct GraphBuilderNew::BytecodeVisitor {
 
         auto *vertex = self->NewVertex<ThrowIfSuperNotCorrectCallVertex>(
             currentBlock, {index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        UpdateCatchBlockData(vertex);
     }
 
     // -------- Category #16: Control Flow --------
@@ -2548,7 +2704,448 @@ struct GraphBuilderNew::BytecodeVisitor {
         return self->graph_->GetTaggedConstant(value.GetRawData());
     }
 
-    void MergeCurrentFrameStateToCatchBlock(ThrowableMixin *mixin)
+    std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const
+    {
+        if (node == nullptr || !node->IsTagged()) {
+            return std::nullopt;
+        }
+
+        JSTaggedValue value;
+        if (auto *constant = node->TryCast<ConstantVertex>()) {
+            value = constant->GetValue();
+        } else if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
+            value = JSTaggedValue(constant->GetValue());
+        } else {
+            return std::nullopt;
+        }
+        return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
+    }
+
+    std::optional<JSTaggedValue> TryGetNameFromConstDataId(uint16_t constDataId) const
+    {
+        JitCompilationEnv *env = self->preproc_->GetEnv();
+        JSThread *thread = env->GetJSThread();
+        if (thread == nullptr) {
+            return std::nullopt;
+        }
+
+        ALLOW_DEREF_HANDLE;
+        JSHandle<JSFunction> function = env->GetJsFunction();
+        JSTaggedValue methodValue = function->GetMethod(thread);
+        if (!methodValue.IsMethod()) {
+            return std::nullopt;
+        }
+        JSTaggedValue constpool = Method::Cast(methodValue.GetTaggedObject())->GetConstantPool(thread);
+        if (constpool.IsUndefined() || !constpool.IsConstantPool()) {
+            return std::nullopt;
+        }
+        JSTaggedValue name = ConstantPool::GetStringFromCacheForJit(thread, constpool, constDataId, false);
+        if (name.IsUndefined() || name.IsHole() || !name.IsString()) {
+            return std::nullopt;
+        }
+        return name;
+    }
+
+    std::optional<std::vector<JSHClass *>> TryGetPossibleHClasses(ValueVertex *node) const
+    {
+        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(node)) {
+            if (constant->IsHole() || !constant->IsHeapObject()) {
+                return std::nullopt;
+            }
+            return std::vector<JSHClass *> {constant->GetTaggedObject()->GetClass()};
+        }
+        return compileInfoFacts_->TryGetPossibleHClasses(node);
+    }
+
+    std::optional<NamedAccessFeedback> TryGetLoadObjByNameFeedback(ICSlotIdType slotId) const
+    {
+        ALLOW_DEREF_HANDLE;
+        JSHandle<ProfileTypeInfo> profileTypeInfo = self->preproc_->GetEnv()->GetProfileTypeInfo();
+        if (profileTypeInfo.GetAddress() == 0 || !profileTypeInfo.GetTaggedValue().IsTaggedArray()) {
+            return std::nullopt;
+        }
+
+        auto *profile = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedValue().GetTaggedObject());
+        uint32_t index = static_cast<uint32_t>(slotId);
+        if (index + 1 >= profile->GetIcSlotLength()) {
+            return std::nullopt;
+        }
+        IcAccessor accessor(self->compilerThread_, profileTypeInfo, index, ICKind::NamedLoadIC);
+        IcAccessor::ICState state = accessor.GetICState();
+        if (state == IcAccessor::ICState::UNINIT) {
+            return std::nullopt;
+        }
+
+        NamedAccessFeedback feedback;
+        if (state == IcAccessor::ICState::MEGA || state == IcAccessor::ICState::IC_MEGA) {
+            return feedback;
+        }
+
+        JSTaggedValue first = profile->GetIcSlot(self->compilerThread_, index);
+        if (state == IcAccessor::ICState::MONO) {
+            if (!TryAppendHClassFromWeak(first, feedback.maps)) {
+                return std::nullopt;
+            }
+            feedback.handlers.push_back(profile->GetIcSlot(self->compilerThread_, index + 1));
+            return feedback;
+        }
+        if (state != IcAccessor::ICState::POLY || !first.IsTaggedArray()) {
+            return std::nullopt;
+        }
+
+        TaggedArray *mapsAndHandlers = TaggedArray::Cast(first.GetTaggedObject());
+        constexpr uint32_t entrySize = 2;
+        for (uint32_t i = 0; i + 1 < mapsAndHandlers->GetLength(); i += entrySize) {
+            JSTaggedValue maybeWeak = mapsAndHandlers->Get(self->compilerThread_, i);
+            if (maybeWeak.IsUndefined()) {
+                continue;
+            }
+            if (!TryAppendHClassFromWeak(maybeWeak, feedback.maps)) {
+                return std::nullopt;
+            }
+            feedback.handlers.push_back(mapsAndHandlers->Get(self->compilerThread_, i + 1));
+        }
+        return feedback.maps.empty() ? std::nullopt : std::optional<NamedAccessFeedback>(std::move(feedback));
+    }
+
+    std::optional<JSTaggedValue> TryFindFeedbackHandler(const NamedAccessFeedback &feedback, JSHClass *map) const
+    {
+        auto it = std::find(feedback.maps.begin(), feedback.maps.end(), map);
+        if (it == feedback.maps.end()) {
+            return std::nullopt;
+        }
+        size_t index = static_cast<size_t>(std::distance(feedback.maps.begin(), it));
+        return index < feedback.handlers.size() ? std::optional<JSTaggedValue>(feedback.handlers[index])
+                                                : std::nullopt;
+    }
+
+    static bool IsSupportedMonoNamedLoad(const NamedLoadAccessInfo &accessInfo)
+    {
+        PropertyLookupResult plr = accessInfo.plr;
+        return accessInfo.receiverHClass != nullptr && !accessInfo.lookupStartObjectHClasses.empty() &&
+               accessInfo.holderHClass == accessInfo.receiverHClass && plr.IsFound() && plr.IsLocal() &&
+               plr.IsNotHole() && !plr.IsAccessor() && !plr.IsFunction() && !plr.IsLoadFromIterResult();
+    }
+
+    NamedLoadAccessInfoOpt TryGetPropertyAccessInfo(JSHClass *map, uint16_t constDataId,
+                                                     std::optional<JSTaggedValue> handler) const
+    {
+        if (map == nullptr) {
+            return std::nullopt;
+        }
+        std::optional<JSTaggedValue> name = TryGetNameFromConstDataId(constDataId);
+        if (!name.has_value() || !map->GetLayout(self->compilerThread_).IsTaggedArray()) {
+            return std::nullopt;
+        }
+
+        PropertyLookupResult plr =
+            JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, map, name.value());
+        NamedLoadAccessInfo accessInfo {
+            .receiverHClass = map,
+            .holderHClass = map,
+            .lookupStartObjectHClasses = {map},
+            .handler = handler,
+            .plr = plr,
+            .isConst = plr.IsFound() && !plr.IsWritable() && StableHClassDependency::IsValid(map),
+        };
+        return IsSupportedMonoNamedLoad(accessInfo) ? NamedLoadAccessInfoOpt(std::move(accessInfo)) : std::nullopt;
+    }
+
+    bool RecordNamedAccessInfoDependencies(const NamedLoadAccessInfo &accessInfo) const
+    {
+        if (!accessInfo.isConst) {
+            return true;
+        }
+        auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
+        if (dependencies == nullptr) {
+            return false;
+        }
+        for (JSHClass *hclass : accessInfo.lookupStartObjectHClasses) {
+            if (hclass != nullptr && StableHClassDependency::IsValid(hclass) &&
+                !dependencies->DependOnStableHClass(hclass)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static bool HasSameLoadFieldAccess(const NamedLoadAccessInfo &lhs, const NamedLoadAccessInfo &rhs)
+    {
+        return lhs.plr.GetData() == rhs.plr.GetData() && lhs.isConst == rhs.isConst;
+    }
+
+    static void AppendHClassIfMissing(std::vector<JSHClass *> *hclasses, JSHClass *hclass)
+    {
+        if (hclasses != nullptr && hclass != nullptr &&
+            std::find(hclasses->begin(), hclasses->end(), hclass) == hclasses->end()) {
+            hclasses->push_back(hclass);
+        }
+    }
+
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const std::vector<JSHClass *> &maps,
+                                                            const NamedAccessFeedback &feedback,
+                                                            uint16_t constDataId) const
+    {
+        std::vector<NamedLoadAccessInfo> result;
+        for (JSHClass *map : maps) {
+            NamedLoadAccessInfoOpt accessInfo =
+                TryGetPropertyAccessInfo(map, constDataId, TryFindFeedbackHandler(feedback, map));
+            if (!accessInfo.has_value()) {
+                return std::nullopt;
+            }
+
+            bool merged = false;
+            for (NamedLoadAccessInfo &existing : result) {
+                if (!HasSameLoadFieldAccess(existing, accessInfo.value())) {
+                    continue;
+                }
+                for (JSHClass *hclass : accessInfo->lookupStartObjectHClasses) {
+                    AppendHClassIfMissing(&existing.lookupStartObjectHClasses, hclass);
+                }
+                merged = true;
+                break;
+            }
+            if (!merged) {
+                result.push_back(std::move(accessInfo.value()));
+            }
+        }
+        if (result.empty()) {
+            return std::nullopt;
+        }
+        for (const NamedLoadAccessInfo &accessInfo : result) {
+            if (!RecordNamedAccessInfoDependencies(accessInfo)) {
+                return std::nullopt;
+            }
+        }
+        return result;
+    }
+
+    void BuildCurrentFrameStateForDeopt(
+        uint32_t bcIndex, std::vector<ValueVertex *> *inputs, ChunkVector<VRegIDType> *vregIds)
+    {
+        auto add = [&](int32_t id, ValueVertex *value) {
+            vregIds->emplace_back(id);
+            inputs->emplace_back(value == nullptr ? self->undefinedValue_ : value);
+        };
+
+        add(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX), LoadParam(CALL_TARGET_PARAM_INDEX));
+        add(static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX), LoadParam(NEW_TARGET_PARAM_INDEX));
+        add(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX), LoadParam(THIS_OBJECT_PARAM_INDEX));
+        add(static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        add(static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        add(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), TaggedActualArgc());
+        add(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
+            self->graph_->GetInt32Constant(static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex))));
+
+        for (VRegIDType index = 0; index < self->numLocal_; index++) {
+            add(static_cast<int32_t>(VRegOfLocal(index).GetId()), frameState.Get(VRegOfLocal(index).GetId()));
+        }
+        for (VRegIDType index = 0; index < self->numParams_; index++) {
+            add(static_cast<int32_t>(VRegOfParam(self->numLocal_, index).GetId()), LoadParam(index));
+        }
+    }
+
+    bool BuildCheckHClass(uint32_t bcIndex, ValueVertex *object, JSHClass *hclass)
+    {
+        if (compileInfoFacts_->TryGetHClass(object) == hclass) {
+            return true;
+        }
+        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(object)) {
+            if (constant->IsHole() || !constant->IsHeapObject() ||
+                constant->GetTaggedObject()->GetClass() != hclass) {
+                return false;
+            }
+            compileInfoFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+            return true;
+        }
+
+        if (StableHClassDependency::IsValid(hclass)) {
+            auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
+            if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
+                return false;
+            }
+        }
+
+        std::vector<ValueVertex *> checkInputs {object};
+        ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
+        BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+        self->NewVertex<DeoptIfHClassMismatchVertex>(
+            currentBlock, checkInputs, hclass, std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
+        compileInfoFacts_->RecordHClass(object, hclass, StableHClassDependency::IsValid(hclass));
+        return true;
+    }
+
+    static bool ContainsSameHClasses(const std::vector<JSHClass *> &lhs, const std::vector<JSHClass *> &rhs)
+    {
+        if (lhs.size() != rhs.size()) {
+            return false;
+        }
+        return std::all_of(lhs.begin(), lhs.end(), [&rhs](JSHClass *hclass) {
+            return std::find(rhs.begin(), rhs.end(), hclass) != rhs.end();
+        });
+    }
+
+    bool BuildCheckHClasses(
+        uint32_t bcIndex, ValueVertex *object, const std::vector<JSHClass *> &hclasses, bool mapsAreKnownFresh)
+    {
+        if (hclasses.empty()) {
+            return false;
+        }
+        if (hclasses.size() == 1) {
+            return BuildCheckHClass(bcIndex, object, hclasses.front());
+        }
+
+        std::optional<std::vector<JSHClass *>> knownHClasses = compileInfoFacts_->TryGetPossibleHClasses(object);
+        if (!mapsAreKnownFresh || !knownHClasses.has_value() ||
+            !ContainsSameHClasses(knownHClasses.value(), hclasses)) {
+            return false;
+        }
+        bool allStable = std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
+            return hclass != nullptr && StableHClassDependency::IsValid(hclass);
+        });
+        compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
+        return true;
+    }
+
+    ValueVertex *BuildLoadField(ValueVertex *object, PropertyLookupResult plr)
+    {
+        if (plr.IsInlinedProps()) {
+            return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {object}, static_cast<int32_t>(plr.GetOffset()));
+        }
+        ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                              plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {properties}, offset);
+    }
+
+    void BuildStoreField(ValueVertex *object, ValueVertex *value, PropertyLookupResult plr)
+    {
+        if (plr.IsInlinedProps()) {
+            self->NewVertex<StoreTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {object, value}, static_cast<int32_t>(plr.GetOffset()));
+            return;
+        }
+        ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        int32_t offset = static_cast<int32_t>(
+            TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        self->NewVertex<StoreTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {properties, value}, offset);
+    }
+
+    ValueVertex *TryBuildPropertyLoad(ValueVertex *object, uint16_t constDataId,
+                                      const NamedLoadAccessInfo &accessInfo)
+    {
+        LoadedPropertyKey key = LoadedPropertyKey::ConstDataId(object, constDataId, accessInfo.plr);
+        ValueVertex *cached = compileInfoFacts_->LookupLoadedProperty(key);
+        if (cached == nullptr) {
+            cached = compileInfoFacts_->LookupLoadedConstantProperty(key);
+        }
+        if (cached != nullptr) {
+            return cached;
+        }
+
+        ValueVertex *result = BuildLoadField(object, accessInfo.plr);
+        if (accessInfo.isConst) {
+            compileInfoFacts_->RecordLoadedConstantProperty(key, result);
+        } else {
+            compileInfoFacts_->RecordLoadedProperty(key, result);
+        }
+        return result;
+    }
+
+    bool TryBuildNamedAccess(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,
+                             const std::vector<NamedLoadAccessInfo> &accessInfos, bool mapsAreKnownFresh)
+    {
+        if (accessInfos.empty()) {
+            return false;
+        }
+        const NamedLoadAccessInfo &accessInfo = accessInfos.front();
+        for (const NamedLoadAccessInfo &candidate : accessInfos) {
+            if (!HasSameLoadFieldAccess(accessInfo, candidate)) {
+                return false;
+            }
+        }
+        const std::vector<JSHClass *> &maps = accessInfo.lookupStartObjectHClasses;
+        bool hasHClassOfString = std::any_of(maps.begin(), maps.end(), [](JSHClass *hclass) {
+            return hclass != nullptr && hclass->IsString();
+        });
+        if (hasHClassOfString || !BuildCheckHClasses(bcIndex, receiver, maps, mapsAreKnownFresh)) {
+            return false;
+        }
+        frameState.SetAcc(TryBuildPropertyLoad(receiver, constDataId, accessInfo));
+        return true;
+    }
+
+    bool TryBuildLoadNamedProperty(
+        const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId)
+    {
+        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(receiver)) {
+            if (constant->IsHole() || !constant->IsHeapObject()) {
+                return false;
+            }
+            JSHClass *hclass = constant->GetTaggedObject()->GetClass();
+            NamedLoadAccessInfoOpt accessInfo = TryGetPropertyAccessInfo(hclass, constDataId, std::nullopt);
+            if (!accessInfo.has_value() || !RecordNamedAccessInfoDependencies(accessInfo.value())) {
+                return false;
+            }
+            return TryBuildNamedAccess(bcIndex, receiver, constDataId, {accessInfo.value()}, false);
+        }
+
+        std::optional<NamedAccessFeedback> feedback =
+            TryGetLoadObjByNameFeedback(GetICSlotId<ICSlotIdType>(bcInfo, 0));
+        if (!feedback.has_value()) {
+            return false;
+        }
+
+        std::optional<std::vector<JSHClass *>> inferredMaps;
+        bool mapsAreKnownFresh = false;
+        if (feedback->maps.empty()) {
+            inferredMaps = TryGetPossibleHClasses(receiver);
+            mapsAreKnownFresh = inferredMaps.has_value();
+        } else {
+            KnownHClassesMerger merger(feedback->maps);
+            merger.IntersectWithCompileInfoFacts(TryGetPossibleHClasses(receiver));
+            inferredMaps = merger.GetIntersection();
+        }
+        if (!inferredMaps.has_value() || inferredMaps->empty()) {
+            return false;
+        }
+
+        NamedLoadAccessInfosOpt accessInfos =
+            TryGetLoadObjByNameAccessInfos(inferredMaps.value(), feedback.value(), constDataId);
+        return accessInfos.has_value() &&
+               TryBuildNamedAccess(bcIndex, receiver, constDataId, accessInfos.value(), mapsAreKnownFresh);
+    }
+
+    bool TryBuildStoreNamedProperty(const BytecodeInfo *bcInfo, ValueVertex *receiver,
+                                    uint16_t constDataId, ValueVertex *value)
+    {
+        JSHClass *hclass = compileInfoFacts_->TryGetHClass(receiver);
+        if (hclass == nullptr) {
+            return false;
+        }
+        std::optional<JSTaggedValue> name = TryGetNameFromConstDataId(constDataId);
+        if (!name.has_value()) {
+            return false;
+        }
+        PropertyLookupResult plr =
+            JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, hclass, name.value());
+        if (!plr.IsFound() || !plr.IsLocal() || !plr.IsWritable() || plr.IsAccessor()) {
+            return false;
+        }
+        if (StableHClassDependency::IsValid(hclass)) {
+            auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
+            if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
+                return false;
+            }
+        }
+        BuildStoreField(receiver, value, plr);
+        return true;
+    }
+
+    void UpdateCatchBlockData(ThrowableMixin *mixin)
     {
         if (reinterpret_cast<uintptr_t>(lazyCatchBlock) == NO_CATCH_BLOCK_TAG) {
             return;
@@ -2558,6 +3155,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         }
         ASSERT(lazyCatchBlockInputs != nullptr);
         uint32_t catchPredIndex = lazyCatchBlockInputs->AddCatchPredecessor(frameState, self->undefinedValue_);
+        lazyCatchBlockInputs->AddCompileInfoFacts(*compileInfoFacts_);
         mixin->SetCaughtBy(lazyCatchBlock);
         mixin->SetCatchPredecessorIndex(catchPredIndex);
     }
@@ -2597,8 +3195,8 @@ struct GraphBuilderNew::BytecodeVisitor {
     ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
     {
         ValidateCommonStubCallArgs({inputs.begin(), inputs.end()}, id);
-        auto *vertex = self->NewVertex<CallCommonStubVertex>(currentBlock, inputs, id);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, inputs, id);
+        UpdateCatchBlockData(vertex);
         return vertex;
     }
 
@@ -2614,16 +3212,16 @@ struct GraphBuilderNew::BytecodeVisitor {
         allArgs.push_back(self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0)));
 
         ValidateCommonStubCallArgs({allArgs.data(), allArgs.size()}, id);
-        auto *vertex = self->NewVertex<CallCommonStubVertex>(currentBlock, allArgs, id);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, allArgs, id);
+        UpdateCatchBlockData(vertex);
         return vertex;
     }
 
     template <class InputRange = std::initializer_list<ValueVertex *>>
     ValueVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id)
     {
-        auto *vertex = self->NewVertex<CallRuntimeVertex>(currentBlock, inputs, id);
-        MergeCurrentFrameStateToCatchBlock(vertex);
+        auto *vertex = self->NewVertex<CallRuntimeVertex>(compileInfoFacts_, currentBlock, inputs, id);
+        UpdateCatchBlockData(vertex);
         return vertex;
     }
 
@@ -2653,7 +3251,7 @@ struct GraphBuilderNew::BytecodeVisitor {
     ValueVertex *SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
     {
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        return self->NewVertex<StoreTaggedFieldVertex>(currentBlock, {array, value}, offset);
+        return self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array, value}, offset);
     }
 
     ValueVertex *SharedConstPool()
@@ -2698,6 +3296,7 @@ struct GraphBuilderNew::BytecodeVisitor {
     const BasicBlockInfo *blockInfo;
     BB *currentBlock;    // Equivalent to self->blocks_[blockInfo->rpoIndex]. Cached for performance.
     BB *lazyCatchBlock;  // Equivalent to self->blocks_[blockInfo->catchBlock->rpoIndex]. Cached for performance.
+    CompileInfoFacts *compileInfoFacts_;  // Equivalent to self->compileInfoFacts_[blockInfo->rpoIndex].
     SharedBCFrameState frameState;
     CatchBlockInputData *lazyCatchBlockInputs;
 };
@@ -2722,11 +3321,12 @@ void GraphBuilderNew::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, 
         .blockInfo = blockInfo,
         .currentBlock = blocks_[rpoIndex],  // visitor.currentBlock may be updated by subgraph creation
         .lazyCatchBlock = catchBlock,
+        .compileInfoFacts_ = compileInfoFacts_[rpoIndex],
         .frameState = frameState,
         .lazyCatchBlockInputs = caughtByData,
     };
     for (uint32_t bcIndex = blockInfo->startBcIndex; bcIndex <= blockInfo->endBcIndex; ++bcIndex) {
-        visitor.Visit(preproc_->GetBytecode(bcIndex));
+        visitor.Visit(preproc_->GetBytecode(bcIndex), bcIndex);
     }
 
     if (visitor.currentBlock->GetControlVertex() == nullptr) {
