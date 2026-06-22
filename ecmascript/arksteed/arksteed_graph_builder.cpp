@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/arksteed/arksteed_graph_builder_new.h"
+#include "ecmascript/arksteed/arksteed_graph_builder.h"
 
 #include <algorithm>
 

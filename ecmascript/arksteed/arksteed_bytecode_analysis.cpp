@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/arksteed/arksteed_bytecode_analysis_new.h"
+#include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
 
 namespace panda::ecmascript::arksteed {
 using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;

@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_ARKSTEED_BYTECODE_ANALYSIS_NEW_H
 #define ECMASCRIPT_ARKSTEED_BYTECODE_ANALYSIS_NEW_H
 
-#include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
+#include "ecmascript/arksteed/arksteed_bytecode_preprocessor.h"
 #include "ecmascript/arksteed/arksteed_vreg.h"
 #include "ecmascript/compiler/base/bit_set.h"
 

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
+#include "ecmascript/arksteed/arksteed_bytecode_preprocessor.h"
 
 #include "code_data_accessor-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_vreg.h"

@@ -16,9 +16,9 @@
 #ifndef ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_NEW_H
 #define ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_NEW_H
 
-#include "ecmascript/arksteed/arksteed_bytecode_analysis_new.h"
-#include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
-#include "ecmascript/arksteed/arksteed_framestate_new.h"
+#include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
+#include "ecmascript/arksteed/arksteed_bytecode_preprocessor.h"
+#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_pgo_context.h"
 #include "ecmascript/compiler/common_stub_csigns.h"

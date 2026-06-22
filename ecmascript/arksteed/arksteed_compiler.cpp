@@ -18,7 +18,7 @@
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
-#include "ecmascript/arksteed/arksteed_graph_builder_new.h"
+#include "ecmascript/arksteed/arksteed_graph_builder.h"
 #include "ecmascript/arksteed/arksteed_codegen.h"
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_graph_printer.h"
