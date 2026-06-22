@@ -2121,6 +2121,9 @@ public:
     static void EraseGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr);
     static void *FindGlobalRefMapping(const EcmaVM *vm, uintptr_t slotAddr);
     static void SetTaskpoolShrinkCallback(const EcmaVM *vm, TaskPoolShrinkCallback callback);
+    // Get the number of workers for the current thread.
+    // Only available for cross platform.
+    static uint32_t GetCurrentWorkerCount(const EcmaVM *vm);
 
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:
