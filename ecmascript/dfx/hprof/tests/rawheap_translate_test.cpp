@@ -98,6 +98,36 @@ public:
         return rawheap_->CreateNode();
     }
 
+    size_t GetNodeCount()
+    {
+        if (!rawheap_) {
+            return 0;
+        }
+        return rawheap_->GetNodeCount();
+    }
+
+    size_t GetEdgeCount()
+    {
+        if (!rawheap_) {
+            return 0;
+        }
+        return rawheap_->GetEdgeCount();
+    }
+
+    void CreateEdge(rawheap_translate::Node *node, uint64_t addr, uint32_t nameOrIndex,
+        rawheap_translate::EdgeType type)
+    {
+        if (!rawheap_) {
+            return;
+        }
+        rawheap_->CreateEdge(node, addr, nameOrIndex, type);
+    }
+
+    uint64_t GetHoleValue()
+    {
+        return rawheap_translate::RawHeapTranslateV1::VALUE_HOLE;
+    }
+
     void WriteTestData(BinaryWriter &writer)
     {
         // write version
@@ -517,6 +547,28 @@ HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1NullDataCheck)
     // Don't assert on result - focus is on null pointer safety
     // The test passes if Translate() returns (no crash)
     ASSERT_TRUE(result);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1SkipHolePrimitiveNode)
+{
+    rawheap_translate::RawHeapTranslateV1 rawheap(metaParser.get());
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+    rawheap_translate::Node *node = helper.CreateNode();
+    ASSERT_TRUE(node != nullptr);
+
+    size_t nodeCount = helper.GetNodeCount();
+    size_t edgeCount = helper.GetEdgeCount();
+    uint32_t edgeCountOfNode = node->edgeCount;
+
+    helper.CreateEdge(node, helper.GetHoleValue(), 0, rawheap_translate::EdgeType::DEFAULT);
+    ASSERT_EQ(helper.GetNodeCount(), nodeCount);
+    ASSERT_EQ(helper.GetEdgeCount(), edgeCount);
+    ASSERT_EQ(node->edgeCount, edgeCountOfNode);
+
+    helper.CreateEdge(node, 0U, 0, rawheap_translate::EdgeType::DEFAULT);
+    ASSERT_EQ(helper.GetNodeCount(), nodeCount);
+    ASSERT_EQ(helper.GetEdgeCount(), edgeCount);
+    ASSERT_EQ(node->edgeCount, edgeCountOfNode);
 }
 
 // Tests for: MetaParser::IsJSWrappedNapiObject (rawheap_translate/metadata_parse.cpp)

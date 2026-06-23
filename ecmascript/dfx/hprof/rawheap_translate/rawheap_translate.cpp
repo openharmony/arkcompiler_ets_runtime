@@ -1018,6 +1018,10 @@ void RawHeapTranslateV1::BuildJSWrappedObjectEdges(Node *node)
 
 Node* RawHeapTranslateV1::CreatePrimitiveNode(uint64_t addr)
 {
+    if (IsHole(addr)) {
+        return nullptr;
+    }
+
     Node *to = FindOrCreateNode(addr);
     to->nodeId = 0;
     to->type = HEAP_NUMBER;
@@ -1025,8 +1029,6 @@ Node* RawHeapTranslateV1::CreatePrimitiveNode(uint64_t addr)
         to->strId = InsertAndGetStringId("Int");
     } else if ((addr & TAG_MARK) != TAG_INT && (addr & TAG_MARK) != TAG_OBJECT) {
         to->strId = InsertAndGetStringId("Double");
-    } else if (addr == VALUE_HOLE || addr == 0U) {
-        to->strId = InsertAndGetStringId("Hole");
     } else if (addr == VALUE_NULL) {
         to->strId = InsertAndGetStringId("Null");
     } else if ((addr & TAG_HEAPOBJECT_MASK) == TAG_BOOLEAN_MASK) {
@@ -1088,6 +1090,11 @@ EdgeType RawHeapTranslateV1::GenerateEdgeTypeAndRemoveWeak(Node *node, uint64_t 
 bool RawHeapTranslateV1::IsHeapObject(uint64_t addr)
 {
     return ((addr & TAG_HEAPOBJECT_MASK) == 0U);
+}
+
+bool RawHeapTranslateV1::IsHole(uint64_t addr)
+{
+    return addr == VALUE_HOLE || addr == 0U;
 }
 
 bool RawHeapTranslateV1::IsWeak(uint64_t addr)
