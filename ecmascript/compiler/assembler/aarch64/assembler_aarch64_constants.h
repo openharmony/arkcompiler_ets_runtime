@@ -192,6 +192,7 @@ enum  AddrMode {
 enum LogicShiftOpCode {
     LSL_Reg = 0x1AC02000,
     LSR_Reg = 0x1AC02400,
+    ASR_Reg = 0x1AC02800,
     UBFM    = 0x53000000,
     SBFM    = 0x13000000,
     BFM     = 0xB3400000,

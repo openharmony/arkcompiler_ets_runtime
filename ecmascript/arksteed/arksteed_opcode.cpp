@@ -549,6 +549,41 @@ void CheckedPositiveI32ModVertex::Dump(std::ostream &output) const
     output << "  CheckedPositiveI32Mod";
 }
 
+void I32BitwiseBinaryVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    if (RightInputIsConstant()) {
+        UseAny(Arg(RIGHT_INDEX));
+    } else if (IsShift()) {
+#if defined(PANDA_TARGET_AMD64)
+        UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
+#else
+        UseRegister(Arg(RIGHT_INDEX));
+#endif
+    } else {
+        UseRegister(Arg(RIGHT_INDEX));
+    }
+    DefineSameAsFirst(this);
+}
+
+void I32BitwiseBinaryVertex::Dump(std::ostream &output) const
+{
+    output << "  I32BitwiseBinary: kind=" << static_cast<uint32_t>(kind_);
+}
+
+void CheckedNonNegativeI32ToTaggedIntVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+    UseDeoptFrameSlots(this, this);
+    SetTemporariesNeeded(1);
+}
+
+void CheckedNonNegativeI32ToTaggedIntVertex::Dump(std::ostream &output) const
+{
+    output << "  CheckedNonNegativeI32ToTaggedInt";
+}
+
 void I32ToF64Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);

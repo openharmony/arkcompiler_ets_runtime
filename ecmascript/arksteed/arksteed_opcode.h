@@ -52,6 +52,15 @@ enum class Int32ConditionKind : uint8_t {
     GREATER_THAN_OR_EQUAL,
 };
 
+enum class Int32BitwiseKind : uint8_t {
+    BITWISE_AND,
+    BITWISE_OR,
+    BITWISE_XOR,
+    SHIFT_LEFT,
+    SHIFT_RIGHT_LOGICAL,
+    SHIFT_RIGHT_ARITHMETIC,
+};
+
 /**
  * CRTP Mixin Classes for ArkSteed Opcodes
  *
@@ -965,6 +974,64 @@ public:
         ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
         ASSERT(GetInput(LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
         ASSERT(GetInput(RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
+    }
+};
+
+class I32BitwiseBinaryVertex : public FixedInputVertexMixin<2, ValueVertex, I32BitwiseBinaryVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+
+    explicit I32BitwiseBinaryVertex(uint64_t bitfield, Int32BitwiseKind kind)
+        : FixedInputVertexMixin(bitfield), kind_(kind)
+    {}
+
+    Int32BitwiseKind GetKind() const
+    {
+        return kind_;
+    }
+
+    bool RightInputIsConstant() const
+    {
+        return Arg(RIGHT_INDEX).vertex()->TryCast<Int32ConstantVertex>() != nullptr;
+    }
+
+    bool IsShift() const
+    {
+        return kind_ == Int32BitwiseKind::SHIFT_LEFT ||
+               kind_ == Int32BitwiseKind::SHIFT_RIGHT_LOGICAL ||
+               kind_ == Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    Int32BitwiseKind kind_;
+};
+
+class CheckedNonNegativeI32ToTaggedIntVertex
+    : public VertexMixin<ValueVertex, CheckedNonNegativeI32ToTaggedIntVertex>,
+      public DeoptimizableMixin {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::NotIdempotent();
+
+    explicit CheckedNonNegativeI32ToTaggedIntVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                                    ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
+        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     }
 };
 

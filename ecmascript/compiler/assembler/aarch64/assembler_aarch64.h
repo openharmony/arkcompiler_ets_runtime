@@ -239,6 +239,7 @@ public:
     void Lsl(const Register &rd, const Register &rn, const Register &rm);
     void Lsr(const Register &rd, const Register &rn, const Register &rm);
     void Asr(const Register &rd, const Register &rn, unsigned shift);
+    void Asr(const Register &rd, const Register &rn, const Register &rm);
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Sbfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);

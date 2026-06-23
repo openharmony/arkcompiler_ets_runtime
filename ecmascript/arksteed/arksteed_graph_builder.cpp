@@ -1463,10 +1463,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHL, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Shl));
+        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::SHIFT_LEFT));
     }
 
     void LowerShr2(const BytecodeInfo *bcInfo)
@@ -1475,10 +1475,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHR, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Shr));
+        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::SHIFT_RIGHT_LOGICAL));
     }
 
     void LowerAshr2(const BytecodeInfo *bcInfo)
@@ -1487,10 +1487,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ASHR, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Ashr));
+        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC));
     }
 
     void LowerAnd2(const BytecodeInfo *bcInfo)
@@ -1499,10 +1499,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::AND, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::And));
+        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::BITWISE_AND));
     }
 
     void LowerOr2(const BytecodeInfo *bcInfo)
@@ -1511,10 +1511,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::OR, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Or));
+        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::BITWISE_OR));
     }
 
     void LowerXor2(const BytecodeInfo *bcInfo)
@@ -1523,10 +1523,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::XOR, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Xor));
+        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::BITWISE_XOR));
     }
 
     // -------- Category #5: Comparisons --------
@@ -3471,6 +3471,158 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *taggedResult = BuildF64TaggedBinOpValue(kind, leftF64, rightF64);
         ASSERT(taggedResult != nullptr);
         return taggedResult;
+    }
+
+    ValueVertex *BuildCheckedNonNegativeI32ToTaggedInt(ValueVertex *rawResult)
+    {
+        std::vector<ValueVertex *> inputs {rawResult};
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        ValueVertex *tagged = self->NewVertex<CheckedNonNegativeI32ToTaggedIntVertex>(
+            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+            self->preproc_->GetBytecodeOffset(currentBcIndex));
+        compileInfoFacts_->EnsureType(tagged, NodeInfo::NodeType::INT);
+        compileInfoFacts_->SetAlternative(tagged, AlternativeNodes::Kind::INT32, rawResult);
+        return tagged;
+    }
+
+    ValueVertex *BuildGenericBitwiseBinOp(Int32BitwiseKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        switch (kind) {
+            case Int32BitwiseKind::BITWISE_AND:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::And);
+            case Int32BitwiseKind::BITWISE_OR:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Or);
+            case Int32BitwiseKind::BITWISE_XOR:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Xor);
+            case Int32BitwiseKind::SHIFT_LEFT:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Shl);
+            case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Shr);
+            case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Ashr);
+        }
+        UNREACHABLE();
+    }
+
+    ValueVertex *TryBuildI32BitwiseReduction(Int32BitwiseKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        std::optional<int32_t> leftValue = TryGetInt32Value(left);
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        auto knownInt = [this](ValueVertex *value) -> ValueVertex * {
+            compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
+            return value;
+        };
+        auto taggedIntConstant = [this](int32_t value) -> ValueVertex * {
+            ValueVertex *constant = self->graph_->GetTaggedConstant(JSTaggedValue(value).GetRawData());
+            compileInfoFacts_->EnsureType(constant, NodeInfo::NodeType::INT);
+            return constant;
+        };
+
+        if (rightValue.has_value()) {
+            switch (kind) {
+                case Int32BitwiseKind::BITWISE_AND:
+                    if (*rightValue == -1) {
+                        return knownInt(left);
+                    }
+                    if (*rightValue == 0) {
+                        return taggedIntConstant(0);
+                    }
+                    break;
+                case Int32BitwiseKind::BITWISE_OR:
+                    if (*rightValue == 0) {
+                        return knownInt(left);
+                    }
+                    if (*rightValue == -1) {
+                        return taggedIntConstant(-1);
+                    }
+                    break;
+                case Int32BitwiseKind::BITWISE_XOR:
+                    if (*rightValue == 0) {
+                        return knownInt(left);
+                    }
+                    break;
+                case Int32BitwiseKind::SHIFT_LEFT:
+                case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                    if ((static_cast<uint32_t>(*rightValue) & 31U) == 0) {
+                        return knownInt(left);
+                    }
+                    break;
+                case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+                    break;
+            }
+        }
+
+        if (leftValue.has_value()) {
+            switch (kind) {
+                case Int32BitwiseKind::BITWISE_AND:
+                    if (*leftValue == -1) {
+                        return knownInt(right);
+                    }
+                    if (*leftValue == 0) {
+                        return taggedIntConstant(0);
+                    }
+                    break;
+                case Int32BitwiseKind::BITWISE_OR:
+                    if (*leftValue == 0) {
+                        return knownInt(right);
+                    }
+                    if (*leftValue == -1) {
+                        return taggedIntConstant(-1);
+                    }
+                    break;
+                case Int32BitwiseKind::BITWISE_XOR:
+                    if (*leftValue == 0) {
+                        return knownInt(right);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return nullptr;
+    }
+
+    ValueVertex *BuildI32BitwiseTaggedValue(Int32BitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        ValueVertex *raw =
+            self->NewVertex<I32BitwiseBinaryVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, kind);
+        if (kind != Int32BitwiseKind::SHIFT_RIGHT_LOGICAL) {
+            return BuildTaggedI32Result(raw);
+        }
+        return BuildCheckedNonNegativeI32ToTaggedInt(raw);
+    }
+
+    ValueVertex *BuildI32BitwiseBinOp(Int32BitwiseKind kind, ValueVertex *left, ValueVertex *right,
+                                       bool leftKnownInt, bool rightKnownInt)
+    {
+        if (leftKnownInt && rightKnownInt) {
+            if (ValueVertex *reduced = TryBuildI32BitwiseReduction(kind, left, right)) {
+                return reduced;
+            }
+        }
+
+        ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
+        ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
+        return BuildI32BitwiseTaggedValue(kind, leftI32, rightI32);
+    }
+
+    ValueVertex *BuildBitwiseOperation(Int32BitwiseKind kind)
+    {
+        ValueVertex *left = LoadRegister(currentBcInfo, 0);
+        ValueVertex *right = frameState.GetAcc();
+        bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+        bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+        if (leftKnownInt || rightKnownInt) {
+            return BuildI32BitwiseBinOp(kind, left, right, leftKnownInt, rightKnownInt);
+        }
+
+        pgo::PGOSampleType profile = ReadBinaryOpProfile();
+        if (profile.IsInt()) {
+            return BuildI32BitwiseBinOp(kind, left, right, false, false);
+        }
+        return BuildGenericBitwiseBinOp(kind, left, right);
     }
 
     ValueVertex *BuildStringAdd(ValueVertex *left, ValueVertex *right)

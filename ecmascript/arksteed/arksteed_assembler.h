@@ -182,11 +182,11 @@ public:
     void Int32Xor(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32Xor(ArkSteedRegister dst, int32_t immediate);
     void Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift);
-    void Int32ShiftLeftByCl(ArkSteedRegister dst);
+    void Int32ShiftLeftByRegister(ArkSteedRegister dst, ArkSteedRegister shift);
     void Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
-    void Int32ShiftRightLogicalByCl(ArkSteedRegister dst);
+    void Int32ShiftRightLogicalByRegister(ArkSteedRegister dst, ArkSteedRegister shift);
     void Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t shift);
-    void Int32ShiftRightArithmeticByCl(ArkSteedRegister dst);
+    void Int32ShiftRightArithmeticByRegister(ArkSteedRegister dst, ArkSteedRegister shift);
 
     // =========================================================================
     // Comparison Operations

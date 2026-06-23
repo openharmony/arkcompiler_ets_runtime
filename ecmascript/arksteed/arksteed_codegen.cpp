@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <sstream>
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
@@ -292,6 +293,14 @@ ArkSteedDoubleRegister GetResultDoubleRegister(const ValueVertex *vertex)
     const ValueLocation &loc = vertex->Result();
     ASSERT(loc.IsDoubleRegister());
     return loc.GetAssignedDoubleRegister();
+}
+
+std::optional<int32_t> TryGetInt32ConstantInput(const Vertex *vertex, int inputIndex)
+{
+    if (auto *constant = vertex->GetInput(inputIndex)->TryCast<Int32ConstantVertex>()) {
+        return constant->GetValue();
+    }
+    return std::nullopt;
 }
 
 template <typename T>
@@ -1291,6 +1300,112 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedPositiveI32ModVertex>(C
     assembler_->Bind(&badRight);
     EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::MODZERO1);
     assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNonNegativeI32ToTaggedIntVertex>(
+    CheckedNonNegativeI32ToTaggedIntVertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": CheckedNonNegativeI32ToTaggedIntVertex";
+#endif
+    auto dst = GetResultRegister(convert);
+    auto src = GetInputRegister(convert, CheckedNonNegativeI32ToTaggedIntVertex::INPUT_INDEX);
+    ArkSteedRegister scratch = convert->GetRegallocInfo()->GetGeneralTemporaries().First();
+    Label deopt;
+    Label done;
+
+    assembler_->CompareInt32(src, 0);
+    assembler_->JumpIf(Condition::COND_LESS_THAN, &deopt);
+    assembler_->SignExtendInt32ToInt64(dst, src);
+    assembler_->Move(scratch, static_cast<int64_t>(JSTaggedValue::TAG_INT));
+    assembler_->Or(dst, scratch);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, convert, kungfu::DeoptType::NOTINT5);
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32BitwiseBinaryVertex>(I32BitwiseBinaryVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32BitwiseBinaryVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto left = GetInputRegister(op, I32BitwiseBinaryVertex::LEFT_INDEX);
+    if (dst != left) {
+        assembler_->Move(dst, left);
+    }
+
+    if (std::optional<int32_t> rightConstant = TryGetInt32ConstantInput(op, I32BitwiseBinaryVertex::RIGHT_INDEX)) {
+        uint32_t shift = static_cast<uint32_t>(*rightConstant) & 31U;
+        switch (op->GetKind()) {
+            case Int32BitwiseKind::BITWISE_AND:
+                assembler_->Int32And(dst, *rightConstant);
+                break;
+            case Int32BitwiseKind::BITWISE_OR:
+                assembler_->Int32Or(dst, *rightConstant);
+                break;
+            case Int32BitwiseKind::BITWISE_XOR:
+                assembler_->Int32Xor(dst, *rightConstant);
+                break;
+            case Int32BitwiseKind::SHIFT_LEFT:
+                if (shift != 0) {
+                    assembler_->Int32ShiftLeft(dst, shift);
+                }
+                break;
+            case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+                if (shift != 0) {
+                    assembler_->Int32ShiftRightLogical(dst, shift);
+                }
+                break;
+            case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                if (shift != 0) {
+                    assembler_->Int32ShiftRightArithmetic(dst, shift);
+                }
+                break;
+            default:
+                UNREACHABLE();
+        }
+        assembler_->SignExtendInt32ToInt64(dst, dst);
+        return;
+    }
+
+    auto right = GetInputRegister(op, I32BitwiseBinaryVertex::RIGHT_INDEX);
+    switch (op->GetKind()) {
+        case Int32BitwiseKind::BITWISE_AND:
+            assembler_->Int32And(dst, right);
+            break;
+        case Int32BitwiseKind::BITWISE_OR:
+            assembler_->Int32Or(dst, right);
+            break;
+        case Int32BitwiseKind::BITWISE_XOR:
+            assembler_->Int32Xor(dst, right);
+            break;
+        case Int32BitwiseKind::SHIFT_LEFT:
+#if defined(PANDA_TARGET_AMD64)
+            ASSERT(right == x64::rcx);
+#endif
+            assembler_->Int32ShiftLeftByRegister(dst, right);
+            break;
+        case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+#if defined(PANDA_TARGET_AMD64)
+            ASSERT(right == x64::rcx);
+#endif
+            assembler_->Int32ShiftRightLogicalByRegister(dst, right);
+            break;
+        case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+#if defined(PANDA_TARGET_AMD64)
+            ASSERT(right == x64::rcx);
+#endif
+            assembler_->Int32ShiftRightArithmeticByRegister(dst, right);
+            break;
+        default:
+            UNREACHABLE();
+    }
+    assembler_->SignExtendInt32ToInt64(dst, dst);
 }
 
 template <>

@@ -372,11 +372,9 @@ void ArkSteedAssembler::Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift)
     assembler_.Lsl(dst.W(), dst.W(), shift);
 }
 
-void ArkSteedAssembler::Int32ShiftLeftByCl(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32ShiftLeftByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
 {
-    // arm64 has no CL register; the shift-by-register codegen path is not yet wired up here.
-    (void)dst;
-    UNREACHABLE();
+    assembler_.Lsl(dst.W(), dst.W(), shift.W());
 }
 
 void ArkSteedAssembler::Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t shift)
@@ -384,10 +382,9 @@ void ArkSteedAssembler::Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t sh
     assembler_.Lsr(dst.W(), dst.W(), shift);
 }
 
-void ArkSteedAssembler::Int32ShiftRightLogicalByCl(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32ShiftRightLogicalByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
 {
-    (void)dst;
-    UNREACHABLE();
+    assembler_.Lsr(dst.W(), dst.W(), shift.W());
 }
 
 void ArkSteedAssembler::Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t shift)
@@ -395,10 +392,9 @@ void ArkSteedAssembler::Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t
     assembler_.Asr(dst.W(), dst.W(), shift);
 }
 
-void ArkSteedAssembler::Int32ShiftRightArithmeticByCl(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32ShiftRightArithmeticByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
 {
-    (void)dst;
-    UNREACHABLE();
+    assembler_.Asr(dst.W(), dst.W(), shift.W());
 }
 
 // =============================================================================

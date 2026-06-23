@@ -328,8 +328,9 @@ void ArkSteedAssembler::Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift)
     assembler_.Shll(x64::Immediate(static_cast<int32_t>(shift)), dst);
 }
 
-void ArkSteedAssembler::Int32ShiftLeftByCl(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32ShiftLeftByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
 {
+    ASSERT(shift == x64::rcx);
     assembler_.ShllCl(dst);
 }
 
@@ -338,8 +339,9 @@ void ArkSteedAssembler::Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t sh
     assembler_.Shrl(x64::Immediate(static_cast<int32_t>(shift)), dst);
 }
 
-void ArkSteedAssembler::Int32ShiftRightLogicalByCl(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32ShiftRightLogicalByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
 {
+    ASSERT(shift == x64::rcx);
     assembler_.ShrlCl(dst);
 }
 
@@ -348,8 +350,9 @@ void ArkSteedAssembler::Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t
     assembler_.Sarl(x64::Immediate(static_cast<int32_t>(shift)), dst);
 }
 
-void ArkSteedAssembler::Int32ShiftRightArithmeticByCl(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32ShiftRightArithmeticByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
 {
+    ASSERT(shift == x64::rcx);
     assembler_.SarlCl(dst);
 }
 

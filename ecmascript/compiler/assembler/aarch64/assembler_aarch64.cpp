@@ -741,6 +741,12 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, const Registe
     EmitU32(code);
 }
 
+void AssemblerAarch64::Asr(const Register &rd, const Register &rn, const Register &rm)
+{
+    uint32_t code = Sf(!rd.IsW()) | ASR_Reg | Rm(rm.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
 {
     bool sf = !rd.IsW();

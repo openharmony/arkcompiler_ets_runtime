@@ -67,6 +67,8 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(I32Div)                   \
     V(PositiveI32Mod)           \
     V(CheckedPositiveI32Mod)    \
+    V(I32BitwiseBinary)         \
+    V(CheckedNonNegativeI32ToTaggedInt) \
     V(I32ToF64)                 \
     V(CheckedNumberToF64)       \
     V(F64ToTaggedDouble)        \
