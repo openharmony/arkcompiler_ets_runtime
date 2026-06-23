@@ -24,6 +24,7 @@
 #include "ecmascript/tests/test_helper.h"
 
 #include <unordered_map>
+#include <unistd.h>
 
 using namespace panda::ecmascript;
 
@@ -239,6 +240,11 @@ public:
                             const DumpSnapShotOption &dumpOption)
     {
         profiler.ForceFullGC(vm, dumpOption);
+    }
+
+    static int32_t AcquireDumpStream(HybridHeapProfiler &profiler, const DumpSnapShotOption &dumpOption)
+    {
+        return profiler.AcquireDumpStream(dumpOption);
     }
 
     static void JSForceFullGC(const EcmaVM *vm)
@@ -498,6 +504,50 @@ HWTEST_F_L0(HybridHeapSnapshotTest, ProfilerBasicBehavior)
     dumpOption.dumpFormat = DumpFormat::JSON;
     ASSERT_FALSE(profiler.Dump(ecmaVm_, &stream, dumpOption));
     ASSERT_TRUE(HybridHeapProfilerTestHelper::SetAppFreezeFilter(profiler));
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, AcquireDumpStream_DumpOptions)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto acquireAndClose = [&profiler](const DumpSnapShotOption &dumpOption) -> int32_t {
+        int32_t fd = HybridHeapProfilerTestHelper::AcquireDumpStream(profiler, dumpOption);
+        if (fd >= 0) {
+            close(fd);
+        }
+        return fd;
+    };
+
+    DumpSnapShotOption noneOption;
+    noneOption.dumpDynamicHeap = false;
+    noneOption.dumpStaticHeap = false;
+    int32_t noneFd = acquireAndClose(noneOption);
+
+    DumpSnapShotOption staticOnlyOption;
+    staticOnlyOption.dumpDynamicHeap = false;
+    staticOnlyOption.dumpStaticHeap = true;
+    int32_t staticOnlyFd = acquireAndClose(staticOnlyOption);
+
+    DumpSnapShotOption dynamicOnlyOption;
+    dynamicOnlyOption.dumpDynamicHeap = true;
+    dynamicOnlyOption.dumpStaticHeap = false;
+    int32_t dynamicOnlyFd = acquireAndClose(dynamicOnlyOption);
+
+    DumpSnapShotOption hybridOption;
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
+    int32_t hybridFd = acquireAndClose(hybridOption);
+
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    ASSERT_GE(noneFd, -1);
+    ASSERT_GE(staticOnlyFd, -1);
+    ASSERT_GE(dynamicOnlyFd, -1);
+    ASSERT_GE(hybridFd, -1);
+#else
+    ASSERT_EQ(noneFd, -1);
+    ASSERT_EQ(staticOnlyFd, -1);
+    ASSERT_EQ(dynamicOnlyFd, -1);
+    ASSERT_EQ(hybridFd, -1);
+#endif
 }
 
 HWTEST_F_L0(HybridHeapSnapshotTest, EmptyModeSnapshot)

@@ -252,7 +252,17 @@ int32_t HybridHeapProfiler::AcquireDumpStream(const DumpSnapShotOption &dumpOpti
     } else if (dumpOption.dumpStaticHeap) {
         faultLoggerType = FaultLoggerType::STATIC_JS_HEAP_SNAPSHOT;
     }
-    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(faultLoggerType));
+    int32_t fd = -1;
+    if (!dumpOption.dumpDynamicHeap && dumpOption.dumpStaticHeap) {
+        FaultLoggerdRequest request = {};
+        request.type = static_cast<int32_t>(faultLoggerType);
+        request.pid = getpid();
+        request.tid = -1;
+        request.time = 0;
+        fd = RequestFileDescriptorEx(&request);
+    } else {
+        fd = RequestFileDescriptor(static_cast<int32_t>(faultLoggerType));
+    }
     if (fd < 0) {
         LOG_ECMA(ERROR) << "[HybridHeapDump] RequestFileDescriptor failed, fd: " << fd;
     }
