@@ -23,9 +23,7 @@
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/arksteed/arksteed_regalloc_vertex_info.h"
 #include "ecmascript/mem/chunk.h"
-#include "ecmascript/mem/native_area_allocator.h"
 #include "libpandabase/macros.h"
-#include "libpandabase/mem/arena_allocator.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -59,6 +57,27 @@ enum class ValueRepresentation : uint8_t {
     INT_PTR,        // Pointer-sized integer (depends on architecture)
     NONE,           // No specific representation
 };
+
+constexpr const char *ValueRepresentationName(ValueRepresentation repr)
+{
+    switch (repr) {
+        case ValueRepresentation::TAGGED:
+            return "tagged";
+        case ValueRepresentation::INT32:
+            return "int32";
+        case ValueRepresentation::UINT32:
+            return "uint32";
+        case ValueRepresentation::FLOAT64:
+            return "float64";
+        case ValueRepresentation::HOLEY_FLOAT64:
+            return "holey_float64";
+        case ValueRepresentation::INT_PTR:
+            return "intptr";
+        case ValueRepresentation::NONE:
+            return "none";
+    }
+    return "unknown";
+}
 
 namespace detail {
 template <size_t Size>

@@ -19,7 +19,7 @@
 #include <sstream>
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
-#include "ecmascript/arksteed/arksteed_framestate.h"
+#include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"

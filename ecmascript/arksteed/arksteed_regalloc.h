@@ -17,9 +17,9 @@
 #define ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_H
 
 #include "ecmascript/arksteed/arksteed_bb.h"
-#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
+#include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_reglist.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 

@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_PROCESSORS_H
 #define ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_PROCESSORS_H
 
-#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc.h"

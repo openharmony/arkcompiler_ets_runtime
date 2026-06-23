@@ -19,7 +19,8 @@
 
 #include "ecmascript/arksteed/arksteed_compile_info_facts.h"
 #include "ecmascript/arksteed/arksteed_constant_folding.h"
-#include "ecmascript/arksteed/arksteed_framestate.h"
+#include "ecmascript/arksteed/arksteed_graph.h"
+#include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
@@ -40,27 +41,6 @@
 
 namespace panda::ecmascript::arksteed {
 namespace {
-const char *ValueRepresentationName(ValueRepresentation repr)
-{
-    switch (repr) {
-        case ValueRepresentation::TAGGED:
-            return "tagged";
-        case ValueRepresentation::INT32:
-            return "int32";
-        case ValueRepresentation::UINT32:
-            return "uint32";
-        case ValueRepresentation::FLOAT64:
-            return "float64";
-        case ValueRepresentation::HOLEY_FLOAT64:
-            return "holey_float64";
-        case ValueRepresentation::INT_PTR:
-            return "intptr";
-        case ValueRepresentation::NONE:
-            return "none";
-    }
-    return "unknown";
-}
-
 bool IsTaggedCallType(kungfu::VariableType type)
 {
     kungfu::GateType gateType = type.GetGateType();
@@ -92,6 +72,39 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
             return value->IsAnyFloat64();
     }
     return true;
+}
+
+void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, kungfu::CommonStubCSigns::ID id)
+{
+#ifndef NDEBUG
+    const kungfu::CallSignature *signature = kungfu::CommonStubCSigns::Get(id);
+    size_t actualCount = inputs.size();
+    size_t expectedCount = signature->GetParametersCount();
+    if (actualCount != expectedCount) {
+        LOG_ECMA(FATAL) << "ArkSteed CommonStub argument count mismatch, stub: " << signature->GetName()
+                        << ", expected: " << expectedCount << ", actual: " << actualCount;
+        UNREACHABLE();
+    }
+    kungfu::VariableType *params = signature->GetParametersType();
+    if (params == nullptr) {
+        return;
+    }
+    const auto *inputArr = inputs.begin();
+    for (size_t i = 0; i < expectedCount; ++i) {
+        if (MatchesCallSignatureType(inputArr[i], params[i])) {
+            continue;
+        }
+        const char *reprName = ValueRepresentationName(inputArr[i]->GetValueRepresentation());
+        LOG_ECMA(FATAL) << "ArkSteed CommonStub argument type mismatch, stub: " << signature->GetName()
+                        << ", index: " << i
+                        << ", expected machine type: " << MachineTypeToStr(params[i].GetMachineType())
+                        << ", actual representation: " << reprName;
+        UNREACHABLE();
+    }
+#else
+    (void)inputs;  // // No-op in Release build
+    (void)id;
+#endif
 }
 
 bool TryAppendHClassFromWeak(JSTaggedValue maybeWeak, std::vector<JSHClass *> &maps)
@@ -3125,38 +3138,6 @@ struct GraphBuilderNew::BytecodeVisitor {
         lazyCatchBlockInputs->AddCompileInfoFacts(*compileInfoFacts_);
         mixin->SetCaughtBy(lazyCatchBlock);
         mixin->SetCatchPredecessorIndex(catchPredIndex);
-    }
-
-    void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, CommonStubID id)
-    {
-#ifndef NDEBUG
-        const kungfu::CallSignature *signature = kungfu::CommonStubCSigns::Get(id);
-        size_t actualCount = inputs.size();
-        size_t expectedCount = signature->GetParametersCount();
-        if (actualCount != expectedCount) {
-            LOG_ECMA(FATAL) << "ArkSteed CommonStub argument count mismatch, stub: " << signature->GetName()
-                            << ", expected: " << expectedCount << ", actual: " << actualCount;
-            UNREACHABLE();
-        }
-        kungfu::VariableType *params = signature->GetParametersType();
-        if (params != nullptr) {
-            const auto *inputArr = inputs.begin();
-            for (size_t i = 0; i < expectedCount; ++i) {
-                if (MatchesCallSignatureType(inputArr[i], params[i])) {
-                    continue;
-                }
-                const char *reprName = ValueRepresentationName(inputArr[i]->GetValueRepresentation());
-                LOG_ECMA(FATAL) << "ArkSteed CommonStub argument type mismatch, stub: " << signature->GetName()
-                                << ", index: " << i
-                                << ", expected machine type: " << MachineTypeToStr(params[i].GetMachineType())
-                                << ", actual representation: " << reprName;
-                UNREACHABLE();
-            }
-        }
-#else
-        (void)inputs;  // // No-op in Release build
-        (void)id;
-#endif
     }
 
     ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
