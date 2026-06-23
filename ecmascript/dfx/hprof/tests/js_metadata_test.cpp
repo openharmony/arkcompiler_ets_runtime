@@ -4420,6 +4420,7 @@ HWTEST_F_L0(JSMetadataTest, TestResolvedindexbindingRecordMetadata)
 
 HWTEST_F_L0(JSMetadataTest, TestResolvedrecordbindingRecordMetadata)
 {
+#if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
     JSMetadataTestHelper tester {};
     std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"resolvedrecordbinding_record.json";
     JSMetadataTestHelper::Metadata metadata {};
@@ -4427,10 +4428,12 @@ HWTEST_F_L0(JSMetadataTest, TestResolvedrecordbindingRecordMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::RESOLVEDRECORDBINDING_RECORD, metadata));
+#endif
 }
 
 HWTEST_F_L0(JSMetadataTest, TestResolvedrecordindexbindingRecordMetadata)
 {
+#if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
     JSMetadataTestHelper tester {};
     std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"resolvedrecordindexbinding_record.json";
     JSMetadataTestHelper::Metadata metadata {};
@@ -4438,6 +4441,7 @@ HWTEST_F_L0(JSMetadataTest, TestResolvedrecordindexbindingRecordMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::RESOLVEDRECORDINDEXBINDING_RECORD, metadata));
+#endif
 }
 
 HWTEST_F_L0(JSMetadataTest, TestResolvingFunctionsRecordMetadata)
