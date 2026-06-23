@@ -353,10 +353,13 @@ void GraphPrinter::ProcessVertex(ControlVertex *vertex, const ArkSteedState &sta
             }
             break;
         }
-        case VertexOpcode::BranchIfTrue: {
+        case VertexOpcode::BranchIfTrue:
+        case VertexOpcode::BranchIfInt32Compare:
+        case VertexOpcode::BranchIfFloat64Compare:
+        case VertexOpcode::BranchIfReferenceEqual: {
             BB *ifTrue = nullptr;
             BB *ifFalse = nullptr;
-            if (BranchIfTrueVertex *branch = vertex->TryCast<BranchIfTrueVertex>()) {
+            if (BranchControlVertex *branch = vertex->TryCast<BranchControlVertex>()) {
                 ifTrue = branch->IfTrue();
                 ifFalse = branch->IfFalse();
             }
@@ -495,10 +498,13 @@ std::string GraphPrinter::FormatControlVertexTargets(ControlVertex *vertex) cons
             }
             break;
         }
-        case VertexOpcode::BranchIfTrue: {
+        case VertexOpcode::BranchIfTrue:
+        case VertexOpcode::BranchIfInt32Compare:
+        case VertexOpcode::BranchIfFloat64Compare:
+        case VertexOpcode::BranchIfReferenceEqual: {
             BB *ifTrue = nullptr;
             BB *ifFalse = nullptr;
-            if (BranchIfTrueVertex *branch = vertex->TryCast<BranchIfTrueVertex>()) {
+            if (BranchControlVertex *branch = vertex->TryCast<BranchControlVertex>()) {
                 ifTrue = branch->IfTrue();
                 ifFalse = branch->IfFalse();
             }

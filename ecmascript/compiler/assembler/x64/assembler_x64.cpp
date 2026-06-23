@@ -611,6 +611,34 @@ void AssemblerX64::EmitJno(int32_t offset)
     }
 }
 
+void AssemblerX64::EmitJp(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        EmitU8(0x7A);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        EmitU8(0x0F);
+        EmitU8(0x8A);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
+void AssemblerX64::EmitJnp(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        EmitU8(0x7B);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        EmitU8(0x0F);
+        EmitU8(0x8B);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
 void AssemblerX64::Callq(Register addr)
 {
     // C3: RET Near return to calling procedure
@@ -1708,6 +1736,62 @@ void AssemblerX64::Jno(Label *target, Distance distance)
     }
 }
 
+void AssemblerX64::Jp(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJp(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        EmitU8(0x7A);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        target->LinkTo(pos + 2);
+        EmitU8(0x0F);
+        EmitU8(0x8A);
+        EmitI32(emitPos);
+    }
+}
+
+void AssemblerX64::Jnp(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJnp(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        EmitU8(0x7B);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        target->LinkTo(pos + 2);
+        EmitU8(0x0F);
+        EmitU8(0x8B);
+        EmitI32(emitPos);
+    }
+}
+
 void AssemblerX64::Movsd(XMMRegister dst, XMMRegister src)
 {
     // movsd xmm_dst, xmm_src
@@ -1837,6 +1921,19 @@ void AssemblerX64::Divsd(XMMRegister src, XMMRegister dst)
     }
     EmitU8(0x0F);
     EmitU8(0x5E);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Ucomisd(XMMRegister src, XMMRegister dst)
+{
+    // ucomisd xmm_dst, xmm_src
+    // Encoding: 66 0F 2E /r
+    EmitU8(0x66);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x2E);
     EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
 }
 

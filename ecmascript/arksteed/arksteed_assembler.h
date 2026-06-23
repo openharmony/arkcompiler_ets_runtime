@@ -58,11 +58,48 @@ enum class Condition {
     COND_ZERO,
     COND_NOT_ZERO,
     COND_OVERFLOW,
-    COND_NOT_OVERFLOW
+    COND_NOT_OVERFLOW,
+    COND_PARITY,
+    COND_NOT_PARITY
 };
 inline Condition NegateCondition(Condition cond)
 {
-    return static_cast<Condition>(static_cast<int>(cond) ^ 1);
+    switch (cond) {
+        case Condition::COND_EQUAL:
+            return Condition::COND_NOT_EQUAL;
+        case Condition::COND_NOT_EQUAL:
+            return Condition::COND_EQUAL;
+        case Condition::COND_LESS_THAN:
+            return Condition::COND_GREATER_THAN_OR_EQUAL;
+        case Condition::COND_LESS_THAN_OR_EQUAL:
+            return Condition::COND_GREATER_THAN;
+        case Condition::COND_GREATER_THAN:
+            return Condition::COND_LESS_THAN_OR_EQUAL;
+        case Condition::COND_GREATER_THAN_OR_EQUAL:
+            return Condition::COND_LESS_THAN;
+        case Condition::COND_ABOVE:
+            return Condition::COND_BELOW_OR_EQUAL;
+        case Condition::COND_BELOW:
+            return Condition::COND_ABOVE_OR_EQUAL;
+        case Condition::COND_ABOVE_OR_EQUAL:
+            return Condition::COND_BELOW;
+        case Condition::COND_BELOW_OR_EQUAL:
+            return Condition::COND_ABOVE;
+        case Condition::COND_ZERO:
+            return Condition::COND_NOT_ZERO;
+        case Condition::COND_NOT_ZERO:
+            return Condition::COND_ZERO;
+        case Condition::COND_OVERFLOW:
+            return Condition::COND_NOT_OVERFLOW;
+        case Condition::COND_NOT_OVERFLOW:
+            return Condition::COND_OVERFLOW;
+        case Condition::COND_PARITY:
+            return Condition::COND_NOT_PARITY;
+        case Condition::COND_NOT_PARITY:
+            return Condition::COND_PARITY;
+        default:
+            UNREACHABLE();
+    }
 }
 
 // =============================================================================
@@ -165,6 +202,7 @@ public:
     void Float64Mul(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void CompareFloat64(ArkSteedDoubleRegister left, ArkSteedDoubleRegister right);
     void TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src);
     void Word64And(ArkSteedRegister dst, ArkSteedRegister src);
 

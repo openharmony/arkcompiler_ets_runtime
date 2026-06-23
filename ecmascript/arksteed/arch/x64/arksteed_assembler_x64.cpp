@@ -249,6 +249,11 @@ void ArkSteedAssembler::Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleReg
     assembler_.Subsd(src, dst);
 }
 
+void ArkSteedAssembler::CompareFloat64(ArkSteedDoubleRegister left, ArkSteedDoubleRegister right)
+{
+    assembler_.Ucomisd(right, left);
+}
+
 void ArkSteedAssembler::TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src)
 {
     assembler_.Cvttsd2si64(src, dst);
@@ -472,6 +477,12 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
             break;
         case Condition::COND_NOT_OVERFLOW:
             assembler_.Jno(target);
+            break;
+        case Condition::COND_PARITY:
+            assembler_.Jp(target);
+            break;
+        case Condition::COND_NOT_PARITY:
+            assembler_.Jnp(target);
             break;
         default:
             UNREACHABLE();

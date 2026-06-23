@@ -211,6 +211,7 @@ enum DataProcessing3SourceOpCode {
 
 enum FloatingPointOpCode {
     FP64 = 0x00400000,
+    FCMP = 0x1E202000,
     FMOV_XD = 0x9E660000,
     FMUL = 0x1E200800,
     FDIV = 0x1E201800,

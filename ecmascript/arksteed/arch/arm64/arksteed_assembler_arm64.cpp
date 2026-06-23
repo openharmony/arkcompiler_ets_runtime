@@ -259,6 +259,11 @@ void ArkSteedAssembler::Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleReg
     assembler_.Fneg(dst, src);
 }
 
+void ArkSteedAssembler::CompareFloat64(ArkSteedDoubleRegister left, ArkSteedDoubleRegister right)
+{
+    assembler_.Fcmp(left, right);
+}
+
 void ArkSteedAssembler::TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src)
 {
     assembler_.Fcvtzs(dst.W(), src);
@@ -774,6 +779,10 @@ aarch64::Condition ArkSteedAssembler::ToPhysicalCondition(Condition condition) c
         case Condition::COND_OVERFLOW:
             return aarch64::Condition::VS;
         case Condition::COND_NOT_OVERFLOW:
+            return aarch64::Condition::VC;
+        case Condition::COND_PARITY:
+            return aarch64::Condition::VS;
+        case Condition::COND_NOT_PARITY:
             return aarch64::Condition::VC;
         default:
             UNREACHABLE();

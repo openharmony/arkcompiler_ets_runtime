@@ -92,6 +92,7 @@ public:
     void Subsd(XMMRegister src, XMMRegister dst);
     void Mulsd(XMMRegister src, XMMRegister dst);
     void Divsd(XMMRegister src, XMMRegister dst);
+    void Ucomisd(XMMRegister src, XMMRegister dst);
     void Addq(Immediate src, Register dst);
     void Addq(Register src, Register dst);
     void Addl(Immediate src, Register dst);
@@ -154,6 +155,8 @@ public:
     void Jnb(Label *target, Distance distance = Distance::Far);
     void Jo(Label *target, Distance distance = Distance::Far);
     void Jno(Label *target, Distance distance = Distance::Far);
+    void Jp(Label *target, Distance distance = Distance::Far);
+    void Jnp(Label *target, Distance distance = Distance::Far);
     void Leaq(const Operand &src, Register dst);
     void Leal(const Operand &src, Register dst);
     void Movl(Register src, Register dst);
@@ -270,6 +273,8 @@ private:
     void EmitJnb(int32_t offset);
     void EmitJo(int32_t offset);
     void EmitJno(int32_t offset);
+    void EmitJp(int32_t offset);
+    void EmitJnp(int32_t offset);
     // +---+---+---+---+---+---+---+---+
     // | 0   1   0   0 | W | R | X | B |
     // +---+---+---+---+---+---+---+---+

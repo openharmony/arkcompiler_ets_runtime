@@ -417,6 +417,74 @@ Condition ConditionFromInt32Condition(Int32ConditionKind condition)
             UNREACHABLE();
     }
 }
+
+void EmitTaggedBooleanFromCondition(ArkSteedAssembler *assembler, ArkSteedRegister dst, Condition trueCondition)
+{
+    Label trueLabel;
+    Label done;
+    assembler->JumpIf(trueCondition, &trueLabel);
+    assembler->LoadTaggedValue(dst, JSTaggedValue::False().GetRawData());
+    assembler->Jump(&done);
+    assembler->Bind(&trueLabel);
+    assembler->LoadTaggedValue(dst, JSTaggedValue::True().GetRawData());
+    assembler->Bind(&done);
+}
+
+Condition OrderedFloat64ConditionFromInt32Condition(Int32ConditionKind condition)
+{
+    switch (condition) {
+        case Int32ConditionKind::EQUAL:
+            return Condition::COND_EQUAL;
+        case Int32ConditionKind::NOT_EQUAL:
+            return Condition::COND_NOT_EQUAL;
+        case Int32ConditionKind::LESS_THAN:
+            return Condition::COND_BELOW;
+        case Int32ConditionKind::LESS_THAN_OR_EQUAL:
+            return Condition::COND_BELOW_OR_EQUAL;
+        case Int32ConditionKind::GREATER_THAN:
+            return Condition::COND_ABOVE;
+        case Int32ConditionKind::GREATER_THAN_OR_EQUAL:
+            return Condition::COND_ABOVE_OR_EQUAL;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void EmitTaggedBooleanFromFloat64Compare(ArkSteedAssembler *assembler, ArkSteedRegister dst,
+                                         Int32ConditionKind condition)
+{
+    Label trueLabel;
+    Label falseLabel;
+    Label done;
+    if (condition == Int32ConditionKind::NOT_EQUAL) {
+        assembler->JumpIf(Condition::COND_PARITY, &trueLabel);
+        assembler->JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), &trueLabel);
+        assembler->Jump(&falseLabel);
+    } else {
+        assembler->JumpIf(Condition::COND_PARITY, &falseLabel);
+        assembler->JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), &trueLabel);
+        assembler->Jump(&falseLabel);
+    }
+    assembler->Bind(&trueLabel);
+    assembler->LoadTaggedValue(dst, JSTaggedValue::True().GetRawData());
+    assembler->Jump(&done);
+    assembler->Bind(&falseLabel);
+    assembler->LoadTaggedValue(dst, JSTaggedValue::False().GetRawData());
+    assembler->Bind(&done);
+}
+
+void BranchOnFloat64Compare(ArkSteedAssembler *assembler, Int32ConditionKind condition, Label *ifTrue, Label *ifFalse)
+{
+    if (condition == Int32ConditionKind::NOT_EQUAL) {
+        assembler->JumpIf(Condition::COND_PARITY, ifTrue);
+        assembler->JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), ifTrue);
+        assembler->Jump(ifFalse);
+        return;
+    }
+    assembler->JumpIf(Condition::COND_PARITY, ifFalse);
+    assembler->JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), ifTrue);
+    assembler->Jump(ifFalse);
+}
 }  // namespace
 
 template <class VertexT>
@@ -1058,6 +1126,82 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
 
     assembler_->Bind(&deopt);
     EmitUseSlotDeopt(assembler_, safepointBuilder_, check, kungfu::DeoptType::NOTSTRING1);
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32ConditionCheckVertex>(I32ConditionCheckVertex *check)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << check->GetId() << ": I32ConditionCheckVertex";
+#endif
+    auto dst = GetResultRegister(check);
+    auto left = GetInputRegister(check, I32ConditionCheckVertex::LEFT_INDEX);
+    auto right = GetInputRegister(check, I32ConditionCheckVertex::RIGHT_INDEX);
+    assembler_->CompareInt32(left, right);
+    EmitTaggedBooleanFromCondition(assembler_, dst, ConditionFromInt32Condition(check->GetCondition()));
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<F64ConditionCheckVertex>(F64ConditionCheckVertex *check)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << check->GetId() << ": F64ConditionCheckVertex";
+#endif
+    auto dst = GetResultRegister(check);
+    auto left = GetInputDoubleRegister(check, F64ConditionCheckVertex::LEFT_INDEX);
+    auto right = GetInputDoubleRegister(check, F64ConditionCheckVertex::RIGHT_INDEX);
+    assembler_->CompareFloat64(left, right);
+    EmitTaggedBooleanFromFloat64Compare(assembler_, dst, check->GetCondition());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TaggedEqualVertex>(TaggedEqualVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": TaggedEqualVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto left = GetInputRegister(op, TaggedEqualVertex::LEFT_INDEX);
+    auto right = GetInputRegister(op, TaggedEqualVertex::RIGHT_INDEX);
+    assembler_->Compare(left, right);
+    EmitTaggedBooleanFromCondition(assembler_, dst, Condition::COND_EQUAL);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TaggedNotEqualVertex>(TaggedNotEqualVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": TaggedNotEqualVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto left = GetInputRegister(op, TaggedNotEqualVertex::LEFT_INDEX);
+    auto right = GetInputRegister(op, TaggedNotEqualVertex::RIGHT_INDEX);
+    assembler_->Compare(left, right);
+    EmitTaggedBooleanFromCondition(assembler_, dst, Condition::COND_NOT_EQUAL);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqualVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": StringEqualVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    int stackArgCount = PrepareCommonStubStackArguments(op, op->GetInputCount());
+    assembler_->CallCommonStub(kungfu::CommonStubCSigns::FastStringEqual);
+    safepointBuilder_->DefineSafepoint(assembler_->GetPcOffset());
+    assembler_->FreeCallArgSlots(stackArgCount);
+    assembler_->And(dst, 1);
+
+    Label falseLabel;
+    Label done;
+    assembler_->Compare(dst, 0);
+    assembler_->JumpIf(Condition::COND_EQUAL, &falseLabel);
+    assembler_->LoadTaggedValue(dst, JSTaggedValue::True().GetRawData());
+    assembler_->Jump(&done);
+    assembler_->Bind(&falseLabel);
+    assembler_->LoadTaggedValue(dst, JSTaggedValue::False().GetRawData());
     assembler_->Bind(&done);
 }
 
@@ -1720,6 +1864,77 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTrueVertex>(BranchIfTrueV
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfInt32CompareVertex>(BranchIfInt32CompareVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId() << ": BranchIfInt32CompareVertex to BB #"
+                        << ifTrue->GetId() << (trueBranchIsFallthrough ? " (fallthrough)" : "")
+                        << " if true; to BB #" << ifFalse->GetId()
+                        << (falseBranchIsFallthrough ? " (fallthrough)" : "") << " if false.";
+#endif
+
+    auto left = GetInputRegister(jumpIf, BranchIfInt32CompareVertex::LEFT_INDEX);
+    auto right = GetInputRegister(jumpIf, BranchIfInt32CompareVertex::RIGHT_INDEX);
+    assembler_->CompareInt32(left, right);
+    assembler_->Branch(ConditionFromInt32Condition(jumpIf->GetCondition()),
+                       ifTrue->GetLabel(),
+                       trueBranchIsFallthrough,
+                       ifFalse->GetLabel(),
+                       falseBranchIsFallthrough);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfFloat64CompareVertex>(BranchIfFloat64CompareVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+
+#ifndef NDEBUG
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId() << ": BranchIfFloat64CompareVertex to BB #"
+                        << ifTrue->GetId() << (trueBranchIsFallthrough ? " (fallthrough)" : "")
+                        << " if true; to BB #" << ifFalse->GetId()
+                        << (falseBranchIsFallthrough ? " (fallthrough)" : "") << " if false.";
+#endif
+
+    auto left = GetInputDoubleRegister(jumpIf, BranchIfFloat64CompareVertex::LEFT_INDEX);
+    auto right = GetInputDoubleRegister(jumpIf, BranchIfFloat64CompareVertex::RIGHT_INDEX);
+    assembler_->CompareFloat64(left, right);
+    BranchOnFloat64Compare(assembler_, jumpIf->GetCondition(), ifTrue->GetLabel(), ifFalse->GetLabel());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfReferenceEqualVertex>(BranchIfReferenceEqualVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId() << ": BranchIfReferenceEqualVertex to BB #"
+                        << ifTrue->GetId() << (trueBranchIsFallthrough ? " (fallthrough)" : "")
+                        << " if true; to BB #" << ifFalse->GetId()
+                        << (falseBranchIsFallthrough ? " (fallthrough)" : "") << " if false.";
+#endif
+
+    auto left = GetInputRegister(jumpIf, BranchIfReferenceEqualVertex::LEFT_INDEX);
+    auto right = GetInputRegister(jumpIf, BranchIfReferenceEqualVertex::RIGHT_INDEX);
+    assembler_->Compare(left, right);
+    assembler_->Branch(Condition::COND_EQUAL,
+                       ifTrue->GetLabel(),
+                       trueBranchIsFallthrough,
+                       ifFalse->GetLabel(),
+                       falseBranchIsFallthrough);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitControlVertex<ReturnVertex>(ReturnVertex *returns)
 {
 #ifndef NDEBUG
@@ -2224,7 +2439,7 @@ void ArkSteedCodeGenerator::AppendVertexSuccessorInfo(std::ostringstream *ss, Ve
     } else if (auto *jumpLoop = control->TryCast<JumpLoopVertex>(); jumpLoop != nullptr) {
         *ss << " --> [" << GetBlockColor(jumpLoop->Target()->GetId()) << "b" << jumpLoop->Target()->GetId()
             << GetCurrentBlockColor() << "] (loop back)";
-    } else if (auto *branch = control->TryCast<BranchIfTrueVertex>(); branch != nullptr) {
+    } else if (auto *branch = control->TryCast<BranchControlVertex>(); branch != nullptr) {
         *ss << " --> [" << GetBlockColor(branch->IfTrue()->GetId()) << "b" << branch->IfTrue()->GetId();
         if (IsNextBlockInLayout(branch->IfTrue())) {
             *ss << " (fallthrough)";
@@ -2315,7 +2530,7 @@ void ArkSteedCodeGenerator::BuildBlockAdjacencyList(std::vector<std::vector<int>
             if (jumpLoop->Target() != nullptr) {
                 successorIds.push_back(jumpLoop->Target()->GetId());
             }
-        } else if (auto *branch = control->TryCast<BranchIfTrueVertex>(); branch != nullptr) {
+        } else if (auto *branch = control->TryCast<BranchControlVertex>(); branch != nullptr) {
             if (branch->IfTrue() != nullptr) {
                 successorIds.push_back(branch->IfTrue()->GetId());
             }

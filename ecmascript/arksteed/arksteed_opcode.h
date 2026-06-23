@@ -52,6 +52,17 @@ enum class Int32ConditionKind : uint8_t {
     GREATER_THAN_OR_EQUAL,
 };
 
+enum class CompareOpKind : uint8_t {
+    EQUAL,
+    NOT_EQUAL,
+    LESS_THAN,
+    LESS_THAN_OR_EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_OR_EQUAL,
+    STRICT_EQUAL,
+    STRICT_NOT_EQUAL,
+};
+
 enum class Int32BitwiseKind : uint8_t {
     BITWISE_AND,
     BITWISE_OR,
@@ -741,6 +752,94 @@ public:
         ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
         ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
+};
+
+class I32ConditionCheckVertex : public FixedInputVertexMixin<2, ValueVertex, I32ConditionCheckVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    explicit I32ConditionCheckVertex(uint64_t bitfield, Int32ConditionKind condition)
+        : FixedInputVertexMixin(bitfield), condition_(condition)
+    {}
+
+    Int32ConditionKind GetCondition() const
+    {
+        return condition_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    Int32ConditionKind condition_;
+};
+
+class F64ConditionCheckVertex : public FixedInputVertexMixin<2, ValueVertex, F64ConditionCheckVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::FLOAT64, ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    explicit F64ConditionCheckVertex(uint64_t bitfield, Int32ConditionKind condition)
+        : FixedInputVertexMixin(bitfield), condition_(condition)
+    {}
+
+    Int32ConditionKind GetCondition() const
+    {
+        return condition_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    Int32ConditionKind condition_;
+};
+
+class TaggedEqualVertex : public FixedInputVertexMixin<2, ValueVertex, TaggedEqualVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::TAGGED, ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    explicit TaggedEqualVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class TaggedNotEqualVertex : public FixedInputVertexMixin<2, ValueVertex, TaggedNotEqualVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::TAGGED, ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    explicit TaggedNotEqualVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class StringEqualVertex : public FixedInputVertexMixin<4, ValueVertex, StringEqualVertex> {
+public:
+    static constexpr int GLUE_INDEX = 0;
+    static constexpr int LEFT_INDEX = 1;
+    static constexpr int RIGHT_INDEX = 2;
+    static constexpr int GLOBAL_ENV_INDEX = 3;
+    static constexpr detail::InputTypes<4> INPUT_TYPES {ValueRepresentation::INT_PTR, ValueRepresentation::TAGGED,
+                                                        ValueRepresentation::TAGGED, ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::JsCall();
+
+    explicit StringEqualVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
 };
 
 class I32AddWithOverflowVertex : public VertexMixin<ValueVertex, I32AddWithOverflowVertex>,
@@ -1451,6 +1550,67 @@ public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
     BranchIfTrueVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class BranchIfInt32CompareVertex : public BranchControlVertexT<2, BranchIfInt32CompareVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfInt32CompareVertex(uint64_t bitfield, Int32ConditionKind condition, BB *ifTrue, BB *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse), condition_(condition)
+    {}
+
+    Int32ConditionKind GetCondition() const
+    {
+        return condition_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    Int32ConditionKind condition_;
+};
+
+class BranchIfFloat64CompareVertex : public BranchControlVertexT<2, BranchIfFloat64CompareVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::FLOAT64, ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfFloat64CompareVertex(uint64_t bitfield, Int32ConditionKind condition, BB *ifTrue, BB *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse), condition_(condition)
+    {}
+
+    Int32ConditionKind GetCondition() const
+    {
+        return condition_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    Int32ConditionKind condition_;
+};
+
+class BranchIfReferenceEqualVertex : public BranchControlVertexT<2, BranchIfReferenceEqualVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::TAGGED, ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfReferenceEqualVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : BranchControlVertexT(bitfield, ifTrue, ifFalse)
     {}
 

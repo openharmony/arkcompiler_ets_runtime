@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include <cstring>
 #include <limits>
 
 #include "ecmascript/arksteed/arksteed_compile_info_facts.h"
@@ -189,6 +190,133 @@ bool SupportsF64BinOp(BinaryOpKind kind)
             return true;
         default:
             return false;
+    }
+}
+
+bool IsEqualityCompare(CompareOpKind kind)
+{
+    return kind == CompareOpKind::EQUAL || kind == CompareOpKind::NOT_EQUAL ||
+           kind == CompareOpKind::STRICT_EQUAL || kind == CompareOpKind::STRICT_NOT_EQUAL;
+}
+
+bool IsStrictEqualityCompare(CompareOpKind kind)
+{
+    return kind == CompareOpKind::STRICT_EQUAL || kind == CompareOpKind::STRICT_NOT_EQUAL;
+}
+
+bool IsEqualCompare(CompareOpKind kind)
+{
+    return kind == CompareOpKind::EQUAL || kind == CompareOpKind::STRICT_EQUAL;
+}
+
+bool IsReferenceComparableRootValue(ValueVertex *node)
+{
+    if (node == nullptr) {
+        return false;
+    }
+    auto *constant = node->TryCast<TaggedConstantVertex>();
+    if (constant == nullptr) {
+        return false;
+    }
+    JSTaggedValue tagged(constant->GetValue());
+    return tagged.IsBoolean() || tagged.IsNull() || tagged.IsUndefined() || tagged.IsHole();
+}
+
+bool IsReferenceComparableType(NodeInfo::NodeType type)
+{
+    using NodeType = NodeInfo::NodeType;
+    constexpr NodeType referenceComparable = NodeInfo::UnionNodeType(
+        NodeInfo::UnionNodeType(NodeType::NULL_OR_UNDEFINED, NodeType::BOOLEAN),
+        NodeInfo::UnionNodeType(NodeType::SYMBOL, NodeType::JS_RECEIVER));
+    return NodeInfo::NodeTypeIs(type, referenceComparable);
+}
+
+bool StrictTypesCanBeEqual(NodeInfo::NodeType leftType, NodeInfo::NodeType rightType)
+{
+    if (NodeInfo::NodeTypeCanBe(NodeInfo::IntersectNodeType(leftType, rightType), NodeInfo::NodeType::UNKNOWN)) {
+        return true;
+    }
+    return NodeInfo::NodeTypeCanBe(leftType, NodeInfo::NodeType::NUMBER) &&
+           NodeInfo::NodeTypeCanBe(rightType, NodeInfo::NodeType::NUMBER);
+}
+
+bool EvaluateInt32Compare(CompareOpKind kind, int32_t left, int32_t right)
+{
+    switch (kind) {
+        case CompareOpKind::EQUAL:
+        case CompareOpKind::STRICT_EQUAL:
+            return left == right;
+        case CompareOpKind::NOT_EQUAL:
+        case CompareOpKind::STRICT_NOT_EQUAL:
+            return left != right;
+        case CompareOpKind::LESS_THAN:
+            return left < right;
+        case CompareOpKind::LESS_THAN_OR_EQUAL:
+            return left <= right;
+        case CompareOpKind::GREATER_THAN:
+            return left > right;
+        case CompareOpKind::GREATER_THAN_OR_EQUAL:
+            return left >= right;
+    }
+    UNREACHABLE();
+}
+
+bool EvaluateFloat64Compare(CompareOpKind kind, double left, double right)
+{
+    bool unordered = std::isnan(left) || std::isnan(right);
+    switch (kind) {
+        case CompareOpKind::EQUAL:
+        case CompareOpKind::STRICT_EQUAL:
+            return !unordered && left == right;
+        case CompareOpKind::NOT_EQUAL:
+        case CompareOpKind::STRICT_NOT_EQUAL:
+            return unordered || left != right;
+        case CompareOpKind::LESS_THAN:
+            return !unordered && left < right;
+        case CompareOpKind::LESS_THAN_OR_EQUAL:
+            return !unordered && left <= right;
+        case CompareOpKind::GREATER_THAN:
+            return !unordered && left > right;
+        case CompareOpKind::GREATER_THAN_OR_EQUAL:
+            return !unordered && left >= right;
+    }
+    UNREACHABLE();
+}
+
+Int32ConditionKind Int32ConditionFromCompare(CompareOpKind kind)
+{
+    switch (kind) {
+        case CompareOpKind::EQUAL:
+        case CompareOpKind::STRICT_EQUAL:
+            return Int32ConditionKind::EQUAL;
+        case CompareOpKind::NOT_EQUAL:
+        case CompareOpKind::STRICT_NOT_EQUAL:
+            return Int32ConditionKind::NOT_EQUAL;
+        case CompareOpKind::LESS_THAN:
+            return Int32ConditionKind::LESS_THAN;
+        case CompareOpKind::LESS_THAN_OR_EQUAL:
+            return Int32ConditionKind::LESS_THAN_OR_EQUAL;
+        case CompareOpKind::GREATER_THAN:
+            return Int32ConditionKind::GREATER_THAN;
+        case CompareOpKind::GREATER_THAN_OR_EQUAL:
+            return Int32ConditionKind::GREATER_THAN_OR_EQUAL;
+    }
+    UNREACHABLE();
+}
+
+CompareOpKind InvertCompare(CompareOpKind kind)
+{
+    switch (kind) {
+        case CompareOpKind::EQUAL:
+            return CompareOpKind::NOT_EQUAL;
+        case CompareOpKind::NOT_EQUAL:
+            return CompareOpKind::EQUAL;
+        case CompareOpKind::STRICT_EQUAL:
+            return CompareOpKind::STRICT_NOT_EQUAL;
+        case CompareOpKind::STRICT_NOT_EQUAL:
+            return CompareOpKind::STRICT_EQUAL;
+        default:
+            UNREACHABLE();
     }
 }
 
@@ -638,13 +766,45 @@ JumpLoopVertex *GraphBuilder::FinishBlockWithJumpLoop(BB *owner, BB *target)
     return jumpLoopVertex;
 }
 
-BranchIfTrueVertex *GraphBuilder::FinishBlockWithBranch(
+ControlVertex *GraphBuilder::FinishBlockWithBranch(
     BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse)
 {
+    auto finishWithTargets = [targetIfTrue, targetIfFalse, owner](ControlVertex *vertex) {
+        targetIfTrue->AddPredecessor(owner);
+        targetIfFalse->AddPredecessor(owner);
+        return vertex;
+    };
+
+    if (auto *compare = input->TryCast<I32ConditionCheckVertex>()) {
+        return finishWithTargets(FinishBlockWith<BranchIfInt32CompareVertex>(
+            owner,
+            {compare->GetInput(I32ConditionCheckVertex::LEFT_INDEX),
+             compare->GetInput(I32ConditionCheckVertex::RIGHT_INDEX)},
+            compare->GetCondition(), targetIfTrue, targetIfFalse));
+    }
+    if (auto *compare = input->TryCast<F64ConditionCheckVertex>()) {
+        return finishWithTargets(FinishBlockWith<BranchIfFloat64CompareVertex>(
+            owner,
+            {compare->GetInput(F64ConditionCheckVertex::LEFT_INDEX),
+             compare->GetInput(F64ConditionCheckVertex::RIGHT_INDEX)},
+            compare->GetCondition(), targetIfTrue, targetIfFalse));
+    }
+    if (auto *equal = input->TryCast<TaggedEqualVertex>()) {
+        return finishWithTargets(FinishBlockWith<BranchIfReferenceEqualVertex>(
+            owner,
+            {equal->GetInput(TaggedEqualVertex::LEFT_INDEX), equal->GetInput(TaggedEqualVertex::RIGHT_INDEX)},
+            targetIfTrue, targetIfFalse));
+    }
+    if (auto *notEqual = input->TryCast<TaggedNotEqualVertex>()) {
+        return finishWithTargets(FinishBlockWith<BranchIfReferenceEqualVertex>(
+            owner,
+            {notEqual->GetInput(TaggedNotEqualVertex::LEFT_INDEX),
+             notEqual->GetInput(TaggedNotEqualVertex::RIGHT_INDEX)},
+            targetIfFalse, targetIfTrue));
+    }
+
     auto *branchVertex = FinishBlockWith<BranchIfTrueVertex>(owner, {input}, targetIfTrue, targetIfFalse);
-    targetIfTrue->AddPredecessor(owner);
-    targetIfFalse->AddPredecessor(owner);
-    return branchVertex;
+    return finishWithTargets(branchVertex);
 }
 
 template <class VertexT, class... Args>
@@ -1532,100 +1692,80 @@ struct GraphBuilder::BytecodeVisitor {
 
     // -------- Category #5: Comparisons --------
 
-    void LowerEq(const BytecodeInfo *bcInfo)
+    bool TryFoldCompareAtBytecode(const BytecodeInfo *bcInfo, BinaryFoldOp foldOp)
     {
         ValueVertex *x = LoadRegister(bcInfo, 0);
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::EQ, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (!TryFoldBinaryConstant(x, y, foldOp, &folded)) {
+            return false;
+        }
+        frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+        return true;
+    }
+
+    void LowerEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::EQ)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Equal));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::EQUAL));
     }
 
     void LowerNotEq(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::NOT_EQ, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::NOT_EQ)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::NotEqual));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::NOT_EQUAL));
     }
 
     void LowerLess(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::LESS, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Less));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::LESS_THAN));
     }
 
     void LowerLessEq(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::LESS_EQ, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS_EQ)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::LessEq));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::LESS_THAN_OR_EQUAL));
     }
 
     void LowerGreater(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::GREATER, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Greater));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::GREATER_THAN));
     }
 
     void LowerGreaterEq(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::GREATER_EQ, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER_EQ)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::GreaterEq));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::GREATER_THAN_OR_EQUAL));
     }
 
     void LowerStrictNotEq(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::STRICT_NOT_EQ, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_NOT_EQ)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::StrictNotEqual));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::STRICT_NOT_EQUAL));
     }
 
     void LowerStrictEq(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        JSTaggedValue folded;
-        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::STRICT_EQ, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_EQ)) {
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::StrictEqual));
+        frameState.SetAcc(BuildCompareOperation(CompareOpKind::STRICT_EQUAL));
     }
 
     void LowerIsTrue()
@@ -1636,6 +1776,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldToBooleanConstant(value, &toBoolean)) {
             uint64_t value = toBoolean ? JSTaggedValue::VALUE_TRUE : JSTaggedValue::VALUE_FALSE;
             result = TaggedConstantFromFoldedValue(JSTaggedValue(value));
+        }
+        if (result == nullptr) {
+            result = TryBuildKnownIntToBoolean(value, true);
         }
         if (result == nullptr) {
             result = CommonStubCall({glue, value}, CommonStubID::ToBooleanTrue);
@@ -1651,6 +1794,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldToBooleanConstant(value, &toBoolean)) {
             uint64_t value = toBoolean ? JSTaggedValue::VALUE_FALSE : JSTaggedValue::VALUE_TRUE;
             result = TaggedConstantFromFoldedValue(JSTaggedValue(value));
+        }
+        if (result == nullptr) {
+            result = TryBuildKnownIntToBoolean(value, false);
         }
         if (result == nullptr) {
             result = CommonStubCall({glue, value}, CommonStubID::ToBooleanFalse);
@@ -3665,6 +3811,239 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
         ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
         return BuildStringAdd(checkedLeft, checkedRight);
+    }
+
+    ValueVertex *GetBooleanConstant(bool value)
+    {
+        JSTaggedValue tagged(value ? JSTaggedValue::VALUE_TRUE : JSTaggedValue::VALUE_FALSE);
+        return TaggedConstantFromFoldedValue(tagged);
+    }
+
+    ValueVertex *TryBuildKnownIntToBoolean(ValueVertex *value, bool trueIfNonZero)
+    {
+        if (!compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            return nullptr;
+        }
+        ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        Int32ConditionKind condition =
+            trueIfNonZero ? Int32ConditionKind::NOT_EQUAL : Int32ConditionKind::EQUAL;
+        ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32, zero}, condition);
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildGenericCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        CommonStubID stubId;
+        switch (kind) {
+            case CompareOpKind::EQUAL:
+                stubId = CommonStubID::Equal;
+                break;
+            case CompareOpKind::NOT_EQUAL:
+                stubId = CommonStubID::NotEqual;
+                break;
+            case CompareOpKind::LESS_THAN:
+                stubId = CommonStubID::Less;
+                break;
+            case CompareOpKind::LESS_THAN_OR_EQUAL:
+                stubId = CommonStubID::LessEq;
+                break;
+            case CompareOpKind::GREATER_THAN:
+                stubId = CommonStubID::Greater;
+                break;
+            case CompareOpKind::GREATER_THAN_OR_EQUAL:
+                stubId = CommonStubID::GreaterEq;
+                break;
+            case CompareOpKind::STRICT_EQUAL:
+                stubId = CommonStubID::StrictEqual;
+                break;
+            case CompareOpKind::STRICT_NOT_EQUAL:
+                stubId = CommonStubID::StrictNotEqual;
+                break;
+            default:
+                UNREACHABLE();
+        }
+        ValueVertex *result = CommonStubCall({glue, left, right, GlobalEnv()}, stubId);
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildTaggedEqual(ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *result =
+            self->NewVertex<TaggedEqualVertex>(currentBlock, std::initializer_list<ValueVertex *>{left, right});
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildTaggedNotEqual(ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *result =
+            self->NewVertex<TaggedNotEqualVertex>(currentBlock, std::initializer_list<ValueVertex *>{left, right});
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *TryReduceCompareEqualAgainstConstant(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (left == right && IsEqualityCompare(kind) &&
+            compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT)) {
+            return GetBooleanConstant(IsEqualCompare(kind));
+        }
+        if (!IsStrictEqualityCompare(kind)) {
+            return nullptr;
+        }
+
+        bool equalResult = IsEqualCompare(kind);
+        NodeInfo::NodeType leftType = compileInfoFacts_->GetKnownType(left);
+        NodeInfo::NodeType rightType = compileInfoFacts_->GetKnownType(right);
+        if (left == right && !NodeInfo::NodeTypeCanBe(leftType, NodeInfo::NodeType::NUMBER)) {
+            return GetBooleanConstant(equalResult);
+        }
+
+        if (!StrictTypesCanBeEqual(leftType, rightType)) {
+            return GetBooleanConstant(!equalResult);
+        }
+
+        if (IsReferenceComparableRootValue(left) || IsReferenceComparableRootValue(right)) {
+            return equalResult ? BuildTaggedEqual(left, right) : BuildTaggedNotEqual(left, right);
+        }
+
+        if (IsReferenceComparableType(leftType) && IsReferenceComparableType(rightType)) {
+            return equalResult ? BuildTaggedEqual(left, right) : BuildTaggedNotEqual(left, right);
+        }
+
+        return nullptr;
+    }
+
+    ValueVertex *BuildI32CompareTaggedValue(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        std::optional<int32_t> leftValue = TryGetInt32Value(left);
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        if (leftValue.has_value() && rightValue.has_value()) {
+            return GetBooleanConstant(EvaluateInt32Compare(kind, *leftValue, *rightValue));
+        }
+
+        ValueVertex *leftI32 = BuildTaggedIntToI32(left);
+        ValueVertex *rightI32 = BuildTaggedIntToI32(right);
+        ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
+            currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, Int32ConditionFromCompare(kind));
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildI32CompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right,
+                                   bool leftKnownInt, bool rightKnownInt)
+    {
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32CompareTaggedValue(kind, left, right);
+        }
+
+        ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
+        ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
+        ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
+            currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, Int32ConditionFromCompare(kind));
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildF64CompareTaggedValue(CompareOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
+    {
+        if (auto *leftConst = leftF64->TryCast<Float64ConstantVertex>()) {
+            if (auto *rightConst = rightF64->TryCast<Float64ConstantVertex>()) {
+                return GetBooleanConstant(EvaluateFloat64Compare(kind, leftConst->GetValue(), rightConst->GetValue()));
+            }
+        }
+
+        ValueVertex *result = self->NewVertex<F64ConditionCheckVertex>(
+            currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64}, Int32ConditionFromCompare(kind));
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildF64CompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *leftF64 = BuildCheckedNumberToF64(left);
+        ValueVertex *rightF64 = BuildCheckedNumberToF64(right);
+        return BuildF64CompareTaggedValue(kind, leftF64, rightF64);
+    }
+
+    ValueVertex *BuildStringCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (kind == CompareOpKind::EQUAL || kind == CompareOpKind::STRICT_EQUAL) {
+            ValueVertex *result = self->NewVertex<StringEqualVertex>(
+                currentBlock, std::initializer_list<ValueVertex *>{glue, left, right, GlobalEnv()});
+            compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+            return result;
+        }
+        if (kind == CompareOpKind::NOT_EQUAL || kind == CompareOpKind::STRICT_NOT_EQUAL) {
+            // NOT_EQUAL = !EQUAL: build StringEqual then negate the boolean.
+            ValueVertex *equal = BuildStringCompareOp(InvertCompare(kind), left, right);
+            return BuildTaggedNotEqual(equal, GetBooleanConstant(true));
+        }
+        return BuildGenericCompareOp(kind, left, right);
+    }
+
+    ValueVertex *TryBuildStringCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right,
+                                         const pgo::PGOSampleType &profile)
+    {
+        bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
+        bool rightKnownString = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::STRING);
+        if (leftKnownString && rightKnownString) {
+            return BuildStringCompareOp(kind, left, right);
+        }
+        if (!profile.IsString()) {
+            return nullptr;
+        }
+        ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
+        ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
+        return BuildStringCompareOp(kind, checkedLeft, checkedRight);
+    }
+
+    ValueVertex *BuildCompareOperation(CompareOpKind kind)
+    {
+        ValueVertex *left = LoadRegister(currentBcInfo, 0);
+        ValueVertex *right = frameState.GetAcc();
+
+        if (ValueVertex *result = TryReduceCompareEqualAgainstConstant(kind, left, right)) {
+            return result;
+        }
+
+        bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+        bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32CompareOp(kind, left, right, leftKnownInt, rightKnownInt);
+        }
+
+        pgo::PGOSampleType profile = ReadBinaryOpProfile();
+        if (profile.IsInt()) {
+            return BuildI32CompareOp(kind, left, right, false, false);
+        }
+
+        bool leftKnownNumber = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::NUMBER);
+        bool rightKnownNumber = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::NUMBER);
+        bool leftKnownNonIntNumber = leftKnownNumber && !leftKnownInt;
+        bool rightKnownNonIntNumber = rightKnownNumber && !rightKnownInt;
+        if (leftKnownNonIntNumber || rightKnownNonIntNumber || profile.HasNumber()) {
+            return BuildF64CompareOp(kind, left, right);
+        }
+
+        if (leftKnownInt || rightKnownInt) {
+            return BuildI32CompareOp(kind, left, right, leftKnownInt, rightKnownInt);
+        }
+
+        if (ValueVertex *stringCompare = TryBuildStringCompareOp(kind, left, right, profile)) {
+            return stringCompare;
+        }
+
+        if (IsEqualityCompare(kind) && left == right &&
+            compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING)) {
+            return GetBooleanConstant(IsEqualCompare(kind));
+        }
+
+        return BuildGenericCompareOp(kind, left, right);
     }
 
     ValueVertex *BuildGenericBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)

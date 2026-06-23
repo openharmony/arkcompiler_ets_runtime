@@ -89,7 +89,7 @@ private:
 
     JumpVertex *FinishBlockWithJump(BB *owner, BB *target);
     JumpLoopVertex *FinishBlockWithJumpLoop(BB *owner, BB *target);
-    BranchIfTrueVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
+    ControlVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
 
     // VertexT should be control vertex
     template <class VertexT, class... Args>

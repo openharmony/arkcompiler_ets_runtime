@@ -944,6 +944,12 @@ void AssemblerAarch64::Fneg(const VRegister &vd, const VRegister &vn)
     EmitU32(code);
 }
 
+void AssemblerAarch64::Fcmp(const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vn) | FCMP | Rm(vm.GetId()) | Rn(vn.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Fcvtzs(const Register &rd, const VRegister &vn)
 {
     uint32_t code = Sf(!rd.IsW()) | FPType(vn) | FCVTZS | Rn(vn.GetId()) | Rd(rd.GetId());

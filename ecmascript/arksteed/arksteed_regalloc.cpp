@@ -309,7 +309,7 @@ void ArkSteedRegisterAllocator::ProcessUnconditionalControl(UnconditionalControl
 void ArkSteedRegisterAllocator::ProcessConditionalOrReturn(ControlVertex *vertex, BB * /*block*/)
 {
     // ConditionalControlVertex or Return
-    ASSERT(vertex->Is<BranchIfTrueVertex>() || vertex->Is<ReturnVertex>());
+    ASSERT(vertex->Is<BranchControlVertex>() || vertex->Is<ReturnVertex>());
 
     // Assign inputs
     AssignInputs(vertex);
@@ -335,8 +335,8 @@ void ArkSteedRegisterAllocator::ProcessConditionalOrReturn(ControlVertex *vertex
     doubleRegisters_.ClearBlocked();
     VerifyRegisterState();
 
-    // Initialize branch target states for BranchIfTrue
-    if (auto *branch = vertex->TryCast<BranchIfTrueVertex>()) {
+    // Initialize branch target states for conditional branches.
+    if (auto *branch = vertex->TryCast<BranchControlVertex>()) {
         InitializeConditionalBranchTarget(vertex, branch->IfTrue());
         InitializeConditionalBranchTarget(vertex, branch->IfFalse());
     }

@@ -353,6 +353,65 @@ void CheckedTaggedStringVertex::Dump(std::ostream &output) const
     output << "  CheckedTaggedString";
 }
 
+void I32ConditionCheckVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void I32ConditionCheckVertex::Dump(std::ostream &output) const
+{
+    output << "  I32ConditionCheck: condition=" << static_cast<uint32_t>(condition_);
+}
+
+void F64ConditionCheckVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void F64ConditionCheckVertex::Dump(std::ostream &output) const
+{
+    output << "  F64ConditionCheck: condition=" << static_cast<uint32_t>(condition_);
+}
+
+void TaggedEqualVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void TaggedEqualVertex::Dump(std::ostream &output) const
+{
+    output << "  TaggedEqual";
+}
+
+void TaggedNotEqualVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void TaggedNotEqualVertex::Dump(std::ostream &output) const
+{
+    output << "  TaggedNotEqual";
+}
+
+void StringEqualVertex::SetValueLocationConstraints()
+{
+    DefineAsFixed(this, 0);
+    SetStubValueLocationConstraints(this);
+}
+
+void StringEqualVertex::Dump(std::ostream &output) const
+{
+    output << "  StringEqual";
+}
+
 template <class VertexT>
 void VerifyI32BinaryDeoptInputs(const VertexT *vertex)
 {
@@ -727,6 +786,39 @@ void BranchIfTrueVertex::SetValueLocationConstraints()
 void BranchIfTrueVertex::Dump(std::ostream &output) const
 {
     output << "  BranchIfTrue";
+}
+
+void BranchIfInt32CompareVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void BranchIfInt32CompareVertex::Dump(std::ostream &output) const
+{
+    output << "  BranchIfInt32Compare: condition=" << static_cast<uint32_t>(condition_);
+}
+
+void BranchIfFloat64CompareVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void BranchIfFloat64CompareVertex::Dump(std::ostream &output) const
+{
+    output << "  BranchIfFloat64Compare: condition=" << static_cast<uint32_t>(condition_);
+}
+
+void BranchIfReferenceEqualVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void BranchIfReferenceEqualVertex::Dump(std::ostream &output) const
+{
+    output << "  BranchIfReferenceEqual";
 }
 
 void ReturnVertex::SetValueLocationConstraints()

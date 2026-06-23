@@ -56,6 +56,11 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(TaggedIntToI32)           \
     V(CheckedTaggedIntToI32)    \
     V(CheckedTaggedString)      \
+    V(I32ConditionCheck)        \
+    V(F64ConditionCheck)        \
+    V(TaggedEqual)              \
+    V(TaggedNotEqual)           \
+    V(StringEqual)              \
     V(I32AddWithOverflow)       \
     V(I32SubWithOverflow)       \
     V(I32MulWithOverflow)       \
@@ -103,7 +108,11 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 #define CONVERSION_VERTEX_LIST(V) V(ToTaggedInt)
 
-#define BRANCH_CONTROL_VERTEX_LIST(V) V(BranchIfTrue)
+#define BRANCH_CONTROL_VERTEX_LIST(V) \
+    V(BranchIfTrue)                   \
+    V(BranchIfInt32Compare)           \
+    V(BranchIfFloat64Compare)         \
+    V(BranchIfReferenceEqual)
 
 #define CONDITION_CONTROL_VERTEX_LIST(V) BRANCH_CONTROL_VERTEX_LIST(V)
 

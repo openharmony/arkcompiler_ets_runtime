@@ -261,6 +261,7 @@ public:
     void Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fneg(const VRegister &vd, const VRegister &vn);
+    void Fcmp(const VRegister &vn, const VRegister &vm);
     void Fcvtzs(const Register &rd, const VRegister &vn);
     void Cmp(const Register &rd, const Operand &operand);
     void CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond);
