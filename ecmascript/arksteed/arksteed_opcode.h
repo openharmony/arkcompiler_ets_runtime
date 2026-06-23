@@ -1035,6 +1035,87 @@ public:
     }
 };
 
+class I32BNotVertex : public FixedInputVertexMixin<1, ValueVertex, I32BNotVertex> {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+
+    explicit I32BNotVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class I32NegWithOverflowVertex : public VertexMixin<ValueVertex, I32NegWithOverflowVertex>,
+                                 public DeoptimizableMixin {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
+
+    explicit I32NegWithOverflowVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                      ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        VerifyI32UnaryOpInputs();
+    }
+
+private:
+    void VerifyI32UnaryOpInputs() const;
+};
+
+class I32IncWithOverflowVertex : public VertexMixin<ValueVertex, I32IncWithOverflowVertex>,
+                                 public DeoptimizableMixin {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
+
+    explicit I32IncWithOverflowVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                      ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        VerifyI32UnaryOpInputs();
+    }
+
+private:
+    void VerifyI32UnaryOpInputs() const;
+};
+
+class I32DecWithOverflowVertex : public VertexMixin<ValueVertex, I32DecWithOverflowVertex>,
+                                 public DeoptimizableMixin {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
+
+    explicit I32DecWithOverflowVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                      ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        VerifyI32UnaryOpInputs();
+    }
+
+private:
+    void VerifyI32UnaryOpInputs() const;
+};
+
 class I32ToF64Vertex : public FixedInputVertexMixin<1, ValueVertex, I32ToF64Vertex> {
 public:
     static constexpr int INPUT_INDEX = 0;
@@ -1069,6 +1150,18 @@ public:
     }
 };
 
+class F64ToI32TruncVertex : public FixedInputVertexMixin<1, ValueVertex, F64ToI32TruncVertex> {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+
+    explicit F64ToI32TruncVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
 class F64ToTaggedDoubleVertex : public FixedInputVertexMixin<1, ValueVertex, F64ToTaggedDoubleVertex> {
 public:
     static constexpr int INPUT_INDEX = 0;
@@ -1076,6 +1169,18 @@ public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
 
     explicit F64ToTaggedDoubleVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class F64NegVertex : public FixedInputVertexMixin<1, ValueVertex, F64NegVertex> {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Float64();
+
+    explicit F64NegVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
 
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;

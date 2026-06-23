@@ -254,6 +254,16 @@ void ArkSteedAssembler::Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleReg
     assembler_.Fdiv(dst, dst, src);
 }
 
+void ArkSteedAssembler::Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Fneg(dst, src);
+}
+
+void ArkSteedAssembler::TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Fcvtzs(dst.W(), src);
+}
+
 // =============================================================================
 // Bitwise Operations
 // =============================================================================
@@ -311,6 +321,26 @@ void ArkSteedAssembler::Lsr(ArkSteedRegister dst, uint32_t shift)
 {
     ArkSteedRegister arm64Dst = dst;
     assembler_.Lsr(arm64Dst, arm64Dst, shift);
+}
+
+void ArkSteedAssembler::Int32Neg(ArkSteedRegister dst)
+{
+    assembler_.Subs(dst.W(), aarch64::wzr, aarch64::Operand(dst.W()));
+}
+
+void ArkSteedAssembler::Int32Inc(ArkSteedRegister dst)
+{
+    assembler_.Adds(dst.W(), dst.W(), aarch64::Operand(aarch64::Immediate(1)));
+}
+
+void ArkSteedAssembler::Int32Dec(ArkSteedRegister dst)
+{
+    assembler_.Subs(dst.W(), dst.W(), aarch64::Operand(aarch64::Immediate(1)));
+}
+
+void ArkSteedAssembler::Int32BNot(ArkSteedRegister dst)
+{
+    assembler_.Mvn(dst.W(), dst.W());
 }
 
 void ArkSteedAssembler::Int32And(ArkSteedRegister dst, ArkSteedRegister src)

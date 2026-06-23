@@ -240,6 +240,7 @@ public:
     void Lsr(const Register &rd, const Register &rn, const Register &rm);
     void Asr(const Register &rd, const Register &rn, unsigned shift);
     void Asr(const Register &rd, const Register &rn, const Register &rm);
+    void Mvn(const Register &rd, const Register &rn);
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Sbfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
@@ -259,6 +260,8 @@ public:
     void Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fneg(const VRegister &vd, const VRegister &vn);
+    void Fcvtzs(const Register &rd, const VRegister &vn);
     void Cmp(const Register &rd, const Operand &operand);
     void CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond);
     void B(Label *label);

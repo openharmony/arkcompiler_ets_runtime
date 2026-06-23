@@ -584,6 +584,58 @@ void CheckedNonNegativeI32ToTaggedIntVertex::Dump(std::ostream &output) const
     output << "  CheckedNonNegativeI32ToTaggedInt";
 }
 
+void I32BNotVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void I32BNotVertex::Dump(std::ostream &output) const
+{
+    output << "  I32BNot";
+}
+
+template <class VertexT>
+void VerifyI32UnaryDeoptInputs(const VertexT *vertex)
+{
+    ASSERT(vertex->FirstDeoptInputIndex() == VertexT::FIRST_DEOPT_INDEX);
+    ASSERT(vertex->GetInputCount() == static_cast<int>(vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount()));
+    ASSERT(vertex->GetInput(VertexT::VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
+}
+
+void I32NegWithOverflowVertex::VerifyI32UnaryOpInputs() const
+{
+    VerifyI32UnaryDeoptInputs(this);
+}
+
+void I32IncWithOverflowVertex::VerifyI32UnaryOpInputs() const
+{
+    VerifyI32UnaryDeoptInputs(this);
+}
+
+void I32DecWithOverflowVertex::VerifyI32UnaryOpInputs() const
+{
+    VerifyI32UnaryDeoptInputs(this);
+}
+
+#define DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Name)     \
+    void I32##Name##WithOverflowVertex::SetValueLocationConstraints() \
+    {                                                         \
+        UseRegister(Arg(VALUE_INDEX));                       \
+        UseDeoptFrameSlots(this, this);                      \
+        DefineSameAsFirst(this);                             \
+    }                                                         \
+                                                              \
+    void I32##Name##WithOverflowVertex::Dump(std::ostream &output) const \
+    {                                                         \
+        output << "  I32" #Name "WithOverflow";              \
+    }
+
+DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Neg)
+DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Inc)
+DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Dec)
+#undef DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS
+
 void I32ToF64Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
@@ -608,6 +660,17 @@ void CheckedNumberToF64Vertex::Dump(std::ostream &output) const
     output << "  CheckedNumberToF64";
 }
 
+void F64ToI32TruncVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+}
+
+void F64ToI32TruncVertex::Dump(std::ostream &output) const
+{
+    output << "  F64ToI32Trunc";
+}
+
 void F64ToTaggedDoubleVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
@@ -618,6 +681,17 @@ void F64ToTaggedDoubleVertex::SetValueLocationConstraints()
 void F64ToTaggedDoubleVertex::Dump(std::ostream &output) const
 {
     output << "  F64ToTaggedDouble";
+}
+
+void F64NegVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void F64NegVertex::Dump(std::ostream &output) const
+{
+    output << "  F64Neg";
 }
 
 #define DEFINE_F64_BINOP_CONSTRAINTS(Name)       \

@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include <limits>
 
 #include "ecmascript/arksteed/arksteed_compile_info_facts.h"
 #include "ecmascript/arksteed/arksteed_constant_folding.h"
@@ -1307,46 +1308,46 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerInc()
     {
-        ValueVertex *x = frameState.GetAcc();
+        ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
-        if (TryFoldUnaryConstant(x, UnaryFoldOp::INC, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::INC, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Inc));
+        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Inc));
     }
 
     void LowerDec()
     {
-        ValueVertex *x = frameState.GetAcc();
+        ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
-        if (TryFoldUnaryConstant(x, UnaryFoldOp::DEC, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::DEC, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Dec));
+        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Dec));
     }
 
     void LowerNeg()
     {
-        ValueVertex *x = frameState.GetAcc();
+        ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
-        if (TryFoldUnaryConstant(x, UnaryFoldOp::NEG, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::NEG, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Neg));
+        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Neg));
     }
 
     void LowerNot()
     {
-        ValueVertex *x = frameState.GetAcc();
+        ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
-        if (TryFoldUnaryConstant(x, UnaryFoldOp::NOT, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::NOT, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x}, CommonStubID::Not));
+        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Not));
     }
 
     // -------- Category #4: Binary Arithmetic --------
@@ -1634,7 +1635,7 @@ struct GraphBuilder::BytecodeVisitor {
         bool toBoolean = false;
         if (TryFoldToBooleanConstant(value, &toBoolean)) {
             uint64_t value = toBoolean ? JSTaggedValue::VALUE_TRUE : JSTaggedValue::VALUE_FALSE;
-            result = self->graph_->GetTaggedConstant(value);
+            result = TaggedConstantFromFoldedValue(JSTaggedValue(value));
         }
         if (result == nullptr) {
             result = CommonStubCall({glue, value}, CommonStubID::ToBooleanTrue);
@@ -1649,7 +1650,7 @@ struct GraphBuilder::BytecodeVisitor {
         bool toBoolean = false;
         if (TryFoldToBooleanConstant(value, &toBoolean)) {
             uint64_t value = toBoolean ? JSTaggedValue::VALUE_FALSE : JSTaggedValue::VALUE_TRUE;
-            result = self->graph_->GetTaggedConstant(value);
+            result = TaggedConstantFromFoldedValue(JSTaggedValue(value));
         }
         if (result == nullptr) {
             result = CommonStubCall({glue, value}, CommonStubID::ToBooleanFalse);
@@ -1664,7 +1665,11 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMBER, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::NUMBER)) {
+            frameState.SetAcc(value);
             return;
         }
         frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumber)));
@@ -1675,7 +1680,12 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *value = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMERIC, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::NUMBER) ||
+            compileInfoFacts_->CheckType(value, NodeInfo::NodeType::BIGINT)) {
+            frameState.SetAcc(value);
             return;
         }
         frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumeric)));
@@ -3256,11 +3266,17 @@ struct GraphBuilder::BytecodeVisitor {
         if (rightValue.has_value()) {
             switch (kind) {
                 case BinaryOpKind::ADD:
+                    if (*rightValue == 1) {
+                        return BuildIntUnaryOp(CommonStubID::Inc, left, true);
+                    }
                     if (*rightValue == 0) {
                         return returnIfKnownInt(left);
                     }
                     break;
                 case BinaryOpKind::SUB:
+                    if (*rightValue == 1) {
+                        return BuildIntUnaryOp(CommonStubID::Dec, left, true);
+                    }
                     if (*rightValue == 0) {
                         return returnIfKnownInt(left);
                     }
@@ -3295,6 +3311,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (leftValue.has_value()) {
             switch (kind) {
                 case BinaryOpKind::ADD:
+                    if (*leftValue == 1) {
+                        return BuildIntUnaryOp(CommonStubID::Inc, right, true);
+                    }
                     if (*leftValue == 0) {
                         return returnIfKnownInt(right);
                     }
@@ -3729,6 +3748,180 @@ struct GraphBuilder::BytecodeVisitor {
             }
         }
         return BuildNumericBinOp(kind, left, right, profile);
+    }
+
+    ValueVertex *BuildGenericUnaryOp(CommonStubID stubId, ValueVertex *value)
+    {
+        return CommonStubCall({glue, value}, stubId);
+    }
+
+    ValueVertex *BuildIntUnaryOp(CommonStubID stubId, ValueVertex *value, bool valueKnownInt)
+    {
+        ValueVertex *valueI32 = valueKnownInt ? BuildTaggedIntToI32(value) : BuildCheckedTaggedIntToI32(value);
+        auto buildUnaryInputs = [this, valueI32](ChunkVector<VRegIDType> *deoptVRegs) {
+            std::vector<ValueVertex *> inputs {valueI32};
+            AppendCurrentFrameStateForDeopt(&inputs, deoptVRegs);
+            return inputs;
+        };
+
+        switch (stubId) {
+            case CommonStubID::Inc: {
+                ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+                std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
+                ValueVertex *rawResult = self->NewVertex<I32IncWithOverflowVertex>(
+                    currentBlock, inputs, I32IncWithOverflowVertex::FIRST_DEOPT_INDEX, std::move(deoptVRegs),
+                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return BuildTaggedI32Result(rawResult);
+            }
+            case CommonStubID::Dec: {
+                ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+                std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
+                ValueVertex *rawResult = self->NewVertex<I32DecWithOverflowVertex>(
+                    currentBlock, inputs, I32DecWithOverflowVertex::FIRST_DEOPT_INDEX, std::move(deoptVRegs),
+                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return BuildTaggedI32Result(rawResult);
+            }
+            case CommonStubID::Neg: {
+                ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+                std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
+                ValueVertex *rawResult = self->NewVertex<I32NegWithOverflowVertex>(
+                    currentBlock, inputs, I32NegWithOverflowVertex::FIRST_DEOPT_INDEX, std::move(deoptVRegs),
+                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return BuildTaggedI32Result(rawResult);
+            }
+            case CommonStubID::Not: {
+                ValueVertex *rawResult =
+                    self->NewVertex<I32BNotVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueI32});
+                return BuildTaggedI32Result(rawResult);
+            }
+            default:
+                return BuildGenericUnaryOp(stubId, value);
+        }
+    }
+
+    ValueVertex *BuildTruncatingI32BNot(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+            ValueVertex *rawResult =
+                self->NewVertex<I32BNotVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueI32});
+            return BuildTaggedI32Result(rawResult);
+        }
+        ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
+        ValueVertex *truncI32 =
+            self->NewVertex<F64ToI32TruncVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64});
+        ValueVertex *rawResult =
+            self->NewVertex<I32BNotVertex>(currentBlock, std::initializer_list<ValueVertex *>{truncI32});
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *BuildF64UnaryOp(CommonStubID stubId, ValueVertex *value)
+    {
+        ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
+        switch (stubId) {
+            case CommonStubID::Neg: {
+                ValueVertex *negF64 =
+                    self->NewVertex<F64NegVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{negF64});
+                compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
+                return result;
+            }
+            case CommonStubID::Inc: {
+                ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
+                ValueVertex *addF64 =
+                    self->NewVertex<F64AddVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{addF64});
+                compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
+                return result;
+            }
+            case CommonStubID::Dec: {
+                ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
+                ValueVertex *subF64 =
+                    self->NewVertex<F64SubVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{subF64});
+                compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
+                return result;
+            }
+            case CommonStubID::Not:
+                return BuildTruncatingI32BNot(value);
+            default:
+                return BuildGenericUnaryOp(stubId, value);
+        }
+    }
+
+    ValueVertex *BuildUnaryOperation(CommonStubID stubId)
+    {
+        ValueVertex *value = frameState.GetAcc();
+        if (ValueVertex *constant = TryBuildConstantUnaryOperation(stubId, value)) {
+            return constant;
+        }
+        bool valueKnownInt = compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT);
+        if (valueKnownInt) {
+            return BuildIntUnaryOp(stubId, value, true);
+        }
+
+        pgo::PGOSampleType profile = ReadBinaryOpProfile();
+        if (profile.IsInt()) {
+            return BuildIntUnaryOp(stubId, value, false);
+        }
+        if (profile.HasNumber() || profile.IsNumberOrString()) {
+            return BuildF64UnaryOp(stubId, value);
+        }
+        return BuildGenericUnaryOp(stubId, value);
+    }
+
+    ValueVertex *TryBuildConstantUnaryOperation(CommonStubID stubId, ValueVertex *value)
+    {
+        if (std::optional<int32_t> intValue = TryGetInt32Value(value)) {
+            return TryBuildInt32ConstantUnaryOperation(stubId, *intValue);
+        }
+        auto *float64Constant = value->TryCast<Float64ConstantVertex>();
+        if (float64Constant == nullptr) {
+            return nullptr;
+        }
+        return TryBuildFloat64ConstantUnaryOperation(stubId, float64Constant->GetValue());
+    }
+
+    ValueVertex *TryBuildInt32ConstantUnaryOperation(CommonStubID stubId, int32_t value)
+    {
+        switch (stubId) {
+            case CommonStubID::Inc:
+                if (value == std::numeric_limits<int32_t>::max()) {
+                    return nullptr;
+                }
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value + 1));
+            case CommonStubID::Dec:
+                if (value == std::numeric_limits<int32_t>::min()) {
+                    return nullptr;
+                }
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value - 1));
+            case CommonStubID::Neg:
+                if (value == 0 || value == std::numeric_limits<int32_t>::min()) {
+                    return nullptr;
+                }
+                return TaggedConstantFromFoldedValue(JSTaggedValue(-value));
+            case CommonStubID::Not:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(~value));
+            default:
+                return nullptr;
+        }
+    }
+
+    ValueVertex *TryBuildFloat64ConstantUnaryOperation(CommonStubID stubId, double value)
+    {
+        switch (stubId) {
+            case CommonStubID::Inc:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value + 1.0));
+            case CommonStubID::Dec:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value - 1.0));
+            case CommonStubID::Neg:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(-value));
+            default:
+                return nullptr;
+        }
     }
 
     ValueVertex *TryBuildConstantBinaryOperation(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)

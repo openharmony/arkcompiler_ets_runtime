@@ -100,6 +100,7 @@ enum BitwiseOpCode {
     ANDS_Shift   = 0x6a000000,
     ORR_Imm      = 0x32000000,
     ORR_Shift    = 0x2a000000,
+    ORN_Shift    = 0x2a200000,
     EOR_Imm      = 0x52000000,
     EOR_Shift    = 0x4a000000,
 };
@@ -215,6 +216,8 @@ enum FloatingPointOpCode {
     FDIV = 0x1E201800,
     FADD = 0x1E202800,
     FSUB = 0x1E203800,
+    FNEG = 0x1E214000,
+    FCVTZS = 0x1E380000,
     SCVTF = 0x1E220000,
 };
 

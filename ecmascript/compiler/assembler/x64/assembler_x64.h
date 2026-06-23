@@ -102,6 +102,12 @@ public:
     void Subl(Register src, Register dst);
     void Imull(Register src, Register dst);
     void Imull(Register src);
+    void Negl(Register dst);
+    void Incl(Register dst);
+    void Decl(Register dst);
+    void Notl(Register dst);
+    void Xorpd(XMMRegister src, XMMRegister dst);
+    void Cvttsd2si64(XMMRegister src, Register dst);
     void Cdq();
     void Idivl(Register src);
     void Cmpq(Immediate src, Register dst);

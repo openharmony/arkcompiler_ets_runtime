@@ -164,6 +164,8 @@ public:
     void Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Float64Mul(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src);
     void Word64And(ArkSteedRegister dst, ArkSteedRegister src);
 
     // =========================================================================
@@ -175,6 +177,10 @@ public:
     void And(ArkSteedRegister dst, int64_t immediate);
     void And(ArkSteedRegister dst, ArkSteedRegister src);
     void Lsr(ArkSteedRegister dst, uint32_t shift);
+    void Int32Neg(ArkSteedRegister dst);
+    void Int32Inc(ArkSteedRegister dst);
+    void Int32Dec(ArkSteedRegister dst);
+    void Int32BNot(ArkSteedRegister dst);
     void Int32And(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32And(ArkSteedRegister dst, int32_t immediate);
     void Int32Or(ArkSteedRegister dst, ArkSteedRegister src);

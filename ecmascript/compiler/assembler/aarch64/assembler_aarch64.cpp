@@ -747,6 +747,13 @@ void AssemblerAarch64::Asr(const Register &rd, const Register &rn, const Registe
     EmitU32(code);
 }
 
+void AssemblerAarch64::Mvn(const Register &rd, const Register &rn)
+{
+    const Register &zero = rd.IsW() ? wzr : xzr;
+    uint32_t code = Sf(!rd.IsW()) | ORN_Shift | Rm(rn.GetId()) | Rn(zero.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
 {
     bool sf = !rd.IsW();
@@ -928,6 +935,18 @@ void AssemblerAarch64::Fmul(const VRegister &vd, const VRegister &vn, const VReg
 void AssemblerAarch64::Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm)
 {
     uint32_t code = FPType(vd) | FDIV | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fneg(const VRegister &vd, const VRegister &vn)
+{
+    uint32_t code = FPType(vd) | FNEG | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fcvtzs(const Register &rd, const VRegister &vn)
+{
+    uint32_t code = Sf(!rd.IsW()) | FPType(vn) | FCVTZS | Rn(vn.GetId()) | Rd(rd.GetId());
     EmitU32(code);
 }
 

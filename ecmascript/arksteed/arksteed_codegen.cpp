@@ -1459,6 +1459,76 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(Chec
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32TruncVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": F64ToI32TruncVertex";
+#endif
+    assembler_->TruncateFloat64ToInt32(GetResultRegister(op),
+                                       GetInputDoubleRegister(op, F64ToI32TruncVertex::INPUT_INDEX));
+}
+
+#define DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Name, AsmOp, DeoptType, NeedZeroCheck)                \
+    template <>                                                                                       \
+    void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##WithOverflowVertex>(                 \
+        I32##Name##WithOverflowVertex *op)                                                            \
+    {                                                                                                 \
+        auto dst = GetResultRegister(op);                                                             \
+        auto value = GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX);                \
+        if (dst != value) {                                                                           \
+            assembler_->Move(dst, value);                                                             \
+        }                                                                                             \
+        Label deopt;                                                                                  \
+        Label done;                                                                                   \
+        if constexpr (NeedZeroCheck) {                                                                \
+            assembler_->CompareInt32(dst, 0);                                                         \
+            assembler_->JumpIf(Condition::COND_EQUAL, &deopt);                                        \
+        }                                                                                             \
+        assembler_->AsmOp(dst);                                                                       \
+        assembler_->JumpIf(Condition::COND_OVERFLOW, &deopt);                                         \
+        assembler_->Jump(&done);                                                                      \
+        assembler_->Bind(&deopt);                                                                     \
+        EmitUseSlotDeopt(assembler_, safepointBuilder_, op, DeoptType);                               \
+        assembler_->Bind(&done);                                                                      \
+    }
+
+DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Neg, Int32Neg, kungfu::DeoptType::NOTNEGOV1, true)
+DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Inc, Int32Inc, kungfu::DeoptType::INT32OVERFLOW1, false)
+DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Dec, Int32Dec, kungfu::DeoptType::INT32OVERFLOW1, false)
+#undef DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32BNotVertex>(I32BNotVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32BNotVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto value = GetInputRegister(op, I32BNotVertex::VALUE_INDEX);
+    if (dst != value) {
+        assembler_->Move(dst, value);
+    }
+    assembler_->Int32BNot(dst);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<F64NegVertex>(F64NegVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": F64NegVertex";
+#endif
+    auto dst = GetResultDoubleRegister(op);
+    auto value = GetInputDoubleRegister(op, F64NegVertex::VALUE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedDoubleRegister zero = scope.AcquireDoubleScratch();
+    assembler_->Float64Neg(zero, zero);
+    assembler_->Float64Sub(zero, value);
+    if (dst != zero) {
+        assembler_->Move(dst, zero);
+    }
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToTaggedDoubleVertex>(F64ToTaggedDoubleVertex *convert)
 {
 #ifndef NDEBUG

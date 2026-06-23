@@ -1839,4 +1839,52 @@ void AssemblerX64::Divsd(XMMRegister src, XMMRegister dst)
     EmitU8(0x5E);
     EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
 }
+
+void AssemblerX64::Negl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xF7);
+    EmitModrm(3, dst);
+}
+
+void AssemblerX64::Incl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xFF);
+    EmitModrm(0, dst);
+}
+
+void AssemblerX64::Decl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xFF);
+    EmitModrm(1, dst);
+}
+
+void AssemblerX64::Notl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xF7);
+    EmitModrm(2, dst);
+}
+
+void AssemblerX64::Xorpd(XMMRegister src, XMMRegister dst)
+{
+    EmitU8(0x66);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x57);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Cvttsd2si64(XMMRegister src, Register dst)
+{
+    EmitU8(0xF2);
+    EmitU8(0x48 | (dst.HighBit() << 2) | src.HighBit());
+    EmitU8(0x0F);
+    EmitU8(0x2C);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
 }  // panda::ecmascript::x64
