@@ -24,7 +24,7 @@
 namespace panda::ecmascript::arksteed {
 using BytecodeInfo = kungfu::BytecodeInfo;
 
-class BytecodePreprocessorNew {
+class BytecodePreprocessor {
 public:
     static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
 
@@ -79,7 +79,7 @@ public:
         bool IsSynthetic() const;
     };
 
-    BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *chunk);
+    BytecodePreprocessor(JitCompilationEnv *env, Chunk *chunk);
 
     bool Run();
 
@@ -182,57 +182,57 @@ private:
     ChunkVector<uint32_t> numJumpPredecessors_;
 };
 
-inline bool BytecodePreprocessorNew::TryBlockInfo::ContainsBytecode(uint32_t bcIndex) const
+inline bool BytecodePreprocessor::TryBlockInfo::ContainsBytecode(uint32_t bcIndex) const
 {
     return bcIndex >= startBcIndex && bcIndex <= endBcIndex;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::ContainsBytecode(uint32_t bcIndex) const
+inline bool BytecodePreprocessor::BasicBlockInfo::ContainsBytecode(uint32_t bcIndex) const
 {
     return bcIndex >= startBcIndex && bcIndex <= endBcIndex;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::HasFallthrough() const
+inline bool BytecodePreprocessor::BasicBlockInfo::HasFallthrough() const
 {
     return fallthroughBlock != nullptr;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsFallthrough() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsFallthrough() const
 {
     return fallthroughBlock != nullptr && jumpBlock == nullptr;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsJump() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsJump() const
 {
     return jumpBlock != nullptr;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsConditionalJump() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsConditionalJump() const
 {
     return jumpBlock != nullptr && fallthroughBlock != nullptr;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsDead() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsDead() const
 {
     return rpoIndex == NULL_INDEX;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsLoopHeader() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsLoopHeader() const
 {
     return loopBackBlock != nullptr;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsCatchBlockHeader() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsCatchBlockHeader() const
 {
     return !catchPredecessors.empty();
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsEndOfLoop() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsEndOfLoop() const
 {
     return jumpBlock != nullptr && jumpBlock->loopBackBlock == this;
 }
 
-inline bool BytecodePreprocessorNew::BasicBlockInfo::IsSynthetic() const
+inline bool BytecodePreprocessor::BasicBlockInfo::IsSynthetic() const
 {
     return startBcIndex == NULL_INDEX;
 }

@@ -16,9 +16,9 @@
 #include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
 
 namespace panda::ecmascript::arksteed {
-using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
+using BasicBlockInfo = BytecodePreprocessor::BasicBlockInfo;
 
-BytecodeAnalysisNew::BytecodeAnalysisNew(const BytecodePreprocessorNew *parent)
+BytecodeAnalysis::BytecodeAnalysis(const BytecodePreprocessor *parent)
     : parent_(parent),
       numVRegs_(parent->GetNumVRegs()),
       liveIn_(parent->GetChunk()),
@@ -27,7 +27,7 @@ BytecodeAnalysisNew::BytecodeAnalysisNew(const BytecodePreprocessorNew *parent)
       killSet_(parent->GetChunk())
 {}
 
-bool BytecodeAnalysisNew::Run()
+bool BytecodeAnalysis::Run()
 {
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (auto *dest : {&liveIn_, &liveOut_, &ueSet_, &killSet_}) {
@@ -52,7 +52,7 @@ bool BytecodeAnalysisNew::Run()
     return true;
 }
 
-void BytecodeAnalysisNew::UpdateUpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex)
+void BytecodeAnalysis::UpdateUpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex)
 {
     if (info->AccIn() && !TestAcc(killSet_[blockIndex])) {
         SetAcc(ueSet_[blockIndex]);
@@ -77,7 +77,7 @@ void BytecodeAnalysisNew::UpdateUpwardExposedSet(const BytecodeInfo *info, uint3
     }
 }
 
-void BytecodeAnalysisNew::UpdateKillSet(const BytecodeInfo *info, uint32_t blockIndex)
+void BytecodeAnalysis::UpdateKillSet(const BytecodeInfo *info, uint32_t blockIndex)
 {
     if (info->AccOut()) {
         SetAcc(killSet_[blockIndex]);
@@ -91,7 +91,7 @@ void BytecodeAnalysisNew::UpdateKillSet(const BytecodeInfo *info, uint32_t block
     }
 }
 
-void BytecodeAnalysisNew::ExpandKillSet()
+void BytecodeAnalysis::ExpandKillSet()
 {
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
@@ -105,7 +105,7 @@ void BytecodeAnalysisNew::ExpandKillSet()
     }
 }
 
-void BytecodeAnalysisNew::InitializeUEAndKillSets()
+void BytecodeAnalysis::InitializeUEAndKillSets()
 {
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
@@ -119,7 +119,7 @@ void BytecodeAnalysisNew::InitializeUEAndKillSets()
     }
 }
 
-void BytecodeAnalysisNew::InitializeLiveIn()
+void BytecodeAnalysis::InitializeLiveIn()
 {
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
@@ -127,7 +127,7 @@ void BytecodeAnalysisNew::InitializeLiveIn()
     }
 }
 
-void BytecodeAnalysisNew::FinalizeWithFixedParamsAndEnv()
+void BytecodeAnalysis::FinalizeWithFixedParamsAndEnv()
 {
     VRegIDType callTarget = VRegOfParam(GetNumLocalVRegs(), CALL_TARGET_PARAM_INDEX);
     VRegIDType newTarget = VRegOfParam(GetNumLocalVRegs(), NEW_TARGET_PARAM_INDEX);
@@ -142,7 +142,7 @@ void BytecodeAnalysisNew::FinalizeWithFixedParamsAndEnv()
     }
 }
 
-bool BytecodeAnalysisNew::UpdateLiveness()
+bool BytecodeAnalysis::UpdateLiveness()
 {
     bool hasChange = false;
     kungfu::BitSet temp(GetChunk(), numVRegs_);
@@ -176,14 +176,14 @@ bool BytecodeAnalysisNew::UpdateLiveness()
 }
 
 // LiveIn(B) = UESet(B) ⋃ (LiveOut(B) - KillSet(B))
-void BytecodeAnalysisNew::UpdateLiveIn(uint32_t blockIndex)
+void BytecodeAnalysis::UpdateLiveIn(uint32_t blockIndex)
 {
     liveIn_[blockIndex].CopyFrom(liveOut_[blockIndex]);
     liveIn_[blockIndex].Exclude(killSet_[blockIndex]);
     liveIn_[blockIndex].Union(ueSet_[blockIndex]);
 }
 
-std::string BytecodeAnalysisNew::Dump() const
+std::string BytecodeAnalysis::Dump() const
 {
     std::ostringstream out;
     out << "Liveness of Basic Blocks (labelled by RPO index):";
@@ -199,7 +199,7 @@ std::string BytecodeAnalysisNew::Dump() const
     return out.str();
 }
 
-std::string BytecodeAnalysisNew::DumpBitset(const kungfu::BitSet &bitset) const
+std::string BytecodeAnalysis::DumpBitset(const kungfu::BitSet &bitset) const
 {
     std::ostringstream out;
     out << '[';

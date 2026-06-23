@@ -23,12 +23,12 @@
 namespace panda::ecmascript::arksteed {
 static kungfu::Bytecodes g_bytecodes;
 
-using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
+using BasicBlockInfo = BytecodePreprocessor::BasicBlockInfo;
 
 #define BLOCK_INDEX_FROM_PTR(ptr) (static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)))
 #define BLOCK_INDEX_TO_PTR(index) (reinterpret_cast<BasicBlockInfo *>(static_cast<uintptr_t>(index)))
 
-BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *chunk)
+BytecodePreprocessor::BytecodePreprocessor(JitCompilationEnv *env, Chunk *chunk)
     : env_(env),
       method_(env->GetMethodLiteral()),
       numLocalVRegs_(method_->GetNumVregsWithCallField()),
@@ -45,7 +45,7 @@ BytecodePreprocessorNew::BytecodePreprocessorNew(JitCompilationEnv *env, Chunk *
       numJumpPredecessors_(chunk)
 {}
 
-bool BytecodePreprocessorNew::Run()
+bool BytecodePreprocessor::Run()
 {
     if (!CollectBytecodeInfo()) {
         return false;
@@ -61,7 +61,7 @@ bool BytecodePreprocessorNew::Run()
     return true;
 }
 
-uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uint32_t bcOffset)
+uint32_t BytecodePreprocessor::JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uint32_t bcOffset)
 {
     // Used by READ_INST_*_0() macros below
     const uint8_t *pc = env_->GetMethodPcStart() + bcOffset;
@@ -95,7 +95,7 @@ uint32_t BytecodePreprocessorNew::JumpTargetBcIndexOfBytecode(uint32_t bcIndex, 
 //     See below for details.
 // (2) This function adds elements to basicBlocks_ vectors.
 //     Be careful with pointer & reference invalidated.
-uint32_t BytecodePreprocessorNew::AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors)
+uint32_t BytecodePreprocessor::AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors)
 {
     uint32_t fakeJumpBlockIndex = static_cast<uint32_t>(basicBlocks_.size());
     basicBlocks_.emplace_back(BasicBlockInfo{
@@ -121,7 +121,7 @@ uint32_t BytecodePreprocessorNew::AppendSyntheticJump(uint32_t targetBlockIndex,
 
 // -------- Initialization steps: called one-by-one --------
 
-bool BytecodePreprocessorNew::CollectBytecodeInfo()
+bool BytecodePreprocessor::CollectBytecodeInfo()
 {
     uint32_t bcSizeBytes = MethodLiteral::GetCodeSize(env_->GetJSPandaFile(), method_->GetMethodId());
     if (bcSizeBytes == 0) {
@@ -167,7 +167,7 @@ bool BytecodePreprocessorNew::CollectBytecodeInfo()
     return true;
 }
 
-void BytecodePreprocessorNew::CollectTryCatchBlockInfo()
+void BytecodePreprocessor::CollectTryCatchBlockInfo()
 {
     const panda_file::File *pf = env_->GetJSPandaFile()->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pf, method_->GetMethodId());
@@ -216,7 +216,7 @@ enum : uint8_t {
 };
 }
 
-void BytecodePreprocessorNew::BuildBasicBlocks()
+void BytecodePreprocessor::BuildBasicBlocks()
 {
     uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
     if (bcCount == 0) return;
@@ -227,7 +227,7 @@ void BytecodePreprocessorNew::BuildBasicBlocks()
     InitializeBlockEdges();
 }
 
-void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
+void BytecodePreprocessor::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
     // Catch block as higher priority than non-catch block
     auto markNonCatchBlockStart = [&blockStartMarks](uint32_t index) {
@@ -259,7 +259,7 @@ void BytecodePreprocessorNew::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockSt
     }
 }
 
-void BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
+void BytecodePreprocessor::CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
     uint32_t startBcIndex = 0;
     uint32_t blockCount = 0;
@@ -295,7 +295,7 @@ void BytecodePreprocessorNew::CreateBasicBlocks(const ChunkVector<uint8_t> &bloc
     appendBasicBlock(bcCount);
 }
 
-void BytecodePreprocessorNew::InitializeBlockEdges()
+void BytecodePreprocessor::InitializeBlockEdges()
 {
     uint32_t blockCount = static_cast<uint32_t>(basicBlocks_.size());
     for (uint32_t i = 0; i < blockCount; i++) {
@@ -351,19 +351,19 @@ void BytecodePreprocessorNew::InitializeBlockEdges()
 // (1) each loop ends with an unconditional jump block (named J) which jumps to the header;
 // (2) J is the only block inside this loop which jumps to the header.
 // Precondition: The input bytecode sequence forms reducible loops only.
-struct BytecodePreprocessorNew::LoopCanonicalizer {
+struct BytecodePreprocessor::LoopCanonicalizer {
     // DFS states (white: unvisited, grey: in DFS stack; black: visited)
     enum : uint8_t { WHITE = 0, GREY = 1, BLACK = 2 };
     enum : uint8_t { NOT_REDIRECTED = 0, LOOP_BACK_REDIRECTED = 1, LOOP_ENTRY_REDIRECTED = 2 };
 
-    BytecodePreprocessorNew *parent_;
+    BytecodePreprocessor *parent_;
     ChunkVector<BasicBlockInfo> &blocks_;
     ChunkVector<uint32_t> &numJumpPredecessors_;
     ChunkVector<uint8_t> colors_;
     ChunkVector<uint8_t> redirection_;
     ChunkVector<uint32_t> dfsPredecessor_;
 
-    explicit LoopCanonicalizer(BytecodePreprocessorNew *parent)
+    explicit LoopCanonicalizer(BytecodePreprocessor *parent)
         : parent_(parent),
           blocks_(parent->basicBlocks_),
           numJumpPredecessors_(parent->numJumpPredecessors_),
@@ -530,13 +530,13 @@ struct BytecodePreprocessorNew::LoopCanonicalizer {
     }
 };
 
-void BytecodePreprocessorNew::CanonicalizeLoopsDFS()
+void BytecodePreprocessor::CanonicalizeLoopsDFS()
 {
     LoopCanonicalizer runner(this);
     runner.Run();
 }
 
-void BytecodePreprocessorNew::SplitCriticalEdges()
+void BytecodePreprocessor::SplitCriticalEdges()
 {
     uint32_t blockCount = static_cast<uint32_t>(basicBlocks_.size());
     for (uint32_t i = 0; i < blockCount; i++) {
@@ -574,7 +574,7 @@ void BytecodePreprocessorNew::SplitCriticalEdges()
 }
 
 // Now the graph is completed. We can safely convert the block indices to corresponding pointers.
-void BytecodePreprocessorNew::SetBasicBlockPointers()
+void BytecodePreprocessor::SetBasicBlockPointers()
 {
     BasicBlockInfo *head = basicBlocks_.data();
 
@@ -639,7 +639,7 @@ void BytecodePreprocessorNew::SetBasicBlockPointers()
 //       Const-cast is needed during preprocessing to initialize the fields.
 #define BLOCK_PTR_CONST_CAST(ptr) const_cast<BasicBlockInfo *>(ptr)
 
-void BytecodePreprocessorNew::LoopAnalysis()
+void BytecodePreprocessor::LoopAnalysis()
 {
     auto dfs = [&](auto &dfs, BasicBlockInfo *cur, BasicBlockInfo *header) -> void {
         if (cur == header) {
@@ -676,7 +676,7 @@ void BytecodePreprocessorNew::LoopAnalysis()
     }
 }
 
-void BytecodePreprocessorNew::MakeRPO()
+void BytecodePreprocessor::MakeRPO()
 {
     if (basicBlocks_.empty()) {
         return;
@@ -738,7 +738,7 @@ void BytecodePreprocessorNew::MakeRPO()
     std::reverse(rpoList_.begin(), rpoList_.end());
 }
 
-void BytecodePreprocessorNew::ClearDeadPredecessors()
+void BytecodePreprocessor::ClearDeadPredecessors()
 {
     if (rpoList_.size() == basicBlocks_.size()) {
         return;  // No dead basic blocks_.
@@ -767,7 +767,7 @@ struct PrintBasicBlockIndex {
 std::ostream &operator<<(std::ostream &out, PrintIndex printIndex)
 {
     // Covers NULL_INDEX and NULL_INDEX - 1
-    if (printIndex.index_ >= BytecodePreprocessorNew::NULL_INDEX - 1) {
+    if (printIndex.index_ >= BytecodePreprocessor::NULL_INDEX - 1) {
         out << "NULL";
     } else {
         out << printIndex.index_;
@@ -777,7 +777,7 @@ std::ostream &operator<<(std::ostream &out, PrintIndex printIndex)
 
 std::ostream &operator<<(std::ostream &out, PrintBasicBlockIndex printIndex)
 {
-    if (printIndex.index_ == BytecodePreprocessorNew::NULL_INDEX) {
+    if (printIndex.index_ == BytecodePreprocessor::NULL_INDEX) {
         out << "NULL";
     } else {
         out << "BB[" << printIndex.index_ << ']';
@@ -786,7 +786,7 @@ std::ostream &operator<<(std::ostream &out, PrintBasicBlockIndex printIndex)
 }
 }  // namespace
 
-std::string BytecodePreprocessorNew::Dump() const
+std::string BytecodePreprocessor::Dump() const
 {
     std::ostringstream out;
     out << "Bytecodes:";
@@ -802,7 +802,7 @@ std::string BytecodePreprocessorNew::Dump() const
     return std::move(out).str();
 }
 
-std::string BytecodePreprocessorNew::DumpBasicBlocksString() const
+std::string BytecodePreprocessor::DumpBasicBlocksString() const
 {
     auto printBB = [this](const BasicBlockInfo *block) {
         return PrintBasicBlockIndex(block == nullptr ? NULL_INDEX : block - basicBlocks_.data());
@@ -838,7 +838,7 @@ std::string BytecodePreprocessorNew::DumpBasicBlocksString() const
     return std::move(out).str();
 }
 
-std::string BytecodePreprocessorNew::DumpTryBlocksString() const
+std::string BytecodePreprocessor::DumpTryBlocksString() const
 {
     std::ostringstream out;
     out << "\nCatch blocks:";
@@ -852,7 +852,7 @@ std::string BytecodePreprocessorNew::DumpTryBlocksString() const
     return std::move(out).str();
 }
 
-std::string BytecodePreprocessorNew::DumpCFGAsGraphviz() const
+std::string BytecodePreprocessor::DumpCFGAsGraphviz() const
 {
     std::ostringstream out;
     out << "digraph CFG {\n";
@@ -865,7 +865,7 @@ std::string BytecodePreprocessorNew::DumpCFGAsGraphviz() const
     return std::move(out).str();
 }
 
-void BytecodePreprocessorNew::DumpGraphvizNodes(std::ostream &out) const
+void BytecodePreprocessor::DumpGraphvizNodes(std::ostream &out) const
 {
     for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
         const BasicBlockInfo &block = basicBlocks_[i];
@@ -904,7 +904,7 @@ void BytecodePreprocessorNew::DumpGraphvizNodes(std::ostream &out) const
     }
 }
 
-void BytecodePreprocessorNew::DumpGraphvizEdges(std::ostream &out) const
+void BytecodePreprocessor::DumpGraphvizEdges(std::ostream &out) const
 {
     auto rpoLabel = [](const BasicBlockInfo *block) {
         if (block == nullptr || block->IsDead()) {

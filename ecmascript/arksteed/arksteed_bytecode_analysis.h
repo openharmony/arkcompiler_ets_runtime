@@ -21,11 +21,11 @@
 #include "ecmascript/compiler/base/bit_set.h"
 
 namespace panda::ecmascript::arksteed {
-class BytecodeAnalysisNew {
+class BytecodeAnalysis {
 public:
-    static constexpr uint32_t NULL_INDEX = BytecodePreprocessorNew::NULL_INDEX;
+    static constexpr uint32_t NULL_INDEX = BytecodePreprocessor::NULL_INDEX;
 
-    explicit BytecodeAnalysisNew(const BytecodePreprocessorNew *parent);
+    explicit BytecodeAnalysis(const BytecodePreprocessor *parent);
 
     bool Run();
 
@@ -103,7 +103,7 @@ private:
 
     std::string DumpBitset(const kungfu::BitSet &bitset) const;
 
-    const BytecodePreprocessorNew *parent_;
+    const BytecodePreprocessor *parent_;
     VRegIDType numVRegs_;
     ChunkVector<kungfu::BitSet> liveIn_;
     ChunkVector<kungfu::BitSet> liveOut_;

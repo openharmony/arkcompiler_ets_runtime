@@ -27,18 +27,18 @@ namespace panda::ecmascript::arksteed {
 class CompileInfoFacts;
 class Graph;
 
-class GraphBuilderNew {
+class GraphBuilder {
 public:
-    GraphBuilderNew(JSThread *compilerThread,
-                    Graph *destGraph,
-                    uintptr_t glueAddr,
-                    BytecodePreprocessorNew *preproc,
-                    BytecodeAnalysisNew *analysis);
+    GraphBuilder(JSThread *compilerThread,
+                 Graph *destGraph,
+                 uintptr_t glueAddr,
+                 BytecodePreprocessor *preproc,
+                 BytecodeAnalysis *analysis);
 
     bool Run();
 
 private:
-    using BasicBlockInfo = BytecodePreprocessorNew::BasicBlockInfo;
+    using BasicBlockInfo = BytecodePreprocessor::BasicBlockInfo;
     using CommonStubID = kungfu::CommonStubCSigns::ID;
     using RuntimeStubID = kungfu::RuntimeStubCSigns::ID;
 
@@ -103,8 +103,8 @@ private:
     Graph *graph_;
     JSThread *compilerThread_;
     uintptr_t glueAddr_;
-    BytecodePreprocessorNew *preproc_;
-    BytecodeAnalysisNew *analysis_;
+    BytecodePreprocessor *preproc_;
+    BytecodeAnalysis *analysis_;
 
     ArkSteedPGOContext pgoContext_;
 

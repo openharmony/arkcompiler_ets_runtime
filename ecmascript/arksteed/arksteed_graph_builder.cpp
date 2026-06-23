@@ -165,7 +165,7 @@ private:
 
 // Condensed storage: [vA, vA, vA, vB, vB, vB, vB, vB, vB, vC, vC, vC, vC]
 //                 => [(vA, 3),    (vB, 6),                (vC, 4)]
-struct GraphBuilderNew::CatchBlockInputData {
+struct GraphBuilder::CatchBlockInputData {
     struct InputEntry {
         ValueVertex *vertex;
         uint32_t count;
@@ -223,11 +223,11 @@ struct GraphBuilderNew::CatchBlockInputData {
     }
 };
 
-GraphBuilderNew::GraphBuilderNew(JSThread *compilerThread,
-                                 Graph *destGraph,
-                                 uintptr_t glueAddr,
-                                 BytecodePreprocessorNew *preproc,
-                                 BytecodeAnalysisNew *analysis)
+GraphBuilder::GraphBuilder(JSThread *compilerThread,
+                           Graph *destGraph,
+                           uintptr_t glueAddr,
+                           BytecodePreprocessor *preproc,
+                           BytecodeAnalysis *analysis)
     : graph_(destGraph),
       compilerThread_(compilerThread),
       glueAddr_(glueAddr),
@@ -243,7 +243,7 @@ GraphBuilderNew::GraphBuilderNew(JSThread *compilerThread,
       catchBlockInputs_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk())
 {}
 
-bool GraphBuilderNew::Run()
+bool GraphBuilder::Run()
 {
     ASSERT(preproc_->GetNumLiveBasicBlocks() > 0);
     DebugLog();
@@ -265,7 +265,7 @@ bool GraphBuilderNew::Run()
     return true;
 }
 
-void GraphBuilderNew::DebugLog()
+void GraphBuilder::DebugLog()
 {
     if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
         return;
@@ -287,7 +287,7 @@ void GraphBuilderNew::DebugLog()
     }
 }
 
-void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
+void GraphBuilder::InitializeStartBlock(SharedBCFrameState frameState)
 {
     glue_ = graph_->GetIntPtrConstant(glueAddr_);
     undefinedValue_ = graph_->GetTaggedConstant(JSTaggedValue::VALUE_UNDEFINED);
@@ -316,7 +316,7 @@ void GraphBuilderNew::InitializeStartBlock(SharedBCFrameState frameState)
     FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
 }
 
-void GraphBuilderNew::ProcessDeadBasicBlock(uint32_t rpoIndex)
+void GraphBuilder::ProcessDeadBasicBlock(uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
     if (!bcBlock->IsEndOfLoop()) {
@@ -340,7 +340,7 @@ void GraphBuilderNew::ProcessDeadBasicBlock(uint32_t rpoIndex)
     }
 }
 
-void GraphBuilderNew::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
+void GraphBuilder::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
     if (bcBlock->IsCatchBlockHeader()) {
@@ -371,7 +371,7 @@ void GraphBuilderNew::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t 
     }
 }
 
-void GraphBuilderNew::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex)
+void GraphBuilder::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     blocks_[rpoIndex]->SetIsExceptionHandler(true);
     InitCompileInfoFactsForCatchBlock(rpoIndex);
@@ -383,7 +383,7 @@ void GraphBuilderNew::ProcessCatchBlockHead(SharedBCFrameState frameState, uint3
     FinishBlockWithJump(blocks_[rpoIndex], ActivateNonCatchBlock(bcBlock->jumpBlock->rpoIndex));
 }
 
-void GraphBuilderNew::InitFrameState(SharedBCFrameState frameState, uint32_t rpoIndex)
+void GraphBuilder::InitFrameState(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
 
@@ -404,7 +404,7 @@ void GraphBuilderNew::InitFrameState(SharedBCFrameState frameState, uint32_t rpo
     }
 }
 
-void GraphBuilderNew::InitFrameStateForLoopHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
+void GraphBuilder::InitFrameStateForLoopHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
     ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2 : One is entry, the other is loop-back
@@ -425,7 +425,7 @@ void GraphBuilderNew::InitFrameStateForLoopHeader(SharedBCFrameState frameState,
     MergeFrameState(frameState, rpoIndex, predRpoIndex, 0, 2);
 }
 
-void GraphBuilderNew::InitFrameStateForCatchBlockHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
+void GraphBuilder::InitFrameStateForCatchBlockHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
     // For catch blocks, acc is always initialized as the exception object
@@ -462,7 +462,7 @@ void GraphBuilderNew::InitFrameStateForCatchBlockHeader(SharedBCFrameState frame
     }
 }
 
-void GraphBuilderNew::InitCompileInfoFacts(uint32_t rpoIndex)
+void GraphBuilder::InitCompileInfoFacts(uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
     ASSERT(!blockInfo->IsCatchBlockHeader() && "Use InitCompileInfoFactsForCatchBlock() instead.");
@@ -492,7 +492,7 @@ void GraphBuilderNew::InitCompileInfoFacts(uint32_t rpoIndex)
     compileInfoFacts_[rpoIndex] = facts;
 }
 
-void GraphBuilderNew::InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex)
+void GraphBuilder::InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex)
 {
     CatchBlockInputData *data = catchBlockInputs_[rpoIndex];
     ASSERT(data != nullptr);
@@ -500,7 +500,7 @@ void GraphBuilderNew::InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex)
     compileInfoFacts_[rpoIndex] = data->facts;
 }
 
-void GraphBuilderNew::WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex)
+void GraphBuilder::WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
     ASSERT(blockInfo->IsJump());
@@ -514,7 +514,7 @@ void GraphBuilderNew::WriteBackFrameStateToLoopHeader(SharedBCFrameState current
     }
 }
 
-void GraphBuilderNew::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
+void GraphBuilder::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
                                       uint32_t actualPredIndex, uint32_t actualNumPreds)
 {
     const kungfu::BitSet &liveIn = analysis_->GetLiveIn(rpoIndex);
@@ -544,7 +544,7 @@ void GraphBuilderNew::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex
     });
 }
 
-PhiVertex *GraphBuilderNew::NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg)
+PhiVertex *GraphBuilder::NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg)
 {
     PhiVertex *phi = PhiVertex::New(chunk_, numPredecessors, VirtualRegister(vreg));
     phi->SetOwner(owner);
@@ -554,7 +554,7 @@ PhiVertex *GraphBuilderNew::NewPhiVertex(BB *owner, uint32_t numPredecessors, VR
 }
 
 template <class InputRange>
-PhiVertex *GraphBuilderNew::NewPhiVertexWith(BB *owner, const InputRange &inputs, VRegIDType vreg)
+PhiVertex *GraphBuilder::NewPhiVertexWith(BB *owner, const InputRange &inputs, VRegIDType vreg)
 {
     uint32_t numInputs = static_cast<uint32_t>(std::size(inputs));
     PhiVertex *phi = NewPhiVertex(owner, numInputs, vreg);
@@ -568,7 +568,7 @@ PhiVertex *GraphBuilderNew::NewPhiVertexWith(BB *owner, const InputRange &inputs
 }
 
 template <class VertexT, class InputRange, class... Args>
-VertexT *GraphBuilderNew::NewVertex(BB *owner, const InputRange &inputs, Args &&...args)
+VertexT *GraphBuilder::NewVertex(BB *owner, const InputRange &inputs, Args &&...args)
 {
     VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
     vertex->SetOwner(owner);
@@ -583,7 +583,7 @@ VertexT *GraphBuilderNew::NewVertex(BB *owner, const InputRange &inputs, Args &&
 }
 
 template <class VertexT, class InputRange, class... Args>
-VertexT *GraphBuilderNew::NewVertex(
+VertexT *GraphBuilder::NewVertex(
     CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs, Args &&...args)
 {
     VertexT *vertex = NewVertex<VertexT>(owner, inputs, std::forward<Args>(args)...);
@@ -593,7 +593,7 @@ VertexT *GraphBuilderNew::NewVertex(
     return vertex;
 }
 
-JumpVertex *GraphBuilderNew::FinishBlockWithJump(BB *owner, BB *target)
+JumpVertex *GraphBuilder::FinishBlockWithJump(BB *owner, BB *target)
 {
     auto *jumpVertex = FinishBlockWith<JumpVertex>(owner, {}, target);
     jumpVertex->SetPredecessorId(target->PredecessorCount());
@@ -601,7 +601,7 @@ JumpVertex *GraphBuilderNew::FinishBlockWithJump(BB *owner, BB *target)
     return jumpVertex;
 }
 
-JumpLoopVertex *GraphBuilderNew::FinishBlockWithJumpLoop(BB *owner, BB *target)
+JumpLoopVertex *GraphBuilder::FinishBlockWithJumpLoop(BB *owner, BB *target)
 {
     auto *jumpLoopVertex = FinishBlockWith<JumpLoopVertex>(owner, {}, target);
     jumpLoopVertex->SetPredecessorId(target->PredecessorCount());
@@ -609,7 +609,7 @@ JumpLoopVertex *GraphBuilderNew::FinishBlockWithJumpLoop(BB *owner, BB *target)
     return jumpLoopVertex;
 }
 
-BranchIfTrueVertex *GraphBuilderNew::FinishBlockWithBranch(
+BranchIfTrueVertex *GraphBuilder::FinishBlockWithBranch(
     BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse)
 {
     auto *branchVertex = FinishBlockWith<BranchIfTrueVertex>(owner, {input}, targetIfTrue, targetIfFalse);
@@ -619,7 +619,7 @@ BranchIfTrueVertex *GraphBuilderNew::FinishBlockWithBranch(
 }
 
 template <class VertexT, class... Args>
-VertexT *GraphBuilderNew::FinishBlockWith(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args)
+VertexT *GraphBuilder::FinishBlockWith(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args)
 {
     VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
     vertex->SetOwner(owner);
@@ -635,7 +635,7 @@ VertexT *GraphBuilderNew::FinishBlockWith(BB *owner, std::initializer_list<Value
     return vertex;
 }
 
-BB *GraphBuilderNew::NewBlock()
+BB *GraphBuilder::NewBlock()
 {
     BB *result = BB::New(chunk_);
     // TODO: For legacy code only. To be removed.
@@ -643,7 +643,7 @@ BB *GraphBuilderNew::NewBlock()
     return result;
 }
 
-BB *GraphBuilderNew::ActivateNonCatchBlock(uint32_t rpoIndex)
+BB *GraphBuilder::ActivateNonCatchBlock(uint32_t rpoIndex)
 {
     if (blocks_[rpoIndex] == nullptr) {
         blocks_[rpoIndex] = NewBlock();
@@ -651,7 +651,7 @@ BB *GraphBuilderNew::ActivateNonCatchBlock(uint32_t rpoIndex)
     return blocks_[rpoIndex];
 }
 
-BB *GraphBuilderNew::ActivateCatchBlock(GraphBuilderNew::CatchBlockInputData **inputData, uint32_t rpoIndex)
+BB *GraphBuilder::ActivateCatchBlock(GraphBuilder::CatchBlockInputData **inputData, uint32_t rpoIndex)
 {
     if (UNLIKELY(blocks_[rpoIndex] == nullptr)) {
         blocks_[rpoIndex] = NewBlock();
@@ -662,7 +662,7 @@ BB *GraphBuilderNew::ActivateCatchBlock(GraphBuilderNew::CatchBlockInputData **i
     return blocks_[rpoIndex];
 }
 
-LoadTaggedFieldVertex *GraphBuilderNew::ActivateGlobalEnv()
+LoadTaggedFieldVertex *GraphBuilder::ActivateGlobalEnv()
 {
     if (UNLIKELY(lazyGlobalEnv_ == nullptr)) {
         int32_t globalEnvOffset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE);
@@ -673,7 +673,7 @@ LoadTaggedFieldVertex *GraphBuilderNew::ActivateGlobalEnv()
 
 constexpr uintptr_t NO_CATCH_BLOCK_TAG = 1;
 
-struct GraphBuilderNew::BytecodeVisitor {
+struct GraphBuilder::BytecodeVisitor {
     struct NamedLoadAccessInfo {
         JSHClass *receiverHClass {nullptr};
         JSHClass *holderHClass {nullptr};
@@ -3238,7 +3238,7 @@ struct GraphBuilderNew::BytecodeVisitor {
         return RuntimeCall({constpool, index}, RTSTUB_ID(GetMethodFromCache));
     }
 
-    GraphBuilderNew *self;
+    GraphBuilder *self;
     ValueVertex *glue;           // Equivalent to self->glue_. Cached for performance.
     ValueVertex *lazyGlobalEnv;  // Equivalent to self->lazyGlobalEnv_. Cached for performance.
     const BasicBlockInfo *blockInfo;
@@ -3249,7 +3249,7 @@ struct GraphBuilderNew::BytecodeVisitor {
     CatchBlockInputData *lazyCatchBlockInputs;
 };
 
-void GraphBuilderNew::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
+void GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
 
