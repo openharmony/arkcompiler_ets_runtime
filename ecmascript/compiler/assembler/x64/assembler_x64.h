@@ -84,13 +84,20 @@ public:
     // Floating-point operations
     void Movsd(XMMRegister dst, XMMRegister src);
     void Movsd(XMMRegister dst, const Operand &src);  // Load double from memory to XMM
+    void Movsd(const Operand &dst, XMMRegister src);  // Store double from XMM to memory
     void Movq(XMMRegister dst, Register src);  // Move from GP register to XMM register
+    void Movq(Register dst, XMMRegister src);  // Move from XMM register to GP register
+    void Cvtsi2sd(Register src, XMMRegister dst);
+    void Addsd(XMMRegister src, XMMRegister dst);
+    void Subsd(XMMRegister src, XMMRegister dst);
     void Addq(Immediate src, Register dst);
     void Addq(Register src, Register dst);
     void Addl(Immediate src, Register dst);
+    void Addl(Register src, Register dst);
     void Subq(Immediate src, Register dst);
     void Subq(Register src, Register dst);
     void Subl(Immediate src, Register dst);
+    void Subl(Register src, Register dst);
     void Cmpq(Immediate src, Register dst);
     void Cmpq(Register src, Register dst);
     void Cmpq(Register src, const Operand &dst);
@@ -124,12 +131,16 @@ public:
     void Jne(Label *target, Distance distance = Distance::Far);
     void Jbe(Label *target, Distance distance = Distance::Far);
     void Jnz(Label *target, Distance distance = Distance::Far);
+    void Jl(Label *target, Distance distance = Distance::Far);
     void Jle(Label *target, Distance distance = Distance::Far);
     void Jae(Label *target, Distance distance = Distance::Far);
     void Jnb(Label *target, Distance distance = Distance::Far);
+    void Jo(Label *target, Distance distance = Distance::Far);
+    void Jno(Label *target, Distance distance = Distance::Far);
     void Leaq(const Operand &src, Register dst);
     void Leal(const Operand &src, Register dst);
     void Movl(Register src, Register dst);
+    void Movsxd(Register src, Register dst);
     void Movl(const Operand &src, Register dst);
     void Movl(Register dst, const Operand& src);
     void Movzbq(const Operand &src, Register dst);
@@ -228,6 +239,7 @@ private:
     void EmitJne(int32_t offset);
     void EmitJbe(int32_t offset);
     void EmitJnz(int32_t offset);
+    void EmitJl(int32_t offset);
     void EmitJle(int32_t offset);
     void EmitJae(int32_t offset);
     void EmitJg(int32_t offset);
@@ -235,6 +247,8 @@ private:
     void EmitJe(int32_t offset);
     void EmitCall(int32_t offset);
     void EmitJnb(int32_t offset);
+    void EmitJo(int32_t offset);
+    void EmitJno(int32_t offset);
     // +---+---+---+---+---+---+---+---+
     // | 0   1   0   0 | W | R | X | B |
     // +---+---+---+---+---+---+---+---+

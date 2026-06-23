@@ -53,8 +53,10 @@ private:
                                    const ArkDoubleRegList &doubleRegistersSetByPhis,
                                    ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
     void LoadConstantToRegister(const ValueVertex *constVertex, ArkSteedRegister reg);
+    void LoadConstantToDoubleRegister(const ValueVertex *constVertex, ArkSteedDoubleRegister reg);
     void ExecuteConstantPhiMove(const AllocatedState &dest, ValueVertex *constVertex,
-                                const ArkSteedRegister *scratchGPR = nullptr);
+                                const ArkSteedRegister *scratchGPR = nullptr,
+                                const ArkSteedDoubleRegister *scratchFPR = nullptr);
     void ExecuteGapMove(const InstructionOperand &dest, const InstructionOperand &src,
                         const ArkSteedRegister *scratchGPR = nullptr);
     void StoreStubStackArgument(const Vertex *callVertex, int paramIdx, ArkSteedAssembler::MemoryOperand destMem);

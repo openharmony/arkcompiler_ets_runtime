@@ -199,6 +199,9 @@ bool ArkSteedCompilerTask::Compile()
     auto *hostThread = arkSteedTask_->GetHostThread();
     uintptr_t hostGlueAddr = hostThread->GetGlueAddr();
 
+    ArkSteedPGOContext pgoContext(compilerThread, jitCompilationEnv_.get());
+    pgoContext.PrepareBytecodeProfiles(chunk_.get());
+
     if (!BuildGraph(compilerThread, hostGlueAddr)) {
         return false;
     }

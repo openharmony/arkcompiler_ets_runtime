@@ -194,6 +194,14 @@ enum LogicShiftOpCode {
     BFM     = 0xB3400000,
 };
 
+enum FloatingPointOpCode {
+    FP64 = 0x00400000,
+    FMOV_XD = 0x9E660000,
+    FADD = 0x1E202800,
+    FSUB = 0x1E203800,
+    SCVTF = 0x1E220000,
+};
+
 enum NopOpCode {
     Nop = 0xd503201f,
 };

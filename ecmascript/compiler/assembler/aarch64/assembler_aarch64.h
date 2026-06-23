@@ -215,6 +215,7 @@ public:
     void Ldrh(const Register &rt, const MemoryOperand &operand);
     void Ldrb(const Register &rt, const MemoryOperand &operand);
     void Str(const Register &rt, const MemoryOperand &operand);
+    void Str(const VRegister &vt, const MemoryOperand &operand);  // Store SIMD&FP to memory
     void Ldur(const Register &rt, const MemoryOperand &operand);
     void Stur(const Register &rt, const MemoryOperand &operand);
     void Mov(const Register &rd, const Immediate &imm);
@@ -225,6 +226,7 @@ public:
     // Floating-point/Vector register operations
     void Mov(const VRegister &vd, const VRegister &vn);
     void Fmov(const VRegister &vd, const Register &rn);  // FMOV Dd, Xn - move from GP to V register
+    void Fmov(const Register &rd, const VRegister &vn);  // FMOV Xd, Dn - move from V register to GP
     void Orr(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Orr(const Register &rd, const Register &rn, const Operand &operand);
     void And(const Register &rd, const Register &rn, const Operand &operand);
@@ -243,6 +245,9 @@ public:
     void Adds(const Register &rd, const Register &rn, const Operand &operand);
     void Sub(const Register &rd, const Register &rn, const Operand &operand);
     void Subs(const Register &rd, const Register &rn, const Operand &operand);
+    void Scvtf(const VRegister &vd, const Register &rn);
+    void Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Cmp(const Register &rd, const Operand &operand);
     void CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond);
     void B(Label *label);

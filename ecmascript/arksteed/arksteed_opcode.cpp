@@ -20,6 +20,16 @@
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 
 namespace panda::ecmascript::arksteed {
+
+namespace {
+void UseDeoptFrameSlots(Vertex *vertex, const DeoptimizableMixin *deopt)
+{
+    for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
+        UseSlot(vertex->Arg(deopt->DeoptInputIndex(index)));
+    }
+}
+}  // namespace
+
 #define __ masm->
 
 // Helper function for stub calls (CallRuntime, CallCommonStub)
@@ -158,7 +168,7 @@ void CallVertex::SetValueLocationConstraints()
     DefineAsFixed(this, 0);
     SetTemporariesNeeded(1);
     UseRegister(Arg(TARGET_INDEX));
-    for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
+    for (int i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
         UseAny(Arg(i));
     }
 }
@@ -293,6 +303,157 @@ void SetValueWithBarrierVertex::Dump(std::ostream &output) const
     output << "  SetValueWithBarrier: offset=" << offset_;
 }
 
+void TaggedIntToI32Vertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+}
+
+void TaggedIntToI32Vertex::Dump(std::ostream &output) const
+{
+    output << "  TaggedIntToI32";
+}
+
+void CheckedTaggedIntToI32Vertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+    UseDeoptFrameSlots(this, this);
+    SetTemporariesNeeded(1);
+}
+
+void CheckedTaggedIntToI32Vertex::Dump(std::ostream &output) const
+{
+    output << "  CheckedTaggedIntToI32";
+}
+
+void CheckedTaggedStringVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(INPUT_INDEX));
+    UseDeoptFrameSlots(this, this);
+    DefineSameAsFirst(this);
+    SetTemporariesNeeded(1);
+}
+
+void CheckedTaggedStringVertex::Dump(std::ostream &output) const
+{
+    output << "  CheckedTaggedString";
+}
+
+template <class VertexT>
+void VerifyI32BinaryDeoptInputs(const VertexT *vertex)
+{
+    ASSERT(vertex->FirstDeoptInputIndex() == VertexT::FIRST_DEOPT_INDEX);
+    ASSERT(vertex->GetInputCount() == static_cast<int>(vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount()));
+    ASSERT(vertex->GetInput(VertexT::LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
+    ASSERT(vertex->GetInput(VertexT::RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
+}
+
+void I32AddWithOverflowVertex::VerifyI32BinOpInputs() const
+{
+    VerifyI32BinaryDeoptInputs(this);
+}
+
+void I32SubWithOverflowVertex::VerifyI32BinOpInputs() const
+{
+    VerifyI32BinaryDeoptInputs(this);
+}
+
+#define DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Name, DumpName)          \
+    void I32##Name##WithOverflowVertex::SetValueLocationConstraints() \
+    {                                                                   \
+        UseRegister(Arg(LEFT_INDEX));                                   \
+        UseRegister(Arg(RIGHT_INDEX));                                  \
+        UseDeoptFrameSlots(this, this);                                \
+        DefineSameAsFirst(this);                                        \
+    }                                                                   \
+                                                                        \
+    void I32##Name##WithOverflowVertex::Dump(std::ostream &output) const \
+    {                                                                   \
+        output << "  I32" DumpName "WithOverflow";                      \
+    }
+
+DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Add, "Add")
+DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Sub, "Sub")
+#undef DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS
+
+void I32AddVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void I32AddVertex::Dump(std::ostream &output) const
+{
+    output << "  I32Add";
+}
+
+void I32SubVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void I32SubVertex::Dump(std::ostream &output) const
+{
+    output << "  I32Sub";
+}
+
+void I32ToF64Vertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+}
+
+void I32ToF64Vertex::Dump(std::ostream &output) const
+{
+    output << "  I32ToF64";
+}
+
+void CheckedNumberToF64Vertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+    UseDeoptFrameSlots(this, this);
+    SetTemporariesNeeded(2);
+}
+
+void CheckedNumberToF64Vertex::Dump(std::ostream &output) const
+{
+    output << "  CheckedNumberToF64";
+}
+
+void F64ToTaggedDoubleVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+    SetTemporariesNeeded(1);
+}
+
+void F64ToTaggedDoubleVertex::Dump(std::ostream &output) const
+{
+    output << "  F64ToTaggedDouble";
+}
+
+#define DEFINE_F64_BINOP_CONSTRAINTS(Name)       \
+    void F64##Name##Vertex::SetValueLocationConstraints() \
+    {                                           \
+        DefineAsRegister(this);                 \
+        UseRegister(Arg(LEFT_INDEX));           \
+        UseRegister(Arg(RIGHT_INDEX));          \
+    }                                           \
+                                                \
+    void F64##Name##Vertex::Dump(std::ostream &output) const \
+    {                                           \
+        output << "  F64" #Name;                \
+    }
+
+DEFINE_F64_BINOP_CONSTRAINTS(Add)
+DEFINE_F64_BINOP_CONSTRAINTS(Sub)
+#undef DEFINE_F64_BINOP_CONSTRAINTS
+
 // ========================================= Control Opcode =========================================
 
 void JumpVertex::SetValueLocationConstraints() {}
@@ -404,6 +565,7 @@ void ToTaggedIntVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
+    SetTemporariesNeeded(1);
 }
 
 void ToTaggedIntVertex::Dump(std::ostream &output) const

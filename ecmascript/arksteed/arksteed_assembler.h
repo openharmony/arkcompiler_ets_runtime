@@ -98,6 +98,7 @@ public:
     void FreeCallArgSlots(int32_t slotCount);
     void ReserveCallArgSlots(ArkSteedRegister slotCount);
     void FreeCallArgSlots(ArkSteedRegister slotCount);
+    void RestoreStackPointerToFrameBottom(Graph *graph);
     void PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc);
     void PrepareSteedCalleeContext(ArkSteedRegister target, ArkSteedRegister codeEntry);
 
@@ -120,6 +121,9 @@ public:
     void Move(ArkSteedRegister dst, uint64_t immediate);
     void Move(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Move(ArkSteedDoubleRegister dst, double immediate);
+    void Move(ArkSteedDoubleRegister dst, double immediate, ArkSteedRegister scratch);
+    void Move(ArkSteedDoubleRegister dst, ArkSteedRegister src);
+    void Move(ArkSteedRegister dst, ArkSteedDoubleRegister src);
 
     template <typename Dest, typename Source>
     inline void MoveRepr(MachineRepresentation repr, Dest dst, Source src);
@@ -135,6 +139,7 @@ public:
     void LoadActualArgc(ArkSteedRegister dst);
 
     void LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp);
+    void StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src);
 
     // =========================================================================
     // Arithmetic Operations
@@ -144,6 +149,13 @@ public:
     void Add(ArkSteedRegister dst, int32_t immediate);
     void Sub(ArkSteedRegister dst, ArkSteedRegister src);
     void Sub(ArkSteedRegister dst, int32_t immediate);
+    void SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Add(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Sub(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src);
+    void Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Word64And(ArkSteedRegister dst, ArkSteedRegister src);
 
     // =========================================================================
     // Bitwise Operations

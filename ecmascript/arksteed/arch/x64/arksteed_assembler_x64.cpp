@@ -71,6 +71,27 @@ void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate)
     assembler_.Movq(dst, scratch);
 }
 
+void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate, ArkSteedRegister scratch)
+{
+    uint64_t bits = 0;
+    static_assert(sizeof(double) == sizeof(uint64_t), "double must be 64 bits");
+    if (memcpy_s(&bits, sizeof(double), &immediate, sizeof(double)) != EOK) {
+        LOG_JIT(FATAL) << "memcpy failed in Move";
+    }
+    assembler_.Movabs(bits, scratch);
+    assembler_.Movq(dst, scratch);
+}
+
+void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, ArkSteedRegister src)
+{
+    assembler_.Movq(dst, src);
+}
+
+void ArkSteedAssembler::Move(ArkSteedRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Movq(dst, src);
+}
+
 // =============================================================================
 // Memory Operations
 // =============================================================================
@@ -99,6 +120,11 @@ void ArkSteedAssembler::LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand sr
     assembler_.Movsd(dst, srcOp);
 }
 
+void ArkSteedAssembler::StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src)
+{
+    assembler_.Movsd(dstOp, src);
+}
+
 // =============================================================================
 // Arithmetic Operations
 // =============================================================================
@@ -121,6 +147,44 @@ void ArkSteedAssembler::Sub(ArkSteedRegister dst, ArkSteedRegister src)
 void ArkSteedAssembler::Sub(ArkSteedRegister dst, int32_t immediate)
 {
     assembler_.Subq(x64::Immediate(immediate), dst);
+}
+
+void ArkSteedAssembler::SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Movsxd(src, dst);
+}
+
+void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Addl(src, dst);
+}
+
+void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Subl(src, dst);
+}
+
+void ArkSteedAssembler::Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src)
+{
+    ScratchRegisterScope scope;
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    SignExtendInt32ToInt64(scratch, src);
+    assembler_.Cvtsi2sd(scratch, dst);
+}
+
+void ArkSteedAssembler::Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Addsd(src, dst);
+}
+
+void ArkSteedAssembler::Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Subsd(src, dst);
+}
+
+void ArkSteedAssembler::Word64And(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.And(src, dst);
 }
 
 // =============================================================================
@@ -207,7 +271,8 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
             assembler_.Jne(target);
             break;
         case Condition::COND_LESS_THAN:
-            assembler_.Jb(target);
+            // COND_LESS_THAN is signed; unsigned comparisons must use a separate condition.
+            assembler_.Jl(target);
             break;
         case Condition::COND_LESS_THAN_OR_EQUAL:
             assembler_.Jle(target);
@@ -237,8 +302,10 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
             assembler_.Jbe(target);
             break;
         case Condition::COND_OVERFLOW:
+            assembler_.Jo(target);
+            break;
         case Condition::COND_NOT_OVERFLOW:
-            UNREACHABLE();
+            assembler_.Jno(target);
             break;
         default:
             UNREACHABLE();
@@ -398,6 +465,17 @@ void ArkSteedAssembler::FreeCallArgSlots(ArkSteedRegister slotCount)
 {
     assembler_.Leaq(x64::Operand(slotCount, x64::Scale::Times8, 0), slotCount);
     assembler_.Addq(slotCount, x64::rsp);
+}
+
+void ArkSteedAssembler::RestoreStackPointerToFrameBottom(Graph *graph)
+{
+    uint32_t taggedSlots = graph->GetTaggedStackSlots();
+    uint32_t untaggedSlots = graph->GetUntaggedStackSlots();
+    uint32_t frameSlots = 3 + taggedSlots + untaggedSlots;  // 3: frameType, jsFunc, lexicalEnv.
+    if (((taggedSlots + untaggedSlots) & 1U) == 0) {
+        frameSlots++;
+    }
+    assembler_.Leaq(x64::Operand(x64::rbp, -static_cast<int32_t>(frameSlots * FRAME_SLOT_SIZE)), x64::rsp);
 }
 
 void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc)

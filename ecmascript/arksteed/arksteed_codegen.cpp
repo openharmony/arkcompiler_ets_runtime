@@ -29,8 +29,9 @@ namespace panda::ecmascript::arksteed {
 
 class GapMoveResolver {
     static constexpr uint8_t UNVISITED = 0;
-    static constexpr uint8_t VISITED = 1;
+    static constexpr uint8_t VISITING = 1;
     static constexpr uint8_t TEMP_REQUIRED = 2;
+    static constexpr uint8_t DONE = 3;
 
 public:
     using AssignmentPair = std::pair<AllocatedState, AllocatedState>;
@@ -41,11 +42,17 @@ public:
           assignments_(chunk),
           reorderedAssignments_(chunk),
           sortedList_(chunk),
+          sourceOperands_(chunk),
+          hasSourceOperands_(chunk),
+          edges_(chunk),
           adjLists_(chunk)
     {}
 
     void Add(AllocatedState dest, AllocatedState src)
     {
+        if (SameStorage(dest, src)) {
+            return;
+        }
         assignments_.emplace_back(dest, src);
     }
 
@@ -72,11 +79,74 @@ public:
     }
 
 private:
+    struct AssignmentEdge {
+        AllocatedState dest;
+        AllocatedState src;
+        uint32_t destIndex = 0;
+        uint32_t srcIndex = 0;
+    };
+
+    static uint64_t StorageKey(AllocatedState operand)
+    {
+        ASSERT(operand.IsAllocated());
+        constexpr uint64_t LOCATION_CLASS_SHIFT = 32;
+        enum LocationClass : uint64_t {
+            GP_REGISTER = 0,
+            FP_REGISTER = 1,
+            TAGGED_STACK_SLOT = 2,
+            UNTAGGED_STACK_SLOT = 3,
+        };
+
+        uint64_t locationClass = UNTAGGED_STACK_SLOT;
+        if (operand.IsRegister()) {
+            locationClass = GP_REGISTER;
+        } else if (operand.IsDoubleRegister()) {
+            locationClass = FP_REGISTER;
+        } else if (operand.GetRepresentation() == MachineRepresentation::Tagged) {
+            ASSERT(operand.IsAnyStackSlot());
+            locationClass = TAGGED_STACK_SLOT;
+        } else {
+            ASSERT(operand.IsAnyStackSlot());
+        }
+        return (locationClass << LOCATION_CLASS_SHIFT) | static_cast<uint32_t>(operand.GetIndex());
+    }
+
+    static bool SameStorage(AllocatedState lhs, AllocatedState rhs)
+    {
+        return StorageKey(lhs) == StorageKey(rhs);
+    }
+
+    static MachineRepresentation MergeStorageRepresentation(MachineRepresentation lhs, MachineRepresentation rhs)
+    {
+        if (lhs == rhs) {
+            return lhs;
+        }
+        if (lhs == MachineRepresentation::Float64 || rhs == MachineRepresentation::Float64) {
+            ASSERT(lhs == MachineRepresentation::Float64 && rhs == MachineRepresentation::Float64);
+            return MachineRepresentation::Float64;
+        }
+        if (lhs == MachineRepresentation::Tagged || rhs == MachineRepresentation::Tagged) {
+            return MachineRepresentation::Tagged;
+        }
+        if (lhs == MachineRepresentation::Word64 || rhs == MachineRepresentation::Word64) {
+            return MachineRepresentation::Word64;
+        }
+        return MachineRepresentation::Word32;
+    }
+
+    static AllocatedState MergeSourceOperand(AllocatedState oldSource, AllocatedState newSource)
+    {
+        MachineRepresentation rep =
+            MergeStorageRepresentation(oldSource.GetRepresentation(), newSource.GetRepresentation());
+        return AllocatedState(oldSource.GetLocationKind(), rep, oldSource.GetIndex());
+    }
+
     uint32_t SortedIndexOf(AllocatedState operand) const
     {
-        auto compFn = [](AllocatedState x, AllocatedState y) { return x.GetUnderlyingData() < y.GetUnderlyingData(); };
-        auto it = std::lower_bound(sortedList_.begin(), sortedList_.end(), operand, compFn);
-        ASSERT(it != sortedList_.end() && *it == operand);
+        uint64_t key = StorageKey(operand);
+        auto compFn = [](AllocatedState x, uint64_t y) { return StorageKey(x) < y; };
+        auto it = std::lower_bound(sortedList_.begin(), sortedList_.end(), key, compFn);
+        ASSERT(it != sortedList_.end() && StorageKey(*it) == key);
         return static_cast<uint32_t>(it - sortedList_.begin());
     }
 
@@ -87,15 +157,17 @@ private:
             sortedList_.push_back(dest);
             sortedList_.push_back(src);
         }
-        std::sort(sortedList_.begin(), sortedList_.end(), [](AllocatedState x, AllocatedState y) {
-            return x.GetUnderlyingData() < y.GetUnderlyingData();
-        });
-        sortedList_.erase(std::unique(sortedList_.begin(), sortedList_.end()), sortedList_.end());
+        std::sort(sortedList_.begin(), sortedList_.end(),
+                  [](AllocatedState x, AllocatedState y) { return StorageKey(x) < StorageKey(y); });
+        sortedList_.erase(std::unique(sortedList_.begin(), sortedList_.end(), SameStorage), sortedList_.end());
     }
 
     void BuildAdjacencyLists()
     {
         uint32_t n = static_cast<uint32_t>(sortedList_.size());
+        sourceOperands_.resize(n);
+        hasSourceOperands_.resize(n);
+        edges_.reserve(assignments_.size());
         adjLists_.reserve(n);
         for (uint32_t i = 0; i < n; i++) {
             adjLists_.emplace_back(GetChunk());
@@ -103,37 +175,55 @@ private:
         for (auto [dest, src] : assignments_) {
             uint32_t destIndex = SortedIndexOf(dest);
             uint32_t srcIndex = SortedIndexOf(src);
-            adjLists_[srcIndex].push_back(destIndex);
+            if (hasSourceOperands_[srcIndex] != 0) {
+                sourceOperands_[srcIndex] = MergeSourceOperand(sourceOperands_[srcIndex], src);
+            } else {
+                sourceOperands_[srcIndex] = src;
+                hasSourceOperands_[srcIndex] = 1;
+            }
+            edges_.push_back({dest, src, destIndex, srcIndex});
+            adjLists_[srcIndex].push_back(static_cast<uint32_t>(edges_.size() - 1));
         }
     }
 
     void DFS(uint32_t index, ChunkVector<uint8_t> &states)
     {
-        states[index] = VISITED;
-        for (uint32_t destIndex : adjLists_[index]) {
-            if (states[destIndex] == VISITED) {
-                AllocatedState tempDest = ScratchOperandLike(sortedList_[destIndex]);
-                reorderedAssignments_.emplace_back(tempDest, sortedList_[destIndex]);
+        states[index] = VISITING;
+        for (uint32_t edgeIndex : adjLists_[index]) {
+            uint32_t destIndex = edges_[edgeIndex].destIndex;
+            if (states[destIndex] == VISITING) {
+                AllocatedState tempDest = ScratchOperandLike(ValueInStorage(destIndex));
+                reorderedAssignments_.emplace_back(tempDest, ValueInStorage(destIndex));
                 states[destIndex] = TEMP_REQUIRED;
-            } else {
-                ASSERT(states[destIndex] == UNVISITED);
+            } else if (states[destIndex] == UNVISITED) {
                 DFS(destIndex, states);
+            } else {
+                ASSERT(states[destIndex] == TEMP_REQUIRED || states[destIndex] == DONE);
             }
         }
         if (states[index] == TEMP_REQUIRED) {
-            AllocatedState tempSrc = ScratchOperandLike(sortedList_[index]);
-            for (uint32_t destIndex : adjLists_[index]) {
-                reorderedAssignments_.emplace_back(sortedList_[destIndex], tempSrc);
+            for (uint32_t edgeIndex : adjLists_[index]) {
+                AllocatedState tempSrc = ScratchOperandLike(edges_[edgeIndex].src);
+                reorderedAssignments_.emplace_back(edges_[edgeIndex].dest, tempSrc);
             }
+            states[index] = DONE;
         } else {
-            ASSERT(states[index] == VISITED);
-            for (uint32_t destIndex : adjLists_[index]) {
-                AllocatedState dest = sortedList_[destIndex];
-                AllocatedState src = sortedList_[index];
-                ASSERT(dest.GetRepresentation() == src.GetRepresentation());
-                reorderedAssignments_.emplace_back(dest, src);
+            ASSERT(states[index] == VISITING);
+            for (uint32_t edgeIndex : adjLists_[index]) {
+                const AssignmentEdge &edge = edges_[edgeIndex];
+                ASSERT(edge.dest.GetRepresentation() == edge.src.GetRepresentation());
+                reorderedAssignments_.emplace_back(edge.dest, edge.src);
             }
+            states[index] = DONE;
         }
+    }
+
+    AllocatedState ValueInStorage(uint32_t index) const
+    {
+        if (hasSourceOperands_[index] != 0) {
+            return sourceOperands_[index];
+        }
+        return sortedList_[index];
     }
 
     AllocatedState ScratchOperandLike(AllocatedState input)
@@ -164,6 +254,9 @@ private:
     ChunkVector<AssignmentPair> assignments_;
     ChunkVector<AssignmentPair> reorderedAssignments_;
     ChunkVector<AllocatedState> sortedList_;
+    ChunkVector<AllocatedState> sourceOperands_;
+    ChunkVector<uint8_t> hasSourceOperands_;
+    ChunkVector<AssignmentEdge> edges_;
     ChunkVector<ChunkVector<uint32_t>> adjLists_;
 };
 
@@ -180,11 +273,25 @@ ArkSteedRegister GetInputRegister(const Vertex *vertex, int index)
     return loc->GetAssignedGeneralRegister();
 }
 
+ArkSteedDoubleRegister GetInputDoubleRegister(const Vertex *vertex, int index)
+{
+    const InputLocation *loc = vertex->GetInputLocation(index);
+    ASSERT(loc->IsDoubleRegister());
+    return loc->GetAssignedDoubleRegister();
+}
+
 ArkSteedRegister GetResultRegister(const ValueVertex *vertex)
 {
     const ValueLocation &loc = vertex->Result();
     ASSERT(loc.IsRegister());
     return loc.GetAssignedGeneralRegister();
+}
+
+ArkSteedDoubleRegister GetResultDoubleRegister(const ValueVertex *vertex)
+{
+    const ValueLocation &loc = vertex->Result();
+    ASSERT(loc.IsDoubleRegister());
+    return loc.GetAssignedDoubleRegister();
 }
 
 template <typename T>
@@ -266,6 +373,21 @@ void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *verte
                                       static_cast<kungfu::LLVMStackMapType::OffsetType>(offset));
     deopts->emplace_back(deoptValue);
 }
+
+template <class NodeT>
+void EmitUseSlotDeopt(ArkSteedAssembler *assembler, ArkSteedSafepointTableBuilder *safepointBuilder,
+                      const NodeT *vertex, kungfu::DeoptType type)
+{
+    ASSERT(safepointBuilder != nullptr);
+    std::vector<kungfu::ARKDeopt> deopts;
+    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
+    for (uint32_t index = 0; index < vertex->DeoptInputCount(); ++index) {
+        AppendDeoptInput(&deopts, vertex, vertex->DeoptInputIndex(index),
+                         vertex->GetDeoptVReg(index), assembler);
+    }
+    assembler->CallDeoptHandler(type);
+    safepointBuilder->DefineDeoptSafepoint(assembler->GetPcOffset(), std::move(deopts));
+}
 }  // namespace
 
 template <class VertexT>
@@ -299,6 +421,18 @@ void ArkSteedCodeGenerator::LoadConstantToRegister(const ValueVertex *constVerte
             break;
         case VertexOpcode::TaggedConstant:
             constVertex->Cast<TaggedConstantVertex>()->DoLoadToRegister(assembler_, reg);
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void ArkSteedCodeGenerator::LoadConstantToDoubleRegister(const ValueVertex *constVertex, ArkSteedDoubleRegister reg)
+{
+    ASSERT(constVertex != nullptr);
+    switch (constVertex->GetOpcode()) {
+        case VertexOpcode::Float64Constant:
+            constVertex->Cast<Float64ConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
         default:
             UNREACHABLE();
@@ -433,13 +567,8 @@ void ArkSteedCodeGenerator::PrepareArkSteedCall(CallVertex *call, ArkSteedRegist
 
 void ArkSteedCodeGenerator::FreeArkSteedCallFrame(CallVertex *call)
 {
-    TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister scratch = scope.AcquireScratch();
-    assembler_->MoveRepr(MachineRepresentation::Tagged, scratch,
-                         assembler_->GetCallArgSlot(CallVertex::TARGET_INDEX + CALL_ARG1));
-    LoadSteedExpectedArgc(scratch, scratch);
-    ComputeSteedCallSlotCount(call, scratch);
-    assembler_->FreeCallArgSlots(scratch);
+    (void)call;
+    assembler_->RestoreStackPointerToFrameBottom(graph_);
 }
 
 void ArkSteedCodeGenerator::EmitCallArkSteed(CallVertex *call, ArkSteedRegister target, Label *exit)
@@ -768,7 +897,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<GapMoveVertex>(GapMoveVertex *
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting GapMoveVertex: " << target.Description() << " <- "
                         << source.Description();
 #endif
-    ExecuteGapMove(target, source);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister scratchGPR = scope.AcquireScratch();
+    ExecuteGapMove(target, source, &scratchGPR);
 }
 
 template <typename VertexType>
@@ -814,9 +945,191 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ToTaggedIntVertex>(ToTaggedInt
 #endif
     auto dst = GetResultRegister(toTaggedInt);
     auto src = GetInputRegister(toTaggedInt, ToTaggedIntVertex::INPUT_INDEX);
-    assembler_->Move(dst, src);
-    assembler_->Or(dst, JSTaggedValue::TAG_INT);
+    ArkSteedRegister scratch = toTaggedInt->GetRegallocInfo()->GetGeneralTemporaries().First();
+    assembler_->SignExtendInt32ToInt64(dst, src);
+    assembler_->Move(scratch, static_cast<int64_t>(JSTaggedValue::TAG_INT));
+    assembler_->Or(dst, scratch);
 }
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TaggedIntToI32Vertex>(TaggedIntToI32Vertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": TaggedIntToI32Vertex";
+#endif
+    auto dst = GetResultRegister(convert);
+    auto src = GetInputRegister(convert, TaggedIntToI32Vertex::INPUT_INDEX);
+    assembler_->SignExtendInt32ToInt64(dst, src);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedIntToI32Vertex>(CheckedTaggedIntToI32Vertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": CheckedTaggedIntToI32Vertex";
+#endif
+    auto dst = GetResultRegister(convert);
+    auto src = GetInputRegister(convert, CheckedTaggedIntToI32Vertex::INPUT_INDEX);
+    ArkSteedRegister scratch = convert->GetRegallocInfo()->GetGeneralTemporaries().First();
+    Label deopt;
+    Label done;
+
+    assembler_->Move(scratch, JSTaggedValue::TAG_MARK);
+    assembler_->Move(dst, src);
+    assembler_->Word64And(dst, scratch);
+    assembler_->Compare(dst, scratch);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    assembler_->SignExtendInt32ToInt64(dst, src);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, convert, kungfu::DeoptType::NOTINT1);
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(CheckedTaggedStringVertex *check)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << check->GetId() << ": CheckedTaggedStringVertex";
+#endif
+    auto value = GetInputRegister(check, CheckedTaggedStringVertex::INPUT_INDEX);
+    ArkSteedRegister scratch = check->GetRegallocInfo()->GetGeneralTemporaries().First();
+    Label deopt;
+    Label done;
+
+    assembler_->JumpIfNotTaggedHeapObject(value, &deopt);
+    assembler_->LoadField(scratch, value, TaggedObject::HCLASS_OFFSET);
+    assembler_->And(scratch, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    assembler_->LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
+    assembler_->And(scratch, (1U << JSHClass::TYPE_BITFIELD_NUM) - 1);
+    assembler_->Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
+    assembler_->JumpIf(Condition::COND_LESS_THAN, &deopt);
+    assembler_->Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
+    assembler_->JumpIf(Condition::COND_GREATER_THAN, &deopt);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, check, kungfu::DeoptType::NOTSTRING1);
+    assembler_->Bind(&done);
+}
+
+#define DEFINE_I32_WITH_OVERFLOW_CODEGEN(Name, Op)                                                           \
+    template <>                                                                                               \
+    void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##WithOverflowVertex>(                         \
+        I32##Name##WithOverflowVertex *op)                                                                    \
+    {                                                                                                         \
+        auto dst = GetResultRegister(op);                                                                       \
+        auto left = GetInputRegister(op, I32##Name##WithOverflowVertex::LEFT_INDEX);                          \
+        auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                        \
+        if (dst != left) {                                                                                      \
+            assembler_->Move(dst, left);                                                                        \
+        }                                                                                                       \
+        Label deopt;                                                                                            \
+        Label done;                                                                                             \
+        assembler_->Op(dst, right);                                                                             \
+        assembler_->JumpIf(Condition::COND_OVERFLOW, &deopt);                                                   \
+        assembler_->Jump(&done);                                                                                \
+        assembler_->Bind(&deopt);                                                                               \
+        EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::INT32OVERFLOW1);                   \
+        assembler_->Bind(&done);                                                                                \
+    }
+
+DEFINE_I32_WITH_OVERFLOW_CODEGEN(Add, Int32Add)
+DEFINE_I32_WITH_OVERFLOW_CODEGEN(Sub, Int32Sub)
+#undef DEFINE_I32_WITH_OVERFLOW_CODEGEN
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32ToF64Vertex>(I32ToF64Vertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": I32ToF64Vertex";
+#endif
+    assembler_->Int32ToFloat64(GetResultDoubleRegister(convert),
+                               GetInputRegister(convert, I32ToF64Vertex::INPUT_INDEX));
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(CheckedNumberToF64Vertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": CheckedNumberToF64Vertex";
+#endif
+    auto dst = GetResultDoubleRegister(convert);
+    auto input = GetInputRegister(convert, CheckedNumberToF64Vertex::INPUT_INDEX);
+    auto temporaries = convert->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister bits = temporaries.First();
+    temporaries.PopFirst();
+    ArkSteedRegister scratch = temporaries.First();
+    Label intCase;
+    Label deopt;
+    Label done;
+
+    assembler_->Move(bits, input);
+    assembler_->Move(scratch, JSTaggedValue::TAG_MARK);
+    assembler_->Word64And(bits, scratch);
+    assembler_->Compare(bits, scratch);
+    assembler_->JumpIf(Condition::COND_EQUAL, &intCase);
+    assembler_->Compare(bits, JSTaggedValue::TAG_OBJECT);
+    assembler_->JumpIf(Condition::COND_EQUAL, &deopt);
+
+    assembler_->Move(bits, input);
+    assembler_->Move(scratch, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+    assembler_->Sub(bits, scratch);
+    assembler_->Move(dst, bits);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&intCase);
+    assembler_->SignExtendInt32ToInt64(bits, input);
+    assembler_->Int32ToFloat64(dst, bits);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, convert, kungfu::DeoptType::NOTNUMBER1);
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToTaggedDoubleVertex>(F64ToTaggedDoubleVertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": F64ToTaggedDoubleVertex";
+#endif
+    auto dst = GetResultRegister(convert);
+    auto input = GetInputDoubleRegister(convert, F64ToTaggedDoubleVertex::INPUT_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Label pureDouble;
+    Label done;
+
+    assembler_->Move(dst, input);
+    assembler_->Move(scratch, JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+    assembler_->Compare(dst, scratch);
+    assembler_->JumpIf(Condition::COND_BELOW, &pureDouble);
+    assembler_->LoadTaggedValue(dst, JSTaggedValue(base::NAN_VALUE).GetRawData());
+    assembler_->Jump(&done);
+    assembler_->Bind(&pureDouble);
+    assembler_->Move(scratch, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+    assembler_->Add(dst, scratch);
+    assembler_->Bind(&done);
+}
+
+#define DEFINE_F64_BINOP_CODEGEN(Name, Op)                                                        \
+    template <>                                                                                    \
+    void ArkSteedCodeGenerator::VisitNonControlVertex<F64##Name##Vertex>(F64##Name##Vertex *op)   \
+    {                                                                                              \
+        auto dst = GetResultDoubleRegister(op);                                                    \
+        auto left = GetInputDoubleRegister(op, F64##Name##Vertex::LEFT_INDEX);                     \
+        auto right = GetInputDoubleRegister(op, F64##Name##Vertex::RIGHT_INDEX);                   \
+        if (dst != left) {                                                                         \
+            assembler_->Move(dst, left);                                                           \
+        }                                                                                          \
+        assembler_->Op(dst, right);                                                                \
+    }
+
+DEFINE_F64_BINOP_CODEGEN(Add, Float64Add)
+DEFINE_F64_BINOP_CODEGEN(Sub, Float64Sub)
+#undef DEFINE_F64_BINOP_CODEGEN
 
 template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallCommonStubVertex *callCommonStub)
@@ -1055,11 +1368,14 @@ void ArkSteedCodeGenerator::ProcessValueVertex(ValueVertex *valueVertex)
         // We shouldn't spill vertices which already output to the stack.
         if (!source.IsAnyStackSlot()) {
             RecordSpillComment();
+            auto spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
             if (source.IsRegister()) {
-                auto spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
                 assembler_->MoveRepr(source.GetRepresentation(),
                                      assembler_->GetStackSlot(spillSlot),
                                      source.GetRegister());
+            } else if (source.IsDoubleRegister()) {
+                assembler_->StoreFloat64(assembler_->GetStackSlot(spillSlot),
+                                         source.GetDoubleRegister());
             } else {
                 UNREACHABLE();
             }
@@ -1165,7 +1481,7 @@ void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, uint32_t p
         ExecuteGapMove(dest, src, &scratchGPR);
     }
     for (auto [dest, constVertex] : constantMoves) {
-        ExecuteConstantPhiMove(dest, constVertex, &scratchGPR);
+        ExecuteConstantPhiMove(dest, constVertex, &scratchGPR, &scratchFPR);
     }
 }
 
@@ -1225,8 +1541,12 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
             return;
         }
 
+        ASSERT(vertex != nullptr);
+        MachineRepresentation repr = vertex->GetMachineRepresentation();
+        ASSERT(!IsFloatingPoint(repr));
+
         InstructionOperand src = mergeInfo->Operand(predecessorId);
-        AllocatedState dest(LocationState::LocationKind::REGISTER, MachineRepresentation::Tagged, reg.Code());
+        AllocatedState dest(LocationState::LocationKind::REGISTER, repr, reg.Code());
         if (src.IsConstant()) {
             constantMoves->emplace_back(dest, vertex);
         } else if (src != dest) {
@@ -1247,23 +1567,59 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
 
         InstructionOperand src = mergeInfo->Operand(predecessorId);
         AllocatedState dest(LocationState::LocationKind::REGISTER, MachineRepresentation::Float64, reg.Code());
-        ASSERT(!src.IsConstant());
-        if (src != dest) {
+        if (src.IsConstant()) {
+            constantMoves->emplace_back(dest, vertex);
+        } else if (src != dest) {
             resolver->Add(dest, AllocatedState::Cast(src));
         }
     });
 }
 
 void ArkSteedCodeGenerator::ExecuteConstantPhiMove(const AllocatedState &dest, ValueVertex *constVertex,
-                                                   const ArkSteedRegister *scratchGPR)
+                                                   const ArkSteedRegister *scratchGPR,
+                                                   const ArkSteedDoubleRegister *scratchFPR)
 {
     ASSERT(constVertex != nullptr);
+
+    ArkSteedRegister localGPR = ArkSteedRegister::Invalid();
+    ArkSteedDoubleRegister localFPR = ArkSteedDoubleRegister::Invalid();
+    TemporaryRegisterScope scope(assembler_);
+    if (scratchGPR == nullptr) {
+        localGPR = scope.AcquireScratch();
+        scratchGPR = &localGPR;
+    }
+    if (scratchFPR == nullptr) {
+        localFPR = scope.AcquireDoubleScratch();
+        scratchFPR = &localFPR;
+    }
+
+    auto loadConstant = [&](ArkSteedRegister reg) {
+        if (dest.GetRepresentation() == MachineRepresentation::Tagged) {
+            assembler_->Move(reg, GetConstantForDeopt(constVertex, 0));
+            return;
+        }
+        LoadConstantToRegister(constVertex, reg);
+    };
+
     if (dest.IsRegister()) {
-        LoadConstantToRegister(constVertex, dest.GetRegister());
+        loadConstant(dest.GetRegister());
         return;
     }
-    ASSERT(scratchGPR != nullptr);
-    LoadConstantToRegister(constVertex, *scratchGPR);
+    if (dest.IsDoubleRegister()) {
+        Float64ConstantVertex *f64const = constVertex->Cast<Float64ConstantVertex>();
+        assembler_->Move(dest.GetDoubleRegister(), f64const->GetValue(), *scratchGPR);
+        return;
+    }
+    ASSERT(dest.IsAnyStackSlot());
+
+    if (dest.GetRepresentation() == MachineRepresentation::Float64) {
+        LoadConstantToDoubleRegister(constVertex, *scratchFPR);
+        assembler_->Move(*scratchGPR, *scratchFPR);
+        assembler_->MoveRepr(MachineRepresentation::Word64, assembler_->ToMemOperand(dest), *scratchGPR);
+        return;
+    }
+
+    loadConstant(*scratchGPR);
     assembler_->MoveRepr(dest.GetRepresentation(), assembler_->ToMemOperand(dest), *scratchGPR);
 }
 
@@ -1292,18 +1648,28 @@ void ArkSteedCodeGenerator::ExecuteGapMove(const InstructionOperand &dest, const
             UNREACHABLE();
         }
     } else if (srcOp.IsDoubleRegister()) {
-        UNREACHABLE();
-        // to do: Double Register
+        if (destOp.IsDoubleRegister()) {
+            assembler_->Move(destOp.GetDoubleRegister(), srcOp.GetDoubleRegister());
+        } else if (destOp.IsAnyStackSlot()) {
+            ASSERT(scratchGPR != nullptr);
+            assembler_->Move(*scratchGPR, srcOp.GetDoubleRegister());
+            assembler_->MoveRepr(MachineRepresentation::Word64, assembler_->ToMemOperand(destOp), *scratchGPR);
+        } else {
+            UNREACHABLE();
+        }
     } else if (srcOp.IsAnyStackSlot()) {
         ArkSteedAssembler::MemoryOperand srcMem = assembler_->ToMemOperand(srcOp);
         if (destOp.IsRegister()) {
             assembler_->MoveRepr(repr, destOp.GetRegister(), srcMem);
         } else if (destOp.IsDoubleRegister()) {
-            UNREACHABLE();
-            // to do: Double Register
+            assembler_->LoadFloat64(destOp.GetDoubleRegister(), srcMem);
         } else {
             ASSERT(destOp.IsAnyStackSlot());
-            if (scratchGPR != nullptr) {
+            if (repr == MachineRepresentation::Float64) {
+                ASSERT(scratchGPR != nullptr);
+                assembler_->MoveRepr(MachineRepresentation::Word64, *scratchGPR, srcMem);
+                assembler_->MoveRepr(MachineRepresentation::Word64, assembler_->ToMemOperand(destOp), *scratchGPR);
+            } else if (scratchGPR != nullptr) {
                 assembler_->MoveRepr(repr, *scratchGPR, srcMem);
                 assembler_->MoveRepr(repr, assembler_->ToMemOperand(destOp), *scratchGPR);
             } else {

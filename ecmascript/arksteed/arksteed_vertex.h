@@ -508,7 +508,7 @@ public:
     enum class InputAllocationPolicy {
         FIXED_REGISTER,      // FIXED_REGISTER or FIXED_FP_REGISTER
         ARBITRARY_REGISTER,  // MUST_HAVE_REGISTER
-        ANY,                 // MUST_HAVE_SLOT, REGISTER_OR_SLOT, REGISTER_OR_SLOT_OR_CONSTANT
+        ANY,                 // REGISTER_OR_SLOT, REGISTER_OR_SLOT_OR_CONSTANT
     };
 
     template <typename Function>
@@ -945,9 +945,13 @@ void Vertex::ForAllInputsInRegallocAssignmentOrder(Function &&f)
                         f(input);
                     }
                     break;
+                case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
+                    if (category == InputAllocationPolicy::FIXED_REGISTER) {
+                        f(input);
+                    }
+                    break;
                 case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT:
                 case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT:
-                case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
                     if (category == InputAllocationPolicy::ANY) {
                         f(input);
                     }

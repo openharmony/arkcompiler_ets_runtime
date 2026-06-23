@@ -149,7 +149,8 @@ static void PrepareSteedCallFrame(ExtendedAssembler *assembler, Register glue, R
     }
 }
 
-static void InvokeSteedCode(ExtendedAssembler *assembler, Register currentSp, Register actualNumArgs)
+static void InvokeSteedCode(ExtendedAssembler *assembler, Register currentSp, Register actualNumArgs,
+                            Register reservedSlots)
 {
     // Push order must match PushMandatoryJSArgs:
     // final SteedFunctionFrame caller layout is [argc][jsfunc][newTarget][this].
@@ -158,6 +159,10 @@ static void InvokeSteedCode(ExtendedAssembler *assembler, Register currentSp, Re
     __ Subq(CommonCall::FRAME_SLOT_SIZE, currentSp);
     __ Movq(Operand(rbp, NEW_TARGET_LOCAL_SLOT_OFFSET_FROM_FP), rax);
     __ Movq(rax, Operand(currentSp, 0));  // newTarget
+    // The generated callee may trigger a moving GC. Do not read the call-target
+    // object after the call just to recompute how many slots to release. The
+    // newTarget local is dead after it has been copied to the outgoing argv.
+    __ Movq(reservedSlots, Operand(rbp, NEW_TARGET_LOCAL_SLOT_OFFSET_FROM_FP));
     __ Subq(CommonCall::FRAME_SLOT_SIZE, currentSp);
     __ Movq(r12, Operand(currentSp, 0));  // jsfunc
     __ Subq(CommonCall::FRAME_SLOT_SIZE, currentSp);
@@ -170,20 +175,8 @@ static void InvokeSteedCode(ExtendedAssembler *assembler, Register currentSp, Re
 
 static void FreeSteedCallStack(ExtendedAssembler *assembler, Register actualArgc, Register reservedSlots)
 {
-    __ Movq(Operand(rsp, 0), actualArgc);
-    __ Subq(NUM_MANDATORY_JSFUNC_ARGS, actualArgc);
-    __ Movq(Operand(rsp, CommonCall::FRAME_SLOT_SIZE), rdx);
-    __ Movq(Operand(rdx, JSFunction::METHOD_OFFSET), rdx);
-    __ Movq(Operand(rdx, Method::CALL_FIELD_OFFSET), reservedSlots);
-    __ Shr(Immediate(Method::NumArgsBits::START_BIT), reservedSlots);
-    __ Andl(static_cast<int32_t>((1LU << Method::NumArgsBits::SIZE) - 1), reservedSlots);
-    __ Cmpq(reservedSlots, actualArgc);
-    Label freeSlotCountDone;
-    __ Jle(&freeSlotCountDone);
-    __ Movq(actualArgc, reservedSlots);
-    __ Bind(&freeSlotCountDone);
-    __ Addq(NUM_MANDATORY_JSFUNC_ARGS + 1, reservedSlots);
-    __ Or(x64::Immediate(1), reservedSlots);
+    (void)actualArgc;
+    __ Movq(Operand(rbp, NEW_TARGET_LOCAL_SLOT_OFFSET_FROM_FP), reservedSlots);
     __ Leaq(Operand(reservedSlots, Scale::Times8, 0), rdx);
     __ Addq(rdx, rsp);
 }
@@ -217,7 +210,7 @@ void ArkSteedCall::EmitSteedCall(ExtendedAssembler *assembler, Register glue, Re
     copyUserArgs(actualArgc, currentSp, &invokeSteedCode);
 
     __ Bind(&invokeSteedCode);
-    InvokeSteedCode(assembler, currentSp, actualNumArgs);
+    InvokeSteedCode(assembler, currentSp, actualNumArgs, reservedSlots);
 
     FreeSteedCallStack(assembler, actualArgc, reservedSlots);
     RestoreSteedCallFrame(assembler);

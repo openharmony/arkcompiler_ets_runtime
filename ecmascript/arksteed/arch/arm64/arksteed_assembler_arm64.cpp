@@ -88,6 +88,27 @@ void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate)
     assembler_.Fmov(dst, scratch);
 }
 
+void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate, ArkSteedRegister scratch)
+{
+    uint64_t bits = 0;
+    static_assert(sizeof(double) == sizeof(uint64_t), "double must be 64 bits");
+    if (memcpy_s(&bits, sizeof(double), &immediate, sizeof(double)) != EOK) {
+        LOG_JIT(FATAL) << "memcpy failed in Move";
+    }
+    Move(scratch, static_cast<int64_t>(bits));
+    assembler_.Fmov(dst, scratch);
+}
+
+void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, ArkSteedRegister src)
+{
+    assembler_.Fmov(dst, src);
+}
+
+void ArkSteedAssembler::Move(ArkSteedRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Fmov(dst, src);
+}
+
 // =============================================================================
 // Memory Operations
 // =============================================================================
@@ -113,7 +134,20 @@ void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
 
 void ArkSteedAssembler::LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp)
 {
-    assembler_.Ldr(dst, srcOp);
+    if (FitsScaledImmediateOffset(srcOp, true)) {
+        assembler_.Ldr(dst, srcOp);
+        return;
+    }
+    assembler_.Ldr(dst, MaterializeAddress(assembler_, srcOp));
+}
+
+void ArkSteedAssembler::StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src)
+{
+    if (FitsScaledImmediateOffset(dstOp, true)) {
+        assembler_.Str(src, dstOp);
+        return;
+    }
+    assembler_.Str(src, MaterializeAddress(assembler_, dstOp));
 }
 
 // =============================================================================
@@ -144,9 +178,44 @@ void ArkSteedAssembler::Sub(ArkSteedRegister dst, int32_t immediate)
     assembler_.Sub(arm64Dst, arm64Dst, aarch64::Operand(aarch64::Immediate(immediate)));
 }
 
+void ArkSteedAssembler::SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Add(dst, aarch64::xzr, aarch64::Operand(src.W(), aarch64::Extend::SXTW));
+}
+
+void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Adds(dst.W(), dst.W(), aarch64::Operand(src.W()));
+}
+
+void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Subs(dst.W(), dst.W(), aarch64::Operand(src.W()));
+}
+
+void ArkSteedAssembler::Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src)
+{
+    assembler_.Scvtf(dst, src.W());
+}
+
+void ArkSteedAssembler::Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Fadd(dst, dst, src);
+}
+
+void ArkSteedAssembler::Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Fsub(dst, dst, src);
+}
+
 // =============================================================================
 // Bitwise Operations
 // =============================================================================
+
+void ArkSteedAssembler::Word64And(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.And(dst, dst, aarch64::Operand(src));
+}
 
 void ArkSteedAssembler::Or(ArkSteedRegister dst, int64_t immediate)
 {
@@ -385,6 +454,18 @@ void ArkSteedAssembler::FreeCallArgSlots(ArkSteedRegister slotCount)
 {
     static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     assembler_.Add(aarch64::sp, aarch64::sp, aarch64::Operand(slotCount, aarch64::UXTW, FRAME_SLOT_SIZE_LOG2));
+}
+
+void ArkSteedAssembler::RestoreStackPointerToFrameBottom(Graph *graph)
+{
+    uint32_t taggedSlots = graph->GetTaggedStackSlots();
+    uint32_t untaggedSlots = graph->GetUntaggedStackSlots();
+    uint32_t frameSlots = 3 + taggedSlots + untaggedSlots;  // 3: frameType, jsFunc, lexicalEnv.
+    if (((taggedSlots + untaggedSlots) & 1U) == 0) {
+        frameSlots++;
+    }
+    int32_t offset = -static_cast<int32_t>(frameSlots * FRAME_SLOT_SIZE);
+    assembler_.Add(aarch64::sp, kFramePointerRegister, aarch64::Operand(aarch64::Immediate(offset)));
 }
 
 void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc)

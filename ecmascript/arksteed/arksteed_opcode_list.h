@@ -53,6 +53,18 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(StoreTaggedField)         \
     V(StoreEnvSlot)             \
     V(LoadException)            \
+    V(TaggedIntToI32)           \
+    V(CheckedTaggedIntToI32)    \
+    V(CheckedTaggedString)      \
+    V(I32AddWithOverflow)       \
+    V(I32SubWithOverflow)       \
+    V(I32Add)                   \
+    V(I32Sub)                   \
+    V(I32ToF64)                 \
+    V(CheckedNumberToF64)       \
+    V(F64ToTaggedDouble)        \
+    V(F64Add)                   \
+    V(F64Sub)                   \
     COMMON_VALUE_VERTEX_LIST(V) \
     CONVERSION_VERTEX_LIST(V)
 

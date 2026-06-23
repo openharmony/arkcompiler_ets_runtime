@@ -21,6 +21,11 @@ namespace panda::ecmascript::aarch64 {
 using namespace panda::ecmascript::base;
 static const uint64_t HWORD_MASK = 0xFFFF;
 
+static uint32_t FPType(const VRegister &reg)
+{
+    return reg.IsD() ? FloatingPointOpCode::FP64 : 0;
+}
+
 LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
 {
     if ((imm == 0ULL) || (imm == ~0ULL) ||
@@ -836,6 +841,24 @@ void AssemblerAarch64::Subs(const Register &rd, const Register &rn, const Operan
     }
 }
 
+void AssemblerAarch64::Scvtf(const VRegister &vd, const Register &rn)
+{
+    uint32_t code = Sf(!rn.IsW()) | FPType(vd) | SCVTF | Rn(rn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FADD | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FSUB | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
 bool AssemblerAarch64::IsAddSubImm(uint64_t imm)
 {
     const uint64_t IMM12_MASK = (1 << ADD_SUB_Imm12_WIDTH) - 1;
@@ -1283,11 +1306,18 @@ void AssemblerAarch64::Fmov(const VRegister &vd, const Register &rn)
     EmitU32(encoding);
 }
 
+void AssemblerAarch64::Fmov(const Register &rd, const VRegister &vn)
+{
+    uint32_t encoding = FMOV_XD;
+    encoding |= static_cast<uint32_t>(vn.Code()) << 5;  // 5: Dn field position
+    encoding |= static_cast<uint32_t>(rd.Code());       // d (Xd)
+    EmitU32(encoding);
+}
+
 void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
 {
     // LDR Dt, [Xn, #imm] - Load SIMD&FP Register (64-bit)
-    // Encoding: opc 11 11 00 01 1 imm12 Rn Rt
-    // opc = 11 for 64-bit D register
+    // Encoding: size/opc for 64-bit SIMD&FP register, unsigned scaled immediate.
     // imm12 = offset / 8 (must be aligned)
     ASSERT(operand.IsImmediateOffset());
     ASSERT(operand.GetRegBase().IsX());
@@ -1296,10 +1326,26 @@ void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
     ASSERT((offset % 8) == 0 && offset >= 0 && offset <= 32760);  // 8, 32760: max offset for 12-bit imm scaled by 8
     uint32_t imm12 = static_cast<uint32_t>(offset / 8);  // 8: bytes per 64-bit register
 
-    uint32_t encoding = 0x3FC40000;  // opc=11, fixed bits
+    uint32_t encoding = 0xFD400000;
     encoding |= (imm12 << 10);                          // 10: imm12 field position
     encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
     encoding |= static_cast<uint32_t>(vt.Code());       // Rt (Dt)
+    EmitU32(encoding);
+}
+
+void AssemblerAarch64::Str(const VRegister &vt, const MemoryOperand &operand)
+{
+    ASSERT(operand.IsImmediateOffset());
+    ASSERT(operand.GetRegBase().IsX());
+
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT((offset % 8) == 0 && offset >= 0 && offset <= 32760);  // 8, 32760: max offset for 12-bit imm scaled by 8
+    uint32_t imm12 = static_cast<uint32_t>(offset / 8);  // 8: bytes per 64-bit register
+
+    uint32_t encoding = 0xFD000000;
+    encoding |= (imm12 << 10);                                      // 10: imm12 field position
+    encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
+    encoding |= static_cast<uint32_t>(vt.Code());                   // Rt (Dt)
     EmitU32(encoding);
 }
 }   // namespace panda::ecmascript::aarch64

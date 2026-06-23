@@ -34,6 +34,15 @@ class BB;
 class ArkSteedState;
 class ArkSteedAssembler;
 
+enum class BinaryOpKind : uint8_t {
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    EXP,
+};
+
 /**
  * CRTP Mixin Classes for ArkSteed Opcodes
  *
@@ -205,7 +214,13 @@ private:
 class DeoptimizableMixin {
 public:
     DeoptimizableMixin(ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
-        : deoptVRegs_(std::move(deoptVRegs)), bytecodeOffset_(bytecodeOffset)
+        : DeoptimizableMixin(0, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    DeoptimizableMixin(uint32_t firstDeoptInputIndex, ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : deoptVRegs_(std::move(deoptVRegs)),
+          firstDeoptInputIndex_(firstDeoptInputIndex),
+          bytecodeOffset_(bytecodeOffset)
     {}
 
     VRegIDType GetDeoptVReg(uint32_t index) const
@@ -219,6 +234,22 @@ public:
         return deoptVRegs_;
     }
 
+    uint32_t FirstDeoptInputIndex() const
+    {
+        return firstDeoptInputIndex_;
+    }
+
+    uint32_t DeoptInputCount() const
+    {
+        return static_cast<uint32_t>(deoptVRegs_.size());
+    }
+
+    int DeoptInputIndex(uint32_t index) const
+    {
+        ASSERT(index < DeoptInputCount());
+        return static_cast<int>(firstDeoptInputIndex_ + index);
+    }
+
     uint32_t GetBytecodeOffset() const
     {
         return bytecodeOffset_;
@@ -226,6 +257,7 @@ public:
 
 private:
     ChunkVector<VRegIDType> deoptVRegs_;
+    uint32_t firstDeoptInputIndex_ {0};
     uint32_t bytecodeOffset_;
 };
 
@@ -637,6 +669,208 @@ private:
     SideEffectKind sideEffectKind_;
 };
 
+class TaggedIntToI32Vertex : public FixedInputVertexMixin<1, ValueVertex, TaggedIntToI32Vertex> {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+
+    explicit TaggedIntToI32Vertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class CheckedTaggedIntToI32Vertex : public VertexMixin<ValueVertex, CheckedTaggedIntToI32Vertex>,
+                                    public DeoptimizableMixin {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
+
+    explicit CheckedTaggedIntToI32Vertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                         ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
+        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class CheckedTaggedStringVertex : public VertexMixin<ValueVertex, CheckedTaggedStringVertex>,
+                                  public DeoptimizableMixin {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::NotIdempotent();
+
+    explicit CheckedTaggedStringVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                       ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
+        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class I32AddWithOverflowVertex : public VertexMixin<ValueVertex, I32AddWithOverflowVertex>,
+                                 public DeoptimizableMixin {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr int FIRST_DEOPT_INDEX = 2;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
+
+    explicit I32AddWithOverflowVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                       ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        VerifyI32BinOpInputs();
+    }
+
+private:
+    void VerifyI32BinOpInputs() const;
+};
+
+class I32SubWithOverflowVertex : public VertexMixin<ValueVertex, I32SubWithOverflowVertex>,
+                                 public DeoptimizableMixin {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr int FIRST_DEOPT_INDEX = 2;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
+
+    explicit I32SubWithOverflowVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                       ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        VerifyI32BinOpInputs();
+    }
+
+private:
+    void VerifyI32BinOpInputs() const;
+};
+
+class I32AddVertex : public FixedInputVertexMixin<2, ValueVertex, I32AddVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+
+    explicit I32AddVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class I32SubVertex : public FixedInputVertexMixin<2, ValueVertex, I32SubVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+
+    explicit I32SubVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class I32ToF64Vertex : public FixedInputVertexMixin<1, ValueVertex, I32ToF64Vertex> {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::INT32};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Float64();
+
+    explicit I32ToF64Vertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class CheckedNumberToF64Vertex : public VertexMixin<ValueVertex, CheckedNumberToF64Vertex>,
+                                public DeoptimizableMixin {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Float64() | VertexProperties::NotIdempotent();
+
+    explicit CheckedNumberToF64Vertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                      ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
+        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class F64ToTaggedDoubleVertex : public FixedInputVertexMixin<1, ValueVertex, F64ToTaggedDoubleVertex> {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    explicit F64ToTaggedDoubleVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class F64AddVertex : public FixedInputVertexMixin<2, ValueVertex, F64AddVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::FLOAT64, ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Float64();
+
+    explicit F64AddVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class F64SubVertex : public FixedInputVertexMixin<2, ValueVertex, F64SubVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::FLOAT64, ValueRepresentation::FLOAT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Float64();
+
+    explicit F64SubVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
 //==============================================================================
 // Load/Store Vertices
 //==============================================================================
@@ -653,7 +887,7 @@ public:
                                          ChunkVector<VRegIDType> deoptVRegs,
                                          uint32_t bytecodeOffset)
         : VertexMixin(bitfield),
-          DeoptimizableMixin(std::move(deoptVRegs), bytecodeOffset),
+          DeoptimizableMixin(RECEIVER_INDEX + 1, std::move(deoptVRegs), bytecodeOffset),
           expectedHClass_(expectedHClass)
     {}
 
