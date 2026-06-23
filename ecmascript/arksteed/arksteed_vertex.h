@@ -199,6 +199,11 @@ public:
         return NotIdempotentBit::Decode(bitfield_);
     }
 
+    constexpr bool CanParticipateInCSE() const
+    {
+        return !CanWrite() && !IsNotIdempotent();
+    }
+
     constexpr bool MayHasSideEffect() const
     {
         uint32_t mask = static_cast<uint32_t>(CanReadBit::Mask() | CanWriteBit::Mask() | CanAllocateBit::Mask());

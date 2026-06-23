@@ -320,6 +320,99 @@ CompareOpKind InvertCompare(CompareOpKind kind)
     }
 }
 
+// ---- Common-subexpression elimination helpers (available expressions) ----
+// Standard 64-bit FNV-1a constants. The hash is only an available-expression lookup key;
+// CompileInfoFacts::FindExpression still checks opcode, inputs, options, and effect epoch.
+constexpr uint64_t CSE_FNV_OFFSET_BASIS = 14695981039346656037ULL;
+constexpr uint64_t CSE_FNV_PRIME = 1099511628211ULL;
+
+uint64_t CseHashCombine(uint64_t hash, uint64_t value)
+{
+    hash ^= value;
+    hash *= CSE_FNV_PRIME;
+    return hash;
+}
+
+uint64_t CseHashValue(ValueVertex *value)
+{
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value));
+}
+
+uint32_t CseHashExpression(VertexOpcode opcode, const CompileInfoFacts::ExpressionInputs &inputs,
+                           const CompileInfoFacts::ExpressionOptions &options)
+{
+    uint64_t hash = CseHashCombine(CSE_FNV_OFFSET_BASIS, static_cast<uint64_t>(opcode));
+    for (ValueVertex *input : inputs) {
+        hash = CseHashCombine(hash, CseHashValue(input));
+    }
+    for (uint64_t option : options) {
+        hash = CseHashCombine(hash, option);
+    }
+    return static_cast<uint32_t>(hash ^ (hash >> 32U));  // 32: fold 64-bit hash to 32-bit hash.
+}
+
+template <typename T>
+void CseAppendExpressionOption(CompileInfoFacts::ExpressionOptions &options, const T &value)
+{
+    using RawT = std::remove_cv_t<std::remove_reference_t<T>>;
+    if constexpr (std::is_enum_v<RawT>) {
+        options.push_back(static_cast<uint64_t>(value));
+    } else if constexpr (std::is_integral_v<RawT>) {
+        options.push_back(static_cast<uint64_t>(value));
+    } else if constexpr (std::is_pointer_v<RawT>) {
+        options.push_back(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value)));
+    } else if constexpr (std::is_floating_point_v<RawT>) {
+        uint64_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(value));
+        options.push_back(bits);
+    } else {
+        static_assert(std::is_trivially_copyable_v<RawT>, "Unsupported available-expression option type");
+        static_assert(sizeof(RawT) <= sizeof(uint64_t), "Available-expression option is too large");
+        uint64_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(value));
+        options.push_back(bits);
+    }
+}
+
+template <typename... Args>
+void CseBuildExpressionOptions(CompileInfoFacts::ExpressionOptions &options, const Args &...args)
+{
+    (CseAppendExpressionOption(options, args), ...);
+}
+
+constexpr bool CseIsExcludedAvailableExpressionOpcode(VertexOpcode opcode)
+{
+    switch (opcode) {
+        case VertexOpcode::Int32Constant:
+        case VertexOpcode::IntPtrConstant:
+        case VertexOpcode::Float64Constant:
+        case VertexOpcode::TaggedConstant:
+        case VertexOpcode::InitialValue:
+        case VertexOpcode::ActualArgc:
+        case VertexOpcode::Call:
+        case VertexOpcode::CallRuntime:
+        case VertexOpcode::CallCommonStub:
+        case VertexOpcode::Deopt:
+        case VertexOpcode::Phi:
+            return true;
+        default:
+            return false;
+    }
+}
+
+template <typename VertexT>
+constexpr bool CseCanUseAvailableExpression()
+{
+    if constexpr (!std::is_base_of_v<ValueVertex, VertexT>) {
+        return false;
+    } else {
+        constexpr VertexOpcode opcode = Vertex::opcode_of<VertexT>();
+        constexpr VertexProperties props = VertexT::PROPERTIES;
+        return !CseIsExcludedAvailableExpressionOpcode(opcode) && props.CanParticipateInCSE() &&
+               !props.CanRead() && !props.IsAnyCall() && !props.CanAllocate() && !props.CanThrow();
+    }
+}
+
 // Condensed storage: [vA, vA, vA, vB, vB, vB, vB, vB, vB, vC, vC, vC, vC]
 //                 => [(vA, 3),    (vB, 6),                (vC, 4)]
 struct GraphBuilder::CatchBlockInputData {
@@ -743,6 +836,29 @@ template <class VertexT, class InputRange, class... Args>
 VertexT *GraphBuilder::NewVertex(
     CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs, Args &&...args)
 {
+    if constexpr (CseCanUseAvailableExpression<VertexT>()) {
+        CompileInfoFacts::ExpressionInputs expressionInputs(chunk_);
+        for (ValueVertex *input : inputs) {
+            expressionInputs.push_back(input);
+        }
+
+        CompileInfoFacts::ExpressionOptions options(chunk_);
+        CseBuildExpressionOptions(options, args...);
+        uint32_t hash = CseHashExpression(Vertex::opcode_of<VertexT>(), expressionInputs, options);
+        bool needsEpochCheck = VertexT::PROPERTIES.CanRead();
+        ValueVertex *cached = compileInfoFacts->FindExpression(hash, Vertex::opcode_of<VertexT>(),
+                                                              expressionInputs, options, needsEpochCheck);
+        if (cached != nullptr) {
+            return cached->Cast<VertexT>();
+        }
+
+        VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
+        vertex->SetOwner(owner);
+        owner->AddVertex(vertex);
+        REGISTER_VERTEX_TO_LABELLER(vertex);
+        compileInfoFacts->AddExpression(hash, vertex, expressionInputs, options, needsEpochCheck);
+        return vertex;
+    }
     VertexT *vertex = NewVertex<VertexT>(owner, inputs, std::forward<Args>(args)...);
     if constexpr (VertexT::PROPERTIES.CanWrite()) {
         compileInfoFacts->MarkPossibleSideEffect(ArkSteedSideEffectClassifier::Classify(vertex));
@@ -2052,7 +2168,7 @@ struct GraphBuilder::BytecodeVisitor {
         constexpr int32_t offset = static_cast<int32_t>(
             GlobalEnv::HEADER_SIZE + GlobalEnv::JS_GLOBAL_OBJECT_INDEX * JSTaggedValue::TaggedTypeSize());
 
-        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {GlobalEnv()}, offset));
+        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
     }
 
     void LowerLdSymbol()
@@ -2060,7 +2176,7 @@ struct GraphBuilder::BytecodeVisitor {
         constexpr int32_t offset = static_cast<int32_t>(
             GlobalEnv::HEADER_SIZE + GlobalEnv::SYMBOL_FUNCTION_INDEX * JSTaggedValue::TaggedTypeSize());
 
-        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {GlobalEnv()}, offset));
+        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
     }
 
     void LowerLdPrivateProperty(const BytecodeInfo *bcInfo)
@@ -2867,13 +2983,13 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *ActualArgc()
     {
-        return self->NewVertex<ActualArgcVertex>(currentBlock, {});
+        return self->NewVertex<ActualArgcVertex>(compileInfoFacts_, currentBlock, {});
     }
 
     ValueVertex *TaggedActualArgc()
     {
         ValueVertex *argc = ActualArgc();
-        return self->NewVertex<ToTaggedIntVertex>(currentBlock, {argc});
+        return self->NewVertex<ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {argc});
     }
 
     std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const
@@ -3098,10 +3214,10 @@ struct GraphBuilder::BytecodeVisitor {
                 case ValueRepresentation::TAGGED:
                     return value;
                 case ValueRepresentation::INT32:
-                    return self->NewVertex<ToTaggedIntVertex>(currentBlock, std::initializer_list<ValueVertex *>{value});
+                    return self->NewVertex<ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
                 case ValueRepresentation::FLOAT64:
                 case ValueRepresentation::HOLEY_FLOAT64:
-                    return self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{value});
+                    return self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
                 case ValueRepresentation::UINT32:
                 case ValueRepresentation::INT_PTR:
                 case ValueRepresentation::NONE:
@@ -3166,7 +3282,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (ValueVertex *alternative = compileInfoFacts_->TryGetAlternative(value, AlternativeNodes::Kind::INT32)) {
             return alternative;
         }
-        ValueVertex *i32 = self->NewVertex<TaggedIntToI32Vertex>(currentBlock, std::initializer_list<ValueVertex *>{value});
+        ValueVertex *i32 = self->NewVertex<TaggedIntToI32Vertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::INT32, i32);
         return i32;
     }
@@ -3209,7 +3325,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildTaggedI32Result(ValueVertex *rawResult)
     {
         ValueVertex *taggedResult =
-            self->NewVertex<ToTaggedIntVertex>(currentBlock, std::initializer_list<ValueVertex *>{rawResult});
+            self->NewVertex<ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{rawResult});
         compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::INT32, rawResult);
         return taggedResult;
@@ -3228,13 +3344,13 @@ struct GraphBuilder::BytecodeVisitor {
     {
         switch (kind) {
             case BinaryOpKind::ADD:
-                return self->NewVertex<I32AddVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32AddVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
             case BinaryOpKind::SUB:
-                return self->NewVertex<I32SubVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32SubVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
             case BinaryOpKind::MUL:
-                return self->NewVertex<I32MulVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32MulVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
             case BinaryOpKind::DIV:
-                return self->NewVertex<I32DivVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32DivVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
             default:
                 return nullptr;
         }
@@ -3250,7 +3366,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildPositiveI32ModTaggedValue(ValueVertex *leftI32, ValueVertex *rightI32)
     {
         ValueVertex *rawResult =
-            self->NewVertex<PositiveI32ModVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+            self->NewVertex<PositiveI32ModVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
         return BuildTaggedI32Result(rawResult);
     }
 
@@ -3542,7 +3658,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
             ValueVertex *i32 = BuildTaggedIntToI32(value);
-            ValueVertex *f64 = self->NewVertex<I32ToF64Vertex>(currentBlock, std::initializer_list<ValueVertex *>{i32});
+            ValueVertex *f64 = self->NewVertex<I32ToF64Vertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{i32});
             compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
             return f64;
         }
@@ -3561,11 +3677,11 @@ struct GraphBuilder::BytecodeVisitor {
     {
         switch (kind) {
             case BinaryOpKind::ADD:
-                return self->NewVertex<F64AddVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
             case BinaryOpKind::SUB:
-                return self->NewVertex<F64SubVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
             case BinaryOpKind::MUL:
-                return self->NewVertex<F64MulVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64MulVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
             case BinaryOpKind::DIV:
                 return self->NewVertex<F64DivVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
             default:
@@ -3588,7 +3704,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildTaggedF64Value(ValueVertex *rawResult)
     {
         ValueVertex *taggedResult =
-            self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{rawResult});
+            self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{rawResult});
         compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::DOUBLE);
         compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::HOLEY_FLOAT64, rawResult);
         return taggedResult;
@@ -3752,7 +3868,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildI32BitwiseTaggedValue(Int32BitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
         ValueVertex *raw =
-            self->NewVertex<I32BitwiseBinaryVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, kind);
+            self->NewVertex<I32BitwiseBinaryVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, kind);
         if (kind != Int32BitwiseKind::SHIFT_RIGHT_LOGICAL) {
             return BuildTaggedI32Result(raw);
         }
@@ -3873,7 +3989,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildTaggedEqual(ValueVertex *left, ValueVertex *right)
     {
         ValueVertex *result =
-            self->NewVertex<TaggedEqualVertex>(currentBlock, std::initializer_list<ValueVertex *>{left, right});
+            self->NewVertex<TaggedEqualVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{left, right});
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -3881,7 +3997,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildTaggedNotEqual(ValueVertex *left, ValueVertex *right)
     {
         ValueVertex *result =
-            self->NewVertex<TaggedNotEqualVertex>(currentBlock, std::initializer_list<ValueVertex *>{left, right});
+            self->NewVertex<TaggedNotEqualVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{left, right});
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -3929,7 +4045,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *leftI32 = BuildTaggedIntToI32(left);
         ValueVertex *rightI32 = BuildTaggedIntToI32(right);
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
-            currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, Int32ConditionFromCompare(kind));
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32},
+            Int32ConditionFromCompare(kind));
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -3944,7 +4061,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
         ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
-            currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, Int32ConditionFromCompare(kind));
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32},
+            Int32ConditionFromCompare(kind));
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -3958,7 +4076,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         ValueVertex *result = self->NewVertex<F64ConditionCheckVertex>(
-            currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64}, Int32ConditionFromCompare(kind));
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64},
+            Int32ConditionFromCompare(kind));
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -4170,7 +4289,7 @@ struct GraphBuilder::BytecodeVisitor {
             }
             case CommonStubID::Not: {
                 ValueVertex *rawResult =
-                    self->NewVertex<I32BNotVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueI32});
+                    self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32});
                 return BuildTaggedI32Result(rawResult);
             }
             default:
@@ -4183,14 +4302,14 @@ struct GraphBuilder::BytecodeVisitor {
         if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
             ValueVertex *valueI32 = BuildTaggedIntToI32(value);
             ValueVertex *rawResult =
-                self->NewVertex<I32BNotVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueI32});
+                self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32});
             return BuildTaggedI32Result(rawResult);
         }
         ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
         ValueVertex *truncI32 =
-            self->NewVertex<F64ToI32TruncVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64});
+            self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
         ValueVertex *rawResult =
-            self->NewVertex<I32BNotVertex>(currentBlock, std::initializer_list<ValueVertex *>{truncI32});
+            self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{truncI32});
         return BuildTaggedI32Result(rawResult);
     }
 
@@ -4200,27 +4319,27 @@ struct GraphBuilder::BytecodeVisitor {
         switch (stubId) {
             case CommonStubID::Neg: {
                 ValueVertex *negF64 =
-                    self->NewVertex<F64NegVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64});
+                    self->NewVertex<F64NegVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
                 ValueVertex *result =
-                    self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{negF64});
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{negF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
             case CommonStubID::Inc: {
                 ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
                 ValueVertex *addF64 =
-                    self->NewVertex<F64AddVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
+                    self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
                 ValueVertex *result =
-                    self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{addF64});
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{addF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
             case CommonStubID::Dec: {
                 ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
                 ValueVertex *subF64 =
-                    self->NewVertex<F64SubVertex>(currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
+                    self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
                 ValueVertex *result =
-                    self->NewVertex<F64ToTaggedDoubleVertex>(currentBlock, std::initializer_list<ValueVertex *>{subF64});
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{subF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
@@ -4406,13 +4525,13 @@ struct GraphBuilder::BytecodeVisitor {
     {
         if (plr.IsInlinedProps()) {
             int32_t offset = static_cast<int32_t>(plr.GetOffset());
-            return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {object}, offset);
+            return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object}, offset);
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
                                               plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
-        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {properties}, offset);
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
     }
 
     void BuildStoreField(ValueVertex *object, ValueVertex *value, PropertyLookupResult plr)
@@ -4609,7 +4728,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *GetValueFromTaggedArray(ValueVertex *array, uint32_t index)
     {
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {array}, offset);
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array}, offset);
     }
 
     ValueVertex *SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
@@ -4624,15 +4743,15 @@ struct GraphBuilder::BytecodeVisitor {
         int32_t constpoolOffset = static_cast<int32_t>(Method::CONSTANT_POOL_OFFSET);
 
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
-        ValueVertex *method = self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {jsFunc}, methodOffset);
-        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {method}, constpoolOffset);
+        ValueVertex *method = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, methodOffset);
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {method}, constpoolOffset);
     }
 
     ValueVertex *ModuleFromFunction()
     {
         int32_t moduleOffset = static_cast<int32_t>(JSFunction::ECMA_MODULE_OFFSET);
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
-        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {jsFunc}, moduleOffset);
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, moduleOffset);
     }
 
     ValueVertex *StringFromConstPool(ValueVertex *stringId)
