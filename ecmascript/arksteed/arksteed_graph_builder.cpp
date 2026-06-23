@@ -16,6 +16,7 @@
 #include "ecmascript/arksteed/arksteed_graph_builder.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cmath>
 
 #include "ecmascript/arksteed/arksteed_compile_info_facts.h"
@@ -169,6 +170,8 @@ bool SupportsI32CheckedBinOp(BinaryOpKind kind)
     switch (kind) {
         case BinaryOpKind::ADD:
         case BinaryOpKind::SUB:
+        case BinaryOpKind::MUL:
+        case BinaryOpKind::DIV:
             return true;
         default:
             return false;
@@ -180,6 +183,8 @@ bool SupportsF64BinOp(BinaryOpKind kind)
     switch (kind) {
         case BinaryOpKind::ADD:
         case BinaryOpKind::SUB:
+        case BinaryOpKind::MUL:
+        case BinaryOpKind::DIV:
             return true;
         default:
             return false;
@@ -1422,10 +1427,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::MUL, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Mul));
+        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::MUL));
     }
 
     void LowerDiv2(const BytecodeInfo *bcInfo)
@@ -1434,17 +1439,15 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *y = frameState.GetAcc();
         JSTaggedValue folded;
         if (TryFoldBinaryConstant(x, y, BinaryFoldOp::DIV, &folded)) {
-            frameState.SetAcc(self->graph_->GetTaggedConstant(folded.GetRawData()));
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Div));
+        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::DIV));
     }
 
-    void LowerMod2(const BytecodeInfo *bcInfo)
+    void LowerMod2(const BytecodeInfo * /*bcInfo*/)
     {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Mod));
+        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::MOD));
     }
 
     void LowerExp(const BytecodeInfo *bcInfo)
@@ -3072,6 +3075,10 @@ struct GraphBuilder::BytecodeVisitor {
                 return self->NewVertex<I32AddVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
             case BinaryOpKind::SUB:
                 return self->NewVertex<I32SubVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+            case BinaryOpKind::MUL:
+                return self->NewVertex<I32MulVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+            case BinaryOpKind::DIV:
+                return self->NewVertex<I32DivVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
             default:
                 return nullptr;
         }
@@ -3081,6 +3088,24 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *rawResult = BuildI32BinOpValue(kind, leftI32, rightI32);
         ASSERT(rawResult != nullptr);
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *BuildPositiveI32ModTaggedValue(ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        ValueVertex *rawResult =
+            self->NewVertex<PositiveI32ModVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *BuildCheckedPositiveI32ModTaggedValue(ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        std::vector<ValueVertex *> inputs {leftI32, rightI32};
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        ValueVertex *rawResult = self->NewVertex<CheckedPositiveI32ModVertex>(
+            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+            self->preproc_->GetBytecodeOffset(currentBcIndex));
         return BuildTaggedI32Result(rawResult);
     }
 
@@ -3098,9 +3123,125 @@ struct GraphBuilder::BytecodeVisitor {
                 return self->NewVertex<I32SubWithOverflowVertex>(
                     currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
                     self->preproc_->GetBytecodeOffset(currentBcIndex));
+            case BinaryOpKind::MUL:
+                return self->NewVertex<I32MulWithOverflowVertex>(
+                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+            case BinaryOpKind::DIV:
+                return self->NewVertex<I32DivWithOverflowVertex>(
+                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+                    self->preproc_->GetBytecodeOffset(currentBcIndex));
             default:
                 return nullptr;
         }
+    }
+
+    struct SignedDivisorMagic {
+        int32_t magic;
+        uint32_t shift;
+    };
+
+    static SignedDivisorMagic ComputeSignedDivisorMagic(int32_t divisor)
+    {
+        ASSERT(divisor <= -2 || divisor >= 2);
+        constexpr uint32_t BIT_WIDTH = 32;
+        uint64_t highOne = 1ULL << (BIT_WIDTH - 1U);
+        uint64_t ad = divisor < 0 ? static_cast<uint64_t>(-static_cast<int64_t>(divisor)) :
+                                     static_cast<uint64_t>(divisor);
+        uint64_t divisorBits = static_cast<uint64_t>(static_cast<int64_t>(divisor));
+        uint64_t t = highOne + (divisorBits >> 63U);
+        uint64_t anc = t - 1U - t % ad;
+        int64_t p = BIT_WIDTH - 1U;
+        uint64_t q1 = highOne / anc;
+        uint64_t r1 = highOne - q1 * anc;
+        uint64_t q2 = highOne / ad;
+        uint64_t r2 = highOne - q2 * ad;
+        uint64_t delta = 0U;
+
+        do {
+            ++p;
+            q1 *= 2U;
+            r1 *= 2U;
+            if (r1 >= anc) {
+                ++q1;
+                r1 -= anc;
+            }
+            q2 *= 2U;
+            r2 *= 2U;
+            if (r2 >= ad) {
+                ++q2;
+                r2 -= ad;
+            }
+            delta = ad - r2;
+        } while (q1 < delta || (q1 == delta && r1 == 0));
+
+        int64_t magic = static_cast<int64_t>(q2) + 1;
+        if (divisor < 0) {
+            magic = -magic;
+        }
+        return {static_cast<int32_t>(magic), static_cast<uint32_t>(p - BIT_WIDTH)};
+    }
+
+    ValueVertex *BuildI32DivByConstWithCheckTagged(ValueVertex *left, int32_t divisor)
+    {
+        SignedDivisorMagic magic = ComputeSignedDivisorMagic(divisor);
+        ValueVertex *leftI32 = BuildTaggedIntToI32(left);
+        std::vector<ValueVertex *> inputs {leftI32};
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        ValueVertex *rawResult = self->NewVertex<I32DivByConstWithCheckVertex>(
+            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+            self->preproc_->GetBytecodeOffset(currentBcIndex), divisor, magic.magic, magic.shift);
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    void BuildDeoptIfInt32Condition(ValueVertex *leftI32, ValueVertex *rightI32, Int32ConditionKind condition,
+                                    kungfu::DeoptType deoptType)
+    {
+        std::vector<ValueVertex *> inputs {leftI32, rightI32};
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        self->NewVertex<DeoptIfInt32ConditionVertex>(
+            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+            self->preproc_->GetBytecodeOffset(currentBcIndex), condition, deoptType);
+    }
+
+    ValueVertex *BuildTaggedIntConstant(int32_t value)
+    {
+        ValueVertex *constant = self->graph_->GetTaggedConstant(JSTaggedValue(value).GetRawData());
+        compileInfoFacts_->EnsureType(constant, NodeInfo::NodeType::INT);
+        return constant;
+    }
+
+    ValueVertex *TryBuildI32MulByZeroReduction(ValueVertex *value)
+    {
+        if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
+            if (*constant < 0) {
+                return nullptr;
+            }
+            return BuildTaggedIntConstant(0);
+        }
+
+        ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+        BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), Int32ConditionKind::LESS_THAN,
+                                   kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
+        return BuildTaggedIntConstant(0);
+    }
+
+    ValueVertex *TryBuildI32DivByMinusOneReduction(ValueVertex *value)
+    {
+        std::optional<int32_t> constant = TryGetInt32Value(value);
+        if (constant.has_value() && *constant == 0) {
+            return nullptr;
+        }
+
+        ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+        ValueVertex *zeroI32 = self->graph_->GetInt32Constant(0);
+        if (!constant.has_value()) {
+            BuildDeoptIfInt32Condition(valueI32, zeroI32, Int32ConditionKind::EQUAL, kungfu::DeoptType::DIVZERO2);
+        }
+        ValueVertex *rawResult = BuildI32BinOpWithOverflow(BinaryOpKind::SUB, zeroI32, valueI32);
+        return BuildTaggedI32Result(rawResult);
     }
 
     ValueVertex *TryBuildI32BinaryReduction(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
@@ -3124,6 +3265,28 @@ struct GraphBuilder::BytecodeVisitor {
                         return returnIfKnownInt(left);
                     }
                     break;
+                case BinaryOpKind::MUL:
+                    if (*rightValue == 0) {
+                        return TryBuildI32MulByZeroReduction(left);
+                    }
+                    if (*rightValue == 1) {
+                        return returnIfKnownInt(left);
+                    }
+                    break;
+                case BinaryOpKind::DIV:
+                    if (*rightValue == -1) {
+                        return TryBuildI32DivByMinusOneReduction(left);
+                    }
+                    if (*rightValue == 1) {
+                        return returnIfKnownInt(left);
+                    }
+                    if (*rightValue != 0) {
+                        return BuildI32DivByConstWithCheckTagged(left, *rightValue);
+                    }
+                    break;
+                case BinaryOpKind::MOD:
+                case BinaryOpKind::EXP:
+                    break;
                 default:
                     break;
             }
@@ -3133,6 +3296,14 @@ struct GraphBuilder::BytecodeVisitor {
             switch (kind) {
                 case BinaryOpKind::ADD:
                     if (*leftValue == 0) {
+                        return returnIfKnownInt(right);
+                    }
+                    break;
+                case BinaryOpKind::MUL:
+                    if (*leftValue == 0) {
+                        return TryBuildI32MulByZeroReduction(right);
+                    }
+                    if (*leftValue == 1) {
                         return returnIfKnownInt(right);
                     }
                     break;
@@ -3146,6 +3317,13 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildI32BinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
     {
+        if (kind == BinaryOpKind::MOD) {
+            bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+            bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+            ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
+            ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
+            return BuildCheckedPositiveI32ModTaggedValue(leftI32, rightI32);
+        }
         if (!SupportsI32CheckedBinOp(kind)) {
             return BuildGenericBinOp(kind, left, right);
         }
@@ -3221,6 +3399,10 @@ struct GraphBuilder::BytecodeVisitor {
                 return self->NewVertex<F64AddVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
             case BinaryOpKind::SUB:
                 return self->NewVertex<F64SubVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+            case BinaryOpKind::MUL:
+                return self->NewVertex<F64MulVertex>(currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+            case BinaryOpKind::DIV:
+                return self->NewVertex<F64DivVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
             default:
                 return nullptr;
         }
@@ -3321,6 +3503,14 @@ struct GraphBuilder::BytecodeVisitor {
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Add);
             case BinaryOpKind::SUB:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Sub);
+            case BinaryOpKind::MUL:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Mul);
+            case BinaryOpKind::DIV:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Div);
+            case BinaryOpKind::MOD:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Mod);
+            case BinaryOpKind::EXP:
+                return RuntimeCall({left, right}, RTSTUB_ID(Exp));
             default:
                 break;
         }
@@ -3350,6 +3540,17 @@ struct GraphBuilder::BytecodeVisitor {
 
         if (profile.IsInt()) {
             return BuildI32BinOp(kind, left, right);
+        }
+        if (kind == BinaryOpKind::MOD) {
+            bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+            bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+            bool leftKnownNumber = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::NUMBER);
+            bool rightKnownNumber = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::NUMBER);
+            bool leftKnownNonIntNumber = leftKnownNumber && !leftKnownInt;
+            bool rightKnownNonIntNumber = rightKnownNumber && !rightKnownInt;
+            if (!leftKnownNonIntNumber && !rightKnownNonIntNumber) {
+                return BuildI32BinOp(kind, left, right);
+            }
         }
         if (profile.HasNumber() || profile.IsNumberOrString()) {
             return BuildF64NumberBinOp(kind, left, right);
@@ -3396,6 +3597,16 @@ struct GraphBuilder::BytecodeVisitor {
             case BinaryOpKind::SUB:
                 result = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
                 break;
+            case BinaryOpKind::MUL:
+                if ((lhs == 0 || rhs == 0) && (lhs < 0 || rhs < 0)) {
+                    return nullptr;
+                }
+                result = static_cast<int64_t>(lhs) * static_cast<int64_t>(rhs);
+                break;
+            case BinaryOpKind::DIV:
+            case BinaryOpKind::MOD:
+            case BinaryOpKind::EXP:
+                return nullptr;
             default:
                 return nullptr;
         }

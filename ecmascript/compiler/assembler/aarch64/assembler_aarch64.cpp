@@ -680,6 +680,11 @@ void AssemblerAarch64::And(const Register &rd, const Register &rn, const Logical
     BitWiseOpImm(AND_Imm, rd, rn, imm.Value());
 }
 
+void AssemblerAarch64::Eor(const Register &rd, const Register &rn, const LogicalImmediate &imm)
+{
+    BitWiseOpImm(EOR_Imm, rd, rn, imm.Value());
+}
+
 void AssemblerAarch64::Ands(const Register &rd, const Register &rn, const LogicalImmediate &imm)
 {
     BitWiseOpImm(ANDS_Imm, rd, rn, imm.Value());
@@ -695,6 +700,12 @@ void AssemblerAarch64::And(const Register &rd, const Register &rn, const Operand
 {
     ASSERT(operand.IsShifted());
     BitWiseOpShift(AND_Shift, rd, rn, operand);
+}
+
+void AssemblerAarch64::Eor(const Register &rd, const Register &rn, const Operand &operand)
+{
+    ASSERT(operand.IsShifted());
+    BitWiseOpShift(EOR_Shift, rd, rn, operand);
 }
 
 void AssemblerAarch64::Ands(const Register &rd, const Register &rn, const Operand &operand)
@@ -740,6 +751,16 @@ void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned imm
     EmitU32(code);
 }
 
+void AssemblerAarch64::Sbfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
+{
+    bool sf = !rd.IsW();
+    uint32_t n = (sf << BITWISE_OP_N_LOWBITS) & BITWISE_OP_N_MASK;
+    uint32_t immr_field = (immr << BITWISE_OP_Immr_LOWBITS) & BITWISE_OP_Immr_MASK;
+    uint32_t imms_field = (imms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK;
+    uint32_t code = Sf(sf) | SBFM | n | immr_field | imms_field | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
 {
     bool sf = !rd.IsW();
@@ -763,6 +784,12 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
         // and is always the preferred disassembly
     }
     Ubfm(rd, rn, shift, imms);
+}
+
+void AssemblerAarch64::Asr(const Register &rd, const Register &rn, unsigned shift)
+{
+    unsigned imms = rd.IsW() ? 31 : 63;  // 31, 63: ASR aliases SBFM with top bit as imms.
+    Sbfm(rd, rn, shift, imms);
 }
 
 void AssemblerAarch64::Adr(const Register &rd, Label *label)
@@ -841,6 +868,33 @@ void AssemblerAarch64::Subs(const Register &rd, const Register &rn, const Operan
     }
 }
 
+void AssemblerAarch64::Mul(const Register &rd, const Register &rn, const Register &rm)
+{
+    const Register &zero = rd.IsW() ? wzr : xzr;
+    uint32_t code = Sf(!rd.IsW()) | MADD | Rm(rm.GetId()) | Ra(zero.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Smull(const Register &rd, const Register &rn, const Register &rm)
+{
+    ASSERT(rd.IsX());
+    ASSERT(rn.IsW() && rm.IsW());
+    uint32_t code = SMADDL | Rm(rm.GetId()) | Ra(xzr.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Sdiv(const Register &rd, const Register &rn, const Register &rm)
+{
+    uint32_t code = Sf(!rd.IsW()) | SDIV | Rm(rm.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Msub(const Register &rd, const Register &rn, const Register &rm, const Register &ra)
+{
+    uint32_t code = Sf(!rd.IsW()) | MSUB | Rm(rm.GetId()) | Ra(ra.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Scvtf(const VRegister &vd, const Register &rn)
 {
     uint32_t code = Sf(!rn.IsW()) | FPType(vd) | SCVTF | Rn(rn.GetId()) | Rd(vd.GetId());
@@ -856,6 +910,18 @@ void AssemblerAarch64::Fadd(const VRegister &vd, const VRegister &vn, const VReg
 void AssemblerAarch64::Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm)
 {
     uint32_t code = FPType(vd) | FSUB | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FMUL | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FDIV | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
     EmitU32(code);
 }
 

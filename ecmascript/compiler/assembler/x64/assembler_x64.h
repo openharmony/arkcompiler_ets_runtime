@@ -90,6 +90,8 @@ public:
     void Cvtsi2sd(Register src, XMMRegister dst);
     void Addsd(XMMRegister src, XMMRegister dst);
     void Subsd(XMMRegister src, XMMRegister dst);
+    void Mulsd(XMMRegister src, XMMRegister dst);
+    void Divsd(XMMRegister src, XMMRegister dst);
     void Addq(Immediate src, Register dst);
     void Addq(Register src, Register dst);
     void Addl(Immediate src, Register dst);
@@ -98,6 +100,10 @@ public:
     void Subq(Register src, Register dst);
     void Subl(Immediate src, Register dst);
     void Subl(Register src, Register dst);
+    void Imull(Register src, Register dst);
+    void Imull(Register src);
+    void Cdq();
+    void Idivl(Register src);
     void Cmpq(Immediate src, Register dst);
     void Cmpq(Register src, Register dst);
     void Cmpq(Register src, const Operand &dst);
@@ -115,9 +121,14 @@ public:
 
     void Andq(Immediate src, Register dst);
     void Andl(Immediate src, Register dst);
+    void Andl(Register src, Register dst);
     void And(Register src, Register dst);
     void Or(Immediate src, Register dst);
+    void Orl(Immediate src, Register dst);
+    void Orl(Register src, Register dst);
     void Orq(Register src, Register dst);
+    void Xorl(Immediate src, Register dst);
+    void Xorl(Register src, Register dst);
     void Btq(Immediate src, Register dst);
     void Btl(Immediate src, Register dst);
     void Cmpl(Register src, Register dst);
@@ -149,8 +160,12 @@ public:
     void Movabs(uint64_t src, Register dst);
     void Shrq(Immediate src, Register dst);
     void Shrl(Immediate src, Register dst);
+    void ShrlCl(Register dst);
     void Shr(Immediate src, Register dst);
     void Shll(Immediate src, Register dst);
+    void ShllCl(Register dst);
+    void Sarl(Immediate src, Register dst);
+    void SarlCl(Register dst);
     void Shlq(Immediate src, Register dst);
     void Btsl(Register src, Register dst);
     void Testq(Immediate src, Register dst);

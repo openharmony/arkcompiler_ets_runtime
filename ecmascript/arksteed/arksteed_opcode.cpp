@@ -208,6 +208,19 @@ void DeoptIfHClassMismatchVertex::Dump(std::ostream &output) const
            << ", pc=" << GetBytecodeOffset();
 }
 
+void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    UseDeoptFrameSlots(this, this);
+}
+
+void DeoptIfInt32ConditionVertex::Dump(std::ostream &output) const
+{
+    output << "  DeoptIfInt32Condition: condition=" << static_cast<uint32_t>(condition_)
+           << ", type=" << static_cast<int>(deoptType_) << ", pc=" << GetBytecodeOffset();
+}
+
 void DeoptVertex::SetValueLocationConstraints()
 {
     for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
@@ -377,6 +390,71 @@ DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Add, "Add")
 DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Sub, "Sub")
 #undef DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS
 
+void I32MulWithOverflowVertex::VerifyI32BinOpInputs() const
+{
+    VerifyI32BinaryDeoptInputs(this);
+}
+
+void I32DivWithOverflowVertex::VerifyI32BinOpInputs() const
+{
+    VerifyI32BinaryDeoptInputs(this);
+}
+
+void I32MulWithOverflowVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    UseDeoptFrameSlots(this, this);
+    DefineSameAsFirst(this);
+    SetTemporariesNeeded(1);
+}
+
+void I32MulWithOverflowVertex::Dump(std::ostream &output) const
+{
+    output << "  I32MulWithOverflow";
+}
+
+void I32DivWithOverflowVertex::SetValueLocationConstraints()
+{
+#if defined(PANDA_TARGET_AMD64)
+    DefineAsFixed(this, static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
+    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+#else
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+#endif
+    UseDeoptFrameSlots(this, this);
+}
+
+void I32DivWithOverflowVertex::Dump(std::ostream &output) const
+{
+    output << "  I32DivWithOverflow";
+}
+
+void I32DivByConstWithCheckVertex::SetValueLocationConstraints()
+{
+#if defined(PANDA_TARGET_AMD64)
+    DefineAsFixed(this, static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(INPUT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
+    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+    GetRegallocInfo()->AddGeneralTemporary(x64::rcx);
+    GetRegallocInfo()->AddGeneralTemporary(x64::r8);
+#else
+    DefineAsRegister(this);
+    UseRegister(Arg(INPUT_INDEX));
+    SetTemporariesNeeded(2);
+#endif
+    UseDeoptFrameSlots(this, this);
+}
+
+void I32DivByConstWithCheckVertex::Dump(std::ostream &output) const
+{
+    output << "  I32DivByConstWithCheck: divisor=" << divisor_ << ", magic=" << magic_ << ", shift=" << shift_;
+}
+
 void I32AddVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
@@ -399,6 +477,76 @@ void I32SubVertex::SetValueLocationConstraints()
 void I32SubVertex::Dump(std::ostream &output) const
 {
     output << "  I32Sub";
+}
+
+void I32MulVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+}
+
+void I32MulVertex::Dump(std::ostream &output) const
+{
+    output << "  I32Mul";
+}
+
+void I32DivVertex::SetValueLocationConstraints()
+{
+#if defined(PANDA_TARGET_AMD64)
+    DefineAsFixed(this, static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
+    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+#else
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+#endif
+}
+
+void I32DivVertex::Dump(std::ostream &output) const
+{
+    output << "  I32Div";
+}
+
+void PositiveI32ModVertex::SetValueLocationConstraints()
+{
+#if defined(PANDA_TARGET_AMD64)
+    DefineAsRegister(this);
+    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
+    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+#else
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+#endif
+}
+
+void PositiveI32ModVertex::Dump(std::ostream &output) const
+{
+    output << "  PositiveI32Mod";
+}
+
+void CheckedPositiveI32ModVertex::SetValueLocationConstraints()
+{
+#if defined(PANDA_TARGET_AMD64)
+    DefineAsRegister(this);
+    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
+    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
+    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+#else
+    DefineAsRegister(this);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+#endif
+    UseDeoptFrameSlots(this, this);
+}
+
+void CheckedPositiveI32ModVertex::Dump(std::ostream &output) const
+{
+    output << "  CheckedPositiveI32Mod";
 }
 
 void I32ToF64Vertex::SetValueLocationConstraints()
@@ -452,6 +600,8 @@ void F64ToTaggedDoubleVertex::Dump(std::ostream &output) const
 
 DEFINE_F64_BINOP_CONSTRAINTS(Add)
 DEFINE_F64_BINOP_CONSTRAINTS(Sub)
+DEFINE_F64_BINOP_CONSTRAINTS(Mul)
+DEFINE_F64_BINOP_CONSTRAINTS(Div)
 #undef DEFINE_F64_BINOP_CONSTRAINTS
 
 // ========================================= Control Opcode =========================================

@@ -164,6 +164,57 @@ void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister src)
     assembler_.Subl(src, dst);
 }
 
+void ArkSteedAssembler::Int32Mul(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Imull(src, dst);
+}
+
+void ArkSteedAssembler::Int32MulWide([[maybe_unused]] ArkSteedRegister dst,
+                                     [[maybe_unused]] ArkSteedRegister left,
+                                     [[maybe_unused]] ArkSteedRegister right)
+{
+    UNREACHABLE();
+}
+
+void ArkSteedAssembler::Int32MulHigh(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right)
+{
+    ASSERT(dst == x64::rdx);
+    ASSERT(left == x64::rax);
+    assembler_.Imull(right);
+}
+
+void ArkSteedAssembler::Int32Div(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor)
+{
+    Int32DivAndRemainder(dst, x64::rdx, dividend, divisor);
+}
+
+void ArkSteedAssembler::Int32DivAndRemainder(ArkSteedRegister quotient, ArkSteedRegister remainder,
+                                             ArkSteedRegister dividend, ArkSteedRegister divisor)
+{
+    ASSERT(quotient == x64::rax);
+    ASSERT(remainder == x64::rdx);
+    ASSERT(dividend == x64::rax);
+    ASSERT(divisor != x64::rax && divisor != x64::rdx);
+    assembler_.Cdq();
+    assembler_.Idivl(divisor);
+}
+
+void ArkSteedAssembler::PositiveInt32Mod(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor)
+{
+    ASSERT(dividend == x64::rax);
+    ASSERT(divisor != x64::rax && divisor != x64::rdx);
+    if (dst != x64::rdx) {
+        assembler_.Movl(dividend, dst);
+    }
+    Int32Div(dividend, dividend, divisor);
+    if (dst != x64::rdx) {
+        assembler_.Movl(dst, dividend);
+    }
+    if (dst != x64::rdx) {
+        assembler_.Movsxd(x64::rdx, dst);
+    }
+}
+
 void ArkSteedAssembler::Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src)
 {
     ScratchRegisterScope scope;
@@ -180,6 +231,16 @@ void ArkSteedAssembler::Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleReg
 void ArkSteedAssembler::Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
 {
     assembler_.Subsd(src, dst);
+}
+
+void ArkSteedAssembler::Float64Mul(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Mulsd(src, dst);
+}
+
+void ArkSteedAssembler::Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
+{
+    assembler_.Divsd(src, dst);
 }
 
 void ArkSteedAssembler::Word64And(ArkSteedRegister dst, ArkSteedRegister src)
@@ -232,6 +293,66 @@ void ArkSteedAssembler::Lsr(ArkSteedRegister dst, uint32_t shift)
     assembler_.Shrq(x64::Immediate(static_cast<int32_t>(shift)), dst);
 }
 
+void ArkSteedAssembler::Int32And(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Andl(src, dst);
+}
+
+void ArkSteedAssembler::Int32And(ArkSteedRegister dst, int32_t immediate)
+{
+    assembler_.Andl(x64::Immediate(immediate), dst);
+}
+
+void ArkSteedAssembler::Int32Or(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Orl(src, dst);
+}
+
+void ArkSteedAssembler::Int32Or(ArkSteedRegister dst, int32_t immediate)
+{
+    assembler_.Orl(x64::Immediate(immediate), dst);
+}
+
+void ArkSteedAssembler::Int32Xor(ArkSteedRegister dst, ArkSteedRegister src)
+{
+    assembler_.Xorl(src, dst);
+}
+
+void ArkSteedAssembler::Int32Xor(ArkSteedRegister dst, int32_t immediate)
+{
+    assembler_.Xorl(x64::Immediate(immediate), dst);
+}
+
+void ArkSteedAssembler::Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Shll(x64::Immediate(static_cast<int32_t>(shift)), dst);
+}
+
+void ArkSteedAssembler::Int32ShiftLeftByCl(ArkSteedRegister dst)
+{
+    assembler_.ShllCl(dst);
+}
+
+void ArkSteedAssembler::Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Shrl(x64::Immediate(static_cast<int32_t>(shift)), dst);
+}
+
+void ArkSteedAssembler::Int32ShiftRightLogicalByCl(ArkSteedRegister dst)
+{
+    assembler_.ShrlCl(dst);
+}
+
+void ArkSteedAssembler::Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Sarl(x64::Immediate(static_cast<int32_t>(shift)), dst);
+}
+
+void ArkSteedAssembler::Int32ShiftRightArithmeticByCl(ArkSteedRegister dst)
+{
+    assembler_.SarlCl(dst);
+}
+
 // =============================================================================
 // Comparison Operations
 // =============================================================================
@@ -241,9 +362,19 @@ void ArkSteedAssembler::Compare(ArkSteedRegister lhs, ArkSteedRegister rhs)
     assembler_.Cmpq(rhs, lhs);
 }
 
+void ArkSteedAssembler::CompareInt32(ArkSteedRegister lhs, ArkSteedRegister rhs)
+{
+    assembler_.Cmpl(rhs, lhs);
+}
+
 void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int32_t immediate)
 {
     assembler_.Cmpq(x64::Immediate(immediate), lhs);
+}
+
+void ArkSteedAssembler::CompareInt32(ArkSteedRegister lhs, int32_t immediate)
+{
+    assembler_.Cmpl(x64::Immediate(immediate), lhs);
 }
 
 void ArkSteedAssembler::CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs)

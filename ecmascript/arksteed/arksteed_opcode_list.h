@@ -58,13 +58,22 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(CheckedTaggedString)      \
     V(I32AddWithOverflow)       \
     V(I32SubWithOverflow)       \
+    V(I32MulWithOverflow)       \
+    V(I32DivWithOverflow)       \
+    V(I32DivByConstWithCheck)   \
     V(I32Add)                   \
     V(I32Sub)                   \
+    V(I32Mul)                   \
+    V(I32Div)                   \
+    V(PositiveI32Mod)           \
+    V(CheckedPositiveI32Mod)    \
     V(I32ToF64)                 \
     V(CheckedNumberToF64)       \
     V(F64ToTaggedDouble)        \
     V(F64Add)                   \
     V(F64Sub)                   \
+    V(F64Mul)                   \
+    V(F64Div)                   \
     COMMON_VALUE_VERTEX_LIST(V) \
     CONVERSION_VERTEX_LIST(V)
 
@@ -78,6 +87,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(ThrowUndefinedIfHole)         \
     V(ThrowUndefinedIfHoleWithName) \
     V(DeoptIfHClassMismatch)        \
+    V(DeoptIfInt32Condition)        \
     V(Deopt)                        \
     V(SetValueWithBarrier)          \
     V(GapMove)                      \

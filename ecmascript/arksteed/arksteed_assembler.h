@@ -152,9 +152,18 @@ public:
     void SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32Add(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32Sub(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Mul(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32MulWide(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32MulHigh(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32Div(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor);
+    void Int32DivAndRemainder(ArkSteedRegister quotient, ArkSteedRegister remainder,
+                              ArkSteedRegister dividend, ArkSteedRegister divisor);
+    void PositiveInt32Mod(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor);
     void Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src);
     void Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Mul(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Word64And(ArkSteedRegister dst, ArkSteedRegister src);
 
     // =========================================================================
@@ -166,13 +175,27 @@ public:
     void And(ArkSteedRegister dst, int64_t immediate);
     void And(ArkSteedRegister dst, ArkSteedRegister src);
     void Lsr(ArkSteedRegister dst, uint32_t shift);
+    void Int32And(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32And(ArkSteedRegister dst, int32_t immediate);
+    void Int32Or(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Or(ArkSteedRegister dst, int32_t immediate);
+    void Int32Xor(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Xor(ArkSteedRegister dst, int32_t immediate);
+    void Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift);
+    void Int32ShiftLeftByCl(ArkSteedRegister dst);
+    void Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
+    void Int32ShiftRightLogicalByCl(ArkSteedRegister dst);
+    void Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t shift);
+    void Int32ShiftRightArithmeticByCl(ArkSteedRegister dst);
 
     // =========================================================================
     // Comparison Operations
     // =========================================================================
 
     void Compare(ArkSteedRegister lhs, ArkSteedRegister rhs);
+    void CompareInt32(ArkSteedRegister lhs, ArkSteedRegister rhs);
     void Compare(ArkSteedRegister lhs, int32_t immediate);
+    void CompareInt32(ArkSteedRegister lhs, int32_t immediate);
     void CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs);
 
     // =========================================================================

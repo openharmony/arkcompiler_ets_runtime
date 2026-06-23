@@ -229,6 +229,8 @@ public:
     void Fmov(const Register &rd, const VRegister &vn);  // FMOV Xd, Dn - move from V register to GP
     void Orr(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Orr(const Register &rd, const Register &rn, const Operand &operand);
+    void Eor(const Register &rd, const Register &rn, const LogicalImmediate &imm);
+    void Eor(const Register &rd, const Register &rn, const Operand &operand);
     void And(const Register &rd, const Register &rn, const Operand &operand);
     void Ands(const Register &rd, const Register &rn, const Operand &operand);
     void And(const Register &rd, const Register &rn, const LogicalImmediate &imm);
@@ -236,7 +238,9 @@ public:
     void Lsr(const Register &rd, const Register &rn, unsigned shift);
     void Lsl(const Register &rd, const Register &rn, const Register &rm);
     void Lsr(const Register &rd, const Register &rn, const Register &rm);
+    void Asr(const Register &rd, const Register &rn, unsigned shift);
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
+    void Sbfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
 
     void Adr(const Register &rd, Label *label);
@@ -245,9 +249,15 @@ public:
     void Adds(const Register &rd, const Register &rn, const Operand &operand);
     void Sub(const Register &rd, const Register &rn, const Operand &operand);
     void Subs(const Register &rd, const Register &rn, const Operand &operand);
+    void Mul(const Register &rd, const Register &rn, const Register &rm);
+    void Smull(const Register &rd, const Register &rn, const Register &rm);
+    void Sdiv(const Register &rd, const Register &rn, const Register &rm);
+    void Msub(const Register &rd, const Register &rn, const Register &rm, const Register &ra);
     void Scvtf(const VRegister &vd, const Register &rn);
     void Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Cmp(const Register &rd, const Operand &operand);
     void CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond);
     void B(Label *label);
@@ -287,6 +297,11 @@ private:
     inline uint32_t Rm(uint32_t id)
     {
         return (id << COMMON_REG_Rm_LOWBITS) & COMMON_REG_Rm_MASK;
+    }
+
+    inline uint32_t Ra(uint32_t id)
+    {
+        return (id << COMMON_REG_Ra_LOWBITS) & COMMON_REG_Ra_MASK;
     }
 
     inline uint32_t Rt(uint32_t id)

@@ -16,6 +16,7 @@
 #include "ecmascript/arksteed/arksteed_codegen.h"
 
 #include <algorithm>
+#include <limits>
 #include <sstream>
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
@@ -26,7 +27,6 @@
 #include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
-
 class GapMoveResolver {
     static constexpr uint8_t UNVISITED = 0;
     static constexpr uint8_t VISITING = 1;
@@ -388,6 +388,26 @@ void EmitUseSlotDeopt(ArkSteedAssembler *assembler, ArkSteedSafepointTableBuilde
     assembler->CallDeoptHandler(type);
     safepointBuilder->DefineDeoptSafepoint(assembler->GetPcOffset(), std::move(deopts));
 }
+
+Condition ConditionFromInt32Condition(Int32ConditionKind condition)
+{
+    switch (condition) {
+        case Int32ConditionKind::EQUAL:
+            return Condition::COND_EQUAL;
+        case Int32ConditionKind::NOT_EQUAL:
+            return Condition::COND_NOT_EQUAL;
+        case Int32ConditionKind::LESS_THAN:
+            return Condition::COND_LESS_THAN;
+        case Int32ConditionKind::LESS_THAN_OR_EQUAL:
+            return Condition::COND_LESS_THAN_OR_EQUAL;
+        case Int32ConditionKind::GREATER_THAN:
+            return Condition::COND_GREATER_THAN;
+        case Int32ConditionKind::GREATER_THAN_OR_EQUAL:
+            return Condition::COND_GREATER_THAN_OR_EQUAL;
+        default:
+            UNREACHABLE();
+    }
+}
 }  // namespace
 
 template <class VertexT>
@@ -699,6 +719,24 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     safepointBuilder_->DefineDeoptSafepoint(assembler_->GetPcOffset(), std::move(deopts));
 
     assembler_->Bind(&pass);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(DeoptIfInt32ConditionVertex *check)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << check->GetId() << ": DeoptIfInt32ConditionVertex";
+#endif
+    auto left = GetInputRegister(check, DeoptIfInt32ConditionVertex::LEFT_INDEX);
+    auto right = GetInputRegister(check, DeoptIfInt32ConditionVertex::RIGHT_INDEX);
+    Label deopt;
+    Label done;
+    assembler_->CompareInt32(left, right);
+    assembler_->JumpIf(ConditionFromInt32Condition(check->GetCondition()), &deopt);
+    assembler_->Jump(&done);
+    assembler_->Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, check, check->GetDeoptType());
+    assembler_->Bind(&done);
 }
 
 template <>
@@ -1040,6 +1078,222 @@ DEFINE_I32_WITH_OVERFLOW_CODEGEN(Sub, Int32Sub)
 #undef DEFINE_I32_WITH_OVERFLOW_CODEGEN
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32MulWithOverflowVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32MulWithOverflowVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto left = GetInputRegister(op, I32MulWithOverflowVertex::LEFT_INDEX);
+    auto right = GetInputRegister(op, I32MulWithOverflowVertex::RIGHT_INDEX);
+    if (dst != left) {
+        assembler_->Move(dst, left);
+    }
+
+    Label overflow;
+    Label negativeZero;
+    Label success;
+    Label done;
+    ArkSteedRegister savedLeft = op->GetRegallocInfo()->GetGeneralTemporaries().First();
+    assembler_->Move(savedLeft, left);
+#if defined(PANDA_TARGET_ARM64)
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister product = scope.AcquireScratch();
+    ArkSteedRegister truncatedProduct = scope.AcquireScratch();
+    assembler_->Int32MulWide(product, dst, right);
+    assembler_->SignExtendInt32ToInt64(truncatedProduct, product);
+    assembler_->Compare(product, truncatedProduct);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &overflow);
+    assembler_->SignExtendInt32ToInt64(dst, product);
+#else
+    assembler_->Int32Mul(dst, right);
+    assembler_->JumpIf(Condition::COND_OVERFLOW, &overflow);
+#endif
+    assembler_->CompareInt32(dst, 0);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &success);
+    assembler_->Int32Or(savedLeft, right);
+    assembler_->CompareInt32(savedLeft, 0);
+    assembler_->JumpIf(Condition::COND_LESS_THAN, &negativeZero);
+    assembler_->Bind(&success);
+    assembler_->Jump(&done);
+    assembler_->Bind(&overflow);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::INT32OVERFLOW1);
+    assembler_->Jump(&done);
+    assembler_->Bind(&negativeZero);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32DivWithOverflowVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32DivWithOverflowVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto left = GetInputRegister(op, I32DivWithOverflowVertex::LEFT_INDEX);
+    auto right = GetInputRegister(op, I32DivWithOverflowVertex::RIGHT_INDEX);
+    Label divideZero;
+    Label overflow;
+    Label notInt;
+    Label negativeZero;
+    Label divisorReady;
+    Label done;
+
+    assembler_->CompareInt32(right, 0);
+    assembler_->JumpIf(Condition::COND_EQUAL, &divideZero);
+    assembler_->CompareInt32(left, std::numeric_limits<int32_t>::min());
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &divisorReady);
+    assembler_->CompareInt32(right, -1);
+    assembler_->JumpIf(Condition::COND_EQUAL, &overflow);
+    assembler_->Bind(&divisorReady);
+#if defined(PANDA_TARGET_AMD64)
+    assembler_->Int32DivAndRemainder(dst, x64::rdx, left, right);
+    ArkSteedRegister remainder = x64::rdx;
+#else
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister remainder = scope.AcquireScratch();
+    assembler_->Int32DivAndRemainder(dst, remainder, left, right);
+#endif
+    assembler_->CompareInt32(remainder, 0);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &notInt);
+    assembler_->CompareInt32(dst, 0);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &done);
+    assembler_->CompareInt32(right, 0);
+    assembler_->JumpIf(Condition::COND_LESS_THAN, &negativeZero);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&divideZero);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::DIVZERO1);
+    assembler_->Jump(&done);
+    assembler_->Bind(&overflow);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::INT32OVERFLOW1);
+    assembler_->Jump(&done);
+    assembler_->Bind(&notInt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::NOTINT5);
+    assembler_->Jump(&done);
+    assembler_->Bind(&negativeZero);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::DIVZERO2);
+
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(I32DivByConstWithCheckVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32DivByConstWithCheckVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto dividend = GetInputRegister(op, I32DivByConstWithCheckVertex::INPUT_INDEX);
+#if defined(PANDA_TARGET_AMD64)
+    ASSERT(dst == x64::rax);
+    ASSERT(dividend == x64::rax);
+
+    ArkSteedRegister work = x64::rdx;
+    ArkSteedRegister original = x64::rcx;
+    ArkSteedRegister divisor = x64::r8;
+#else
+    auto temporaries = op->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister work = temporaries.First();
+    temporaries.PopFirst();
+    ArkSteedRegister original = temporaries.First();
+#endif
+    Label negativeZero;
+    Label notInt;
+    Label done;
+
+    assembler_->Move(original, dividend);
+    if (op->GetDivisor() < 0) {
+        assembler_->CompareInt32(original, 0);
+        assembler_->JumpIf(Condition::COND_EQUAL, &negativeZero);
+    }
+
+    assembler_->Move(work, op->GetMagic());
+    assembler_->Int32MulHigh(work, dividend, work);
+    if (op->GetDivisor() > 0 && op->GetMagic() < 0) {
+        assembler_->Int32Add(work, original);
+    } else if (op->GetDivisor() < 0 && op->GetMagic() > 0) {
+        assembler_->Int32Sub(work, original);
+    }
+    if (op->GetShift() != 0) {
+        assembler_->Int32ShiftRightArithmetic(work, op->GetShift());
+    }
+
+    assembler_->Move(dst, work);
+    assembler_->Move(work, dst);
+    assembler_->Int32ShiftRightLogical(work, 31);
+    assembler_->Int32Add(dst, work);
+
+#if defined(PANDA_TARGET_AMD64)
+    assembler_->Move(work, dst);
+    assembler_->Move(divisor, op->GetDivisor());
+    assembler_->Int32Mul(work, divisor);
+#else
+    assembler_->Move(work, op->GetDivisor());
+    assembler_->Int32Mul(work, dst);
+#endif
+    assembler_->CompareInt32(work, original);
+    assembler_->JumpIf(Condition::COND_NOT_EQUAL, &notInt);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&negativeZero);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::DIVZERO2);
+    assembler_->Jump(&done);
+    assembler_->Bind(&notInt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::NOTINT5);
+    assembler_->Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivVertex>(I32DivVertex *div)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << div->GetId() << ": I32DivVertex";
+#endif
+    assembler_->Int32Div(GetResultRegister(div), GetInputRegister(div, I32DivVertex::LEFT_INDEX),
+                         GetInputRegister(div, I32DivVertex::RIGHT_INDEX));
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<PositiveI32ModVertex>(PositiveI32ModVertex *mod)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << mod->GetId() << ": PositiveI32ModVertex";
+#endif
+    assembler_->PositiveInt32Mod(GetResultRegister(mod), GetInputRegister(mod, PositiveI32ModVertex::LEFT_INDEX),
+                                 GetInputRegister(mod, PositiveI32ModVertex::RIGHT_INDEX));
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedPositiveI32ModVertex>(CheckedPositiveI32ModVertex *mod)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << mod->GetId() << ": CheckedPositiveI32ModVertex";
+#endif
+    auto dst = GetResultRegister(mod);
+    auto left = GetInputRegister(mod, CheckedPositiveI32ModVertex::LEFT_INDEX);
+    auto right = GetInputRegister(mod, CheckedPositiveI32ModVertex::RIGHT_INDEX);
+    Label badLeft;
+    Label badRight;
+    Label done;
+
+    assembler_->CompareInt32(left, 0);
+    assembler_->JumpIf(Condition::COND_LESS_THAN, &badLeft);
+    assembler_->CompareInt32(right, 0);
+    assembler_->JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &badRight);
+    assembler_->PositiveInt32Mod(dst, left, right);
+    assembler_->Jump(&done);
+
+    assembler_->Bind(&badLeft);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+    assembler_->Jump(&done);
+    assembler_->Bind(&badRight);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::MODZERO1);
+    assembler_->Bind(&done);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<I32ToF64Vertex>(I32ToF64Vertex *convert)
 {
 #ifndef NDEBUG
@@ -1129,6 +1383,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToTaggedDoubleVertex>(F64To
 
 DEFINE_F64_BINOP_CODEGEN(Add, Float64Add)
 DEFINE_F64_BINOP_CODEGEN(Sub, Float64Sub)
+DEFINE_F64_BINOP_CODEGEN(Mul, Float64Mul)
+DEFINE_F64_BINOP_CODEGEN(Div, Float64Div)
 #undef DEFINE_F64_BINOP_CODEGEN
 
 template <>

@@ -100,6 +100,8 @@ enum BitwiseOpCode {
     ANDS_Shift   = 0x6a000000,
     ORR_Imm      = 0x32000000,
     ORR_Shift    = 0x2a000000,
+    EOR_Imm      = 0x52000000,
+    EOR_Shift    = 0x4a000000,
 };
 
 // branch code
@@ -191,12 +193,25 @@ enum LogicShiftOpCode {
     LSL_Reg = 0x1AC02000,
     LSR_Reg = 0x1AC02400,
     UBFM    = 0x53000000,
+    SBFM    = 0x13000000,
     BFM     = 0xB3400000,
+};
+
+enum DataProcessing2SourceOpCode {
+    SDIV = 0x1AC00C00,
+};
+
+enum DataProcessing3SourceOpCode {
+    MADD = 0x1B000000,
+    MSUB = 0x1B008000,
+    SMADDL = 0x9B200000,
 };
 
 enum FloatingPointOpCode {
     FP64 = 0x00400000,
     FMOV_XD = 0x9E660000,
+    FMUL = 0x1E200800,
+    FDIV = 0x1E201800,
     FADD = 0x1E202800,
     FSUB = 0x1E203800,
     SCVTF = 0x1E220000,
@@ -214,6 +229,7 @@ enum RetOpCode {
     V(COMMON_REG, Rd, 4, 0)             \
     V(COMMON_REG, Rn, 9, 5)             \
     V(COMMON_REG, Rm, 20, 16)           \
+    V(COMMON_REG, Ra, 14, 10)           \
     V(COMMON_REG, Rt, 4, 0)             \
     V(COMMON_REG, Rt2, 14, 10)          \
     V(COMMON_REG, Sf, 31, 31)

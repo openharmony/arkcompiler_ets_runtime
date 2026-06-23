@@ -172,6 +172,36 @@ void AssemblerX64::Subl(Register src, Register dst)
     EmitModrm(src, dst);
 }
 
+void AssemblerX64::Imull(Register src, Register dst)
+{
+    EmitRexPrefixl(dst, src);
+    EmitU8(0x0F);
+    EmitU8(0xAF);
+    EmitModrm(dst, src);
+}
+
+void AssemblerX64::Imull(Register src)
+{
+    EmitRexPrefix(src);
+    // F7 /5: signed multiply EDX:EAX by r/m32.
+    EmitU8(0xF7);
+    EmitModrm(5, src);
+}
+
+void AssemblerX64::Cdq()
+{
+    EmitU8(0x99);
+}
+
+void AssemblerX64::Idivl(Register src)
+{
+    if (src.HighBit()) {
+        EmitU8(REX_PREFIX_FIXED_BITS | src.HighBit());
+    }
+    EmitU8(0xF7);
+    EmitU8(0xF8 | src.LowBits());
+}
+
 void AssemblerX64::Cmpq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
@@ -1103,6 +1133,14 @@ void AssemblerX64::Shrl(Immediate src, Register dst)
     EmitI8(static_cast<int8_t>(src.Value()));
 }
 
+void AssemblerX64::ShrlCl(Register dst)
+{
+    EmitRexPrefix(dst);
+    // D3 /5: shr r/m32, cl
+    EmitU8(0xD3);
+    EmitModrm(5, dst);
+}
+
 void AssemblerX64::Shr(Immediate src, Register dst)
 {
     Shrq(src, dst);
@@ -1152,6 +1190,14 @@ void AssemblerX64::Andl(Immediate src, Register dst)
     }
 }
 
+void AssemblerX64::Andl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 21: and r/m32, r32
+    EmitU8(0x21);
+    EmitModrm(src, dst);
+}
+
 void AssemblerX64::And(Register src, Register dst)
 {
     EmitRexPrefix(src, dst);
@@ -1187,6 +1233,62 @@ void AssemblerX64::Orq(Register src, Register dst)
     EmitRexPrefix(src, dst);
     // 09 : Or r/m64, r64
     EmitU8(0x09);
+    EmitModrm(src, dst);
+}
+
+void AssemblerX64::Orl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    if (InRange8(src.Value())) {
+        // 83 /1: or r/m32, imm8
+        EmitU8(0x83);
+        EmitModrm(1, dst);
+        EmitI8(static_cast<int8_t>(src.Value()));
+    } else if (dst == rax) {
+        // 0D: or eax, imm32
+        EmitU8(0x0D);
+        EmitI32(src.Value());
+    } else {
+        // 81 /1: or r/m32, imm32
+        EmitU8(0x81);
+        EmitModrm(1, dst);
+        EmitI32(src.Value());
+    }
+}
+
+void AssemblerX64::Orl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 09: or r/m32, r32
+    EmitU8(0x09);
+    EmitModrm(src, dst);
+}
+
+void AssemblerX64::Xorl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    if (InRange8(src.Value())) {
+        // 83 /6: xor r/m32, imm8
+        EmitU8(0x83);
+        EmitModrm(6, dst);
+        EmitI8(static_cast<int8_t>(src.Value()));
+    } else if (dst == rax) {
+        // 35: xor eax, imm32
+        EmitU8(0x35);
+        EmitI32(src.Value());
+    } else {
+        // 81 /6: xor r/m32, imm32
+        EmitU8(0x81);
+        EmitModrm(6, dst);
+        EmitI32(src.Value());
+    }
+}
+
+void AssemblerX64::Xorl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 31: xor r/m32, r32
+    EmitU8(0x31);
     EmitModrm(src, dst);
 }
 
@@ -1451,6 +1553,31 @@ void AssemblerX64::Shll(Immediate src, Register dst)
     EmitI8(static_cast<int8_t>(src.Value()));
 }
 
+void AssemblerX64::ShllCl(Register dst)
+{
+    EmitRexPrefix(dst);
+    // D3 /4: shl r/m32, cl
+    EmitU8(0xD3);
+    EmitModrm(4, dst);
+}
+
+void AssemblerX64::Sarl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    // C1 /7: sar r/m32, imm8
+    EmitU8(0xC1);
+    EmitModrm(7, dst);
+    EmitI8(static_cast<int8_t>(src.Value()));
+}
+
+void AssemblerX64::SarlCl(Register dst)
+{
+    EmitRexPrefix(dst);
+    // D3 /7: sar r/m32, cl
+    EmitU8(0xD3);
+    EmitModrm(7, dst);
+}
+
 void AssemblerX64::Shlq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
@@ -1684,6 +1811,32 @@ void AssemblerX64::Subsd(XMMRegister src, XMMRegister dst)
     }
     EmitU8(0x0F);
     EmitU8(0x5C);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Mulsd(XMMRegister src, XMMRegister dst)
+{
+    // mulsd xmm_dst, xmm_src
+    // Encoding: F2 0F 59 /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x59);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Divsd(XMMRegister src, XMMRegister dst)
+{
+    // divsd xmm_dst, xmm_src
+    // Encoding: F2 0F 5E /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5E);
     EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
 }
 }  // panda::ecmascript::x64
