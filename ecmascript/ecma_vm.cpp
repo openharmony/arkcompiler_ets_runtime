@@ -838,7 +838,7 @@ void EcmaVM::CheckThread() const
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
             UNREACHABLE();
-        } else {
+        } else if (CheckTimeInterval()) {
             lastCheckTime_.store(GetTimeStamp());
             std::string msg = "Fatal: ecma_vm cannot run in multi-thread! thread:"
                                 + std::to_string(thread_->GetThreadId())
