@@ -1137,15 +1137,15 @@ JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<
             info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (ElementAccessor::GetElementsLength(thread, thisObjHandle) < len) {
-                len = ElementAccessor::GetElementsLength(thread, thisObjHandle);
-            }
             bool boolResult = callResult.ToBoolean();
             if (boolResult) {
                 toIndexHandle.Update(JSTaggedValue(toIndex));
                 JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 toIndex++;
+            }
+            if (ElementAccessor::GetElementsLength(thread, thisObjHandle) < len) {
+                len = ElementAccessor::GetElementsLength(thread, thisObjHandle);
             }
         }
         k++;
