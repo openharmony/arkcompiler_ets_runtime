@@ -195,7 +195,7 @@ void Runtime::PreInitialization(const EcmaVM *vm)
         }
         stringTable_ = std::make_unique<EcmaStringTable>(true, &baseStringTable,
                                                          &static_cast<BaseStringTableImpl*>(&baseStringTable)->
-                                                          GetInternalTable()->GetHashTrieMap());
+                                                          GetInternalTable()->GetChainedHashMap());
     } else {
         stringTable_ = std::make_unique<EcmaStringTable>(false);
         stringTable_->GetCleaner()->SetEnableConcurrentSweep(

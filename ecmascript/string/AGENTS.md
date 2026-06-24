@@ -46,7 +46,7 @@ Multiple string representations for memory efficiency:
 | `external_string.h` | External memory string |
 | `base_string_table.h/.cpp` | String interning |
 | `integer_cache.h` | Integer string cache |
-| `hashtriemap.h` | String hash table implementation |
+| `chained_hash_map.h` | String hash table implementation |
 
 ## Building
 

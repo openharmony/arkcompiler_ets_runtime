@@ -6332,7 +6332,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue,
                     BRANCH(IsInternalString(*varKey), &setByName, &notIntenalString);
                     Bind(&notIntenalString);
                     {
-                        GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTrieTable), { *varKey });
+                        GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTable), { *varKey });
                         varKey = res;
                         Jump(&checkDetector);
                     }
@@ -6411,7 +6411,7 @@ GateRef StubBuilder::DefinePropertyByValue(GateRef glue, GateRef receiver, GateR
                     BRANCH(IsInternalString(*varKey), &setByName, &notIntenalString);
                     Bind(&notIntenalString);
                     {
-                        GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTrieTable), { *varKey });
+                        GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTable), { *varKey });
                         varKey = res;
                         Jump(&checkDetector);
                     }
@@ -6869,7 +6869,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
             Jump(&getByName);
             Bind(&notIntenalString);
             {
-                GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTrieTable), { *keyVar });
+                GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTable), { *keyVar });
                 keyVar = res;
                 Jump(&getByName);
             }

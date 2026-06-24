@@ -28,7 +28,7 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/string/base_string_table.h"
 #include "ecmascript/string/base_string.h"
-#include "ecmascript/string/hashtriemap.h"
+#include "ecmascript/string/chained_hash_map.h"
 #include "ecmascript/string/string_table_internal.h"
 
 namespace panda::ecmascript {
@@ -136,8 +136,9 @@ private:
     EcmaStringTable *stringTable_;
     std::atomic<uint32_t> PendingTaskCount_ {0U};
     bool enableConcurrentSweep_ {false};
-    std::array<std::vector<HashTrieMapEntry *>, TrieMapConfig::ROOT_SIZE> waitFreeEntries_ {};
-    std::array<std::vector<HashTrieMapSlotCheckInfo>, TrieMapConfig::ROOT_SIZE> waitCheckAndFreeHeadEntries_ {};
+    std::array<std::vector<ChainedHashMapEntry *>, ChainedHashMapConfig::SWEEP_PARTITION_COUNT> waitFreeEntries_ {};
+    std::array<std::vector<ChainedHashMapSlotCheckInfo>, ChainedHashMapConfig::SWEEP_PARTITION_COUNT>
+        waitCheckAndFreeHeadEntries_ {};
     Mutex sweepWeakRefMutex_;
     SweepState sweepWeakRefFinished_ { SweepState::FINISHED };
     ConditionVariable sweepWeakRefCV_;
@@ -167,15 +168,15 @@ private:
 
 struct EnableCMCGCTrait {
     using StringTableInterface = BaseStringTableInterface<BaseStringTableImpl>;
-    using HashTrieMapType = HashTrieMap<BaseStringTableMutex>;
-    using HashTrieMapInUseScopeType = HashTrieMapInUseScope<BaseStringTableMutex>;
+    using ChainedHashMapType = ChainedHashMap<BaseStringTableMutex>;
+    using ChainedHashMapInUseScopeType = ChainedHashMapInUseScope<BaseStringTableMutex>;
 #ifndef GC_STW_STRINGTABLE
-    using HashTrieMapOperationType = HashTrieMapOperation<BaseStringTableMutex, common::ThreadHolder,
-                                                          TrieMapConfig::NeedSlotBarrierCMC>;
+    using ChainedHashMapOperationType = ChainedHashMapOperation<BaseStringTableMutex, common::ThreadHolder,
+                                                          ChainedHashMapConfig::NeedSlotBarrierCMC>;
     static constexpr bool ConcurrentSweep = true;
 #else
-    using HashTrieMapOperationType = HashTrieMapOperation<BaseStringTableMutex, common::ThreadHolder,
-                                                          TrieMapConfig::NoSlotBarrier>;
+    using ChainedHashMapOperationType = ChainedHashMapOperation<BaseStringTableMutex, common::ThreadHolder,
+                                                          ChainedHashMapConfig::NoSlotBarrier>;
     static constexpr bool ConcurrentSweep = false;
 #endif
     using ThreadType = common::ThreadHolder;
@@ -189,10 +190,10 @@ struct EnableCMCGCTrait {
 struct DisableCMCGCNormalTrait {
     struct DummyStringTableInterface {}; // placeholder for consistent type
     using StringTableInterface = DummyStringTableInterface;
-    using HashTrieMapType = HashTrieMap<EcmaStringTableMutex>;
-    using HashTrieMapInUseScopeType = HashTrieMapInUseScope<EcmaStringTableMutex>;
-    using HashTrieMapOperationType = HashTrieMapOperation<EcmaStringTableMutex, JSThread,
-                                                          TrieMapConfig::NoSlotBarrierDynamic>;
+    using ChainedHashMapType = ChainedHashMap<EcmaStringTableMutex>;
+    using ChainedHashMapInUseScopeType = ChainedHashMapInUseScope<EcmaStringTableMutex>;
+    using ChainedHashMapOperationType = ChainedHashMapOperation<EcmaStringTableMutex, JSThread,
+                                                          ChainedHashMapConfig::NoSlotBarrierDynamic>;
     using ThreadType = JSThread;
     static constexpr bool EnableCMCGC = false;
     static constexpr bool ConcurrentSweep = false;
@@ -205,10 +206,10 @@ struct DisableCMCGCNormalTrait {
 struct DisableCMCGCConcurrentSweepTrait {
     struct DummyStringTableInterface {}; // placeholder for consistent type
     using StringTableInterface = DummyStringTableInterface;
-    using HashTrieMapType = HashTrieMap<EcmaStringTableMutex>;
-    using HashTrieMapInUseScopeType = HashTrieMapInUseScope<EcmaStringTableMutex>;
-    using HashTrieMapOperationType = HashTrieMapOperation<EcmaStringTableMutex, JSThread,
-                                                          TrieMapConfig::NeedSlotBarrier>;
+    using ChainedHashMapType = ChainedHashMap<EcmaStringTableMutex>;
+    using ChainedHashMapInUseScopeType = ChainedHashMapInUseScope<EcmaStringTableMutex>;
+    using ChainedHashMapOperationType = ChainedHashMapOperation<EcmaStringTableMutex, JSThread,
+                                                          ChainedHashMapConfig::NeedSlotBarrier>;
     using ThreadType = JSThread;
     static constexpr bool EnableCMCGC = false;
     static constexpr bool ConcurrentSweep = true;
@@ -218,17 +219,17 @@ struct DisableCMCGCConcurrentSweepTrait {
     }
 };
 
-static_assert(std::is_same_v<DisableCMCGCNormalTrait::HashTrieMapType,
-                             DisableCMCGCConcurrentSweepTrait::HashTrieMapType>);
+static_assert(std::is_same_v<DisableCMCGCNormalTrait::ChainedHashMapType,
+                             DisableCMCGCConcurrentSweepTrait::ChainedHashMapType>);
 
 class EcmaStringTableImpl final {
 public:
     EcmaStringTableImpl() {}
 
 #ifdef USE_CMC_GC
-    void Initialize(void* hashTrieMap, void* itf)
+    void Initialize(void* chainedHashMap, void* itf)
     {
-        hashTrieMap_ = hashTrieMap;
+        chainedHashMap_ = chainedHashMap;
         stringTableItf_ = itf;
     }
 #endif
@@ -268,12 +269,12 @@ public:
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
 
     template <typename Traits, std::enable_if_t<!Traits::ConcurrentSweep, int> = 0>
-    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID);
+    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID);
 
     template <typename Traits, std::enable_if_t<Traits::ConcurrentSweep, int> = 0>
-    void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID,
-                                std::vector<HashTrieMapEntry*>& waitDeleteEntries,
-                                std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
+    void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
+                                std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
+                                std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
 
     template <typename Traits>
     bool CheckStringTableValidity(JSThread *thread);
@@ -296,14 +297,14 @@ public:
                                               bool canBeCompress);
 
 #ifdef USE_CMC_GC
-    void *GetHashTrieMap() const
+    void *GetChainedHashMap() const
     {
-        return hashTrieMap_;
+        return chainedHashMap_;
     }
 #else
-    DisableCMCGCNormalTrait::HashTrieMapType *GetHashTrieMap() const
+    DisableCMCGCNormalTrait::ChainedHashMapType *GetChainedHashMap() const
     {
-        return const_cast<DisableCMCGCNormalTrait::HashTrieMapType *>(&hashTrieMap_);
+        return const_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(&chainedHashMap_);
     }
 #endif
 private:
@@ -311,10 +312,10 @@ private:
     typename Traits::ThreadType* GetThreadHolder(JSThread* thread);
 
 #ifdef USE_CMC_GC
-    void* hashTrieMap_ = nullptr;
+    void* chainedHashMap_ = nullptr;
     [[maybe_unused]] void* stringTableItf_ = nullptr;
 #else
-    DisableCMCGCNormalTrait::HashTrieMapType hashTrieMap_;
+    DisableCMCGCNormalTrait::ChainedHashMapType chainedHashMap_;
 #endif
 };
 
@@ -330,8 +331,8 @@ public:
             impl_.Initialize(map, itf);
         } else {
             if (map == nullptr) {
-                map = new DisableCMCGCNormalTrait::HashTrieMapType();
-                needDeleteHashTrieMap_ = true;
+                map = new DisableCMCGCNormalTrait::ChainedHashMapType();
+                needDeleteChainedHashMap_ = true;
             }
             impl_.Initialize(map, nullptr);
             cleaner_ = new EcmaStringTableCleaner(this);
@@ -348,9 +349,9 @@ public:
             cleaner_ = nullptr;
         }
 #ifdef USE_CMC_GC
-        if (needDeleteHashTrieMap_) {
+        if (needDeleteChainedHashMap_) {
             ASSERT(!enableCMCGC_);
-            delete reinterpret_cast<DisableCMCGCNormalTrait::HashTrieMapType *>(impl_.GetHashTrieMap());
+            delete reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(impl_.GetChainedHashMap());
         }
 #endif
     }
@@ -378,10 +379,10 @@ public:
                                                        bool canBeCompress, MemSpaceType type);
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
 
-    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
-    void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t index,
-                                std::vector<HashTrieMapEntry*>& waitDeleteEntries,
-                                std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
+    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID);
+    void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
+                                std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
+                                std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
 
     bool CheckStringTableValidity(JSThread *thread);
 
@@ -407,26 +408,28 @@ public:
     {
 #ifdef USE_CMC_GC
         if (enableCMCGC_) {
-            return reinterpret_cast<EnableCMCGCTrait::HashTrieMapType *>(impl_.GetHashTrieMap())->IsSweeping();
+            return reinterpret_cast<EnableCMCGCTrait::ChainedHashMapType*>(impl_.GetChainedHashMap())->IsSweeping();
         }
 #endif
-        return reinterpret_cast<DisableCMCGCNormalTrait::HashTrieMapType *>(impl_.GetHashTrieMap())->IsSweeping();
+        return reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(impl_.GetChainedHashMap())
+            ->IsSweeping();
     }
 
     bool IsInUse() const
     {
 #ifdef USE_CMC_GC
         if (enableCMCGC_) {
-            return reinterpret_cast<EnableCMCGCTrait::HashTrieMapType *>(impl_.GetHashTrieMap())->GetInuseCount() > 0;
+            return reinterpret_cast<EnableCMCGCTrait::ChainedHashMapType*>(impl_.GetChainedHashMap())
+                       ->GetInuseCount() > 0;
         }
 #endif
-        return reinterpret_cast<DisableCMCGCNormalTrait::HashTrieMapType *>(
-            impl_.GetHashTrieMap())->GetInuseCount() > 0;
+        return reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(impl_.GetChainedHashMap())
+                   ->GetInuseCount() > 0;
     }
 
-    void *GetHashTrieMap() const
+    void *GetChainedHashMap() const
     {
-        return impl_.GetHashTrieMap();
+        return impl_.GetChainedHashMap();
     }
 
 private:
@@ -450,7 +453,7 @@ private:
     EcmaStringTableCleaner *cleaner_ = nullptr;
     bool enableCMCGC_ = false;
 #ifdef USE_CMC_GC
-    bool needDeleteHashTrieMap_ = false;
+    bool needDeleteChainedHashMap_ = false;
 #endif
     friend class SnapshotProcessor;
     friend class BaseDeserializer;

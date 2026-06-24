@@ -19,19 +19,19 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_lock.h"
-#include "ecmascript/string/hashtriemap-inl.h"
+#include "ecmascript/string/chained_hash_map-inl.h"
 
 namespace panda::ecmascript {
 template <typename Traits, typename LoaderCallback, typename EqualsCallback>
 EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, uint32_t hashcode, LoaderCallback loaderCallback,
                                                    EqualsCallback equalsCallback)
 {
-    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
-    typename Traits::HashTrieMapInUseScopeType mapInUse(
-        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
+    typename Traits::ChainedHashMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap()));
     typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
-    BaseString *result = hashTrieMapOperation.template LoadOrStore<true>(holder, hashcode, loaderCallback,
+    BaseString *result = chainedHashMapOperation.template LoadOrStore<true>(holder, hashcode, loaderCallback,
                                                                          equalsCallback);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);

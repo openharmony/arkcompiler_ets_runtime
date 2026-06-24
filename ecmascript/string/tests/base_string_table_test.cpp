@@ -96,16 +96,16 @@ HWTEST_F_L0(BaseStringTableTest, SweepWeakRef)
         return true;
     };
 
-    table_->GetHashTrieMap().StartSweeping();
+    table_->GetChainedHashMap().StartSweeping();
     table_->SweepWeakRef(mockVisitor);
-    table_->GetHashTrieMap().FinishSweeping();
+    table_->GetChainedHashMap().FinishSweeping();
 
     EXPECT_TRUE(true);
 }
 
 HWTEST_F_L0(BaseStringTableTest, CleanUp)
 {
-    table_->GetHashTrieMap().Clear();
+    table_->GetChainedHashMap().Clear();
     EXPECT_TRUE(true);
 }
 

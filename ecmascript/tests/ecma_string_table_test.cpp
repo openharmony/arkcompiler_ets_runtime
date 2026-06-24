@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/string/hashtriemap.h"
+#include "ecmascript/string/chained_hash_map.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #include "ecmascript/ecma_string_table.h"
@@ -123,27 +123,6 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
 {
     EXPECT_TRUE(thread->GetEcmaVM()->GetEcmaStringTable()->CheckStringTableValidity(thread));
-}
-
-// Check BitFiled of Entry
-template<typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
-bool CheckBitFields(HashTrieMap<Mutex>* map)
-{
-    HashTrieMapOperation<Mutex, ThreadHolder, SlotBarrier> hashTrieMapOperation(map);
-    HashTrieMapInUseScope<Mutex> mapInUse(map);
-    bool highBitsNotSet = true;
-    std::function<bool(HashTrieMapNode *)> checkbit = [&highBitsNotSet](HashTrieMapNode *node) {
-        if (node->IsEntry()) {
-            uint64_t bitfield = node->AsEntry()->GetBitField();
-            if ((bitfield & TrieMapConfig::HIGH_8_BIT_MASK) != 0) {
-                highBitsNotSet = false;
-                return false;
-            }
-        }
-        return true;
-    };
-    hashTrieMapOperation.Range(checkbit);
-    return highBitsNotSet;
 }
 
 /**
