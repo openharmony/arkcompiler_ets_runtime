@@ -108,6 +108,14 @@ private:
     uint32_t numTaggedSlots_ = 0;
     uint32_t numUntaggedSlots_ = 0;
     std::vector<ArkSteedSafepointEntry> entries_;
+    // Per-safepoint deopt payloads, parallel to entries_ (entry i -> deopts for
+    // safepoint i). Formerly a process-global std::unordered_map keyed by the
+    // builder pointer; that shared, long-lived mutable state was the victim of
+    // heap corruption during eager-deopt-heavy compiles (e.g. box2d), surfacing
+    // as SIGSEGV inside the map's bucket walk. Making it a per-builder member
+    // removes the shared heap entirely and ties the side table's lifetime to the
+    // builder, so corruption can no longer cross compile boundaries.
+    std::vector<std::vector<kungfu::ARKDeopt>> deoptSideTable_;
 };
 
 // ============================================================================

@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <cstring>
 #include <numeric>
-#include <unordered_map>
 
 namespace panda::ecmascript::arksteed {
 namespace {
@@ -73,60 +72,35 @@ ArkSteedSafepointEntry NewEntry(uint32_t pcOffset)
     entry.pcOffset = pcOffset;
     return entry;
 }
-
-using DeoptSideTable = std::vector<std::vector<kungfu::ARKDeopt>>;
-
-std::unordered_map<const ArkSteedSafepointTableBuilder *, DeoptSideTable> &GetDeoptSideTables()
-{
-    static std::unordered_map<const ArkSteedSafepointTableBuilder *, DeoptSideTable> tables;
-    return tables;
-}
-
-DeoptSideTable &GetDeoptSideTable(const ArkSteedSafepointTableBuilder *builder)
-{
-    return GetDeoptSideTables()[builder];
-}
-
-DeoptSideTable &GetSyncedDeoptSideTable(const ArkSteedSafepointTableBuilder *builder, size_t entryCount)
-{
-    DeoptSideTable &deoptEntries = GetDeoptSideTable(builder);
-    deoptEntries.resize(entryCount);
-    return deoptEntries;
-}
 }  // namespace
 
 // ============================================================================
 // Builder
 // ============================================================================
 
-ArkSteedSafepointTableBuilder::~ArkSteedSafepointTableBuilder()
-{
-    GetDeoptSideTables().erase(this);
-}
+ArkSteedSafepointTableBuilder::~ArkSteedSafepointTableBuilder() = default;
 
 ArkSteedSafepointTableBuilder::Safepoint ArkSteedSafepointTableBuilder::DefineSafepoint(uint32_t pcOffset)
 {
-    DeoptSideTable &deoptEntries = GetDeoptSideTable(this);
     if (entries_.empty()) {
-        deoptEntries.clear();
+        deoptSideTable_.clear();
     }
     entries_.push_back(NewEntry(pcOffset));
-    deoptEntries.emplace_back();
+    deoptSideTable_.emplace_back();
     return Safepoint(&entries_.back());
 }
 
 void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts)
 {
-    DeoptSideTable &deoptEntries = GetDeoptSideTable(this);
     if (entries_.empty()) {
-        deoptEntries.clear();
+        deoptSideTable_.clear();
     }
     std::sort(deopts.begin(), deopts.end(), [](const kungfu::ARKDeopt &lhs, const kungfu::ARKDeopt &rhs) {
         return lhs.id < rhs.id;
     });
     entries_.push_back(NewEntry(pcOffset));
     entries_.back().deoptNum = static_cast<uint16_t>(deopts.size() * DEOPT_ENTRY_SIZE);
-    deoptEntries.push_back(std::move(deopts));
+    deoptSideTable_.push_back(std::move(deopts));
 }
 
 void ArkSteedSafepointTableBuilder::SetFrameSlots(uint32_t tagged, uint32_t untagged)
@@ -138,8 +112,8 @@ void ArkSteedSafepointTableBuilder::SetFrameSlots(uint32_t tagged, uint32_t unta
 size_t ArkSteedSafepointTableBuilder::GetTableSize() const
 {
     size_t size = sizeof(ArkSteedSafepointHeader) + entries_.size() * sizeof(ArkSteedSafepointEntry);
-    const auto &deoptEntries = GetSyncedDeoptSideTable(this, entries_.size());
-    for (const auto &deopts : deoptEntries) {
+    ASSERT(entries_.size() == deoptSideTable_.size());
+    for (const auto &deopts : deoptSideTable_) {
         size += EncodeDeopts(deopts).size();
     }
     return size;
@@ -147,8 +121,8 @@ size_t ArkSteedSafepointTableBuilder::GetTableSize() const
 
 void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
 {
-    const auto &deoptEntries = GetSyncedDeoptSideTable(this, entries_.size());
-    ASSERT(entries_.size() == deoptEntries.size());
+    ASSERT(entries_.size() == deoptSideTable_.size());
+    const auto &deoptEntries = deoptSideTable_;
     auto *header = reinterpret_cast<ArkSteedSafepointHeader *>(buffer);
     header->numEntries = static_cast<uint32_t>(entries_.size());
     header->numTaggedSlots = numTaggedSlots_;
