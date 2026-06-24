@@ -1858,16 +1858,21 @@ ohos_shared_library("libark_jsruntime_test") {
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
+  external_deps = []
   if (!ark_standalone_build) {
     public_external_deps = [
       "runtime_core:libarkfile_runtime_static",
       "zlib:libz",
     ]
   } else {
-    external_deps = [
+    external_deps += [
       "runtime_core:libarkfile_runtime_static",
       "zlib:libz",
     ]
+  }
+  
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
   }
 
   ldflags = []

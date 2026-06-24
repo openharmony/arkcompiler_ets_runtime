@@ -43,6 +43,7 @@ host_unittest_action("ExtractorToolTest") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
+    "bounds_checking_function:libsec_shared",
   ]
   deps += hiviewdfx_deps
 }
