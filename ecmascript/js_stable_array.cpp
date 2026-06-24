@@ -1168,6 +1168,9 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
     JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    if (ElementAccessor::GetElementsLength(thread, thisObjHandle) < len) {
+        len = ElementAccessor::GetElementsLength(thread, thisObjHandle);
+    }
     while (k < len) {
         // Elements of thisObjHandle may change.
         JSTaggedValue value = ElementAccessor::Get(thread, thisObjHandle, k);
