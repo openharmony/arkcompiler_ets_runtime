@@ -5210,4 +5210,99 @@ HWTEST_F_L0(JSNApiTests, GetExportsFromFile)
     EXPECT_FALSE(sarr->IsClassConstructor(vm_));
 }
 
+/**
+ * @tc.number: ffi_interface_api_GetGlobalHandleCount_001
+ * @tc.name: GetGlobalHandleCount_GlobalRefIncreaseAndDecrease
+ * @tc.desc: Verify global handle count increases after creating Global<ObjectRef> and
+ *           decreases after freeing it.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetGlobalHandleCount_001)
+{
+    vm_->SetEnableForceGC(false);
+    size_t countBefore = JSNApi::GetGlobalHandleCount(vm_);
+    {
+        LocalScope scope(vm_);
+        Global<ObjectRef> globalObj(vm_, ObjectRef::New(vm_));
+        size_t countAfter = JSNApi::GetGlobalHandleCount(vm_);
+        EXPECT_GE(countAfter, countBefore + 1);
+        globalObj.FreeGlobalHandleAddr();
+    }
+
+    size_t countAfterFree = JSNApi::GetGlobalHandleCount(vm_);
+    EXPECT_LT(countAfterFree, countBefore + 1);
+    vm_->SetEnableForceGC(true);
+}
+
+/**
+ * @tc.number: ffi_interface_api_GetGlobalHandleCount_002
+ * @tc.name: GetGlobalHandleCount_GlobalRefFreeDecreases
+ * @tc.desc: Verify global handle count decreases after freeing a Global<ObjectRef>.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetGlobalHandleCount_002)
+{
+    vm_->SetEnableForceGC(false);
+    Global<ObjectRef> globalObj(vm_, ObjectRef::New(vm_));
+    size_t countWithRef = JSNApi::GetGlobalHandleCount(vm_);
+
+    globalObj.FreeGlobalHandleAddr();
+    size_t countAfterFree = JSNApi::GetGlobalHandleCount(vm_);
+    EXPECT_LT(countAfterFree, countWithRef);
+    vm_->SetEnableForceGC(true);
+}
+
+/**
+ * @tc.number: ffi_interface_api_GetGlobalHandleCount_003
+ * @tc.name: GetGlobalHandleCount_LocalRefNotCounted
+ * @tc.desc: Verify Local<ObjectRef> does not contribute to global handle count.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetGlobalHandleCount_003)
+{
+    vm_->SetEnableForceGC(false);
+    size_t countBefore = JSNApi::GetGlobalHandleCount(vm_);
+    {
+        LocalScope scope(vm_);
+        [[maybe_unused]] Local<ObjectRef> localObj = ObjectRef::New(vm_);
+        size_t countAfter = JSNApi::GetGlobalHandleCount(vm_);
+        EXPECT_EQ(countAfter, countBefore);
+    }
+    vm_->SetEnableForceGC(true);
+}
+
+/**
+ * @tc.number: ffi_interface_api_GetGlobalHandleCount_004
+ * @tc.name: GetGlobalHandleCount_ConsecutiveCallsConsistent
+ * @tc.desc: Verify consecutive calls return the same count when no references are created or deleted.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetGlobalHandleCount_004)
+{
+    vm_->SetEnableForceGC(false);
+    size_t count1 = JSNApi::GetGlobalHandleCount(vm_);
+    size_t count2 = JSNApi::GetGlobalHandleCount(vm_);
+    EXPECT_EQ(count1, count2);
+    vm_->SetEnableForceGC(true);
+}
+
+/**
+ * @tc.number: ffi_interface_api_GetGlobalHandleCount_005
+ * @tc.name: GetGlobalHandleCount_JSNApiMatchesJSThread
+ * @tc.desc: Verify JSNApi::GetGlobalHandleCount returns the same value as JSThread::GetGlobalHandleCount.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetGlobalHandleCount_005)
+{
+    vm_->SetEnableForceGC(false);
+    size_t jsnapiCount = JSNApi::GetGlobalHandleCount(vm_);
+    size_t threadCount = thread_->GetGlobalHandleCount();
+    EXPECT_EQ(jsnapiCount, threadCount);
+    vm_->SetEnableForceGC(true);
+}
 } // namespace panda::test
