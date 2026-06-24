@@ -547,6 +547,12 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             }
             return false;
         }
+        if (pid > 0) {
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
+            const_cast<EcmaVM *>(vm_)->ClearHandleLeakRecords();
+            CloseLeakStackTraceFd();
+#endif
+        }
     }
     if (pid != 0) {
         // if OOM, main thread will destroy itself upon immediate return
@@ -585,6 +591,9 @@ pid_t HeapProfiler::ForkAndPerformDump(Stream *stream,
             stream->EndOfStream();
         } else {
             DoDump(stream, progress, dumpOption);
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
+            DumpHandleLeakRecords();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT && ENABLE_BACKTRACE_LOCAL
         }
         vm_->GetAssociatedJSThread()->SetCrossThreadExecution(false);
         _exit(0);
@@ -952,4 +961,29 @@ void HeapProfiler::ResetOOMDump()
 {
     oomDumpActive_ = false;
 }
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
+void HeapProfiler::DumpHandleLeakRecords()
+{
+    auto handleLeakRecords = vm_->GetHandleLeakRecords();
+    std::ostringstream buffer;
+
+    for (const auto &record : handleLeakRecords) {
+        uintptr_t handle = record.handleAddr;
+        if (handle == 0) {
+            continue;
+        }
+        int count = record.leakCount;
+        const std::string &backtrace = record.backtrace;
+
+        auto [found, nodeId] = entryIdMap_->FindId(*(reinterpret_cast<JSTaggedType *>(handle)));
+        if (found) {
+            buffer << "LOCAL_HANDLE_LEAK NodeId:" << nodeId << " Count:" << count << " backtrace:" << backtrace;
+            WriteToLeakStackTraceFd(buffer);
+        }
+    }
+
+    CloseLeakStackTraceFd();
+}
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT && ENABLE_BACKTRACE_LOCAL
 }  // namespace panda::ecmascript

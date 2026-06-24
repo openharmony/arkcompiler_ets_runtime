@@ -162,6 +162,9 @@ public:
     int32_t GetLeakStackTraceFd() const;
     void CloseLeakStackTraceFd();
     void StorePotentiallyLeakHandles(uintptr_t handle);
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
+    void DumpHandleLeakRecords();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT && ENABLE_BACKTRACE_LOCAL
 
 private:
     static bool oomDumpActive_;  // don't dump again while OOM dump is in progress.

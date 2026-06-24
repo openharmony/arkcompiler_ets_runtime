@@ -183,6 +183,17 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
     FileDescriptorStream stream(fd);
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
+    if (const_cast<EcmaVM *>(vm)->GetJSOptions().EnableHandleLeakLogOutput()) {
+        auto heapProfiler = reinterpret_cast<ecmascript::HeapProfiler *>(heapProfile);
+        int32_t leakStackTraceFd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_STACKTRACE));
+        if (leakStackTraceFd < 0) {
+            LOG_ECMA(ERROR) << "Request file descriptor for leak stack trace failed";
+        } else {
+            heapProfiler->SetLeakStackTraceFd(leakStackTraceFd);
+        }
+    }
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT && ENABLE_BACKTRACE_LOCAL
     ecmascript::NodeIdCacheClearScope guard(const_cast<EcmaVM *>(vm), dumpOption);
     heapProfile->DumpHeapSnapshot(&stream, dumpOption);
 

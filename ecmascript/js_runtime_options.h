@@ -82,6 +82,7 @@ enum ArkProperties {
     DISABLE_BOOT_SNAPSHOT_ESCAPE = 1ULL << 32,
     DISABLE_STRING_TABLE_CONCURRENT_SWEEP = 1ULL << 33,
     ENABLE_RUNTIME_MODULE_STACK = 1ULL << 34,
+    ENABLE_HANDLE_LEAK_LOG_OUTPUT = 1ULL << 35,
 };
 
 enum ArkTSMode {
@@ -814,6 +815,11 @@ public:
     bool EnableStringTableConcurrentSweep() const
     {
         return (static_cast<uint64_t>(arkProperties_) & ArkProperties::DISABLE_STRING_TABLE_CONCURRENT_SWEEP) == 0;
+    }
+
+    bool EnableHandleLeakLogOutput() const
+    {
+        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_HANDLE_LEAK_LOG_OUTPUT) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const

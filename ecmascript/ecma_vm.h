@@ -18,10 +18,14 @@
 
 #include "ecmascript/cross_vm/ecma_vm_hybrid.h"
 
+#include <algorithm>
 #include <atomic>
 #include <ctime>
+#include <deque>
 #include <functional>
+#include <list>
 #include <mutex>
+#include <unordered_map>
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 #include "ecmascript/cross_vm/cross_vm_operator.h"
@@ -412,6 +416,19 @@ public:
     {
         openHandleScopes_--;
     }
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    struct HandleLeakRecord {
+        uintptr_t handleAddr;
+        int leakCount;
+        std::string backtrace;
+    };
+    void HandleLeakDetect(uintptr_t handle);
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    void ClearHandleLeakRecords();
+    const std::deque<HandleLeakRecord>& GetHandleLeakRecords() const;
+#endif // ENABLE_BACKTRACE_LOCAL
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 
     void PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent = Concurrent::NO);
     void RemoveFromNativePointerList(JSNativePointer *pointer);
@@ -1610,14 +1627,14 @@ public:
     static void ClearKeptObjects(JSThread *thread);
     static void AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value);
     void AddModuleManager(ModuleManager *moduleManager);
-    
+
     JSTaggedValue GetTypedArrayName(uint8_t type) const
     {
         ASSERT(type >= 0);
         ASSERT(type < typedArrayNameTable_.size());
         return typedArrayNameTable_[type];
     }
-    
+
     JSTaggedValue GetSharedTypedArrayName(uint8_t type) const
     {
         ASSERT(type >= 0);
@@ -1972,6 +1989,11 @@ private:
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ECMAVM_PRIVATE_HYBRID_EXTENSION();
 #endif /* PANDA_JS_ETS_HYBRID_MODE */
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    std::deque<HandleLeakRecord> handleLeakRecords_;
+    static constexpr size_t MAX_BACKTRACE_RECORDS = 500;
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 };
 
 class HandleScopeDepthScope {
