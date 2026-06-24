@@ -120,6 +120,7 @@ host_unittest_action("Jsnapi_002_Test") {
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   external_deps += [
+    "bounds_checking_function:libsec_shared",
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
