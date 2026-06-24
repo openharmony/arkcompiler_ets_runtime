@@ -132,6 +132,7 @@ private:
     EdgeType GenerateEdgeTypeAndRemoveWeak(Node *node, uint64_t &addr);
 
     static bool IsHeapObject(uint64_t addr);
+    static bool IsHole(uint64_t addr);
     static bool IsWeak(uint64_t addr);
     static void RemoveWeak(uint64_t &addr);
     static constexpr uint64_t TAG_WEAK = 0x01ULL;      // Weak reference tag bit
