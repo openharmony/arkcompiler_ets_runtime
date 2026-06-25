@@ -514,10 +514,11 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-but-set-variable",
   ]
   cflags_c = []
+  cflags = []
 
   if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
     if (ets_runtime_feature_enable_pgo) {
-      cflags = [
+      cflags += [
         "-fprofile-use=" + rebase_path(
                 "${ets_runtime_feature_pgo_path}/libark_jsruntime.profdata",
                 root_build_dir),
