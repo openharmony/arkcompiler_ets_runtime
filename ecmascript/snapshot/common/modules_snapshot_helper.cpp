@@ -84,9 +84,7 @@ void ModulesSnapshotHelper::InitEscaper(EcmaVM *vm)
         }
 
         vm->RegisterExtraJSCrashMessageCallback("modules snapshot escaper", []([[maybe_unused]] const EcmaVM* vm) {
-            if (DoNeedEscape()) {
-                TryDisableSnapshot(vm->GetJSThread());
-            }
+            TryDisableSnapshot(vm->GetJSThread());
             return "";
         });
 
@@ -216,10 +214,10 @@ void ModulesSnapshotHelper::TryDisableSnapshot(JSThread* thread)
     LOG_ECMA(WARN) << "js crash occurred, try to disable snapshot";
 
     // Print exception info if there is a pending exception
-    if (thread == nullptr || !thread->HasPendingException()) {
+    if (thread == nullptr) {
         return;
     }
-    JSHandle<JSTaggedValue> exceptionHandle(thread, thread->GetException());
+    JSHandle<JSTaggedValue> exceptionHandle(thread, thread->GetLastException());
     if (!exceptionHandle->IsJSError()) {
         return;
     }
@@ -635,10 +633,11 @@ ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr ModulesSnapshotHelper::Sna
 {
     size_t totalSize = Sizeof() + romVersion.size() + description.size() + TERMINATE_CHAR_COUNT;
 
-    UniquePtr result(static_cast<SnapshotVersionInfo*>(malloc(totalSize)), SnapshotVersionInfo::Deleter);
-    if (result == nullptr) {
-        return result;
+    auto ptr = malloc(totalSize);
+    if (ptr == nullptr) {
+        return UniquePtr(nullptr, SnapshotVersionInfo::Deleter);
     }
+    UniquePtr result(static_cast<SnapshotVersionInfo*>(ptr), SnapshotVersionInfo::Deleter);
     auto header = new (result.get()) SnapshotVersionInfo {appVersionCode, romVersion.size(), description.size()};
     char* buffer = header->buffer_;
     if (romVersion.size() > 0 && memcpy_s(buffer, romVersion.size(), romVersion.data(), romVersion.size()) != 0) {

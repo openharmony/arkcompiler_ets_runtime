@@ -23,6 +23,7 @@
 
 #define private public
 #define protected public
+#include "ecmascript/object_factory.h"
 #include "ecmascript/serializer/serialize_data.h"
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #undef private
@@ -1047,6 +1048,145 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ReadFileHeader_SuccessAllMatch)
 
     std::string result = ModulesSnapshotHelper::ReadFileHeader(reader, header);
     EXPECT_TRUE(result.empty());
+}
+
+// TryDisableSnapshot(JSThread*) Tests - lastException usage
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_OnException_WithJSError)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSObject> errorObj = factory->GetJSError(ErrorType::TYPE_ERROR, "uncaught test error");
+    thread->SetException(errorObj.GetTaggedValue());
+
+    ModulesSnapshotHelper::TryDisableSnapshot(thread);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    EXPECT_TRUE(ModulesSnapshotHelper::IsModuleSnapshotDisabled(snapshotDir));
+    // Verify exception info is written to state file
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_UNCAUGHT_EXCEPTION) != std::string::npos);
+    // Verify error name and message are written
+    EXPECT_TRUE(content.find("TypeError") != std::string::npos);
+    EXPECT_TRUE(content.find("uncaught test error") != std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    thread->ClearException();
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_OnException_UsesLastExceptionAfterClear)
+{
+    // The key scenario: exception has been cleared before TryDisableSnapshot is called,
+    // but lastException still holds the exception info
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSObject> errorObj = factory->GetJSError(ErrorType::RANGE_ERROR, "range error after clear");
+    thread->SetException(errorObj.GetTaggedValue());
+    // Clear the pending exception - this simulates the scenario where
+    // exception is cleared before TryDisableSnapshot is called
+    thread->ClearException();
+    EXPECT_TRUE(thread->GetException().IsHole());
+    EXPECT_TRUE(thread->GetLastException().IsJSError());
+    ModulesSnapshotHelper::TryDisableSnapshot(thread);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    EXPECT_TRUE(ModulesSnapshotHelper::IsModuleSnapshotDisabled(snapshotDir));
+    // Verify exception info is still written to state file via lastException
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_UNCAUGHT_EXCEPTION) != std::string::npos);
+    EXPECT_TRUE(content.find("RangeError") != std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    thread->ClearException();
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_OnException_NullThread)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    // Pass nullptr thread - should still disable snapshot but skip exception info printing
+    ModulesSnapshotHelper::TryDisableSnapshot(nullptr);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_UNCAUGHT_EXCEPTION) != std::string::npos);
+    // No error name/message since thread is nullptr
+    EXPECT_TRUE(content.find("name:") == std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_OnException_NonJSErrorLastException)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    // Set a non-JSError value as exception
+    thread->SetException(JSTaggedValue(42));
+    ModulesSnapshotHelper::TryDisableSnapshot(thread);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    // Verify no error info is written since lastException is not a JSError
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_UNCAUGHT_EXCEPTION) != std::string::npos);
+    // No "name:" because lastException is not a JSError
+    EXPECT_TRUE(content.find("name:") == std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    thread->ClearException();
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
 }
 
 // ReadFileHeader: advances read pointer by header->Size()
