@@ -33,6 +33,9 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, FALLBACK_SYMBOL, SIZE)
     DECL_DUMP()
+
+    static JSHandle<JSTaggedValue> LegacyUnwrapReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &receiver,
+        const JSHandle<JSTaggedValue> &constructor, bool hasInitializedSlot);
 };
 }  // namespace panda::ecmascript
 

@@ -17,7 +17,6 @@
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -79,28 +78,35 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, GetIcuRTFFormatter)
 HWTEST_F_L0(JSRelativeTimeFormatTest, UnwrapRelativeTimeFormat)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
 
-    JSHandle<JSTaggedValue> relativeTimeFormatFunc = env->GetRelativeTimeFormatFunction();
+    JSHandle<JSFunction> relativeTimeFormatFunc(env->GetRelativeTimeFormatFunction());
     JSHandle<JSTaggedValue> relativeTimeFormat(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(relativeTimeFormatFunc), relativeTimeFormatFunc));
+        factory->NewJSObjectByConstructor(relativeTimeFormatFunc,
+            JSHandle<JSTaggedValue>::Cast(relativeTimeFormatFunc)));
 
-    Local<FunctionRef> relativeTimeFormatLocal = JSNApiHelper::ToLocal<FunctionRef>(relativeTimeFormatFunc);
-    JSHandle<JSTaggedValue> disPlayNamesFunc = env->GetDisplayNamesFunction();
-    Local<FunctionRef> disPlayNamesLocal = JSNApiHelper::ToLocal<FunctionRef>(disPlayNamesFunc);
-    // displaynames Inherit relativeTimeFormat
-    disPlayNamesLocal->Inherit(vm, relativeTimeFormatLocal);
-    JSHandle<JSTaggedValue> disPlayNamesHandle = JSNApiHelper::ToJSHandle(disPlayNamesLocal);
-    JSHandle<JSTaggedValue> disPlayNamesObj(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(disPlayNamesHandle), disPlayNamesHandle));
+    JSHandle<JSFunction> objectFunc = JSHandle<JSFunction>::Cast(env->GetObjectFunction());
+    JSHandle<JSTaggedValue> legacyReceiver(
+        factory->NewJSObjectByConstructor(objectFunc, JSHandle<JSTaggedValue>::Cast(objectFunc)));
+    JSHandle<JSTaggedValue> relativeTimeFormatPrototype(thread, relativeTimeFormatFunc->GetFunctionPrototype(thread));
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(legacyReceiver), relativeTimeFormatPrototype);
+
     // object has no Instance
-    JSHandle<JSTaggedValue> unwrapNumberFormat1 =
+    JSHandle<JSTaggedValue> unwrapRelativeTimeFormat1 =
         JSRelativeTimeFormat::UnwrapRelativeTimeFormat(thread, relativeTimeFormat);
-    EXPECT_TRUE(JSTaggedValue::SameValue(thread, relativeTimeFormat, unwrapNumberFormat1));
-    // object has Instance
-    JSHandle<JSTaggedValue> unwrapNumberFormat2 =
-        JSRelativeTimeFormat::UnwrapRelativeTimeFormat(thread, disPlayNamesObj);
-    EXPECT_TRUE(unwrapNumberFormat2->IsUndefined());
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, relativeTimeFormat, unwrapRelativeTimeFormat1));
+    // object has Instance without fallback symbol
+    JSHandle<JSTaggedValue> unwrapRelativeTimeFormat2 =
+        JSRelativeTimeFormat::UnwrapRelativeTimeFormat(thread, legacyReceiver);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(unwrapRelativeTimeFormat2.GetTaggedValue(), JSTaggedValue::Exception());
+    thread->ClearException();
+
+    JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
+    PropertyDescriptor descriptor(thread, relativeTimeFormat, false, false, false);
+    JSTaggedValue::DefinePropertyOrThrow(thread, legacyReceiver, key, descriptor);
+    JSHandle<JSTaggedValue> unwrapRelativeTimeFormat3 =
+        JSRelativeTimeFormat::UnwrapRelativeTimeFormat(thread, legacyReceiver);
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, relativeTimeFormat, unwrapRelativeTimeFormat3));
 }
 } // namespace panda::test

@@ -1043,24 +1043,19 @@ JSHandle<JSTaggedValue> JSDateTimeFormat::UnwrapDateTimeFormat(JSThread *thread,
     // 2. If dateTimeFormat does not have an [[InitializedDateTimeFormat]] internal slot
     //    and ? InstanceofOperator(dateTimeFormat, %DateTimeFormat%) is true, then
     //       a. Let dateTimeFormat be ? Get(dateTimeFormat, %Intl%.[[FallbackSymbol]]).
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool isInstanceOf = JSFunction::OrdinaryHasInstance(thread, env->GetDateTimeFormatFunction(), dateTimeFormat);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, dateTimeFormat);
-    if (!dateTimeFormat->IsJSDateTimeFormat() && isInstanceOf) {
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
-        OperationResult operationResult = JSTaggedValue::GetProperty(thread, dateTimeFormat, key);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, dateTimeFormat);
-        return operationResult.GetValue();
-    }
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> result = JSIntl::LegacyUnwrapReceiver(
+        thread, dateTimeFormat, env->GetDateTimeFormatFunction(), dateTimeFormat->IsJSDateTimeFormat());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
 
     // 3. Perform ? RequireInternalSlot(dateTimeFormat, [[InitializedDateTimeFormat]]).
-    if (!dateTimeFormat->IsJSDateTimeFormat()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "is not JSDateTimeFormat",
+    if (!result->IsJSDateTimeFormat()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Method called on incompatible receiver",
                                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
 
     // 4. Return dateTimeFormat.
-    return dateTimeFormat;
+    return result;
 }
 
 JSHandle<JSTaggedValue> ToHourCycleEcmaString(JSThread *thread, HourCycleOption hc)

@@ -238,21 +238,17 @@ JSHandle<JSTaggedValue> JSRelativeTimeFormat::UnwrapRelativeTimeFormat(JSThread 
 {
     ASSERT_PRINT(rtf->IsJSObject(), "rtf is not a JSObject");
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool isInstanceOf = JSFunction::InstanceOf(thread, rtf, env->GetRelativeTimeFormatFunction());
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, rtf);
-    if (!rtf->IsJSRelativeTimeFormat() && isInstanceOf) {
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
-        OperationResult operationResult = JSTaggedValue::GetProperty(thread, rtf, key);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, rtf);
-        return operationResult.GetValue();
-    }
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> result = JSIntl::LegacyUnwrapReceiver(
+        thread, rtf, env->GetRelativeTimeFormatFunction(), rtf->IsJSRelativeTimeFormat());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
 
     // Perform ? RequireInternalSlot(relativeTimeFormat, [[InitializedRelativeTimeFormat]]).
-    if (!rtf->IsJSRelativeTimeFormat()) {
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, rtf);
+    if (!result->IsJSRelativeTimeFormat()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Method called on incompatible receiver",
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
-    return rtf;
+    return result;
 }
 
 // CommonFormat
