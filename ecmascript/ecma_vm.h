@@ -379,7 +379,7 @@ public:
         CheckThread();
 #else
         if (GetThreadCheckStatus()) {
-            if (!GetCheckCountApi() || (CheckTimeInterval() && CheckCountNum())) {
+            if (!GetCheckCountApi() || CheckCountNum()) {
                 CheckThread();
             }
         }
