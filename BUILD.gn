@@ -935,6 +935,7 @@ ecma_source = [
   "ecmascript/containers/containers_list.cpp",
   "ecmascript/containers/containers_plainarray.cpp",
   "ecmascript/containers/containers_private.cpp",
+  "ecmascript/containers/containers_serializer_init.cpp",
   "ecmascript/containers/containers_queue.cpp",
   "ecmascript/containers/containers_stack.cpp",
   "ecmascript/containers/containers_treemap.cpp",

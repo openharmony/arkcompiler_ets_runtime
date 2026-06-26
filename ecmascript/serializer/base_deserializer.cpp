@@ -693,6 +693,16 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSetPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_API_TREE_SET:
             return JSHandle<JSFunction>(env->GetTreeSetConstructor())->GetFunctionPrototype(thread_).GetRawData();
+        case (uint8_t)JSType::JS_API_ARRAY_LIST:
+            return JSHandle<JSFunction>(env->GetArrayListConstructor())->GetFunctionPrototype(thread_).GetRawData();
+        case (uint8_t)JSType::JS_API_HASH_MAP:
+            return JSHandle<JSFunction>(env->GetHashMapConstructor())->GetFunctionPrototype(thread_).GetRawData();
+        case (uint8_t)JSType::JS_API_HASH_SET:
+            return JSHandle<JSFunction>(env->GetHashSetConstructor())->GetFunctionPrototype(thread_).GetRawData();
+        case (uint8_t)JSType::JS_API_LIST:
+            return JSHandle<JSFunction>(env->GetListConstructor())->GetFunctionPrototype(thread_).GetRawData();
+        case (uint8_t)JSType::JS_API_LINKED_LIST:
+            return JSHandle<JSFunction>(env->GetLinkedListConstructor())->GetFunctionPrototype(thread_).GetRawData();
         case (uint8_t)JSType::JS_SHARED_SET:
             return env->GetSharedSetPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SENDABLE_ARRAY_BUFFER:

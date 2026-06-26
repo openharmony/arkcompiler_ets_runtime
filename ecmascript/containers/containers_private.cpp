@@ -30,10 +30,12 @@
 #include "containers_treemap.h"
 #include "containers_treeset.h"
 #include "containers_vector.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
 #include "ecmascript/js_api/js_api_hashset.h"
@@ -41,7 +43,9 @@
 #include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
+#include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/js_api/js_api_list_iterator.h"
 #include "ecmascript/js_api/js_api_plain_array_iterator.h"
 #include "ecmascript/js_api/js_api_queue_iterator.h"
@@ -80,10 +84,6 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
 
     JSTaggedValue res = JSTaggedValue::Undefined();
     switch (tag) {
-        case ContainerTag::ArrayList: {
-            res = InitializeContainer(thread, thisValue, InitializeArrayList, "ArrayListConstructor");
-            break;
-        }
         case ContainerTag::Deque: {
             res = InitializeContainer(thread, thisValue, InitializeDeque, "DequeConstructor");
             break;
@@ -112,14 +112,6 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
             res = InitializeContainer(thread, thisValue, InitializeTreeMap, "TreeMapConstructor");
             break;
         }
-        case ContainerTag::TreeSet: {
-            if (!env->GetTreeSetConstructor()->IsUndefined()) {
-                res = env->GetTreeSetConstructor().GetTaggedValue();
-            } else {
-                LOG_ECMA(FATAL) << "treeset constructor is Undefined";
-            }
-            break;
-        }
         case ContainerTag::Vector: {
             res = InitializeContainer(thread, thisValue, InitializeVector, "VectorConstructor");
             break;
@@ -128,24 +120,32 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
             res = InitializeContainer(thread, thisValue, InitializeBitVector, "BitVectorConstructor");
             break;
         }
+        case ContainerTag::FastBuffer: {
+            res = InitializeContainer(thread, thisValue, InitializeBuffer, "BufferConstructor");
+            break;
+        }
+        case ContainerTag::ArrayList: {
+            res = env->GetArrayListConstructor().GetTaggedValue();
+            break;
+        }
+        case ContainerTag::TreeSet: {
+            res = env->GetTreeSetConstructor().GetTaggedValue();
+            break;
+        }
         case ContainerTag::List: {
-            res = InitializeContainer(thread, thisValue, InitializeList, "ListConstructor");
+            res = env->GetListConstructor().GetTaggedValue();
             break;
         }
         case ContainerTag::LinkedList: {
-            res = InitializeContainer(thread, thisValue, InitializeLinkedList, "LinkedListConstructor");
+            res = env->GetLinkedListConstructor().GetTaggedValue();
             break;
         }
         case ContainerTag::HashMap: {
-            res = InitializeContainer(thread, thisValue, InitializeHashMap, "HashMapConstructor");
+            res = env->GetHashMapConstructor().GetTaggedValue();
             break;
         }
         case ContainerTag::HashSet: {
-            res = InitializeContainer(thread, thisValue, InitializeHashSet, "HashSetConstructor");
-            break;
-        }
-        case ContainerTag::FastBuffer: {
-            res = InitializeContainer(thread, thisValue, InitializeBuffer, "BufferConstructor");
+            res = env->GetHashSetConstructor().GetTaggedValue();
             break;
         }
         case ContainerTag::END:
@@ -173,10 +173,11 @@ JSTaggedValue ContainersPrivate::InitializeContainer(JSThread *thread, const JSH
     return map.GetTaggedValue();
 }
 
-JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread, const JSHandle<JSObject> &prototype,
+JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(const JSHandle<GlobalEnv> &env,
+                                                                const JSHandle<JSObject> &prototype,
                                                                 EcmaEntrypoint ctorFunc, const char *name, int length)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> ctor =
         factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
@@ -196,12 +197,14 @@ JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread
     return ctor;
 }
 
-void ContainersPrivate::SetFrozenFunction(JSThread *thread, const JSHandle<JSObject> &obj, const char *key,
+void ContainersPrivate::SetFrozenFunction(const JSHandle<GlobalEnv> &env,
+                                          const JSHandle<JSObject> &obj, const char *key,
                                           EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId)
 {
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> keyString(factory->NewFromASCII(key));
-    JSHandle<JSFunction> function = NewFunction(thread, keyString, func, length, builtinId);
+    JSHandle<JSFunction> function = NewFunction(env, keyString, func, length, builtinId);
     PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>(function), false, false, false);
     JSObject::DefineOwnProperty(thread, obj, keyString, descriptor);
 }
@@ -218,13 +221,15 @@ void ContainersPrivate::SetFrozenConstructor(JSThread *thread, const JSHandle<JS
     JSObject::DefineOwnProperty(thread, obj, key, descriptor);
 }
 
-JSHandle<JSFunction> ContainersPrivate::NewFunction(JSThread *thread, const JSHandle<JSTaggedValue> &key,
+JSHandle<JSFunction> ContainersPrivate::NewFunction(const JSHandle<GlobalEnv> &env,
+                                                    const JSHandle<JSTaggedValue> &key,
                                                     EcmaEntrypoint func, int length,
                                                     kungfu::BuiltinsStubCSigns::ID builtinId)
 {
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> function =
-        factory->NewJSBuiltinFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func),
+        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func),
                                       FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
@@ -232,10 +237,10 @@ JSHandle<JSFunction> ContainersPrivate::NewFunction(JSThread *thread, const JSHa
     return function;
 }
 
-JSHandle<JSTaggedValue> ContainersPrivate::CreateGetter(JSThread *thread, EcmaEntrypoint func, const char *name,
-                                                        int length)
+JSHandle<JSTaggedValue> ContainersPrivate::CreateGetter(const JSHandle<GlobalEnv> &env,
+                                                        EcmaEntrypoint func, const char *name, int length)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> function = factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
@@ -255,10 +260,11 @@ void ContainersPrivate::SetGetter(JSThread *thread, const JSHandle<JSObject> &ob
     JSObject::AddAccessor(thread, JSHandle<JSTaggedValue>::Cast(obj), key, accessor, attr);
 }
 
-void ContainersPrivate::SetFunctionAtSymbol(JSThread *thread, const JSHandle<GlobalEnv> &env,
+void ContainersPrivate::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env,
                                             const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &symbol,
                                             const char *name, EcmaEntrypoint func, int length)
 {
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> function = factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
@@ -269,9 +275,10 @@ void ContainersPrivate::SetFunctionAtSymbol(JSThread *thread, const JSHandle<Glo
     JSObject::DefineOwnProperty(thread, obj, symbol, descriptor);
 }
 
-void ContainersPrivate::SetStringTagSymbol(JSThread *thread, const JSHandle<GlobalEnv> &env,
+void ContainersPrivate::SetStringTagSymbol(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &obj, const char *key)
 {
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> tag(factory->NewFromASCII(key));
     JSHandle<JSTaggedValue> symbol = thread->GlobalConstants()->GetHandledToStringTagSymbol();
@@ -279,50 +286,9 @@ void ContainersPrivate::SetStringTagSymbol(JSThread *thread, const JSHandle<Glob
     JSObject::DefineOwnProperty(thread, obj, symbol, desc);
 }
 
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
+void ContainersPrivate::InitializeArrayListIterator(const JSHandle<GlobalEnv> &env)
 {
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // ArrayList.prototype
-    JSHandle<JSObject> prototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> arrayListFuncPrototypeValue(prototype);
-    // ArrayList.prototype_or_hclass
-    JSHandle<JSHClass> arrayListInstanceClass =
-        factory->NewEcmaHClass(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, arrayListFuncPrototypeValue);
-    // ArrayList() = new Function()
-    JSHandle<JSTaggedValue> arrayListFunction(NewContainerConstructor(
-        thread, prototype, ContainersArrayList::ArrayListConstructor, "ArrayList", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(arrayListFunction), arrayListInstanceClass.GetTaggedValue());
-
-    // "constructor" property on the prototype
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(prototype), constructorKey, arrayListFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    // ArrayList.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersArrayList::GetArrayListPrototypeFunctions()) {
-        SetFrozenFunction(thread, prototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
-                          entry.GetBuiltinStubId());
-    }
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, prototype, "ArrayList");
-
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersArrayList::GetSize, "length",
-                                                        FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
-    SetGetter(thread, prototype, lengthKey, lengthGetter);
-
-    SetFunctionAtSymbol(thread, env, prototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
-                        "Symbol.iterator", ContainersArrayList::GetIteratorObj, FuncLength::ONE);
-    ContainersPrivate::InitializeArrayListIterator(thread, env);
-    env->SetArrayListFunction(thread, arrayListFunction);
-    return arrayListFunction;
-}
-
-void ContainersPrivate::InitializeArrayListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env)
-{
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Iterator.hclass
     JSHandle<JSHClass> iteratorFuncHClass =
@@ -330,8 +296,8 @@ void ContainersPrivate::InitializeArrayListIterator(JSThread *thread, const JSHa
     // ArrayListIterator.prototype
     JSHandle<JSObject> arrayListIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
-    SetFrozenFunction(thread, arrayListIteratorPrototype, "next", JSAPIArrayListIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, arrayListIteratorPrototype, "ArrayList Iterator");
+    SetFrozenFunction(env, arrayListIteratorPrototype, "next", JSAPIArrayListIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, arrayListIteratorPrototype, "ArrayList Iterator");
     env->SetArrayListIteratorPrototype(thread, arrayListIteratorPrototype);
 }
 
@@ -339,12 +305,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSObject> funcPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> mapFuncPrototypeValue(funcPrototype);
     JSHandle<JSHClass> lightWeightMapInstanceClass =
         factory->NewEcmaHClass(JSAPILightWeightMap::SIZE, JSType::JS_API_LIGHT_WEIGHT_MAP, mapFuncPrototypeValue);
     JSHandle<JSTaggedValue> lightWeightMapFunction(NewContainerConstructor(
-        thread, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
+        env, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
         FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(lightWeightMapFunction), lightWeightMapInstanceClass.GetTaggedValue());
@@ -356,17 +323,16 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
 
     // LightWeightMap.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersLightWeightMap::GetLightWeightMapPrototypeFunctions()) {
-        SetFrozenFunction(thread, funcPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+        SetFrozenFunction(env, funcPrototype, entry.GetName().data(), entry.GetEntrypoint(),
                           entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersLightWeightMap::Length, "length",
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env, ContainersLightWeightMap::Length, "length",
                                                         FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey(factory->NewFromASCII("length"));
     SetGetter(thread, funcPrototype, lengthKey, lengthGetter);
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetFunctionAtSymbol(thread, env, funcPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, funcPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersLightWeightMap::Entries, FuncLength::ONE);
 
     ContainersPrivate::InitializeLightWeightMapIterator(thread);
@@ -380,9 +346,9 @@ void ContainersPrivate::InitializeLightWeightMapIterator(JSThread *thread)
     JSHandle<JSHClass> iteratorClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR,
                                                               env->GetIteratorPrototype());
     JSHandle<JSObject> lightWeightMapIteratorPrototype(factory->NewJSObject(iteratorClass));
-    SetFrozenFunction(thread, lightWeightMapIteratorPrototype, "next", JSAPILightWeightMapIterator::Next,
+    SetFrozenFunction(env, lightWeightMapIteratorPrototype, "next", JSAPILightWeightMapIterator::Next,
                       FuncLength::ONE);
-    SetStringTagSymbol(thread, env, lightWeightMapIteratorPrototype, "LightWeightMap Iterator");
+    SetStringTagSymbol(env, lightWeightMapIteratorPrototype, "LightWeightMap Iterator");
     env->SetLightWeightMapIteratorPrototype(thread, lightWeightMapIteratorPrototype);
 }
 
@@ -390,6 +356,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // LightWeightSet.prototype
     JSHandle<JSObject> funcPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> funcPrototypeValue(funcPrototype);
@@ -397,7 +364,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     JSHandle<JSHClass> lightweightSetInstanceClass =
         factory->NewEcmaHClass(JSAPILightWeightSet::SIZE, JSType::JS_API_LIGHT_WEIGHT_SET, funcPrototypeValue);
     JSHandle<JSTaggedValue> lightweightSetFunction(
-        NewContainerConstructor(thread, funcPrototype, ContainersLightWeightSet::LightWeightSetConstructor,
+        NewContainerConstructor(env, funcPrototype, ContainersLightWeightSet::LightWeightSetConstructor,
                                 "LightWeightSet", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(lightweightSetFunction), lightweightSetInstanceClass.GetTaggedValue());
@@ -408,17 +375,16 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
 
     // LightWeightSet.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersLightWeightSet::GetLightWeightSetPrototypeFunctions()) {
-        SetFrozenFunction(thread, funcPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+        SetFrozenFunction(env, funcPrototype, entry.GetName().data(), entry.GetEntrypoint(),
                           entry.GetLength(), entry.GetBuiltinStubId());
     }
 
     JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(thread, ContainersLightWeightSet::GetSize, "length", FuncLength::ZERO);
+        CreateGetter(env, ContainersLightWeightSet::GetSize, "length", FuncLength::ZERO);
 
     JSHandle<JSTaggedValue> lengthKey(factory->NewFromASCII("length"));
     SetGetter(thread, funcPrototype, lengthKey, lengthGetter);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetFunctionAtSymbol(thread, env, funcPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, funcPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersLightWeightSet::GetIteratorObj, FuncLength::ONE);
 
     InitializeLightWeightSetIterator(thread);
@@ -433,8 +399,8 @@ void ContainersPrivate::InitializeLightWeightSetIterator(JSThread *thread)
     JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     JSHandle<JSObject> lightWeightSetIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(
-        thread, lightWeightSetIteratorPrototype, "next", JSAPILightWeightSetIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, lightWeightSetIteratorPrototype, "LightWeightSet Iterator");
+        env, lightWeightSetIteratorPrototype, "next", JSAPILightWeightSetIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, lightWeightSetIteratorPrototype, "LightWeightSet Iterator");
     env->SetLightWeightSetIteratorPrototype(thread, lightWeightSetIteratorPrototype);
 }
 
@@ -442,6 +408,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // TreeMap.prototype
     JSHandle<JSObject> mapFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> mapFuncPrototypeValue(mapFuncPrototype);
@@ -450,7 +417,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
         factory->NewEcmaHClass(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, mapFuncPrototypeValue);
     // TreeMap() = new Function()
     JSHandle<JSTaggedValue> mapFunction(NewContainerConstructor(
-        thread, mapFuncPrototype, ContainersTreeMap::TreeMapConstructor, "TreeMap", FuncLength::ZERO));
+        env, mapFuncPrototype, ContainersTreeMap::TreeMapConstructor, "TreeMap", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(mapFunction), mapInstanceClass.GetTaggedValue());
 
@@ -461,13 +428,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
 
     // TreeMap.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersTreeMap::GetTreeMapPrototypeFunctions()) {
-        SetFrozenFunction(thread, mapFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+        SetFrozenFunction(env, mapFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
                           entry.GetLength(), entry.GetBuiltinStubId());
     }
 
     // @@ToStringTag
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, mapFuncPrototype, "TreeMap");
+    SetStringTagSymbol(env, mapFuncPrototype, "TreeMap");
     // %TreeMapPrototype% [ @@iterator ]
     JSHandle<JSTaggedValue> iteratorSymbol = thread->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> entries = globalConst->GetHandledEntriesString();
@@ -478,7 +444,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
     JSObject::DefineOwnProperty(thread, mapFuncPrototype, iteratorSymbol, descriptor);
     // length
     JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(thread, ContainersTreeMap::GetLength, "length", FuncLength::ZERO);
+        CreateGetter(env, ContainersTreeMap::GetLength, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
     SetGetter(thread, mapFuncPrototype, lengthKey, lengthGetter);
 
@@ -497,62 +463,16 @@ void ContainersPrivate::InitializeTreeMapIterator(JSThread *thread)
     // TreeMapIterator.prototype
     JSHandle<JSObject> mapIteratorPrototype(factory->NewJSObject(iteratorClass));
     // TreeIterator.prototype.next()
-    SetFrozenFunction(thread, mapIteratorPrototype, "next", JSAPITreeMapIterator::Next, FuncLength::ZERO);
-    SetStringTagSymbol(thread, env, mapIteratorPrototype, "TreeMap Iterator");
+    SetFrozenFunction(env, mapIteratorPrototype, "next", JSAPITreeMapIterator::Next, FuncLength::ZERO);
+    SetStringTagSymbol(env, mapIteratorPrototype, "TreeMap Iterator");
     env->SetTreeMapIteratorPrototype(thread, mapIteratorPrototype);
-}
-JSHandle<JSFunction> ContainersPrivate::NewTreeSetConstructor(const JSHandle<GlobalEnv> &env, JSThread *thread,
-                                                              const JSHandle<JSObject> &prototype,
-                                                              EcmaEntrypoint ctorFunc, const char *name, int length)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> ctor =
-        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
-
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSFunction::SetFunctionLength(thread, ctor, JSTaggedValue(length));
-    JSHandle<JSTaggedValue> nameString(factory->NewFromASCII(name));
-    JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(ctor), nameString,
-                                globalConst->GetHandledUndefined());
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    PropertyDescriptor descriptor1(thread, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
-    JSObject::DefineOwnProperty(thread, prototype, constructorKey, descriptor1);
-
-    /* set "prototype" in constructor */
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, ctor, prototype.GetTaggedValue());
-
-    return ctor;
-}
-
-void ContainersPrivate::InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env, JSThread *thread)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // Iterator.hclass
-    JSHandle<JSHClass> iteratorClass =
-        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
-
-    // TreeSetIterator.prototype
-    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
-    // TreeSetIterator.prototype.next()
-    JSHandle<JSTaggedValue> keyString(factory->NewFromASCII("next"));
-    JSHandle<JSFunction> function =
-        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(JSAPITreeSetIterator::Next),
-                                      FunctionKind::NORMAL_FUNCTION);
-    JSFunction::SetFunctionLength(thread, function, JSTaggedValue(FuncLength::ZERO));
-    JSHandle<JSFunctionBase> baseFunction(function);
-    JSFunction::SetFunctionName(thread, baseFunction, keyString, thread->GlobalConstants()->GetHandledUndefined());
-
-    PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>(function), false, false, false);
-    JSObject::DefineOwnProperty(thread, setIteratorPrototype, keyString, descriptor);
-
-    SetStringTagSymbol(thread, env, setIteratorPrototype, "TreeSet Iterator");
-    env->SetTreeSetIteratorPrototype(thread, setIteratorPrototype);
 }
 
 JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread)
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // PlainArray.prototype
     JSHandle<JSObject> plainArrayFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> plainArrayFuncPrototypeValue(plainArrayFuncPrototype);
@@ -560,7 +480,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     JSHandle<JSHClass> plainArrayInstanceClass =
         factory->NewEcmaHClass(JSAPIPlainArray::SIZE, JSType::JS_API_PLAIN_ARRAY, plainArrayFuncPrototypeValue);
     JSHandle<JSTaggedValue> plainArrayFunction(
-        NewContainerConstructor(thread, plainArrayFuncPrototype, ContainersPlainArray::PlainArrayConstructor,
+        NewContainerConstructor(env, plainArrayFuncPrototype, ContainersPlainArray::PlainArrayConstructor,
                                 "PlainArray", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(plainArrayFunction), plainArrayInstanceClass.GetTaggedValue());
@@ -573,17 +493,16 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
 
     // PlainArray.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersPlainArray::GetPlainArrayPrototypeFunctions()) {
-        SetFrozenFunction(thread, plainArrayFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+        SetFrozenFunction(env, plainArrayFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
                           entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersPlainArray::GetSize, "length",
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env, ContainersPlainArray::GetSize, "length",
                                                         FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     SetGetter(thread, plainArrayFuncPrototype, lengthKey, lengthGetter);
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetFunctionAtSymbol(thread, env, plainArrayFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, plainArrayFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersPlainArray::GetIteratorObj, FuncLength::ONE);
     InitializePlainArrayIterator(thread);
     env->SetPlainArrayFunction(thread, plainArrayFunction);
@@ -596,8 +515,8 @@ void ContainersPrivate::InitializePlainArrayIterator(JSThread *thread)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     JSHandle<JSObject> plainarrayIteratorPrototype(factory->NewJSObject(iteratorClass));
-    SetFrozenFunction(thread, plainarrayIteratorPrototype, "next", JSAPIPlainArrayIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, plainarrayIteratorPrototype, "PlainArray Iterator");
+    SetFrozenFunction(env, plainarrayIteratorPrototype, "next", JSAPIPlainArrayIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, plainarrayIteratorPrototype, "PlainArray Iterator");
     env->SetPlainArrayIteratorPrototype(thread, plainarrayIteratorPrototype);
 }
 
@@ -605,6 +524,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // Stack.prototype
     JSHandle<JSObject> stackFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> stackFuncPrototypeValue(stackFuncPrototype);
@@ -613,7 +533,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
         factory->NewEcmaHClass(JSAPIStack::SIZE, JSType::JS_API_STACK, stackFuncPrototypeValue);
     // Stack() = new Function()
     JSHandle<JSTaggedValue> stackFunction(NewContainerConstructor(
-        thread, stackFuncPrototype, ContainersStack::StackConstructor, "Stack", FuncLength::ZERO));
+        env, stackFuncPrototype, ContainersStack::StackConstructor, "Stack", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(stackFunction), stackInstanceClass.GetTaggedValue());
 
@@ -624,18 +544,18 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
 
     // Stack.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersStack::GetStackPrototypeFunctions()) {
-        SetFrozenFunction(thread, stackFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+        SetFrozenFunction(env, stackFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
                           entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, stackFuncPrototype, "Stack");
+    SetStringTagSymbol(env, stackFuncPrototype, "Stack");
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersStack::GetLength, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env,
+                                                        ContainersStack::GetLength, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     SetGetter(thread, stackFuncPrototype, lengthKey, lengthGetter);
 
-    SetFunctionAtSymbol(thread, env, stackFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, stackFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersStack::Iterator, FuncLength::ONE);
 
     ContainersPrivate::InitializeStackIterator(thread);
@@ -650,7 +570,7 @@ void ContainersPrivate::InitializeStackIterator(JSThread *thread)
     // StackIterator.prototype
     JSHandle<JSObject> stackIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
-    SetFrozenFunction(thread, stackIteratorPrototype, "next", JSAPIStackIterator::Next, FuncLength::ONE);
+    SetFrozenFunction(env, stackIteratorPrototype, "next", JSAPIStackIterator::Next, FuncLength::ONE);
     env->SetStackIteratorPrototype(thread, stackIteratorPrototype);
 }
 
@@ -658,6 +578,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // Vector.prototype
     JSHandle<JSObject> prototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> vectorFuncPrototypeValue(prototype);
@@ -666,7 +587,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
         factory->NewEcmaHClass(JSAPIVector::SIZE, JSType::JS_API_VECTOR, vectorFuncPrototypeValue);
     // Vector() = new Function()
     JSHandle<JSTaggedValue> vectorFunction(NewContainerConstructor(
-        thread, prototype, ContainersVector::VectorConstructor, "Vector", FuncLength::ZERO));
+        env, prototype, ContainersVector::VectorConstructor, "Vector", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(vectorFunction), vectorInstanceClass.GetTaggedValue());
 
@@ -675,46 +596,47 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(prototype), constructorKey, vectorFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // Vector.prototype
-    SetFrozenFunction(thread, prototype, "add", ContainersVector::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "insert", ContainersVector::Insert, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "setLength", ContainersVector::SetLength, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "getCapacity", ContainersVector::GetCapacity, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "increaseCapacityTo", ContainersVector::IncreaseCapacityTo, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "get", ContainersVector::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "getIndexOf", ContainersVector::GetIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "getIndexFrom", ContainersVector::GetIndexFrom, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "isEmpty", ContainersVector::IsEmpty, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "getLastElement", ContainersVector::GetLastElement, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "getLastIndexOf", ContainersVector::GetLastIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "getLastIndexFrom", ContainersVector::GetLastIndexFrom, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "remove", ContainersVector::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "removeByIndex", ContainersVector::RemoveByIndex, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "removeByRange", ContainersVector::RemoveByRange, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "set", ContainersVector::Set, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "subVector", ContainersVector::SubVector, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "toString", ContainersVector::ToString, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO,
+    SetFrozenFunction(env, prototype, "add", ContainersVector::Add, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "insert", ContainersVector::Insert, FuncLength::TWO);
+    SetFrozenFunction(env, prototype, "setLength", ContainersVector::SetLength, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "getCapacity", ContainersVector::GetCapacity, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "increaseCapacityTo",
+                      ContainersVector::IncreaseCapacityTo, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "get", ContainersVector::Get, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "getIndexOf", ContainersVector::GetIndexOf, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "getIndexFrom", ContainersVector::GetIndexFrom, FuncLength::TWO);
+    SetFrozenFunction(env, prototype, "isEmpty", ContainersVector::IsEmpty, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "getLastElement", ContainersVector::GetLastElement, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "getLastIndexOf", ContainersVector::GetLastIndexOf, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "getLastIndexFrom", ContainersVector::GetLastIndexFrom, FuncLength::TWO);
+    SetFrozenFunction(env, prototype, "remove", ContainersVector::Remove, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "removeByIndex", ContainersVector::RemoveByIndex, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "removeByRange", ContainersVector::RemoveByRange, FuncLength::TWO);
+    SetFrozenFunction(env, prototype, "set", ContainersVector::Set, FuncLength::TWO);
+    SetFrozenFunction(env, prototype, "subVector", ContainersVector::SubVector, FuncLength::TWO);
+    SetFrozenFunction(env, prototype, "toString", ContainersVector::ToString, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO,
                       BUILTINS_STUB_ID(VectorForEach));
-    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements, FuncLength::TWO,
-                      BUILTINS_STUB_ID(VectorReplaceAllElements));
-    SetFrozenFunction(thread, prototype, "has", ContainersVector::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "sort", ContainersVector::Sort, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "clear", ContainersVector::Clear, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "clone", ContainersVector::Clone, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "copyToArray", ContainersVector::CopyToArray, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "convertToArray", ContainersVector::ConvertToArray, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "getFirstElement", ContainersVector::GetFirstElement, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "trimToCurrentLength",
+    SetFrozenFunction(env, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements,
+                      FuncLength::TWO, BUILTINS_STUB_ID(VectorReplaceAllElements));
+    SetFrozenFunction(env, prototype, "has", ContainersVector::Has, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "sort", ContainersVector::Sort, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "clear", ContainersVector::Clear, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "clone", ContainersVector::Clone, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "copyToArray", ContainersVector::CopyToArray, FuncLength::ONE);
+    SetFrozenFunction(env, prototype, "convertToArray", ContainersVector::ConvertToArray, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "getFirstElement", ContainersVector::GetFirstElement, FuncLength::ZERO);
+    SetFrozenFunction(env, prototype, "trimToCurrentLength",
                       ContainersVector::TrimToCurrentLength, FuncLength::ZERO);
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, prototype, "Vector");
+    SetStringTagSymbol(env, prototype, "Vector");
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersVector::GetSize, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env,
+                                                        ContainersVector::GetSize, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
     SetGetter(thread, prototype, lengthKey, lengthGetter);
 
-    SetFunctionAtSymbol(thread, env, prototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, prototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersVector::GetIteratorObj, FuncLength::ONE);
 
     ContainersPrivate::InitializeVectorIterator(thread, env);
@@ -729,8 +651,8 @@ void ContainersPrivate::InitializeVectorIterator(JSThread *thread, const JSHandl
     // VectorIterator.prototype
     JSHandle<JSObject> vectorIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
-    SetFrozenFunction(thread, vectorIteratorPrototype, "next", JSAPIVectorIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, vectorIteratorPrototype, "Vector Iterator");
+    SetFrozenFunction(env, vectorIteratorPrototype, "next", JSAPIVectorIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, vectorIteratorPrototype, "Vector Iterator");
     env->SetVectorIteratorPrototype(thread, vectorIteratorPrototype);
 }
 
@@ -754,8 +676,8 @@ void ContainersPrivate::InitializeBitVectorIterator(JSThread* thread, const JSHa
     JSHandle<JSHClass> iteratorFuncClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     JSHandle<JSObject> bitVectorIteratorPrototype(factory->NewJSObjectWithInit(iteratorFuncClass));
     // Iterator.prototype.next()
-    SetFrozenFunction(thread, bitVectorIteratorPrototype, "next", JSAPIBitVectorIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, bitVectorIteratorPrototype, "BitVector Iterator");
+    SetFrozenFunction(env, bitVectorIteratorPrototype, "next", JSAPIBitVectorIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, bitVectorIteratorPrototype, "BitVector Iterator");
     env->SetBitVectorIteratorPrototype(thread, bitVectorIteratorPrototype);
 }
 
@@ -763,6 +685,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // Queue.prototype
     JSHandle<JSObject> queueFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> queueFuncPrototypeValue(queueFuncPrototype);
@@ -771,7 +694,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
         factory->NewEcmaHClass(JSAPIQueue::SIZE, JSType::JS_API_QUEUE, queueFuncPrototypeValue);
     // Queue() = new Function()
     JSHandle<JSTaggedValue> queueFunction(NewContainerConstructor(
-        thread, queueFuncPrototype, ContainersQueue::QueueConstructor, "Queue", FuncLength::ZERO));
+        env, queueFuncPrototype, ContainersQueue::QueueConstructor, "Queue", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(queueFunction), queueInstanceClass.GetTaggedValue());
 
@@ -782,18 +705,18 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
 
     // Queue.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersQueue::GetQueuePrototypeFunctions()) {
-        SetFrozenFunction(thread, queueFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+        SetFrozenFunction(env, queueFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
                           entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, queueFuncPrototype, "Queue");
+    SetStringTagSymbol(env, queueFuncPrototype, "Queue");
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersQueue::GetSize, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env,
+                                                        ContainersQueue::GetSize, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
     SetGetter(thread, queueFuncPrototype, lengthKey, lengthGetter);
 
-    SetFunctionAtSymbol(thread, env, queueFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, queueFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersQueue::GetIteratorObj, FuncLength::ONE);
 
     ContainersPrivate::InitializeQueueIterator(thread, env);
@@ -808,8 +731,8 @@ void ContainersPrivate::InitializeQueueIterator(JSThread *thread, const JSHandle
     // QueueIterator.prototype
     JSHandle<JSObject> queueIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // Iterator.prototype.next()
-    SetFrozenFunction(thread, queueIteratorPrototype, "next", JSAPIQueueIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, queueIteratorPrototype, "Queue Iterator");
+    SetFrozenFunction(env, queueIteratorPrototype, "next", JSAPIQueueIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, queueIteratorPrototype, "Queue Iterator");
     env->SetQueueIteratorPrototype(thread, queueIteratorPrototype);
 }
 
@@ -817,6 +740,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // Deque.prototype
     JSHandle<JSObject> dequeFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> dequeFuncPrototypeValue(dequeFuncPrototype);
@@ -825,7 +749,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
         factory->NewEcmaHClass(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, dequeFuncPrototypeValue);
     // Deque() = new Function()
     JSHandle<JSTaggedValue> dequeFunction(NewContainerConstructor(
-        thread, dequeFuncPrototype, ContainersDeque::DequeConstructor, "Deque", FuncLength::ZERO));
+        env, dequeFuncPrototype, ContainersDeque::DequeConstructor, "Deque", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(dequeFunction), dequeInstanceClass.GetTaggedValue());
 
@@ -836,18 +760,18 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
 
     // Deque.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: ContainersDeque::GetDequePrototypeFunctions()) {
-        SetFrozenFunction(thread, dequeFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
-                          entry.GetBuiltinStubId());
+        SetFrozenFunction(env, dequeFuncPrototype, entry.GetName().data(),
+                          entry.GetEntrypoint(), entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, dequeFuncPrototype, "Deque");
+    SetStringTagSymbol(env, dequeFuncPrototype, "Deque");
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersDeque::GetSize, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env,
+                                                        ContainersDeque::GetSize, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     SetGetter(thread, dequeFuncPrototype, lengthKey, lengthGetter);
 
-    SetFunctionAtSymbol(thread, env, dequeFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
+    SetFunctionAtSymbol(env, dequeFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
                         "Symbol.iterator", ContainersDeque::GetIteratorObj, FuncLength::ONE);
 
     ContainersPrivate::InitializeDequeIterator(thread, env);
@@ -860,212 +784,57 @@ void ContainersPrivate::InitializeDequeIterator(JSThread *thread, const JSHandle
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorFuncHClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     JSHandle<JSObject> dequeIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
-    SetFrozenFunction(thread, dequeIteratorPrototype, "next", JSAPIDequeIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, dequeIteratorPrototype, "Deque Iterator");
+    SetFrozenFunction(env, dequeIteratorPrototype, "next", JSAPIDequeIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, dequeIteratorPrototype, "Deque Iterator");
     env->SetDequeIteratorPrototype(thread, dequeIteratorPrototype);
 }
 
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeList(JSThread *thread)
+void ContainersPrivate::InitializeLinkedListIterator(const JSHandle<GlobalEnv> &env)
 {
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> listFuncPrototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> listFuncPrototypeValue(listFuncPrototype);
-    JSHandle<JSHClass> listInstanceClass =
-        factory->NewEcmaHClass(JSAPIList::SIZE, JSType::JS_API_LIST, listFuncPrototypeValue);
-    JSHandle<JSTaggedValue> listFunction(NewContainerConstructor(
-        thread, listFuncPrototype, ContainersList::ListConstructor, "List", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(listFunction), listInstanceClass.GetTaggedValue());
-
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(listFuncPrototype), constructorKey, listFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    // List.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersList::GetListPrototypeFunctions()) {
-        SetFrozenFunction(thread, listFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
-                          entry.GetBuiltinStubId());
-    }
-
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersList::Length, "length", FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory->NewFromASCII("length"));
-    SetGetter(thread, listFuncPrototype, lengthKey, lengthGetter);
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetFunctionAtSymbol(thread, env, listFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
-                        "Symbol.iterator", ContainersList::GetIteratorObj, FuncLength::ONE);
-
-    InitializeListIterator(thread, env);
-    env->SetListFunction(thread, listFunction);
-    return listFunction;
-}
-
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread)
-{
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> linkedListFuncPrototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> linkedListFuncPrototypeValue(linkedListFuncPrototype);
-    JSHandle<JSHClass> linkedListInstanceClass =
-        factory->NewEcmaHClass(JSAPILinkedList::SIZE, JSType::JS_API_LINKED_LIST, linkedListFuncPrototypeValue);
-    JSHandle<JSTaggedValue> linkedListFunction(NewContainerConstructor(
-        thread, linkedListFuncPrototype, ContainersLinkedList::LinkedListConstructor, "LinkedList", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(linkedListFunction), linkedListInstanceClass.GetTaggedValue());
-
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(linkedListFuncPrototype), constructorKey, linkedListFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    // LinkedList.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersLinkedList::GetLinkedListPrototypeFunctions()) {
-        SetFrozenFunction(thread, linkedListFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
-                          entry.GetBuiltinStubId());
-    }
-
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersLinkedList::Length, "length",
-                                                        FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(factory->NewFromASCII("length"));
-    SetGetter(thread, linkedListFuncPrototype, lengthKey, lengthGetter);
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetFunctionAtSymbol(thread, env, linkedListFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
-                        "Symbol.iterator", ContainersLinkedList::GetIteratorObj, FuncLength::ONE);
-
-    InitializeLinkedListIterator(thread, env);
-    env->SetLinkedListFunction(thread, linkedListFunction);
-    return linkedListFunction;
-}
-
-void ContainersPrivate::InitializeLinkedListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env)
-{
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     JSHandle<JSObject> linkedListIteratorPrototype(factory->NewJSObject(iteratorClass));
-    SetFrozenFunction(thread, linkedListIteratorPrototype, "next", JSAPILinkedListIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, linkedListIteratorPrototype, "linkedlist Iterator");
+    SetFrozenFunction(env, linkedListIteratorPrototype, "next", JSAPILinkedListIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, linkedListIteratorPrototype, "linkedlist Iterator");
     env->SetLinkedListIteratorPrototype(thread, linkedListIteratorPrototype);
 }
 
-void ContainersPrivate::InitializeListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env)
+void ContainersPrivate::InitializeListIterator(const JSHandle<GlobalEnv> &env)
 {
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     JSHandle<JSObject> listIteratorPrototype(factory->NewJSObject(iteratorClass));
-    SetFrozenFunction(thread, listIteratorPrototype, "next", JSAPIListIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(thread, env, listIteratorPrototype, "list Iterator");
+    SetFrozenFunction(env, listIteratorPrototype, "next", JSAPIListIterator::Next, FuncLength::ONE);
+    SetStringTagSymbol(env, listIteratorPrototype, "list Iterator");
     env->SetListIteratorPrototype(thread, listIteratorPrototype);
 }
 
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
+void ContainersPrivate::InitializeHashMapIterator(const JSHandle<GlobalEnv> &env)
 {
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // HashMap.prototype
-    JSHandle<JSObject> hashMapFuncPrototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> hashMapFuncPrototypeValue(hashMapFuncPrototype);
-    // HashMap.prototype_or_hclass
-    JSHandle<JSHClass> hashMapInstanceClass =
-        factory->NewEcmaHClass(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, hashMapFuncPrototypeValue);
-
-    JSHandle<JSTaggedValue> hashMapFunction(NewContainerConstructor(
-        thread, hashMapFuncPrototype, ContainersHashMap::HashMapConstructor, "HashMap", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(hashMapFunction), hashMapInstanceClass.GetTaggedValue());
-
-    // "constructor" property on the prototype
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashMapFuncPrototype), constructorKey, hashMapFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    // HashMap.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersHashMap::GetHashMapPrototypeFunctions()) {
-        SetFrozenFunction(thread, hashMapFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
-                          entry.GetLength(), entry.GetBuiltinStubId());
-    }
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    // @@ToStringTag
-    SetStringTagSymbol(thread, env, hashMapFuncPrototype, "HashMap");
-    // %HashMapPrototype% [ @@iterator ]
-    SetFunctionAtSymbol(thread, env, hashMapFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
-                        "Symbol.iterator", ContainersHashMap::GetIteratorObj, FuncLength::ONE);
-
-    JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(thread, ContainersHashMap::GetLength, "length", FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
-    SetGetter(thread, hashMapFuncPrototype, lengthKey, lengthGetter);
-    InitializeHashMapIterator(thread);
-    return hashMapFunction;
-}
-
-void ContainersPrivate::InitializeHashMapIterator(JSThread *thread)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorFuncHClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
     // HashMapIterator.prototype
     JSHandle<JSObject> hashMapIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // HashMapIterator.prototype.next()
-    SetFrozenFunction(thread, hashMapIteratorPrototype, "next", JSAPIHashMapIterator::Next, FuncLength::ZERO);
-    SetStringTagSymbol(thread, env, hashMapIteratorPrototype, "HashMap Iterator");
+    SetFrozenFunction(env, hashMapIteratorPrototype, "next", JSAPIHashMapIterator::Next, FuncLength::ZERO);
+    SetStringTagSymbol(env, hashMapIteratorPrototype, "HashMap Iterator");
     env->SetHashMapIteratorPrototype(thread, hashMapIteratorPrototype);
 }
 
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
+void ContainersPrivate::InitializeHashSetIterator(const JSHandle<GlobalEnv> &env)
 {
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // HashSet.prototype
-    JSHandle<JSObject> hashSetFuncPrototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> hashSetFuncPrototypeValue(hashSetFuncPrototype);
-    // HashSet.prototype_or_hclass
-    JSHandle<JSHClass> hashSetInstanceClass =
-        factory->NewEcmaHClass(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, hashSetFuncPrototypeValue);
-
-    JSHandle<JSTaggedValue> hashSetFunction(NewContainerConstructor(
-        thread, hashSetFuncPrototype, ContainersHashSet::HashSetConstructor, "HashSet", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(hashSetFunction), hashSetInstanceClass.GetTaggedValue());
-
-    // "constructor" property on the prototype
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashSetFuncPrototype), constructorKey, hashSetFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    // HashSet.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersHashSet::GetHashSetPrototypeFunctions()) {
-        SetFrozenFunction(thread, hashSetFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
-                          entry.GetLength(), entry.GetBuiltinStubId());
-    }
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    // @@ToStringTag
-    SetStringTagSymbol(thread, env, hashSetFuncPrototype, "HashSet");
-    // %HashSetPrototype% [ @@iterator ]
-    SetFunctionAtSymbol(thread, env, hashSetFuncPrototype, thread->GlobalConstants()->GetHandledIteratorSymbol(),
-                        "Symbol.iterator", ContainersHashSet::GetIteratorObj, FuncLength::ONE);
-
-    JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(thread, ContainersHashSet::GetLength, "length", FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
-    SetGetter(thread, hashSetFuncPrototype, lengthKey, lengthGetter);
-    InitializeHashSetIterator(thread);
-    return hashSetFunction;
-}
-
-void ContainersPrivate::InitializeHashSetIterator(JSThread *thread)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSThread *thread = env->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorFuncHClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
 
     // HashSetIterator.prototype
     JSHandle<JSObject> hashSetIteratorPrototype(factory->NewJSObject(iteratorFuncHClass));
     // HashSetIterator.prototype.next()
-    SetFrozenFunction(thread, hashSetIteratorPrototype, "next", JSAPIHashSetIterator::Next, FuncLength::ZERO);
-    SetStringTagSymbol(thread, env, hashSetIteratorPrototype, "HashSet Iterator");
+    SetFrozenFunction(env, hashSetIteratorPrototype, "next", JSAPIHashSetIterator::Next, FuncLength::ZERO);
+    SetStringTagSymbol(env, hashSetIteratorPrototype, "HashSet Iterator");
     env->SetHashSetIteratorPrototype(thread, hashSetIteratorPrototype);
 }
 
@@ -1073,6 +842,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBuffer(JSThread *thread)
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // Buffer.prototype
     JSHandle<JSObject> bufferFuncPrototype = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> bufferFuncPrototypeValue(bufferFuncPrototype);
@@ -1081,7 +851,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBuffer(JSThread *thread)
         factory->NewEcmaHClass(JSAPIFastBuffer::SIZE, JSType::JS_API_FAST_BUFFER, bufferFuncPrototypeValue);
     // Buffer() = new Function()
     JSHandle<JSTaggedValue> bufferFunction(NewContainerConstructor(
-        thread, bufferFuncPrototype, ContainersBuffer::BufferConstructor, "FastBuffer", FuncLength::ZERO));
+        env, bufferFuncPrototype, ContainersBuffer::BufferConstructor, "FastBuffer", FuncLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, JSHandle<JSFunction>::Cast(bufferFunction),
                                                      bufferInstanceClass.GetTaggedValue());
 
@@ -1092,26 +862,39 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBuffer(JSThread *thread)
 
     // FastBuffer.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry : ContainersBuffer::GetFastBufferPrototypeFunctions()) {
-        SetFrozenFunction(thread, bufferFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
-                          entry.GetBuiltinStubId());
+        SetFrozenFunction(env, bufferFuncPrototype, entry.GetName().data(),
+                          entry.GetEntrypoint(), entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, bufferFuncPrototype, "FastBuffer");
+    SetStringTagSymbol(env, bufferFuncPrototype, "FastBuffer");
 
-    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersBuffer::GetSize, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(env,
+                                                        ContainersBuffer::GetSize, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
     SetGetter(thread, bufferFuncPrototype, lengthKey, lengthGetter);
     JSHandle<JSTaggedValue> bufferGetter =
-        CreateGetter(thread, ContainersBuffer::GetArrayBuffer, "buffer", FunctionLength::ZERO);
+        CreateGetter(env, ContainersBuffer::GetArrayBuffer, "buffer", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> bufferKey(factory->NewFromASCII("buffer"));
     SetGetter(thread, bufferFuncPrototype, bufferKey, bufferGetter);
     JSHandle<JSTaggedValue> offsetGetter =
-        CreateGetter(thread, ContainersBuffer::GetByteOffset, "byteOffset", FunctionLength::ZERO);
+        CreateGetter(env, ContainersBuffer::GetByteOffset, "byteOffset", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> offsetKey(factory->NewFromASCII("byteOffset"));
     SetGetter(thread, bufferFuncPrototype, offsetKey, offsetGetter);
 
     env->SetBufferFunction(thread, bufferFunction);
     return bufferFunction;
 }
+
+void ContainersPrivate::InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env)
+{
+    JSThread *thread = env->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSHClass> iteratorClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
+    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
+    SetFrozenFunction(env, setIteratorPrototype, "next", JSAPITreeSetIterator::Next, FuncLength::ZERO);
+    SetStringTagSymbol(env, setIteratorPrototype, "TreeSet Iterator");
+    env->SetTreeSetIteratorPrototype(thread, setIteratorPrototype);
+}
+
 }  // namespace panda::ecmascript::containers

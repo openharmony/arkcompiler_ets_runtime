@@ -85,7 +85,7 @@ public:
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
     ACCESSORS(Length, LENGTH_OFFSET, SIZE);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LENGTH_OFFSET, SIZE)
     DECL_DUMP()
 
 private:
