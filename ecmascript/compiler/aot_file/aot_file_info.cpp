@@ -24,6 +24,9 @@ void AOTFileInfo::Destroy()
     entryNum_ = 0;
     moduleNum_ = 0;
     totalCodeSize_ = 0;
+#if ENABLE_MEMORY_OPTIMIZATION
+    rawEntries_ = nullptr;
+#endif
     entries_.clear();
     des_.clear();
     ExecutedMemoryAllocator::DestroyBuf(stubsMem_);
@@ -70,6 +73,31 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_
     return false;
 }
 
+#if ENABLE_MEMORY_OPTIMIZATION
+AOTFileInfo::FuncEntryDes AOTFileInfo::GetFuncEntryDesWithCallsite(uintptr_t codeAddr, uint32_t startIndex,
+                                                                   uint32_t funcCount) const
+{
+    uint64_t textAddr = 0;
+    if (rawEntries_ != nullptr) {
+        for (const auto &d : des_) {
+            if (d.GetStartIndex() == startIndex) {
+                textAddr = d.GetSecAddr(ElfSecName::TEXT);
+                break;
+            }
+        }
+    }
+    uintptr_t searchAddr = codeAddr - textAddr;
+
+    const FuncEntryDes *base = GetRawEntries() + startIndex;
+    const FuncEntryDes *end  = base + funcCount;
+    auto it = std::upper_bound(base, end, searchAddr,
+        [](uintptr_t addr, const FuncEntryDes &e) { return addr < e.codeAddr_; });
+    --it;
+    ASSERT(it != end);
+    ASSERT((it->codeAddr_ <= searchAddr) && (searchAddr < it->codeAddr_ + it->funcSize_));
+    return *it;
+}
+#else
 AOTFileInfo::FuncEntryDes AOTFileInfo::GetFuncEntryDesWithCallsite(uintptr_t codeAddr, uint32_t startIndex,
                                                                    uint32_t funcCount) const
 {
@@ -88,6 +116,7 @@ AOTFileInfo::FuncEntryDes AOTFileInfo::GetFuncEntryDesWithCallsite(uintptr_t cod
     ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
     return *it;
 }
+#endif
 
 void AOTFileInfo::StoreCalleeRegInfo(uint32_t calleeRegNum, int32_t *calleeReg2Offset,
                                      CalleeRegAndOffsetVec &calleeRegInfo) const

@@ -127,6 +127,20 @@ public:
     }
     uint32_t GetRuntimeStubIndex(uint32_t compileTimeIndex) const;
 #endif
+
+#if ENABLE_MEMORY_OPTIMIZATION
+    uint64_t GetCodeAddr(uint32_t index) const
+    {
+        if (rawEntries_ != nullptr) {
+            const FuncEntryDes &e = rawEntries_[index];
+            if (e.IsGeneralRTStub()) {
+                return e.codeAddr_ + GetAsmStubAddr();
+            }
+            return e.codeAddr_ + des_[e.moduleIndex_].GetSecAddr(ElfSecName::TEXT);
+        }
+        return 0;
+    }
+#endif
 private:
 #if defined(STUB_FUNCTION_REORDERING)
     std::unordered_map<uint32_t, uint32_t> bcStubIndexMap_;

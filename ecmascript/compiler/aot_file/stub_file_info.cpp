@@ -100,12 +100,17 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
     uint32_t funcEntrySize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
     FuncEntryDes *entryDes = reinterpret_cast<FuncEntryDes *>(funcEntryAddr);
     entryNum_ = funcEntrySize / sizeof(FuncEntryDes);
+#if ENABLE_MEMORY_OPTIMIZATION
+    rawEntries_ = entryDes;
+#else
     entries_.assign(entryDes, entryDes + entryNum_);
+#endif
     uint64_t asmStubAddr = des.GetSecAddr(ElfSecName::ARK_ASMSTUB);
     uint32_t asmStubSize = des.GetSecSize(ElfSecName::ARK_ASMSTUB);
     SetAsmStubAddr(asmStubAddr);
     SetAsmStubSize(asmStubSize);
 
+#if !ENABLE_MEMORY_OPTIMIZATION
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
             uint64_t begin = GetAsmStubAddr();
@@ -115,6 +120,7 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
             entry.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
         }
     }
+#endif
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
 }
@@ -152,12 +158,17 @@ bool StubFileInfo::Load()
     uint32_t funcEntrySize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
     FuncEntryDes *entryDes = reinterpret_cast<FuncEntryDes *>(funcEntryAddr);
     entryNum_ = funcEntrySize / sizeof(FuncEntryDes);
+#if ENABLE_MEMORY_OPTIMIZATION
+    rawEntries_ = entryDes;
+#else
     entries_.assign(entryDes, entryDes + entryNum_);
+#endif
     uint64_t asmStubAddr = des.GetSecAddr(ElfSecName::ARK_ASMSTUB);
     uint32_t asmStubSize = des.GetSecSize(ElfSecName::ARK_ASMSTUB);
     SetAsmStubAddr(asmStubAddr);
     SetAsmStubSize(asmStubSize);
 
+#if !ENABLE_MEMORY_OPTIMIZATION
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
             uint64_t begin = GetAsmStubAddr();
@@ -167,6 +178,7 @@ bool StubFileInfo::Load()
             entry.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
         }
     }
+#endif
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     if (!PageProtect(stubsMem_.addr_, stubsMem_.size_, PAGE_PROT_EXEC_READ)) {
         return false;

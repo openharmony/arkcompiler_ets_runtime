@@ -115,18 +115,33 @@ public:
 
     const FuncEntryDes &GetStubDes(int index) const
     {
+#if ENABLE_MEMORY_OPTIMIZATION
+        return GetRawEntries()[index];
+#else
         return entries_[index];
+#endif
     }
 
     uint32_t GetEntrySize() const
     {
+#if ENABLE_MEMORY_OPTIMIZATION
+        return rawEntries_ != nullptr ? entryNum_ : static_cast<uint32_t>(entries_.size());
+#else
         return entries_.size();
+#endif
     }
 
     const std::vector<FuncEntryDes> &GetStubs() const
     {
         return entries_;
     }
+
+#if ENABLE_MEMORY_OPTIMIZATION
+    const FuncEntryDes *GetRawEntries() const
+    {
+        return rawEntries_ != nullptr ? rawEntries_ : entries_.data();
+    }
+#endif
 
     const std::vector<ModuleSectionDes> &GetCodeUnits() const
     {
@@ -220,6 +235,9 @@ protected:
     uint32_t moduleNum_ {0};
     uint32_t totalCodeSize_ {0};
     std::vector<FuncEntryDes> entries_ {};
+#if ENABLE_MEMORY_OPTIMIZATION
+    FuncEntryDes *rawEntries_ {nullptr};
+#endif
     std::vector<ModuleSectionDes> des_ {};
     std::vector<char> checksumData_ {};
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};
