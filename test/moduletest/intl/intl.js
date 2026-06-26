@@ -79,3 +79,47 @@ try {
     });
     print("new Intl.NumberFormat success");
 }
+
+{
+    let holder = Object.create(Intl.NumberFormat.prototype);
+    Intl.NumberFormat.call(holder);
+    let hiddenSym = Object.getOwnPropertySymbols(holder)[0];
+    let fake = {};
+    let wrapper = Object.create(Intl.NumberFormat.prototype);
+    wrapper[hiddenSym] = fake;
+    try {
+        wrapper.format;
+    } catch (e) {
+        print(e instanceof TypeError);
+    }
+
+    wrapper = Object.create(Intl.NumberFormat.prototype);
+    wrapper[hiddenSym] = fake;
+    try {
+        Intl.NumberFormat.prototype.formatToParts.call(wrapper, 1);
+    } catch (e) {
+        print(e instanceof TypeError);
+    }
+
+    wrapper = Object.create(Intl.DateTimeFormat.prototype);
+    wrapper[hiddenSym] = fake;
+    try {
+        wrapper.format;
+    } catch (e) {
+        print(e instanceof TypeError);
+    }
+
+    try {
+        Intl.DateTimeFormat.prototype.formatToParts.call(wrapper);
+    } catch (e) {
+        print(e instanceof TypeError);
+    }
+
+    wrapper = Object.create(Intl.RelativeTimeFormat.prototype);
+    wrapper[hiddenSym] = fake;
+    try {
+        Intl.RelativeTimeFormat.prototype.format.call(wrapper, 1, "day");
+    } catch (e) {
+        print(e instanceof TypeError);
+    }
+}

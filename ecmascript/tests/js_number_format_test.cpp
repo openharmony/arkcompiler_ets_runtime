@@ -15,7 +15,6 @@
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/js_number_format.h"
-#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -166,26 +165,31 @@ HWTEST_F_L0(JSNumberFormatTest, FormatNumeric)
 HWTEST_F_L0(JSNumberFormatTest, UnwrapNumberFormat)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
 
-    JSHandle<JSTaggedValue> numberFormatFunc = env->GetNumberFormatFunction();
+    JSHandle<JSFunction> numberFormatFunc(env->GetNumberFormatFunction());
     JSHandle<JSTaggedValue> numberFormat(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(numberFormatFunc), numberFormatFunc));
+        factory->NewJSObjectByConstructor(numberFormatFunc, JSHandle<JSTaggedValue>::Cast(numberFormatFunc)));
 
-    Local<FunctionRef> numberFormatLocal = JSNApiHelper::ToLocal<FunctionRef>(numberFormatFunc);
-    JSHandle<JSTaggedValue> disPlayNamesFunc = env->GetDisplayNamesFunction();
-    Local<FunctionRef> disPlayNamesLocal = JSNApiHelper::ToLocal<FunctionRef>(disPlayNamesFunc);
-    // displaynames Inherit numberformat
-    disPlayNamesLocal->Inherit(vm, numberFormatLocal);
-    JSHandle<JSTaggedValue> disPlayNamesHandle = JSNApiHelper::ToJSHandle(disPlayNamesLocal);
-    JSHandle<JSTaggedValue> disPlayNamesObj(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(disPlayNamesHandle), disPlayNamesHandle));
+    JSHandle<JSFunction> objectFunc = JSHandle<JSFunction>::Cast(env->GetObjectFunction());
+    JSHandle<JSTaggedValue> legacyReceiver(
+        factory->NewJSObjectByConstructor(objectFunc, JSHandle<JSTaggedValue>::Cast(objectFunc)));
+    JSHandle<JSTaggedValue> numberFormatPrototype(thread, numberFormatFunc->GetFunctionPrototype(thread));
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(legacyReceiver), numberFormatPrototype);
+
     // object has no Instance
     JSHandle<JSTaggedValue> unwrapNumberFormat1 = JSNumberFormat::UnwrapNumberFormat(thread, numberFormat);
     EXPECT_TRUE(JSTaggedValue::SameValue(thread, numberFormat, unwrapNumberFormat1));
-    // object has Instance
-    JSHandle<JSTaggedValue> unwrapNumberFormat2 = JSNumberFormat::UnwrapNumberFormat(thread, disPlayNamesObj);
-    EXPECT_TRUE(unwrapNumberFormat2->IsUndefined());
+    // object has Instance without fallback symbol
+    JSHandle<JSTaggedValue> unwrapNumberFormat2 = JSNumberFormat::UnwrapNumberFormat(thread, legacyReceiver);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(unwrapNumberFormat2.GetTaggedValue(), JSTaggedValue::Exception());
+    thread->ClearException();
+
+    JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
+    PropertyDescriptor descriptor(thread, numberFormat, false, false, false);
+    JSTaggedValue::DefinePropertyOrThrow(thread, legacyReceiver, key, descriptor);
+    JSHandle<JSTaggedValue> unwrapNumberFormat3 = JSNumberFormat::UnwrapNumberFormat(thread, legacyReceiver);
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, numberFormat, unwrapNumberFormat3));
 }
 }  // namespace panda::test

@@ -17,6 +17,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/ecma_test_common.h"
@@ -140,6 +141,47 @@ HWTEST_F_L0(JSDateTimeFormatTest, InitializeDateTimeFormat)
     JSHandle<EcmaString> localeEcmaStr = JSHandle<EcmaString>::Cast(localeTagVal);
     std::string localeStr = LocaleHelper::ConvertToStdString(thread, localeEcmaStr);
     EXPECT_STREQ(localeStr.c_str(), "zh-Hans-CN-u-ca-chinese");
+}
+
+/**
+ * @tc.name: UnwrapDateTimeFormat
+ * @tc.desc: Return DateTimeFormat receiver directly, throw for invalid legacy receiver,
+ *           and unwrap a valid fallback symbol value.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSDateTimeFormatTest, UnwrapDateTimeFormat)
+{
+    auto vm = thread->GetEcmaVM();
+    auto factory = vm->GetFactory();
+    auto env = thread->GetGlobalEnv();
+
+    JSHandle<JSFunction> dateTimeFormatFunc(env->GetDateTimeFormatFunction());
+    JSHandle<JSTaggedValue> dateTimeFormat(
+        factory->NewJSObjectByConstructor(dateTimeFormatFunc, JSHandle<JSTaggedValue>::Cast(dateTimeFormatFunc)));
+
+    JSHandle<JSFunction> objectFunc = JSHandle<JSFunction>::Cast(env->GetObjectFunction());
+    JSHandle<JSTaggedValue> legacyReceiver(
+        factory->NewJSObjectByConstructor(objectFunc, JSHandle<JSTaggedValue>::Cast(objectFunc)));
+    JSHandle<JSTaggedValue> dateTimeFormatPrototype(thread, dateTimeFormatFunc->GetFunctionPrototype(thread));
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(legacyReceiver), dateTimeFormatPrototype);
+
+    JSHandle<JSTaggedValue> unwrapDateTimeFormat1 =
+        JSDateTimeFormat::UnwrapDateTimeFormat(thread, dateTimeFormat);
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, dateTimeFormat, unwrapDateTimeFormat1));
+
+    JSHandle<JSTaggedValue> unwrapDateTimeFormat2 =
+        JSDateTimeFormat::UnwrapDateTimeFormat(thread, legacyReceiver);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(unwrapDateTimeFormat2.GetTaggedValue(), JSTaggedValue::Exception());
+    thread->ClearException();
+
+    JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
+    PropertyDescriptor descriptor(thread, dateTimeFormat, false, false, false);
+    JSTaggedValue::DefinePropertyOrThrow(thread, legacyReceiver, key, descriptor);
+    JSHandle<JSTaggedValue> unwrapDateTimeFormat3 =
+        JSDateTimeFormat::UnwrapDateTimeFormat(thread, legacyReceiver);
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, dateTimeFormat, unwrapDateTimeFormat3));
 }
 
 /**

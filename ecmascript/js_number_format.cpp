@@ -953,28 +953,19 @@ JSHandle<JSTaggedValue> JSNumberFormat::UnwrapNumberFormat(JSThread *thread, con
     // 1. Assert: Type(nf) is Object.
     ASSERT(nf->IsJSObject());
 
-    // 2. If nf does not have an [[InitializedNumberFormat]] internal slot and ?
-    //  InstanceofOperator(nf, %NumberFormat%) is true, then Let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    bool hasInstance = JSFunction::OrdinaryHasInstance(thread, env->GetNumberFormatFunction(), nf);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    // 2. If nf does not have an [[InitializedNumberFormat]] internal slot and
+    // ? InstanceofOperator(nf, %NumberFormat%) is true, then let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> result =
+        JSIntl::LegacyUnwrapReceiver(thread, nf, env->GetNumberFormatFunction(), nf->IsJSNumberFormat());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
 
-    bool isJSNumberFormat = nf->IsJSNumberFormat();
-    // If nf does not have an [[InitializedNumberFormat]] internal slot and ?
-    // InstanceofOperator(nf, %NumberFormat%) is true, then
-    //      a. Let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
-    if (!isJSNumberFormat && hasInstance) {
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
-        OperationResult operationResult = JSTaggedValue::GetProperty(thread, nf, key);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-        return operationResult.GetValue();
-    }
     // 3. Perform ? RequireInternalSlot(nf, [[InitializedNumberFormat]]).
-    if (!isJSNumberFormat) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this is not object",
+    if (!result->IsJSNumberFormat()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Method called on incompatible receiver",
                                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
-    return nf;
+    return result;
 }
 
 JSHandle<TaggedArray> JSNumberFormat::GetAvailableLocales(JSThread *thread)
