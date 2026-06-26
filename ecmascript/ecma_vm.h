@@ -1645,7 +1645,34 @@ public:
     std::string GetExtraJSCrashMessage() const;
     size_t RegisterExtraJSCrashMessageCallback(const std::string_view &name, ExtraJSCrashMessageCallback cb);
     static void NotifyANR();
+    inline void InsertSoLoadFailure(const CString &moduleName, const CString &errorMessage)
+    {
+        soLoadFailureNum_++;
+        if (soLoadFailureList_.size() >= SO_LOAD_FAILURE_CAPACITY) {
+            return;
+        }
+        soLoadFailureList_.emplace_back(moduleName, errorMessage);
+    }
 
+    inline const CVector<std::pair<CString, CString>>& GetAllSoLoadFailures() const
+    {
+        return soLoadFailureList_;
+    }
+
+    inline size_t GetSoLoadFailureNum() const
+    {
+        return soLoadFailureNum_;
+    }
+
+    inline std::optional<CString> GetSoLoadFailureByModuleName(const CString &moduleName) const
+    {
+        for (const auto &failure : soLoadFailureList_) {
+            if (failure.first == moduleName) {
+                return failure.second;
+            }
+        }
+        return std::nullopt;
+    }
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ECMAVM_PUBLIC_HYBRID_MODE_EXTENSION()
 #endif  /* PANDA_JS_ETS_HYBRID_MODE */
@@ -1936,6 +1963,7 @@ private:
     // HandleScope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
+    static constexpr uint32_t SO_LOAD_FAILURE_CAPACITY = 20;
     static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
     JSTaggedType *handleScopeStorageNext_ {nullptr};
     JSTaggedType *handleScopeStorageEnd_ {nullptr};
@@ -1968,6 +1996,9 @@ private:
     using ExtraJSCrashMessageCallbackTuple = std::pair<std::string, ExtraJSCrashMessageCallback>;
     std::vector<ExtraJSCrashMessageCallbackTuple> extraJSCrashMessageCallbacks_{};
 
+    // record so load failure information. <soName, errorMessage>
+    CVector<std::pair<CString, CString>> soLoadFailureList_;
+    size_t soLoadFailureNum_ {0};
     // store multi-context module manager
     class ModuleManagers {
         Mutex CMCGCMutex_;

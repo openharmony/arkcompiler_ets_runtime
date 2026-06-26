@@ -225,6 +225,9 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         }
     }
 
+    // Add native module load failure info
+    AddNativeModuleLoadFailureInfo(thread, nativeInstanceObj);
+
     // Add async stack trace
     if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {
         std::string asyncStackTrace;
@@ -317,6 +320,31 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
         }
     }
     return thread->GlobalConstants()->GetHandledUndefined();
+}
+
+void ErrorHelper::AddNativeModuleLoadFailureInfo(JSThread *thread,
+                                                 const JSHandle<JSObject> &nativeInstanceObj)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    const CVector<std::pair<CString, CString>> &soLoadFailures = vm->GetAllSoLoadFailures();
+    if (soLoadFailures.empty()) {
+        return;
+    }
+    std::string soLoadFailureInfo;
+    base::AppendToBaseString(soLoadFailureInfo, "There are a total of ",
+        std::to_string(vm->GetSoLoadFailureNum()),
+        " SO loading failure messages, and ", std::to_string(soLoadFailures.size()),
+        " of them are displayed here.", "\n");
+    for (const auto &[moduleName, errorMessage] : soLoadFailures) {
+        base::AppendToBaseString(soLoadFailureInfo, "ModuleName:", moduleName.c_str(),
+            " Reason:", errorMessage.c_str(), "\n");
+    }
+    JSHandle<EcmaString> soLoadFailureStr = vm->GetFactory()->NewFromStdString(soLoadFailureInfo);
+    PropertyDescriptor soLoadFailureDesc(thread,
+        JSHandle<JSTaggedValue>::Cast(soLoadFailureStr), false, false, true);
+    [[maybe_unused]] bool soLoadFailureStatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+        thread->GlobalConstants()->GetHandledNativeModuleErrorInfoString(), soLoadFailureDesc);
+    ASSERT_PRINT(soLoadFailureStatus, "Failed to define so load failure info property on object!");
 }
 
 std::string ErrorHelper::BuildStackTraceWithLimit(JSThread *thread, const JSHandle<JSObject> &jsErrorObj)

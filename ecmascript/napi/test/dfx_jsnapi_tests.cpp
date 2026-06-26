@@ -1649,4 +1649,160 @@ HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_DynamicDefault_StillWorks)
     EXPECT_TRUE(MatchJSONLineHeader(inputFile, filePath, 1, "{\"snapshot\":"));
     std::remove(filePath.c_str());
 }
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_InitialEmpty)
+{
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 0U);
+    EXPECT_TRUE(vm_->GetAllSoLoadFailures().empty());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_Single)
+{
+    LocalScope scope(vm_);
+    const std::string moduleName = "libsingle.so";
+    const std::string failureInfo = "dlopen failed: library not found";
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 1U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 1U);
+    EXPECT_STREQ(failures[0].first.c_str(), moduleName.c_str());
+    EXPECT_STREQ(failures[0].second.c_str(), failureInfo.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_Multiple)
+{
+    LocalScope scope(vm_);
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, "moduleA"), "reasonA");
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, "moduleB"), "reasonB");
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, "moduleC"), "reasonC");
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 3U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 3U);
+    // Records are kept in insertion order.
+    EXPECT_STREQ(failures[0].first.c_str(), "moduleA");
+    EXPECT_STREQ(failures[0].second.c_str(), "reasonA");
+    EXPECT_STREQ(failures[1].first.c_str(), "moduleB");
+    EXPECT_STREQ(failures[1].second.c_str(), "reasonB");
+    EXPECT_STREQ(failures[2].first.c_str(), "moduleC");
+    EXPECT_STREQ(failures[2].second.c_str(), "reasonC");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_CapacityLimit)
+{
+    LocalScope scope(vm_);
+    // SO_LOAD_FAILURE_CAPACITY is 20: list keeps at most 20 records, while the
+    // counter keeps growing with every call.
+    constexpr uint32_t capacity = 20;
+    constexpr uint32_t totalCount = 25;
+    for (uint32_t i = 0; i < totalCount; i++) {
+        std::string moduleName = "module_" + std::to_string(i);
+        std::string failureInfo = "reason_" + std::to_string(i);
+        DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+    }
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), static_cast<size_t>(totalCount));
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), static_cast<size_t>(capacity));
+    // The list keeps the earliest records once the capacity is reached.
+    EXPECT_STREQ(failures.front().first.c_str(), "module_0");
+    EXPECT_STREQ(failures.front().second.c_str(), "reason_0");
+    EXPECT_STREQ(failures.back().first.c_str(), "module_19");
+    EXPECT_STREQ(failures.back().second.c_str(), "reason_19");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_EmptyFailureInfo)
+{
+    LocalScope scope(vm_);
+    const std::string moduleName = "libempty.so";
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), "");
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 1U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 1U);
+    EXPECT_STREQ(failures[0].first.c_str(), moduleName.c_str());
+    EXPECT_STREQ(failures[0].second.c_str(), "");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_EmptyModuleName)
+{
+    LocalScope scope(vm_);
+    const std::string failureInfo = "module name is empty";
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, ""), failureInfo);
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 1U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 1U);
+    EXPECT_STREQ(failures[0].first.c_str(), "");
+    EXPECT_STREQ(failures[0].second.c_str(), failureInfo.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_DuplicateModuleName)
+{
+    LocalScope scope(vm_);
+    // Repeated identical records are all kept (no de-duplication).
+    const std::string moduleName = "libdup.so";
+    const std::string failureInfo = "same reason";
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 3U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 3U);
+    for (const auto &failure : failures) {
+        EXPECT_STREQ(failure.first.c_str(), moduleName.c_str());
+        EXPECT_STREQ(failure.second.c_str(), failureInfo.c_str());
+    }
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_ExactlyAtCapacity)
+{
+    LocalScope scope(vm_);
+    // SO_LOAD_FAILURE_CAPACITY is 20: exactly 20 records must all be retained.
+    constexpr uint32_t capacity = 20;
+    for (uint32_t i = 0; i < capacity; i++) {
+        std::string moduleName = "module_" + std::to_string(i);
+        std::string failureInfo = "reason_" + std::to_string(i);
+        DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+    }
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), static_cast<size_t>(capacity));
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), static_cast<size_t>(capacity));
+    EXPECT_STREQ(failures.front().first.c_str(), "module_0");
+    EXPECT_STREQ(failures.back().first.c_str(), "module_19");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_SpecialCharacters)
+{
+    LocalScope scope(vm_);
+    // Symbols, whitespace and punctuation round-trip through ToString/ConvertToString.
+    const std::string moduleName = "lib@module#1.0/path with spaces.so";
+    const std::string failureInfo = "errno=42: <unknown> & status=FAILED!";
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 1U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 1U);
+    EXPECT_STREQ(failures[0].first.c_str(), moduleName.c_str());
+    EXPECT_STREQ(failures[0].second.c_str(), failureInfo.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_LongStrings)
+{
+    LocalScope scope(vm_);
+    const std::string moduleName(1024, 'm');  // 1 KiB module name
+    const std::string failureInfo(2048, 'e'); // 2 KiB failure message
+    DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
+
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 1U);
+    const auto &failures = vm_->GetAllSoLoadFailures();
+    ASSERT_EQ(failures.size(), 1U);
+    EXPECT_EQ(failures[0].first.size(), moduleName.size());
+    EXPECT_EQ(failures[0].second.size(), failureInfo.size());
+    EXPECT_STREQ(failures[0].first.c_str(), moduleName.c_str());
+    EXPECT_STREQ(failures[0].second.c_str(), failureInfo.c_str());
+}
 } // namespace panda::test

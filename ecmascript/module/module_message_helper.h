@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_MODULE_MESSAGE_HELPER_H
 #define ECMASCRIPT_MODULE_MESSAGE_HELPER_H
 
+#include <optional>
+
 #include "ecmascript/base/string_helper.h"
 
 namespace panda::ecmascript {
@@ -34,6 +36,13 @@ public:
         return "bundleName:" + vm->GetBundleName() +
                ", moduleName:" + vm->GetModuleName() +
                ", assetPath:" + vm->GetAssetPath();
+    }
+
+    static inline void PrintNativeModuleLoadFailure(JSThread *thread, const CString &moduleName)
+    {
+        std::optional<CString> reason = thread->GetEcmaVM()->GetSoLoadFailureByModuleName(moduleName);
+        LOG_ECMA(WARN) << "Load native module failed, ModuleName: " << moduleName
+            << (reason.has_value() ? ", Reason: " + *reason : "");
     }
 
     static void PrintAndThrowError(JSThread *thread, JSHandle<SourceTextModule> module)

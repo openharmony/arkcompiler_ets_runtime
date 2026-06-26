@@ -48,6 +48,8 @@ private:
 
     static std::string BuildStackTraceWithLimit(JSThread *thread, const JSHandle<JSObject> &jsErrorObj);
 
+    static void AddNativeModuleLoadFailureInfo(JSThread *thread, const JSHandle<JSObject> &nativeInstanceObj);
+
     static JSHandle<JSTaggedValue> GetErrorName(JSThread *thread, const JSHandle<JSTaggedValue> &name,
                                                 const ErrorType &errorType);
     static constexpr uint32_t MAX_ERROR_SIZE = 10_KB;

@@ -1463,4 +1463,15 @@ bool DFXJSNApi::GetEnableRuntimeAsyncStack(const EcmaVM *vm)
     return false;
 #endif
 }
+
+void DFXJSNApi::InsertSoLoadFailure(EcmaVM *vm,
+    Local<StringRef> moduleName, const std::string &failureInfo)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTaggedValue> moduleNameValue = JSNApiHelper::ToJSHandle(moduleName);
+    JSHandle<EcmaString> moduleNameHandle = JSTaggedValue::ToString(thread, moduleNameValue);
+    ecmascript::CString moduleNameStr = ConvertToString(thread, *moduleNameHandle);
+    vm->InsertSoLoadFailure(moduleNameStr, failureInfo.c_str());
+}
 } // namespace panda
