@@ -518,6 +518,7 @@ void AotCompilerImpl::HandleThermalLevelChanged(const int32_t level)
     // thermal level >= 2, stop aot compile
     if (thermalLevel_ >= AOT_COMPILE_STOP_LEVEL) {
         PauseAotCompiler();
+        (void)StopAotCompiler();
     } else {
         AllowAotCompiler();
     }

@@ -20,11 +20,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
+#include <csignal>
 #include <mutex>
 #include <securec.h>
 #include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
 #include <vector>
@@ -997,6 +999,38 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_044, TestSize.Level0)
 #else
     EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
 #endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_045
+* @tc.desc: AotCompilerImpl::HandleThermalLevelChanged() stops running compiler at high thermal level
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_045, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    AotCompilerArgs args = MakeTestArgs();
+    aotImplMock.SetAOTArgsHandler(std::make_unique<AOTArgsHandler>(args));
+    aotImplMock.AllowAotCompilerMock();
+    aotImplMock.SetStopRequestedMock(false);
+
+    pid_t pid = fork();
+    ASSERT_NE(pid, -1);
+    if (pid == 0) {
+        alarm(2); // 2: fail fast if thermal stop does not kill this child.
+        pause();
+        _exit(0);
+    }
+
+    aotImplMock.InitStateMock(pid);
+    aotImplMock.HandleThermalLevelChanged(aotImplMock.AOT_COMPILE_STOP_LEVEL);
+
+    int status = 0;
+    EXPECT_EQ(waitpid(pid, &status, 0), pid);
+    EXPECT_TRUE(WIFSIGNALED(status));
+    EXPECT_EQ(WTERMSIG(status), SIGKILL);
+    EXPECT_FALSE(aotImplMock.IsAllowAotCompiler());
+    EXPECT_TRUE(aotImplMock.IsStopRequestedMock());
 }
 
 // =========================================================================
