@@ -16,16 +16,8 @@
 #ifndef ECMASCRIPT_ARKSTEED_PGO_CONTEXT_H
 #define ECMASCRIPT_ARKSTEED_PGO_CONTEXT_H
 
-#include <unordered_map>
-
 #include "ecmascript/arksteed/arksteed_access_info_factory.h"
 #include "ecmascript/arksteed/arksteed_feedback_reader.h"
-#include "ecmascript/ic/profile_type_info.h"
-#include "ecmascript/jit/jit_profiler.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/assert_scope.h"
-#include "ecmascript/mem/chunk.h"
-#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -57,62 +49,6 @@ public:
         return &broker_;
     }
 
-    void PrepareBytecodeProfiles(Chunk *chunk) const
-    {
-        if (bytecodeProfilesPrepared_ || env_ == nullptr || chunk == nullptr || !env_->GetJSOptions().IsEnableJITPGO()) {
-            return;
-        }
-        auto profiler = env_->GetPGOProfiler();
-        if (profiler == nullptr) {
-            bytecodeProfilesPrepared_ = true;
-            return;
-        }
-        JITProfiler *jitProfile = profiler->GetJITProfile();
-        if (jitProfile == nullptr) {
-            bytecodeProfilesPrepared_ = true;
-            return;
-        }
-
-        JSHandle<ProfileTypeInfo> profileTypeInfo = env_->GetProfileTypeInfo();
-        if (profileTypeInfo.GetAddress() == 0) {
-            bytecodeProfilesPrepared_ = true;
-            return;
-        }
-
-        JSPandaFile *jsPandaFile = env_->GetJSPandaFile();
-        MethodLiteral *methodLiteral = env_->GetMethodLiteral();
-        if (jsPandaFile == nullptr || methodLiteral == nullptr) {
-            bytecodeProfilesPrepared_ = true;
-            return;
-        }
-
-        ALLOW_DEREF_HANDLE;
-        jitProfile->SetCompilationEnv(env_);
-        jitProfile->InitChunk(chunk);
-        jitProfile->ProfileBytecode(compilerThread_,
-                                    profileTypeInfo,
-                                    methodLiteral->GetMethodId(),
-                                    env_->GetMethodAbcId(),
-                                    env_->GetMethodPcStart(),
-                                    MethodLiteral::GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
-                                    jsPandaFile->GetPandaFile()->GetHeader(),
-                                    env_->GetJsFunction(),
-                                    env_->GetGlobalEnv());
-        ResetBinaryOpProfileCache();
-        bytecodeProfilesPrepared_ = true;
-    }
-
-    pgo::PGOSampleType ReadBinaryOpProfile(uint32_t bcOffset) const
-    {
-        EnsureBinaryOpProfileCache();
-        int32_t key = static_cast<int32_t>(bcOffset);
-        auto profile = binaryOpProfileCache_.find(key);
-        if (profile == binaryOpProfileCache_.end()) {
-            return pgo::PGOSampleType::NoneType();
-        }
-        return profile->second;
-    }
-
     OperationFeedback ReadOperationFeedback(const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo)
     {
         OperationFeedback feedback;
@@ -122,55 +58,9 @@ public:
     }
 
 private:
-    void EnsureBinaryOpProfileCache() const
-    {
-        if (binaryOpProfileCacheBuilt_) {
-            return;
-        }
-        binaryOpProfileCacheBuilt_ = true;
-
-        if (env_ == nullptr || !env_->GetJSOptions().IsEnableJITPGO()) {
-            return;
-        }
-        auto profiler = env_->GetPGOProfiler();
-        if (profiler == nullptr) {
-            return;
-        }
-        JITProfiler *jitProfile = profiler->GetJITProfile();
-        if (jitProfile == nullptr) {
-            return;
-        }
-
-        auto opTypeMap = jitProfile->GetOpTypeMap();
-        if (opTypeMap.empty()) {
-            return;
-        }
-        auto insufficientProfileMap = jitProfile->GetBoolMap();
-        binaryOpProfileCache_.reserve(opTypeMap.size());
-        for (const auto &[offset, opType] : opTypeMap) {
-            if (opType == nullptr) {
-                continue;
-            }
-            auto insufficientProfile = insufficientProfileMap.find(offset);
-            if (insufficientProfile != insufficientProfileMap.end() && insufficientProfile->second) {
-                continue;
-            }
-            binaryOpProfileCache_.emplace(offset, *opType);
-        }
-    }
-
-    void ResetBinaryOpProfileCache() const
-    {
-        binaryOpProfileCacheBuilt_ = false;
-        binaryOpProfileCache_.clear();
-    }
-
     JSThread *compilerThread_ {nullptr};
     JitCompilationEnv *env_ {nullptr};
     mutable ArkSteedHeapBroker broker_;
-    mutable bool bytecodeProfilesPrepared_ {false};
-    mutable bool binaryOpProfileCacheBuilt_ {false};
-    mutable std::unordered_map<int32_t, pgo::PGOSampleType> binaryOpProfileCache_ {};
 };
 
 }  // namespace panda::ecmascript::arksteed
