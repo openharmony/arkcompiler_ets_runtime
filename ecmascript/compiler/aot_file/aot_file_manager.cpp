@@ -77,8 +77,15 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
         return;
     }
     auto info = anFileDataManager->SafeGetStubFileInfo();
+    if (info == nullptr) {
+        return;
+    }
+#if ENABLE_MEMORY_OPTIMIZATION
+    InitializeStubEntries(*info);
+#else
     auto stubs = info->GetStubs();
     InitializeStubEntries(stubs);
+#endif
 }
 
 bool AOTFileManager::LoadAnFile(const std::string &fileName)
@@ -433,6 +440,51 @@ kungfu::ArkStackMapParser *AOTFileManager::GetStackMapParser() const
     return arkStackMapParser_;
 }
 
+#if ENABLE_MEMORY_OPTIMIZATION
+void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
+                                                        const StubFileInfo &stubInfo,
+                                                        const AsmInterParsedOption &asmInterOpt)
+{
+#if defined(STUB_FUNCTION_REORDERING)
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    std::shared_ptr<StubFileInfo> stubFileInfo = anFileDataManager->SafeGetStubFileInfo();
+    auto getIdx = [&](int csign) {
+        return stubFileInfo->GetRuntimeStubIndex(csign);
+    };
+    // We cannot index using the static enum value when stub functions are
+    // reordered. So we get actual runtime index from `StubIndexMapping`".
+    uint64_t defaultBCStubAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::SingleStepDebugging));
+    uint64_t defaultBCDebuggerAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerEntry));
+    uint64_t defaultBCDebuggerExceptionAddr =
+        stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerExceptionEntry));
+#else
+    auto getIdx = [](int csign) { return csign; };
+    uint64_t defaultBCStubAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::SingleStepDebugging));
+    uint64_t defaultBCDebuggerAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerEntry));
+    uint64_t defaultBCDebuggerExceptionAddr =
+        stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerExceptionEntry));
+#endif
+    ASSERT(stubInfo.GetRawEntries()[getIdx(BytecodeStubCSigns::SingleStepDebugging)].kind_ ==
+           kungfu::CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
+
+    if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
+        for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
+            thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubAddr);
+        }
+#define DISABLE_SINGLE_STEP_DEBUGGING(name) \
+    thread->SetBCStubEntry(BytecodeStubCSigns::ID_##name, stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::ID_##name)));
+        INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(DISABLE_SINGLE_STEP_DEBUGGING)
+#undef DISABLE_SINGLE_STEP_DEBUGGING
+    }
+    for (size_t i = 0; i < BCStubEntries::EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
+        if (i == BytecodeStubCSigns::ID_ExceptionHandler) {
+            thread->SetBCDebugStubEntry(i, defaultBCDebuggerExceptionAddr);
+            continue;
+        }
+        thread->SetBCDebugStubEntry(i, defaultBCDebuggerAddr);
+    }
+}
+#else
 void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
                                                         const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
                                                         const AsmInterParsedOption &asmInterOpt)
@@ -472,6 +524,7 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
         thread->SetBCDebugStubEntry(i, defaultBCDebuggerStubDes.codeAddr_);
     }
 }
+#endif
 
 void AOTFileManager::LoadingCommonStubsLog(size_t id, Address entry)
 {
@@ -513,6 +566,64 @@ void AOTFileManager::LoadingRuntimeStubsLog(size_t id, Address entry)
                     << " addr: 0x" << std::hex << entry;
 }
 
+#if ENABLE_MEMORY_OPTIMIZATION
+void AOTFileManager::InitializeStubEntries(const StubFileInfo &stubInfo)
+{
+#ifndef NDEBUG
+    MessageString::CheckStubNameInfo();
+#endif
+#if defined(STUB_FUNCTION_REORDERING)
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    std::shared_ptr<StubFileInfo> stubFileInfo = anFileDataManager->SafeGetStubFileInfo();
+#endif
+    auto thread = vm_->GetAssociatedJSThread();
+    uint32_t len = stubInfo.GetEntrySize();
+    const auto *stubs = stubInfo.GetRawEntries();
+    for (uint32_t i = 0; i < len; i++) {
+        auto des = stubs[i];
+        uint64_t codeAddr = stubInfo.GetCodeAddr(i);
+        if (des.IsCommonStub()) {
+            thread->SetFastStubEntry(des.indexInKindOrMethodId_, codeAddr);
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingCommonStubsLog(des.indexInKindOrMethodId_, codeAddr);
+            }
+        } else if (des.IsBCStub()) {
+            thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
+#if defined(STUB_FUNCTION_REORDERING)
+            // Update runtime map for BC Stub Entries
+            stubFileInfo->AddIndexMapping(des.indexInKindOrMethodId_, i);
+#endif
+            thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingByteCodeStubsLog(des.indexInKindOrMethodId_, codeAddr);
+            }
+        } else if (des.IsBuiltinsStub()) {
+            thread->SetBuiltinStubEntry(des.indexInKindOrMethodId_, codeAddr);
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingBuiltinsStubsLog(des.indexInKindOrMethodId_, codeAddr);
+            }
+        } else if (des.IsBaselineStub()) {
+            thread->SetBaselineStubEntry(des.indexInKindOrMethodId_, codeAddr);
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingBaselineStubsLog(des.indexInKindOrMethodId_, codeAddr);
+            }
+        } else {
+            thread->RegisterRTInterface(des.indexInKindOrMethodId_, codeAddr);
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingRuntimeStubsLog(des.indexInKindOrMethodId_, codeAddr);
+            }
+        }
+    }
+    thread->CheckOrSwitchPGOStubs();
+    if (!g_isEnableCMCGC) {
+        thread->SwitchStwCopyBCStubs(true);
+        thread->SwitchStwCopyCommonStubs(true);
+        thread->SwitchStwCopyBuiltinsStubs(true);
+    }
+    AsmInterParsedOption asmInterOpt = vm_->GetJSOptions().GetAsmInterParsedOption();
+    AdjustBCStubAndDebuggerStubEntries(thread, stubInfo, asmInterOpt);
+}
+#else
 void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes> &stubs)
 {
 #ifndef NDEBUG
@@ -566,6 +677,7 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
     AsmInterParsedOption asmInterOpt = vm_->GetJSOptions().GetAsmInterParsedOption();
     AdjustBCStubAndDebuggerStubEntries(thread, stubs, asmInterOpt);
 }
+#endif
 
 bool AOTFileManager::RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize)
 {
