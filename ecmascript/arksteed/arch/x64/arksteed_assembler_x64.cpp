@@ -702,23 +702,24 @@ void ArkSteedAssembler::Prologue(Graph *graph)
     // 3. Initialize tagged slots for GC safety.
     uint32_t taggedSlots = graph->GetTaggedStackSlots();
     taggedStackSlots_ = taggedSlots;
-    auto undefined = static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED);
-    assembler_.Movq(x64::Immediate(undefined), x64::rax);
-    for (uint32_t i = 0; i < taggedSlots; ++i) {
-        assembler_.Pushq(x64::rax);
+    if (taggedSlots > 0) {
+        auto undefined = static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED);
+        assembler_.Movq(x64::Immediate(undefined), x64::rax);
+        for (uint32_t i = 0; i < taggedSlots; ++i) {
+            assembler_.Pushq(x64::rax);
+        }
     }
 
-    // 4. Allocate and initialize untagged slots with VALUE_UNDEFINED for GC safety.
+    // 4. Allocate untagged slots.
     uint32_t untaggedSlots = graph->GetUntaggedStackSlots();
-    for (uint32_t i = 0; i < untaggedSlots; ++i) {
-        assembler_.Pushq(x64::rax);
+    if (untaggedSlots > 0) {
+        assembler_.Subq(x64::Immediate(untaggedSlots * sizeof(uint64_t)), x64::rsp);
     }
 
     // SysV requires 16-byte alignment at call sites. The 3 fixed header slots
     // leave rsp misaligned when the number of local slots is even.
-    // Fill the alignment slot with VALUE_UNDEFINED for GC safety.
     if (((taggedSlots + untaggedSlots) & 1U) == 0) {
-        assembler_.Pushq(x64::rax);
+        assembler_.Subq(x64::Immediate(FRAME_SLOT_SIZE), x64::rsp);
     }
 
     SetHasFrame(true);

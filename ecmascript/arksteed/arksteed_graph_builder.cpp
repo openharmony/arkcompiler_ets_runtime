@@ -45,6 +45,11 @@
 
 namespace panda::ecmascript::arksteed {
 namespace {
+constexpr uint32_t CALL_ARG0 = 0;
+constexpr uint32_t CALL_ARG1 = 1;
+constexpr uint32_t CALL_ARG2 = CALL_ARG1 + 1;
+constexpr uint32_t CALL_ARG3 = CALL_ARG2 + 1;
+
 bool IsTaggedCallType(kungfu::VariableType type)
 {
     kungfu::GateType gateType = type.GetGateType();
@@ -2203,20 +2208,24 @@ struct GraphBuilder::BytecodeVisitor {
     void LowerCallArg0()
     {
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func}, CommonStubID::CallArg0Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, undefined}, CALL_ARG0);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallArg1(const BytecodeInfo *bcInfo)
     {
         ValueVertex *a0Value = LoadRegister(bcInfo, 0);
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, a0Value}, CommonStubID::CallArg1Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, undefined, a0Value}, CALL_ARG1);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallArgs2(const BytecodeInfo *bcInfo)
@@ -2224,10 +2233,12 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *a0Value = LoadRegister(bcInfo, 0);
         ValueVertex *a1Value = LoadRegister(bcInfo, 1);
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, a0Value, a1Value}, CommonStubID::CallArg2Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallArgs3(const BytecodeInfo *bcInfo)
@@ -2236,20 +2247,24 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *a1Value = LoadRegister(bcInfo, 1);
         ValueVertex *a2Value = LoadRegister(bcInfo, 2);  // 2: third argument register index
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, a0Value, a1Value, a2Value}, CommonStubID::CallArg3Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallThis0(const BytecodeInfo *bcInfo)
     {
         ValueVertex *thisObj = LoadRegister(bcInfo, 0);
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj}, CommonStubID::CallThis0Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, thisObj}, CALL_ARG0);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallThis1(const BytecodeInfo *bcInfo)
@@ -2257,10 +2272,12 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *thisObj = LoadRegister(bcInfo, 0);
         ValueVertex *a0Value = LoadRegister(bcInfo, 1);
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj, a0Value}, CommonStubID::CallThis1Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, thisObj, a0Value}, CALL_ARG1);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallThis2(const BytecodeInfo *bcInfo)
@@ -2269,10 +2286,12 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *a0Value = LoadRegister(bcInfo, 1);
         ValueVertex *a1Value = LoadRegister(bcInfo, 2);  // 2: second argument register index
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj, a0Value, a1Value}, CommonStubID::CallThis2Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallThis3(const BytecodeInfo *bcInfo)
@@ -2282,36 +2301,48 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *a1Value = LoadRegister(bcInfo, 2);  // 2: second argument register index
         ValueVertex *a2Value = LoadRegister(bcInfo, 3);  // 3: third argument register index
         ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
 
-        ValueVertex *result = CommonStubCall(
-            {glue, func, thisObj, a0Value, a1Value, a2Value}, CommonStubID::CallThis3Stub);
-        frameState.SetAcc(result);
+        CallVertex *call = self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, {func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallRange(const BytecodeInfo *bcInfo)
     {
         uint32_t inputSize = bcInfo->inputs.size();
-
         ValueVertex *func = frameState.GetAcc();
-        ValueVertex *taggedInputSize = TaggedConstantFromInt32(static_cast<int>(inputSize));
-        ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedInputSize, inputSize);
-
-        ValueVertex *result = RuntimeCall({func, taggedArray, taggedInputSize}, RTSTUB_ID(CallRange));
-        frameState.SetAcc(result);
+        ValueVertex *undefined = self->undefinedValue_;
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        args.push_back(func);
+        args.push_back(undefined);
+        args.push_back(undefined);
+        for (uint32_t idx = 0; idx < inputSize; idx++) {
+            args.push_back(LoadRegister(bcInfo, static_cast<int>(idx)));
+        }
+        CallVertex *call = self->NewVertex<CallVertex>(compileInfoFacts_, currentBlock, args, inputSize);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallThisRange(const BytecodeInfo *bcInfo)
     {
         // -1 : Skips the receiver
         uint32_t argc = bcInfo->inputs.size() - 1;
-
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *thisObj = LoadRegister(bcInfo, 0);
-        ValueVertex *taggedArgc = TaggedConstantFromInt32(static_cast<int>(argc));
-        ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedArgc, argc, 1);
-
-        ValueVertex *result = RuntimeCall({thisObj, func, taggedArray, taggedArgc}, RTSTUB_ID(CallThisRange));
-        frameState.SetAcc(result);
+        ValueVertex *undefined = self->undefinedValue_;
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        args.push_back(func);
+        args.push_back(undefined);
+        args.push_back(thisObj);
+        for (uint32_t idx = 0; idx < argc; idx++) {
+            args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));
+        }
+        CallVertex *call = self->NewVertex<CallVertex>(compileInfoFacts_, currentBlock, args, argc);
+        UpdateCatchBlockData(call);
+        frameState.SetAcc(call);
     }
 
     void LowerCallSpread(const BytecodeInfo *bcInfo)
@@ -2600,14 +2631,60 @@ struct GraphBuilder::BytecodeVisitor {
 
     // -------- Category #12: Lexical Environment --------
 
+    int32_t GetLexicalEnvSlotOffset(uint16_t slot) const
+    {
+        return static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                    (LexicalEnv::RESERVED_ENV_LENGTH + slot) * JSTaggedValue::TaggedTypeSize());
+    }
+
+    int32_t GetLexicalEnvParentOffset() const
+    {
+        return static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                    LexicalEnv::PARENT_ENV_INDEX * JSTaggedValue::TaggedTypeSize());
+    }
+
+    ValueVertex *BuildEnvSlotLoad(ValueVertex *env, int32_t offset)
+    {
+        ASSERT(env != nullptr);
+        bool isConstantField = IsEnvConstantFieldOffset(offset);
+        ValueVertex *cached = nullptr;
+        if (isConstantField) {
+            cached = compileInfoFacts_->LookupEnvConstant(env, offset);
+        } else {
+            cached = compileInfoFacts_->LookupEnvSlot(env, offset);
+        }
+        if (cached != nullptr) {
+            return cached;
+        }
+
+        ValueVertex *value = self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {env}, offset);
+        if (isConstantField) {
+            compileInfoFacts_->RecordEnvConstant(env, offset, value);
+        } else {
+            compileInfoFacts_->RecordEnvSlot(env, offset, value);
+        }
+        return value;
+    }
+
+    ValueVertex *BuildLexicalEnvAtLevel(ValueVertex *baseEnv, uint16_t level)
+    {
+        ValueVertex *env = baseEnv;
+        for (uint16_t i = 0; i < level; ++i) {
+            env = BuildEnvSlotLoad(env, GetLexicalEnvParentOffset());
+        }
+        return env;
+    }
+
     void LowerNewLexicalEnv(const BytecodeInfo *bcInfo)
     {
         ValueVertex *parent = LoadRegister(bcInfo, 1);
-        ValueVertex *scope = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        ValueVertex *newEnv = CommonStubCall({glue, parent, scope}, CommonStubID::NewLexicalEnv);
+        ValueVertex *numVars = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *newEnv = CommonStubCall(
+            {glue, parent, numVars}, CommonStubID::NewLexicalEnv, SideEffectKind::SAFE_CALL);
 
         frameState.SetAcc(newEnv);
         frameState.SetLexicalEnv(newEnv);
+        compileInfoFacts_->RecordEnvConstant(newEnv, GetLexicalEnvParentOffset(), parent);
     }
 
     void LowerNewLexicalEnvWithName(const BytecodeInfo *bcInfo)
@@ -2615,38 +2692,46 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *level = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *slotId = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
-        // 2: env register index
+        ValueVertex *parent = LoadRegister(bcInfo, 2);  // 2: env register index
         ValueVertex *newEnv = RuntimeCall(
-            {level, slotId, LoadRegister(bcInfo, 2), jsFunc}, RTSTUB_ID(OptNewLexicalEnvWithName));
+            {level, slotId, parent, jsFunc}, RTSTUB_ID(OptNewLexicalEnvWithName), SideEffectKind::SAFE_CALL);
 
         frameState.SetAcc(newEnv);
         frameState.SetLexicalEnv(newEnv);
+        compileInfoFacts_->RecordEnvConstant(newEnv, GetLexicalEnvParentOffset(), parent);
     }
 
     void LowerPopLexicalEnv(const BytecodeInfo *bcInfo)
     {
         ValueVertex *currentEnv = LoadRegister(bcInfo, 0);
-        ValueVertex *parentEnv = GetValueFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
+        ValueVertex *parentEnv = BuildEnvSlotLoad(currentEnv, GetLexicalEnvParentOffset());
 
         frameState.SetAcc(parentEnv);
         frameState.SetLexicalEnv(parentEnv);
+        compileInfoFacts_->ClearEnvSlotsFor(currentEnv);
     }
 
     void LowerLdLexVar(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *level = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        ValueVertex *slot = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
+        uint16_t level = GetImmediate<uint16_t>(bcInfo, 0);
+        uint16_t slot = GetImmediate<uint16_t>(bcInfo, 1);
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
-        frameState.SetAcc(CommonStubCall({glue, level, slot, lexicalEnv}, CommonStubID::LdLexVar));
+        ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
+        frameState.SetAcc(BuildEnvSlotLoad(targetEnv, GetLexicalEnvSlotOffset(slot)));
     }
 
     void LowerStLexVar(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *level = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        ValueVertex *slot = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
+        uint16_t level = GetImmediate<uint16_t>(bcInfo, 0);
+        uint16_t slot = GetImmediate<uint16_t>(bcInfo, 1);
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, level, slot, lexicalEnv, value}, CommonStubID::StLexVar);
+        ASSERT(value != nullptr);
+        ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
+        int32_t offset = GetLexicalEnvSlotOffset(slot);
+        self->NewVertex<StoreEnvSlotVertex>(compileInfoFacts_, currentBlock, {targetEnv, value}, offset);
+        self->NewVertex<SetValueWithBarrierVertex>(compileInfoFacts_, currentBlock, {glue, targetEnv, value}, offset);
+        compileInfoFacts_->RecordEnvSlot(targetEnv, offset, value);
     }
 
     // -------- Category #13: Modules --------
@@ -4675,10 +4760,12 @@ struct GraphBuilder::BytecodeVisitor {
         mixin->SetCatchPredecessorIndex(catchPredIndex);
     }
 
-    ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
         ValidateCommonStubCallArgs({inputs.begin(), inputs.end()}, id);
-        auto *vertex = self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, inputs, id);
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(
+            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
@@ -4687,7 +4774,7 @@ struct GraphBuilder::BytecodeVisitor {
         const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
     {
         ChunkVector<ValueVertex *> allArgs(self->chunk_);
-        allArgs.reserve(inputs.size() + 3);  // 3: glue + jsFunc + slotId
+        allArgs.reserve(inputs.size() + CallVertex::FIRST_ARG_INDEX);
 
         allArgs.push_back(glue);
         allArgs.insert(allArgs.end(), inputs.begin(), inputs.end());
@@ -4701,9 +4788,11 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     template <class InputRange = std::initializer_list<ValueVertex *>>
-    ValueVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id)
+    ValueVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id,
+                             SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
-        auto *vertex = self->NewVertex<CallRuntimeVertex>(compileInfoFacts_, currentBlock, inputs, id);
+        auto *vertex = self->NewVertex<CallRuntimeVertex>(
+            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }

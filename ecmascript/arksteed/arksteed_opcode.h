@@ -620,7 +620,7 @@ private:
     SideEffectKind sideEffectKind_;
 };
 
-class CallVertex : public VertexMixin<ValueVertex, CallVertex> {
+class CallVertex : public VertexMixin<ValueVertex, CallVertex>, public ThrowableMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
@@ -1974,6 +1974,9 @@ public:
 
 inline BB *CatchBlockOf(Vertex *vertex)
 {
+    if (auto *derived = vertex->TryCast<CallVertex>()) {
+        return derived->CaughtBy();
+    }
     if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
         return derived->CaughtBy();
     }
@@ -1988,6 +1991,9 @@ inline BB *CatchBlockOf(Vertex *vertex)
 
 inline uint32_t CatchPredecessorIndexOf(Vertex *vertex)
 {
+    if (auto *derived = vertex->TryCast<CallVertex>()) {
+        return derived->GetCatchPredecessorIndex();
+    }
     if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
         return derived->GetCatchPredecessorIndex();
     }

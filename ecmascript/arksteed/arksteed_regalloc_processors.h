@@ -22,6 +22,8 @@
 #include "ecmascript/arksteed/arksteed_regalloc_vertex_info.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 
+#include <type_traits>
+
 namespace panda::ecmascript::arksteed {
 
 // =============================================================================
@@ -208,6 +210,9 @@ public:
     void MarkInputUses(T *vertex, const ArkSteedState &state)
     {
         MarkDirectInputUses(vertex, state);
+        if constexpr (std::is_base_of_v<ThrowableMixin, T>) {
+            MarkCatchPhiInputUses(vertex, state);
+        }
     }
 
     // Specialization for PhiVertex - skip here, will be handled by control vertices
@@ -231,27 +236,6 @@ public:
             InputLocation *location = phi->GetInputLocation(predecessorIdx);
             MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
         }
-    }
-
-    // Specialization for CallCommonStubVertex - extend live range of catch phi inputs
-    void MarkInputUses(CallCommonStubVertex *vertex, const ArkSteedState &state)
-    {
-        MarkDirectInputUses(vertex, state);
-        MarkCatchPhiInputUses(vertex, state);
-    }
-
-    // Specialization for CallRuntimeVertex - extend live range of catch phi inputs
-    void MarkInputUses(CallRuntimeVertex *vertex, const ArkSteedState &state)
-    {
-        MarkDirectInputUses(vertex, state);
-        MarkCatchPhiInputUses(vertex, state);
-    }
-
-    // Specialization for ThrowVertex - extend live range of catch phi inputs
-    void MarkInputUses(ThrowVertex *vertex, const ArkSteedState &state)
-    {
-        MarkDirectInputUses(vertex, state);
-        MarkCatchPhiInputUses(vertex, state);
     }
 
     // Specialization for JumpLoopVertex - handle phi inputs for loop header block and propagate loop-external vertices
