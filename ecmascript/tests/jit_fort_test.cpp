@@ -30,6 +30,19 @@ namespace panda::test {
 
 class JitFortTest :  public BaseTestWithScope<false> {
 public:
+    static void SetUpTestCase()
+    {
+        GTEST_LOG_(INFO) << "SetUpTestCase";
+        enforceValueBack = ChangeFileContent("0");
+        JitFort::InitJitFort();
+        JitFort::InitJitFortResource();
+    }
+
+    static void TearDownTestCase()
+    {
+        GTEST_LOG_(INFO) << "TearDownTestCase, enforce value revert: " << ChangeFileContent(enforceValueBack.c_str());
+    }
+
     void SetUp() override
     {
         JSRuntimeOptions options;
@@ -42,7 +55,51 @@ public:
         heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
     }
+
+private:
+    static std::string ChangeFileContent(const char *value)
+    {
+        const char selinuxPath[] = "/sys/fs/selinux/enforce";
+        std::string enforceValue {""};
+        int fd = open(selinuxPath, O_RDWR);
+        if (fd < 0) {
+            GTEST_LOG_(ERROR) << "open file failed!";
+            return enforceValue;
+        }
+
+        ssize_t count = 0;
+        char buffer[16];
+        while (true) {
+            count = read(fd, buffer, sizeof(buffer));
+            if (count == 0) {
+                break;
+            } else if (count == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                GTEST_LOG_(ERROR) << "read file failed!";
+                return enforceValue;
+            } else {
+                enforceValue.append(buffer, count);
+            }
+        }
+        GTEST_LOG_(INFO) << "enforceValue: " << enforceValue;
+
+        if (lseek(fd, 0, SEEK_SET) == (off_t)-1) {
+            GTEST_LOG_(ERROR) << "lseek failed";
+        }
+
+        if (write(fd, value, strlen(value)) < 0) {
+            GTEST_LOG_(ERROR) << "write file failed! " << strerror(errno);
+        }
+        close(fd);
+        return enforceValue;
+    }
+
+    static std::string enforceValueBack;
 };
+
+std::string JitFortTest::enforceValueBack = "";
 
 HWTEST_F_L0(JitFortTest, AddRegionTest001)
 {
