@@ -103,7 +103,7 @@ private:
 };
 }
 
-static bool IsHexString(const CString &str)
+[[maybe_unused]] static bool IsHexString(const CString &str)
 {
     if (str.empty()) {
         return false;
