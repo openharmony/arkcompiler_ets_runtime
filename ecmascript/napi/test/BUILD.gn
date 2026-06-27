@@ -170,6 +170,17 @@ host_unittest_action("Jsnapi_004_Test") {
     deps += [ ":gen_${file}_abc" ]
   }
 
+  foreach(file, test_ts_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test/"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
+  defines = ["ABC_PATH=\"${test_abc_dir}/\""]
+
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   external_deps += [

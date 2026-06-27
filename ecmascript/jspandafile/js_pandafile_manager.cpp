@@ -604,10 +604,10 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(thread, pf, desc, entryPoint);
     EcmaVM *vm = thread->GetEcmaVM();
     newJsPandaFile->SetFileMapper(fileMapper);
-    std::string moduleName = GetModuleNameFromDesc(desc.c_str());
     std::string hapPath;
     SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();
     if (callback) {
+        std::string moduleName = GetModuleNameFromDesc(desc.c_str());
         callback(moduleName, hapPath);
         LOG_ECMA(DEBUG) << "SearchHapPathCallBack moduleName: " << moduleName
                         << ", fileName:" << desc << ", hapPath: " << hapPath;
