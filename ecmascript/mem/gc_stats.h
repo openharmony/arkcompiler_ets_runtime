@@ -38,6 +38,7 @@ enum class GCType : int {
     SHARED_GC,
     SHARED_PARTIAL_GC,
     SHARED_FULL_GC,
+    SHARED_CC,
     GLOBAL_GC,
     STICKY_CMS_GC,
     CMS_GC,
@@ -107,6 +108,10 @@ public:
     virtual void PrintGCMemoryStatistic();
     bool CheckIfLongTimePause();
     virtual void PrintGCStatistic();
+    virtual bool EnableGCTracer() const
+    {
+        return false;
+    }
     GCType GetGCType(TriggerGCType gcType);
     float GetGCSpeed(SpeedData data)
     {
@@ -167,6 +172,8 @@ public:
                 return "SharedPartialGC";
             case GCType::SHARED_FULL_GC:
                 return "SharedCompressGC";
+            case GCType::SHARED_CC:
+                return "SharedCC";
             case GCType::GLOBAL_GC:
                 return "GlobalGC";
             case GCType::CMS_GC:
@@ -391,6 +398,10 @@ public:
     void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason) override;
     void RecordStatisticAfterGC() override;
     size_t GetAccumulatedAllocateSize() override;
+    bool EnableGCTracer() const override
+    {
+        return enableGCTracer_;
+    }
 private:
     void PrintSharedGCOverview();
     void PrintSharedGCDuration();

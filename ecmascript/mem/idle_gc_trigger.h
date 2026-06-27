@@ -61,6 +61,10 @@ public:
                 return "shared concurrent partial mark";
             case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
                 return "shared full gc";
+            case TRIGGER_IDLE_GC_TYPE::LOCAL_CC_GC:
+                return "local cc gc";
+            case TRIGGER_IDLE_GC_TYPE::SHARED_CC:
+                return "shared cc";
             case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:
                 return "local concurrent young mark";
             case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK:
@@ -74,19 +78,19 @@ public:
 
     bool IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE gcType) const
     {
-        uint8_t bit = static_cast<uint8_t>(gcType);
+        uint16_t bit = static_cast<uint16_t>(gcType);
         return (bit & gcTaskPostedState_) != bit;
     }
 
     void SetPostGCTask(TRIGGER_IDLE_GC_TYPE gcType)
     {
-        uint8_t bit = static_cast<uint8_t>(gcType);
+        uint16_t bit = static_cast<uint16_t>(gcType);
         gcTaskPostedState_ = (gcTaskPostedState_ | bit);
     }
 
     void ClearPostGCTask(TRIGGER_IDLE_GC_TYPE gcType)
     {
-        uint8_t bit = static_cast<uint8_t>(gcType);
+        uint16_t bit = static_cast<uint16_t>(gcType);
         gcTaskPostedState_ = (gcTaskPostedState_ & ~bit);
     }
 
@@ -180,7 +184,7 @@ private:
     bool optionalLogEnabled_ {false};
 
     std::atomic<bool> idleState_ {false};
-    uint8_t gcTaskPostedState_ {0};
+    uint16_t gcTaskPostedState_ {0};
     TriggerGCTaskCallback triggerGCTaskCallback_ {nullptr};
 };
 

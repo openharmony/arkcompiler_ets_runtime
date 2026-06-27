@@ -364,5 +364,6 @@ void ConcurrentCopyGC::PostGC()
             pgoProfiler->ResumeByGC();
         }
     }
+    BaseHeap::gcExclusiveRWLock_.Unlock();
 }
 }  // namespace panda::ecmascript

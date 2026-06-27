@@ -86,6 +86,7 @@
     V("iterateFrame",                   IterateFrame,                   0, INVALID)       \
     V("triggerSharedGC",                TriggerSharedGC,                0, INVALID)       \
     V("triggerLocalCCGC",               TriggerLocalCCGC,               0, INVALID)       \
+    V("triggerSharedCC",                TriggerSharedCC,                0, INVALID)       \
     V("enableProcDumpInSharedOOM",      EnableProcDumpInSharedOOM,      1, INVALID)
 
 // List of mock ArkTools extension builtins
@@ -502,6 +503,7 @@ public:
     static JSTaggedValue IterateFrame(EcmaRuntimeCallInfo *info);
     static JSTaggedValue TriggerSharedGC(EcmaRuntimeCallInfo *info);
     static JSTaggedValue TriggerLocalCCGC(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue TriggerSharedCC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue EnableProcDumpInSharedOOM(EcmaRuntimeCallInfo *info);
 

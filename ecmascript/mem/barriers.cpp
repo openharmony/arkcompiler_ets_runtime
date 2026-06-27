@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/barriers_get-inl.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
+#include "ecmascript/mem/shared_heap/shared_cc_evacuator.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/mutator/mutator.h"
@@ -310,7 +311,12 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
         if (markWord.IsForwardingAddress()) {
             toObject = markWord.ToForwardingAddress();
         } else {
-            toObject = thread->GetLocalCCEvacuator()->Copy(object, markWord);
+            bool inShared = objectRegion->InSharedHeap();
+            if (inShared) {
+                toObject = thread->GetSharedCCEvacuator()->Copy(object, markWord);
+            } else {
+                toObject = thread->GetLocalCCEvacuator()->Copy(object, markWord);
+            }
         }
         if (value.IsWeak()) {
             slot.UpdateWeak(ToUintPtr(toObject));
@@ -322,7 +328,7 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
     return slot.GetTaggedType();
 }
 
-JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value)
+JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value, const JSThread *thread)
 {
     if (value == reinterpret_cast<JSTaggedType>(nullptr)) {
         return reinterpret_cast<JSTaggedType>(nullptr);
@@ -330,6 +336,18 @@ JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value)
     Region *objectRegion = Region::ObjectAddressToRange(value);
     if (!objectRegion->InSharedSweepableSpace() || objectRegion->IsToRegion()) {
         return value;
+    }
+    if (objectRegion->IsFromRegion()) {
+        MarkWord markWord(reinterpret_cast<TaggedObject *>(value), RELAXED_LOAD);
+        if (markWord.IsForwardingAddress()) {
+            return reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
+        }
+        if (objectRegion->Test(value)) {
+            TaggedObject *toObject = thread->GetSharedCCEvacuator()->Copy(
+                reinterpret_cast<TaggedObject *>(value), markWord);
+            return reinterpret_cast<JSTaggedType>(toObject);
+        }
+        return reinterpret_cast<JSTaggedType>(nullptr);
     }
     if (objectRegion->Test(value)) {
         if (objectRegion->InSCollectSet()) {

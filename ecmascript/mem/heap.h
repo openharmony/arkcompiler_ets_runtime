@@ -34,6 +34,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/platform/mutex.h"
 #include "ecmascript/string/external_string_table.h"
 
 namespace panda::test {
@@ -77,6 +78,7 @@ class SharedGC;
 class SharedGCEvacuator;
 class SharedGCMarkerBase;
 class SharedGCMarker;
+class SharedCC;
 class SharedFullGC;
 class SharedGCMovableMarker;
 class SharedPartialGC;
@@ -458,6 +460,11 @@ protected:
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
     static constexpr size_t COLD_STARTUP_COMPRESS_LIMIT = 20_MB;
 
+public:
+    // local GC takes ReadLock, shared GC takes WriteLock for mutual exclusion.
+    static RWLock gcExclusiveRWLock_;
+protected:
+
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
     TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
@@ -801,7 +808,7 @@ public:
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
 
-    template<GCReason gcReason>
+    template<TriggerGCType gcType, GCReason gcReason>
     void CompressCollectGarbageNotWaiting(JSThread *thread);
 
     template<TriggerGCType gcType, GCReason gcReason>
@@ -819,6 +826,9 @@ public:
 
     void DaemonCollectGarbage(TriggerGCType gcType, GCReason reason);
     void DaemonCollectGarbageWithFlip(TriggerGCType gcType, GCReason reason);
+    void RunSharedGC(TriggerGCType gcType, GCReason gcReason);
+
+    void TriggerSharedCC(GCReason gcReason);
 
     inline size_t GetCommittedSize() const override
     {
@@ -969,6 +979,21 @@ public:
         return sharedMemController_;
     }
 
+    SharedCC *GetSharedCC() const
+    {
+        return sharedCC_;
+    }
+
+    Mutex &GetSharedGCSyncMutex()
+    {
+        return sharedGCSyncMutex_;
+    }
+
+    ConditionVariable &GetSharedGCSyncCV()
+    {
+        return sharedGCSyncCV_;
+    }
+
     void PrepareRecordRegionsForReclaim();
 
     template<class Callback>
@@ -1045,6 +1070,11 @@ public:
 
     SHAREDHEAP_PUBLIC_HYBRID_EXTENSION();
 
+    inline void InvokeSharedNativePointerCallbacks();
+    void FinishGCTask();
+    void UpdateGCThresholds(TriggerGCType gcType);
+    void FinishGCStats(TriggerGCType gcType);
+
 private:
     void ProcessAllGCListeners();
     void NotifyDeferFreezeFinish(TriggerGCType gcType);
@@ -1055,7 +1085,6 @@ private:
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
     inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
-    inline void InvokeSharedNativePointerCallbacks();
     inline bool NeedGCInSensitiveStatus() const;
 
     struct SharedHeapSmartGCStats {
@@ -1087,8 +1116,8 @@ private:
     // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set
     // to true even if sweep_task and clear_task is running asynchronously
     bool gcFinished_ {true};
-    Mutex waitGCFinishedMutex_;
-    ConditionVariable waitGCFinishedCV_;
+    Mutex sharedGCSyncMutex_;
+    ConditionVariable sharedGCSyncCV_;
 
     Mutex suspensionRequestMutex_;
 
@@ -1109,6 +1138,7 @@ private:
     GlobalGCMarker *globalGCMarker_ {nullptr};
     GlobalGCWorkManager *globalGCWorkManager_ {nullptr};
     SharedFullGC *sharedFullGC_ {nullptr};
+    SharedCC *sharedCC_ {nullptr};
     SharedGCEvacuator *sEvacuator_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
@@ -1399,6 +1429,9 @@ public:
 
     void ResetTlab();
     void FillBumpPointerForTlab();
+    // DIAG: accessors for TLAB state inspection
+    ThreadLocalAllocationBuffer *GetSOldTlab() const { return sOldTlab_; }
+    ThreadLocalAllocationBuffer *GetSNonMovableTlab() const { return sNonMovableTlab_; }
     /*
      * GC triggers.
      */
@@ -1484,7 +1517,7 @@ public:
     void WaitAllTasksFinished();
     void WaitConcurrentMarkingFinished();
     PUBLIC_API void WaitCCFinished() const;
-    void WaitAndHandleCCFinished() const;
+    void WaitAndHandleCCFinished();
 
     MemGrowingType GetMemGrowingType() const
     {

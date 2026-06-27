@@ -254,8 +254,8 @@ HWTEST_F_L0(SharedPartialGCTest, ReadBarrierTest)
     uintptr_t toObj = toSpace->Evacuate(*fromObj);
     Region *toRegion = Region::ObjectAddressToRange(toObj);
     toRegion->SetRegionTypeFlag(RegionTypeFlag::TO);
-    JSTaggedType toObjFromBarrier= Barriers::ReadBarrierForStringTableSlot(fromObj.GetTaggedType());
-    JSTaggedType toObjFromBarrier2= Barriers::ReadBarrierForStringTableSlot(toObj);
+    JSTaggedType toObjFromBarrier= Barriers::ReadBarrierForStringTableSlot(fromObj.GetTaggedType(), thread);
+    JSTaggedType toObjFromBarrier2= Barriers::ReadBarrierForStringTableSlot(toObj, thread);
     EXPECT_EQ(toObjFromBarrier, toObj);
     EXPECT_EQ(toObjFromBarrier2, toObj);
 }

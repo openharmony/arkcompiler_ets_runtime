@@ -73,6 +73,24 @@ void EcmaStringTableCleaner::WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThr
     iter_.reset();
 }
 
+void EcmaStringTableCleaner::FinishConcurrentSweepInSTW(DaemonThread *dThread)
+{
+    WaitConcurrentSweepWeakRefTask();
+    ProcessCheckAndFreeHeadEntries();
+    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType* chainedHashMap =
+        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+            stringTable_->GetChainedHashMap());
+    chainedHashMap->ClearToSpaceTagForFreshEntries();
+    chainedHashMap->FinishSweeping();
+    SignalSweepWeakRefTaskFinish();
+    iter_.reset();
+}
+
+void EcmaStringTableCleaner::WaitConcurrentSweepWeakRefTaskFinished()
+{
+    WaitConcurrentSweepWeakRefTask();
+}
+
 void EcmaStringTableCleaner::ProcessSweepWeakRef(IteratorPtr &iter, EcmaStringTableCleaner *cleaner,
                                                  const WeakRootVisitor &visitor)
 {

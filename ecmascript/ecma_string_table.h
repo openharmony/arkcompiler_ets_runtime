@@ -53,6 +53,8 @@ public:
     void PostConcurrentSweepWeakRefTask(const WeakRootVisitor &visitor);
     void WaitConcurrentSweepWeakRefTaskAndSuspend(JSThread *thread);
     void WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThread(DaemonThread *dThread);
+    void FinishConcurrentSweepInSTW(DaemonThread *dThread);
+    void WaitConcurrentSweepWeakRefTaskFinished();
 
     bool IsEnableConcurrentSweep() const
     {
@@ -403,6 +405,14 @@ public:
     }
 
     void TransferToNativeAndWaitSweepWeakRefTaskFinished(JSThread *thread);
+    void FinishConcurrentSweepInSTW(DaemonThread *dThread)
+    {
+        cleaner_->FinishConcurrentSweepInSTW(dThread);
+    }
+    void WaitConcurrentSweepWeakRefTaskFinished()
+    {
+        cleaner_->WaitConcurrentSweepWeakRefTaskFinished();
+    }
 
     bool IsSweeping() const
     {

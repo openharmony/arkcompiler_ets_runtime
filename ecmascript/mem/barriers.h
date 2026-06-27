@@ -93,7 +93,7 @@ public:
     }
 
     static JSTaggedType ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress);
-    static JSTaggedType ReadBarrierForStringTableSlot(JSTaggedType value);
+    static JSTaggedType ReadBarrierForStringTableSlot(JSTaggedType value, const JSThread *thread);
 
     static TaggedObject* GetTaggedObject(const JSThread *thread, const void* obj, size_t offset);
     static JSTaggedType GetTaggedValue(const JSThread *thread, const void *obj, size_t offset);

@@ -135,9 +135,10 @@ using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
 using NativePointerCallbackFinishNotify = std::function<void(size_t totalBindSize_)>;
 using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<void*, void*, void*>>;
-using TriggerGCData = std::pair<void*, uint8_t>;
+using TriggerGCData = std::pair<void*, uint16_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 using StartIdleMonitorCallback = std::function<void()>;
+using PostTaskToThreadCallback = std::function<void(std::function<void()> task)>;
 using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
@@ -1802,10 +1803,11 @@ public:
         OLD_GC,
         FULL_GC,
         SHARED_GC,
-        SHARED_FULL_GC
+        SHARED_FULL_GC,
+        SHARED_CC
     };
 
-    enum class PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint8_t {
+    enum class PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint16_t {
         LOCAL_CONCURRENT_YOUNG_MARK = 1,
         LOCAL_CONCURRENT_FULL_MARK = 1 << 1,
         LOCAL_REMARK = 1 << 2,
@@ -1814,6 +1816,7 @@ public:
         SHARED_CONCURRENT_PARTIAL_MARK = 1 << 5,
         SHARED_FULL_GC = 1 << 6,
         LOCAL_CC_GC = 1 << 7,
+        SHARED_CC = 1 << 8,
     };
 
     enum class PUBLIC_API MemoryReduceDegree : uint8_t {
@@ -2048,6 +2051,7 @@ public:
     static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);
     static void SetTriggerGCTaskCallback(EcmaVM *vm, const TriggerGCTaskCallback& callback);
     static void SetStartIdleMonitorCallback(EcmaVM *vm, const StartIdleMonitorCallback& callback);
+    static void SetPostTaskToThreadCallback(EcmaVM *vm, PostTaskToThreadCallback callback);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);

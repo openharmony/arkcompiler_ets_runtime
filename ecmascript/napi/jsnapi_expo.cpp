@@ -4822,6 +4822,11 @@ void JSNApi::SetTriggerGCTaskCallback(EcmaVM *vm, const TriggerGCTaskCallback& c
     vm->GetHeap()->GetIdleGCTrigger()->SetTriggerGCTaskCallback(callback);
 }
 
+void JSNApi::SetPostTaskToThreadCallback(EcmaVM *vm, PostTaskToThreadCallback callback)
+{
+    vm->GetJSThread()->SetPostTaskToThreadCallback(std::move(callback));
+}
+
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();
@@ -5304,6 +5309,10 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
                     break;
                 case TRIGGER_GC_TYPE::SHARED_FULL_GC:
                     sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_FULL_GC,
+                        ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
+                    break;
+                case TRIGGER_GC_TYPE::SHARED_CC:
+                    sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_CC,
                         ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
                     break;
                 default:

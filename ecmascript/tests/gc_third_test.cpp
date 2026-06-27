@@ -924,22 +924,22 @@ HWTEST_F_L0(GCTest, stringTableReadBarrierTest)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     JSTaggedType value = reinterpret_cast<JSTaggedType>(nullptr);
-    JSTaggedType result = Barriers::ReadBarrierForStringTableSlot(value);
+    JSTaggedType result = Barriers::ReadBarrierForStringTableSlot(value, thread);
     ASSERT_TRUE(result == reinterpret_cast<JSTaggedType>(nullptr));
 
     value = thread->GlobalConstants()->GetPrototypeString().GetRawData();
-    result = Barriers::ReadBarrierForStringTableSlot(value);
+    result = Barriers::ReadBarrierForStringTableSlot(value, thread);
     ASSERT_TRUE(result == value);
 
     JSHandle<EcmaString> str = factory->NewFromASCIISkippingStringTable("test");
     SharedHeap::GetInstance()->PrepareByJSThread(thread, false);
     value = str.GetTaggedType();
     Region::ObjectAddressToRange(value)->AtomicMark(reinterpret_cast<void *>(value));
-    result = Barriers::ReadBarrierForStringTableSlot(value);
+    result = Barriers::ReadBarrierForStringTableSlot(value, thread);
     ASSERT_TRUE(result == value);
 
     Region::ObjectAddressToRange(value)->ClearMark(reinterpret_cast<void *>(value));
-    result = Barriers::ReadBarrierForStringTableSlot(value);
+    result = Barriers::ReadBarrierForStringTableSlot(value, thread);
     ASSERT_TRUE(result == reinterpret_cast<JSTaggedType>(nullptr));
 }
 #endif

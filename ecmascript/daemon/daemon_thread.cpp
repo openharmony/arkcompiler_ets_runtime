@@ -154,10 +154,11 @@ bool DaemonThread::AddTaskGroup(DaemonTaskGroup taskGroup)
 
 void DaemonThread::FinishRunningTask()
 {
+    // Called inside SuspendAllScope — JS threads are suspended so no concurrent
+    // access to postedGroups_ from CheckAndPostTask(). Lock retained for safety.
+    LockHolder holder(mtx_);
     ASSERT(runningGroup_ != DaemonTaskGroup::NONE);
     ASSERT((postedGroups_ & static_cast<uint32_t>(runningGroup_)) != 0);
-    // Update to postedGroups_ is in DaemeanSuspendAll, and protected by `Runtime::SuspendAll`,
-    // so do not need lock; the runningGroup_ is only used in daemon thread, so do not need lock too.
     postedGroups_ &= ~static_cast<uint32_t>(runningGroup_);
     runningGroup_ = DaemonTaskGroup::NONE;
 }
@@ -180,7 +181,9 @@ void DaemonThread::SetSharedMarkStatus(SharedMarkStatus markStatus)
     ASSERT(os::thread::GetCurrentThreadId() == GetThreadId());
     markStatus_.store(markStatus, std::memory_order_release);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
+        auto ccStatus = thread->GetSharedCCStatus();
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll() ||
+                ccStatus == SharedCCStatus::SUSPENDED || ccStatus == SharedCCStatus::READY);
         thread->SetSharedMarkStatus(markStatus);
     });
 }

@@ -20,6 +20,7 @@
 #include "ecmascript/platform/os.h"
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
+#include "ecmascript/mem/shared_heap/shared_cc_evacuator-inl.h"
 #include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/runtime.h"
@@ -50,6 +51,7 @@
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/shared_heap/shared_cc.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/jit/jit.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
@@ -309,6 +311,7 @@ JSThread::~JSThread()
         delete localEvacuator_;
         localEvacuator_ = nullptr;
     }
+    sharedCCEvacuator_ = nullptr;
     if (glueData_.moduleLogger_ != nullptr) {
         delete glueData_.moduleLogger_;
         glueData_.moduleLogger_ = nullptr;
@@ -785,8 +788,13 @@ void JSThread::SetReadyForGCIterating(bool flag)
 {
     readyForGCIterating_ = flag;
     if (readyForGCIterating_ && SharedHeap::GetInstance()->NeedSwitchRBStub()) {
-        SetReadBarrierState(true);
-        SwitchAllStub(false);
+        SharedCC *cc = SharedHeap::GetInstance()->GetSharedCC();
+        if (cc != nullptr && cc->IsRunning()) {
+            cc->PrepareNewThread(this);
+        } else {
+            SetReadBarrierState(true);
+            SwitchAllStub(false);
+        }
     }
 }
 
@@ -1075,6 +1083,42 @@ void JSThread::SwitchAllStub(bool isStwCopy)
     glueData_.switchToStwStub_ = isStwCopy;
 }
 
+void JSThread::ExecuteSharedCCStubSwitch()
+{
+    {
+        LockHolder lock(ccStatusMutex_);
+        ccTaskPending_ = false;
+        if (ccStatus_ != SharedCCStatus::PENDING) {
+            return;
+        }
+        if (GetLastLeaveFrame() == nullptr) {
+            SwitchAllStub(false);
+            ccStatus_ = SharedCCStatus::READY;
+        } else {
+            LOG_ECMA(FATAL) << "SharedCC: ExecuteSharedCCStubSwitch called with"
+                               " non-empty stack (LastLeaveFrame != nullptr)";
+            UNREACHABLE();
+        }
+    }
+    SharedHeap::GetInstance()->GetSharedCC()->NotifyMainThreadReady();
+}
+
+void JSThread::WaitCCSuspend()
+{
+    constexpr int TIMEOUT = 100;
+    LockHolder lock(suspendLock_);
+    while (HasCCSuspend()) {
+        suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
+    }
+}
+
+void JSThread::ClearCCSuspend()
+{
+    LockHolder lock(suspendLock_);
+    ClearFlag(ThreadFlag::CC_SUSPEND);
+    suspendCondVar_.SignalAll();
+}
+
 void JSThread::TerminateExecution()
 {
     // set the TERMINATE_ERROR to exception
@@ -1130,6 +1174,7 @@ bool JSThread::CheckSafepoint()
         SetTerminationRequest(false);
     }
 
+    ASSERT(!HasCCSuspend());
     if UNLIKELY(HasSuspendRequest()) {
         WaitSuspension();
     }
@@ -1558,8 +1603,7 @@ void JSThread::StoreState(ThreadState newState)
 
 void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
 {
-    ASSERT(!g_isEnableCMCGC);
-    ASSERT(newState == ThreadState::RUNNING);
+    ASSERT(!g_isEnableCMCGC && newState == ThreadState::RUNNING);
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
         oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
@@ -1598,6 +1642,8 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
             TryRunFlipFunction();
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::RUNNING_FLIP_FUNCTION) != 0) {
             WaitFlipFunctionFinished();
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::CC_SUSPEND) != 0) {
+            WaitCCSuspend();
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_SHARED_HEAP_OOM) != 0) {
             ThreadStateAndFlags newStateAndFlags;
             newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;

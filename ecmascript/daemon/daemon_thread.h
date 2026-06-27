@@ -57,10 +57,9 @@ public:
     PostTaskResult CheckAndPostTask(DaemonTask task);
 
     /**
-     * Called in daemon thread, and manually call this in DaemonTask at the appropriate time,
-     * e.g. for GC task, call this before ResumeAll instead of the task complete ended, to prevent in some
-     * time sequence, all js_thread is resumed and one of these post another GC task, but the PostedGroup
-     * have not been cleaned, leading the task lost.
+     * Called in daemon thread to clear the running task's group bit from postedGroups_,
+     * allowing new tasks of the same group to be posted.
+     * Protected by mtx_ to serialize with CheckAndPostTask() from JS threads.
     */
     void FinishRunningTask();
 

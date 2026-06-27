@@ -85,6 +85,11 @@ public:
         liveObjectSize_ -= size;
     }
 
+    void ResetLiveObjectSize()
+    {
+        liveObjectSize_ = 0;
+    }
+
     bool CommittedSizeExceed()
     {
         return committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_;
@@ -103,13 +108,13 @@ protected:
     FreeListAllocator<FreeObject> *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
     SharedHeap *sHeap_ {nullptr};
+    size_t liveObjectSize_ {0};
 
 private:
     static constexpr double LIVE_OBJECT_SIZE_RATIO = 0.8;
 
     uintptr_t AllocateWithExpand(JSThread *thread, size_t size);
     uintptr_t TryAllocate(JSThread *thread, size_t size);
-    // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(JSThread *thread, size_t size);
     void IncAllocSObjectSize(uintptr_t object, size_t size);
 
@@ -117,7 +122,6 @@ private:
     Mutex allocateLock_;
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
-    size_t liveObjectSize_ {0};
     size_t triggerLocalFullMarkLimit_ {0};
 };
 
@@ -169,6 +173,20 @@ public:
     void SelectCSets();
     void ReclaimCSets();
 
+    void SetPreservedSize(size_t liveSize)
+    {
+        liveObjectSize_ = liveSize;
+        preservedCommittedSize_ = AlignUp(liveSize, DEFAULT_REGION_SIZE);
+        committedSize_ = preservedCommittedSize_;
+    }
+
+    void ResetPreservedSize()
+    {
+        committedSize_ -= preservedCommittedSize_;
+        preservedCommittedSize_ = 0;
+        liveObjectSize_ = 0;
+    }
+
     template<class Callback>
     void EnumerateCollectRegionSet(Callback &&cb) const
     {
@@ -187,6 +205,7 @@ public:
 private:
     Mutex lock_;
     size_t mergeSize_ {0};
+    size_t preservedCommittedSize_ {0};
     std::vector<Region *> collectRegionSet_;
 };
 
@@ -278,6 +297,7 @@ public:
     }
 
     void CheckAndTriggerLocalFullMark(JSThread *thread, size_t size);
+
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
     static constexpr double HUGE_OBJECT_SIZE_RATIO = 0.8;

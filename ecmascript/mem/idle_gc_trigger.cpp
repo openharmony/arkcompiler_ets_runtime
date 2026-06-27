@@ -166,7 +166,7 @@ void IdleGCTrigger::TryPostHandleMarkFinished()
 bool IdleGCTrigger::PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType)
 {
     if (triggerGCTaskCallback_ != nullptr && IsPossiblePostGCTask(gcType) && !heap_->NeedStopCollection()) {
-        std::pair<void*, uint8_t> data(heap_->GetEcmaVM(), static_cast<uint8_t>(gcType));
+        std::pair<void*, uint16_t> data(heap_->GetEcmaVM(), static_cast<uint16_t>(gcType));
         triggerGCTaskCallback_(data);
         SetPostGCTask(gcType);
         LOG_GC(DEBUG) << "IdleGCTrigger: post once " << GetGCTypeName(gcType) << " on idleTime";
@@ -262,7 +262,15 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
             if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                sHeap_->CompressCollectGarbageNotWaiting<GCReason::IDLE>(thread_);
+                sHeap_->CompressCollectGarbageNotWaiting<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
+            } else {
+                NotifyIsNeedFreeze(true);
+            }
+            break;
+        case TRIGGER_IDLE_GC_TYPE::SHARED_CC:
+            if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !sHeap_->NeedStopCollection()) {
+                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                sHeap_->CompressCollectGarbageNotWaiting<TriggerGCType::SHARED_CC, GCReason::IDLE>(thread_);
             } else {
                 NotifyIsNeedFreeze(true);
             }

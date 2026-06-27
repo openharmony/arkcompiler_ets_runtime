@@ -21,19 +21,11 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 namespace panda::ecmascript {
 
-// Manually manage lock implementation
 static inline void RuntimeLock(JSThread *thread, Mutex &mtx)
 {
     if (mtx.TryLock()) {
         return;
     }
-#ifndef NDEBUG
-    if (g_isEnableCMCGC) {
-        common::BaseRuntime::RequestGC(common::GC_REASON_USER, true, common::GC_TYPE_FULL);  // Trigger CMC FULL GC
-    } else {
-        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
-    }
-#endif
     ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread);
     mtx.Lock();
 }
@@ -67,6 +59,34 @@ private:
 
     NO_COPY_SEMANTIC(RuntimeLockHolder);
     NO_MOVE_SEMANTIC(RuntimeLockHolder);
+};
+
+static inline void RuntimeReadLock(JSThread *thread, RWLock &lock)
+{
+    if (lock.TryReadLock()) {
+        return;
+    }
+    ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread);
+    lock.ReadLock();
+}
+
+class RuntimeReadLockHolder {
+public:
+    RuntimeReadLockHolder(JSThread *thread, RWLock &lock) : lock_(lock)
+    {
+        RuntimeReadLock(thread, lock_);
+    }
+
+    ~RuntimeReadLockHolder()
+    {
+        lock_.Unlock();
+    }
+
+private:
+    RWLock &lock_;
+
+    NO_COPY_SEMANTIC(RuntimeReadLockHolder);
+    NO_MOVE_SEMANTIC(RuntimeReadLockHolder);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_RUNTIME_LOCK_H

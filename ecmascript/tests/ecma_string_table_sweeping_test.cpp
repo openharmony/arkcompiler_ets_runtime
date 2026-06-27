@@ -467,16 +467,16 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_ReadBarrierMultipleObjectsT
         ASSERT_NE(region, nullptr);
 
         region->AtomicMark(reinterpret_cast<void *>(value));
-        JSTaggedType result1 = Barriers::ReadBarrierForStringTableSlot(value);
+        JSTaggedType result1 = Barriers::ReadBarrierForStringTableSlot(value, thread);
         ASSERT_EQ(result1, value);
 
         region->ClearMark(reinterpret_cast<void *>(value));
-        JSTaggedType result2 = Barriers::ReadBarrierForStringTableSlot(value);
+        JSTaggedType result2 = Barriers::ReadBarrierForStringTableSlot(value, thread);
         bool isNullOrToObj = (result2 == 0) || Region::ObjectAddressToRange(result2)->IsToRegion();
         ASSERT_TRUE(isNullOrToObj);
 
         region->AtomicMark(reinterpret_cast<void *>(value));
-        JSTaggedType result3 = Barriers::ReadBarrierForStringTableSlot(value);
+        JSTaggedType result3 = Barriers::ReadBarrierForStringTableSlot(value, thread);
         ASSERT_EQ(result3, value);
     }
 }
@@ -937,7 +937,7 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_ReadBarrierWithSharedGC
             Region *region = Region::ObjectAddressToRange(value);
             if (region != nullptr) {
                 region->AtomicMark(reinterpret_cast<void *>(value));
-                JSTaggedType result = Barriers::ReadBarrierForStringTableSlot(value);
+                JSTaggedType result = Barriers::ReadBarrierForStringTableSlot(value, thread);
                 ASSERT_TRUE(result == value || result == reinterpret_cast<JSTaggedType>(nullptr));
             }
         }
