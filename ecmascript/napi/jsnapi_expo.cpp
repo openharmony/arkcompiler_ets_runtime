@@ -7219,6 +7219,22 @@ void JSNApi::SetTaskpoolShrinkCallback(const EcmaVM *vm, TaskPoolShrinkCallback 
     ecmascript::Runtime::GetInstance()->SetTaskpoolShrinkCallback(callback);
 }
 
+
+uint32_t JSNApi::GetCurrentWorkerCount(const EcmaVM *vm)
+{
+#ifdef CROSS_PLATFORM
+    if (vm == nullptr) {
+        LOG_FULL(ERROR) << "GetCurrentWorkerCount failed, vm is nullptr.";
+        return 0;
+    }
+    return vm->GetWorkList().size();
+#else
+    LOG_FULL(FATAL) << "GetCurrentWorkerCount failed, only supports cross-platform.";
+    UNREACHABLE();
+#endif
+}
+
+
 // ---------------------------------- Promise -------------------------------------
 Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler)
 {
