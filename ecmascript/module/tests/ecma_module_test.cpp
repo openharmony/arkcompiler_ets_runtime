@@ -1797,6 +1797,77 @@ HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName2)
     EXPECT_EQ(res[4], importPath);
 }
 
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName3)
+{
+    CString requestPath = "a&b&c&d&e&f";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    EXPECT_EQ(res.size(), ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM);
+    EXPECT_EQ(res[0], "b");
+    EXPECT_EQ(res[1], "c");
+    EXPECT_EQ(res[2], "d");
+    EXPECT_EQ(res[3], "e");
+    EXPECT_EQ(res[4], "f");
+}
+
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName4)
+{
+    CString requestPath = "@normalized:N&moduleName&bundleName&entryPath&1.0.0";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    EXPECT_EQ(res.size(), ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM);
+    EXPECT_EQ(res[ModulePathHelper::NORMALIZED_BUNDLE_NAME_INDEX], "bundleName");
+    EXPECT_EQ(res[ModulePathHelper::NORMALIZED_IMPORT_PATH_INDEX], "entryPath");
+    EXPECT_EQ(res[ModulePathHelper::NORMALIZED_VERSION_INDEX], "1.0.0");
+}
+
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName5)
+{
+    CString requestPath = "";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    EXPECT_EQ(res.size(), ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM);
+    CString emptyStr = "";
+    for (size_t i = 0; i < ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM; i++) {
+        EXPECT_EQ(res[i], emptyStr);
+    }
+}
+
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName6)
+{
+    CString requestPath = "&&&&";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    EXPECT_EQ(res.size(), ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM);
+    CString emptyStr = "";
+    EXPECT_EQ(res[0], emptyStr);
+    EXPECT_EQ(res[1], emptyStr);
+    EXPECT_EQ(res[2], emptyStr);
+    EXPECT_EQ(res[3], emptyStr);
+    EXPECT_EQ(res[4], emptyStr);
+}
+
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName7)
+{
+    CString requestPath = "@normalized:N&mod&bundle";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    EXPECT_EQ(res.size(), ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM);
+    CString emptyStr = "";
+    EXPECT_EQ(res[0], emptyStr);
+    EXPECT_EQ(res[1], emptyStr);
+    EXPECT_EQ(res[2], "@normalized:N");
+    EXPECT_EQ(res[3], "mod");
+    EXPECT_EQ(res[4], "bundle");
+}
+
+HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName8)
+{
+    CString requestPath = "&a&b&c&d&e";
+    CVector<CString> res = ModulePathHelper::SplitNormalizedRecordName(requestPath);
+    EXPECT_EQ(res.size(), ModulePathHelper::NORMALIZED_OHMURL_ARGS_NUM);
+    EXPECT_EQ(res[0], "a");
+    EXPECT_EQ(res[1], "b");
+    EXPECT_EQ(res[2], "c");
+    EXPECT_EQ(res[3], "d");
+    EXPECT_EQ(res[4], "e");
+}
+
 HWTEST_F_L0(EcmaModuleTest, ConcatPreviewTestUnifiedOhmUrl)
 {
     CString bundleName = "";
@@ -6145,6 +6216,35 @@ HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl2)
         "@bundle:com.bundleName.test/moduleName/requestModuleName1",
         "@bundle:com.bundleName.test/moduleName1/requestModuleName10");
     EXPECT_EQ(res1, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl_ImportNotNormalizedPrefix)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    pkgList["entry"] = {};
+    instance->SetpkgContextInfoList(pkgList);
+
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+
+    bool res1 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@package:com.bundleName/moduleName/request");
+    EXPECT_EQ(res1, true);
+
+    bool res2 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "url://test.cn&test&test&test&test&test");
+    EXPECT_EQ(res2, true);
+
+    bool res3 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@bundle:com.test/entry/ets/Index");
+    EXPECT_EQ(res3, true);
+
+    bool res4 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res4, true);
+
+    bool res5 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test&1.0.0&&&&");
+    EXPECT_EQ(res4, true);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger_CombinedTest)

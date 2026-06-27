@@ -1058,6 +1058,10 @@ CVector<CString> ModulePathHelper::SplitNormalizedRecordName(const CString &reco
     CString temp;
     int endIndex = static_cast<int>(recordName.size()) - 1;
     for (int i = endIndex; i >= 0; i--) {
+        if (index < 0) {
+            LOG_ECMA(WARN) << "SplitNormalizedRecordName: too many fields in record name: " << recordName;
+            return res;
+        }
         char element = recordName[i];
         if (element == PathHelper::NORMALIZED_OHMURL_TAG) {
             res[index] = temp;
@@ -1196,7 +1200,8 @@ bool ModulePathHelper::CheckExportsWithOhmurl(EcmaVM *vm, const CString &baseFil
     // Only check normalized ohmurl
     // Starting with '&' indicates a relative path within the package.
     if (!vm->IsNormalizedOhmUrlPack() ||
-        StringHelper::StringStartWith(importOhmurl, PathHelper::NORMALIZED_OHMURL_TAG)) {
+        StringHelper::StringStartWith(importOhmurl, PathHelper::NORMALIZED_OHMURL_TAG) ||
+        !StringHelper::StringStartWith(importOhmurl, PREFIX_NORMALIZED)) {
         return true;
     }
     CString importPkgName = GetPkgNameWithNormalizedOhmurl(importOhmurl);
