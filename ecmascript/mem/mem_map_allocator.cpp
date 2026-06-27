@@ -281,18 +281,17 @@ MemMap MemMapAllocator::AllocateFromMemPool(const uint32_t threadId, size_t size
     return mem;
 }
 
-MemMap MemMapAllocator::InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
-                                       bool isMachineCode, bool isEnableJitFort,
-                                       bool shouldPageTag, PageTagType type)
+void MemMapAllocator::InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
+                                     bool isMachineCode, bool isEnableJitFort,
+                                     bool shouldPageTag, PageTagType type)
 {
     bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
     if (!res) {
-        return MemMap();
+        LOG_COMMON(FATAL) << "Page Protect failed. ret = " << res;
     }
     if (shouldPageTag) {
         PageTag(mem.GetMem(), size, type, spaceName, threadId);
     }
-    return mem;
 }
 
 // MemUsage has been decreased for async free mem.
