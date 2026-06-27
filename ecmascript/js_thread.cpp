@@ -319,6 +319,11 @@ JSThread::~JSThread()
     }
 }
 
+void JSThread::StoreGlobalRefMapping(uintptr_t slotAddr, void *ref)
+{
+    globalRefMap_[slotAddr] = ref;
+}
+
 ThreadId JSThread::GetCurrentThreadId()
 {
     if (currentThreadId_ == 0xFFFFFFFF) {

@@ -1061,27 +1061,8 @@ public:
         return isWeak_(addr);
     }
 
-    // Global ref tracking
-    void SetTrackGlobalRef(bool enable)
-    {
-        trackGlobalRefEnabled_ = enable;
-        if (!enable) {
-            globalRefMap_.clear();
-        }
-    }
-
-    bool IsTrackGlobalRefEnabled() const
-    {
-        return trackGlobalRefEnabled_;
-    }
-
-    void StoreGlobalRefMapping(uintptr_t slotAddr, void *ref)
-    {
-        if (!trackGlobalRefEnabled_) {
-            return;
-        }
-        globalRefMap_[slotAddr] = ref;
-    }
+    // Global ref mapping (thread-level storage, switch is process-level on Runtime)
+    void StoreGlobalRefMapping(uintptr_t slotAddr, void *ref);
 
     void EraseGlobalRefMapping(uintptr_t slotAddr)
     {
@@ -1099,6 +1080,11 @@ public:
         for (const auto &[slot, ref] : globalRefMap_) {
             visitor(slot, ref);
         }
+    }
+
+    void ClearGlobalRefMap()
+    {
+        globalRefMap_.clear();
     }
 
     void SetCrossThreadExecution(bool enable)
@@ -2355,7 +2341,7 @@ private:
 
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
     EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
-    bool trackGlobalRefEnabled_ {false};
+    // Global ref mapping: slotAddr → ref
     std::unordered_map<uintptr_t, void*> globalRefMap_;
     int32_t stackTraceFd_ {-1};
     std::function<uintptr_t(JSTaggedType value)> newGlobalHandle_;

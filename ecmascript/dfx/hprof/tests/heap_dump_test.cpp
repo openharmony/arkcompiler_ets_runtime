@@ -26,12 +26,8 @@
 #include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
-#include "ecmascript/js_api/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api/js_api_deque.h"
-#include "ecmascript/js_api/js_api_hashmap.h"
-#include "ecmascript/js_api/js_api_hashset.h"
-#include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_list.h"
@@ -2479,9 +2475,10 @@ HWTEST_F_L0(HeapDumpTest, TestSharedGCOOMDumpUsesJsonOnARM32)
 }
 #endif
 
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(HeapDumpTest, TestGlobalRefInHeapSnapshot)
 {
-    thread_->SetTrackGlobalRef(true);
+    JSNApi::SetTrackGlobalRef(true);
 
     // First snapshot to trigger GC and stabilize slots
     HeapDumpTestHelper tester(ecmaVm_);
@@ -2525,6 +2522,7 @@ HWTEST_F_L0(HeapDumpTest, TestGlobalRefInHeapSnapshot)
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"JSObject"))
         << "JSObject not found in snapshot";
 
-    thread_->SetTrackGlobalRef(false);
+    JSNApi::SetTrackGlobalRef(false);
 }
+#endif
 }

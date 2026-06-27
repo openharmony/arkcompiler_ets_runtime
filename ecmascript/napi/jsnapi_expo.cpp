@@ -22,6 +22,9 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+#include "uv.h"
+#endif
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ic/ic_info.h"
@@ -52,6 +55,7 @@
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/dfx_crash_obj.h"
+#include "ecmascript/runtime.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -3055,21 +3059,64 @@ void JSNApi::NotifyOnANR()
     EcmaVM::NotifyANR();
 }
 
-void JSNApi::SetTrackGlobalRef(EcmaVM *vm, bool enable)
+void JSNApi::SetTrackGlobalRef(bool enable)
 {
-    CROSS_THREAD_CHECK(vm);
-    thread->SetTrackGlobalRef(enable);
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    auto *runtime = ecmascript::Runtime::GetInstance();
+    bool oldValue = runtime->IsTrackGlobalRefEnabled();
+    runtime->SetTrackGlobalRef(enable);
+    if (!oldValue && !enable) {
+        return;
+    }
+    if (!enable) {
+        auto queueClear = [](const EcmaVM *vm) {
+            uint32_t curTid = vm->GetTid();
+            LOG_ECMA(INFO) << "SetTrackGlobalRef workthread curTid " << curTid;
+
+            auto *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+            if (loop == nullptr || uv_loop_alive(loop) == 0) {
+                LOG_ECMA(ERROR) << "SetTrackGlobalRef loop is null or not alive";
+                return;
+            }
+            uv_work_t *work = new (std::nothrow) uv_work_t;
+            if (work == nullptr) {
+                LOG_ECMA(ERROR) << "SetTrackGlobalRef alloc uv_work_t failed";
+                return;
+            }
+            work->data = static_cast<void *>(vm->GetJSThread());
+            int ret = uv_queue_work(loop, work, [](uv_work_t *) {},
+                [](uv_work_t *w, int32_t) {
+                    auto *t = static_cast<ecmascript::JSThread *>(w->data);
+                    t->ClearGlobalRefMap();
+                    delete w;
+                });
+            if (ret != 0) {
+                LOG_ECMA(ERROR) << "SetTrackGlobalRef uv_queue_work failed, ret=" << ret;
+                delete work;
+            }
+        };
+        auto *mainVm = ecmascript::Runtime::GetInstance()
+                       ->GetMainThread()
+                       ->GetEcmaVM();
+        queueClear(mainVm);
+        const_cast<EcmaVM *>(mainVm)->EnumerateWorkerVm([&queueClear](const EcmaVM *workerVm) -> void {
+            queueClear(workerVm);
+        });
+    }
+#endif
 }
 
-bool JSNApi::IsTrackGlobalRefEnabled(const EcmaVM *vm)
+bool JSNApi::IsTrackGlobalRefEnabled()
 {
-    CROSS_THREAD_CHECK(vm);
-    return thread->IsTrackGlobalRefEnabled();
+    return ecmascript::Runtime::GetInstance()->IsTrackGlobalRefEnabled();
 }
 
 void JSNApi::StoreGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr, void *ref)
 {
     CROSS_THREAD_CHECK(vm);
+    if (!IsTrackGlobalRefEnabled()) {
+        return;
+    }
     thread->StoreGlobalRefMapping(slotAddr, ref);
 }
 
