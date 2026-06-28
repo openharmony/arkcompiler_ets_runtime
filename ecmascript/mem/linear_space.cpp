@@ -312,7 +312,7 @@ void LinearSpace::PrepareSweeping(LinearSpace *fromSpace)
         ASSERT(!region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
         if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
             region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
-            LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << region;
+            LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping";
         }
 
         region->SwapLocalToShareRSetForCS();
@@ -352,7 +352,7 @@ void LinearSpace::Sweep(LinearSpace *fromSpace)
         ASSERT(!region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
         if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
             region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
-            LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << region;
+            LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping";
         }
 
         SweepRegion(region, freeList_);
