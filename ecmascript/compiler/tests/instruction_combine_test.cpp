@@ -24,7 +24,6 @@
 #include "ecmascript/compiler/gate_matchers.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
 #include "gtest/gtest.h"

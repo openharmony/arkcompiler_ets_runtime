@@ -72,7 +72,6 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
