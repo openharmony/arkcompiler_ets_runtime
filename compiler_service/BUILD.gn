@@ -38,6 +38,13 @@ ohos_shared_library("libcompiler_service") {
     "$js_root:ark_jsruntime_public_config",
     "$js_root:ark_jsruntime_common_config",
   ]
+  stack_protector_ret = true
+  if (!ark_standalone_build) {
+    sanitize = {
+      cfi = true
+    }
+    branch_protector_ret = "pac_ret"
+  }
   shlib_type = "sa"
   version_script = "libaot_compiler_service.map"
   sources = [
