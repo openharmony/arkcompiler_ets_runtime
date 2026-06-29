@@ -543,6 +543,15 @@ void JSThread::ClearMegaIC()
     }
 }
 
+size_t JSThread::GetGlobalHandleCount()
+{
+    size_t count = 0;
+    globalStorage_->IterateUsageGlobal([&count](Node *node) {
+        count++;
+    });
+    return count;
+}
+
 void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
 {
     if (!glueData_.lastException_.IsHole()) {

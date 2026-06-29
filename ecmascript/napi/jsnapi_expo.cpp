@@ -3139,6 +3139,12 @@ void *JSNApi::FindGlobalRefMapping(const EcmaVM *vm, uintptr_t slotAddr)
     return thread->FindGlobalRefMapping(slotAddr);
 }
 
+size_t JSNApi::GetGlobalHandleCount(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, INVALID_GLOBAL_HANDLE_SIZE);
+    return thread->GetGlobalHandleCount();
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
