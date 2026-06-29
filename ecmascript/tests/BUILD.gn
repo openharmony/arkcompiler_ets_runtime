@@ -139,6 +139,10 @@ host_unittest_action("JS_Dump_Test") {
 
   deps = [ "../../:libark_jsruntime_test" ]
 
+  if (enable_jit_code_sign) {
+    defines = [ "JIT_ENABLE_CODE_SIGN" ]
+  }
+
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   external_deps += [
@@ -148,6 +152,10 @@ host_unittest_action("JS_Dump_Test") {
     "runtime_core:libarkverifier",
     "zlib:libz",
   ]
+
+  if (enable_jit_code_sign) {
+    external_deps += [ "code_signature:libjit_code_sign" ]
+  }
   deps += hiviewdfx_deps
 }
 
@@ -3568,6 +3576,10 @@ host_unittest_action("GC_MachineCode_Test") {
 
   deps = [ "../../:libark_jsruntime_test" ]
 
+  if (enable_jit_code_sign) {
+    defines = [ "JIT_ENABLE_CODE_SIGN" ]
+  }
+
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   external_deps += [
@@ -3577,6 +3589,10 @@ host_unittest_action("GC_MachineCode_Test") {
     "runtime_core:libarkverifier",
     "zlib:libz",
   ]
+
+  if (enable_jit_code_sign) {
+    external_deps += [ "code_signature:libjit_code_sign" ]
+  }
   deps += hiviewdfx_deps
 }
 
