@@ -430,6 +430,16 @@ public:
         inBackground_ = inBackground;
     }
 
+    void DisableEvacuateNonMovableSpace()
+    {
+        enableEvacuateNonMovableSpace_ = false;
+    }
+
+    bool IsEnableEvacuateNonMovableSpace() const
+    {
+        return enableEvacuateNonMovableSpace_;
+    }
+
     static void SetFork(bool isFork)
     {
         isFork_ = isFork;
@@ -584,6 +594,7 @@ private:
     bool inBackground_ {false};
     bool isMainProcess_ {false};
     TaskPoolShrinkCallback taskpoolShrinkCallback_ {nullptr};
+    bool enableEvacuateNonMovableSpace_ {false};
 
     static bool isFork_;
 

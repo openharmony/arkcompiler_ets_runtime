@@ -107,7 +107,7 @@ void ConcurrentSweeper::Sweep(TriggerGCType gcType)
                 UNREACHABLE();
         }
         if (gcType != TriggerGCType::YOUNG_GC) {
-            if (gcType != TriggerGCType::STICKY_CMS_GC) {
+            if (!heap_->GetEvacuateNonMovableSpace() && gcType != TriggerGCType::STICKY_CMS_GC) {
                 heap_->GetNonMovableSpace()->PrepareSweeping();
             }
             heap_->GetMachineCodeSpace()->PrepareSweeping();
@@ -142,7 +142,7 @@ void ConcurrentSweeper::Sweep(TriggerGCType gcType)
                 UNREACHABLE();
         }
         if (gcType != TriggerGCType::YOUNG_GC) {
-            if (gcType != TriggerGCType::STICKY_CMS_GC) {
+            if (!heap_->GetEvacuateNonMovableSpace() && gcType != TriggerGCType::STICKY_CMS_GC) {
                 heap_->GetNonMovableSpace()->Sweep();
             }
             heap_->GetMachineCodeSpace()->Sweep();

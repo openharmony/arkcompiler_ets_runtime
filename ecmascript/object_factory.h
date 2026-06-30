@@ -810,7 +810,7 @@ public:
     JSHandle<FunctionTemplate> NewFunctionTemplate(
         const JSHandle<Method> &method, const JSHandle<JSTaggedValue> &module, int32_t length);
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
-    JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> NewEcmaHClass(JSHandle<JSHClass> hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     // napi interface to create object with initial inline properties
@@ -835,7 +835,7 @@ public:
 
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
-    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(JSHandle<JSHClass> hclass, uint32_t size, JSType type,
         uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
@@ -844,14 +844,14 @@ public:
     JSHandle<JSHClass> PUBLIC_API NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
                                               const JSHandle<JSTaggedValue> &prototype);
 
-    JSHandle<JSHClass> NewSEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
+    JSHandle<JSHClass> NewSEcmaHClassClass(uint32_t size, JSType type);
 
     JSHandle<JSHClass> InitSClassClass();
 
-    JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHandle<JSHClass> hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSTaggedValue InitHClassInCompositeBaseClass(JSHClass* hclass, EcmaStringType type);
-    JSHandle<JSHClass> NewSEcmaReadOnlySharedHClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSTaggedValue InitHClassInCompositeBaseClass(JSHandle<JSHClass> hclass, EcmaStringType type);
+    JSHandle<JSHClass> NewSEcmaReadOnlySharedHClass(JSHandle<JSHClass> hclass, uint32_t size, JSType type,
                                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<TaggedArray> SharedEmptyArray() const;
@@ -1026,12 +1026,9 @@ private:
 
     void NewObjectHook() const;
     void NewSObjectHook() const;
-    // used for creating jshclass in GlobalEnv, EcmaVM
-    JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
 
-    JSHandle<JSHClass> NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> NewEcmaReadOnlyHClass(JSHandle<JSHClass> hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSHandle<JSHClass> InitClassClass();
 
     // used to create nonmovable js_object
     JSHandle<JSObject> NewNonMovableJSObject(const JSHandle<JSHClass> &jshclass);
@@ -1047,8 +1044,8 @@ private:
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                            const JSHandle<JSTaggedValue> &prototype,
                                            uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
-    JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
+    JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHandle<JSHClass> hclass);
+    JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHandle<JSHClass> hclass);
 
     // used for creating ref.prototype in buildins, such as Number.prototype
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSHClass> &hclass,
@@ -1080,7 +1077,7 @@ private:
 
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
-    inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
+    inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHandle<JSHClass> cls, MemSpaceType type);
     JSHandle<TaggedArray> NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
     // For object with many properties, directly create new HClass instead of searching on transitions

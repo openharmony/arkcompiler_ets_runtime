@@ -32,7 +32,7 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
     void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                               VisitObjectArea area) override;
 
-    void VisitObjectHClassImpl(BaseObject *hclass) override;
+    void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
 
     void VisitAllRefFields(TaggedObject *obj);
 

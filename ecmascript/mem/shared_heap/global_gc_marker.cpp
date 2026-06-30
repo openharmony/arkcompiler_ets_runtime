@@ -54,7 +54,7 @@ void GlobalGCMarker::ProcessMarkStack(GlobalGCWorkManager *workManager, uint32_t
     TaggedObject *obj = nullptr;
     while (holder->Pop(&obj)) {
         JSHClass *hclass = obj->GetClass();
-        visitor.VisitHClass(hclass);
+        visitor.VisitHClass(obj, hclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
     }
 }

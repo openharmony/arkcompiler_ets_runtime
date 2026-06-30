@@ -211,12 +211,14 @@ inline void Region::ClearMarkGCBitset()
 
 inline void Region::InsertCrossRegionRSet(uintptr_t addr)
 {
+    ASSERT(InRange(addr));
     auto set = GetOrCreateCrossRegionRememberedSet();
     set->Insert(ToUintPtr(this), addr);
 }
 
 inline void Region::AtomicInsertCrossRegionRSet(uintptr_t addr)
 {
+    ASSERT(InRange(addr));
     auto set = GetOrCreateCrossRegionRememberedSet();
     set->AtomicInsert(ToUintPtr(this), addr);
 }
@@ -238,6 +240,7 @@ inline RememberedSet *Region::CollectLocalToShareRSet()
 
 inline void Region::InsertLocalToShareRSet(uintptr_t addr)
 {
+    ASSERT(InRange(addr));
     auto set = GetOrCreateLocalToShareRememberedSet();
     set->Insert(ToUintPtr(this), addr);
 }
@@ -256,6 +259,7 @@ Region::Updater<kind> Region::GetBatchRSetUpdater(uintptr_t addr)
 
 inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
 {
+    ASSERT(InRange(addr));
     auto set = GetOrCreateLocalToShareRememberedSet();
     set->AtomicInsert(ToUintPtr(this), addr);
 }
@@ -344,12 +348,14 @@ inline void Region::DeleteCrossRegionRSet()
 
 inline void Region::InsertOldToNewRSet(uintptr_t addr)
 {
+    ASSERT(InRange(addr));
     auto set = GetOrCreateOldToNewRememberedSet();
     set->Insert(ToUintPtr(this), addr);
 }
 
 inline void Region::ClearOldToNewRSet(uintptr_t addr)
 {
+    ASSERT(InRange(addr));
     auto set = GetOrCreateOldToNewRememberedSet();
     set->ClearBit(ToUintPtr(this), addr);
 }
@@ -455,6 +461,7 @@ ARK_INLINE void Region::Updater<kind>::Flush()
 template <Region::RegionSpaceKind kind>
 ARK_INLINE void Region::Updater<kind>::Consume(size_t idx, uintptr_t updateAddress, uint32_t mask)
 {
+    ASSERT(region_.InRange(updateAddress));
     if (idx == LocalToShareIdx) {
         auto set = region_.GetOrCreateLocalToShareRememberedSet();
         set->InsertRange(ToUintPtr(&region_), updateAddress, mask);

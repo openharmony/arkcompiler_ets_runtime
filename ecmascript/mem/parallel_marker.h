@@ -23,6 +23,7 @@
 
 namespace panda::ecmascript {
 class FullGC;
+template <bool evacuateNonMovableSpace>
 class FullGCRunner;
 class Heap;
 class Region;
@@ -55,6 +56,7 @@ protected:
     WorkManager *workManager_ {nullptr};
 
     friend class Heap;
+    template <bool evacuateNonMovableSpace>
     friend class FullGCMarkRootVisitor;
 };
 
@@ -79,7 +81,7 @@ protected:
 private:
     template <bool cmsGC>
     void ProcessYoungGCMarkStack(uint32_t threadId);
-    template <bool cmsGC>
+    template <bool cmsGC, bool evacuateNonMovableSpace>
     void ProcessOldGCMarkStack(uint32_t threadId);
     void ProcessCMSGCMarkStack(uint32_t threadId);
     void ProcessCCGCMarkStack(uint32_t threadId);
@@ -100,7 +102,12 @@ protected:
     void ProcessMarkStack(uint32_t threadId) override;
 
 private:
-    bool ProcessWeakAggregate(FullGCRunner *runner, WeakAggregate weakAggregate);
+    template <bool evacuateNonMovableSpace>
+    void ProcessMarkStackImpl(uint32_t threadId);
+    template <bool evacuateNonMovableSpace>
+    void MarkJitCodeMapImpl(uint32_t threadId);
+    template <bool evacuateNonMovableSpace>
+    bool ProcessWeakAggregate(FullGCRunner<evacuateNonMovableSpace> *runner, WeakAggregate weakAggregate);
 
     bool isAppSpawn_ {false};
     Mutex mutex_;

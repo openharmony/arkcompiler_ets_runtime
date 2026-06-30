@@ -228,6 +228,55 @@ void ParallelEvacuator::UpdateNewObjectSlot(ObjectSlot &slot)
     }
 }
 
+void ParallelEvacuator::UpdateHClassSlot(ObjectSlot slot, TaggedObject *hClass)
+{
+    ASSERT(heap_->GetEvacuateNonMovableSpace());
+    Region *region = Region::ObjectAddressToRange(hClass);
+    if (!region->InCollectSet()) {
+        ASSERT(region->InSharedHeap() || region->InReadOnlySpace());
+        return;
+    }
+    ASSERT(region->InNonMovableSpace());
+    ASSERT(region->Test(hClass));
+    MarkWord markWord(hClass, RELAXED_LOAD);
+    ASSERT(markWord.IsForwardingAddress());
+    JSTaggedType dst = reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
+    slot.Update(dst);
+}
+
+void ParallelEvacuator::UpdateNonMovableObjectSlot(Region *objectRegion, ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        Region *valueRegion = Region::ObjectAddressToRange(value.GetRawData());
+        ASSERT(objectRegion != nullptr);
+        if (valueRegion->InYoungSpace()) {
+            objectRegion->InsertOldToNewRSet(slot.SlotAddress());
+            if (valueRegion->InNewToNewSet()) {
+                if (value.IsWeakForHeapObject() && !objectRegion->Test(value.GetRawData())) {
+                    slot.Clear();
+                }
+                return;
+            }
+            UpdateObjectSlotValue(value, slot);
+            return;
+        }
+        if (valueRegion->InCollectSet()) {
+            UpdateObjectSlotValue(value, slot);
+            return;
+        }
+        if (valueRegion->InSharedSweepableSpace()) {
+            objectRegion->InsertLocalToShareRSet(slot.SlotAddress());
+        }
+        if (value.IsWeakForHeapObject()) {
+            if (!valueRegion->InSharedHeap() &&
+                (valueRegion->GetMarkGCBitset() == nullptr || !valueRegion->Test(value.GetRawData()))) {
+                slot.Clear();
+            }
+        }
+    }
+}
+
 void ParallelEvacuator::UpdateCrossRegionObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());

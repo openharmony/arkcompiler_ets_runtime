@@ -66,7 +66,7 @@ void AotConstantpoolPatcher::SetObjectFunctionFromConstPool(JSThread *thread, JS
     auto env = thread->GetGlobalEnv();
     if (env->GetObjectFunctionTsNapiClass() == env->GetObjectFunctionNapiClass()) {
         JSHandle<JSHClass> objectFunctionNapiClass(env->GetObjectFunctionNapiClass());
-        objectFunctionIHC->SetPrototype(thread, objectFunctionNapiClass->GetProto(thread));
+        JSHClass::SetPrototype(thread, objectFunctionIHC, objectFunctionNapiClass->GetProto(thread));
         JSHClass::EnableProtoChangeMarker(thread, objectFunctionIHC);
         SetPrototypeForTransitions(thread, *objectFunctionIHC, objectFunctionNapiClass->GetProto(thread));
         env->SetObjectFunctionTsNapiClass(thread, objectFunctionIHC.GetTaggedValue());

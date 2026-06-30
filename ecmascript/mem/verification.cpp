@@ -27,6 +27,7 @@ void LogErrorForObjSlot(const BaseHeap *heap, const char *headerInfo, TaggedObje
     Region *slotRegion = Region::ObjectAddressToRange(slotValue);
     LOG_GC(FATAL) << headerInfo
                   << ": gctype=" << heap->GetGCType()
+                  << ", evacuate nonmovable=" << heap->GetEvacuateNonMovableSpace()
                   << ", obj address=" << obj
                   << ", obj region=" << region
                   << ", obj space type=" << region->GetSpaceTypeName()

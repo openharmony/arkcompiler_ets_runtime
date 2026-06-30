@@ -1071,7 +1071,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     JSTaggedValue acc = JSTaggedValue::Hole();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
-    JSTaggedValue globalObj = globalEnv->GetGlobalObject();
+    JSHandle<JSTaggedValue> globalObj(thread, globalEnv->GetGlobalObject());
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
 
@@ -1749,7 +1749,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(LDGLOBAL) {
         LOG_INST() << "intrinsics::ldglobal";
-        SET_ACC(globalObj);
+        SET_ACC(globalObj.GetTaggedValue());
         DISPATCH(LDGLOBAL);
     }
     HANDLE_OPCODE(LDTRUE) {
@@ -2805,7 +2805,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
                                                                       profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, prop, slotId, true);
+                                                                  globalObj.GetTaggedValue(), prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(TRYLDGLOBALBYNAME_IMM8_ID16);
@@ -2817,13 +2817,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!result.IsUndefined()) {
             SET_ACC(PropertyBox::Cast(result.GetTaggedObject())->GetValue(thread));
         } else {
-            JSTaggedValue globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, prop);
+            JSTaggedValue globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread,
+                globalObj.GetTaggedValue(), prop);
             if (!globalResult.IsHole()) {
                 SET_ACC(globalResult);
             } else {
                 // slow path
                 SAVE_PC();
-                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
+                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread,
+                    globalObj.GetTaggedValue(), prop);
                 INTERPRETER_RETURN_IF_ABRUPT(res);
                 SET_ACC(res);
             }
@@ -2847,7 +2849,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
                                                                       profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, prop, slotId, true);
+                                                                  globalObj.GetTaggedValue(), prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
@@ -2859,13 +2861,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!result.IsUndefined()) {
             SET_ACC(PropertyBox::Cast(result.GetTaggedObject())->GetValue(thread));
         } else {
-            JSTaggedValue globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, prop);
+            JSTaggedValue globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread,
+                globalObj.GetTaggedValue(), prop);
             if (!globalResult.IsHole()) {
                 SET_ACC(globalResult);
             } else {
                 // slow path
                 SAVE_PC();
-                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, prop);
+                JSTaggedValue res = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread,
+                    globalObj.GetTaggedValue(), prop);
                 INTERPRETER_RETURN_IF_ABRUPT(res);
                 SET_ACC(res);
             }
@@ -2892,7 +2896,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
                                                                        profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, propKey, value, slotId, true);
+                                                                   globalObj.GetTaggedValue(),
+                                                                   propKey, value, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(TRYSTGLOBALBYNAME_IMM8_ID16);
@@ -2911,7 +2916,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         } else {
             // 2. find from global object
             SAVE_ACC();
-            auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
+            auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj.GetTaggedValue(), propKey);
             if (globalResult.IsHole()) {
                 auto result = SlowRuntimeStub::ThrowReferenceError(thread, propKey, " is not defined");
                 INTERPRETER_RETURN_IF_ABRUPT(result);
@@ -3015,20 +3020,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
                                                                       profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, propKey, slotId, false);
+                                                                  globalObj.GetTaggedValue(), propKey, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(LDGLOBALVAR_IMM16_ID16);
         }
 #endif
 
-        JSTaggedValue result = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
+        JSTaggedValue result = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj.GetTaggedValue(), propKey);
         if (!result.IsHole()) {
             SET_ACC(result);
         } else {
             // slow path
             SAVE_PC();
-            JSTaggedValue res = SlowRuntimeStub::LdGlobalVarFromGlobalProto(thread, globalObj, propKey);
+            JSTaggedValue res = SlowRuntimeStub::LdGlobalVarFromGlobalProto(thread, globalObj.GetTaggedValue(),
+                                                                            propKey);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
         }
@@ -3226,7 +3232,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
                                                                        profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, prop, value, slotId, false);
+                                                                   globalObj.GetTaggedValue(),
+                                                                   prop, value, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(STGLOBALVAR_IMM16_ID16);
@@ -6798,7 +6805,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
                                                                        profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, propKey, value, slotId, true);
+                                                                   globalObj.GetTaggedValue(),
+                                                                   propKey, value, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
@@ -6817,7 +6825,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         } else {
             // 2. find from global object
             SAVE_ACC();
-            auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
+            auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj.GetTaggedValue(), propKey);
             if (globalResult.IsHole()) {
                 auto result = SlowRuntimeStub::ThrowReferenceError(thread, propKey, " is not defined");
                 INTERPRETER_RETURN_IF_ABRUPT(result);

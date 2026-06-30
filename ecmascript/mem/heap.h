@@ -262,6 +262,16 @@ public:
         return cmsGC_;
     }
 
+    void SetEvacuateNonMovableSpace(bool evacuateNonMovableSpace)
+    {
+        evacuateNonMovableSpace_ = evacuateNonMovableSpace;
+    }
+
+    bool GetEvacuateNonMovableSpace() const
+    {
+        return evacuateNonMovableSpace_;
+    }
+
     bool PUBLIC_API IsAlive(TaggedObject *object) const;
 
     bool ContainObject(TaggedObject *object) const;
@@ -463,6 +473,7 @@ protected:
     TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
     bool disableCmsGC_ {false};
     bool cmsGC_ {false};
+    bool evacuateNonMovableSpace_ {false};
     Mutex gcCollectGarbageMutex_;
     // Region allocators.
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
@@ -980,31 +991,31 @@ public:
     template<class Callback>
     void IterateOverObjects(const Callback &cb) const;
 
-    inline TaggedObject *AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateClassClass(JSThread *thread, size_t size);
 
-    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass);
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass);
 
-    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size);
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, size_t size);
 
-    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass);
+    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass);
 
-    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size);
 
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, size_t size);
 
     inline TaggedObject *AllocateOldOrHugeObjectNoGC(JSThread *thread, size_t size);
 
-    inline TaggedObject *AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size);
 
     inline TaggedObject *AllocateHugeObject(JSThread *thread, size_t size);
 
     inline TaggedObject *HandleSharedHeapOOM(JSThread *thread, size_t size);
 
-    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass);
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass);
 
-    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size);
 
     inline TaggedObject *AllocateSNonMovableTlab(JSThread *thread, size_t size);
 
@@ -1365,27 +1376,27 @@ public:
 
     // Young
     inline TaggedObject *AllocateInYoungSpace(size_t size);
-    inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass);
-    inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateYoungOrHugeObject(JSHandle<JSHClass> hclass);
+    inline TaggedObject *AllocateYoungOrHugeObject(JSHandle<JSHClass> hclass, size_t size);
     inline TaggedObject *AllocateYoungOrHugeObject(size_t size);
-    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass);
-    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHandle<JSHClass> hclass);
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHandle<JSHClass> hclass, size_t size);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(size_t size);
     inline uintptr_t AllocateYoungSync(size_t size);
-    inline TaggedObject *TryAllocateYoungGeneration(JSHClass *hclass, size_t size);
+    inline TaggedObject *TryAllocateYoungGeneration(JSHandle<JSHClass> hclass, size_t size);
     // Old
-    inline TaggedObject *AllocateOldOrHugeObject(JSHClass *hclass);
-    inline TaggedObject *AllocateOldOrHugeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateOldOrHugeObject(JSHandle<JSHClass> hclass);
+    inline TaggedObject *AllocateOldOrHugeObject(JSHandle<JSHClass> hclass, size_t size);
     inline TaggedObject *AllocateOldOrHugeObject(size_t size);
     // Non-movable
-    inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass);
-    inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSHandle<JSHClass> hclass);
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSHandle<JSHClass> hclass, size_t size);
     // Huge
     inline TaggedObject *AllocateHugeObject(size_t size);
-    inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateHugeObject(JSHandle<JSHClass> hclass, size_t size);
     // Machine code
-    inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc *desc = nullptr);
+    inline TaggedObject *AllocateMachineCodeObject(JSHandle<JSHClass> hclass, size_t size,
+                                                   MachineCodeDesc *desc = nullptr);
     inline TaggedObject *AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc *desc = nullptr);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
@@ -1749,8 +1760,6 @@ public:
     }
 
     void AdjustSpaceSizeForAppSpawn();
-
-    static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object);
 
     bool IsFullMarkRequested() const
     {

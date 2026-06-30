@@ -90,6 +90,7 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
 
 bool AOTFileManager::LoadAnFile(const std::string &fileName)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     return anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT);
 }

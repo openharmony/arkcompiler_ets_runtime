@@ -105,6 +105,9 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
         instance_->SetEnableLargeHeap(options.GetLargeHeap());
+        if (!options.IsEnableEvacuateNonMovableSpace()) {
+            instance_->DisableEvacuateNonMovableSpace();
+        }
         SharedHeap::CreateNewInstance();
         if (g_isEnableCMCGC) {
             // Init common::BaseRuntime before daemon thread because creating mutator may access gcphase in heap

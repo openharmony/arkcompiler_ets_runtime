@@ -237,7 +237,7 @@ void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
     }
 }
 
-TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
+TaggedObject *Heap::AllocateYoungOrHugeObject(JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     return AllocateYoungOrHugeObject(hclass, size);
@@ -288,11 +288,11 @@ TaggedObject *Heap::AllocateInYoungSpace(size_t size)
     return reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
 }
 
-TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
+TaggedObject *Heap::AllocateYoungOrHugeObject(JSHandle<JSHClass> hclass, size_t size)
 {
     auto object = AllocateYoungOrHugeObject(size);
     ASSERT(object != nullptr);
-    object->SetClass(thread_, hclass);
+    object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
     object->SetObjectState(ObjectState::YOUNG);
 #endif
@@ -305,6 +305,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
                                            [[maybe_unused]] size_t size, MemSpaceType type)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     ASSERT(object != nullptr);
     object->SetClass(thread, hclass);
 
@@ -424,7 +425,7 @@ void SharedHeap::MergeToOldSpaceSync(SharedLocalSpace *localSpace)
     sOldSpace_->Merge(localSpace);
 }
 
-TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
+TaggedObject *Heap::TryAllocateYoungGeneration(JSHandle<JSHClass> hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     if (size > g_maxRegularHeapObjectSize) {
@@ -437,7 +438,7 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
         object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
     }
     if (object != nullptr) {
-        object->SetClass(thread_, hclass);
+        object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
         object->SetObjectState(ObjectState::YOUNG);
 #endif
@@ -448,7 +449,7 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
     return object;
 }
 
-TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass)
+TaggedObject *Heap::AllocateOldOrHugeObject(JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     return AllocateOldOrHugeObject(hclass, size);
@@ -496,10 +497,10 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
     return object;
 }
 
-TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
+TaggedObject *Heap::AllocateOldOrHugeObject(JSHandle<JSHClass> hclass, size_t size)
 {
     auto object = AllocateOldOrHugeObject(size);
-    object->SetClass(thread_, hclass);
+    object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
     object->SetObjectState(ObjectState::YOUNG);
 #endif
@@ -509,7 +510,7 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
     return object;
 }
 
-TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass)
+TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateReadOnlyOrHugeObject(hclass, size);
@@ -519,7 +520,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass)
     return object;
 }
 
-TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
+TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHandle<JSHClass> hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
@@ -532,7 +533,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
             "Heap::AllocateReadOnlyOrHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
             " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         ASSERT(object != nullptr);
-        object->SetClass(thread_, hclass);
+        object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
         object->SetObjectState(ObjectState::OLD);
 #endif
@@ -552,7 +553,7 @@ TaggedObject* Heap::AllocateReadOnlyOrHugeObject(size_t size)
     return reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
 }
 
-TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass)
+TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateNonMovableOrHugeObject(hclass, size);
@@ -565,14 +566,14 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass)
     return object;
 }
 
-TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size)
+TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHandle<JSHClass> hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
     if (UNLIKELY(g_isEnableCMCGC)) {
         object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmoveOrHuge(
             size, common::LanguageType::DYNAMIC));
-        object->SetClass(thread_, hclass);
+        object->SetClass(thread_, *hclass);
     } else {
         if (size > g_maxRegularHeapObjectSize) {
             object = AllocateHugeObject(hclass, size);
@@ -582,7 +583,7 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
                 "Heap::AllocateNonMovableOrHugeObject, local heap oom, used size: " +
                 std::to_string(GetHeapObjectSize()) + " bytes, committed size: " +
                 std::to_string(GetCommittedSize()) + " bytes");
-            object->SetClass(thread_, hclass);
+            object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
             // Object in nonmovalble space will be regarded as old object.
             object->SetObjectState(ObjectState::OLD);
@@ -595,32 +596,7 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
     return object;
 }
 
-TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
-{
-    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    TaggedObject *object = nullptr;
-    if (UNLIKELY(g_isEnableCMCGC)) {
-        object = reinterpret_cast<TaggedObject *>(
-            common::HeapAllocator::AllocateInNonmoveOrHuge(size, common::LanguageType::DYNAMIC));
-    } else {
-        object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
-    }
-    if (UNLIKELY(object == nullptr)) {
-        LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
-        UNREACHABLE();
-    }
-    *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
-#if USE_STICKY_CMS_GC
-    // Object in nonmovalble space will be regarded as old object.
-    object->SetObjectState(ObjectState::OLD);
-#endif
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
-#endif
-    return object;
-}
-
-TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
@@ -635,7 +611,6 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
         LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
         UNREACHABLE();
     }
-    *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
@@ -689,12 +664,12 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
     return object;
 }
 
-TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
+TaggedObject *Heap::AllocateHugeObject(JSHandle<JSHClass> hclass, size_t size)
 {
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
     CheckAndTriggerOldGC(size);
     auto object = AllocateHugeObject(size);
-    object->SetClass(thread_, hclass);
+    object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
     object->SetObjectState(ObjectState::YOUNG);
 #endif
@@ -718,7 +693,7 @@ TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc *
     return object;
 }
 
-TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc *desc)
+TaggedObject *Heap::AllocateMachineCodeObject(JSHandle<JSHClass> hclass, size_t size, MachineCodeDesc *desc)
 {
     TaggedObject *object;
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
@@ -736,7 +711,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
         CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_,
             "Heap::AllocateMachineCodeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
                 " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
-        object->SetClass(thread_, hclass);
+        object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
         object->SetObjectState(ObjectState::YOUNG);
 #endif
@@ -773,7 +748,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
     CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR_FORT(object, size, machineCodeSpace_, desc,
         "Heap::AllocateMachineCodeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
                 " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
-    object->SetClass(thread_, hclass);
+    object->SetClass(thread_, *hclass);
 #if USE_STICKY_CMS_GC
     object->SetObjectState(ObjectState::YOUNG);
 #endif
@@ -987,9 +962,11 @@ void Heap::ReclaimRegions(TriggerGCType gcType, bool cmsGC)
         cachedSize = inactiveSemiSpace_->GetInitialCapacity();
         if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC) {
             compressSpace_->Reset();
+            nonMovableSpace_->ReclaimCSet();
             cachedSize = 0;
         } else if (gcType == TriggerGCType::OLD_GC) {
             oldSpace_->ReclaimCSet();
+            nonMovableSpace_->ReclaimCSet();
             isCSetClearing_.store(false, std::memory_order_release);
         }
         inactiveSemiSpace_->ReclaimRegions(cachedSize);
@@ -1170,13 +1147,13 @@ bool SharedHeap::NeedGCInSensitiveStatus() const
     return false;
 }
 
-TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)
+TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     return AllocateNonMovableOrHugeObject(thread, hclass, size);
 }
 
-TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     if (size > g_maxRegularHeapObjectSize) {
@@ -1187,7 +1164,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     if (UNLIKELY(g_isEnableCMCGC)) {
         object = reinterpret_cast<TaggedObject *>(
             common::HeapAllocator::AllocateInNonmoveOrHuge(size, common::LanguageType::DYNAMIC));
-        object->SetClass(thread, hclass);
+        object->SetClass(thread, *hclass);
     } else {
         object = thread->IsJitThread() ? nullptr :
             const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
@@ -1195,10 +1172,10 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
             object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
             CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
                 "SharedHeap::AllocateNonMovableOrHugeObject, shared heap oom");
-            object->SetClass(thread, hclass);
+            object->SetClass(thread, *hclass);
             TryTriggerConcurrentMarking(thread);
         } else {
-            object->SetClass(thread, hclass);
+            object->SetClass(thread, *hclass);
         }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
         OnAllocateEvent(thread->GetEcmaVM(), object, size);
@@ -1234,18 +1211,18 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
     return object;
 }
 
-TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass)
+TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     return AllocateOldOrHugeObject(thread, hclass, size);
 }
 
-TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size)
 {
     TaggedObject *object = nullptr;
     if (UNLIKELY(g_isEnableCMCGC)) {
         object = AllocateOldForCMC(thread, size);
-        object->SetClass(thread, hclass);
+        object->SetClass(thread, *hclass);
     } else {
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         if (size > g_maxRegularHeapObjectSize) {
@@ -1257,10 +1234,10 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
             object = AllocateInSOldSpace(thread, size);
             CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_,
                 "SharedHeap::AllocateOldOrHugeObject, shared heap oom");
-            object->SetClass(thread, hclass);
+            object->SetClass(thread, *hclass);
             TryTriggerConcurrentMarking(thread);
         } else {
-            object->SetClass(thread, hclass);
+            object->SetClass(thread, *hclass);
         }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
         OnAllocateEvent(thread->GetEcmaVM(), object, size);
@@ -1346,10 +1323,10 @@ TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
     return object;
 }
 
-TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size)
 {
     auto object = AllocateHugeObject(thread, size);
-    object->SetClass(thread, hclass);
+    object->SetClass(thread, *hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
@@ -1395,13 +1372,13 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
     return object;
 }
 
-TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass)
+TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     return AllocateReadOnlyOrHugeObject(thread, hclass, size);
 }
 
-TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHandle<JSHClass> hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     if (size > g_maxRegularHeapObjectSize) {
@@ -1418,7 +1395,7 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
             thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject, shared heap oom");
     }
     ASSERT(object != nullptr);
-    object->SetClass(thread, hclass);
+    object->SetClass(thread, *hclass);
     return object;
 }
 

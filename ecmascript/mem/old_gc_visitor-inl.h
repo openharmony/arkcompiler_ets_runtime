@@ -69,13 +69,13 @@ void OldGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-template <bool cmsGC>
-OldGCMarkObjectVisitor<cmsGC>::OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder)
     : workNodeHolder_(workNodeHolder) {}
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
-                                                         VisitObjectArea area)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::VisitObjectRangeImpl(BaseObject *rootObject,
+    uintptr_t start, uintptr_t end, VisitObjectArea area)
 {
     ObjectSlot startSlot(start);
     ObjectSlot endSlot(end);
@@ -83,6 +83,7 @@ void OldGCMarkObjectVisitor<cmsGC>::VisitObjectRangeImpl(BaseObject *rootObject,
     Region *rootRegion = Region::ObjectAddressToRange(root);
     bool rootNeedEvacuate = rootRegion->InYoungSpaceOrCSet();
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
+        ASSERT(!evacuateNonMovableSpace);
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
@@ -103,8 +104,8 @@ void OldGCMarkObjectVisitor<cmsGC>::VisitObjectRangeImpl(BaseObject *rootObject,
     }
 }
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
     ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
@@ -112,8 +113,9 @@ void OldGCMarkObjectVisitor<cmsGC>::VisitWeakLinkedHashMapImpl(BaseObject *rootO
     workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::VisitObjectHClassImpl(BaseObject *hclassObject)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::VisitObjectHClassImpl(BaseObject *rootObject,
+                                                                                   BaseObject *hclassObject)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
     ASSERT(hclass->GetClass()->IsHClass());
@@ -121,11 +123,18 @@ void OldGCMarkObjectVisitor<cmsGC>::VisitObjectHClassImpl(BaseObject *hclassObje
     if (!hclassRegion->InSharedHeap()) {
         ASSERT(hclassRegion->InNonMovableSpace() || hclassRegion->InReadOnlySpace());
         MarkAndPush(hclass, hclassRegion);
+        Region *objectRegion = Region::ObjectAddressToRange(rootObject);
+        if constexpr (evacuateNonMovableSpace) {
+            if (!objectRegion->InYoungSpaceOrCSet()) {
+                objectRegion->AtomicInsertCrossRegionRSet(ToUintPtr(rootObject));
+            }
+        }
     }
 }
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::HandleSlot(ObjectSlot slot, Region *rootRegion,
+                                                                        bool rootNeedEvacuate)
 {
     if constexpr (cmsGC) {
         JSTaggedValue value(slot.GetTaggedType());
@@ -167,24 +176,24 @@ void OldGCMarkObjectVisitor<cmsGC>::HandleSlot(ObjectSlot slot, Region *rootRegi
     }
 }
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::HandleObject(TaggedObject *object, Region *objectRegion)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::HandleObject(TaggedObject *object, Region *objectRegion)
 {
     if (!objectRegion->InSharedHeap() && !objectRegion->IsFreshRegion()) {
         MarkAndPush(object, objectRegion);
     }
 }
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::MarkAndPush(TaggedObject *object, Region *objectRegion)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::MarkAndPush(TaggedObject *object, Region *objectRegion)
 {
     if (objectRegion->AtomicMark(object)) {
         workNodeHolder_->Push(object);
     }
 }
 
-template <bool cmsGC>
-void OldGCMarkObjectVisitor<cmsGC>::RecordWeakReference(JSTaggedType *weak)
+template <bool cmsGC, bool evacuateNonMovableSpace>
+void OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>::RecordWeakReference(JSTaggedType *weak)
 {
     workNodeHolder_->PushWeakReference(weak);
 }

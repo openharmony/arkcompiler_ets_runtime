@@ -122,43 +122,38 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     if (heap_->IsYoungMark()) {
         return;
     }
+    auto generateVisitor = [](auto &objectVisitor) {
+        JitCodeMapVisitor visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+            auto it = jitCodeMaps.begin();
+            while (it != jitCodeMaps.end()) {
+                JSTaggedType jsError = it->first;
+                Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
+                if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
+                    ++it;
+                    continue;
+                }
+                for (auto &jitCodeMap : *(it->second)) {
+                    auto &jitCode = std::get<0>(jitCodeMap);
+                    objectVisitor.HandleObject(jitCode, Region::ObjectAddressToRange(jitCode));
+                }
+                ++it;
+            }
+        };
+        return visitor;
+    } ;
     JitCodeMapVisitor visitor;
     if (heap_->GetCmsGC()) {
-        OldGCMarkObjectVisitor<true> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-        visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
-            auto it = jitCodeMaps.begin();
-            while (it != jitCodeMaps.end()) {
-                JSTaggedType jsError = it->first;
-                Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
-                if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
-                    ++it;
-                    continue;
-                }
-                for (auto &jitCodeMap : *(it->second)) {
-                    auto &jitCode = std::get<0>(jitCodeMap);
-                    objectVisitor.HandleObject(jitCode, Region::ObjectAddressToRange(jitCode));
-                }
-                ++it;
-            }
-        };
+        ASSERT(!heap_->GetEvacuateNonMovableSpace());
+        OldGCMarkObjectVisitor<true, false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
+        visitor = generateVisitor(objectVisitor);
     } else {
-        OldGCMarkObjectVisitor<false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-        visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
-            auto it = jitCodeMaps.begin();
-            while (it != jitCodeMaps.end()) {
-                JSTaggedType jsError = it->first;
-                Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
-                if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
-                    ++it;
-                    continue;
-                }
-                for (auto &jitCodeMap : *(it->second)) {
-                    auto &jitCode = std::get<0>(jitCodeMap);
-                    objectVisitor.HandleObject(jitCode, Region::ObjectAddressToRange(jitCode));
-                }
-                ++it;
-            }
-        };
+        if (heap_->GetEvacuateNonMovableSpace()) {
+            OldGCMarkObjectVisitor<false, true> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
+            visitor = generateVisitor(objectVisitor);
+        } else {
+            OldGCMarkObjectVisitor<false, false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
+            visitor = generateVisitor(objectVisitor);
+        }
     }
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
@@ -180,9 +175,14 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
         }
     } else if (heap_->IsFullMark()) {
         if (heap_->GetCmsGC()) {
-            ProcessOldGCMarkStack<true>(threadId);
+            ASSERT(!heap_->GetEvacuateNonMovableSpace());
+            ProcessOldGCMarkStack<true, false>(threadId);
         } else {
-            ProcessOldGCMarkStack<false>(threadId);
+            if (heap_->GetEvacuateNonMovableSpace()) {
+                ProcessOldGCMarkStack<false, true>(threadId);
+            } else {
+                ProcessOldGCMarkStack<false, false>(threadId);
+            }
         }
     } else {
         ASSERT(heap_->IsCCMark());
@@ -216,11 +216,11 @@ void NonMovableMarker::ProcessYoungGCMarkStack(uint32_t threadId)
     }
 }
 
-template <bool cmsGC>
+template <bool cmsGC, bool evacuateNonMovableSpace>
 void NonMovableMarker::ProcessOldGCMarkStack(uint32_t threadId)
 {
     WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
-    OldGCMarkObjectVisitor<cmsGC> oldGCMarkObjectVisitor(workNodeHolder);
+    OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace> oldGCMarkObjectVisitor(workNodeHolder);
     SemiSpace *newSpace = heap_->GetNewSpace();
     TaggedObject *obj = nullptr;
     while (workNodeHolder->Pop(&obj)) {
@@ -238,7 +238,7 @@ void NonMovableMarker::ProcessOldGCMarkStack(uint32_t threadId)
             }
         }
 
-        oldGCMarkObjectVisitor.VisitHClass(jsHclass);
+        oldGCMarkObjectVisitor.VisitHClass(obj, jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, oldGCMarkObjectVisitor);
     }
 }
@@ -260,7 +260,7 @@ void NonMovableMarker::ProcessCMSGCMarkStack(uint32_t threadId)
             obj->SetObjectState(ObjectState::OLD);
         }
 
-        sweepGCMarkObjectVisitor.VisitHClass(jsHclass);
+        sweepGCMarkObjectVisitor.VisitHClass(obj, jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, sweepGCMarkObjectVisitor);
     }
 }
@@ -277,29 +277,38 @@ void NonMovableMarker::ProcessCCGCMarkStack(uint32_t threadId)
         auto jsHClass = obj->GetClass();
         auto size = jsHClass->SizeFromJSHClass(obj);
         region->IncreaseAliveObject(size);
-        ccMarkObjectVisitor.VisitObjectHClassImpl(jsHClass);
+        ccMarkObjectVisitor.VisitObjectHClassImpl(obj, jsHClass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, ccMarkObjectVisitor);
     }
 }
 
 void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
 {
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        ProcessMarkStackImpl<true>(threadId);
+    } else {
+        ProcessMarkStackImpl<false>(threadId);
+    }
+}
+
+template <bool evacuateNonMovableSpace>
+void CompressGCMarker::ProcessMarkStackImpl(uint32_t threadId)
+{
     WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
-    FullGCRunner fullGCRunner(heap_, workNodeHolder, isAppSpawn_);
-    FullGCMarkObjectVisitor &fullGCMarkObjectVisitor = fullGCRunner.GetMarkObjectVisitor();
+    FullGCRunner<evacuateNonMovableSpace> fullGCRunner(heap_, workNodeHolder, isAppSpawn_);
+    FullGCMarkObjectVisitor<evacuateNonMovableSpace> &fullGCMarkObjectVisitor = fullGCRunner.GetMarkObjectVisitor();
     TaggedObject *obj = nullptr;
     WeakAggregate weakAggregate;
     while (true) {
         while (workNodeHolder->Pop(&obj)) {
             auto jsHClass = obj->GetClass();
-            ObjectSlot hClassSlot(ToUintPtr(obj));
-            fullGCMarkObjectVisitor.VisitHClassSlot(hClassSlot, jsHClass);
+            fullGCMarkObjectVisitor.VisitHClass(obj, jsHClass);
             ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT, VisitLinkedWeakHashMapType::AS_WEAK_AGGREGATE>(obj,
                 jsHClass, fullGCMarkObjectVisitor);
         }
         bool doMore = false;
         while (workNodeHolder->PopFreshWeakAggregate(&weakAggregate)) {
-            doMore |= ProcessWeakAggregate(&fullGCRunner, weakAggregate);
+            doMore |= ProcessWeakAggregate<evacuateNonMovableSpace>(&fullGCRunner, weakAggregate);
         }
         if (!doMore) {
             workNodeHolder->pendingWeakAggregateWorkNodeWrapper_.PushWorkNodeToGlobal(workManager_);
@@ -309,7 +318,8 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
     }
 }
 
-bool CompressGCMarker::ProcessWeakAggregate(FullGCRunner *runner, WeakAggregate weakAggregate)
+template <bool evacuateNonMovableSpace>
+bool CompressGCMarker::ProcessWeakAggregate(FullGCRunner<evacuateNonMovableSpace> *runner, WeakAggregate weakAggregate)
 {
     if (!runner->HandleWeakAggregate(weakAggregate)) {
         runner->RecordPendingWeakAggregate(weakAggregate);
@@ -324,7 +334,17 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
     // alive first. So this method must be call after all other mark work finish.
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::MarkJitCodeMap", "");
-    FullGCRunner fullGCRunner(heap_, workManager_->GetWorkNodeHolder(threadId), isAppSpawn_);
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        MarkJitCodeMapImpl<true>(threadId);
+    } else {
+        MarkJitCodeMapImpl<false>(threadId);
+    }
+}
+
+template <bool evacuateNonMovableSpace>
+void CompressGCMarker::MarkJitCodeMapImpl(uint32_t threadId)
+{
+    FullGCRunner<evacuateNonMovableSpace> fullGCRunner(heap_, workManager_->GetWorkNodeHolder(threadId), isAppSpawn_);
     JitCodeMapVisitor visitor = [&fullGCRunner] (std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
         std::map<JSTaggedType, JitCodeVector *> tempVec;
         auto it = jitCodeMaps.begin();

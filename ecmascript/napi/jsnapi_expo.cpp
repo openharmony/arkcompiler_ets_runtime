@@ -4145,16 +4145,16 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
 
     if (parent->IsHole()) {
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-        prototypeHClass->SetPrototype(thread, env->GetSObjectFunctionPrototype());
-        constructorHClass->SetPrototype(thread, env->GetSFunctionPrototype());
+        JSHClass::SetPrototype(thread, prototypeHClass, env->GetSObjectFunctionPrototype());
+        JSHClass::SetPrototype(thread, constructorHClass, env->GetSFunctionPrototype());
     } else if (parent->IsNull()) {
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-        prototypeHClass->SetPrototype(thread, JSTaggedValue::Null());
-        constructorHClass->SetPrototype(thread, env->GetSFunctionPrototype());
+        JSHClass::SetPrototype(thread, prototypeHClass, JSTaggedValue::Null());
+        JSHClass::SetPrototype(thread, constructorHClass, env->GetSFunctionPrototype());
     } else {
         auto parentPrototype = parent->GetFunctionPrototype(vm);
-        prototypeHClass->SetPrototype(thread, JSNApiHelper::ToJSHandle(parentPrototype));
-        constructorHClass->SetPrototype(thread, JSNApiHelper::ToJSHandle(parent));
+        JSHClass::SetPrototype(thread, prototypeHClass, JSNApiHelper::ToJSHandle(parentPrototype));
+        JSHClass::SetPrototype(thread, constructorHClass, JSNApiHelper::ToJSHandle(parent));
     }
     prototypeHClass->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
@@ -4170,7 +4170,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
         parentIHClass = reinterpret_cast<JSHClass *>(parentHandle->GetProtoOrHClass(thread).GetTaggedObject());
     }
     JSHandle<JSHClass> iHClass = JSHClass::CreateSHClass(thread, sendable.GetInstanceDescs(), parentIHClass);
-    iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(prototype));
+    JSHClass::SetPrototype(thread, iHClass, JSHandle<JSTaggedValue>(prototype));
     iHClass->SetExtensible(false);
     constructor->SetProtoOrHClass(thread, iHClass);
     constructorHClass->SetExtensible(false);

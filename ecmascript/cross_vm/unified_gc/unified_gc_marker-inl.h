@@ -119,7 +119,7 @@ void UnifiedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-void UnifiedGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
+void UnifiedGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *hclass)
 {
     ASSERT(TaggedObject::Cast(hclass)->GetClass()->IsHClass());
     Region *hclassRegion = Region::ObjectAddressToRange(hclass);

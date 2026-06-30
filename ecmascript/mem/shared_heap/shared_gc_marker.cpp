@@ -147,7 +147,7 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
         ASSERT(region->InSharedSweepableSpace());
         region->IncreaseAliveObject(size);
 
-        sharedGCMarkObjectVisitor.VisitHClass(hclass);
+        sharedGCMarkObjectVisitor.VisitHClass(obj, hclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, sharedGCMarkObjectVisitor);
     }
 }

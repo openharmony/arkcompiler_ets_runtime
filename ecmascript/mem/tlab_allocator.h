@@ -49,17 +49,21 @@ private:
     inline uintptr_t AllocateInYoungSpace(size_t size);
     inline uintptr_t AllocateInOldSpace(size_t size);
     inline uintptr_t AllocateInCompressSpace(size_t size);
+    inline uintptr_t AllocateInNonMovableSpace(size_t size);
 
     inline bool ExpandYoung();
     inline bool ExpandCompressFromOld(size_t size);
+    inline void ExpandNonMovable();
 
     Heap *heap_;
 
     bool enableExpandYoung_;
     bool enableStealOldRegion_;
     BumpPointerAllocator youngAllocator_;
+    BumpPointerAllocator nonMovableAllocator_ {};
 
     LocalSpace *localSpace_;
+    NonMovableSpace *nonMovableSpace_ {nullptr};
 };
 
 class CCTlabAllocator : public TlabAllocatorBase {

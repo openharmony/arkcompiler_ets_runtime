@@ -333,7 +333,7 @@ void Builtins::InitializeSModuleNamespace(const JSHandle<GlobalEnv> &env, const 
 
     JSHandle<JSHClass> moduleNamespaceHClass = factory_->NewSEcmaHClass(ModuleNamespace::SIZE, 0,
         JSType::JS_MODULE_NAMESPACE, moduleNamespacePrototypeValue, emptySLayout);
-    moduleNamespaceHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    JSHClass::SetPrototype(thread_, moduleNamespaceHClass, JSTaggedValue::Null());
     env->SetSharedModuleNamespaceClass(thread_, moduleNamespaceHClass.GetTaggedValue());
 
     // SharedmoduleNamespace.prototype [ @@toStringTag ]

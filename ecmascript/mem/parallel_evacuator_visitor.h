@@ -32,7 +32,7 @@ private:
     ParallelEvacuator *evacuator_ {nullptr};
 };
 
-template<TriggerGCType gcType>
+template<TriggerGCType gcType, bool updateHClass>
 class NewToOldEvacuationVisitor {
 public:
     explicit NewToOldEvacuationVisitor(Heap *heap, std::unordered_set<JSTaggedType> *set,
@@ -52,6 +52,7 @@ private:
     JSThread *thread_ {nullptr};
     std::shared_ptr<PGOProfiler> pgoProfiler_;
     std::unordered_set<JSTaggedType> *trackSet_ {nullptr};
+    ParallelEvacuator *evacuator_ {nullptr};
     SlotUpdateRangeVisitor<gcType> slotUpdateRangeVisitor_;
 };
 }  // namespace panda::ecmascript

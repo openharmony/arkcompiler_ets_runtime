@@ -84,7 +84,7 @@ HWTEST_F_L0(HandleLeakTest, InitializeCheckOneProperty)
 {
     EcmaHandleScope scope(thread);
     JSHandle<Program> newProgram(thread, const_cast<Heap *>(instance->GetHeap())->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread->GlobalConstants()->GetProgramClass().GetTaggedObject())));
+        JSHandle<JSHClass>(thread->GlobalConstants()->GetHandledProgramClass())));
 
     newProgram->SetMainFunction(thread, JSTaggedValue::Undefined());
 
@@ -116,7 +116,7 @@ HWTEST_F_L0(HandleLeakTest, PartInitializeCheckMoreProperty)
     JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledTaggedArrayClass());
     static constexpr int SIZE = 100;
     JSHandle<TaggedArray> newArray(thread, const_cast<Heap *>(instance->GetHeap())->AllocateNonMovableOrHugeObject(
-        *arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));
+        arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));
     newArray->SetLength(SIZE);
     for (uint32_t i = 0; i < SIZE / 2; i++) {
         size_t offset = JSTaggedValue::TaggedTypeSize() * i;
@@ -136,7 +136,7 @@ HWTEST_F_L0(HandleLeakTest, InitializeCheckMoreProperty)
     JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledTaggedArrayClass());
     static constexpr int SIZE = 100;
     JSHandle<TaggedArray> newArray(thread, const_cast<Heap *>(instance->GetHeap())->AllocateNonMovableOrHugeObject(
-        *arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));
+        arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));
 
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), SIZE);
     size_t failCount = 0;

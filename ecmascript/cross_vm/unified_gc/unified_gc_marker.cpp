@@ -72,7 +72,7 @@ void UnifiedGCMarker::ProcessMarkStack(uint32_t threadId)
     TaggedObject *obj = nullptr;
     while (workNodeHolder->Pop(&obj)) {
         JSHClass *jsHclass = obj->SynchronizedGetClass();
-        visitor.VisitHClass(jsHclass);
+        visitor.VisitHClass(obj, jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }
 }

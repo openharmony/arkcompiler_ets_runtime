@@ -45,7 +45,7 @@ public:
 
     void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
                               VisitObjectArea area) override;
-    void VisitObjectHClassImpl(BaseObject *hclass) override;
+    void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
     void HandleObject(TaggedObject *object, Region *objectRegion);
 
 private:

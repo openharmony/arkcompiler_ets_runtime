@@ -2229,12 +2229,12 @@ public:
     static void SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
                                        const JSHandle<JSTaggedValue> &proto,
                                        bool isChangeProto = false);
-    void SetPrototype(const JSThread *thread, JSTaggedValue proto, bool isChangeProto = false);
-    void SetPrototype(const JSThread *thread, const JSHandle<GlobalEnv> &env,
-                      JSTaggedValue proto, bool isChangeProto = false);
-    void PUBLIC_API SetPrototype(const JSThread *thread,
-                                 const JSHandle<JSTaggedValue> &proto,
-                                 bool isChangeProto = false);
+    static void SetPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                            JSTaggedValue proto, bool isChangeProto = false);
+    static void SetPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                            const JSHandle<GlobalEnv> &env, JSTaggedValue proto, bool isChangeProto = false);
+    static void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                        const JSHandle<JSTaggedValue> &proto, bool isChangeProto = false);
     static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<GlobalEnv> &env,
                                        const JSHandle<JSTaggedValue> &proto,
                                        bool isChangeProto = false);
@@ -2320,7 +2320,7 @@ private:
 
     static bool IsJSTypeShared(JSType type);
 
-    inline void Copy(const JSThread *thread, const JSHClass *jshclass);
+    static inline void Copy(const JSThread *thread, JSHandle<JSHClass> newHClass, JSHandle<JSHClass> oldHClass);
 
     uint32_t *GetBitFieldAddr() const
     {

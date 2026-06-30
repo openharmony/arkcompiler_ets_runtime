@@ -97,7 +97,7 @@ void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t
     }
 }
 
-void SharedGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
+void SharedGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *hclass)
 {
     ASSERT(TaggedObject::Cast(hclass)->GetClass()->IsHClass());
     Region *hclassRegion = Region::ObjectAddressToRange(hclass);

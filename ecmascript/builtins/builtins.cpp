@@ -208,7 +208,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     // GLobalObject.prototype_or_hclass
     JSHandle<JSHClass> globalObjFuncClass =
         factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_GLOBAL_OBJECT, 0);
-    globalObjFuncClass->SetPrototype(thread_, objFuncPrototypeVal.GetTaggedValue());
+    JSHClass::SetPrototype(thread_, globalObjFuncClass, objFuncPrototypeVal.GetTaggedValue());
     globalObjFuncClass->SetIsDictionaryMode(true);
 
     // PrimitiveRef.prototype_or_hclass
@@ -2048,7 +2048,7 @@ void Builtins::InitializeSetIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSTaggedValue> protoValue = env->GetSetIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSetIteratorClass());
-    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHClass::SetPrototype(thread_, hclassHandle, protoValue);
     hclassHandle->SetExtensible(true);
 }
 
@@ -2063,7 +2063,7 @@ void Builtins::InitializeSSetIterator(const JSHandle<GlobalEnv> &env, const JSHa
     JSHandle<JSTaggedValue> protoValue = env->GetSharedSetIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedSetIteratorClass());
-    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHClass::SetPrototype(thread_, hclassHandle, protoValue);
     hclassHandle->SetExtensible(true);
 }
 
@@ -2080,7 +2080,7 @@ void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSTaggedValue> protoValue = env->GetMapIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSMapIteratorClass());
-    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHClass::SetPrototype(thread_, hclassHandle, protoValue);
     hclassHandle->SetExtensible(true);
 }
 
@@ -2096,7 +2096,7 @@ void Builtins::InitializeSMapIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSTaggedValue> protoValue = env->GetSharedMapIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedMapIteratorClass());
-    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHClass::SetPrototype(thread_, hclassHandle, protoValue);
     hclassHandle->SetExtensible(true);
 }
 
@@ -2112,7 +2112,7 @@ void Builtins::InitializeArrayIterator(const JSHandle<GlobalEnv> &env,
     // Iterator.prototype.next()
     SetFunction(env, arrayIteratorPrototype, "next", JSArrayIterator::Next, FunctionLength::ZERO,
                 BUILTINS_STUB_ID(ArrayIteratorProtoNext));
-    arrayIteratorInstanceHClass->SetPrototype(thread_, arrayIteratorPrototypeValue);
+    JSHClass::SetPrototype(thread_, arrayIteratorInstanceHClass, arrayIteratorPrototypeValue);
     SetStringTagSymbol(env, arrayIteratorPrototype, "Array Iterator");
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY_ITERATOR, nullptr,
         *arrayIteratorInstanceHClass, arrayIteratorPrototype->GetJSHClass(), *iteratorPrototypeClass);
@@ -3926,7 +3926,7 @@ void Builtins::InitializeModuleNamespace(const JSHandle<GlobalEnv> &env,
     //  ModuleNamespace.prototype_or_hclass
     JSHandle<JSHClass> moduleNamespaceHClass =
         factory_->NewEcmaHClass(ModuleNamespace::SIZE, JSType::JS_MODULE_NAMESPACE, moduleNamespacePrototypeValue);
-    moduleNamespaceHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    JSHClass::SetPrototype(thread_, moduleNamespaceHClass, JSTaggedValue::Null());
     env->SetModuleNamespaceClass(thread_, moduleNamespaceHClass.GetTaggedValue());
 
     // moduleNamespace.prototype [ @@toStringTag ]
@@ -3945,7 +3945,7 @@ void Builtins::InitializeNativeModuleFailureInfo(const JSHandle<GlobalEnv> &env,
     JSHandle<JSHClass> nativeModuleFailureInfoHClass =
         factory_->NewEcmaHClass(NativeModuleFailureInfo::SIZE, JSType::NATIVE_MODULE_FAILURE_INFO,
             nativeModuleFailureInfoPrototypeValue);
-    nativeModuleFailureInfoHClass->SetPrototype(thread_, JSTaggedValue::Null());
+    JSHClass::SetPrototype(thread_, nativeModuleFailureInfoHClass, JSTaggedValue::Null());
     env->SetNativeModuleFailureInfoClass(thread_, nativeModuleFailureInfoHClass.GetTaggedValue());
 }
 

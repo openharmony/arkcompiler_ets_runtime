@@ -1026,7 +1026,7 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
 
     JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
     newJSHClass->SetElementsKind(ElementsKind::GENERIC);
-    newJSHClass->SetPrototype(thread, prototype);
+    JSHClass::SetPrototype(thread, newJSHClass, prototype);
 
     return newJSHClass;
 }
@@ -1056,7 +1056,7 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     // guarante derived has function prototype
     JSHandle<JSTaggedValue> prototype(thread, derived->GetProtoOrHClass(thread));
     ASSERT(!prototype->IsHole());
-    newJSHClass->SetPrototype(thread, prototype);
+    JSHClass::SetPrototype(thread, newJSHClass, prototype);
     derived->SetProtoOrHClass(thread, newJSHClass);
 
     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {

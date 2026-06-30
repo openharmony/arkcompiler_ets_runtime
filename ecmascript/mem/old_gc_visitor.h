@@ -38,8 +38,8 @@ private:
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };
 
-template <bool cmsGC>
-class OldGCMarkObjectVisitor final : public BaseObjectVisitor<OldGCMarkObjectVisitor<cmsGC>> {
+template <bool cmsGC, bool evacuateNonMovableSpace>
+class OldGCMarkObjectVisitor final : public BaseObjectVisitor<OldGCMarkObjectVisitor<cmsGC, evacuateNonMovableSpace>> {
 public:
     inline explicit OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder);
     ~OldGCMarkObjectVisitor() override = default;
@@ -47,7 +47,7 @@ public:
     inline void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 
-    inline void VisitObjectHClassImpl(BaseObject *hclass) override;
+    inline void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
 
     inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:

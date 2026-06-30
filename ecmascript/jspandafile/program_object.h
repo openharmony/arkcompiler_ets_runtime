@@ -588,8 +588,10 @@ public:
                         ihcVal = entryIndexes->GetIhc(thread);
                         if (!ihcVal.IsUndefined()) {
                             JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-                            JSHClass::Cast(ihcVal.GetTaggedObject())->SetPrototype(thread,
-                                                                                   env->GetObjectFunctionPrototype());
+                            JSHandle<JSTaggedValue> ihcHandle(thread, ihcVal);
+                            JSHClass::SetPrototype(thread, JSHandle<JSHClass>(ihcHandle),
+                                                   env->GetObjectFunctionPrototype());
+                            ihcVal = ihcHandle.GetTaggedValue();
                             JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, ihcVal));
                         }
                     }

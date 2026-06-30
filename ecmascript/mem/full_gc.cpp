@@ -61,6 +61,7 @@ void FullGC::RunPhases()
     ASSERT(!heap_->GetJSThread()->IsConcurrentCopying());
     ProcessSharedGCRSetWorkList();
     Initialize();
+    LOG_GC(DEBUG) << "evacuate nonmovable space " << heap_->GetEvacuateNonMovableSpace();
     Mark();
     Sweep();
     Finish();
@@ -108,6 +109,17 @@ void FullGC::Initialize()
     } else {
         heap_->SwapNewSpace();
     }
+#if ENABLE_MEMORY_OPTIMIZATION
+    if (!forAppSpawn_) {
+        bool evacuateNonMovableSpace = Runtime::GetInstance()->IsEnableEvacuateNonMovableSpace();
+        heap_->SetEvacuateNonMovableSpace(evacuateNonMovableSpace);
+        if (evacuateNonMovableSpace) {
+            NonMovableSpace *nonMovableSpace = heap_->GetNonMovableSpace();
+            nonMovableSpace->SelectCSet();
+            nonMovableSpace->PrepareCompact();
+        }
+    }
+#endif
     workManager_->Initialize(TriggerGCType::FULL_GC, ParallelGCTaskPhase::COMPRESS_HANDLE_GLOBAL_POOL_TASK);
     heap_->GetCompressGCMarker()->Initialize();
 }
@@ -115,9 +127,15 @@ void FullGC::Initialize()
 void FullGC::MarkRoots()
 {
     CompressGCMarker *marker = static_cast<CompressGCMarker*>(heap_->GetCompressGCMarker());
-    FullGCRunner fullGCRunner(heap_, workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX), forAppSpawn_);
-    FullGCMarkRootVisitor &fullGCMarkRootVisitor = fullGCRunner.GetMarkRootVisitor();
-    marker->MarkRoots(fullGCMarkRootVisitor);
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        FullGCRunner<true> fullGCRunner(heap_, workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX), forAppSpawn_);
+        FullGCMarkRootVisitor<true> &fullGCMarkRootVisitor = fullGCRunner.GetMarkRootVisitor();
+        marker->MarkRoots(fullGCMarkRootVisitor);
+    } else {
+        FullGCRunner<false> fullGCRunner(heap_, workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX), forAppSpawn_);
+        FullGCMarkRootVisitor<false> &fullGCMarkRootVisitor = fullGCRunner.GetMarkRootVisitor();
+        marker->MarkRoots(fullGCMarkRootVisitor);
+    }
 }
 
 void FullGC::Mark()
@@ -137,14 +155,28 @@ void FullGC::Mark()
     heap_->SetParallelGCEnabled(false);
     MarkUntilFixPoint();
     heap_->SetParallelGCEnabled(prev);
+
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        heap_->GetNonMovableSpace()->PrepareForIterate();
+    }
 }
 
 void FullGC::MarkUntilFixPoint()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "FullGC::MarkUntilFixPoint", "");
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        MarkUntilFixPointImpl<true>();
+    } else {
+        MarkUntilFixPointImpl<false>();
+    }
+}
+
+template <bool evacuateNonMovableSpace>
+void FullGC::MarkUntilFixPointImpl()
+{
     CompressGCMarker *marker = static_cast<CompressGCMarker *>(heap_->GetCompressGCMarker());
     WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX);
-    FullGCRunner runner(heap_, holder, forAppSpawn_);
+    FullGCRunner<evacuateNonMovableSpace> runner(heap_, holder, forAppSpawn_);
 
     std::vector<WeakAggregate> pendingWeakAggregates;
     ASSERT(holder->freshWeakAggregateWorkNodeWrapper_.IsLocalAndGlobalEmpty());
@@ -188,6 +220,16 @@ void FullGC::MarkUntilFixPoint()
 void FullGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "FullGC::Sweep", "");
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        SweepImpl<true>();
+    } else {
+        SweepImpl<false>();
+    }
+}
+
+template <bool evacuateNonMovableSpace>
+void FullGC::SweepImpl()
+{
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
     // process weak reference
     uint32_t totalThreadCount = 1; // 1 : mainthread
@@ -195,19 +237,30 @@ void FullGC::Sweep()
         totalThreadCount += common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
-        UpdateRecordWeakReference(i);
+        UpdateRecordWeakReference<evacuateNonMovableSpace>(i);
     }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         UpdateRecordWeakLinkedHashMap(i);
     }
 
+    UpdateWeakRoots<evacuateNonMovableSpace>();
+
+    heap_->GetSweeper()->Sweep(TriggerGCType::FULL_GC);
+    heap_->GetSweeper()->PostTask(TriggerGCType::FULL_GC);
+    heap_->GetJSThread()->ClearYoungGlobalList();
+    heap_->GetJSThread()->ClearToBeDeletedNodes();
+}
+
+template <bool evacuateNonMovableSpace>
+void FullGC::UpdateWeakRoots()
+{
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (UNLIKELY(objectRegion == nullptr)) {
             LOG_GC(ERROR) << "FullGC updateWeakReference: region is nullptr, header is " << header;
             return nullptr;
         }
-        if (!HasEvacuated(objectRegion)) {
+        if (!HasEvacuated<evacuateNonMovableSpace>(objectRegion)) {
             // The weak object in shared heap is always alive during fullGC.
             if (objectRegion->InSharedHeap() || objectRegion->Test(header)) {
                 return header;
@@ -226,10 +279,6 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(gcUpdateWeak);
-    heap_->GetSweeper()->Sweep(TriggerGCType::FULL_GC);
-    heap_->GetSweeper()->PostTask(TriggerGCType::FULL_GC);
-    heap_->GetJSThread()->ClearYoungGlobalList();
-    heap_->GetJSThread()->ClearToBeDeletedNodes();
 }
 
 void FullGC::Finish()
@@ -252,10 +301,17 @@ void FullGC::Finish()
     }
     heap_->GetSweeper()->TryFillSweptRegion();
     heap_->SetFullMarkRequestedState(false);
+    heap_->SetEvacuateNonMovableSpace(false);
 }
 
+template <bool evacuateNonMovableSpace>
 bool FullGC::HasEvacuated(Region *region)
 {
+    if constexpr (evacuateNonMovableSpace) {
+        static_assert(!G_USE_CMS_GC);
+        ASSERT(!forAppSpawn_);
+        return region->InYoungOrOldSpace() || region->InNonMovableSpace();
+    }
     if (forAppSpawn_) {
         return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
                !region->InSharedHeap();
@@ -278,6 +334,7 @@ void FullGC::ProcessSharedGCRSetWorkList()
     heap_->ProcessSharedGCRSetWorkList();
 }
 
+template <bool evacuateNonMovableSpace>
 void FullGC::UpdateRecordWeakReference(uint32_t threadId)
 {
     ProcessQueue *queue = workManager_->GetWorkNodeHolder(threadId)->GetWeakReferenceQueue();
@@ -290,7 +347,7 @@ void FullGC::UpdateRecordWeakReference(uint32_t threadId)
         JSTaggedValue value(slot.GetTaggedType());
         auto header = value.GetTaggedWeakRef();
         Region *objectRegion = Region::ObjectAddressToRange(header);
-        if (!HasEvacuated(objectRegion)) {
+        if (!HasEvacuated<evacuateNonMovableSpace>(objectRegion)) {
             if (!objectRegion->InSharedHeap() && !objectRegion->Test(header)) {
                 slot.Clear();
             }

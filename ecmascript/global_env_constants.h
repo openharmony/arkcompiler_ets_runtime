@@ -760,12 +760,12 @@ private:
     void InitSharedDetectors(ObjectFactory *factory);
     void InitSharedStrings(ObjectFactory *factory);
     void InitSharedSymbols(ObjectFactory *factory);
-    void InitCompositeBaseClasses(ObjectFactory* factory, JSHClass* hClass);
+    void InitCompositeBaseClasses(ObjectFactory* factory, JSHandle<JSHClass> hClass);
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);
-    void InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory);
-    void InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory);
+    void InitRootsClassesPartOne(JSHandle<JSHClass> hClass, ObjectFactory *factory);
+    void InitRootsClassesPartTwo(JSHandle<JSHClass> hClass, ObjectFactory *factory);
     void InitMiscellaneous(JSThread *thread, ObjectFactory *factory);
     void InitGlobalCaches();
 

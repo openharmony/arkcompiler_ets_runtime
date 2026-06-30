@@ -408,7 +408,9 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
                     key, value, attr);
                 JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+                // Refresh receiverVal and hclass after GC
                 receiverVal = receiver.GetTaggedValue();
+                hclass = receiverVal.GetTaggedObject()->GetClass();
                 setValue = actualValue.value;
                 isTagged = actualValue.isTagged;
             }
@@ -660,10 +662,12 @@ JSTaggedValue ObjectFastOperator::SetJsonPropertyByName(JSThread *thread, JSTagg
             auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
                 keyHandle, valueHandle, attr);
             JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+            // Refresh hclass after GC
+            hclass = objHandle->GetClass();
             if (actualValue.isTagged) {
-                JSObject::Cast(objHandle.GetTaggedValue())->SetProperty<true>(thread, hclass, attr, actualValue.value);
+                objHandle->SetProperty<true>(thread, hclass, attr, actualValue.value);
             } else {
-                JSObject::Cast(objHandle.GetTaggedValue())->SetProperty<false>(thread, hclass, attr, actualValue.value);
+                objHandle->SetProperty<false>(thread, hclass, attr, actualValue.value);
             }
             return JSTaggedValue::Undefined();
         }

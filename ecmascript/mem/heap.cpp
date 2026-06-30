@@ -1498,6 +1498,7 @@ void Heap::Resume(TriggerGCType gcType, bool cmsGC)
 void Heap::ResumeCC()
 {
     ASSERT(!GetCmsGC());
+    ASSERT(!GetEvacuateNonMovableSpace());
     PrepareRecordRegionsForReclaim();
     if (parallelGC_) {
         clearTaskFinished_ = false;
