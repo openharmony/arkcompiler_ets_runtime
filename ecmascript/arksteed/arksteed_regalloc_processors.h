@@ -130,7 +130,7 @@ private:
 // - For unconditional jumps (Jump/JumpLoop): target block can have Phi vertices
 // =============================================================================
 
-// to do: loop optimize && handle deoptimization
+// to do: handle deoptimization
 class LivenessProcessor {
 public:
     void PreProcessGraph(Graph *graph)
@@ -163,13 +163,28 @@ public:
     void ProcessVertex(T *vertex, const ArkSteedState &state)
     {
         vertex->GetRegallocInfo()->SetId(nextVertexId_++);
+        LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+        if (loopUsedVertices != nullptr && vertex->GetProperties().IsCall()) {
+            if (loopUsedVertices->firstCall == INVALID_VERTEX_ID) {
+                loopUsedVertices->firstCall = vertex->GetId();
+            }
+            loopUsedVertices->lastCall = vertex->GetId();
+        }
         MarkInputUses(vertex, state);
     }
 
 private:
+    struct LoopVertexUse {
+        VertexId firstRegisterUse = INVALID_VERTEX_ID;
+        VertexId lastRegisterUse = INVALID_VERTEX_ID;
+    };
+
     struct LoopUsedVertices {
-        std::vector<ValueVertex *> usedVertices;  // ValueVertex* from outside the loop
-        BB *header;
+        // ValueVertex* from outside the loop.
+        std::map<ValueVertex *, LoopVertexUse> usedVertices;
+        VertexId firstCall = INVALID_VERTEX_ID;
+        VertexId lastCall = INVALID_VERTEX_ID;
+        BB *header = nullptr;
     };
 
     LoopUsedVertices *GetCurrentLoopUsedVertices()
@@ -268,14 +283,68 @@ public:
         // Propagate loop-external vertices to outer loop if exists
         // This extends their lifetime across the loop back edge
         if (!loopUsedVertices.usedVertices.empty()) {
+            BB::RegallocLoopInfo &loopInfo = loopUsedVertices.header->GetOrCreateRegallocLoopInfo(chunk_);
+            for (auto &[usedVertex, useInfo] : loopUsedVertices.usedVertices) {
+                if (ShouldReloadAtLoopHeader(useInfo, loopUsedVertices)) {
+                    loopInfo.reloadHints.push_back(usedVertex);
+                }
+                if (ShouldSpillAtLoopHeader(useInfo, loopUsedVertices)) {
+                    loopInfo.spillHints.push_back(usedVertex);
+                }
+            }
+
             JumpLoopVertex::UsedVerticesType usedVertexInputs(chunk_);
             usedVertexInputs.reserve(loopUsedVertices.usedVertices.size());
-            for (size_t i = 0; i < loopUsedVertices.usedVertices.size(); i++) {
-                usedVertexInputs.emplace_back(loopUsedVertices.usedVertices[i], InputLocation());
-                MarkUse(loopUsedVertices.usedVertices[i], use, &usedVertexInputs[i].second, outerLoopUsedVertices);
+            for (auto &entry : loopUsedVertices.usedVertices) {
+                ValueVertex *usedVertex = entry.first;
+                usedVertexInputs.emplace_back(usedVertex, InputLocation());
+                MarkUse(usedVertex, use, &usedVertexInputs.back().second, outerLoopUsedVertices);
             }
             vertex->SetUsedVertices(std::move(usedVertexInputs));
         }
+    }
+
+    static bool IsRegisterUse(const InputLocation *input)
+    {
+        const InstructionOperand &operand = input->GetOperand();
+        if (!operand.IsUnallocated()) {
+            return false;
+        }
+
+        const UnallocatedState unallocated = UnallocatedState::Cast(operand);
+        if (unallocated.GetBasicPolicy() != UnallocatedState::BasicPolicy::EXTENDED_POLICY) {
+            return false;
+        }
+
+        switch (unallocated.GetExtendedPolicy()) {
+            case UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER:
+            case UnallocatedState::ExtendedPolicy::FIXED_REGISTER:
+            case UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER:
+                return true;
+            case UnallocatedState::ExtendedPolicy::NONE:
+            case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
+            case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT:
+            case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT:
+            case UnallocatedState::ExtendedPolicy::SAME_AS_INPUT:
+                return false;
+        }
+        UNREACHABLE();
+    }
+
+    static bool ShouldReloadAtLoopHeader(const LoopVertexUse &useInfo, const LoopUsedVertices &loopUsedVertices)
+    {
+        return useInfo.firstRegisterUse != INVALID_VERTEX_ID &&
+               (loopUsedVertices.firstCall == INVALID_VERTEX_ID ||
+                (useInfo.firstRegisterUse <= loopUsedVertices.firstCall &&
+                 useInfo.lastRegisterUse > loopUsedVertices.lastCall));
+    }
+
+    static bool ShouldSpillAtLoopHeader(const LoopVertexUse &useInfo, const LoopUsedVertices &loopUsedVertices)
+    {
+        return useInfo.firstRegisterUse == INVALID_VERTEX_ID ||
+               (loopUsedVertices.firstCall != INVALID_VERTEX_ID &&
+                useInfo.firstRegisterUse > loopUsedVertices.firstCall &&
+                useInfo.lastRegisterUse <= loopUsedVertices.lastCall);
     }
 
     void MarkUse(ValueVertex *vertex, uint32_t useId, InputLocation *input, LoopUsedVertices *loopUsedVertices)
@@ -289,14 +358,22 @@ public:
         // and make sure to extend its lifetime to the loop end if yes.
         if (loopUsedVertices != nullptr) {
             if (vertex->GetId() < loopUsedVertices->header->GetFirstId()) {
-                loopUsedVertices->usedVertices.push_back(vertex);
+                LoopVertexUse initialUse {INVALID_VERTEX_ID, INVALID_VERTEX_ID};
+                auto result = loopUsedVertices->usedVertices.emplace(vertex, initialUse);
+                LoopVertexUse &useInfo = result.first->second;
+                if (IsRegisterUse(input)) {
+                    if (useInfo.firstRegisterUse == INVALID_VERTEX_ID) {
+                        useInfo.firstRegisterUse = useId;
+                    }
+                    useInfo.lastRegisterUse = useId;
+                }
             }
         }
     }
 
     std::vector<LoopUsedVertices> loopUsedVertices_;
-    uint32_t nextVertexId_{0};
     Chunk *chunk_ = nullptr;
+    uint32_t nextVertexId_{0};
 };
 
 }  // namespace panda::ecmascript::arksteed

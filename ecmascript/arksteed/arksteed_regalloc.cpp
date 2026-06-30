@@ -1097,6 +1097,26 @@ template AllocatedState ArkSteedRegisterAllocator::ForceAllocate(RegisterSnapsho
                                                                  ArkSteedDoubleRegister reg, ValueVertex *vertex);
 
 template <typename RegisterT>
+void ArkSteedRegisterAllocator::SetLoopPhiRegisterHint(PhiVertex *phi, RegisterT reg)
+{
+    UnallocatedState::ExtendedPolicy policy;
+    if constexpr (std::is_same_v<RegisterT, ArkSteedRegister>) {
+        policy = UnallocatedState::ExtendedPolicy::FIXED_REGISTER;
+    } else {
+        static_assert(std::is_same_v<RegisterT, ArkSteedDoubleRegister>);
+        policy = UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER;
+    }
+
+    UnallocatedState hint(policy, reg.Code(), NO_VREG);
+    for (int i = 0, n = phi->GetInputCount(); i < n; i++) {
+        ValueVertex *input = phi->GetInput(i);
+        if (input->GetId() > phi->GetId()) {
+            input->GetRegallocInfo()->SetHint(hint);
+        }
+    }
+}
+
+template <typename RegisterT>
 AllocatedState ArkSteedRegisterAllocator::AllocateRegisterInternal(RegisterSnapshot<RegisterT> &registers,
                                                                    ValueVertex *vertex,
                                                                    const InstructionOperand &hint)
@@ -1339,6 +1359,7 @@ void ArkSteedRegisterAllocator::TryAllocateToInput(PhiVertex *phi)
             if (input.GetLocation()->GetAssignedGeneralRegister() == hintReg &&
                 generalRegisters_.UnblockedFree().Has(hintReg)) {
                 phi->GetRegallocInfo()->SetResultAllocated(ForceAllocate(hintReg, phi));
+                SetLoopPhiRegisterHint(phi, hintReg);
                 return;
             }
         }
@@ -1357,6 +1378,7 @@ void ArkSteedRegisterAllocator::TryAllocateToInput(PhiVertex *phi)
             ArkSteedRegister reg = input.GetLocation()->GetAssignedGeneralRegister();
             if (generalRegisters_.UnblockedFree().Has(reg)) {
                 phi->GetRegallocInfo()->SetResultAllocated(ForceAllocate(reg, phi));
+                SetLoopPhiRegisterHint(phi, reg);
                 return;
             }
         }
@@ -1423,6 +1445,64 @@ bool ArkSteedRegisterAllocator::AllUsedRegistersLiveAt(BB *block)
     return forAllRegisters(generalRegisters_) && forAllRegisters(doubleRegisters_);
 }
 
+void ArkSteedRegisterAllocator::HoistLoopReloads(BB *target)
+{
+    BB::RegallocLoopInfo *loopInfo = target->GetRegallocLoopInfo();
+    if (loopInfo == nullptr) {
+        return;
+    }
+
+    for (ValueVertex *vertex : loopInfo->reloadHints) {
+        RegallocValueVertexInfo *vertexInfo = vertex->GetRegallocInfo();
+        ASSERT(generalRegisters_.Blocked().IsEmpty());
+        if (generalRegisters_.Free().IsEmpty()) {
+            break;
+        }
+        if (vertexInfo->IsDoubleRegister()) {
+            continue;
+        }
+        if (vertexInfo->HasRegisterResult()) {
+            continue;
+        }
+        if (!vertexInfo->IsLoadable()) {
+            continue;
+        }
+
+        ArkSteedRegister targetReg = GetRegisterHint<ArkSteedRegister>(vertexInfo->GetHint());
+        if (!targetReg.IsValid() || !generalRegisters_.Free().Has(targetReg)) {
+            targetReg = generalRegisters_.Free().First();
+        }
+        AllocatedState targetOperand(AllocatedState::LocationKind::REGISTER, vertex->GetMachineRepresentation(),
+                                     targetReg.Code());
+        generalRegisters_.RemoveFromFree(targetReg);
+        generalRegisters_.SetValueWithoutBlocking(targetReg, vertex);
+        AddMoveBeforeCurrentVertex(vertex, vertexInfo->GetSpillSlot(), targetOperand);
+    }
+}
+
+void ArkSteedRegisterAllocator::HoistLoopSpills(BB *target)
+{
+    BB::RegallocLoopInfo *loopInfo = target->GetRegallocLoopInfo();
+    if (loopInfo == nullptr) {
+        return;
+    }
+
+    static constexpr bool FORCE_SPILL = true;
+    for (ValueVertex *vertex : loopInfo->spillHints) {
+        RegallocValueVertexInfo *vertexInfo = vertex->GetRegallocInfo();
+        if (vertexInfo->IsDoubleRegister()) {
+            continue;
+        }
+        if (!vertexInfo->HasRegisterResult()) {
+            continue;
+        }
+        ArkSteedRegList registers = vertexInfo->GetRegisterResult();
+        for (ArkSteedRegister reg : registers) {
+            DropRegisterValueAtEnd(reg, FORCE_SPILL);
+        }
+    }
+}
+
 void ArkSteedRegisterAllocator::InitializeBranchTargetPhis(int predecessorId, BB *target)
 {
     if (!target->HasPhi()) {
@@ -1476,7 +1556,8 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVert
 #endif
         }
     };
-    // to do: add loop optimize
+    HoistLoopReloads(target);
+    HoistLoopSpills(target);
 
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "Initializing register states -> Block #" << target->GetId();
@@ -1830,11 +1911,15 @@ void ArkSteedRegisterAllocator::TryAllocatePhisToRegister(ChunkVector<PhiVertex 
         }
         if (phiInfo->IsDoubleRegister()) {
             if (!doubleRegisters_.UnblockedFreeIsEmpty()) {
-                phiInfo->SetResultAllocated(AllocateRegister(phi, phiInfo->GetHint()));
+                AllocatedState allocation = AllocateRegister(phi, phiInfo->GetHint());
+                phiInfo->SetResultAllocated(allocation);
+                SetLoopPhiRegisterHint(phi, allocation.GetDoubleRegister());
             }
         } else {
             if (!generalRegisters_.UnblockedFreeIsEmpty()) {
-                phiInfo->SetResultAllocated(AllocateRegister(phi, phiInfo->GetHint()));
+                AllocatedState allocation = AllocateRegister(phi, phiInfo->GetHint());
+                phiInfo->SetResultAllocated(allocation);
+                SetLoopPhiRegisterHint(phi, allocation.GetRegister());
             }
         }
 #ifndef NDEBUG

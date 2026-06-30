@@ -128,6 +128,26 @@ public:
         return registerMergeState_ != nullptr;
     }
 
+    struct RegallocLoopInfo {
+        explicit RegallocLoopInfo(Chunk *chunk) : reloadHints(chunk), spillHints(chunk) {}
+
+        ChunkVector<ValueVertex *> reloadHints;
+        ChunkVector<ValueVertex *> spillHints;
+    };
+
+    RegallocLoopInfo *GetRegallocLoopInfo() const
+    {
+        return regallocLoopInfo_;
+    }
+
+    RegallocLoopInfo &GetOrCreateRegallocLoopInfo(Chunk *chunk)
+    {
+        if (regallocLoopInfo_ == nullptr) {
+            regallocLoopInfo_ = chunk->New<RegallocLoopInfo>(chunk);
+        }
+        return *regallocLoopInfo_;
+    }
+
     RegisterMergeState *GetRegisterMergeState()
     {
         ASSERT(registerMergeState_ != nullptr);
@@ -256,7 +276,8 @@ private:
           phis_(chunk),
           vertices_(chunk),
           predecessors_(chunk),
-          registerMergeState_(nullptr)
+          registerMergeState_(nullptr),
+          regallocLoopInfo_(nullptr)
     {}
 
     uint32_t id_;
@@ -268,6 +289,7 @@ private:
     ChunkVector<NonControlVertex *> vertices_;
     ChunkVector<BB *> predecessors_;
     RegisterMergeState *registerMergeState_;
+    RegallocLoopInfo *regallocLoopInfo_;
     Label label_;
 };
 

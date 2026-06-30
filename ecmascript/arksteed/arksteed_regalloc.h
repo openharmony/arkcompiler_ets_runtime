@@ -446,11 +446,15 @@ private:
     AllocatedState ForceAllocate(const Input &input, ValueVertex *vertex);
 
     // Phi allocation helpers
+    template <typename RegisterT>
+    void SetLoopPhiRegisterHint(PhiVertex *phi, RegisterT reg);
     void TryAllocateToInput(PhiVertex *phi);
 
     void VerifyRegisterState();
     bool AllUsedRegistersLiveAt(BB *block);
 
+    void HoistLoopReloads(BB *target);
+    void HoistLoopSpills(BB *target);
     void InitializeBranchTargetPhis(int predecessorId, BB *target);
     void InitializeBranchTargetRegisterValues(ControlVertex *control, BB *target);
     void MergeRegisterValues(ControlVertex *control, BB *target, int predecessorId);
