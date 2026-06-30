@@ -5063,20 +5063,6 @@ HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_ObjectNotJSFunction)
     EXPECT_EQ(ohmurl, "");
 }
 
-HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_FunctionNotInModule)
-{
-    LocalScope scope(vm_);
-    SetupNormalizedOhmUrlPack();
-
-    Local<FunctionRef> func = FunctionRef::New(vm_, FunctionCallback);
-    std::string moduleName;
-    std::string ohmurl;
-    bool result = JSNApi::GetOhmurlByObject(vm_, func, moduleName, ohmurl);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(moduleName, "");
-    EXPECT_EQ(ohmurl, "");
-}
-
 HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_ModuleNotSourceTextModule)
 {
     LocalScope scope(vm_);

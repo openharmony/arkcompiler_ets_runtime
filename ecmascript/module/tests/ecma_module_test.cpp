@@ -6244,7 +6244,7 @@ HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl_ImportNotNormalizedPrefix)
 
     bool res5 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
         "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test&1.0.0&&&&");
-    EXPECT_EQ(res4, true);
+    EXPECT_EQ(res5, true);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger_CombinedTest)
