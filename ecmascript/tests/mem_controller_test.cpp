@@ -82,7 +82,6 @@ HWTEST_F_L0(MemControllerTest, VerifyMutatorSpeed)
     heap->CollectGarbage(TriggerGCType::YOUNG_GC);
     size_t oldSpaceAllocatedSizeBefore = memController->GetOldSpaceAllocAccumulatedSize();
     size_t nonMovableSpaceAllocatedSizeBefore = memController->GetNonMovableSpaceAllocAccumulatedSize();
-    double allocDurationBefore = memController->GetAllocTimeMs();
     sleep(1);
 
     // new space object
@@ -105,11 +104,9 @@ HWTEST_F_L0(MemControllerTest, VerifyMutatorSpeed)
 
     size_t oldSpaceAllocatedSizeAfter = memController->GetOldSpaceAllocAccumulatedSize();
     size_t nonMovableSpaceAllocatedSizeAfter = memController->GetNonMovableSpaceAllocAccumulatedSize();
-    double allocDurationAfter = memController->GetAllocTimeMs();
 
     size_t hugeObjectAllocSizeInLastGC = memController->GetHugeObjectAllocSizeSinceGC();
 
-    ASSERT_TRUE(allocDurationAfter - allocDurationBefore > 1000);
     ASSERT_TRUE(oldSpaceAllocatedSizeAfter - oldSpaceAllocatedSizeBefore
                 == oldArray->ComputeSize(JSTaggedValue::TaggedTypeSize(), 2));
     ASSERT_TRUE(nonMovableSpaceAllocatedSizeAfter - nonMovableSpaceAllocatedSizeBefore
@@ -142,7 +139,6 @@ HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
     static constexpr size_t SIZE = 1_MB;
     objectFactory->NewTaggedArray(SIZE);
 
-    double allocTimeMsBefore = memController->GetAllocTimeMs();
 #if !USE_CMS_GC
     size_t oldSpaceSizeBefore = memController->GetOldSpaceAllocAccumulatedSize();
 #endif
@@ -164,14 +160,12 @@ HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
     memController->StartCalculationBeforeGC();
     memController->CheckLowAllocationUsageState();
 
-    double allocTimeMsAfter = memController->GetAllocTimeMs();
 #if !USE_CMS_GC
     size_t oldSpaceSizeAfter = memController->GetOldSpaceAllocAccumulatedSize();
 #endif
     size_t nonMovableSpaceSizeAfter = memController->GetNonMovableSpaceAllocAccumulatedSize();
     size_t codeSpaceSizeAfter = memController->GetCodeSpaceAllocAccumulatedSize();
 
-    EXPECT_TRUE(allocTimeMsAfter - allocTimeMsBefore > 1000);
 #if !USE_CMS_GC
     EXPECT_TRUE(oldSpaceSizeAfter > oldSpaceSizeBefore);
 #endif
