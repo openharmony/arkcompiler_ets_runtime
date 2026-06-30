@@ -179,6 +179,7 @@ public:
             {JSType::COW_MUTANT_TAGGED_ARRAY, {"COW_MUTANT_TAGGED_ARRAY"}},
             {JSType::COW_TAGGED_ARRAY, {"COW_TAGGED_ARRAY"}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"ReceiverObject", "HolderObject", "EXTRA_PROFILE_TYPE_INFO"}},
+            {JSType::FUNC_SLOT, {"FUNC_SLOT"}},
             {JSType::FUNCTION_TEMPLATE, {"Method", "Module", "RawProfileTypeInfo", "FUNCTION_TEMPLATE"}},
             {JSType::GLOBAL_ENV, {"GLOBAL_ENV"}},
             {JSType::IC_INFO, {"IC_INFO"}},
@@ -466,6 +467,7 @@ public:
                 ExtraProfileTypeInfo::RECEIVER_OBJECT_OFFSET,
                 ExtraProfileTypeInfo::HOLDER_OBJECT_OFFSET,
                 ExtraProfileTypeInfo::LAST_OFFSET - ExtraProfileTypeInfo::RECEIVER_OBJECT_OFFSET}},
+            {JSType::FUNC_SLOT, {0}},
             {JSType::FUNCTION_TEMPLATE, {FunctionTemplate::METHOD_OFFSET,
                                          FunctionTemplate::MODULE_OFFSET,
                                          FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET,
@@ -1060,6 +1062,7 @@ public:
             {JSType::COW_MUTANT_TAGGED_ARRAY, {"MUTANT_TAGGED_ARRAY"}},
             {JSType::COW_TAGGED_ARRAY, {"TAGGED_ARRAY"}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"TAGGED_OBJECT"}},
+            {JSType::FUNC_SLOT, {"TAGGED_ARRAY"}},
             {JSType::FUNCTION_TEMPLATE, {"TAGGED_OBJECT"}},
             {JSType::GLOBAL_ENV, {"TAGGED_ARRAY"}},
             {JSType::IC_INFO, {"TAGGED_ARRAY"}},
@@ -1306,6 +1309,7 @@ public:
             {JSType::EXTRA_PROFILE_TYPE_INFO, {
                 ExtraProfileTypeInfo::HOLDER_OBJECT_OFFSET - ExtraProfileTypeInfo::RECEIVER_OBJECT_OFFSET,
                 ExtraProfileTypeInfo::LAST_OFFSET - ExtraProfileTypeInfo::HOLDER_OBJECT_OFFSET}},
+            {JSType::FUNC_SLOT, {}},
             {JSType::FUNCTION_TEMPLATE, {
                 FunctionTemplate::MODULE_OFFSET - FunctionTemplate::METHOD_OFFSET,
                 FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET - FunctionTemplate::MODULE_OFFSET,
@@ -2443,6 +2447,17 @@ HWTEST_F_L0(JSMetadataTest, TestExtraProfileTypeInfoMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::EXTRA_PROFILE_TYPE_INFO, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestFuncSlotMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"func_slot.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::FUNC_SLOT, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestFunctionTemplateMetadata)

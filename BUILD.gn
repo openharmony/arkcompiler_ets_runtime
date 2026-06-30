@@ -1953,6 +1953,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/ecma_object.json",
   "ecmascript/js_type_metadata/ecma_string.json",
   "ecmascript/js_type_metadata/extra_profile_type_info.json",
+  "ecmascript/js_type_metadata/func_slot.json",
   "ecmascript/js_type_metadata/function_template.json",
   "ecmascript/js_type_metadata/global_env.json",
   "ecmascript/js_type_metadata/hclass.json",
