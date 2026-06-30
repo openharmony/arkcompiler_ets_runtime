@@ -15,6 +15,8 @@
 
 #include "ecmascript/arksteed/arksteed_regalloc.h"
 
+#include <algorithm>
+
 #include "ecmascript/arksteed/arksteed_compiler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
@@ -408,9 +410,19 @@ void ArkSteedRegisterAllocator::AllocateControlVertex(ControlVertex *vertex, BB 
     VerifyRegisterState();
 }
 
-void ArkSteedRegisterAllocator::MarkAsClobbered(ValueVertex * /*vertex*/, const AllocatedState & /*location*/)
+void ArkSteedRegisterAllocator::MarkAsClobbered(ValueVertex * /*vertex*/, const AllocatedState &location)
 {
-    // Mark register as clobbered after use
+    if (location.IsDoubleRegister()) {
+        ArkSteedDoubleRegister reg(location.GetDoubleRegister());
+        ASSERT(doubleRegisters_.IsBlocked(reg));
+        DropRegisterValue(reg);
+        doubleRegisters_.AddToFree(reg);
+    } else {
+        ArkSteedRegister reg(location.GetRegister());
+        ASSERT(generalRegisters_.IsBlocked(reg));
+        DropRegisterValue(reg);
+        generalRegisters_.AddToFree(reg);
+    }
 }
 
 void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
@@ -478,6 +490,7 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
     auto unallocated = UnallocatedState::Cast(input.GetOperand());
     ValueVertex *vertex = input.vertex();
     const InstructionOperand &location = vertex->GetRegallocInfo()->GetAllocation();
+    bool isClobbered = unallocated.IsUsedAtStart();
 
     switch (unallocated.GetExtendedPolicy()) {
         case UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER:
@@ -540,6 +553,11 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
         AddMoveBeforeCurrentVertex(vertex, location, allocated);
     }
     UpdateUse(vertex, input.GetLocation());
+    // Only need to mark the location as clobbered if the vertex wasn't already
+    // killed by UpdateUse.
+    if (isClobbered && !vertex->GetRegallocInfo()->HasNoMoreUses()) {
+        MarkAsClobbered(vertex, allocated);
+    }
     vertex->GetRegallocInfo()->ClearHint();
 }
 
@@ -558,18 +576,30 @@ void ArkSteedRegisterAllocator::AssignArbitraryRegisterInput(Vertex *resultVerte
     ASSERT(unallocated.GetExtendedPolicy() == UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER);
 
     ValueVertex *vertex = input.vertex();
+    bool isClobbered = input.GetLocation()->IsClobbered();
+
     InstructionOperand location;  // Default type is INVALID
-    // Only use the hint if it helps with the result's allocation due to
-    // same-as-input policy. Otherwise this doesn't affect regalloc.
-    InstructionOperand resultHint = InstructionOperand();
-    ValueVertex *valueVertex = resultVertex->TryCast<ValueVertex>();
-    if (valueVertex != nullptr && SameAsInput(valueVertex, input)) {
-        resultHint = valueVertex->GetRegallocInfo()->GetHint();
-    }
-    if (vertex->GetMachineRepresentation() == MachineRepresentation::Float64) {
-        location = doubleRegisters_.TryChooseInputRegister(vertex, resultHint);
+    if (isClobbered) {
+        // For clobbered inputs, pick a register that is not blocked by another
+        // live input, so that we do not clobber a value that is still needed.
+        if (vertex->GetMachineRepresentation() == MachineRepresentation::Float64) {
+            location = doubleRegisters_.TryChooseUnblockedInputRegister(vertex);
+        } else {
+            location = generalRegisters_.TryChooseUnblockedInputRegister(vertex);
+        }
     } else {
-        location = generalRegisters_.TryChooseInputRegister(vertex, resultHint);
+        // Only use the hint if it helps with the result's allocation due to
+        // same-as-input policy. Otherwise this doesn't affect regalloc.
+        InstructionOperand resultHint = InstructionOperand();
+        ValueVertex *valueVertex = resultVertex->TryCast<ValueVertex>();
+        if (valueVertex != nullptr && SameAsInput(valueVertex, input)) {
+            resultHint = valueVertex->GetRegallocInfo()->GetHint();
+        }
+        if (vertex->GetMachineRepresentation() == MachineRepresentation::Float64) {
+            location = doubleRegisters_.TryChooseInputRegister(vertex, resultHint);
+        } else {
+            location = generalRegisters_.TryChooseInputRegister(vertex, resultHint);
+        }
     }
 
     if (location.IsInvalid()) {
@@ -586,6 +616,11 @@ void ArkSteedRegisterAllocator::AssignArbitraryRegisterInput(Vertex *resultVerte
     input.GetLocation()->SetAllocated(AllocatedState::Cast(location));
 
     UpdateUse(vertex, input.GetLocation());
+    // Only need to mark the location as clobbered if the vertex wasn't already
+    // killed by UpdateUse.
+    if (isClobbered && !vertex->GetRegallocInfo()->HasNoMoreUses()) {
+        MarkAsClobbered(vertex, AllocatedState::Cast(location));
+    }
 }
 
 void ArkSteedRegisterAllocator::AssignAnyInput(const Input &input)
@@ -1216,14 +1251,27 @@ void ArkSteedRegisterAllocator::AllocateSpillSlot(ValueVertex *vertex)
     SpillLocations &slots = isTagged ? tagged_ : untagged_;
     uint32_t freeSlot = slots.top;
     bool reuseSlot = false;
-    // Reuse a freed slot whose previous value died before this one starts.
-    if (vertexInfo->HasValidLiveRange()) {
+    if (vertexInfo->HasValidLiveRange() && !slots.freeSlots.empty()) {
         VertexId start = vertexInfo->GetLiveRange().start;
-        for (size_t i = slots.freeSlots.size(); i > 0; --i) {
-            SpillInfo &slot = slots.freeSlots[i - 1];
-            if (slot.doubleSlot == doubleSlot && slot.freedAtPosition < start) {
-                freeSlot = slot.slotIndex;
-                slots.freeSlots.erase(slots.freeSlots.begin() + static_cast<std::ptrdiff_t>(i - 1));
+#ifndef NDEBUG
+        for (size_t i = 1; i < slots.freeSlots.size(); ++i) {
+            ASSERT(slots.freeSlots[i - 1].freedAtPosition <= slots.freeSlots[i].freedAtPosition);
+        }
+#endif
+        // freeSlots is sorted by freedAtPosition ascending. Find the first slot
+        // freed at or after start; all earlier slots are reusable.
+        auto it = std::upper_bound(slots.freeSlots.begin(), slots.freeSlots.end(), start,
+                                   [](VertexId s, const SpillInfo &slotInfo) {
+                                       return slotInfo.freedAtPosition >= s;
+                                   });
+        // Step backwards through reusable slots and pick the newest one that
+        // also matches the slot width (double vs normal).
+        while (it != slots.freeSlots.begin()) {
+            --it;
+            if (it->doubleSlot == doubleSlot) {
+                ASSERT(it->freedAtPosition < start);
+                freeSlot = it->slotIndex;
+                slots.freeSlots.erase(it);
                 reuseSlot = true;
                 break;
             }

@@ -2307,6 +2307,14 @@ inline void UseFixed(Input input, uint32_t regCode)
     input.vertex()->GetRegallocInfo()->SetHint(fixedRegister);
 }
 
+inline void UseAndClobberFixed(Input input, uint32_t regCode)
+{
+    UnallocatedState fixedRegister(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode,
+                                   UnallocatedState::LifetimeFlag::USED_AT_START, NO_VREG);
+    input.GetLocation()->GetOperand() = fixedRegister;
+    input.vertex()->GetRegallocInfo()->SetHint(fixedRegister);
+}
+
 }  // namespace panda::ecmascript::arksteed
 
 #endif  // ECMASCRIPT_ARKSTEED_OPCODE_H

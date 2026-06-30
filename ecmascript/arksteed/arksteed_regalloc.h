@@ -261,8 +261,26 @@ public:
         return OperandForVertexRegister(vertex, reg);
     }
 
-    // to do: Not use now
-    // Try to use an unblocked register that already has the value
+    InstructionOperand TryChooseUnblockedInputRegister(ValueVertex *vertex)
+    {
+        auto *vertexInfo = vertex->GetRegallocInfo();
+        RegTList resultRegisters;
+        if constexpr (IS_GENERAL_REGISTER) {
+            resultRegisters = vertexInfo->GetRegisterResult();
+        } else {
+            resultRegisters = vertexInfo->GetDoubleRegisterResult();
+        }
+        if (resultRegisters.IsEmpty()) {
+            return InstructionOperand();  // INVALID
+        }
+        RegTList unblockedResult = resultRegisters - blocked_;
+        if (!unblockedResult.IsEmpty()) {
+            RegisterT reg = unblockedResult.First();
+            Block(reg);
+            return OperandForVertexRegister(vertex, reg);
+        }
+        return InstructionOperand();  // INVALID
+    }
 
 private:
     ValueVertex *values_[RegisterT::NUM_REGISTERS] = {nullptr};
@@ -321,6 +339,9 @@ private:
 
     struct SpillLocations {
         int top = 0;
+        // Sorted from earliest freedAtPosition to latest freedAtPosition.
+        // Allocations reuse the newest freed slot whose freedAtPosition is
+        // before the new value's live-range start (found via binary search).
         std::vector<SpillInfo> freeSlots;
     };
 
