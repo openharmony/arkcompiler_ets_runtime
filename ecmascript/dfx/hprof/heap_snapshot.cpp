@@ -478,6 +478,7 @@ CString HeapSnapshot::GetNodeName(JSType type, bool isVmMode)
         {JSType::JS_MODULE_NAMESPACE, "ModuleNamespace"},
         {JSType::JS_API_PLAIN_ARRAY, "PlainArray"},
         {JSType::JS_API_PLAIN_ARRAY_ITERATOR, "PlainArrayIterator"},
+        {JSType::JS_API_FAST_BUFFER, "FastBuffer"},
         {JSType::JS_CJS_EXPORTS, "CJS Exports"},
         {JSType::JS_CJS_MODULE, "CJS Module"},
         {JSType::JS_CJS_REQUIRE, "CJS Require"},

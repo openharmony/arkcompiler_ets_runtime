@@ -1,5 +1,6 @@
 {
     "name": "JS_API_FAST_BUFFER",
+    "node_name": "FastBuffer",
     "offsets": [
         {
             "name": "FastBufferData",

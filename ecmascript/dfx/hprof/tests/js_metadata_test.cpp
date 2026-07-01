@@ -130,6 +130,7 @@
 #include <fstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include "cJSON.h"
 
@@ -379,7 +380,7 @@ public:
             {JSType::PROTOTYPE_HANDLER, {"HandlerInfo", "ProtoCell", "Holder",
                                          "AccessorJSFunction", "PROTOTYPE_HANDLER"}},
             {JSType::PROTOTYPE_INFO, {"ChangeListener", "PROTOTYPE_INFO"}},
-            {JSType::ENUM_CACHE, {"ENUM_CACHE"}},
+            {JSType::ENUM_CACHE, {"EnumCacheOwn", "EnumCacheAll", "ProtoChainInfoEnumCache", "ENUM_CACHE"}},
             {JSType::PROTO_CHANGE_MARKER, {"PROTO_CHANGE_MARKER"}},
             {JSType::RB_TREENODE, {"Left", "Right", "IsRed", "RB_TREENODE"}},
             {JSType::RESOLVEDBINDING_RECORD, {"Module", "BindingName", "RESOLVEDBINDING_RECORD"}},
@@ -542,7 +543,8 @@ public:
             {JSType::JS_API_PLAIN_ARRAY, {JSAPIPlainArray::KEYS_OFFSET,
                                           JSAPIPlainArray::VALUES_OFFSET,
                                           JSAPIPlainArray::SIZE - JSAPIPlainArray::KEYS_OFFSET}},
-            {JSType::JS_API_FAST_BUFFER, {JSAPIFastBuffer::TYPEDARRAY_OFFSET}},
+            {JSType::JS_API_FAST_BUFFER, {JSAPIFastBuffer::TYPEDARRAY_OFFSET,
+                                          JSAPIFastBuffer::SIZE - JSAPIFastBuffer::TYPEDARRAY_OFFSET}},
             {JSType::JS_API_PLAIN_ARRAY_ITERATOR, {
                 JSAPIPlainArrayIterator::ITERATED_PLAIN_ARRAY_OFFSET,
                 JSAPIPlainArrayIterator::LAST_OFFSET - JSAPIPlainArrayIterator::ITERATED_PLAIN_ARRAY_OFFSET}},
@@ -969,6 +971,9 @@ public:
                                          PrototypeHandler::SIZE - PrototypeHandler::HANDLER_INFO_OFFSET}},
             {JSType::PROTOTYPE_INFO, {ProtoChangeDetails::CHANGE_LISTENER_OFFSET,
                                       ProtoChangeDetails::SIZE - ProtoChangeDetails::CHANGE_LISTENER_OFFSET}},
+            {JSType::ENUM_CACHE, {EnumCache::ENUM_CACHE_OWN_OFFSET, EnumCache::ENUM_CACHE_ALL_OFFSET,
+                                  EnumCache::PROTO_CHAIN_INFO_ENUM_CACHE_OFFSET,
+                                  EnumCache::SIZE - EnumCache::ENUM_CACHE_OWN_OFFSET}},
             {JSType::PROTO_CHANGE_MARKER, {ProtoChangeMarker::SIZE - ProtoChangeMarker::BIT_FIELD_OFFSET}},
             {JSType::RB_TREENODE, {RBTreeNode::LEFT_OFFSET, RBTreeNode::RIGHT_OFFSET, RBTreeNode::ISRED_OFFSET,
                                    RBTreeNode::SIZE - RBTreeNode::LEFT_OFFSET}},
@@ -1236,6 +1241,7 @@ public:
             {JSType::PROPERTY_BOX, {"TAGGED_OBJECT"}},
             {JSType::PROTOTYPE_HANDLER, {"TAGGED_OBJECT"}},
             {JSType::PROTOTYPE_INFO, {"TAGGED_OBJECT"}},
+            {JSType::ENUM_CACHE, {"TAGGED_OBJECT"}},
             {JSType::PROTO_CHANGE_MARKER, {"TAGGED_OBJECT"}},
             {JSType::RB_TREENODE, {"TAGGED_NODE"}},
             {JSType::RESOLVEDBINDING_RECORD, {"RECORD"}},
@@ -1700,6 +1706,10 @@ public:
                 PrototypeHandler::ACCESSOR_METHOD_ID_OFFSET - PrototypeHandler::PrototypeHandler::ACCESSOR_JSFUNCTION_OFFSET}},
             {JSType::PROTOTYPE_INFO, {
                 ProtoChangeDetails::REGISTER_INDEX_OFFSET - ProtoChangeDetails::CHANGE_LISTENER_OFFSET}},
+            {JSType::ENUM_CACHE, {
+                EnumCache::ENUM_CACHE_ALL_OFFSET - EnumCache::ENUM_CACHE_OWN_OFFSET,
+                EnumCache::PROTO_CHAIN_INFO_ENUM_CACHE_OFFSET - EnumCache::ENUM_CACHE_ALL_OFFSET,
+                EnumCache::ENUM_CACHE_KIND_OFFSET - EnumCache::PROTO_CHAIN_INFO_ENUM_CACHE_OFFSET}},
             {JSType::PROTO_CHANGE_MARKER, {}},
             {JSType::RB_TREENODE, {
                 RBTreeNode::RIGHT_OFFSET - RBTreeNode::LEFT_OFFSET,
@@ -2086,11 +2096,129 @@ public:
         return true;
     }
 
+    // Directly check all 4 compiled-in metadata tables against type_enums.json (bidirectional):
+    //  - Forward:  every type listed in type_enums.json must have an entry in each of the 4 tables.
+    //  - Reverse:  none of the 4 tables may contain stale/extra entries absent from type_enums.json.
+    // This complements TestTypeEnumOrder (type_enums.json <-> C++ enum) by providing a direct
+    // cross-check between type_enums.json and the tables, so the correspondence does not
+    // solely rely on transitivity through the C++ enum.
+    bool TestForMetadataTablesConsistency(const CVector<std::string> &typeEnums)
+    {
+        bool passed = true;
+        size_t whitelistedCount = 0;
+        for (size_t i = 0; i < typeEnums.size(); i++) {
+            if (IsWhitelisted(typeEnums[i], tablesWhitelist_)) {
+                whitelistedCount++;
+            }
+        }
+        size_t expectedSize = typeEnums.size() - whitelistedCount;
+        CheckForwardTable(fieldNameTable_, "fieldNameTable_", typeEnums, passed);
+        CheckForwardTable(fieldOffsetTable_, "fieldOffsetTable_", typeEnums, passed);
+        CheckForwardTable(parentsTable_, "parentsTable_", typeEnums, passed);
+        CheckForwardTable(fieldSizeTable_, "fieldSizeTable_", typeEnums, passed);
+        CheckReverseTable(fieldNameTable_, "fieldNameTable_", typeEnums, expectedSize, passed);
+        CheckReverseTable(fieldOffsetTable_, "fieldOffsetTable_", typeEnums, expectedSize, passed);
+        CheckReverseTable(parentsTable_, "parentsTable_", typeEnums, expectedSize, passed);
+        CheckReverseTable(fieldSizeTable_, "fieldSizeTable_", typeEnums, expectedSize, passed);
+        return passed;
+    }
+
+    // Check that every type listed in type_enums.json has a corresponding
+    // per-type metadata .json file on disk. The expected file name is the
+    // lower-cased type name with a ".json" suffix, e.g. "HCLASS" -> "hclass.json".
+    // This catches the regression where a new JSType is added to type_enums.json
+    // but the matching per-type metadata file is forgotten.
+    bool TestForMetadataJsonFileExistence(const CVector<std::string> &typeEnums)
+    {
+        bool passed = true;
+        std::string dir(METADATA_SOURCE_FILE_DIR);
+        for (size_t i = 0; i < typeEnums.size(); i++) {
+            const std::string &typeName = typeEnums[i];
+            if (IsWhitelisted(typeName, jsonFileWhitelist_)) {
+                continue;
+            }
+            std::string fileName = typeName;
+            for (char &c : fileName) {
+                if (c >= 'A' && c <= 'Z') {
+                    c = c - 'A' + 'a';
+                }
+            }
+            fileName += ".json";
+            std::string filePath = dir + fileName;
+            std::ifstream file(filePath);
+            if (!file.is_open()) {
+                std::cout << "Type " << typeName << " (JSType " << i
+                          << ") is in type_enums.json but has no metadata file: " << filePath << std::endl;
+                passed = false;
+            }
+            file.close();
+        }
+        return passed;
+    }
+
     static std::unordered_map<JSType, std::vector<std::string>> fieldNameTable_;
     static std::unordered_map<JSType, std::vector<size_t>> fieldOffsetTable_;
     static std::unordered_map<JSType, std::vector<std::string>> parentsTable_;
     static std::unordered_map<JSType, std::vector<size_t>> fieldSizeTable_;
+    // Types that are known to lack complete metadata.  Two separate whitelists
+    // are used so that each coverage test only skips a type for the specific
+    // deficiency it has:
+    //  - tablesWhitelist_:   types missing from one or more of the 4 compiled-in tables.
+    //  - jsonFileWhitelist_: types whose per-type .json metadata file is missing or
+    //    whose file name does not match the type name.
+    // When metadata is fully added for a type, remove it from the relevant set(s)
+    // so the tests enforce its presence.
+    static const std::unordered_set<std::string> tablesWhitelist_;
+    static const std::unordered_set<std::string> jsonFileWhitelist_;
+
+    bool IsWhitelisted(const std::string &typeName,
+                       const std::unordered_set<std::string> &whitelist) const
+    {
+        return whitelist.find(typeName) != whitelist.end();
+    }
 private:
+    template<typename Table>
+    void CheckForwardTable(const Table &table, const char *tableName,
+                           const CVector<std::string> &typeEnums, bool &passed) const
+    {
+        for (size_t i = 0; i < typeEnums.size(); i++) {
+            if (IsWhitelisted(typeEnums[i], tablesWhitelist_)) {
+                continue;
+            }
+            auto type = static_cast<JSType>(i);
+            if (table.find(type) == table.end()) {
+                std::cout << "Type " << typeEnums[i] << " (JSType " << i
+                          << ") is in type_enums.json but missing from " << tableName << std::endl;
+                passed = false;
+            }
+        }
+    }
+
+    template<typename Table>
+    void CheckReverseTable(const Table &table, const char *tableName,
+                           const CVector<std::string> &typeEnums,
+                           size_t expectedSize, bool &passed) const
+    {
+        size_t nonWhitelistedInTable = 0;
+        for (const auto &entry : table) {
+            int intType = static_cast<int>(entry.first);
+            if (intType < 0 || intType >= static_cast<int>(typeEnums.size())) {
+                std::cout << "  " << tableName << " has stale entry JSType " << intType
+                          << " not in type_enums.json range" << std::endl;
+                passed = false;
+                continue;
+            }
+            if (!IsWhitelisted(typeEnums[intType], tablesWhitelist_)) {
+                nonWhitelistedInTable++;
+            }
+        }
+        if (nonWhitelistedInTable != expectedSize) {
+            std::cout << "Count mismatch: " << tableName << " has " << nonWhitelistedInTable
+                      << " non-whitelisted entries, but expected " << expectedSize << std::endl;
+            passed = false;
+        }
+    }
+
     std::vector<std::string> GetFieldNamesByType(JSType type)
     {
         return HasTypeInFieldNameTable(type) ? fieldNameTable_.at(type) : std::vector<std::string>();
@@ -2256,6 +2384,31 @@ std::unordered_map<JSType, std::vector<size_t>> JSMetadataTestHelper::fieldOffse
 std::unordered_map<JSType, std::vector<std::string>> JSMetadataTestHelper::parentsTable_ {};
 std::unordered_map<JSType, std::vector<size_t>> JSMetadataTestHelper::fieldSizeTable_ {};
 
+// Types that are known to lack complete metadata.  Two separate whitelists
+// are used so that each coverage test only skips a type for the specific
+// deficiency it has:
+//  - tablesWhitelist_:   types missing from one or more of the 4 compiled-in tables.
+//  - jsonFileWhitelist_: types whose per-type .json metadata file is missing or
+//    whose file name does not match the type name.
+// When metadata is fully added for a type, remove it from the relevant set(s)
+// so the tests enforce its presence.
+const std::unordered_set<std::string> JSMetadataTestHelper::tablesWhitelist_ {
+    "INVALID",
+    "COMPOSITE_BASE_CLASS",
+    "FREE_OBJECT_WITH_ONE_FIELD",
+    "FREE_OBJECT_WITH_NONE_FIELD",
+    "FREE_OBJECT_WITH_TWO_FIELD",
+};
+
+// Types whose per-type .json metadata file is missing (no corresponding file on disk).
+const std::unordered_set<std::string> JSMetadataTestHelper::jsonFileWhitelist_ {
+    "INVALID",
+    "COMPOSITE_BASE_CLASS",
+    "FREE_OBJECT_WITH_ONE_FIELD",
+    "FREE_OBJECT_WITH_NONE_FIELD",
+    "FREE_OBJECT_WITH_TWO_FIELD",
+};
+
 HWTEST_F_L0(JSMetadataTest, TestTypeEnumOrder)
 {
     JSMetadataTestHelper tester {};
@@ -2265,6 +2418,30 @@ HWTEST_F_L0(JSMetadataTest, TestTypeEnumOrder)
     tester.ReadAndParseTypeEnums(metadataFilePath, typeEnums);
     ASSERT_EQ(typeEnums.size(), static_cast<size_t>(JSType::TYPE_LAST) + 1);
     ASSERT_TRUE(tester.TestForTypeEnums(typeEnums));
+}
+
+// Check type_enums.json <-> 4 compiled-in metadata tables bidirectional consistency.
+HWTEST_F_L0(JSMetadataTest, TestMetadataTablesConsistentWithTypeEnums)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"type_enums.json";
+    CVector<std::string> typeEnums {};
+
+    tester.ReadAndParseTypeEnums(metadataFilePath, typeEnums);
+    ASSERT_EQ(typeEnums.size(), static_cast<size_t>(JSType::TYPE_LAST) + 1);
+    ASSERT_TRUE(tester.TestForMetadataTablesConsistency(typeEnums));
+}
+
+// Check that every type in type_enums.json has a corresponding per-type .json metadata file on disk.
+HWTEST_F_L0(JSMetadataTest, TestTypeEnumsHaveMetadataJsonFile)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"type_enums.json";
+    CVector<std::string> typeEnums {};
+
+    tester.ReadAndParseTypeEnums(metadataFilePath, typeEnums);
+    ASSERT_EQ(typeEnums.size(), static_cast<size_t>(JSType::TYPE_LAST) + 1);
+    ASSERT_TRUE(tester.TestForMetadataJsonFileExistence(typeEnums));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestHClassMetadata)
@@ -2731,6 +2908,17 @@ HWTEST_F_L0(JSMetadataTest, TestJsApiPlainArrayMetadata)
     ASSERT_TRUE(tester.Test(JSType::JS_API_PLAIN_ARRAY, metadata));
 }
 
+HWTEST_F_L0(JSMetadataTest, TestJsApiFastBufferMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_api_fast_buffer.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::JS_API_FAST_BUFFER, metadata));
+}
+
 HWTEST_F_L0(JSMetadataTest, TestJsApiPlainArrayIteratorMetadata)
 {
     JSMetadataTestHelper tester {};
@@ -2988,7 +3176,7 @@ HWTEST_F_L0(JSMetadataTest, TestJsAsyncGeneratorResumeNextReturnProcessorRstFtnM
 {
     JSMetadataTestHelper tester {};
     std::string metadataFilePath =
-        METADATA_SOURCE_FILE_DIR"js_async_generator_resume_next.json";
+        METADATA_SOURCE_FILE_DIR"js_async_generator_resume_next_return_processor_rst_ftn.json";
     JSMetadataTestHelper::Metadata metadata {};
 
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
@@ -4372,6 +4560,17 @@ HWTEST_F_L0(JSMetadataTest, TestPrototypeInfoMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::PROTOTYPE_INFO, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestEnumCacheMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"enum_cache.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::ENUM_CACHE, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestProtoChangeMarkerMetadata)
