@@ -43,7 +43,8 @@ public:
 
     static void InitIntegerCache(BaseString* string)
     {
-        if (string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE && string->GetLength() > 0) {
+        if (string->IsLineString() && string->IsUtf8() &&
+            string->GetLength() <= MAX_INTEGER_CACHE_SIZE && string->GetLength() > 0) {
             IntegerCache* cache = Extract(string);
             cache->isInteger_ = 0;
         }
@@ -51,7 +52,7 @@ public:
 
     static IntegerCache* Extract(BaseString* string)
     {
-        DCHECK_CC(string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE
+        DCHECK_CC(string->IsLineString() && string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE
             && string->GetLength() > 0 && string->IsInternString());
         IntegerCache* cache = reinterpret_cast<IntegerCache*>(LineString::Cast(string)->GetData());
         return cache;
