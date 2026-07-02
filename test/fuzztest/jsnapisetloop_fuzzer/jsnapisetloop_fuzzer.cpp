@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <thread>
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -47,11 +50,24 @@ namespace OHOS {
         }
         uint8_t *ptr = nullptr;
         ptr = const_cast<uint8_t*>(data);
-        JSRuntimeOptions option1;
-        EcmaVM *hostVM = JSNApi::CreateEcmaVM(option1);
-        JSNApi::SynchronizVMInfo(vm, hostVM);
+        JSThread *thread = vm->GetJSThread();
+        {
+            LocalScope scope(vm);
+            std::thread t1([vm]() {
+                JSRuntimeOptions option1;
+                EcmaVM *hostVM = JSNApi::CreateEcmaVM(option1);
+                {
+                    LocalScope scope2(hostVM);
+                    JSNApi::SynchronizVMInfo(vm, hostVM);
+                }
+                JSNApi::DestroyJSVM(hostVM);
+            });
+            {
+                ecmascript::ThreadSuspensionScope suspensionScope(thread);
+                t1.join();
+            }
+        }
         JSNApi::DestroyJSVM(vm);
-        JSNApi::DestroyJSVM(hostVM);
     }
 }
 
