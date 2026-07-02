@@ -5192,6 +5192,7 @@ HWTEST_F_L0(JSNApiTests, IsClassConstructor)
     EXPECT_FALSE(object->IsClassConstructor(vm_));
 }
 
+#ifdef PANDA_TARGET_AMD64
 HWTEST_F_L0(JSNApiTests, GetExportsFromFile)
 {
     LocalScope scope(vm_);
@@ -5209,6 +5210,7 @@ HWTEST_F_L0(JSNApiTests, GetExportsFromFile)
     Local<JSValueRef> sarr = result->Get(vm_, "sarr");
     EXPECT_FALSE(sarr->IsClassConstructor(vm_));
 }
+#endif
 
 /**
  * @tc.number: ffi_interface_api_GetGlobalHandleCount_001
