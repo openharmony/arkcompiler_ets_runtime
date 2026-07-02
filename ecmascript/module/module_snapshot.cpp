@@ -65,7 +65,7 @@ bool ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, cons
         ModulesSnapshotHelper::RemoveFile(filePath);
         return false;
     }
-    FileDeserializer deserializer(thread, fileData.release());
+    FileDeserializer deserializer(thread, fileData.get());
     JSHandle<TaggedArray> deserializedModules = JSHandle<TaggedArray>::Cast(deserializer.ReadValue());
     uint32_t length = deserializedModules->GetLength();
     for (uint32_t i = 0; i < length; i++) {
