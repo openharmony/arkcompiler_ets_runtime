@@ -74,4 +74,24 @@ HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
     auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
 }
+
+HWTEST_F_L0(GCTest, SharedPartialGCHeapVerificationTest)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    JSRuntimeOptions options;
+    options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        factory->NewSOldSpaceTaggedArray(512, JSTaggedValue::Undefined());
+    }
+    size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizebase);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_PARTIAL_GC, GCReason::OTHER>(thread);
+
+    auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
+}
 } // namespace panda::test

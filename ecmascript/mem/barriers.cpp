@@ -304,9 +304,6 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
         return slot.GetTaggedType();
     }
     Region *objectRegion = Region::ObjectAddressToRange(object);
-    if (objectRegion->InSharedHeap()) {
-        return slot.GetTaggedType();
-    }
     if (objectRegion->IsFromRegion()) {
         MarkWord markWord(object, RELAXED_LOAD);
         TaggedObject *toObject = nullptr;

@@ -23,6 +23,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
 #include "ecmascript/mem/local_cmc/cc_gc_visitor-inl.h"
+#include "ecmascript/mem/shared_heap/shared_partial_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "ecmascript/runtime_call_id.h"
@@ -123,7 +124,6 @@ void ConcurrentCopyGC::UpdateRoot()
     WeakRootVisitor weakVisitor = [mainEvacuator](TaggedObject *object) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(object);
         ASSERT(objectRegion != nullptr);
-        ASSERT(!objectRegion->IsToRegion());
         if (objectRegion->InSharedHeap()) {
             return object;
         } else if (!objectRegion->Test(object)) {
@@ -343,7 +343,9 @@ void ConcurrentCopyGC::Finish()
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification::VerifyCC(heap_);
     }
-    thread_->SetReadBarrierState(false);
+    if (!SharedHeap::GetInstance()->GetSharedPartialGC()->IsConcurrentUpdating()) {
+        thread_->SetReadBarrierState(false);
+    }
     thread_->SetCCStatus(CCStatus::READY);
     heap_->ResumeCC();
     heap_->SetFullMarkRequestedState(false);
@@ -354,10 +356,13 @@ void ConcurrentCopyGC::Finish()
 
 void ConcurrentCopyGC::PostGC()
 {
-    thread_->SwitchAllStub(true);
-    std::shared_ptr<pgo::PGOProfiler> pgoProfiler = thread_->GetEcmaVM()->GetPGOProfiler();
-    if (pgoProfiler != nullptr) {
-        pgoProfiler->ResumeByGC();
+    if (!SharedHeap::GetInstance()->GetSharedPartialGC()->IsConcurrentUpdating()) {
+        ASSERT(!thread_->NeedReadBarrier());
+        thread_->SwitchAllStub(true);
+        std::shared_ptr<pgo::PGOProfiler> pgoProfiler = thread_->GetEcmaVM()->GetPGOProfiler();
+        if (pgoProfiler != nullptr) {
+            pgoProfiler->ResumeByGC();
+        }
     }
 }
 }  // namespace panda::ecmascript

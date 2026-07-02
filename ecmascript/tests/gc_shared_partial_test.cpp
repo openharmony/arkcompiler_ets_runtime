@@ -14,7 +14,8 @@
  */
 
 #include "ecmascript/dfx/hprof/heap_sampling.h"
-#include "ecmascript/mem/shared_heap/shared_gc.h"
+#include "ecmascript/jit/jit_thread.h"
+#include "ecmascript/mem/shared_heap/shared_partial_gc.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
@@ -362,5 +363,96 @@ HWTEST_F_L0(SharedPartialGCTest, Expand2)
     SharedReadOnlySpace *sReadOnlySpace = sHeap->GetReadOnlySpace();
     sReadOnlySpace->IncreaseCommitted(10000);
     EXPECT_FALSE(sReadOnlySpace->Expand(thread));
+}
+
+HWTEST_F_L0(SharedPartialGCTest, LocalCCConflictTest)
+{
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    heap->GetHeapPrepare(thread);
+    std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
+    InitializeBaseObjects(space);
+    bool succ = heap->TryTriggerCCMarking(MarkReason::OTHER);
+    EXPECT_TRUE(succ);
+    sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::OTHER>(thread);
+    while (!thread->HasSuspendRequest()) {
+        continue;
+    }
+    thread->CheckSafepointIfSuspended();
+    if (thread->IsSharedConcurrentMarkingOrFinished()) {
+        sHeap->CollectGarbage<TriggerGCType::SHARED_PARTIAL_GC, GCReason::OTHER>(thread);
+    }
+    // conflict with local gc;
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    if (sHeap->GetSharedPartialGC()->IsConcurrentUpdating()) {
+        EXPECT_TRUE(thread->NeedReadBarrier());
+        EXPECT_FALSE(thread->HasSwitchedToStwStub());
+    } else {
+        EXPECT_FALSE(thread->NeedReadBarrier());
+        EXPECT_TRUE(thread->HasSwitchedToStwStub());
+    }
+    sHeap->WaitAllTasksFinished(thread);
+    EXPECT_FALSE(thread->NeedReadBarrier());
+    EXPECT_TRUE(thread->HasSwitchedToStwStub());
+}
+
+HWTEST_F_L0(SharedPartialGCTest, LocalCCConflictTest2)
+{
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    heap->GetHeapPrepare(thread);
+    std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
+    InitializeBaseObjects(space);
+    bool succ = heap->TryTriggerCCMarking(MarkReason::OTHER);
+    EXPECT_TRUE(succ);
+    sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::OTHER>(thread);
+    while (!thread->HasSuspendRequest()) {
+        continue;
+    }
+    thread->CheckSafepointIfSuspended();
+    if (thread->IsSharedConcurrentMarkingOrFinished()) {
+        sHeap->CollectGarbage<TriggerGCType::SHARED_PARTIAL_GC, GCReason::OTHER>(thread);
+    }
+    // conflict with local gc.
+    heap->CollectGarbageFromCCMark(GCReason::OTHER);
+    EXPECT_TRUE(thread->IsConcurrentCopying());
+    EXPECT_TRUE(thread->NeedReadBarrier());
+    EXPECT_FALSE(thread->HasSwitchedToStwStub());
+    sHeap->WaitAllTasksFinished(thread);
+    // local cc still running.
+    EXPECT_TRUE(thread->IsConcurrentCopying());
+    EXPECT_TRUE(thread->NeedReadBarrier());
+    EXPECT_FALSE(thread->HasSwitchedToStwStub());
+}
+
+HWTEST_F_L0(SharedPartialGCTest, DisableParallelGCTest)
+{
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->SetParallelGCEnabled(false);
+    Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->SetEnableConcurrentSweep(false);
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    heap->GetHeapPrepare(thread);
+    std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
+    InitializeBaseObjects(space);
+    sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::OTHER>(thread);
+    while (!thread->HasSuspendRequest()) {
+        continue;
+    }
+    thread->CheckSafepointIfSuspended();
+    if (thread->IsSharedConcurrentMarkingOrFinished()) {
+        sHeap->CollectGarbage<TriggerGCType::SHARED_PARTIAL_GC, GCReason::OTHER>(thread);
+    }
+    sHeap->WaitAllTasksFinished(thread);
+    EXPECT_FALSE(thread->NeedReadBarrier());
+    EXPECT_TRUE(thread->HasSwitchedToStwStub());
 }
 } // namespace panda::test

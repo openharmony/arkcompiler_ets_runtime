@@ -1164,7 +1164,7 @@ bool SharedHeap::NeedGCInSensitiveStatus() const
     if (!InSensitiveStatusAfterStartup() || smartGCStats_.forceGC_) {
         return false;
     }
-    if (GetHeapObjectSize() > recordSensitiveSize_ + config_.GetIncObjSizeThresholdInSensitive()) {
+    if (GetHeapObjectSize() > recordSensitiveSize_ + config_.GetSIncObjSizeThresholdInSensitive()) {
         return true;
     }
     return false;

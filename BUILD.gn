@@ -1114,6 +1114,7 @@ ecma_source = [
   "ecmascript/mem/shared_heap/global_gc_marker.cpp",
   "ecmascript/mem/shared_heap/global_parallel_cleaner.cpp",
   "ecmascript/mem/shared_heap/shared_gc.cpp",
+  "ecmascript/mem/shared_heap/shared_partial_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_evacuator.cpp",
   "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",

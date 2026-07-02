@@ -18,7 +18,6 @@
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/mem/shared_heap/shared_gc_evacuator.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_gc_visitor-inl.h"
 #include "ecmascript/mem/verification.h"
@@ -51,7 +50,6 @@ void SharedGC::RunPhases()
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_MARK).VerifyMark(markingInProgress_);
     }
     PreSweep();
-    Evacuate();
     Sweep();
     if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
         // verify sweep
@@ -108,18 +106,8 @@ void SharedGC::Mark()
 }
 void SharedGC::PreSweep()
 {
-    if (markingInProgress_ && sHeap_->GetGCType() == TriggerGCType::SHARED_PARTIAL_GC) {
-        sHeap_->GetOldSpace()->SelectCSets();
-    }
     sHeap_->GetSweeper()->Sweep(false);
     UpdateRecordWeakReference();
-}
-
-void SharedGC::Evacuate()
-{
-    if (sHeap_->HasCSetRegions()) {
-        sHeap_->GetSharedGCEvacuator()->Evacuate();
-    }
 }
 
 void SharedGC::Sweep()
@@ -159,16 +147,13 @@ void SharedGC::Sweep()
         LOG_GC(DEBUG) << "process string table stw";
         stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
     }
-    bool needClearCache = sHeap_->HasCSetRegions();
+    ASSERT(!sHeap_->HasCSetRegions());
     Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
-    Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
+    Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
-        if (needClearCache) {
-            thread->ClearVMCachedConstantPool();
-        }
     });
 
     if (!concurrentProcessStringTable_) {

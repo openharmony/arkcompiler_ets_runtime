@@ -450,6 +450,7 @@ SharedGCWorkManager::SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum)
 SharedGCWorkManager::~SharedGCWorkManager()
 {
     Finish();
+    FinishBase();
     for (uint32_t i = 0; i < threadNum_; i++) {
         works_.at(i).Destroy();
     }
@@ -485,7 +486,6 @@ size_t SharedGCWorkManager::Finish()
     }
     FinishAndDestroyExtraTemporaryHolders();
     markStack_.Clear();
-    FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
 }

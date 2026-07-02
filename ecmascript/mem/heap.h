@@ -79,6 +79,7 @@ class SharedGCMarkerBase;
 class SharedGCMarker;
 class SharedFullGC;
 class SharedGCMovableMarker;
+class SharedPartialGC;
 class ThreadLocalAllocationBuffer;
 class JSThread;
 class DaemonThread;
@@ -455,6 +456,7 @@ protected:
     };
 
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
+    static constexpr size_t COLD_STARTUP_COMPRESS_LIMIT = 20_MB;
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
@@ -514,6 +516,11 @@ public:
     void EnableParallelGC(JSRuntimeOptions &option);
 
     void DisableParallelGC(JSThread *thread);
+
+    void SetParallelGCEnabled(bool enable)
+    {
+        parallelGC_ = enable;
+    }
 
     void AdjustGlobalSpaceAllocLimit();
 
@@ -616,18 +623,22 @@ public:
             return false;
         }
         smartGCStats_.startupStatus_ = StartupStatus::FINISH_STARTUP;
-        tryCompressHeapAfterStartup_ = true;
+        if (sOldSpace_->GetCommittedSize() > COLD_STARTUP_COMPRESS_LIMIT) {
+            tryCompressHeapAfterStartup_ = true;
+        }
         return true;
     }
 
     bool TryCompressHeap()
     {
-        if (tryCompressHeapAfterStartup_) {
+        if (tryCompressHeapAfterStartup_ && concurrentMarkEnabled_) {
             tryCompressHeapAfterStartup_ = false;
             return true;
         }
         return false;
     }
+
+    bool NeedSwitchRBStub() const;
 
     bool FinishStartupEvent() override
     {
@@ -807,6 +818,7 @@ public:
     void WaitGCFinished(JSThread *thread);
 
     void DaemonCollectGarbage(TriggerGCType gcType, GCReason reason);
+    void DaemonCollectGarbageWithFlip(TriggerGCType gcType, GCReason reason);
 
     inline size_t GetCommittedSize() const override
     {
@@ -904,6 +916,7 @@ public:
     void WaitGlobalGCMarkTaskFinished();
     void CompactHeapBeforeFork(JSThread *thread);
     void ReclaimForAppSpawn();
+    void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
 
     SharedGCWorkManager *GetWorkManager() const
     {
@@ -918,6 +931,11 @@ public:
     SharedFullGC *GetSharedFullGC() const
     {
         return sharedFullGC_;
+    }
+
+    SharedPartialGC *GetSharedPartialGC() const
+    {
+        return sharedPartialGC_;
     }
 
     GlobalGCMarker *GetGlobalGCMarker() const
@@ -1029,7 +1047,6 @@ public:
 
 private:
     void ProcessAllGCListeners();
-    void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
     void NotifyDeferFreezeFinish(TriggerGCType gcType);
 
     void MoveOldSpaceToAppspawn();
@@ -1065,9 +1082,8 @@ private:
     bool localFullMarkTriggered_ {false};
 
     bool optionalLogEnabled_ {false};
-
     bool parallelGC_ {true};
-
+    bool concurrentMarkEnabled_ {true};
     // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set
     // to true even if sweep_task and clear_task is running asynchronously
     bool gcFinished_ {true};
@@ -1088,6 +1104,7 @@ private:
     SharedConcurrentMarker *sConcurrentMarker_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
+    SharedPartialGC *sharedPartialGC_ {nullptr};
     GlobalGC *globalGC_ {nullptr};
     GlobalGCMarker *globalGCMarker_ {nullptr};
     GlobalGCWorkManager *globalGCWorkManager_ {nullptr};

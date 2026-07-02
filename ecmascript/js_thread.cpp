@@ -781,6 +781,15 @@ void JSThread::UpdateJitCodeMapReference(const WeakRootVisitor &visitor)
     }
 }
 
+void JSThread::SetReadyForGCIterating(bool flag)
+{
+    readyForGCIterating_ = flag;
+    if (readyForGCIterating_ && SharedHeap::GetInstance()->NeedSwitchRBStub()) {
+        SetReadBarrierState(true);
+        SwitchAllStub(false);
+    }
+}
+
 bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

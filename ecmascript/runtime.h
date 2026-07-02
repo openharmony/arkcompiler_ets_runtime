@@ -104,6 +104,15 @@ public:
         GCIterateThreadListUnsafe(cb);
     }
 
+    template<class Callback>
+    void IterateAllThreadList(const Callback &cb)
+    {
+        LockHolder lock(threadsLock_);
+        for (auto thread : threads_) {
+            cb(thread);
+        }
+    }
+
     void SetEnableLargeHeap(bool value)
     {
         enableLargeHeap_ = value;

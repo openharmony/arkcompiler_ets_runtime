@@ -876,10 +876,7 @@ public:
         return inGlobalEnvInitialize_;
     }
 
-    void SetReadyForGCIterating(bool flag)
-    {
-        readyForGCIterating_ = flag;
-    }
+    void SetReadyForGCIterating(bool flag);
 
     bool ReadyForGCIterating() const
     {
@@ -1893,6 +1890,16 @@ public:
         fullMarkRequest_ = false;
     }
 
+    bool SuspendByConcurrentTask() const
+    {
+        return suspendByConcurrentTask_;
+    }
+
+    void SetSuspendByConcurrentTask(bool flag)
+    {
+        suspendByConcurrentTask_ = flag;
+    }
+
     Closure *GetFlipFunction() const
     {
         return flipFunction_;
@@ -2384,6 +2391,7 @@ private:
     // Shared heap
     bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
+    bool suspendByConcurrentTask_ {false};
     // Shared heap collect local heap Rset
     bool processingLocalToSharedRset_ {false};
 
