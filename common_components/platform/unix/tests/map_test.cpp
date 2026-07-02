@@ -31,14 +31,14 @@ HWTEST_F_L0(PageProtectTest, TestPageProtect)
     void* mem = mmap(nullptr, pageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     ASSERT_NE(mem, MAP_FAILED);
 
-    bool success = common::PageProtect(mem, pageSize, PROT_READ);
-    EXPECT_TRUE(success);
+    int ret = common::PageProtect(mem, pageSize, PROT_READ);
+    EXPECT_TRUE(ret == 0);
 
     munmap(mem, pageSize);
 }
 
 HWTEST_F_L0(PageProtectTest, TestNullptrMemory)
 {
-    bool success = common::PageProtect(nullptr, getpagesize(), -1);
-    EXPECT_FALSE(success);
+    int ret = common::PageProtect(nullptr, getpagesize(), -1);
+    EXPECT_FALSE(ret == 0);
 }

@@ -23,15 +23,15 @@
 
 namespace common {
 
-bool PageProtect(void *mem, size_t size, int prot)
+int PageProtect(void *mem, size_t size, int prot)
 {
     [[maybe_unused]] DWORD oldProtect;
     if (!VirtualProtect(mem, size, prot, &oldProtect)) {
         int errCode = GetLastError();
         LOG_COMMON(ERROR) << "PageProtect mem = " << mem << ", size = " << size << ", change to " << prot
                           << " failed, error code is " << errCode;
-        return false;
+        return errCode;
     }
-    return true;
+    return 0;
 }
 }  // namespace common

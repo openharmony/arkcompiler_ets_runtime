@@ -19,14 +19,13 @@
 
 namespace common {
 
-bool PageProtect(void *mem, size_t size, int prot)
+int PageProtect(void *mem, size_t size, int prot)
 {
     int ret = mprotect(mem, size, prot);
     if (ret != 0) {
         LOG_COMMON(ERROR) << "PageProtect mem = " << mem << ", size = " << size << ", change to " << prot
                           << " failed, ret = " << ret << ", error code is " << errno;
-        return false;
     }
-    return true;
+    return ret;
 }
 }  // namespace common

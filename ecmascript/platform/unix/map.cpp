@@ -109,7 +109,7 @@ MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
 void MachineCodePageUnmap(MemMap it)
 {
     PageClearTag(it.GetMem(), it.GetSize());
-    if (!PageProtect(it.GetMem(), it.GetSize(), PAGE_PROT_NONE)) {
+    if (PageProtect(it.GetMem(), it.GetSize(), PAGE_PROT_NONE) != 0) {
         return;
     }
     PageUnmap(it);
@@ -142,15 +142,15 @@ void PageClearTag(void *mem, size_t size)
     PrctlSetVMA(mem, size, nullptr);
 }
 
-bool PageProtect(void *mem, size_t size, int prot)
+int PageProtect(void *mem, size_t size, int prot)
 {
     int ret = mprotect(mem, size, prot);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "PageProtect mem = " << mem << ", size = " << size <<
             ", change to " << prot << " failed, ret = " << ret << ", error code is " << errno;
-        return false;
+        return ret;
     }
-    return true;
+    return 0;
 }
 
 size_t PageSize()

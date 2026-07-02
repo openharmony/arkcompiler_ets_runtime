@@ -161,7 +161,7 @@ MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
 #endif
 }
 
-static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[maybe_unused]] bool isEnableJitFort)
+static int PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[maybe_unused]] bool isEnableJitFort)
 {
     int prot = machineCodeSpace ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
 
@@ -177,10 +177,8 @@ static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[mayb
     } else {
         // else Jit code will be in MachineCode space, need EXEC_READWRITE and MAP_EXECUTABLE (0x1000)
         void *addr = PageMapExecFortSpace(mem, size, PAGE_PROT_EXEC_READWRITE);
-        if (addr != mem) {
-            return false;
-        }
-        return true;
+
+        return addr == mem ? 0 : -1;
     }
 #else
     // not running phone kernel. Jit code will be MachineCode space
@@ -285,9 +283,9 @@ void MemMapAllocator::InitialMemPool(MemMap &mem, const uint32_t threadId, size_
                                      bool isMachineCode, bool isEnableJitFort,
                                      bool shouldPageTag, PageTagType type)
 {
-    bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
-    if (!res) {
-        LOG_COMMON(FATAL) << "Page Protect failed. ret = " << res;
+    int res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
+    if (res != 0) { // LCOV_EXCL_BR_LINE
+        LOG_COMMON(FATAL) << "Page Protect failed. Ret of mprotect is " << res; // LCOV_EXCL_LINE
     }
     if (shouldPageTag) {
         PageTag(mem.GetMem(), size, type, spaceName, threadId);
@@ -337,7 +335,7 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompre
 
 void MemMapAllocator::ReleaseMemory(void *mem, size_t size, bool isRegular, bool isCompress)
 {
-    if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
+    if (PageProtect(mem, size, PAGE_PROT_NONE) != 0) { // LCOV_EXCL_BR_LINE
         return;
     }
     PageRelease(mem, size);

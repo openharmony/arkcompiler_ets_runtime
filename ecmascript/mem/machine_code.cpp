@@ -31,7 +31,7 @@ static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
         uintptr_t startPage = AlignDown(reinterpret_cast<uintptr_t>(textStart), pageSize);
         uintptr_t endPage = AlignUp(reinterpret_cast<uintptr_t>(textStart) + dataSize, pageSize);
         size_t protSize = endPage - startPage;
-        return PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
+        return PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE) == 0;
     }
     return true;
 }
