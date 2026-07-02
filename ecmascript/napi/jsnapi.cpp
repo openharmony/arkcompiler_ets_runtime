@@ -140,52 +140,58 @@ using ModulePathHelper = ecmascript::ModulePathHelper;
 using TransformType = ecmascript::base::JsonHelper::TransformType;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define TYPED_ARRAY_NEW(Type)                                                                             \
-    Local<Type##Ref> Type##Ref::New(                                                                      \
-        const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length)               \
-    {                                                                                                     \
-        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                      \
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                   \
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                     \
-                                                                                                          \
-        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
-        JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                            \
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();             \
-        const uint32_t argsLength = 3;                                                                    \
-        EcmaRuntimeCallInfo *info =                                                                       \
-            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);   \
-        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
-        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length)); \
-        JSTaggedValue result = JSFunction::Construct(info);                                               \
-        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
-        JSHandle<JSTaggedValue> resultHandle(thread, result);                                             \
-        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                            \
+#define TYPED_ARRAY_NEW(Type)                                                                                       \
+    Local<Type##Ref> Type##Ref::New(                                                                                \
+        const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length)                         \
+    {                                                                                                               \
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                                \
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                             \
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                               \
+                                                                                                                    \
+        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                                  \
+        JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                                      \
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();                       \
+        const uint32_t argsLength = 3;                                                                              \
+        EcmaRuntimeCallInfo *info =                                                                                 \
+            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);             \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                                  \
+        if ((info) == nullptr) {                                                                                    \
+            return JSNApiHelper::ToLocal<Type##Ref>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));   \
+        }                                                                                                           \
+        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length));           \
+        JSTaggedValue result = JSFunction::Construct(info);                                                         \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                                  \
+        JSHandle<JSTaggedValue> resultHandle(thread, result);                                                       \
+        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                                      \
     }
 
 TYPED_ARRAY_ALL(TYPED_ARRAY_NEW)
 
 #undef TYPED_ARRAY_NEW
 
-#define SENDABLE_TYPED_ARRAY_NEW(Type)                                                                    \
-    Local<Type##Ref> Type##Ref::New(                                                                      \
-        const EcmaVM *vm, Local<SendableArrayBufferRef> buffer, int32_t byteOffset, int32_t length)       \
-    {                                                                                                     \
-        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                      \
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                   \
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                     \
-                                                                                                          \
-        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
-        JSHandle<JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                    \
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();             \
-        const uint32_t argsLength = 3;                                                                    \
-        EcmaRuntimeCallInfo *info =                                                                       \
-            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);   \
-        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
-        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length)); \
-        JSTaggedValue result = JSFunction::Construct(info);                                               \
-        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
-        JSHandle<JSTaggedValue> resultHandle(thread, result);                                             \
-        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                            \
+#define SENDABLE_TYPED_ARRAY_NEW(Type)                                                                              \
+    Local<Type##Ref> Type##Ref::New(                                                                                \
+        const EcmaVM *vm, Local<SendableArrayBufferRef> buffer, int32_t byteOffset, int32_t length)                 \
+    {                                                                                                               \
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                                \
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                             \
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                               \
+                                                                                                                    \
+        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                                  \
+        JSHandle<JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                              \
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();                       \
+        const uint32_t argsLength = 3;                                                                              \
+        EcmaRuntimeCallInfo *info =                                                                                 \
+            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);             \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                                  \
+        if ((info) == nullptr) {                                                                                    \
+            return JSNApiHelper::ToLocal<Type##Ref>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));   \
+        }                                                                                                           \
+        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length));           \
+        JSTaggedValue result = JSFunction::Construct(info);                                                         \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                                  \
+        JSHandle<JSTaggedValue> resultHandle(thread, result);                                                       \
+        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                                      \
     }
 
 SENDABLE_TYPED_ARRAY_ALL(SENDABLE_TYPED_ARRAY_NEW)
