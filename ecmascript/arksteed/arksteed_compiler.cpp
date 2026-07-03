@@ -26,6 +26,7 @@
 #include "ecmascript/arksteed/arksteed_graph_verifier.h"
 #include "ecmascript/arksteed/arksteed_regalloc.h"
 #include "ecmascript/arksteed/arksteed_regalloc_processors.h"
+#include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/arksteed/arksteed_task.h"
 #include "ecmascript/compiler/jit_compiler.h"
@@ -204,8 +205,11 @@ bool ArkSteedCompilerTask::Compile()
     if (!BuildGraph(compilerThread, hostGlueAddr)) {
         return false;
     }
+
+    WriteBarrierValueKindPass writeBarrierValueKindPass(graph_);
+    writeBarrierValueKindPass.Run();
+
     // Verify graph integrity
-    // to do: Post-build optimizations (when enabled)
     VerifyGraph(graph_);
     RunPreRegallocProcessors();
 

@@ -30,6 +30,20 @@ namespace panda::ecmascript::arksteed {
 
 enum ConnectionLocation { TOP = 1 << 0, LEFT = 1 << 1, RIGHT = 1 << 2, BOTTOM = 1 << 3 };
 
+static const char *WriteBarrierValueKindName(ArkSteedWriteBarrierValueKind kind)
+{
+    switch (kind) {
+        case ArkSteedWriteBarrierValueKind::Unknown:
+            return "unknown";
+        case ArkSteedWriteBarrierValueKind::NonHeap:
+            return "non_heap";
+        case ArkSteedWriteBarrierValueKind::HeapObject:
+            return "heap_object";
+    }
+    UNREACHABLE();
+    return "unknown";
+}
+
 struct Connection {
     void Connect(ConnectionLocation loc)
     {
@@ -393,6 +407,16 @@ std::string GraphPrinter::FormatVertexStubInfo(Vertex *vertex) const
     } else if (vertex->Is<CallCommonStubVertex>()) {
         CallCommonStubVertex *callStub = vertex->Cast<CallCommonStubVertex>();
         line += " [" + kungfu::CommonStubCSigns::GetName(callStub->GetCommonStubID()) + "]";
+    } else if (vertex->Is<StoreTaggedFieldWithBarrierVertex>()) {
+        auto *store = vertex->Cast<StoreTaggedFieldWithBarrierVertex>();
+        line += " [StoreTaggedFieldWithBarrier]";
+        line += " value_kind=";
+        line += WriteBarrierValueKindName(store->GetValueKind());
+    } else if (vertex->Is<StoreSharedFieldWithBarrierVertex>()) {
+        auto *store = vertex->Cast<StoreSharedFieldWithBarrierVertex>();
+        line += " [StoreSharedFieldWithBarrier]";
+        line += " value_kind=";
+        line += WriteBarrierValueKindName(store->GetValueKind());
     } else if (vertex->Is<ValueVertex>()) {
         ValueVertex *valueVertex = vertex->Cast<ValueVertex>();
         line += " [" + ValueRepresentationToString(valueVertex->GetValueRepresentation()) + "]";

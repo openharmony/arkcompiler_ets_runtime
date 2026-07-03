@@ -1,0 +1,2 @@
+StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier] value_kind=unknown
+StoreTaggedFieldWithBarrierVertex

@@ -119,10 +119,22 @@ void ArkSteedAssembler::LoadField(ArkSteedRegister dst, ArkSteedRegister base, i
     LoadRegisterWithOperand(assembler_, dst, operand);
 }
 
+void ArkSteedAssembler::LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset)
+{
+    aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
+    assembler_.Ldr(dst.W(), operand);
+}
+
 void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
 {
     aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
     StoreRegisterWithOperand(assembler_, src, operand);
+}
+
+void ArkSteedAssembler::StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
+    assembler_.Str(src.W(), operand);
 }
 
 void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
@@ -326,6 +338,22 @@ void ArkSteedAssembler::Lsr(ArkSteedRegister dst, uint32_t shift)
 {
     ArkSteedRegister arm64Dst = dst;
     assembler_.Lsr(arm64Dst, arm64Dst, shift);
+}
+
+void ArkSteedAssembler::ShiftRightLogical(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Lsr(dst, dst, shift);
+}
+
+void ArkSteedAssembler::ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Lsr(dst.W(), dst.W(), shift);
+}
+
+void ArkSteedAssembler::MoveBitMask32(ArkSteedRegister dst, ArkSteedRegister bitIndex)
+{
+    Move(dst, 1);
+    assembler_.Lsl(dst.W(), dst.W(), bitIndex.W());
 }
 
 void ArkSteedAssembler::Int32Neg(ArkSteedRegister dst)

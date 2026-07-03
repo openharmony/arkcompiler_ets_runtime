@@ -62,6 +62,7 @@ public:
     static constexpr int NUM_ARG_REGISTERS = 8;
 #endif
     static constexpr ArkSteedRegister GetParameterRegister(int i);
+    inline void LoadGlue(ArkSteedRegister dst);
 
     static constexpr int FRAME_SLOT_SIZE = 8;
 
@@ -111,7 +112,9 @@ public:
     // =========================================================================
 
     void LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
+    void LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void LoadActualArgc(ArkSteedRegister dst);
 
     void LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp);
@@ -154,6 +157,9 @@ public:
     void And(ArkSteedRegister dst, int64_t immediate);
     void And(ArkSteedRegister dst, ArkSteedRegister src);
     void Lsr(ArkSteedRegister dst, uint32_t shift);
+    void ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
+    void ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift);
+    void MoveBitMask32(ArkSteedRegister dst, ArkSteedRegister bitIndex);
     void Int32Neg(ArkSteedRegister dst);
     void Int32Inc(ArkSteedRegister dst);
     void Int32Dec(ArkSteedRegister dst);
@@ -203,6 +209,7 @@ public:
     void Call(Label *target);
     inline void CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId);
     inline void CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId);
+    inline void CallNGCRuntime(kungfu::RuntimeStubCSigns::ID runtimeId);
     inline void CallCommonStub(uint32_t stubId);
     void ReturnWithPendingException();
     void ReturnIfPendingException();

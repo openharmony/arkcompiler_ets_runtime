@@ -220,6 +220,8 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
     // Spill registers if this is a call
     if (vertex->GetProperties().IsCall()) {
         SpillAndClearRegisters();
+    } else if (vertex->GetProperties().IsASMBarrierCall()) {
+        SpillAndClearASMBarrierClobbers();
     }
 
     if (vertex->GetProperties().CanEagerDeopt()) {
@@ -740,6 +742,41 @@ void ArkSteedRegisterAllocator::SpillAndClearRegisters()
     SpillAndClearRegisters(doubleRegisters_);
 #ifndef NDEBUG
     LOG_COMPILER(DEBUG) << "CALL OPERATION: Registers spilled and cleared.";
+#endif
+}
+
+template <typename RegisterT>
+void ArkSteedRegisterAllocator::SpillAndClearRegisters(RegisterSnapshot<RegisterT> &registers,
+                                                       RegListBase<RegisterT> clobbered)
+{
+    RegListBase<RegisterT> usedClobbered = registers.Used() & clobbered;
+    while (usedClobbered != registers.Empty()) {
+        RegisterT reg = usedClobbered.First();
+        ValueVertex *vertex = registers.GetValue(reg);
+        Spill(vertex);
+        registers.FreeRegistersUsedBy(vertex);
+        ASSERT(!registers.Used().Has(reg));
+        usedClobbered = registers.Used() & clobbered;
+    }
+}
+
+void ArkSteedRegisterAllocator::SpillAndClearASMBarrierClobbers()
+{
+#if defined(PANDA_TARGET_AMD64)
+    SpillAndClearRegisters(generalRegisters_, ArkSteedRegList{x64::r11});
+    SpillAndClearRegisters(doubleRegisters_, GetAllocatableDoubleRegisters());
+#elif defined(PANDA_TARGET_ARM64)
+    SpillAndClearRegisters(generalRegisters_, ArkSteedRegList{aarch64::x15});
+    SpillAndClearRegisters(doubleRegisters_,
+        ArkDoubleRegList{aarch64::d0,  aarch64::d1,  aarch64::d2,  aarch64::d3,
+                         aarch64::d4,  aarch64::d5,  aarch64::d6,  aarch64::d7,
+                         aarch64::d16, aarch64::d17, aarch64::d18, aarch64::d19,
+                         aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23,
+                         aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27,
+                         aarch64::d28, aarch64::d29});
+#endif
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "ASM BARRIER CALL: Clobbered registers spilled and cleared.";
 #endif
 }
 

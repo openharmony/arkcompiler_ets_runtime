@@ -36,6 +36,24 @@ public:
         return descriptor;
     }
 
+    static SideEffectDescriptor Classify(StoreTaggedFieldWithBarrierVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreTaggedFieldWithBarrierVertex::OBJECT_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreSharedFieldWithBarrierVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreSharedFieldWithBarrierVertex::OBJECT_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
     static SideEffectDescriptor Classify(StoreEnvSlotVertex *vertex)
     {
         SideEffectDescriptor descriptor;

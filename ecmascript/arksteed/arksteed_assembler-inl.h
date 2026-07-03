@@ -70,6 +70,13 @@ void ArkSteedAssembler::CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId)
     Move(scratch, static_cast<uint64_t>(address));
     Call(scratch);
 }
+
+void ArkSteedAssembler::LoadGlue(ArkSteedRegister dst)
+{
+    ASSERT(entryThread_ != nullptr);
+    Move(dst, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+}
+
 void ArkSteedAssembler::CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId)
 {
     TemporaryRegisterScope scope(this);
@@ -84,6 +91,17 @@ void ArkSteedAssembler::CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId)
     Move(scratch, static_cast<uint64_t>(address));
     Call(scratch);
 }
+
+void ArkSteedAssembler::CallNGCRuntime(kungfu::RuntimeStubCSigns::ID runtimeId)
+{
+    TemporaryRegisterScope scope(this);
+    ASSERT(entryThread_ != nullptr);
+    Address address = entryThread_->GetRTInterface(static_cast<size_t>(runtimeId));
+    auto scratch = scope.AcquireScratch();
+    Move(scratch, static_cast<uint64_t>(address));
+    Call(scratch);
+}
+
 inline void ArkSteedAssembler::CallCommonStub(uint32_t stubId)
 {
     TemporaryRegisterScope scope(this);

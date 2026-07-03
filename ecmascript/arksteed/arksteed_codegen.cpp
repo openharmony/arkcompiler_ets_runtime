@@ -23,6 +23,7 @@
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
+#include "ecmascript/arksteed/arksteed_write_barrier.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
@@ -303,6 +304,15 @@ std::optional<int32_t> TryGetInt32ConstantInput(const Vertex *vertex, int inputI
         return constant->GetValue();
     }
     return std::nullopt;
+}
+
+bool TryGetIntPtrConstant(const ValueVertex *vertex, intptr_t *value)
+{
+    if (vertex == nullptr || !vertex->Is<IntPtrConstantVertex>()) {
+        return false;
+    }
+    *value = vertex->Cast<IntPtrConstantVertex>()->GetValue();
+    return true;
 }
 
 template <typename T>
@@ -1011,6 +1021,52 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldVertex>(StoreT
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldWithBarrierVertex>(
+    StoreTaggedFieldWithBarrierVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId()
+                        << ": StoreTaggedFieldWithBarrierVertex";
+#endif
+    auto glue = GetInputRegister(storeField, StoreTaggedFieldWithBarrierVertex::GLUE_INDEX);
+    auto object = GetInputRegister(storeField, StoreTaggedFieldWithBarrierVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeField, StoreTaggedFieldWithBarrierVertex::VALUE_INDEX);
+    auto offsetScratch = ArkSteedAssembler::GetParameterRegister(2);
+    auto temporaryRegisters = storeField->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister primaryScratch = temporaryRegisters.PopFirst();
+    ArkSteedRegister secondaryScratch = temporaryRegisters.PopFirst();
+    ASSERT(primaryScratch != offsetScratch);
+    ASSERT(secondaryScratch != offsetScratch);
+    ASSERT(primaryScratch != secondaryScratch);
+    ArkSteedWriteBarrierEmitter(assembler_)
+        .StoreTaggedField(glue, object, value, storeField->GetOffset(), ArkSteedWriteBarrierKind::GENERIC_BARRIER,
+                          primaryScratch, offsetScratch, secondaryScratch, storeField->GetValueKind());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreSharedFieldWithBarrierVertex>(
+    StoreSharedFieldWithBarrierVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId()
+                        << ": StoreSharedFieldWithBarrierVertex";
+#endif
+    auto glue = GetInputRegister(storeField, StoreSharedFieldWithBarrierVertex::GLUE_INDEX);
+    auto object = GetInputRegister(storeField, StoreSharedFieldWithBarrierVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeField, StoreSharedFieldWithBarrierVertex::VALUE_INDEX);
+    auto offsetScratch = ArkSteedAssembler::GetParameterRegister(2);
+    auto temporaryRegisters = storeField->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister primaryScratch = temporaryRegisters.PopFirst();
+    ArkSteedRegister secondaryScratch = temporaryRegisters.PopFirst();
+    ASSERT(primaryScratch != offsetScratch);
+    ASSERT(secondaryScratch != offsetScratch);
+    ASSERT(primaryScratch != secondaryScratch);
+    ArkSteedWriteBarrierEmitter(assembler_)
+        .StoreTaggedField(glue, object, value, storeField->GetOffset(), ArkSteedWriteBarrierKind::SHARED_BARRIER,
+                          primaryScratch, offsetScratch, secondaryScratch, storeField->GetValueKind());
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<StoreEnvSlotVertex>(StoreEnvSlotVertex *storeEnvSlot)
 {
 #ifndef NDEBUG
@@ -1038,8 +1094,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<SetValueWithBarrierVertex>(
         __ Compare(scratch, 0);
         __ JumpIf(Condition::COND_NOT_ZERO, &done);
     }
-    __ Move(ArkSteedAssembler::GetParameterRegister(2),
-                     static_cast<int64_t>(setValueWithBarrier->GetOffset()));
+    __ Move(ArkSteedAssembler::GetParameterRegister(2), static_cast<int64_t>(setValueWithBarrier->GetOffset()));
     __ CallCommonStub(kungfu::CommonStubCSigns::SetValueWithBarrier);
     safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     __ Bind(&done);

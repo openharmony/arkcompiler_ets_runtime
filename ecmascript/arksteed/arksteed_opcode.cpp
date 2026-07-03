@@ -368,6 +368,34 @@ void StoreTaggedFieldVertex::Dump(std::ostream &output) const
     output << "  StoreTaggedField: offset=" << offset_;
 }
 
+void StoreTaggedFieldWithBarrierVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);
+    GetRegallocInfo()->AddGeneralTemporary(ArkSteedAssembler::GetParameterRegister(2));
+    UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
+    UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
+    UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
+}
+
+void StoreTaggedFieldWithBarrierVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreTaggedFieldWithBarrier";
+}
+
+void StoreSharedFieldWithBarrierVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);
+    GetRegallocInfo()->AddGeneralTemporary(ArkSteedAssembler::GetParameterRegister(2));
+    UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
+    UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
+    UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
+}
+
+void StoreSharedFieldWithBarrierVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreSharedFieldWithBarrier";
+}
+
 void StoreEnvSlotVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(ENV_INDEX));

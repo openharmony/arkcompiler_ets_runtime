@@ -1,0 +1,5 @@
+DeoptIfHClassMismatch
+DeoptIfHClassMismatchVertex
+Loop Header
+StoreTaggedField [Tagged]
+NOT: StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

@@ -138,6 +138,7 @@ public:
     using NeedsRegSnapshotBit = IsConversionBit::NextField<bool, 1>;
     using IsCallBit = NeedsRegSnapshotBit::NextField<bool, 1>;
     using IsDeferredCallBit = IsCallBit::NextField<bool, 1>;
+    using IsASMBarrierCallBit = IsDeferredCallBit::NextField<bool, 1>;
 
     constexpr bool IsDeoptCheckpoint() const
     {
@@ -173,6 +174,11 @@ public:
     constexpr bool IsDeferredCall() const
     {
         return IsDeferredCallBit::Decode(bitfield_);
+    }
+
+    constexpr bool IsASMBarrierCall() const
+    {
+        return IsASMBarrierCallBit::Decode(bitfield_);
     }
 
     constexpr bool IsAnyCall() const
@@ -321,6 +327,11 @@ public:
     static constexpr VertexProperties Call()
     {
         return VertexProperties(IsCallBit::Encode(true));
+    }
+
+    static constexpr VertexProperties ASMBarrierCall()
+    {
+        return VertexProperties(IsASMBarrierCallBit::Encode(true));
     }
 
     static constexpr VertexProperties CanCallUserCode()

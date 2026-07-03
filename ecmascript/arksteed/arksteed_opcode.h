@@ -694,10 +694,22 @@ private:
     int32_t offset_;
 };
 
+enum class ArkSteedWriteBarrierKind : uint8_t {
+    NO_BARRIER,
+    GENERIC_BARRIER,
+    SHARED_BARRIER,
+};
+
+enum class ArkSteedWriteBarrierValueKind : uint8_t {
+    Unknown,
+    NonHeap,
+    HeapObject,
+};
+
 // 2: object and value inputs
 class StoreTaggedFieldVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreTaggedFieldVertex> {
 public:
-    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::DeferredCall();
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp();
 
     // 2: object and value input types
     static constexpr auto INPUT_TYPES = detail::InputTypes<2>(ValueRepresentation::TAGGED, ValueRepresentation::TAGGED);
@@ -727,6 +739,89 @@ public:
 private:
     int32_t offset_;
     uint32_t propertyId_;
+};
+
+class StoreTaggedFieldWithBarrierVertex
+    : public FixedInputVertexMixin<3, NonControlVertex, StoreTaggedFieldWithBarrierVertex> {
+public:
+    static constexpr int GLUE_INDEX = 0;
+    static constexpr int OBJECT_INDEX = 1;
+    static constexpr int VALUE_INDEX = 2;
+    static constexpr auto INPUT_TYPES = detail::InputTypes<3>(ValueRepresentation::INT_PTR,
+                                                              ValueRepresentation::TAGGED,
+                                                              ValueRepresentation::TAGGED);
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() |
+        VertexProperties::ASMBarrierCall();
+
+    explicit StoreTaggedFieldWithBarrierVertex(uint64_t bitfield, int32_t offset,
+                                               ArkSteedWriteBarrierValueKind valueKind =
+                                                   ArkSteedWriteBarrierValueKind::Unknown)
+        : FixedInputVertexMixin(bitfield), offset_(offset), valueKind_(valueKind)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    ArkSteedWriteBarrierValueKind GetValueKind() const
+    {
+        return valueKind_;
+    }
+
+    void SetValueKind(ArkSteedWriteBarrierValueKind valueKind)
+    {
+        valueKind_ = valueKind;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+    ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
+};
+
+class StoreSharedFieldWithBarrierVertex
+    : public FixedInputVertexMixin<3, NonControlVertex, StoreSharedFieldWithBarrierVertex> {
+public:
+    static constexpr int GLUE_INDEX = 0;
+    static constexpr int OBJECT_INDEX = 1;
+    static constexpr int VALUE_INDEX = 2;
+    static constexpr auto INPUT_TYPES = detail::InputTypes<3>(ValueRepresentation::INT_PTR,
+                                                              ValueRepresentation::TAGGED,
+                                                              ValueRepresentation::TAGGED);
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::Call();
+
+    explicit StoreSharedFieldWithBarrierVertex(uint64_t bitfield, int32_t offset,
+                                               ArkSteedWriteBarrierValueKind valueKind =
+                                                   ArkSteedWriteBarrierValueKind::Unknown)
+        : FixedInputVertexMixin(bitfield), offset_(offset), valueKind_(valueKind)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    ArkSteedWriteBarrierValueKind GetValueKind() const
+    {
+        return valueKind_;
+    }
+
+    void SetValueKind(ArkSteedWriteBarrierValueKind valueKind)
+    {
+        valueKind_ = valueKind;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+    ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
 };
 
 class StoreEnvSlotVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreEnvSlotVertex> {

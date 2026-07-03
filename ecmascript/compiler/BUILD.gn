@@ -235,6 +235,8 @@ if (ets_runtime_enable_ark_steed) {
     "${ARK_STEED_ROOT}/arksteed_regalloc.cpp",
     "${ARK_STEED_ROOT}/arksteed_vertex.cpp",
     "${ARK_STEED_ROOT}/arksteed_vreg.cpp",
+    "${ARK_STEED_ROOT}/arksteed_write_barrier.cpp",
+    "${ARK_STEED_ROOT}/arksteed_write_barrier_value_kind_pass.cpp",
   ]
 
   # Platform-specific ArkSteed assembler implementations

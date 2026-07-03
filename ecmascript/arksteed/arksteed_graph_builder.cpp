@@ -26,6 +26,7 @@
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
+#include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/ecma_string.h"
@@ -171,7 +172,6 @@ private:
 
     std::vector<JSHClass *> intersectSet_;
 };
-
 bool SupportsI32CheckedBinOp(BinaryOpKind kind)
 {
     switch (kind) {
@@ -4997,19 +4997,28 @@ struct GraphBuilder::BytecodeVisitor {
         return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
     }
 
+    void BuildStoreTaggedField(ValueVertex *object, int32_t offset, ValueVertex *value)
+    {
+        ArkSteedWriteBarrierValueKind valueKind = ClassifyDirectWriteBarrierValueKind(value);
+        if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+            self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object, value}, offset);
+            return;
+        }
+        self->NewVertex<StoreTaggedFieldWithBarrierVertex>(
+            compileInfoFacts_, currentBlock, {glue, object, value}, offset, valueKind);
+    }
+
     void BuildStoreField(ValueVertex *object, ValueVertex *value, PropertyLookupResult plr)
     {
         if (plr.IsInlinedProps()) {
-            self->NewVertex<StoreTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {object, value}, static_cast<int32_t>(plr.GetOffset()));
+            BuildStoreTaggedField(object, static_cast<int32_t>(plr.GetOffset()), value);
             return;
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         int32_t offset = static_cast<int32_t>(
             TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
-        self->NewVertex<StoreTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {properties, value}, offset);
+        BuildStoreTaggedField(properties, offset, value);
     }
 
     ValueVertex *TryBuildPropertyLoad(ValueVertex *object, uint16_t constDataId,
@@ -5201,7 +5210,7 @@ struct GraphBuilder::BytecodeVisitor {
     void SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
     {
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array, value}, offset);
+        BuildStoreTaggedField(array, offset, value);
     }
 
     ValueVertex *SharedConstPool()

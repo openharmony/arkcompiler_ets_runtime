@@ -106,6 +106,8 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(StoreI64ToAddress)            \
     V(StoreF64ToAddress)            \
     V(StoreTaggedField)             \
+    V(StoreTaggedFieldWithBarrier)  \
+    V(StoreSharedFieldWithBarrier)  \
     V(StoreEnvSlot)                 \
     V(SetValueWithBarrier)          \
     V(GapMove)                      \
