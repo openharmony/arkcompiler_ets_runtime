@@ -592,6 +592,9 @@ void SourceTextModule::DFSModuleInstantiation(JSThread *thread, JSHandle<SourceT
             stack.pop_back();
             // iii. Set requiredModule.[[Status]] to "instantiated".
             requiredModule->SetStatus(ModuleStatus::INSTANTIATED);
+#if ENABLE_MEMORY_OPTIMIZATION
+            ClearImportEntriesIfNeeded(thread, requiredModule);
+#endif
             // iv. If requiredModule and module are the same Module Record, set done to true.
             if (JSTaggedValue::SameValue(thread, module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
                 done = true;
@@ -1110,9 +1113,6 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
             // v. Otherwise, set requiredModule.[[Status]] to EVALUATING-ASYNC.
             if (!requiredModule->IsAsyncEvaluating()) {
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
-#if ENABLE_MEMORY_OPTIMIZATION
-                ClearImportEntriesIfNeeded(thread, requiredModule);
-#endif
             } else {
                 requiredModule->SetStatus(ModuleStatus::EVALUATING_ASYNC);
             }
@@ -1131,6 +1131,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
 
 void SourceTextModule::ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
 {
+    ASSERT(module->GetStatus() >= ModuleStatus::INSTANTIATED);
     EcmaVM *vm = thread->GetEcmaVM();
     if ((!vm->GetJsDebuggerManager()->IsDebugApp()) && thread->GetModuleLogger() == nullptr) {
         // After the module is INSTANTIATED, requiredModule.[[ImportEntry]] is no longer meaningful.
