@@ -172,7 +172,6 @@ bool AotCompilerImpl::CheckAotWhitelist(const AotCompilerArgs &args) const
     }
     return helper->IsEnableAot(args.appIdentifier);
 }
-// LCOV_EXCL_STOP
 
 int32_t AotCompilerImpl::OpenHapFile(const AotCompilerArgs &args, CompilationCleanupGuard &guard)
 {
@@ -398,6 +397,7 @@ int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
     sigData = panda::ecmascript::AOTFileVersion::CheckAOTVersion(args);
     return ERR_OK;
 }
+// LCOV_EXCL_STOP
 
 // LCOV_EXCL_START
 int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<uint8_t> &sigData, int32_t anFd) const
