@@ -26,8 +26,11 @@
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/platform/backtrace.h"
 #include "ecmascript/platform/debug_signal.h"
+#include <chrono>
 #include <csignal>
+#include <cstdio>
 #include <thread>
+#include <vector>
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -40,24 +43,20 @@ public:
     {
         GTEST_LOG_(INFO) << "SetUpTestCase";
     }
-
     static void TearDownTestCase()
     {
         GTEST_LOG_(INFO) << "TearDownCase";
     }
-
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(vm_, thread_, scope_);
         vm_->GetJSThread()->GetEcmaVM()->SetRuntimeStatEnable(true);
         vm_->SetEnableForceGC(false);
     }
-
     void TearDown() override
     {
         TestHelper::DestroyEcmaVMWithScope(vm_, scope_);
     }
-
 protected:
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ = {nullptr};
@@ -97,7 +96,6 @@ bool MatchJSONLineHeader(std::fstream &fs, const std::string filePath, int lineN
     fs.clear();
     return false;
 }
-
 bool IsEmptyFile(const std::string &filePath)
 {
     std::fstream fs(filePath, std::ios::in | std::ios::binary);
@@ -117,7 +115,6 @@ bool CreateEmptyFile(const std::string &filePath)
     outputString.clear();
     return true;
 }
-
 HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_001)
 {
     const std::string filePath = "DFXJSNApiTests_json_001.heapsnapshot";
@@ -146,7 +143,6 @@ HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_001)
     EXPECT_TRUE(MatchJSONLineHeader(inputFile, filePath, 10, "\"location_fields\":"));
     std::remove(filePath.c_str());
 }
-
 HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_002)
 {
     const std::string filePath = "DFXJSNApiTests_json_002.heapsnapshot";
@@ -179,7 +175,6 @@ HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_002)
     EXPECT_TRUE(MatchJSONLineHeader(fStream, filePath, 10, "\"location_fields\":"));
     std::remove(filePath.c_str());
 }
-
 HWTEST_F_L0(DFXJSNApiTests, BuildNativeAndJsStackTrace)
 {
     bool result = false;
@@ -1805,4 +1800,123 @@ HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_LongStrings)
     EXPECT_STREQ(failures[0].first.c_str(), moduleName.c_str());
     EXPECT_STREQ(failures[0].second.c_str(), failureInfo.c_str());
 }
+
+// No objects: function succeeds with header-only output.
+HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_NoObjects)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    DumpSnapShotOption opt;
+    opt.nativeAddrToNodeIdMap = 0;
+    DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_noobj.heapsnapshot", opt);
+    std::remove("./dump_noobj.heapsnapshot");
+    ASSERT_TRUE(DFXJSNApi::GetHandleNodeIdMap(vm_));
+    GTEST_LOG_(INFO) << "GetHandleNodeIdMap_Dump_NoObjects completed";
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+// Dump with N objects: function succeeds.
+HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_WithObjects)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    constexpr int N = 10;
+    ObjectFactory *factory = vm_->GetFactory();
+    Global<ObjectRef> globals[N];
+    for (int i = 0; i < N; i++) {
+        JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+        globals[i] = Global<ObjectRef>(vm_, Local<JSTaggedValue>(obj.GetAddress()));
+    }
+
+    DumpSnapShotOption opt;
+    opt.nativeAddrToNodeIdMap = 1;
+    DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_obj.heapsnapshot", opt);
+    std::remove("./dump_obj.heapsnapshot");
+    ASSERT_TRUE(DFXJSNApi::GetHandleNodeIdMap(vm_));
+    GTEST_LOG_(INFO) << "GetHandleNodeIdMap_Dump_WithObjects completed";
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+// Dump without nativeAddrToNodeIdMap flag: function still succeeds.
+HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_WithoutFlag)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+    Global<ObjectRef> g(vm_, Local<JSTaggedValue>(obj.GetAddress()));
+
+    DumpSnapShotOption opt;
+    opt.nativeAddrToNodeIdMap = 0;
+    DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_noflag.heapsnapshot", opt);
+    std::remove("./dump_noflag.heapsnapshot");
+    ASSERT_TRUE(DFXJSNApi::GetHandleNodeIdMap(vm_));
+    GTEST_LOG_(INFO) << "GetHandleNodeIdMap_Dump_WithoutFlag completed";
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+// Second dump after adding objects: function succeeds both times.
+HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_DataIsolation)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    ObjectFactory *factory = vm_->GetFactory();
+    DumpSnapShotOption opt;
+    opt.nativeAddrToNodeIdMap = 1;
+
+    Global<ObjectRef> g1[5];
+    for (int i = 0; i < 5; i++) {
+        JSHandle<JSTaggedValue> o(factory->CreateNapiObject());
+        g1[i] = Global<ObjectRef>(vm_, Local<JSTaggedValue>(o.GetAddress()));
+    }
+    DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_di1.heapsnapshot", opt);
+    std::remove("./dump_di1.heapsnapshot");
+    ASSERT_TRUE(DFXJSNApi::GetHandleNodeIdMap(vm_));
+
+    Global<ObjectRef> g2[5];
+    for (int i = 0; i < 5; i++) {
+        JSHandle<JSTaggedValue> o(factory->CreateNapiObject());
+        g2[i] = Global<ObjectRef>(vm_, Local<JSTaggedValue>(o.GetAddress()));
+    }
+    DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_di2.heapsnapshot", opt);
+    std::remove("./dump_di2.heapsnapshot");
+    ASSERT_TRUE(DFXJSNApi::GetHandleNodeIdMap(vm_));
+    GTEST_LOG_(INFO) << "GetHandleNodeIdMap_Dump_DataIsolation completed";
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+// 100k objects: measure elapsed time.
+HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Perf_100k)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    constexpr int kObjectCount = 100000;
+    ObjectFactory *factory = vm_->GetFactory();
+    std::vector<Global<ObjectRef>> globals;
+    globals.reserve(kObjectCount);
+    for (int i = 0; i < kObjectCount; i++) {
+        JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+        globals.emplace_back(vm_, Local<JSTaggedValue>(obj.GetAddress()));
+    }
+
+    DumpSnapShotOption opt;
+    opt.nativeAddrToNodeIdMap = 1;
+    DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_perf.heapsnapshot", opt);
+    std::remove("./dump_perf.heapsnapshot");
+
+    auto start = std::chrono::steady_clock::now();
+    ASSERT_TRUE(DFXJSNApi::GetHandleNodeIdMap(vm_));
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - start).count();
+    GTEST_LOG_(INFO) << "GetHandleNodeIdMap 100k objects: " << elapsed
+                     << "us (" << (elapsed / 1000.0) << "ms)";
+    GTEST_LOG_(INFO) << "GetHandleNodeIdMap_Perf_100k completed";
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
 } // namespace panda::test

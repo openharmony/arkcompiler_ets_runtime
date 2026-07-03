@@ -485,6 +485,24 @@ void HeapProfiler::FillIdMap()
     entryIdMap_->RemoveUnmarkedObjects(marker);
 }
 
+std::unordered_map<uintptr_t, uint64_t> HeapProfiler::GetHandleNodeIdMap()
+{
+    nodeAddressIdMap_.clear();
+    UpdateNodeAddressIdMap();
+    LOG_ECMA(DEBUG) << "HeapProfiler::GetHandleNodeIdMap: built, nodeAddrMap="
+                    << nodeAddressIdMap_.size()
+                    << " entryIdMap=" << entryIdMap_->GetIdCount();
+
+    auto handleNodeIdMap = GetNodeAddressIdMap();
+    std::unordered_map<uintptr_t, uint64_t> result;
+    result.reserve(handleNodeIdMap.size());
+    for (const auto& [handleAddr, nodeId] : handleNodeIdMap) {
+        result.emplace(handleAddr, nodeId);
+    }
+    nodeAddressIdMap_.clear();
+    return result;
+}
+
 bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress,
                                     std::function<void(uint8_t)> callback)
 {

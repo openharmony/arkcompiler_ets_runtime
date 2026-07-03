@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <memory>
+#include <unordered_map>
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -88,6 +89,8 @@ public:
     virtual bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) = 0;
     virtual void StopHeapSampling() = 0;
     virtual const struct SamplingInfo *GetAllocationProfile() = 0;
+
+    virtual std::unordered_map<uintptr_t, uint64_t> GetHandleNodeIdMap() = 0;
 
     NO_MOVE_SEMANTIC(HeapProfilerInterface);
     NO_COPY_SEMANTIC(HeapProfilerInterface);

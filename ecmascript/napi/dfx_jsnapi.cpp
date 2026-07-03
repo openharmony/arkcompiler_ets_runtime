@@ -15,6 +15,10 @@
 
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
+#include <cstdio>
+#include <iomanip>
+#include <sstream>
+
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/base/json_helper.h"
@@ -126,7 +130,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
-[[maybe_unused]] static uint8_t killCount = 0;
+[[maybe_unused]] static uint8_t g_killCount = 0;
 
 void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm)
 {
@@ -141,9 +145,9 @@ void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm)
         return;
     }
 
-    (void)killCount;
+    (void)g_killCount;
     if (DFXJSNApi::CpuProfilerSamplingAnyTime(vm)) {
-        killCount++;
+        g_killCount++;
         return;
     }
 #endif // ECMASCRIPT_SUPPORT_CPUPROFILER
@@ -777,6 +781,57 @@ void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare(vm->GetJSThread());
 }
 
+bool DFXJSNApi::GetHandleNodeIdMap([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    LOG_ECMA(DEBUG) << "GetHandleNodeIdMap: entry";
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
+    if (heapProfile == nullptr) {
+        LOG_ECMA(ERROR) << "GetHandleNodeIdMap: HeapProfilerInterface is nullptr";
+        return false;
+    }
+    auto result = heapProfile->GetHandleNodeIdMap();
+    LOG_ECMA(INFO) << "GetHandleNodeIdMap: result size=" << result.size();
+
+    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_MAP));
+    if (fd < 0) {
+        LOG_ECMA(ERROR) << "GetHandleNodeIdMap: RequestFileDescriptor failed, fd=" << fd;
+        return false;
+    }
+
+    ecmascript::FileDescriptorStream stream(fd);
+    if (!stream.Good()) {
+        LOG_ECMA(ERROR) << "GetHandleNodeIdMap: stream invalid";
+        return false;
+    }
+
+    constexpr int kEstimatedLineBytes = 40;
+    constexpr int kHeaderBytes = 20;
+    constexpr int kHexAddrWidth = 16;
+
+    std::string content;
+    content.reserve(result.size() * kEstimatedLineBytes + kHeaderBytes);
+    content.append("address\tnode_id\n");
+    for (const auto& [handleAddr, nodeId] : result) {
+        std::ostringstream line;
+        line << std::setfill('0') << std::setw(kHexAddrWidth) << std::hex
+             << static_cast<uint64_t>(handleAddr)
+             << '\t' << std::dec << nodeId << '\n';
+        content.append(line.str());
+    }
+
+    if (!stream.WriteBinBlock(content.data(), static_cast<int32_t>(content.size()))) {
+        LOG_ECMA(ERROR) << "GetHandleNodeIdMap: write failed";
+        return false;
+    }
+    return true;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+    return false;
+#endif
+}
+
 void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] size_t thresholds)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
@@ -864,9 +919,9 @@ bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
 void DFXJSNApi::CpuProfilerAnyTimeMainThread(const EcmaVM *vm)
 {
     const uint8_t KILL_COUNT_FACTOR = 2;
-    if (killCount % KILL_COUNT_FACTOR == 0) {
-        uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
-        LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, killCount = " << killCount;
+    if (g_killCount % KILL_COUNT_FACTOR == 0) {
+        uint8_t fileCount = g_killCount / KILL_COUNT_FACTOR + 1;
+        LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, g_killCount = " << g_killCount;
         std::string fileName = ConvertToStdString(const_cast<EcmaVM *>(vm)->GetBundleName())
                                + "_" + std::to_string(fileCount) + ".cpuprofile";
         if (!BuiltinsArkTools::CreateFile(fileName)) {
@@ -875,7 +930,7 @@ void DFXJSNApi::CpuProfilerAnyTimeMainThread(const EcmaVM *vm)
             DFXJSNApi::StartCpuProfilerForFile(vm, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
         }
     } else {
-        LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, killCount = " << killCount;
+        LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, g_killCount = " << g_killCount;
         if (vm->GetJSThread()->GetIsProfiling()) {
             DFXJSNApi::StopCpuProfilerForFile(vm);
         }
@@ -886,7 +941,7 @@ void DFXJSNApi::CpuProfilerAnyTimeMainThread(const EcmaVM *vm)
 bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    (void)killCount;
+    (void)g_killCount;
     bool success = false;
     const uint8_t KILL_COUNT_FACTOR = 2;
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
@@ -897,9 +952,9 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
 
     if (options.EnableCpuProfilerAnyTimeWorkerThread()) {
         success = true;
-        if (killCount % KILL_COUNT_FACTOR == 0) {
-            uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
-            LOG_ECMA(INFO) << "Start CpuProfiler Any Time Worker Thread, killCount = " << killCount;
+        if (g_killCount % KILL_COUNT_FACTOR == 0) {
+            uint8_t fileCount = g_killCount / KILL_COUNT_FACTOR + 1;
+            LOG_ECMA(INFO) << "Start CpuProfiler Any Time Worker Thread, g_killCount = " << g_killCount;
             const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
                 auto *thread = workerVm->GetAssociatedJSThread();
                 std::string fileName = ConvertToStdString(workerVm->GetBundleName()) + "_"
@@ -913,7 +968,7 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
                 }
             });
         } else {
-            LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Worker Thread, killCount = " << killCount;
+            LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Worker Thread, g_killCount = " << g_killCount;
             const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
                 auto *thread = workerVm->GetAssociatedJSThread();
                 if (thread->GetIsProfiling()) {

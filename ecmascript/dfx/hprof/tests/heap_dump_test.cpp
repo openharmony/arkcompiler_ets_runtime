@@ -940,6 +940,11 @@ public:
         return profiler_->GetIdCount();
     }
 
+    std::unordered_map<uintptr_t, uint64_t> GetHandleNodeIdMap() override
+    {
+        return profiler_->GetHandleNodeIdMap();
+    }
+
     std::unordered_map<TaggedObject *, bool> allocEvtObj_;
     HeapProfilerInterface *profiler_ {nullptr};
 };
