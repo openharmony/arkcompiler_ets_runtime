@@ -631,29 +631,49 @@ bool ModulesSnapshotHelper::ReadDataFromFile(const std::unique_ptr<SerializeData
 ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr ModulesSnapshotHelper::SnapshotVersionInfo::New(
     uint32_t appVersionCode, const std::string_view& romVersion, const std::string_view& description)
 {
-    size_t totalSize = Sizeof() + romVersion.size() + description.size() + TERMINATE_CHAR_COUNT;
+    constexpr const size_t alignment = sizeof(uint64_t);
+    size_t rawSize = Sizeof() + romVersion.size() + description.size() + TERMINATE_CHAR_COUNT;
+    size_t allocSize = AlignUp(rawSize, alignment);
+    ASSERT(allocSize >= rawSize);
 
-    auto ptr = malloc(totalSize);
-    if (ptr == nullptr) {
-        return UniquePtr(nullptr, SnapshotVersionInfo::Deleter);
+    UniquePtr result(nullptr, SnapshotVersionInfo::Deleter);
+    // allocSize == 0: prevent malloc(0) which has implementation-defined behavior (CERT MEM04-C).
+    // allocSize > UINT16_MAX: romVersion and description are strictly shorter than UINT16_MAX.
+    if (allocSize == 0 || allocSize > UINT16_MAX) {
+        LOG_ECMA(ERROR) << "SnapshotVersionInfo::New allocSize is invalid";
+        return result;
     }
-    UniquePtr result(static_cast<SnapshotVersionInfo*>(ptr), SnapshotVersionInfo::Deleter);
+    auto ptr = malloc(allocSize);
+    if (ptr == nullptr) {
+        return result;
+    }
+    result.reset(static_cast<SnapshotVersionInfo*>(ptr));
     auto header = new (result.get()) SnapshotVersionInfo {appVersionCode, romVersion.size(), description.size()};
     char* buffer = header->buffer_;
-    if (romVersion.size() > 0 && memcpy_s(buffer, romVersion.size(), romVersion.data(), romVersion.size()) != 0) {
+    size_t remaining = allocSize - Sizeof();
+    if (romVersion.size() > 0 && memcpy_s(buffer, remaining, romVersion.data(), romVersion.size()) != 0) {
         result.reset();
         LOG_ECMA(ERROR) << "memcpy_s failed when copy rom version to snapshot file header";
         return result;
     }
     buffer += romVersion.size();
+    remaining -= romVersion.size();
     *(buffer++) = '\0';
-    if (description.size() > 0 && memcpy_s(buffer, description.size(), description.data(), description.size())) {
+    remaining -= 1;
+    if (description.size() > 0 && memcpy_s(buffer, remaining, description.data(), description.size()) != 0) {
         result.reset();
         LOG_ECMA(ERROR) << "memcpy_s failed when copy description to snapshot file header";
         return result;
-    };
+    }
     buffer += description.size();
-    *buffer = '\0';
+    remaining -= description.size();
+    *(buffer++) = '\0';
+    remaining -= 1;
+    if (remaining > 0 && memset_s(buffer, remaining, 0, remaining) != 0) {
+        result.reset();
+        LOG_ECMA(ERROR) << "memset_s failed when empty align";
+        return result;
+    }
     return result;
 }
 

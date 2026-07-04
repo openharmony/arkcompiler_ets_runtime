@@ -33,6 +33,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
+#include "ecmascript/runtime.h"
 #undef protected
 #undef private
 
@@ -126,6 +127,13 @@ public:
     void TearDown() override
     {
         CString path = GetSnapshotPath();
+        // Remove constpool entries from Runtime before VM destruction
+        // to avoid use-after-free of dangling JSPandaFile pointers
+        {
+            Runtime *runtime = Runtime::GetInstance();
+            LockHolder lock(runtime->constpoolLock_);
+            runtime->globalSharedConstpools_.clear();
+        }
         for (auto& file : requiredFiles) {
             CString fileName = path + file;
             if (FileExist(fileName.c_str()) && remove(fileName.c_str()) != 0) {
