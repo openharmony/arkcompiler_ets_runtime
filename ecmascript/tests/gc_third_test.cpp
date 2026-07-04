@@ -38,6 +38,7 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/allocation_inspector.h"
+#include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/tests/ecma_test_common.h"
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
@@ -943,4 +944,18 @@ HWTEST_F_L0(GCTest, stringTableReadBarrierTest)
     ASSERT_TRUE(result == reinterpret_cast<JSTaggedType>(nullptr));
 }
 #endif
+
+HWTEST_F_L0(GCTest, MemMapAllocatorAllocateFromMemPoolTest)
+{
+    MemMapAllocator *allocator = new MemMapAllocator();
+    allocator->ResetLargePoolSize();
+    constexpr size_t testSize = DEFAULT_REGION_SIZE;
+
+    MemMap mem = allocator->Allocate(thread->GetThreadId(), testSize, DEFAULT_REGION_SIZE,
+                                     ToSpaceTypeName(MemSpaceType::OLD_SPACE),
+                                     true, false, false, false, false, false);
+    ASSERT_TRUE(mem.GetMem() != nullptr);
+    ASSERT_TRUE(mem.GetSize() == testSize);
+    delete allocator;
+}
 } // namespace panda::test

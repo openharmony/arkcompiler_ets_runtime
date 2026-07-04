@@ -240,6 +240,8 @@ MemMap MemMapAllocator::AllocateFromCompressPool(const uint32_t threadId, size_t
 
 #if !defined(PANDA_TARGET_64)
     mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
+    ASSERT(mem.GetMem() != nullptr);
+    PageTag(mem.GetMem(), mem.GetSize(), type);
     compressMemMapPool_.InsertMemMap(mem);
     mem = compressMemMapPool_.SplitMemFromCache(mem);
     if (mem.GetMem() != nullptr) {
@@ -270,6 +272,8 @@ MemMap MemMapAllocator::AllocateFromMemPool(const uint32_t threadId, size_t size
     }
 
     mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
+    ASSERT(mem.GetMem() != nullptr);
+    PageTag(mem.GetMem(), mem.GetSize(), type);
     memMapPool_.InsertMemMap(mem);
     mem = memMapPool_.SplitMemFromCache(mem);
     if (mem.GetMem() != nullptr) {
