@@ -20,7 +20,7 @@
 #include <cstddef>
 
 namespace common {
-bool PageProtect(void *mem, size_t size, int prot);
+int PageProtect(void *mem, size_t size, int prot);
 }
 
 #endif
