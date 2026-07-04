@@ -129,6 +129,7 @@ public:
     static size_t GetFullGCLongTimeCount(const EcmaVM *vm);
     static GCStatistic GetGCStatistic(const EcmaVM *vm);
     static void GetHeapPrepare(const EcmaVM *vm);
+    static bool GetHandleNodeIdMap(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
     static void NotifyIdleTime(const EcmaVM *vm, int idleMicroSec);
