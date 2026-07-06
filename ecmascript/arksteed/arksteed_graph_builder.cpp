@@ -1577,6 +1577,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *res = StringFromConstPool(stringId);
+        compileInfoFacts_->EnsureType(res, NodeInfo::NodeType::STRING);
         frameState.SetAcc(res);
     }
 
@@ -3023,6 +3024,33 @@ struct GraphBuilder::BytecodeVisitor {
         return self->ActivateNonCatchBlock(blockInfo->fallthroughBlock->rpoIndex);
     }
 
+    template <class BranchVertexT, class BuildTrue, class BuildFalse, class... BranchArgs>
+    ValueVertex *BuildSelect(std::initializer_list<ValueVertex *> branchInputs, VRegIDType resultVreg,
+                             BuildTrue buildTrue, BuildFalse buildFalse, BranchArgs &&...branchArgs)
+    {
+        BB *trueBlock = self->NewBlock();
+        BB *falseBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        BB *branchBlock = currentBlock;
+
+        self->FinishBlockWith<BranchVertexT>(branchBlock, branchInputs, std::forward<BranchArgs>(branchArgs)...,
+                                             trueBlock, falseBlock);
+        trueBlock->AddPredecessor(branchBlock);
+        falseBlock->AddPredecessor(branchBlock);
+
+        currentBlock = trueBlock;
+        ValueVertex *trueResult = buildTrue();
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = falseBlock;
+        ValueVertex *falseResult = buildFalse();
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = doneBlock;
+        return self->NewPhiVertexWith(currentBlock, std::initializer_list<ValueVertex *> {trueResult, falseResult},
+                                      resultVreg);
+    }
+
     ValueVertex *LoadRegister(const BytecodeInfo *bcInfo, int inputIndex) const
     {
         auto *vreg = std::get_if<VirtualRegister>(bcInfo->inputs.data() + inputIndex);
@@ -3094,16 +3122,31 @@ struct GraphBuilder::BytecodeVisitor {
         return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
     }
 
-    // True if `value` is a compile-time string constant of length 0. Used to fold `"" + x` and
-    // `x + ""` to x.
+    // LDA_STR "" is currently represented by GetStringFromConstPool.
+    // When heap constants are added, recognize empty string heap constants here too.
     bool IsEmptyStringConstant(ValueVertex *value) const
     {
-        std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(value);
-        if (!constant.has_value() || !constant->IsString()) {
+        auto *call = value->TryCast<CallCommonStubVertex>();
+        if (call == nullptr ||
+            call->GetStubId() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
+            return false;
+        }
+
+        auto *stringId = call->GetInput(2)->TryCast<Int32ConstantVertex>();
+        if (stringId == nullptr) {
+            return false;
+        }
+
+        int32_t constDataId = stringId->GetValue();
+        if (constDataId < 0 || constDataId > std::numeric_limits<uint16_t>::max()) {
+            return false;
+        }
+        std::optional<JSTaggedValue> string = TryGetNameFromConstDataId(static_cast<uint16_t>(constDataId));
+        if (!string.has_value()) {
             return false;
         }
         ALLOW_DEREF_HANDLE;
-        return EcmaStringAccessor(*constant).GetLength() == 0;
+        return EcmaStringAccessor(*string).GetLength() == 0;
     }
 
     std::optional<JSTaggedValue> TryGetNameFromConstDataId(uint16_t constDataId) const
@@ -3439,17 +3482,37 @@ struct GraphBuilder::BytecodeVisitor {
         return checked;
     }
 
-    // Convert a value to a string for single-side string concat (`str + <non-string>`).
-    ValueVertex *BuildCheckedTaggedToString(ValueVertex *value)
+    void BuildDeoptIfNotNumber(ValueVertex *value)
     {
         std::vector<ValueVertex *> inputs {value};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        ValueVertex *converted = self->NewVertex<CheckedTaggedToStringVertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex));
-        compileInfoFacts_->EnsureType(converted, NodeInfo::NodeType::STRING);
-        return converted;
+        AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        self->NewVertex<DeoptIfNotNumberVertex>(currentBlock, inputs, std::move(deoptVRegs),
+                                                self->preproc_->GetBytecodeOffset(currentBcIndex));
+    }
+
+    ValueVertex *BuildNumberToString(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::STRING)) {
+            return value;
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::NUMBER)) {
+            ValueVertex *result = RuntimeCall({value}, RTSTUB_ID(NumberToString));
+            compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::STRING);
+            return result;
+        }
+
+        ValueVertex *result = BuildSelect<BranchIfTaggedStringVertex>(
+            {value}, self->AccIndex(),
+            [&]() -> ValueVertex * { return value; },
+            [&]() -> ValueVertex * {
+                BuildDeoptIfNotNumber(value);
+                ValueVertex *numberResult = RuntimeCall({value}, RTSTUB_ID(NumberToString));
+                compileInfoFacts_->EnsureType(numberResult, NodeInfo::NodeType::STRING);
+                return numberResult;
+            });
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::STRING);
+        return result;
     }
 
     ValueVertex *BuildTaggedI32Result(ValueVertex *rawResult)
@@ -4148,38 +4211,51 @@ struct GraphBuilder::BytecodeVisitor {
     {
         bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
         bool rightKnownString = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::STRING);
-        // `"" + x` / `x + ""` -> x (the other operand), guarded to be a string. Only fires when the
-        // other side is string-ish (known string, or profiled hint==STRING/NUMBER_OR_STRING);
-        // `"" + <non-string>` must ToString the non-string rather than return it.
-        bool hintString = feedback.hint == ArkSteedOperationHint::STRING;
-        bool hintStringOrNumStr =
-            hintString || feedback.hint == ArkSteedOperationHint::NUMBER_OR_STRING;
-        if (IsEmptyStringConstant(left) && (rightKnownString || hintStringOrNumStr)) {
-            return rightKnownString ? right : BuildCheckedTaggedString(right);
-        }
-        if (IsEmptyStringConstant(right) && (leftKnownString || hintStringOrNumStr)) {
-            return leftKnownString ? left : BuildCheckedTaggedString(left);
-        }
+
         if (leftKnownString && rightKnownString) {
+            if (IsEmptyStringConstant(left)) {
+                return right;
+            }
+            if (IsEmptyStringConstant(right)) {
+                return left;
+            }
             return BuildStringAdd(left, right);
         }
-        if (!hintStringOrNumStr) {
-            return nullptr;
-        }
-        LogOperationFeedback(feedback, "BinaryStringAdd", "StringAdd");
-        if (feedback.hint == ArkSteedOperationHint::NUMBER_OR_STRING) {
-            if (leftKnownString) {
-                return BuildStringAdd(left, BuildCheckedTaggedToString(right));
+
+        switch (feedback.hint) {
+            case ArkSteedOperationHint::STRING: {
+                LogOperationFeedback(feedback, "BinaryStringAdd", "StringAdd");
+                ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
+                ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
+                if (leftKnownString && IsEmptyStringConstant(left)) {
+                    return checkedRight;
+                }
+                if (rightKnownString && IsEmptyStringConstant(right)) {
+                    return checkedLeft;
+                }
+                return BuildStringAdd(checkedLeft, checkedRight);
             }
-            if (rightKnownString) {
-                return BuildStringAdd(BuildCheckedTaggedToString(left), right);
+
+            case ArkSteedOperationHint::NUMBER_OR_STRING: {
+                LogOperationFeedback(feedback, "BinaryStringAdd", "StringAdd");
+                if (leftKnownString) {
+                    if (IsEmptyStringConstant(left)) {
+                        return BuildNumberToString(right);
+                    }
+                    return BuildStringAdd(left, BuildNumberToString(right));
+                }
+                if (rightKnownString) {
+                    if (IsEmptyStringConstant(right)) {
+                        return BuildNumberToString(left);
+                    }
+                    return BuildStringAdd(BuildNumberToString(left), right);
+                }
+                return nullptr;
             }
-            return nullptr;
+
+            default:
+                return nullptr;
         }
-        // hint == STRING: both sides profiled string -> check both.
-        ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
-        ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
-        return BuildStringAdd(checkedLeft, checkedRight);
     }
 
     ValueVertex *GetBooleanConstant(bool value)

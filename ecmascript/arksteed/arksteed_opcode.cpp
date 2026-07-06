@@ -221,6 +221,18 @@ void DeoptIfInt32ConditionVertex::Dump(std::ostream &output) const
            << ", type=" << static_cast<int>(deoptType_) << ", pc=" << GetBytecodeOffset();
 }
 
+void DeoptIfNotNumberVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(VALUE_INDEX));
+    UseDeoptFrameSlots(this, this);
+    SetTemporariesNeeded(2);
+}
+
+void DeoptIfNotNumberVertex::Dump(std::ostream &output) const
+{
+    output << "  DeoptIfNotNumber: pc=" << GetBytecodeOffset();
+}
+
 void DeoptVertex::SetValueLocationConstraints()
 {
     for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
@@ -351,19 +363,6 @@ void CheckedTaggedStringVertex::SetValueLocationConstraints()
 void CheckedTaggedStringVertex::Dump(std::ostream &output) const
 {
     output << "  CheckedTaggedString";
-}
-
-void CheckedTaggedToStringVertex::SetValueLocationConstraints()
-{
-    UseRegister(Arg(INPUT_INDEX));
-    UseDeoptFrameSlots(this, this);
-    DefineAsRegister(this);
-    SetTemporariesNeeded(2);
-}
-
-void CheckedTaggedToStringVertex::Dump(std::ostream &output) const
-{
-    output << "  CheckedTaggedToString";
 }
 
 void I32ConditionCheckVertex::SetValueLocationConstraints()
@@ -780,6 +779,17 @@ void BranchIfTrueVertex::SetValueLocationConstraints()
 void BranchIfTrueVertex::Dump(std::ostream &output) const
 {
     output << "  BranchIfTrue";
+}
+
+void BranchIfTaggedStringVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(1);
+}
+
+void BranchIfTaggedStringVertex::Dump(std::ostream &output) const
+{
+    output << "  BranchIfTaggedString";
 }
 
 void BranchIfInt32CompareVertex::SetValueLocationConstraints()

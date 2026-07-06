@@ -56,7 +56,6 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(TaggedIntToI32)           \
     V(CheckedTaggedIntToI32)    \
     V(CheckedTaggedString)      \
-    V(CheckedTaggedToString)    \
     V(I32ConditionCheck)        \
     V(F64ConditionCheck)        \
     V(TaggedEqual)              \
@@ -101,6 +100,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(ThrowUndefinedIfHoleWithName) \
     V(DeoptIfHClassMismatch)        \
     V(DeoptIfInt32Condition)        \
+    V(DeoptIfNotNumber)             \
     V(Deopt)                        \
     V(SetValueWithBarrier)          \
     V(GapMove)                      \
@@ -110,6 +110,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 #define BRANCH_CONTROL_VERTEX_LIST(V) \
     V(BranchIfTrue)                   \
+    V(BranchIfTaggedString)           \
     V(BranchIfInt32Compare)           \
     V(BranchIfFloat64Compare)         \
     V(BranchIfReferenceEqual)

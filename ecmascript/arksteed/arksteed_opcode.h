@@ -754,30 +754,6 @@ public:
     }
 };
 
-class CheckedTaggedToStringVertex : public VertexMixin<ValueVertex, CheckedTaggedToStringVertex>,
-                                    public DeoptimizableMixin {
-public:
-    static constexpr int INPUT_INDEX = 0;
-    static constexpr int FIRST_DEOPT_INDEX = 1;
-    static constexpr VertexProperties PROPERTIES =
-        VertexProperties::TaggedValue() | VertexProperties::Call() |
-        VertexProperties::AnySideEffects() | VertexProperties::NotIdempotent();
-
-    explicit CheckedTaggedToStringVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
-                                         ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
-        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
-    {}
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-    void VerifyInputs() const
-    {
-        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
-        ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
-    }
-};
-
 class I32ConditionCheckVertex : public FixedInputVertexMixin<2, ValueVertex, I32ConditionCheckVertex> {
 public:
     static constexpr int LEFT_INDEX = 0;
@@ -1429,6 +1405,31 @@ private:
     kungfu::DeoptType deoptType_;
 };
 
+class DeoptIfNotNumberVertex : public VertexMixin<NonControlVertex, DeoptIfNotNumberVertex>,
+                               public DeoptimizableMixin {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt();
+
+    explicit DeoptIfNotNumberVertex(uint64_t bitfield,
+                                    ChunkVector<VRegIDType> deoptVRegs,
+                                    uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          DeoptimizableMixin(FIRST_DEOPT_INDEX, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
 class DeoptVertex : public VertexMixin<NonControlVertex, DeoptVertex>, public DeoptimizableMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt();
@@ -1561,6 +1562,20 @@ public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
     BranchIfTrueVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class BranchIfTaggedStringVertex : public BranchControlVertexT<1, BranchIfTaggedStringVertex> {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfTaggedStringVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : BranchControlVertexT(bitfield, ifTrue, ifFalse)
     {}
 

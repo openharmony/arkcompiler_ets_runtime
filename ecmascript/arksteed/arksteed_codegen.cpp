@@ -819,6 +819,39 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(D
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfNotNumberVertex>(DeoptIfNotNumberVertex *check)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << check->GetId() << ": DeoptIfNotNumberVertex";
+#endif
+    auto value = GetInputRegister(check, DeoptIfNotNumberVertex::VALUE_INDEX);
+    auto temporaries = check->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister bits = temporaries.First();
+    temporaries.PopFirst();
+    ArkSteedRegister scratch = temporaries.First();
+    Label deopt;
+    Label done;
+
+    __ Move(bits, value);
+    __ Move(scratch, JSTaggedValue::TAG_MARK);
+    __ Word64And(bits, scratch);
+    __ Compare(bits, scratch);
+    __ JumpIf(Condition::COND_EQUAL, &done);
+
+    __ Move(scratch, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+    __ Compare(value, scratch);
+    __ JumpIf(Condition::COND_BELOW, &deopt);
+    __ Move(scratch, static_cast<uint64_t>(JSTaggedValue::TAG_INT));
+    __ Compare(value, scratch);
+    __ JumpIf(Condition::COND_BELOW, &done);
+    __ Jump(&deopt);
+
+    __ Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, check, kungfu::DeoptType::NOTNUMBER1);
+    __ Bind(&done);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptVertex>(DeoptVertex *deopt)
 {
 #ifndef NDEBUG
@@ -1132,80 +1165,28 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
 }
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedToStringVertex>(CheckedTaggedToStringVertex *op)
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTaggedStringVertex>(BranchIfTaggedStringVertex *jumpIf)
 {
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": CheckedTaggedToStringVertex";
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId()
+                        << ": BranchIfTaggedStringVertex to BB #" << jumpIf->IfTrue()->GetId()
+                        << " if true; to BB #" << jumpIf->IfFalse()->GetId() << " if false.";
 #endif
-    auto value = GetInputRegister(op, CheckedTaggedToStringVertex::INPUT_INDEX);
-    auto dst = GetResultRegister(op);
-    auto temporaries = op->GetRegallocInfo()->GetGeneralTemporaries();
-    ArkSteedRegister bits = temporaries.First();
-    temporaries.PopFirst();
-    ArkSteedRegister scratch = temporaries.First();
-    Label checkNumber;
-    Label isNumber;
-    Label deopt;
-    Label done;
+    auto value = GetInputRegister(jumpIf, BranchIfTaggedStringVertex::VALUE_INDEX);
+    ArkSteedRegister scratch = jumpIf->GetRegallocInfo()->GetGeneralTemporaries().First();
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
 
-    // String check: heap object whose JSType is in [STRING_FIRST, STRING_LAST].
-    __ JumpIfNotTaggedHeapObject(value, &checkNumber);
+    __ JumpIfNotTaggedHeapObject(value, ifFalse->GetLabel());
     __ LoadField(scratch, value, TaggedObject::HCLASS_OFFSET);
     __ And(scratch, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
     __ LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
     __ And(scratch, (1U << JSHClass::TYPE_BITFIELD_NUM) - 1);
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
-    __ JumpIf(Condition::COND_LESS_THAN, &checkNumber);
+    __ JumpIf(Condition::COND_LESS_THAN, ifFalse->GetLabel());
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
-    __ JumpIf(Condition::COND_GREATER_THAN, &checkNumber);
-    __ Move(dst, value);
-    __ Jump(&done);
-
-    // Not a string: tagged int or double is a number -> NumberToString; any other heap object
-    // (symbol/object/bigint) deopts.
-    __ Bind(&checkNumber);
-    __ Move(bits, value);
-    __ Move(scratch, JSTaggedValue::TAG_MARK);
-    __ Word64And(bits, scratch);
-    __ Compare(bits, scratch);
-    __ JumpIf(Condition::COND_EQUAL, &isNumber);   // tagged int -> number
-    __ Compare(bits, JSTaggedValue::TAG_OBJECT);
-    __ JumpIf(Condition::COND_EQUAL, &deopt);      // non-string heap object -> deopt
-    // Else: tagged double -> number (fall through).
-
-    __ Bind(&isNumber);
-    {
-        const int32_t reservedSlotCount = 4;
-        __ ReserveCallArgSlots(reservedSlotCount);
-        {
-            TemporaryRegisterScope scope(assembler_);
-            ArkSteedRegister gpr = scope.AcquireScratch();
-            __ Move(gpr, static_cast<int64_t>(static_cast<int>(kungfu::RuntimeStubCSigns::ID_NumberToString)));
-            __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG0), gpr);
-            __ Move(gpr, static_cast<int64_t>(1));
-            __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG1), gpr);
-        }
-        StoreStubStackArgument(op, CheckedTaggedToStringVertex::INPUT_INDEX, __ GetCallArgSlot(CALL_ARG2));
-        __ CallRuntime(kungfu::RuntimeStubCSigns::ID_NumberToString);
-        // Tagged return in the platform GPR return register; move it into dst.
-#if defined(PANDA_TARGET_AMD64)
-        auto returnReg = x64::rax;
-#elif defined(PANDA_TARGET_ARM64)
-        auto returnReg = aarch64::x0;
-#else
-#error "CheckedTaggedToStringVertex codegen: unsupported architecture"
-#endif
-        if (dst != returnReg) {
-            __ Move(dst, returnReg);
-        }
-        __ FreeCallArgSlots(reservedSlotCount);
-        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-    }
-    __ Jump(&done);
-
-    __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::NOTSTRING1);
-    __ Bind(&done);
+    __ JumpIf(Condition::COND_GREATER_THAN, ifFalse->GetLabel());
+    __ Jump(ifTrue->GetLabel());
 }
 
 template <>
