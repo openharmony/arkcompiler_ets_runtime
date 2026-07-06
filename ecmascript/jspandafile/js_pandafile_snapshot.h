@@ -46,8 +46,6 @@ protected:
 // |      hasRecordInfoSection       |  // 1 byte: 0 = no recordInfo, 1 = has recordInfo
 // +---------------------------------+
 // |           numClasses_           |
-// |           numMethods_           |
-// |          isBundlePack_          |
 // +---------------------------------+
 // |       jsRecordInfo_ count       |
 // +---------------------------------+

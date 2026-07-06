@@ -167,6 +167,7 @@ private:
     std::unordered_map<const JSPandaFile *, std::unique_ptr<DebugInfoExtractor>> extractors_;
 
     friend class JSPandaFile;
+    friend class JSPandaFileSnapshot;
     friend class JSPandaFileRecordInfoSnapshot;
 };
 }  // namespace ecmascript

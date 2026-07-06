@@ -293,7 +293,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
         return false;
     }
     if (hasRecordInfoSection) {
-        // Read recordInfo section - this will set numClasses_, numMethods_, jsRecordInfo_, etc.
+        // Read recordInfo section - this will set numClasses_, jsRecordInfo_, etc.
         if (!JSPandaFileRecordInfoSnapshot::ReadRecordInfoSection(jsPandaFile, reader)) {
             LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile recordInfo section failed";
             return false;
@@ -306,6 +306,15 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
         return false;
     }
     jsPandaFile->numMethods_ = numMethods;
+    if (numMethods > 0 && jsPandaFile->GetMethodLiterals() == nullptr) {
+        jsPandaFile->methodLiterals_ = static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(
+            sizeof(MethodLiteral) * numMethods, jsPandaFile->isBundlePack_, jsPandaFile->mode_));
+#if ENABLE_LATEST_OPTIMIZATION
+        jsPandaFile->methodLiteralMap_.Reserve(numMethods);
+#else
+        jsPandaFile->methodLiteralMap_.reserve(numMethods);
+#endif
+    }
     // read MethodLiterals
     MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
     size_t methodLiteralSize = numMethods * sizeof(MethodLiteral);
