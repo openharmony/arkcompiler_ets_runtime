@@ -28,6 +28,15 @@ enum class ProcessedFeedbackKind : uint8_t {
     NAMED_ACCESS,
 };
 
+enum class ArkSteedOperationHint : uint8_t {
+    NONE,
+    INT,
+    NUMBER,
+    STRING,
+    NUMBER_OR_STRING,
+    ANY,
+};
+
 struct ProcessedFeedbackBase {
     ProcessedFeedbackKind kind {ProcessedFeedbackKind::INSUFFICIENT};
     AccessFeedbackSource source {};
@@ -35,6 +44,19 @@ struct ProcessedFeedbackBase {
     bool IsInsufficient() const
     {
         return kind == ProcessedFeedbackKind::INSUFFICIENT;
+    }
+};
+
+struct OperationFeedback {
+    uint32_t slotId {0};
+    ArkSteedOperationHint hint {ArkSteedOperationHint::NONE};
+    uint32_t rawTypeBits {0};
+    uint32_t trueWeight {0};
+    uint32_t falseWeight {0};
+
+    bool IsInsufficient() const
+    {
+        return hint == ArkSteedOperationHint::NONE;
     }
 };
 

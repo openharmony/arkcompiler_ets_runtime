@@ -727,7 +727,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 };
@@ -749,7 +749,31 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
+        ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class CheckedTaggedToStringVertex : public VertexMixin<ValueVertex, CheckedTaggedToStringVertex>,
+                                    public DeoptimizableMixin {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr int FIRST_DEOPT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES =
+        VertexProperties::TaggedValue() | VertexProperties::Call() |
+        VertexProperties::AnySideEffects() | VertexProperties::NotIdempotent();
+
+    explicit CheckedTaggedToStringVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                         ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 };
@@ -976,7 +1000,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
         ASSERT(divisor_ <= -2 || divisor_ >= 2);
     }
@@ -1039,29 +1063,16 @@ public:
     void Dump(std::ostream &output) const;
 };
 
-class PositiveI32ModVertex : public FixedInputVertexMixin<2, ValueVertex, PositiveI32ModVertex> {
-public:
-    static constexpr int LEFT_INDEX = 0;
-    static constexpr int RIGHT_INDEX = 1;
-    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
-    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
-
-    explicit PositiveI32ModVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-};
-
-class CheckedPositiveI32ModVertex : public VertexMixin<ValueVertex, CheckedPositiveI32ModVertex>,
-                                    public DeoptimizableMixin {
+class CheckedI32ModVertex : public VertexMixin<ValueVertex, CheckedI32ModVertex>,
+                            public DeoptimizableMixin {
 public:
     static constexpr int LEFT_INDEX = 0;
     static constexpr int RIGHT_INDEX = 1;
     static constexpr int FIRST_DEOPT_INDEX = 2;
     static constexpr VertexProperties PROPERTIES = VertexProperties::Int32() | VertexProperties::NotIdempotent();
 
-    explicit CheckedPositiveI32ModVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
-                                         ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
+    explicit CheckedI32ModVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
+                                 ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset)
         : VertexMixin(bitfield), DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset)
     {}
 
@@ -1070,7 +1081,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
         ASSERT(GetInput(RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     }
@@ -1129,7 +1140,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     }
 };
@@ -1244,7 +1255,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(INPUT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 };
@@ -1408,7 +1419,7 @@ public:
     void VerifyInputs() const
     {
         ASSERT(FirstDeoptInputIndex() == FIRST_DEOPT_INDEX);
-        ASSERT(GetInputCount() == static_cast<int>(FirstDeoptInputIndex() + DeoptInputCount()));
+        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
         ASSERT(GetInput(LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
         ASSERT(GetInput(RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     }
@@ -1637,11 +1648,12 @@ class JumpLoopVertex : public UnconditionalControlVertexT<JumpLoopVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
-    explicit JumpLoopVertex(uint64_t bitfield, BB *target) : UnconditionalControlVertexT(bitfield, target) {}
+    explicit JumpLoopVertex(uint64_t bitfield, Chunk *chunk, BB *target)
+        : UnconditionalControlVertexT(bitfield, target), usedVertices_(chunk) {}
 
     void SetValueLocationConstraints();
 
-    using UsedVerticesType = std::vector<std::pair<ValueVertex *, InputLocation>>;
+    using UsedVerticesType = ChunkVector<std::pair<ValueVertex *, InputLocation>>;
 
     void SetUsedVertices(UsedVerticesType usedVertices)
     {

@@ -133,7 +133,10 @@ private:
 // to do: loop optimize && handle deoptimization
 class LivenessProcessor {
 public:
-    void PreProcessGraph(Graph *graph) {}
+    void PreProcessGraph(Graph *graph)
+    {
+        chunk_ = graph->GetChunk();
+    }
 
     void PreProcessBlock(BB *block)
     {
@@ -265,7 +268,7 @@ public:
         // Propagate loop-external vertices to outer loop if exists
         // This extends their lifetime across the loop back edge
         if (!loopUsedVertices.usedVertices.empty()) {
-            JumpLoopVertex::UsedVerticesType usedVertexInputs;
+            JumpLoopVertex::UsedVerticesType usedVertexInputs(chunk_);
             usedVertexInputs.reserve(loopUsedVertices.usedVertices.size());
             for (size_t i = 0; i < loopUsedVertices.usedVertices.size(); i++) {
                 usedVertexInputs.emplace_back(loopUsedVertices.usedVertices[i], InputLocation());
@@ -293,6 +296,7 @@ public:
 
     std::vector<LoopUsedVertices> loopUsedVertices_;
     uint32_t nextVertexId_{0};
+    Chunk *chunk_ = nullptr;
 };
 
 }  // namespace panda::ecmascript::arksteed

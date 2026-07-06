@@ -42,4 +42,12 @@ bool ArkSteedHeapBroker::GetFeedbackForNamedAccess(const ArkSteedFeedbackReader 
     return true;
 }
 
+bool ArkSteedHeapBroker::GetFeedbackForOperation(const ArkSteedFeedbackReader &reader,
+                                                 OperationFeedback *feedback) const
+{
+    *feedback = {};
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForOperation");
+    return reader.ReadOperationFeedback(feedback);
+}
+
 }  // namespace panda::ecmascript::arksteed

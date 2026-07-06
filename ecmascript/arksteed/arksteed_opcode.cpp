@@ -168,7 +168,7 @@ void CallVertex::SetValueLocationConstraints()
     DefineAsFixed(this, 0);
     SetTemporariesNeeded(1);
     UseRegister(Arg(TARGET_INDEX));
-    for (int i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
+    for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
         UseAny(Arg(i));
     }
 }
@@ -353,6 +353,19 @@ void CheckedTaggedStringVertex::Dump(std::ostream &output) const
     output << "  CheckedTaggedString";
 }
 
+void CheckedTaggedToStringVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(INPUT_INDEX));
+    UseDeoptFrameSlots(this, this);
+    DefineAsRegister(this);
+    SetTemporariesNeeded(2);
+}
+
+void CheckedTaggedToStringVertex::Dump(std::ostream &output) const
+{
+    output << "  CheckedTaggedToString";
+}
+
 void I32ConditionCheckVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
@@ -416,7 +429,7 @@ template <class VertexT>
 void VerifyI32BinaryDeoptInputs(const VertexT *vertex)
 {
     ASSERT(vertex->FirstDeoptInputIndex() == VertexT::FIRST_DEOPT_INDEX);
-    ASSERT(vertex->GetInputCount() == static_cast<int>(vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount()));
+    ASSERT(vertex->GetInputCount() == vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount());
     ASSERT(vertex->GetInput(VertexT::LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     ASSERT(vertex->GetInput(VertexT::RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
 }
@@ -569,26 +582,7 @@ void I32DivVertex::Dump(std::ostream &output) const
     output << "  I32Div";
 }
 
-void PositiveI32ModVertex::SetValueLocationConstraints()
-{
-#if defined(PANDA_TARGET_AMD64)
-    DefineAsRegister(this);
-    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
-    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
-#else
-    DefineAsRegister(this);
-    UseRegister(Arg(LEFT_INDEX));
-    UseRegister(Arg(RIGHT_INDEX));
-#endif
-}
-
-void PositiveI32ModVertex::Dump(std::ostream &output) const
-{
-    output << "  PositiveI32Mod";
-}
-
-void CheckedPositiveI32ModVertex::SetValueLocationConstraints()
+void CheckedI32ModVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
     DefineAsRegister(this);
@@ -603,9 +597,9 @@ void CheckedPositiveI32ModVertex::SetValueLocationConstraints()
     UseDeoptFrameSlots(this, this);
 }
 
-void CheckedPositiveI32ModVertex::Dump(std::ostream &output) const
+void CheckedI32ModVertex::Dump(std::ostream &output) const
 {
-    output << "  CheckedPositiveI32Mod";
+    output << "  CheckedI32Mod";
 }
 
 void I32BitwiseBinaryVertex::SetValueLocationConstraints()
@@ -658,7 +652,7 @@ template <class VertexT>
 void VerifyI32UnaryDeoptInputs(const VertexT *vertex)
 {
     ASSERT(vertex->FirstDeoptInputIndex() == VertexT::FIRST_DEOPT_INDEX);
-    ASSERT(vertex->GetInputCount() == static_cast<int>(vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount()));
+    ASSERT(vertex->GetInputCount() == vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount());
     ASSERT(vertex->GetInput(VertexT::VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
 }
 

@@ -37,7 +37,9 @@ public:
     {}
 
     bool ReadNamedAccessFeedback(int slotIndex, NamedAccessFeedback *feedback) const;
-    bool TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const;
+    bool TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const; // input slot
+    bool TryGetFeedbackSlotId(uint32_t *slotId) const; // primary slot
+    bool ReadOperationFeedback(OperationFeedback *feedback) const;
 
 private:
     struct NamedICMonoSnapshot {
@@ -65,6 +67,8 @@ private:
     bool TryGetNamedICPolySnapshot(int slotIndex, NamedICPolySnapshot *snapshot) const;
     bool TryGetNamedICPolyCase(const NamedICPolySnapshot &snapshot, uint32_t caseIndex,
                                NamedICCaseSnapshot *icCase) const;
+
+    ArkSteedOperationHint MakeOperationHint(uint32_t rawBits) const;
 
     JSThread *compilerThread_ {nullptr};
     panda::ecmascript::kungfu::BytecodeInfo bytecodeInfo_;

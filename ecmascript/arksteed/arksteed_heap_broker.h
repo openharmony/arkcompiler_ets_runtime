@@ -173,6 +173,8 @@ public:
     bool GetFeedbackForNamedAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
                                    NamedAccessFeedback *feedback) const;
 
+    bool GetFeedbackForOperation(const ArkSteedFeedbackReader &reader, OperationFeedback *feedback) const;
+
     bool TryGetCachedNamedAccessFeedback(AccessFeedbackSource source, NamedAccessFeedback *feedback) const
     {
         for (const auto &entry : namedAccessFeedbackCache_) {

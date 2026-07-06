@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 #include "ecmascript/arksteed/arksteed_access_info_factory.h"
+#include "ecmascript/arksteed/arksteed_feedback_reader.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/js_tagged_value.h"
@@ -110,6 +111,14 @@ public:
             return pgo::PGOSampleType::NoneType();
         }
         return profile->second;
+    }
+
+    OperationFeedback ReadOperationFeedback(const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo)
+    {
+        OperationFeedback feedback;
+        ArkSteedFeedbackReader reader(compilerThread_, bytecodeInfo, &broker_);
+        broker_.GetFeedbackForOperation(reader, &feedback);
+        return feedback;
     }
 
 private:

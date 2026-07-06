@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/arksteed/arksteed_feedback_reader.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -42,6 +43,16 @@ bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate
         return true;
     }
     return false;
+}
+
+bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(uint32_t *slotId) const
+{
+    if (slotId == nullptr ||
+        bytecodeInfo_.slotId.GetId() == panda::ecmascript::kungfu::ICSlotId::INVALID_ID) {
+        return false;
+    }
+    *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
+    return true;
 }
 
 bool ArkSteedFeedbackReader::TryGetConstDataId(int index, uint16_t *constDataId) const
@@ -210,6 +221,58 @@ bool ArkSteedFeedbackReader::ReadNamedAccessFeedback(int slotIndex, NamedAccessF
         *feedback = {};
         return false;
     }
+    return true;
+}
+
+ArkSteedOperationHint ArkSteedFeedbackReader::MakeOperationHint(uint32_t rawBits) const
+{
+    const auto prim = static_cast<pgo::PGOSampleType::Type>(rawBits);
+    switch (prim) {
+        case pgo::PGOSampleType::Type::NONE:
+            return ArkSteedOperationHint::NONE;
+        case pgo::PGOSampleType::Type::INT:
+            return ArkSteedOperationHint::INT;
+        case pgo::PGOSampleType::Type::INT_OVERFLOW:
+        case pgo::PGOSampleType::Type::DOUBLE:
+        case pgo::PGOSampleType::Type::NUMBER:
+        case pgo::PGOSampleType::Type::NUMBER1:
+            return ArkSteedOperationHint::NUMBER;
+        case pgo::PGOSampleType::Type::STRING:
+            return ArkSteedOperationHint::STRING;
+        case pgo::PGOSampleType::Type::NUMBER_OR_STRING:
+            return ArkSteedOperationHint::NUMBER_OR_STRING;
+        default:
+            break;
+    }
+    return ArkSteedOperationHint::ANY;
+}
+
+bool ArkSteedFeedbackReader::ReadOperationFeedback(OperationFeedback *feedback) const
+{
+    *feedback = {};
+
+    uint32_t slotId = 0;
+    if (!TryGetFeedbackSlotId(&slotId)) {
+        return false;
+    }
+
+    ProfileTypeInfo *profileTypeArray = nullptr;
+    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) || slotId >= profileTypeArray->GetIcSlotLength()) {
+        return false;
+    }
+
+    feedback->slotId = slotId;
+    JSTaggedValue slotValue = profileTypeArray->Get(compilerThread_, slotId);
+    if (!slotValue.IsInt()) {
+        return true;
+    }
+
+    pgo::PGOSampleType profile(static_cast<uint32_t>(slotValue.GetInt()));
+    uint32_t rawBits = static_cast<uint32_t>(profile.GetPrimitiveType());
+    feedback->rawTypeBits = rawBits;
+    feedback->trueWeight = profile.GetTrueWeight();
+    feedback->falseWeight = profile.GetFalseWeight();
+    feedback->hint = MakeOperationHint(rawBits);
     return true;
 }
 

@@ -1169,87 +1169,121 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeInfo &info, const uint8_t *pc,
             break;
         }
         case EcmaOpcode::ADD2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::SUB2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::MUL2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::DIV2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::MOD2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::EQ_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::NOTEQ_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::LESS_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::LESSEQ_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::GREATER_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::GREATEREQ_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t vs = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(vs));
             break;
         }
         case EcmaOpcode::SHL2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::SHR2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::ASHR2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::AND2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::OR2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::XOR2_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
@@ -1271,12 +1305,16 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeInfo &info, const uint8_t *pc,
             break;
         }
         case EcmaOpcode::STRICTNOTEQ_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::STRICTEQ_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
@@ -2280,11 +2318,14 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeInfo &info, const uint8_t *pc,
             info.inputs.emplace_back(VirtualRegister(envVregIdx));
             break;
         }
-        case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::INC_IMM8:
         case EcmaOpcode::DEC_IMM8:
         case EcmaOpcode::NOT_IMM8:
-        case EcmaOpcode::NEG_IMM8:
+        case EcmaOpcode::NEG_IMM8: {
+            info.slotId = ICSlotId(READ_INST_8_0());
+            break;
+        }
+        case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::JMP_IMM8:
         case EcmaOpcode::JMP_IMM16:
         case EcmaOpcode::JMP_IMM32:

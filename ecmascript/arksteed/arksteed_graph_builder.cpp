@@ -28,6 +28,7 @@
 #include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
+#include "ecmascript/ecma_string.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -179,6 +180,7 @@ bool SupportsI32CheckedBinOp(BinaryOpKind kind)
         case BinaryOpKind::SUB:
         case BinaryOpKind::MUL:
         case BinaryOpKind::DIV:
+        case BinaryOpKind::MOD:
             return true;
         default:
             return false;
@@ -881,7 +883,7 @@ JumpVertex *GraphBuilder::FinishBlockWithJump(BB *owner, BB *target)
 
 JumpLoopVertex *GraphBuilder::FinishBlockWithJumpLoop(BB *owner, BB *target)
 {
-    auto *jumpLoopVertex = FinishBlockWith<JumpLoopVertex>(owner, {}, target);
+    auto *jumpLoopVertex = FinishBlockWith<JumpLoopVertex>(owner, {}, chunk_, target);
     jumpLoopVertex->SetPredecessorId(target->PredecessorCount());
     target->AddPredecessor(owner);
     return jumpLoopVertex;
@@ -3092,6 +3094,18 @@ struct GraphBuilder::BytecodeVisitor {
         return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
     }
 
+    // True if `value` is a compile-time string constant of length 0. Used to fold `"" + x` and
+    // `x + ""` to x.
+    bool IsEmptyStringConstant(ValueVertex *value) const
+    {
+        std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(value);
+        if (!constant.has_value() || !constant->IsString()) {
+            return false;
+        }
+        ALLOW_DEREF_HANDLE;
+        return EcmaStringAccessor(*constant).GetLength() == 0;
+    }
+
     std::optional<JSTaggedValue> TryGetNameFromConstDataId(uint16_t constDataId) const
     {
         JitCompilationEnv *env = self->preproc_->GetEnv();
@@ -3359,6 +3373,24 @@ struct GraphBuilder::BytecodeVisitor {
         return std::nullopt;
     }
 
+    // Returns the double value of a double constant operand (a Float64ConstantVertex, or a
+    // TaggedConstantVertex holding a tagged double). Int constants return nullopt so that int
+    // DIV/MOD are not folded through the Float64 path.
+    std::optional<double> TryGetFloat64Value(ValueVertex *value) const
+    {
+        if (value == nullptr) {
+            return std::nullopt;
+        }
+        if (auto *constant = value->TryCast<Float64ConstantVertex>()) {
+            return constant->GetValue();
+        }
+        if (auto *constant = value->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue tagged(constant->GetValue());
+            return tagged.IsDouble() ? std::optional<double>(tagged.GetDouble()) : std::nullopt;
+        }
+        return std::nullopt;
+    }
+
     ValueVertex *BuildTaggedIntToI32(ValueVertex *value)
     {
         if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
@@ -3407,6 +3439,19 @@ struct GraphBuilder::BytecodeVisitor {
         return checked;
     }
 
+    // Convert a value to a string for single-side string concat (`str + <non-string>`).
+    ValueVertex *BuildCheckedTaggedToString(ValueVertex *value)
+    {
+        std::vector<ValueVertex *> inputs {value};
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        ValueVertex *converted = self->NewVertex<CheckedTaggedToStringVertex>(
+            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+            self->preproc_->GetBytecodeOffset(currentBcIndex));
+        compileInfoFacts_->EnsureType(converted, NodeInfo::NodeType::STRING);
+        return converted;
+    }
+
     ValueVertex *BuildTaggedI32Result(ValueVertex *rawResult)
     {
         ValueVertex *taggedResult =
@@ -3448,24 +3493,6 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildTaggedI32Result(rawResult);
     }
 
-    ValueVertex *BuildPositiveI32ModTaggedValue(ValueVertex *leftI32, ValueVertex *rightI32)
-    {
-        ValueVertex *rawResult =
-            self->NewVertex<PositiveI32ModVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
-        return BuildTaggedI32Result(rawResult);
-    }
-
-    ValueVertex *BuildCheckedPositiveI32ModTaggedValue(ValueVertex *leftI32, ValueVertex *rightI32)
-    {
-        std::vector<ValueVertex *> inputs {leftI32, rightI32};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        ValueVertex *rawResult = self->NewVertex<CheckedPositiveI32ModVertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex));
-        return BuildTaggedI32Result(rawResult);
-    }
-
     ValueVertex *BuildI32BinOpWithOverflow(BinaryOpKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
@@ -3486,6 +3513,10 @@ struct GraphBuilder::BytecodeVisitor {
                     self->preproc_->GetBytecodeOffset(currentBcIndex));
             case BinaryOpKind::DIV:
                 return self->NewVertex<I32DivWithOverflowVertex>(
+                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
+                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+            case BinaryOpKind::MOD:
+                return self->NewVertex<CheckedI32ModVertex>(
                     currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
                     self->preproc_->GetBytecodeOffset(currentBcIndex));
             default:
@@ -3539,10 +3570,24 @@ struct GraphBuilder::BytecodeVisitor {
         return {static_cast<int32_t>(magic), static_cast<uint32_t>(p - BIT_WIDTH)};
     }
 
-    ValueVertex *BuildI32DivByConstWithCheckTagged(ValueVertex *left, int32_t divisor)
+    ValueVertex *BuildI32Operand(ValueVertex *value, bool knownInt)
+    {
+        return knownInt ? BuildTaggedIntToI32(value) : BuildCheckedTaggedIntToI32(value);
+    }
+
+    ValueVertex *TryReuseKnownIntOperand(ValueVertex *value, bool knownInt)
+    {
+        if (!knownInt) {
+            return nullptr;
+        }
+        compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
+        return value;
+    }
+
+    ValueVertex *BuildI32DivByConstWithCheckTagged(ValueVertex *left, bool leftKnownInt, int32_t divisor)
     {
         SignedDivisorMagic magic = ComputeSignedDivisorMagic(divisor);
-        ValueVertex *leftI32 = BuildTaggedIntToI32(left);
+        ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
         std::vector<ValueVertex *> inputs {leftI32};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
@@ -3570,7 +3615,7 @@ struct GraphBuilder::BytecodeVisitor {
         return constant;
     }
 
-    ValueVertex *TryBuildI32MulByZeroReduction(ValueVertex *value)
+    ValueVertex *TryBuildI32MulByZeroReduction(ValueVertex *value, bool valueKnownInt)
     {
         if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
             if (*constant < 0) {
@@ -3579,20 +3624,20 @@ struct GraphBuilder::BytecodeVisitor {
             return BuildTaggedIntConstant(0);
         }
 
-        ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+        ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
         BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), Int32ConditionKind::LESS_THAN,
                                    kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
         return BuildTaggedIntConstant(0);
     }
 
-    ValueVertex *TryBuildI32DivByMinusOneReduction(ValueVertex *value)
+    ValueVertex *TryBuildI32DivByMinusOneReduction(ValueVertex *value, bool valueKnownInt)
     {
         std::optional<int32_t> constant = TryGetInt32Value(value);
         if (constant.has_value() && *constant == 0) {
             return nullptr;
         }
 
-        ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+        ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
         ValueVertex *zeroI32 = self->graph_->GetInt32Constant(0);
         if (!constant.has_value()) {
             BuildDeoptIfInt32Condition(valueI32, zeroI32, Int32ConditionKind::EQUAL, kungfu::DeoptType::DIVZERO2);
@@ -3601,98 +3646,138 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildTaggedI32Result(rawResult);
     }
 
-    ValueVertex *TryBuildI32BinaryReduction(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *TryBuildI32ModByOneReduction(ValueVertex *left, bool leftKnownInt, int32_t divisor)
     {
+        ASSERT(divisor == 1 || divisor == -1);
+
         std::optional<int32_t> leftValue = TryGetInt32Value(left);
-        std::optional<int32_t> rightValue = TryGetInt32Value(right);
-        auto returnIfKnownInt = [this](ValueVertex *value) -> ValueVertex * {
-            compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
-            return value;
-        };
-
-        if (rightValue.has_value()) {
-            switch (kind) {
-                case BinaryOpKind::ADD:
-                    if (*rightValue == 1) {
-                        return BuildIntUnaryOp(CommonStubID::Inc, left, true);
-                    }
-                    if (*rightValue == 0) {
-                        return returnIfKnownInt(left);
-                    }
-                    break;
-                case BinaryOpKind::SUB:
-                    if (*rightValue == 1) {
-                        return BuildIntUnaryOp(CommonStubID::Dec, left, true);
-                    }
-                    if (*rightValue == 0) {
-                        return returnIfKnownInt(left);
-                    }
-                    break;
-                case BinaryOpKind::MUL:
-                    if (*rightValue == 0) {
-                        return TryBuildI32MulByZeroReduction(left);
-                    }
-                    if (*rightValue == 1) {
-                        return returnIfKnownInt(left);
-                    }
-                    break;
-                case BinaryOpKind::DIV:
-                    if (*rightValue == -1) {
-                        return TryBuildI32DivByMinusOneReduction(left);
-                    }
-                    if (*rightValue == 1) {
-                        return returnIfKnownInt(left);
-                    }
-                    if (*rightValue != 0) {
-                        return BuildI32DivByConstWithCheckTagged(left, *rightValue);
-                    }
-                    break;
-                case BinaryOpKind::MOD:
-                case BinaryOpKind::EXP:
-                    break;
-                default:
-                    break;
-            }
-        }
-
         if (leftValue.has_value()) {
-            switch (kind) {
-                case BinaryOpKind::ADD:
-                    if (*leftValue == 1) {
-                        return BuildIntUnaryOp(CommonStubID::Inc, right, true);
-                    }
-                    if (*leftValue == 0) {
-                        return returnIfKnownInt(right);
-                    }
-                    break;
-                case BinaryOpKind::MUL:
-                    if (*leftValue == 0) {
-                        return TryBuildI32MulByZeroReduction(right);
-                    }
-                    if (*leftValue == 1) {
-                        return returnIfKnownInt(right);
-                    }
-                    break;
-                default:
-                    break;
+            if (*leftValue < 0 || (divisor == -1 && *leftValue == std::numeric_limits<int32_t>::min())) {
+                return nullptr;
+            }
+            return BuildTaggedIntConstant(0);
+        }
+
+        ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
+        if (divisor == -1) {
+            BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(std::numeric_limits<int32_t>::min()),
+                                       Int32ConditionKind::EQUAL, kungfu::DeoptType::INT32OVERFLOW1);
+        }
+        BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(0), Int32ConditionKind::LESS_THAN,
+                                   kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+        return BuildTaggedIntConstant(0);
+    }
+
+    ValueVertex *TryBuildI32RightConstantReduction(BinaryOpKind kind, ValueVertex *left, bool leftKnownInt,
+                                                   int32_t rightValue)
+    {
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                if (rightValue == 1) {
+                    // x + 1 -> ++x.
+                    return BuildIntUnaryOp(CommonStubID::Inc, left, leftKnownInt);
+                }
+                if (rightValue == 0) {
+                    // x + 0 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                break;
+            case BinaryOpKind::SUB:
+                if (rightValue == 1) {
+                    // x - 1 -> --x.
+                    return BuildIntUnaryOp(CommonStubID::Dec, left, leftKnownInt);
+                }
+                if (rightValue == 0) {
+                    // x - 0 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                break;
+            case BinaryOpKind::MUL:
+                if (rightValue == 0) {
+                    // x * 0 -> 0, guarding against -0.
+                    return TryBuildI32MulByZeroReduction(left, leftKnownInt);
+                }
+                if (rightValue == 1) {
+                    // x * 1 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                break;
+            case BinaryOpKind::DIV:
+                if (rightValue == -1) {
+                    // x / -1 -> -x, guarding zero and overflow.
+                    return TryBuildI32DivByMinusOneReduction(left, leftKnownInt);
+                }
+                if (rightValue == 1) {
+                    // x / 1 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                if (rightValue != 0) {
+                    // x / c -> checked constant-divisor path.
+                    return BuildI32DivByConstWithCheckTagged(left, leftKnownInt, rightValue);
+                }
+                break;
+            case BinaryOpKind::MOD:
+                if (rightValue == 1 || rightValue == -1) {
+                    // x % +/-1 -> 0, guarding -0 and overflow.
+                    return TryBuildI32ModByOneReduction(left, leftKnownInt, rightValue);
+                }
+                break;
+            default:
+                break;
+        }
+        return nullptr;
+    }
+
+    ValueVertex *TryBuildI32LeftConstantReduction(BinaryOpKind kind, int32_t leftValue, ValueVertex *right,
+                                                  bool rightKnownInt)
+    {
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                if (leftValue == 1) {
+                    // 1 + x -> ++x.
+                    return BuildIntUnaryOp(CommonStubID::Inc, right, rightKnownInt);
+                }
+                if (leftValue == 0) {
+                    // 0 + x -> x.
+                    return TryReuseKnownIntOperand(right, rightKnownInt);
+                }
+                break;
+            case BinaryOpKind::MUL:
+                if (leftValue == 0) {
+                    // 0 * x -> 0, guarding against -0.
+                    return TryBuildI32MulByZeroReduction(right, rightKnownInt);
+                }
+                if (leftValue == 1) {
+                    // 1 * x -> x.
+                    return TryReuseKnownIntOperand(right, rightKnownInt);
+                }
+                break;
+            default:
+                break;
+        }
+        return nullptr;
+    }
+
+    ValueVertex *TryBuildI32BinaryReduction(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
+                                            bool leftKnownInt, bool rightKnownInt)
+    {
+        if (std::optional<int32_t> rightValue = TryGetInt32Value(right)) {
+            if (ValueVertex *reduced = TryBuildI32RightConstantReduction(kind, left, leftKnownInt, *rightValue)) {
+                return reduced;
             }
         }
 
+        if (std::optional<int32_t> leftValue = TryGetInt32Value(left)) {
+            if (ValueVertex *reduced = TryBuildI32LeftConstantReduction(kind, *leftValue, right, rightKnownInt)) {
+                return reduced;
+            }
+        }
         return nullptr;
     }
 
     ValueVertex *BuildI32BinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
     {
-        if (kind == BinaryOpKind::MOD) {
-            bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
-            bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
-            ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
-            ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
-            return BuildCheckedPositiveI32ModTaggedValue(leftI32, rightI32);
-        }
-        if (!SupportsI32CheckedBinOp(kind)) {
-            return BuildGenericBinOp(kind, left, right);
-        }
+        ASSERT(SupportsI32CheckedBinOp(kind));
 
         bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
         bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
@@ -3702,13 +3787,17 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildI32CheckedBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
                                        bool leftKnownInt, bool rightKnownInt)
     {
-        ASSERT(kind != BinaryOpKind::MOD);
         ASSERT(SupportsI32CheckedBinOp(kind));
 
-        if (leftKnownInt && rightKnownInt) {
-            if (ValueVertex *reduced = TryBuildI32BinaryReduction(kind, left, right)) {
+        bool leftIsConst = TryGetInt32Value(left).has_value();
+        bool rightIsConst = TryGetInt32Value(right).has_value();
+        if (leftIsConst || rightIsConst) {
+            if (ValueVertex *reduced = TryBuildI32BinaryReduction(kind, left, right, leftKnownInt, rightKnownInt)) {
                 return reduced;
             }
+        }
+
+        if (leftKnownInt && rightKnownInt) {
             return BuildI32WithOverflowTagged(kind, left, right);
         }
 
@@ -3726,7 +3815,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
         bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
-        if (!leftKnownInt && !rightKnownInt) {
+        if (!leftKnownInt || !rightKnownInt) {
             return nullptr;
         }
         return BuildI32BinOp(kind, left, right);
@@ -3780,6 +3869,12 @@ struct GraphBuilder::BytecodeVisitor {
         return constant != nullptr && constant->GetValue() == 0.0 && !std::signbit(constant->GetValue());
     }
 
+    bool IsNegativeZero(ValueVertex *value) const
+    {
+        auto *constant = value->TryCast<Float64ConstantVertex>();
+        return constant != nullptr && constant->GetValue() == 0.0 && std::signbit(constant->GetValue());
+    }
+
     bool IsFloat64One(ValueVertex *value) const
     {
         auto *constant = value->TryCast<Float64ConstantVertex>();
@@ -3798,6 +3893,11 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *TryBuildF64Identity(BinaryOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
     {
         switch (kind) {
+            case BinaryOpKind::ADD:
+                if (IsNegativeZero(rightF64)) {
+                    return BuildTaggedF64Value(leftF64);
+                }
+                break;
             case BinaryOpKind::SUB:
                 if (IsPositiveZero(rightF64)) {
                     return BuildTaggedF64Value(leftF64);
@@ -3829,9 +3929,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildF64NumberBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
     {
-        if (!SupportsF64BinOp(kind)) {
-            return BuildGenericBinOp(kind, left, right);
-        }
+        ASSERT(SupportsF64BinOp(kind));
         ValueVertex *leftF64 = BuildCheckedNumberToF64(left);
         ValueVertex *rightF64 = BuildCheckedNumberToF64(right);
         ValueVertex *taggedResult = BuildF64TaggedBinOpValue(kind, leftF64, rightF64);
@@ -3884,6 +3982,35 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_->EnsureType(constant, NodeInfo::NodeType::INT);
             return constant;
         };
+
+        if (leftValue.has_value() && rightValue.has_value()) {
+            int32_t lhs = *leftValue;
+            uint32_t shift = static_cast<uint32_t>(*rightValue) & 31U;
+            switch (kind) {
+                case Int32BitwiseKind::BITWISE_AND:
+                    return taggedIntConstant(lhs & *rightValue);
+                case Int32BitwiseKind::BITWISE_OR:
+                    return taggedIntConstant(lhs | *rightValue);
+                case Int32BitwiseKind::BITWISE_XOR:
+                    return taggedIntConstant(lhs ^ *rightValue);
+                case Int32BitwiseKind::SHIFT_LEFT:
+                    return taggedIntConstant(static_cast<int32_t>(static_cast<uint32_t>(lhs) << shift));
+                case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                    return taggedIntConstant(lhs >> static_cast<int32_t>(shift));
+                case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL: {
+                    // >>> yields a uint32; fold only when it fits int32 (non-negative), otherwise
+                    // leave it so the SHR tagging path (CheckedNonNegativeI32ToTaggedInt) deopts
+                    // to double as JS requires (e.g. (-1) >>> 0 === 4294967295).
+                    uint32_t ur = static_cast<uint32_t>(lhs) >> shift;
+                    if (ur > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+                        break;
+                    }
+                    return taggedIntConstant(static_cast<int32_t>(ur));
+                }
+                default:
+                    break;
+            }
+        }
 
         if (rightValue.has_value()) {
             switch (kind) {
@@ -3974,20 +4101,38 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildI32BitwiseTaggedValue(kind, leftI32, rightI32);
     }
 
+    ValueVertex *BuildTruncatingNumberToInt32(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            return BuildTaggedIntToI32(value);
+        }
+        ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
+        return self->NewVertex<F64ToI32TruncVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
+    }
+
     ValueVertex *BuildBitwiseOperation(Int32BitwiseKind kind)
     {
         ValueVertex *left = LoadRegister(currentBcInfo, 0);
         ValueVertex *right = frameState.GetAcc();
         bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
         bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
-        if (leftKnownInt || rightKnownInt) {
+        if (leftKnownInt && rightKnownInt) {
             return BuildI32BitwiseBinOp(kind, left, right, leftKnownInt, rightKnownInt);
         }
 
-        pgo::PGOSampleType profile = ReadBinaryOpProfile();
-        if (profile.IsInt()) {
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        if (feedback.hint == ArkSteedOperationHint::INT) {
+            LogOperationFeedback(feedback, "Bitwise", "I32BitwiseBinOp");
             return BuildI32BitwiseBinOp(kind, left, right, false, false);
         }
+        if (feedback.hint == ArkSteedOperationHint::NUMBER) {
+            LogOperationFeedback(feedback, "Bitwise", "TruncatingI32BitwiseBinOp");
+            ValueVertex *leftI32 = BuildTruncatingNumberToInt32(left);
+            ValueVertex *rightI32 = BuildTruncatingNumberToInt32(right);
+            return BuildI32BitwiseTaggedValue(kind, leftI32, rightI32);
+        }
+        LogOperationFeedback(feedback, "Bitwise", "GenericBitwiseBinOp");
         return BuildGenericBitwiseBinOp(kind, left, right);
     }
 
@@ -3999,16 +4144,39 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
-    ValueVertex *TryBuildStringAdd(ValueVertex *left, ValueVertex *right, const pgo::PGOSampleType &profile)
+    ValueVertex *TryBuildStringAdd(ValueVertex *left, ValueVertex *right, const OperationFeedback &feedback)
     {
         bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
         bool rightKnownString = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::STRING);
+        // `"" + x` / `x + ""` -> x (the other operand), guarded to be a string. Only fires when the
+        // other side is string-ish (known string, or profiled hint==STRING/NUMBER_OR_STRING);
+        // `"" + <non-string>` must ToString the non-string rather than return it.
+        bool hintString = feedback.hint == ArkSteedOperationHint::STRING;
+        bool hintStringOrNumStr =
+            hintString || feedback.hint == ArkSteedOperationHint::NUMBER_OR_STRING;
+        if (IsEmptyStringConstant(left) && (rightKnownString || hintStringOrNumStr)) {
+            return rightKnownString ? right : BuildCheckedTaggedString(right);
+        }
+        if (IsEmptyStringConstant(right) && (leftKnownString || hintStringOrNumStr)) {
+            return leftKnownString ? left : BuildCheckedTaggedString(left);
+        }
         if (leftKnownString && rightKnownString) {
             return BuildStringAdd(left, right);
         }
-        if (!profile.IsString()) {
+        if (!hintStringOrNumStr) {
             return nullptr;
         }
+        LogOperationFeedback(feedback, "BinaryStringAdd", "StringAdd");
+        if (feedback.hint == ArkSteedOperationHint::NUMBER_OR_STRING) {
+            if (leftKnownString) {
+                return BuildStringAdd(left, BuildCheckedTaggedToString(right));
+            }
+            if (rightKnownString) {
+                return BuildStringAdd(BuildCheckedTaggedToString(left), right);
+            }
+            return nullptr;
+        }
+        // hint == STRING: both sides profiled string -> check both.
         ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
         ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
         return BuildStringAdd(checkedLeft, checkedRight);
@@ -4191,19 +4359,44 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     ValueVertex *TryBuildStringCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right,
-                                         const pgo::PGOSampleType &profile)
+                                         const OperationFeedback &feedback)
     {
         bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
         bool rightKnownString = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::STRING);
         if (leftKnownString && rightKnownString) {
             return BuildStringCompareOp(kind, left, right);
         }
-        if (!profile.IsString()) {
+        if (feedback.hint != ArkSteedOperationHint::STRING) {
             return nullptr;
         }
+        LogOperationFeedback(feedback, "CompareString", "StringCompareOp");
         ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
         ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
         return BuildStringCompareOp(kind, checkedLeft, checkedRight);
+    }
+
+    ValueVertex *TryFoldUint32ComparedToNonPositive(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (left == nullptr || !left->Is<CheckedNonNegativeI32ToTaggedIntVertex>()) {
+            return nullptr;
+        }
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        if (!rightValue.has_value() || *rightValue > 0) {
+            return nullptr;
+        }
+        switch (kind) {
+            case CompareOpKind::GREATER_THAN_OR_EQUAL:
+                return GetBooleanConstant(true);   // uint32 >= 0 >= right
+            case CompareOpKind::LESS_THAN:
+                return GetBooleanConstant(false);  // uint32 >= 0, cannot be < right (<=0)
+            case CompareOpKind::GREATER_THAN:
+                if (*rightValue < 0) {
+                    return GetBooleanConstant(true);  // uint32 >= 0 > right
+                }
+                return nullptr;  // right == 0: uint32 > 0 not always (could be 0)
+            default:
+                return nullptr;  // LE / equality: not always-resolvable
+        }
     }
 
     ValueVertex *BuildCompareOperation(CompareOpKind kind)
@@ -4215,14 +4408,19 @@ struct GraphBuilder::BytecodeVisitor {
             return result;
         }
 
+        if (ValueVertex *result = TryFoldUint32ComparedToNonPositive(kind, left, right)) {
+            return result;
+        }
+
         bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
         bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
         if (leftKnownInt && rightKnownInt) {
             return BuildI32CompareOp(kind, left, right, leftKnownInt, rightKnownInt);
         }
 
-        pgo::PGOSampleType profile = ReadBinaryOpProfile();
-        if (profile.IsInt()) {
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        if (feedback.hint == ArkSteedOperationHint::INT) {
+            LogOperationFeedback(feedback, "Compare", "I32CompareOp");
             return BuildI32CompareOp(kind, left, right, false, false);
         }
 
@@ -4230,15 +4428,17 @@ struct GraphBuilder::BytecodeVisitor {
         bool rightKnownNumber = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::NUMBER);
         bool leftKnownNonIntNumber = leftKnownNumber && !leftKnownInt;
         bool rightKnownNonIntNumber = rightKnownNumber && !rightKnownInt;
-        if (leftKnownNonIntNumber || rightKnownNonIntNumber || profile.HasNumber()) {
+        if (leftKnownNonIntNumber || rightKnownNonIntNumber ||
+            feedback.hint == ArkSteedOperationHint::NUMBER) {
+            LogOperationFeedback(feedback, "Compare", "F64CompareOp");
             return BuildF64CompareOp(kind, left, right);
         }
 
-        if (leftKnownInt || rightKnownInt) {
+        if (leftKnownInt && rightKnownInt) {
             return BuildI32CompareOp(kind, left, right, leftKnownInt, rightKnownInt);
         }
 
-        if (ValueVertex *stringCompare = TryBuildStringCompareOp(kind, left, right, profile)) {
+        if (ValueVertex *stringCompare = TryBuildStringCompareOp(kind, left, right, feedback)) {
             return stringCompare;
         }
 
@@ -4271,44 +4471,29 @@ struct GraphBuilder::BytecodeVisitor {
         UNREACHABLE();
     }
 
-    pgo::PGOSampleType ReadBinaryOpProfile() const
+    void LogOperationFeedback(const OperationFeedback &feedback, const char *opcodeName,
+                              const char *chosenPath) const
     {
-        return self->pgoContext_.ReadBinaryOpProfile(self->preproc_->GetBytecodeOffset(currentBcIndex));
+        LOG_COMPILER(INFO) << "ArkSteed operation feedback: op=" << opcodeName
+                           << ", bcOffset=" << self->preproc_->GetBytecodeOffset(currentBcIndex)
+                           << ", slotId=" << feedback.slotId
+                           << ", rawTypeBits=" << feedback.rawTypeBits
+                           << ", hint=" << static_cast<uint32_t>(feedback.hint)
+                           << ", path=" << chosenPath;
     }
 
     ValueVertex *BuildNumericBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
-                                    const pgo::PGOSampleType &profile)
+                                    const OperationFeedback &feedback)
     {
-        uint64_t rawProfile = profile.IsProfileType() ? profile.GetProfileType().GetRaw()
-                                                      : static_cast<uint32_t>(profile.GetType());
-        LOG_COMPILER(INFO) << "ArkSteed binary PGO: op=" << static_cast<uint32_t>(kind)
-                           << ", type=" << profile.GetTypeString()
-                           << ", raw=" << rawProfile
-                           << ", isInt=" << profile.IsInt()
-                           << ", hasNumber=" << profile.HasNumber()
-                           << ", isNumberOrString=" << profile.IsNumberOrString()
-                           << ", isString=" << profile.IsString()
-                           << ", isInternString=" << profile.IsInternString()
-                           << ", isNone=" << profile.IsNone()
-                           << ", isProfileTypeNone=" << profile.IsProfileTypeNone();
-
-        if (profile.IsInt()) {
+        if (feedback.hint == ArkSteedOperationHint::INT && SupportsI32CheckedBinOp(kind)) {
+            LogOperationFeedback(feedback, "BinaryNumeric", "I32BinOp");
             return BuildI32BinOp(kind, left, right);
         }
-        if (kind == BinaryOpKind::MOD) {
-            bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
-            bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
-            bool leftKnownNumber = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::NUMBER);
-            bool rightKnownNumber = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::NUMBER);
-            bool leftKnownNonIntNumber = leftKnownNumber && !leftKnownInt;
-            bool rightKnownNonIntNumber = rightKnownNumber && !rightKnownInt;
-            if (!leftKnownNonIntNumber && !rightKnownNonIntNumber) {
-                return BuildI32BinOp(kind, left, right);
-            }
-        }
-        if (profile.HasNumber() || profile.IsNumberOrString()) {
+        if (feedback.hint == ArkSteedOperationHint::NUMBER && SupportsF64BinOp(kind)) {
+            LogOperationFeedback(feedback, "BinaryNumeric", "F64NumberBinOp");
             return BuildF64NumberBinOp(kind, left, right);
         }
+        LogOperationFeedback(feedback, "BinaryNumeric", "GenericBinOp");
         return BuildGenericBinOp(kind, left, right);
     }
 
@@ -4324,13 +4509,13 @@ struct GraphBuilder::BytecodeVisitor {
         if (ValueVertex *provenInt = TryBuildProvenIntBinOp(kind, left, right)) {
             return provenInt;
         }
-        pgo::PGOSampleType profile = ReadBinaryOpProfile();
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
         if (kind == BinaryOpKind::ADD) {
-            if (ValueVertex *stringAdd = TryBuildStringAdd(left, right, profile)) {
+            if (ValueVertex *stringAdd = TryBuildStringAdd(left, right, feedback)) {
                 return stringAdd;
             }
         }
-        return BuildNumericBinOp(kind, left, right, profile);
+        return BuildNumericBinOp(kind, left, right, feedback);
     }
 
     ValueVertex *BuildGenericUnaryOp(CommonStubID stubId, ValueVertex *value)
@@ -4446,13 +4631,17 @@ struct GraphBuilder::BytecodeVisitor {
             return BuildIntUnaryOp(stubId, value, true);
         }
 
-        pgo::PGOSampleType profile = ReadBinaryOpProfile();
-        if (profile.IsInt()) {
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        if (feedback.hint == ArkSteedOperationHint::INT) {
+            LogOperationFeedback(feedback, "Unary", "IntUnaryOp");
             return BuildIntUnaryOp(stubId, value, false);
         }
-        if (profile.HasNumber() || profile.IsNumberOrString()) {
+        if (feedback.hint == ArkSteedOperationHint::NUMBER ||
+            feedback.hint == ArkSteedOperationHint::NUMBER_OR_STRING) {
+            LogOperationFeedback(feedback, "Unary", "F64UnaryOp");
             return BuildF64UnaryOp(stubId, value);
         }
+        LogOperationFeedback(feedback, "Unary", "GenericUnaryOp");
         return BuildGenericUnaryOp(stubId, value);
     }
 
@@ -4507,41 +4696,72 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
+    ValueVertex *TryBuildFloat64ConstantBinaryOperation(BinaryOpKind kind, double lhs, double rhs)
+    {
+        double result = 0.0;
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                result = lhs + rhs;
+                break;
+            case BinaryOpKind::SUB:
+                result = lhs - rhs;
+                break;
+            case BinaryOpKind::MUL:
+                result = lhs * rhs;
+                break;
+            case BinaryOpKind::DIV:
+                if (rhs == 0.0) {
+                    // x / 0 -> Infinity / -Infinity / NaN; the sign and NaN rules are best left
+                    // to the runtime F64DivVertex rather than reproduced at compile time.
+                    return nullptr;
+                }
+                result = lhs / rhs;
+                break;
+            default:
+                return nullptr;
+        }
+        return TaggedConstantFromFoldedValue(JSTaggedValue(result));
+    }
+
     ValueVertex *TryBuildConstantBinaryOperation(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
     {
         std::optional<int32_t> leftValue = TryGetInt32Value(left);
         std::optional<int32_t> rightValue = TryGetInt32Value(right);
-        if (!leftValue.has_value() || !rightValue.has_value()) {
-            return nullptr;
+        if (leftValue.has_value() && rightValue.has_value()) {
+            int32_t lhs = *leftValue;
+            int32_t rhs = *rightValue;
+            int64_t result = 0;
+            switch (kind) {
+                case BinaryOpKind::ADD:
+                    result = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
+                    break;
+                case BinaryOpKind::SUB:
+                    result = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
+                    break;
+                case BinaryOpKind::MUL:
+                    if ((lhs == 0 || rhs == 0) && (lhs < 0 || rhs < 0)) {
+                        return nullptr;
+                    }
+                    result = static_cast<int64_t>(lhs) * static_cast<int64_t>(rhs);
+                    break;
+                default:
+                    // Int DIV/MOD/EXP are left unfolded.
+                    return nullptr;
+            }
+            if (result < std::numeric_limits<int32_t>::min() || result > std::numeric_limits<int32_t>::max()) {
+                return nullptr;
+            }
+            return self->graph_->GetTaggedConstant(JSTaggedValue(static_cast<int32_t>(result)).GetRawData());
         }
 
-        int32_t lhs = *leftValue;
-        int32_t rhs = *rightValue;
-        int64_t result = 0;
-        switch (kind) {
-            case BinaryOpKind::ADD:
-                result = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
-                break;
-            case BinaryOpKind::SUB:
-                result = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
-                break;
-            case BinaryOpKind::MUL:
-                if ((lhs == 0 || rhs == 0) && (lhs < 0 || rhs < 0)) {
-                    return nullptr;
-                }
-                result = static_cast<int64_t>(lhs) * static_cast<int64_t>(rhs);
-                break;
-            case BinaryOpKind::DIV:
-            case BinaryOpKind::MOD:
-            case BinaryOpKind::EXP:
-                return nullptr;
-            default:
-                return nullptr;
+        // Float64 two-constant fold (ADD/SUB/MUL/DIV). Only fires for double constants, so int
+        // DIV/MOD are unaffected.
+        std::optional<double> leftF64 = TryGetFloat64Value(left);
+        std::optional<double> rightF64 = TryGetFloat64Value(right);
+        if (leftF64.has_value() && rightF64.has_value()) {
+            return TryBuildFloat64ConstantBinaryOperation(kind, *leftF64, *rightF64);
         }
-        if (result < std::numeric_limits<int32_t>::min() || result > std::numeric_limits<int32_t>::max()) {
-            return nullptr;
-        }
-        return self->graph_->GetTaggedConstant(JSTaggedValue(static_cast<int32_t>(result)).GetRawData());
+        return nullptr;
     }
 
     bool BuildCheckHClass(uint32_t bcIndex, ValueVertex *object, JSHClass *hclass)

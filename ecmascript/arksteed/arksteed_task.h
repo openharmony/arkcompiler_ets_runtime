@@ -26,7 +26,7 @@ class ArkSteedTask : public JitTask {
 public:
     ArkSteedTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
                  CompilerTier tier, CString &methodName, int32_t offset, JitCompileMode mode);
-    ~ArkSteedTask() = default;
+    ~ArkSteedTask();
 
     void Compile();
     void InstallCode() override;

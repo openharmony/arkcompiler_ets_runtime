@@ -1132,6 +1132,83 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedToStringVertex>(CheckedTaggedToStringVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": CheckedTaggedToStringVertex";
+#endif
+    auto value = GetInputRegister(op, CheckedTaggedToStringVertex::INPUT_INDEX);
+    auto dst = GetResultRegister(op);
+    auto temporaries = op->GetRegallocInfo()->GetGeneralTemporaries();
+    ArkSteedRegister bits = temporaries.First();
+    temporaries.PopFirst();
+    ArkSteedRegister scratch = temporaries.First();
+    Label checkNumber;
+    Label isNumber;
+    Label deopt;
+    Label done;
+
+    // String check: heap object whose JSType is in [STRING_FIRST, STRING_LAST].
+    __ JumpIfNotTaggedHeapObject(value, &checkNumber);
+    __ LoadField(scratch, value, TaggedObject::HCLASS_OFFSET);
+    __ And(scratch, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    __ LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
+    __ And(scratch, (1U << JSHClass::TYPE_BITFIELD_NUM) - 1);
+    __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
+    __ JumpIf(Condition::COND_LESS_THAN, &checkNumber);
+    __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
+    __ JumpIf(Condition::COND_GREATER_THAN, &checkNumber);
+    __ Move(dst, value);
+    __ Jump(&done);
+
+    // Not a string: tagged int or double is a number -> NumberToString; any other heap object
+    // (symbol/object/bigint) deopts.
+    __ Bind(&checkNumber);
+    __ Move(bits, value);
+    __ Move(scratch, JSTaggedValue::TAG_MARK);
+    __ Word64And(bits, scratch);
+    __ Compare(bits, scratch);
+    __ JumpIf(Condition::COND_EQUAL, &isNumber);   // tagged int -> number
+    __ Compare(bits, JSTaggedValue::TAG_OBJECT);
+    __ JumpIf(Condition::COND_EQUAL, &deopt);      // non-string heap object -> deopt
+    // Else: tagged double -> number (fall through).
+
+    __ Bind(&isNumber);
+    {
+        const int32_t reservedSlotCount = 4;
+        __ ReserveCallArgSlots(reservedSlotCount);
+        {
+            TemporaryRegisterScope scope(assembler_);
+            ArkSteedRegister gpr = scope.AcquireScratch();
+            __ Move(gpr, static_cast<int64_t>(static_cast<int>(kungfu::RuntimeStubCSigns::ID_NumberToString)));
+            __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG0), gpr);
+            __ Move(gpr, static_cast<int64_t>(1));
+            __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG1), gpr);
+        }
+        StoreStubStackArgument(op, CheckedTaggedToStringVertex::INPUT_INDEX, __ GetCallArgSlot(CALL_ARG2));
+        __ CallRuntime(kungfu::RuntimeStubCSigns::ID_NumberToString);
+        // Tagged return in the platform GPR return register; move it into dst.
+#if defined(PANDA_TARGET_AMD64)
+        auto returnReg = x64::rax;
+#elif defined(PANDA_TARGET_ARM64)
+        auto returnReg = aarch64::x0;
+#else
+#error "CheckedTaggedToStringVertex codegen: unsupported architecture"
+#endif
+        if (dst != returnReg) {
+            __ Move(dst, returnReg);
+        }
+        __ FreeCallArgSlots(reservedSlotCount);
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
+    __ Jump(&done);
+
+    __ Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::NOTSTRING1);
+    __ Bind(&done);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<I32ConditionCheckVertex>(I32ConditionCheckVertex *check)
 {
 #ifndef NDEBUG
@@ -1411,40 +1488,51 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivVertex>(I32DivVertex *di
 }
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<PositiveI32ModVertex>(PositiveI32ModVertex *mod)
+void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI32ModVertex *mod)
 {
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << mod->GetId() << ": PositiveI32ModVertex";
-#endif
-    __ PositiveInt32Mod(GetResultRegister(mod), GetInputRegister(mod, PositiveI32ModVertex::LEFT_INDEX),
-                                 GetInputRegister(mod, PositiveI32ModVertex::RIGHT_INDEX));
-}
-
-template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedPositiveI32ModVertex>(CheckedPositiveI32ModVertex *mod)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << mod->GetId() << ": CheckedPositiveI32ModVertex";
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << mod->GetId() << ": CheckedI32ModVertex";
 #endif
     auto dst = GetResultRegister(mod);
-    auto left = GetInputRegister(mod, CheckedPositiveI32ModVertex::LEFT_INDEX);
-    auto right = GetInputRegister(mod, CheckedPositiveI32ModVertex::RIGHT_INDEX);
-    Label badLeft;
-    Label badRight;
+    auto left = GetInputRegister(mod, CheckedI32ModVertex::LEFT_INDEX);
+    auto right = GetInputRegister(mod, CheckedI32ModVertex::RIGHT_INDEX);
+    Label divideZero;
+    Label overflow;
+    Label negativeZero;
+    Label divisorReady;
+    Label leftNeg;
     Label done;
 
-    __ CompareInt32(left, 0);
-    __ JumpIf(Condition::COND_LESS_THAN, &badLeft);
+    // divisor == 0 -> NaN (a double), deopt.
     __ CompareInt32(right, 0);
-    __ JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &badRight);
+    __ JumpIf(Condition::COND_EQUAL, &divideZero);
+    // INT_MIN % -1 traps idiv (#DE); deopt to the interpreter (mathematically 0).
+    __ CompareInt32(left, std::numeric_limits<int32_t>::min());
+    __ JumpIf(Condition::COND_NOT_EQUAL, &divisorReady);
+    __ CompareInt32(right, -1);
+    __ JumpIf(Condition::COND_EQUAL, &overflow);
+    __ Bind(&divisorReady);
+    // Read the dividend sign before PositiveInt32Mod, which clobbers the left input
+    // register. remainder == 0 with a negative dividend is JS -0.0 (not Int32) -> deopt.
+    __ CompareInt32(left, 0);
+    __ JumpIf(Condition::COND_LESS_THAN, &leftNeg);
     __ PositiveInt32Mod(dst, left, right);
     __ Jump(&done);
 
-    __ Bind(&badLeft);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+    __ Bind(&leftNeg);
+    __ PositiveInt32Mod(dst, left, right);
+    __ CompareInt32(dst, 0);
+    __ JumpIf(Condition::COND_EQUAL, &negativeZero);
     __ Jump(&done);
-    __ Bind(&badRight);
+
+    __ Bind(&divideZero);
     EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::MODZERO1);
+    __ Jump(&done);
+    __ Bind(&overflow);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::INT32OVERFLOW1);
+    __ Jump(&done);
+    __ Bind(&negativeZero);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
     __ Bind(&done);
 }
 

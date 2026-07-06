@@ -30,6 +30,13 @@ ArkSteedTask::ArkSteedTask(JSThread *hostThread, JSThread *compilerThread, Jit *
     : JitTask(hostThread, compilerThread, jit, jsFunction, tier, methodName, offset, mode)
 {}
 
+ArkSteedTask::~ArkSteedTask()
+{
+    auto &codeDesc = GetMachineCodeDesc();
+    delete[] reinterpret_cast<uint8_t *>(codeDesc.stackMapOrOffsetTableAddr);
+    delete[] reinterpret_cast<uint8_t *>(codeDesc.codeCommentsAddr);
+}
+
 void ArkSteedTask::Compile()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ArkSteed::Compile", "");
