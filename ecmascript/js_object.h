@@ -811,6 +811,11 @@ public:
     static void PUBLIC_API TryMigrateToGenericKindForJSObject(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                   const ElementsKind oldKind);
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
+#if ENABLE_V70_OPTIMIZATION
+    static void NormalizeElements(const JSThread *thread, JSHandle<JSObject> obj);
+    static bool ShouldNormalizeElementsOnDeletion(JSThread *thread, JSHandle<JSObject> obj, uint32_t deletedIndex);
+    static void DeleteElementsAtEnd(const JSThread *thread, JSHandle<JSObject> obj, uint32_t entry);
+#endif
 
     // Find function in JsObject For Hook
     static JSHandle<JSTaggedValue> FindFuncInObjectForHook(JSThread *thread, JSHandle<JSTaggedValue> object,

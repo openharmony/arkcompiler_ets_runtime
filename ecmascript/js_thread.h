@@ -953,6 +953,23 @@ public:
         return enableLazyBuiltins_;
     }
 
+#if ENABLE_V70_OPTIMIZATION
+    void SetElementsDeletionCounter(uint32_t count)
+    {
+        elementsDeletionCounter_ = count;
+    }
+
+    uint32_t GetElementsDeletionCounter() const
+    {
+        return elementsDeletionCounter_;
+    }
+
+    void ResetElementsDeletionCounter()
+    {
+        elementsDeletionCounter_ = 0;
+    }
+#endif
+
     void SetInGlobalEnvInitialize(bool value)
     {
         inGlobalEnvInitialize_ = value;
@@ -2469,6 +2486,9 @@ private:
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
     bool enableLazyBuiltins_ {false};
+#if ENABLE_V70_OPTIMIZATION
+    uint32_t elementsDeletionCounter_ {0};
+#endif
     bool inGlobalEnvInitialize_ {false};
     bool readyForGCIterating_ {false};
     bool isUncaughtExceptionRegistered_ {false};

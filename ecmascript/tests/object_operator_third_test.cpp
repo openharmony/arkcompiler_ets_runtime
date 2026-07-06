@@ -15,10 +15,15 @@
 
 #include "ecmascript/object_operator.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_dictionary-inl.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/property_attributes.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tests/test_helper.h"
@@ -33,6 +38,32 @@ static JSFunction *JSObjectTestCreate(JSThread *thread)
 {
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     return globalEnv->GetObjectFunction().GetObject<JSFunction>();
+}
+
+static JSHandle<JSObject> CreateObjectWithElements(JSThread *thread, uint32_t length)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> object =
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    for (uint32_t i = 0; i < length; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(object), key, key);
+    }
+    return object;
+}
+
+static JSHandle<JSArray> CreateArrayWithElements(JSThread *thread, uint32_t length)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArray> array = factory->NewJSArray();
+    array->SetArrayLength(thread, length);
+    JSHandle<JSObject> object(array);
+    for (uint32_t i = 0; i < length; i++) {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(object), key, key);
+    }
+    return array;
 }
 
 JSTaggedValue TestDefinedSetter([[maybe_unused]] EcmaRuntimeCallInfo *argv)
@@ -333,6 +364,386 @@ HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement2)
     auto resultDict = NumberDictionary::Cast(handleGlobalObject->GetElements(thread).GetTaggedObject());
     EXPECT_EQ(resultDict->Size(), 4);
 }
+
+HWTEST_F_L0(ObjectOperatorTest, DeleteElement_V70FeatureGate)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> object = CreateObjectWithElements(thread, 8);
+    JSHandle<JSTaggedValue> namedKey(factory->NewFromASCII("named"));
+    JSHandle<JSTaggedValue> namedValue(thread, JSTaggedValue(42));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(object), namedKey, namedValue);
+    EXPECT_FALSE(object->GetJSHClass()->IsDictionaryElement());
+    EXPECT_FALSE(object->GetJSHClass()->IsDictionaryMode());
+
+    constexpr uint32_t deletedIndex = 1;
+    ObjectOperator objectOperator(thread, JSHandle<JSTaggedValue>(object), deletedIndex);
+    objectOperator.DeletePropertyInHolder();
+
+    JSHandle<JSTaggedValue> deletedKey(thread, JSTaggedValue(static_cast<int32_t>(deletedIndex)));
+    EXPECT_TRUE(JSObject::GetProperty(thread, object, deletedKey).GetValue()->IsUndefined());
+    EXPECT_EQ(JSObject::GetProperty(thread, object, namedKey).GetValue()->GetInt(), 42);
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_FALSE(object->GetJSHClass()->IsDictionaryElement());
+    EXPECT_FALSE(object->GetJSHClass()->IsDictionaryMode());
+#else
+    EXPECT_TRUE(object->GetJSHClass()->IsDictionaryElement());
+    EXPECT_TRUE(object->GetJSHClass()->IsDictionaryMode());
+#endif
+}
+
+HWTEST_F_L0(ObjectOperatorTest, DeleteElementsAtEnd_TrimAndEmpty)
+{
+    JSHandle<JSObject> handleObject = CreateObjectWithElements(thread, 5);
+    uint32_t capacity = ElementAccessor::GetElementsLength(thread, handleObject);
+    EXPECT_GE(capacity, 5U);
+
+#if ENABLE_V70_OPTIMIZATION
+    // Drop unused trailing slots, then delete the last used index via ObjectOperator.
+    if (capacity > 5) {
+        JSObject::DeleteElementsAtEnd(thread, handleObject, 5);
+    }
+    EXPECT_EQ(ElementAccessor::GetElementsLength(thread, handleObject), 5U);
+#endif
+    {
+        ObjectOperator objectOperator(thread, JSHandle<JSTaggedValue>(handleObject), 4);
+        objectOperator.DeletePropertyInHolder();
+    }
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_EQ(ElementAccessor::GetElementsLength(thread, handleObject), 4U);
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsDictionaryElement());
+
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    ElementAccessor::Set(thread, handleObject, 2, hole, true, ElementsKind::HOLE);
+    JSObject::DeleteElementsAtEnd(thread, handleObject, 3);
+    EXPECT_EQ(ElementAccessor::GetElementsLength(thread, handleObject), 2U);
+
+    for (int i = 1; i >= 0; i--) {
+        ObjectOperator objectOperator(thread, JSHandle<JSTaggedValue>(handleObject), static_cast<uint32_t>(i));
+        objectOperator.DeletePropertyInHolder();
+    }
+    EXPECT_EQ(ElementAccessor::GetElementsLength(thread, handleObject), 0U);
+    EXPECT_EQ(handleObject->GetElements(thread), thread->GetEcmaVM()->GetFactory()->EmptyArray().GetTaggedValue());
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsDictionaryElement());
+#else
+    EXPECT_TRUE(handleObject->GetJSHClass()->IsDictionaryElement());
+    EXPECT_TRUE(handleObject->GetJSHClass()->IsDictionaryMode());
+#endif
+}
+
+HWTEST_F_L0(ObjectOperatorTest, NormalizeElements_KeepsFastProperties)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    constexpr uint32_t length = 128;
+    JSHandle<JSArray> array = CreateArrayWithElements(thread, length);
+    JSHandle<JSObject> handleObject(array);
+    JSHandle<JSTaggedValue> namedKey(factory->NewFromASCII("named"));
+    JSHandle<JSTaggedValue> namedValue(thread, JSTaggedValue(42));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), namedKey, namedValue);
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsDictionaryMode());
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsDictionaryElement());
+
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    for (uint32_t i = 0; i < 125; i++) {
+        ElementAccessor::Set(thread, handleObject, i, hole, true, ElementsKind::HOLE);
+    }
+#if ENABLE_V70_OPTIMIZATION
+    // Bypass deletion throttle so the next delete performs the sparsity scan.
+    thread->SetElementsDeletionCounter(length / 16);
+#endif
+    {
+        JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(125));
+        JSObject::DeleteProperty(thread, handleObject, handleKey);
+    }
+    EXPECT_TRUE(handleObject->GetJSHClass()->IsDictionaryElement());
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsDictionaryMode());
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 0U);
+#else
+    EXPECT_TRUE(handleObject->GetJSHClass()->IsDictionaryMode());
+#endif
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsStableElements());
+    // GENERIC and DICTIONARY share HOLE_TAGGED; do not use kind equality as a discriminator.
+    EXPECT_TRUE(ElementAccessor::IsDictionaryMode(thread, handleObject));
+    EXPECT_EQ(array->GetArrayLength(), length);
+    EXPECT_EQ(JSObject::GetProperty(thread, handleObject, namedKey).GetValue()->GetInt(), 42);
+    JSHandle<JSTaggedValue> survivingKey(thread, JSTaggedValue(127));
+    EXPECT_EQ(JSObject::GetProperty(thread, handleObject, survivingKey).GetValue()->GetInt(), 127);
+}
+
+#if ENABLE_V70_OPTIMIZATION
+HWTEST_F_L0(ObjectOperatorTest, NormalizeElements_PreservesKindAcrossPropertyTransitions)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    constexpr uint32_t length = 128;
+    JSHandle<JSArray> array = CreateArrayWithElements(thread, length);
+    JSHandle<JSObject> object(array);
+    JSHandle<JSTaggedValue> existingKey(factory->NewFromASCII("existing"));
+    JSHandle<JSTaggedValue> addedKey(factory->NewFromASCII("addedAfterNormalize"));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(object), existingKey,
+                          JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)));
+
+    JSObject::NormalizeElements(thread, object);
+    ASSERT_TRUE(object->GetJSHClass()->IsDictionaryElement());
+    ASSERT_TRUE(ElementAccessor::IsDictionaryMode(thread, object));
+    ASSERT_FALSE(object->GetJSHClass()->IsDictionaryMode());
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(object), addedKey,
+                          JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
+    EXPECT_TRUE(object->GetJSHClass()->IsDictionaryElement());
+    EXPECT_TRUE(ElementAccessor::IsDictionaryMode(thread, object));
+    EXPECT_FALSE(object->GetJSHClass()->IsDictionaryMode());
+    EXPECT_EQ(JSObject::GetProperty(thread, object, addedKey).GetValue()->GetInt(), 2);
+
+    EXPECT_TRUE(JSObject::DeleteProperty(thread, object, existingKey));
+    EXPECT_TRUE(object->GetJSHClass()->IsDictionaryElement());
+    EXPECT_TRUE(ElementAccessor::IsDictionaryMode(thread, object));
+    EXPECT_TRUE(object->GetJSHClass()->IsDictionaryMode());
+
+    EXPECT_TRUE(JSObject::PreventExtensions(thread, object));
+    EXPECT_TRUE(object->GetJSHClass()->IsDictionaryElement());
+    EXPECT_TRUE(ElementAccessor::IsDictionaryMode(thread, object));
+    JSHandle<JSTaggedValue> survivingKey(thread, JSTaggedValue(static_cast<int32_t>(length - 1)));
+    EXPECT_EQ(JSObject::GetProperty(thread, object, survivingKey).GetValue()->GetInt(),
+              static_cast<int32_t>(length - 1));
+}
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_BelowMinCapacity)
+{
+    JSHandle<JSArray> smallArray = CreateArrayWithElements(thread, 16);
+    JSHandle<JSObject> smallObject(smallArray);
+    ASSERT_LT(ElementAccessor::GetElementsLength(thread, smallObject), 64U);
+    thread->SetElementsDeletionCounter(7);
+    EXPECT_FALSE(JSObject::ShouldNormalizeElementsOnDeletion(thread, smallObject, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 7U);
+    thread->ResetElementsDeletionCounter();
+}
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_ThrottleAndDenseEarlyExit)
+{
+    constexpr uint32_t length = 128;
+    JSHandle<JSArray> denseArray = CreateArrayWithElements(thread, length);
+    JSHandle<JSObject> denseObject(denseArray);
+    ASSERT_GE(ElementAccessor::GetElementsLength(thread, denseObject), 64U);
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    ElementAccessor::Set(thread, denseObject, 0, hole, true, ElementsKind::HOLE);
+
+    thread->ResetElementsDeletionCounter();
+    EXPECT_FALSE(JSObject::ShouldNormalizeElementsOnDeletion(thread, denseObject, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 1U);
+
+    thread->SetElementsDeletionCounter(length / 16);
+    EXPECT_FALSE(JSObject::ShouldNormalizeElementsOnDeletion(thread, denseObject, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 0U);
+    EXPECT_FALSE(denseObject->GetJSHClass()->IsDictionaryElement());
+}
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_MinimumThreshold)
+{
+    constexpr uint32_t capacity = 128;
+    constexpr uint32_t shortLength = 8;
+    JSHandle<JSArray> shortArray = CreateArrayWithElements(thread, capacity);
+    JSHandle<JSObject> shortObject(shortArray);
+    // Keep capacity >= 64 but shrink logical length so threshold = max(1, length/16) = 1.
+    // Hole the discarded tail; do not leave live elements past the new length.
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    uint32_t shortCapacity = ElementAccessor::GetElementsLength(thread, shortObject);
+    for (uint32_t i = shortLength; i < shortCapacity; i++) {
+        ElementAccessor::Set(thread, shortObject, i, hole, true, ElementsKind::HOLE);
+    }
+    shortArray->SetArrayLength(thread, shortLength);
+    ASSERT_GE(shortCapacity, 64U);
+    ASSERT_LT(shortArray->GetArrayLength(), 16U);
+
+    thread->ResetElementsDeletionCounter();
+    EXPECT_FALSE(JSObject::ShouldNormalizeElementsOnDeletion(thread, shortObject, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 1U);
+
+    EXPECT_FALSE(JSObject::ShouldNormalizeElementsOnDeletion(thread, shortObject, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 0U);
+    EXPECT_FALSE(shortObject->GetJSHClass()->IsDictionaryElement());
+}
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_DictionarySpaceBoundary)
+{
+    constexpr uint32_t capacity = 72;
+    constexpr uint32_t liveElements = 4;
+    constexpr uint32_t preferFastElementsSizeFactor = 3;
+    JSHandle<JSArray> array = CreateArrayWithElements(thread, capacity);
+    JSHandle<JSObject> object(array);
+    JSHandle<TaggedArray> elements(thread, object->GetElements(thread));
+    ASSERT_GE(elements->GetLength(), capacity);
+    if (elements->GetLength() > capacity) {
+        elements->Trim(thread, capacity);
+    }
+    ASSERT_EQ(ElementAccessor::GetElementsLength(thread, object), capacity);
+
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    for (uint32_t i = 0; i < capacity - liveElements; i++) {
+        ElementAccessor::Set(thread, object, i, hole, true, ElementsKind::HOLE);
+    }
+    uint32_t dictSize = static_cast<uint32_t>(NumberDictionary::ComputeHashTableSize(liveElements));
+    ASSERT_EQ(dictSize, 8U);
+    ASSERT_EQ(preferFastElementsSizeFactor * dictSize * NumberDictionary::GetEntrySize(), capacity);
+
+    thread->SetElementsDeletionCounter(capacity / 16);
+    EXPECT_TRUE(JSObject::ShouldNormalizeElementsOnDeletion(thread, object, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 0U);
+}
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_NonArrayWithLiveTail)
+{
+    constexpr uint32_t length = 128;
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+
+    JSHandle<JSObject> denseObject = CreateObjectWithElements(thread, length);
+    uint32_t denseCapacity = ElementAccessor::GetElementsLength(thread, denseObject);
+    if (denseCapacity > length) {
+        JSObject::DeleteElementsAtEnd(thread, denseObject, length);
+        denseCapacity = length;
+    }
+    ElementAccessor::Set(thread, denseObject, 0, hole, true, ElementsKind::HOLE);
+    thread->SetElementsDeletionCounter(denseCapacity / 16);
+    EXPECT_FALSE(JSObject::ShouldNormalizeElementsOnDeletion(thread, denseObject, 0));
+    EXPECT_EQ(ElementAccessor::GetElementsLength(thread, denseObject), denseCapacity);
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 0U);
+
+    JSHandle<JSObject> sparseObject = CreateObjectWithElements(thread, length);
+    uint32_t sparseCapacity = ElementAccessor::GetElementsLength(thread, sparseObject);
+    if (sparseCapacity > length) {
+        JSObject::DeleteElementsAtEnd(thread, sparseObject, length);
+        sparseCapacity = length;
+    }
+    for (uint32_t i = 0; i < length - 2; i++) {
+        ElementAccessor::Set(thread, sparseObject, i, hole, true, ElementsKind::HOLE);
+    }
+    thread->SetElementsDeletionCounter(sparseCapacity / 16);
+    ObjectOperator objectOperator(thread, JSHandle<JSTaggedValue>(sparseObject), length - 2);
+    objectOperator.DeletePropertyInHolder();
+
+    EXPECT_TRUE(sparseObject->GetJSHClass()->IsDictionaryElement());
+    EXPECT_FALSE(sparseObject->GetJSHClass()->IsDictionaryMode());
+    JSHandle<JSTaggedValue> survivingKey(thread, JSTaggedValue(static_cast<int32_t>(length - 1)));
+    EXPECT_EQ(JSObject::GetProperty(thread, sparseObject, survivingKey).GetValue()->GetInt(),
+              static_cast<int32_t>(length - 1));
+}
+#endif
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_NonArrayTrailingHoles_Trim)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> handleObject =
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    constexpr uint32_t used = 64;
+    for (uint32_t i = 0; i < used; i++) {
+        JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), handleKey, handleValue);
+    }
+    uint32_t capacityBeforeGrow = ElementAccessor::GetElementsLength(thread, handleObject);
+    EXPECT_GE(capacityBeforeGrow, used);
+    JSObject::GrowElementsCapacity(thread, handleObject, capacityBeforeGrow);
+    uint32_t capacity = ElementAccessor::GetElementsLength(thread, handleObject);
+    EXPECT_GT(capacity, used);
+    uint32_t deletedIndex = used - 1;
+    EXPECT_NE(deletedIndex, capacity - 1);
+
+#if ENABLE_V70_OPTIMIZATION
+    thread->SetElementsDeletionCounter(capacity / 16);
+#endif
+    {
+        ObjectOperator objectOperator(thread, JSHandle<JSTaggedValue>(handleObject), deletedIndex);
+        objectOperator.DeletePropertyInHolder();
+    }
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_EQ(ElementAccessor::GetElementsLength(thread, handleObject), deletedIndex);
+    EXPECT_FALSE(handleObject->GetJSHClass()->IsDictionaryElement());
+#else
+    EXPECT_TRUE(handleObject->GetJSHClass()->IsDictionaryElement());
+    EXPECT_TRUE(handleObject->GetJSHClass()->IsDictionaryMode());
+#endif
+}
+
+#if ENABLE_V70_OPTIMIZATION
+HWTEST_F_L0(ObjectOperatorTest, NormalizeElements_NotifiesProtoChangeMarker)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> nullHandle(thread, JSTaggedValue::Null());
+    JSHandle<JSObject> proto = JSObject::ObjectCreate(thread, nullHandle);
+    JSHandle<JSObject> child = JSObject::ObjectCreate(thread, proto);
+    EXPECT_TRUE(proto->GetJSHClass()->IsPrototype());
+
+    constexpr uint32_t length = 128;
+    for (uint32_t i = 0; i < length; i++) {
+        JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(static_cast<int32_t>(i)));
+        JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(proto), handleKey, handleValue);
+    }
+    JSHandle<JSTaggedValue> namedKey(factory->NewFromASCII("named"));
+    JSHandle<JSTaggedValue> namedValue(thread, JSTaggedValue(42));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(proto), namedKey, namedValue);
+
+    JSHandle<JSHClass> childClass(thread, child->GetJSHClass());
+    JSHandle<JSTaggedValue> marker = JSHClass::EnableProtoChangeMarker(thread, childClass);
+    EXPECT_TRUE(marker->IsProtoChangeMarker());
+    EXPECT_FALSE(ProtoChangeMarker::Cast(marker->GetTaggedObject())->GetHasChanged());
+    EXPECT_TRUE(proto->GetJSHClass()->GetProtoChangeMarker(thread).IsProtoChangeMarker());
+
+    JSObject::NormalizeElements(thread, proto);
+    EXPECT_TRUE(proto->GetJSHClass()->IsDictionaryElement());
+    EXPECT_FALSE(proto->GetJSHClass()->IsDictionaryMode());
+    EXPECT_FALSE(proto->GetJSHClass()->IsStableElements());
+    EXPECT_TRUE(ElementAccessor::IsDictionaryMode(thread, proto));
+    EXPECT_TRUE(ProtoChangeMarker::Cast(marker->GetTaggedObject())->GetHasChanged());
+    EXPECT_EQ(JSObject::GetProperty(thread, proto, namedKey).GetValue()->GetInt(), 42);
+}
+
+HWTEST_F_L0(ObjectOperatorTest, NormalizeElements_EmptyAndShared)
+{
+    JSHandle<JSObject> emptyObject = CreateObjectWithElements(thread, 4);
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    for (uint32_t i = 0; i < 4; i++) {
+        ElementAccessor::Set(thread, emptyObject, i, hole, true, ElementsKind::HOLE);
+    }
+    JSObject::NormalizeElements(thread, emptyObject);
+    ASSERT_TRUE(emptyObject->GetJSHClass()->IsDictionaryElement());
+    ASSERT_TRUE(ElementAccessor::IsDictionaryMode(thread, emptyObject));
+    auto dictionary = NumberDictionary::Cast(emptyObject->GetElements(thread).GetTaggedObject());
+    EXPECT_EQ(dictionary->EntriesCount(), 0);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> sharedObject = JSHandle<JSObject>::Cast(factory->NewJSSArray());
+    EXPECT_FALSE(sharedObject->GetJSHClass()->IsDictionaryElement());
+    JSObject::NormalizeElements(thread, sharedObject);
+    EXPECT_EXCEPTION();
+    EXPECT_FALSE(sharedObject->GetJSHClass()->IsDictionaryElement());
+}
+
+HWTEST_F_L0(ObjectOperatorTest, DeleteElement_SharedObjectPreservesLegacyThrow)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> nullHandle = thread->GlobalConstants()->GetHandledNull();
+    JSHandle<LayoutInfo> emptyLayout = factory->CreateSLayoutInfo(0);
+    JSHandle<JSHClass> hclass = factory->NewSEcmaHClass(
+        JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT, nullHandle, JSHandle<JSTaggedValue>(emptyLayout));
+    JSHandle<JSObject> sharedObject = factory->NewSharedOldSpaceJSObject(hclass);
+    constexpr uint32_t length = 4;
+    // NewSTaggedArray only accepts special init values (Hole/Undefined/...).
+    JSHandle<TaggedArray> sharedElements = factory->NewSTaggedArray(length, JSTaggedValue::Hole());
+    sharedObject->SetElements(thread, sharedElements);
+    JSHandle<JSTaggedValue> initValue(thread, JSTaggedValue(7));
+    for (uint32_t i = 0; i < length; i++) {
+        ElementAccessor::Set(thread, sharedObject, i, initValue, true);
+    }
+
+    ObjectOperator objectOperator(thread, JSHandle<JSTaggedValue>(sharedObject), length - 1);
+    objectOperator.DeletePropertyInHolder();
+    EXPECT_EXCEPTION();
+    ASSERT_EQ(ElementAccessor::GetElementsLength(thread, sharedObject), length);
+    EXPECT_TRUE(ElementAccessor::Get(thread, sharedObject, length - 1).IsHole());
+    EXPECT_FALSE(sharedObject->GetJSHClass()->IsDictionaryElement());
+}
+#endif
 
 HWTEST_F_L0(ObjectOperatorTest, Property_DeleteProperty)
 {
