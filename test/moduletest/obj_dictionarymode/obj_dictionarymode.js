@@ -20,6 +20,19 @@
  * @tc.require: issueICNDYR
  */
 
+function assertDictionaryElements(obj, expected) {
+    assert_equal(ArkTools.hasDictionaryElements(obj), expected);
+}
+
+// Deletion throttle is length/16 (min 1). Reinsert an element before each delete
+// so every iteration reaches DeleteElementInHolder and advances the counter.
+function triggerElementsNormalizeScan(arr, index) {
+    const threshold = Math.max(1, Math.floor(arr.length / 16));
+    for (let i = 0; i <= threshold; i++) {
+        arr[index] = i;
+        delete arr[index];
+    }
+}
 
 {
     let obj = {};
@@ -28,7 +41,7 @@
     }
     assert_equal(ArkTools.hasFastProperties(obj), true);
     delete obj[0];
-    assert_equal(ArkTools.hasFastProperties(obj), false);
+    assert_equal(ArkTools.hasFastProperties(obj), true);
 }
 
 {
@@ -38,7 +51,7 @@
     }
     assert_equal(ArkTools.hasFastProperties(arr), true);
     delete arr[0];
-    assert_equal(ArkTools.hasFastProperties(arr), false);
+    assert_equal(ArkTools.hasFastProperties(arr), true);
 }
 
 {
@@ -85,7 +98,7 @@
     }
     assert_equal(ArkTools.hasFastProperties(obj5), true);
     delete obj5[50];
-    assert_equal(ArkTools.hasFastProperties(obj5), false);
+    assert_equal(ArkTools.hasFastProperties(obj5), true);
 }
 
 {
@@ -101,7 +114,7 @@
 {
     let arr3 = new Array(100).fill(0);
     delete arr3[50];
-    assert_equal(ArkTools.hasFastProperties(arr3), false);
+    assert_equal(ArkTools.hasFastProperties(arr3), true);
 }
 
 {
@@ -120,7 +133,7 @@
     delete arr5[50];
     assert_equal(ArkTools.hasFastProperties(arr5), false);
     arr5.fill(0);
-    assert_equal(ArkTools.hasFastProperties(arr5), true);
+    assert_equal(ArkTools.hasFastProperties(arr5), false);
 }
 
 {
@@ -164,6 +177,112 @@
     let arrayLike = { 0: 'a', 1: 'b', 2: 'c', length: 3 };
     assert_equal(ArkTools.hasFastProperties(arrayLike), true);
     delete arrayLike[1];
-    assert_equal(ArkTools.hasFastProperties(arrayLike), false);
+    assert_equal(ArkTools.hasFastProperties(arrayLike), true);
 }
+
+{
+    let arr = new Array(32).fill(0);
+    arr.named = 1;
+    delete arr[0];
+    assert_equal(arr[0], undefined);
+    assert_equal(arr[1], 0);
+    assert_equal(arr.named, 1);
+    assert_equal(ArkTools.hasFastProperties(arr), true);
+    assertDictionaryElements(arr, false);
+}
+
+{
+    let arr = new Array(128);
+    for (let i = 124; i < 128; i++) {
+        arr[i] = i;
+    }
+    arr.named = 'keep-fast-properties';
+    assertDictionaryElements(arr, false);
+    // Four live elements remain. At most threshold+1 valid deletes are needed to
+    // force a scan, independent of the thread-local counter's initial value.
+    triggerElementsNormalizeScan(arr, 0);
+    assert_equal(arr.named, 'keep-fast-properties');
+    assert_equal(arr[127], 127);
+    assert_equal(arr[0], undefined);
+    assert_equal(ArkTools.hasFastProperties(arr), true);
+    assertDictionaryElements(arr, true);
+
+    arr.addedAfterNormalize = 2;
+    assert_equal(arr.addedAfterNormalize, 2);
+    assert_equal(ArkTools.hasFastProperties(arr), true);
+    assertDictionaryElements(arr, true);
+
+    delete arr.named;
+    assert_equal(arr.named, undefined);
+    assert_equal(ArkTools.hasFastProperties(arr), false);
+    assertDictionaryElements(arr, true);
+    assert_equal(arr[127], 127);
+}
+
+{
+    let arr = new Array(128).fill(0);
+    arr.named = 2;
+    for (let i = 0; i < 9; i++) {
+        delete arr[i];
+    }
+    assert_equal(arr[9], 0);
+    assert_equal(arr.named, 2);
+    assert_equal(ArkTools.hasFastProperties(arr), true);
+    assertDictionaryElements(arr, false);
+}
+
+{
+    let obj = {};
+    for (let i = 0; i < 10; i++) {
+        obj[i] = i;
+    }
+    obj.named = 'x';
+    delete obj[9];
+    assert_equal(obj[9], undefined);
+    assert_equal(obj[8], 8);
+    assert_equal(obj.named, 'x');
+    assert_equal(ArkTools.hasFastProperties(obj), true);
+}
+
+{
+    let obj = {};
+    for (let i = 0; i < 5; i++) {
+        obj[i] = i;
+    }
+    for (let i = 4; i >= 0; i--) {
+        delete obj[i];
+    }
+    assert_equal(obj[0], undefined);
+    assert_equal(ArkTools.hasFastProperties(obj), true);
+    obj[0] = 7;
+    assert_equal(obj[0], 7);
+}
+
+{
+    let obj = {};
+    for (let i = 0; i < 20; i++) {
+        obj[i] = i;
+    }
+    obj.prop = 'x';
+    delete obj[10];
+    assert_equal(obj[10], undefined);
+    assert_equal(obj[11], 11);
+    assert_equal(obj.prop, 'x');
+    assert_equal(ArkTools.hasFastProperties(obj), true);
+}
+
+{
+    let arr = new Array(128);
+    for (let i = 124; i < 128; i++) {
+        arr[i] = i;
+    }
+    assertDictionaryElements(arr, false);
+    delete arr[127];
+    triggerElementsNormalizeScan(arr, 0);
+    assert_equal(arr[127], undefined);
+    assert_equal(arr[126], 126);
+    assert_equal(ArkTools.hasFastProperties(arr), true);
+    assertDictionaryElements(arr, true);
+}
+
 test_end();
