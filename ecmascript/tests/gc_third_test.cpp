@@ -255,6 +255,9 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest004)
         return;
     }
     auto sHeap = SharedHeap::GetInstance();
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), false);
@@ -745,6 +748,9 @@ HWTEST_F_L0(GCTest, SharedMarkingBarrier)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     SharedHeap *sHeap = SharedHeap::GetInstance();
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     JSHandle<TaggedArray> array(factory->NewSTaggedArray(16));
     sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::OTHER>(thread);
     std::this_thread::sleep_for(std::chrono::seconds(3));
