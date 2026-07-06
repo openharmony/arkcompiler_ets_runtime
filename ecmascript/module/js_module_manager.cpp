@@ -458,4 +458,13 @@ void ModuleManager::ResetConstPoolLiterals(const CString &recordName)
         }
     }
 }
+
+void ModuleManager::EraseClassLiteralConstPoolMapItem(int32_t unsharedConstPoolIndex)
+{
+    for (auto &record : classLiteralConstPoolMap_) {
+        if (record.second.erase(static_cast<uint32_t>(unsharedConstPoolIndex)) > 0) {
+            return;
+        }
+    }
+}
 } // namespace panda::ecmascript

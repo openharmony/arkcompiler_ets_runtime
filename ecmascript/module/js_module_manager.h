@@ -164,6 +164,7 @@ public:
 
     void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
     void ResetConstPoolLiterals(const CString &recordName);
+    void EraseClassLiteralConstPoolMapItem(int32_t unsharedConstPoolIndex);
 
     CUnorderedSet<CString, CStringHash>& GetModuleImportSet()
     {
@@ -179,7 +180,7 @@ public:
     {
         return ModuleTools::TruncateImportStackForJSCrash(moduleImportData_, maxSize);
     }
- 
+
     std::string GetImportStackDataForCPPCrash(const CString &moduleName, size_t maxSize) const
     {
         return ModuleTools::TruncateImportStackForCPPCrash(moduleName, moduleImportData_, maxSize);
@@ -222,7 +223,7 @@ private:
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     std::string moduleImportData_ {"\nModuleImportStack:"};
     CUnorderedSet<CString, CStringHash> moduleImportSet_;
-    // for module deregister. <recordName <unsharedConstPoolIndex, value index>.
+    // for module deregister. <recordName <unsharedConstPoolIndex, value index>>.
     CUnorderedMap<CString, CUnorderedMap<uint32_t, std::vector<uint32_t>>> classLiteralConstPoolMap_;
 
     friend class EcmaVM;
