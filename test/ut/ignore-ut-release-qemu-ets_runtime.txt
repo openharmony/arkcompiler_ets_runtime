@@ -275,6 +275,3 @@ obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_Sendable_TestWithQemu
 
 #35309
 obj/arkcompiler/ets_runtime/ecmascript/dfx/cpu_profiler/tests/CpuProfilerTestWithQemu
-
-#33921
-obj/arkcompiler/ets_runtime/ecmascript/tests/GC_SharedPartialGC_TestWithQemu

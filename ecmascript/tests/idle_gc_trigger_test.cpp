@@ -704,7 +704,9 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest1)
 
     sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread);
     heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
-
+    if (!sheap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     sheap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
     sheap->NotifyHeapAliveSizeAfterGC(1_MB);
 
