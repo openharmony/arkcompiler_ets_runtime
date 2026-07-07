@@ -18,6 +18,7 @@
 #include "ecmascript/arksteed/arch/arm64/arksteed_assembler_arm64-inl.h"
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
@@ -73,27 +74,29 @@ void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister 
 
 void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate)
 {
-    // Convert double to its 64-bit bit representation
-    uint64_t bits = 0;
-    static_assert(sizeof(double) == sizeof(uint64_t), "double must be 64 bits");
-    if (memcpy_s(&bits, sizeof(double), &immediate, sizeof(double)) != EOK) {
-        LOG_JIT(FATAL) << "memcpy failed in Move";
+    uint64_t bits = base::bit_cast<uint64_t>(immediate);
+    if (bits == 0) {
+        assembler_.Fmov(dst, aarch64::xzr);
+        return;
     }
-    // Use scratch register to hold the 64-bit value
-    ScratchRegisterScope scope;
+    if (assembler_.TryFmov(dst, immediate)) {
+        return;
+    }
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
-    // Load the 64-bit value to scratch register
     Move(scratch, static_cast<int64_t>(bits));
-    // Move from GP register to V register using FMOV
     assembler_.Fmov(dst, scratch);
 }
 
 void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, double immediate, ArkSteedRegister scratch)
 {
-    uint64_t bits = 0;
-    static_assert(sizeof(double) == sizeof(uint64_t), "double must be 64 bits");
-    if (memcpy_s(&bits, sizeof(double), &immediate, sizeof(double)) != EOK) {
-        LOG_JIT(FATAL) << "memcpy failed in Move";
+    uint64_t bits = base::bit_cast<uint64_t>(immediate);
+    if (bits == 0) {
+        assembler_.Fmov(dst, aarch64::xzr);
+        return;
+    }
+    if (assembler_.TryFmov(dst, immediate)) {
+        return;
     }
     Move(scratch, static_cast<int64_t>(bits));
     assembler_.Fmov(dst, scratch);
@@ -116,7 +119,7 @@ void ArkSteedAssembler::Move(ArkSteedRegister dst, ArkSteedDoubleRegister src)
 void ArkSteedAssembler::LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset)
 {
     aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
-    LoadRegisterWithOperand(assembler_, dst, operand);
+    LoadRegisterWithOperand(dst, operand);
 }
 
 void ArkSteedAssembler::LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset)
@@ -128,7 +131,7 @@ void ArkSteedAssembler::LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister ba
 void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
 {
     aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
-    StoreRegisterWithOperand(assembler_, src, operand);
+    StoreRegisterWithOperand(src, operand);
 }
 
 void ArkSteedAssembler::StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
@@ -150,7 +153,7 @@ void ArkSteedAssembler::LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand sr
         assembler_.Ldr(dst, srcOp);
         return;
     }
-    assembler_.Ldr(dst, MaterializeAddress(assembler_, srcOp));
+    assembler_.Ldr(dst, MaterializeAddress(srcOp));
 }
 
 void ArkSteedAssembler::StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src)
@@ -159,7 +162,7 @@ void ArkSteedAssembler::StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister
         assembler_.Str(src, dstOp);
         return;
     }
-    assembler_.Str(src, MaterializeAddress(assembler_, dstOp));
+    assembler_.Str(src, MaterializeAddress(dstOp));
 }
 
 // =============================================================================
@@ -176,6 +179,14 @@ void ArkSteedAssembler::Add(ArkSteedRegister dst, int32_t immediate)
 {
     ArkSteedRegister arm64Dst = dst;
     assembler_.Add(arm64Dst, arm64Dst, aarch64::Operand(aarch64::Immediate(immediate)));
+}
+
+void ArkSteedAssembler::Add(ArkSteedRegister dst, int64_t immediate)
+{
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, immediate);
+    Add(dst, scratch);
 }
 
 void ArkSteedAssembler::Sub(ArkSteedRegister dst, ArkSteedRegister src)
@@ -235,7 +246,7 @@ void ArkSteedAssembler::Int32DivAndRemainder(ArkSteedRegister quotient, ArkSteed
 
 void ArkSteedAssembler::PositiveInt32Mod(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister quotient = scope.AcquireScratch();
     assembler_.Sdiv(quotient.W(), dividend.W(), divisor.W());
     assembler_.Msub(dst.W(), quotient.W(), divisor.W(), dividend.W());
@@ -290,6 +301,11 @@ void ArkSteedAssembler::Word64And(ArkSteedRegister dst, ArkSteedRegister src)
     assembler_.And(dst, dst, aarch64::Operand(src));
 }
 
+void ArkSteedAssembler::Or(ArkSteedRegister dst, int32_t immediate)
+{
+    Or(dst, static_cast<int64_t>(immediate));
+}
+
 void ArkSteedAssembler::Or(ArkSteedRegister dst, int64_t immediate)
 {
     ArkSteedRegister arm64Dst = dst;
@@ -300,7 +316,7 @@ void ArkSteedAssembler::Or(ArkSteedRegister dst, int64_t immediate)
         return;
     }
 
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, immediate);
     assembler_.Orr(arm64Dst, arm64Dst, aarch64::Operand(scratch));
@@ -310,6 +326,11 @@ void ArkSteedAssembler::Or(ArkSteedRegister dst, ArkSteedRegister src)
 {
     ArkSteedRegister arm64Dst = dst;
     assembler_.Orr(arm64Dst, arm64Dst, aarch64::Operand(src));
+}
+
+void ArkSteedAssembler::And(ArkSteedRegister dst, int32_t immediate)
+{
+    And(dst, static_cast<int64_t>(immediate));
 }
 
 void ArkSteedAssembler::And(ArkSteedRegister dst, int64_t immediate)
@@ -322,7 +343,7 @@ void ArkSteedAssembler::And(ArkSteedRegister dst, int64_t immediate)
         return;
     }
 
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, immediate);
     assembler_.And(arm64Dst, arm64Dst, aarch64::Operand(scratch));
@@ -388,7 +409,7 @@ void ArkSteedAssembler::Int32And(ArkSteedRegister dst, int32_t immediate)
         assembler_.And(dst.W(), dst.W(), imm);
         return;
     }
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, immediate);
     assembler_.And(dst.W(), dst.W(), aarch64::Operand(scratch.W()));
@@ -406,7 +427,7 @@ void ArkSteedAssembler::Int32Or(ArkSteedRegister dst, int32_t immediate)
         assembler_.Orr(dst.W(), dst.W(), imm);
         return;
     }
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, immediate);
     assembler_.Orr(dst.W(), dst.W(), aarch64::Operand(scratch.W()));
@@ -424,7 +445,7 @@ void ArkSteedAssembler::Int32Xor(ArkSteedRegister dst, int32_t immediate)
         assembler_.Eor(dst.W(), dst.W(), imm);
         return;
     }
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     Move(scratch, immediate);
     assembler_.Eor(dst.W(), dst.W(), aarch64::Operand(scratch.W()));
@@ -479,6 +500,14 @@ void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int32_t immediate)
     assembler_.Cmp(lhs, aarch64::Operand(aarch64::Immediate(immediate)));
 }
 
+void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int64_t immediate)
+{
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, immediate);
+    Compare(lhs, scratch);
+}
+
 void ArkSteedAssembler::CompareInt32(ArkSteedRegister lhs, int32_t immediate)
 {
     assembler_.Cmp(lhs.W(), aarch64::Operand(aarch64::Immediate(immediate)));
@@ -509,7 +538,7 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target)
 {
     TemporaryRegisterScope scope(this);
-    ArkSteedRegister scratch = scope.AcquireScratch();
+    ArkSteedRegister scratch = scope.Acquire();
     Move(scratch, value);
     And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     Compare(scratch, 0);
@@ -519,12 +548,12 @@ void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label 
 void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *target)
 {
     TemporaryRegisterScope scope(this);
-    ArkSteedRegister hclass = scope.AcquireScratch();
-    ArkSteedRegister objectType = scope.AcquireScratch();
+    ArkSteedRegister hclass = scope.Acquire();
+    ArkSteedRegister objectType = scope.Acquire();
     LoadField(hclass, value, TaggedObject::HCLASS_OFFSET);
     And(hclass, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
     LoadField(objectType, hclass, JSHClass::BIT_FIELD_OFFSET);
-    And(objectType, (1U << JSHClass::TYPE_BITFIELD_NUM) - 1);
+    And(objectType, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
     Compare(objectType, static_cast<int32_t>(JSType::JS_FUNCTION_FIRST));
     JumpIf(Condition::COND_LESS_THAN, target);
     Compare(objectType, static_cast<int32_t>(JSType::JS_FUNCTION_LAST));
@@ -534,8 +563,8 @@ void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *targe
 void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target)
 {
     TemporaryRegisterScope scope(this);
-    ArkSteedRegister hclass = scope.AcquireScratch();
-    ArkSteedRegister bitfield = scope.AcquireScratch();
+    ArkSteedRegister hclass = scope.Acquire();
+    ArkSteedRegister bitfield = scope.Acquire();
     Label notClassConstructor;
     LoadField(hclass, jsFunc, TaggedObject::HCLASS_OFFSET);
     And(hclass, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
@@ -548,14 +577,15 @@ void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *t
 void ArkSteedAssembler::JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target)
 {
     TemporaryRegisterScope scope(this);
-    ArkSteedRegister bitfield = scope.AcquireScratch();
+    ArkSteedRegister bitfield = scope.Acquire();
     LoadField(bitfield, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
     assembler_.Tbz(bitfield, JSFunctionBase::IsCompiledCodeBit::START_BIT, target);
 }
 
 void ArkSteedAssembler::BranchIfNoPendingException(Label* target)
 {
-    ArkSteedRegister scratch = kScratchRegister;
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
     Push(aarch64::xzr, aarch64::x0);
     Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
     LoadField(scratch, aarch64::x0, static_cast<int32_t>(JSThread::GlueData::GetExceptionOffset(false)));
@@ -582,7 +612,8 @@ void ArkSteedAssembler::ReturnIfPendingException()
 
 void ArkSteedAssembler::LoadAndClearPendingException(ArkSteedRegister dst, ArkSteedRegister glue)
 {
-    ArkSteedRegister scratch = kScratchRegister;
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
     size_t offset = JSThread::GlueData::GetExceptionOffset(false);  // false : isArch32 = false
 
     LoadField(dst, glue, static_cast<int32_t>(offset));

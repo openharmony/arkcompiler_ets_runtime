@@ -656,8 +656,7 @@ constexpr ArkSteedRegList GetAllocatableGeneralRegisters()
 #if defined(PANDA_TARGET_ARM64)
     // Allocatable registers: x0-x15, x19-x28 (26 registers)
     // Excluded: x16-x17 (scratch), x18 (platform), x29-x31 (fp/lr/sp).
-    // Keep this exclusion list in sync with kScratchRegister/kScratchRegister2 in
-    // arch/arm64/arksteed_assembler_arm64-inl.h.
+    // Keep this exclusion list in sync with kScratchRegister/kScratchRegister2 in arksteed_assembler.h.
     return ArkSteedRegList{aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3,  aarch64::x4,
                            aarch64::x5,  aarch64::x6,  aarch64::x7,  aarch64::x8,  aarch64::x9,
                            aarch64::x10, aarch64::x11, aarch64::x12, aarch64::x13, aarch64::x14,
@@ -689,9 +688,7 @@ constexpr ArkDoubleRegList GetAllocatableDoubleRegisters()
 #if defined(PANDA_TARGET_ARM64)
     // Allocatable: d0-d29 (30 registers)
     // Reserved: d30-d31 (scratch)
-    // Keep this exclusion list in sync with
-    // kScratchDoubleRegister/kScratchDoubleRegister2 in
-    // arch/arm64/arksteed_assembler_arm64-inl.h.
+    // Keep this exclusion list in sync with kScratchDoubleRegister/kScratchDoubleRegister2 in arksteed_assembler.h.
     return ArkDoubleRegList{
         aarch64::d0, aarch64::d1, aarch64::d2, aarch64::d3, aarch64::d4,
         aarch64::d5, aarch64::d6, aarch64::d7, aarch64::d8, aarch64::d9,

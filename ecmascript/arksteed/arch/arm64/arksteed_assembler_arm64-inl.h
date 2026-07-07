@@ -24,65 +24,11 @@ namespace panda::ecmascript::arksteed {
 // ARM64 Platform Constants
 // =============================================================================
 
-// Keep these scratch registers in sync with the x16/x17 exclusions in
-// GetAllocatableGeneralRegisters() in arksteed_regalloc_types.h.
-constexpr aarch64::Register kScratchRegister = aarch64::x16;
-constexpr aarch64::Register kScratchRegister2 = aarch64::x17;
-constexpr aarch64::DoubleRegister kScratchDoubleRegister = aarch64::d30;
-constexpr aarch64::DoubleRegister kScratchDoubleRegister2 = aarch64::d31;
-
 // Common registers
 constexpr aarch64::Register kReturnRegister = aarch64::x0;
 constexpr aarch64::Register kFramePointerRegister = aarch64::fp;
 constexpr aarch64::Register kStackPointerRegister = aarch64::sp;
 constexpr aarch64::Register kLinkRegister = aarch64::x30;
-
-// =============================================================================
-// ScratchRegisterScope - ARM64 Implementation
-// =============================================================================
-
-class ScratchRegisterScope {
-public:
-    explicit ScratchRegisterScope() = default;
-
-    ~ScratchRegisterScope()
-    {
-        ASSERT(s_gprAcquired_ >= gprAcquiredByMe_);
-        ASSERT(s_fprAcquired_ >= fprAcquiredByMe_);
-        if (gprAcquiredByMe_ > 0) {
-            s_gprAcquired_ -= gprAcquiredByMe_;
-        }
-        if (fprAcquiredByMe_ > 0) {
-            s_fprAcquired_ -= fprAcquiredByMe_;
-        }
-        gprAcquiredByMe_ = 0;
-        fprAcquiredByMe_ = 0;
-    }
-
-    aarch64::Register AcquireScratch()
-    {
-        ASSERT(s_gprAcquired_ < 2);  // 2: only two scratch GPRs available
-        ASSERT(gprAcquiredByMe_ < 2);  // 2: only two scratch GPRs available
-        gprAcquiredByMe_++;
-        s_gprAcquired_++;
-        return s_gprAcquired_ == 1 ? kScratchRegister : kScratchRegister2;
-    }
-
-    aarch64::DoubleRegister AcquireDoubleScratch()
-    {
-        ASSERT(s_fprAcquired_ < 2);  // 2: only two scratch FPRs available
-        ASSERT(fprAcquiredByMe_ < 2);  // 2: only two scratch FPRs available
-        fprAcquiredByMe_++;
-        s_fprAcquired_++;
-        return s_fprAcquired_ == 1 ? kScratchDoubleRegister : kScratchDoubleRegister2;
-    }
-
-private:
-    uint8_t gprAcquiredByMe_ = 0;
-    uint8_t fprAcquiredByMe_ = 0;
-    static inline uint8_t s_gprAcquired_ = 0;
-    static inline uint8_t s_fprAcquired_ = 0;
-};
 
 inline bool IsNegativeImmediateOffset(const aarch64::MemoryOperand &operand)
 {
@@ -119,8 +65,7 @@ inline bool FitsUnscaledImmediateOffset(const aarch64::MemoryOperand &operand)
     return imm >= -256 && imm <= 255;  // -256, 255: 9-bit signed immediate range for ARM64 load/store
 }
 
-inline aarch64::MemoryOperand MaterializeAddress(aarch64::AssemblerAarch64 &assembler,
-                                                 const aarch64::MemoryOperand &operand)
+inline aarch64::MemoryOperand ArkSteedAssembler::MaterializeAddress(const aarch64::MemoryOperand &operand)
 {
     ASSERT(operand.IsImmediateOffset());
     ASSERT(operand.GetAddrMode() == aarch64::AddrMode::OFFSET);
@@ -131,49 +76,49 @@ inline aarch64::MemoryOperand MaterializeAddress(aarch64::AssemblerAarch64 &asse
         return aarch64::MemoryOperand(base, 0, aarch64::AddrMode::OFFSET);
     }
 
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     aarch64::Register scratch = scope.AcquireScratch();
     if (imm > 0 && FitsAddSubImmediate(static_cast<uint64_t>(imm))) {
-        assembler.Add(scratch, base, aarch64::Operand(aarch64::Immediate(imm)));
+        assembler_.Add(scratch, base, aarch64::Operand(aarch64::Immediate(imm)));
     } else if (imm < 0 && FitsAddSubImmediate(static_cast<uint64_t>(-imm))) {
-        assembler.Sub(scratch, base, aarch64::Operand(aarch64::Immediate(-imm)));
+        assembler_.Sub(scratch, base, aarch64::Operand(aarch64::Immediate(-imm)));
     } else {
-        assembler.Mov(scratch, aarch64::Immediate(imm));
-        assembler.Add(scratch, base, aarch64::Operand(scratch));
+        assembler_.Mov(scratch, aarch64::Immediate(imm));
+        assembler_.Add(scratch, base, aarch64::Operand(scratch));
     }
     return aarch64::MemoryOperand(scratch, 0, aarch64::AddrMode::OFFSET);
 }
 
-inline void LoadRegisterWithOperand(aarch64::AssemblerAarch64 &assembler, const aarch64::Register &dst,
-                                    const aarch64::MemoryOperand &src)
+inline void ArkSteedAssembler::LoadRegisterWithOperand(const aarch64::Register &dst,
+                                                       const aarch64::MemoryOperand &src)
 {
     if (FitsScaledImmediateOffset(src, !dst.IsW())) {
-        assembler.Ldr(dst, src);
+        assembler_.Ldr(dst, src);
         return;
     }
 
     if (FitsUnscaledImmediateOffset(src)) {
-        assembler.Ldur(dst, src);
+        assembler_.Ldur(dst, src);
         return;
     }
 
-    assembler.Ldr(dst, MaterializeAddress(assembler, src));
+    assembler_.Ldr(dst, MaterializeAddress(src));
 }
 
-inline void StoreRegisterWithOperand(aarch64::AssemblerAarch64 &assembler, const aarch64::Register &src,
-                                     const aarch64::MemoryOperand &dst)
+inline void ArkSteedAssembler::StoreRegisterWithOperand(const aarch64::Register &src,
+                                                        const aarch64::MemoryOperand &dst)
 {
     if (FitsScaledImmediateOffset(dst, !src.IsW())) {
-        assembler.Str(src, dst);
+        assembler_.Str(src, dst);
         return;
     }
 
     if (FitsUnscaledImmediateOffset(dst)) {
-        assembler.Stur(src, dst);
+        assembler_.Stur(src, dst);
         return;
     }
 
-    assembler.Str(src, MaterializeAddress(assembler, dst));
+    assembler_.Str(src, MaterializeAddress(dst));
 }
 
 aarch64::MemoryOperand ArkSteedAssembler::GetStackSlot(const AllocatedState &operand)
@@ -203,11 +148,11 @@ inline void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, ArkSteedRegi
 {
     switch (repr) {
         case MachineRepresentation::Word32:
-            LoadRegisterWithOperand(assembler_, dst.W(), src);
+            LoadRegisterWithOperand(dst.W(), src);
             break;
         case MachineRepresentation::Tagged:
         case MachineRepresentation::Word64:
-            LoadRegisterWithOperand(assembler_, dst, src);
+            LoadRegisterWithOperand(dst, src);
             break;
         default:
             UNREACHABLE();
@@ -219,10 +164,10 @@ inline void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, MemoryOperan
 {
     switch (repr) {
         case MachineRepresentation::Word32:
-            return StoreRegisterWithOperand(assembler_, src.W(), dst);
+            return StoreRegisterWithOperand(src.W(), dst);
         case MachineRepresentation::Tagged:
         case MachineRepresentation::Word64:
-            return StoreRegisterWithOperand(assembler_, src, dst);
+            return StoreRegisterWithOperand(src, dst);
         default:
             UNREACHABLE();
     }
@@ -230,7 +175,7 @@ inline void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, MemoryOperan
 template <>
 inline void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, MemoryOperand dst, MemoryOperand src)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     MoveRepr(repr, scratch, src);
     MoveRepr(repr, dst, scratch);

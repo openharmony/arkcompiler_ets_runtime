@@ -166,7 +166,15 @@ void CallRuntimeVertex::Dump(std::ostream &output) const
 void CallVertex::SetValueLocationConstraints()
 {
     DefineAsFixed(this, 0);
+#if defined(PANDA_TARGET_AMD64)
+    // 1 for the call scratch held across the type guards, 1 for the guard's HClass/value.
+    SetTemporariesNeeded(2);
+#elif defined(PANDA_TARGET_ARM64)
+    // 1 for the call scratch, 2 for the type guard's HClass + objectType/bitfield.
+    SetTemporariesNeeded(3);
+#else
     SetTemporariesNeeded(1);
+#endif
     UseRegister(Arg(TARGET_INDEX));
     for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
         UseAny(Arg(i));
@@ -225,7 +233,7 @@ void DeoptIfNotNumberVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
     UseDeoptFrameSlots(this, this);
-    SetTemporariesNeeded(2);
+    SetTemporariesNeeded(1);
 }
 
 void DeoptIfNotNumberVertex::Dump(std::ostream &output) const
@@ -448,7 +456,7 @@ void CheckedTaggedStringVertex::SetValueLocationConstraints()
     UseRegister(Arg(INPUT_INDEX));
     UseDeoptFrameSlots(this, this);
     DefineSameAsFirst(this);
-    SetTemporariesNeeded(1);
+    SetTemporariesNeeded(2);
 }
 
 void CheckedTaggedStringVertex::Dump(std::ostream &output) const
@@ -723,7 +731,6 @@ void CheckedNonNegativeI32ToTaggedIntVertex::SetValueLocationConstraints()
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
     UseDeoptFrameSlots(this, this);
-    SetTemporariesNeeded(1);
 }
 
 void CheckedNonNegativeI32ToTaggedIntVertex::Dump(std::ostream &output) const
@@ -822,7 +829,6 @@ void F64ToTaggedDoubleVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-    SetTemporariesNeeded(1);
 }
 
 void F64ToTaggedDoubleVertex::Dump(std::ostream &output) const
@@ -883,7 +889,7 @@ void BranchIfTrueVertex::Dump(std::ostream &output) const
 void BranchIfTaggedStringVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
-    SetTemporariesNeeded(1);
+    SetTemporariesNeeded(2);
 }
 
 void BranchIfTaggedStringVertex::Dump(std::ostream &output) const
@@ -960,6 +966,7 @@ void ThrowVertex::Dump(std::ostream &output) const
 void BranchIfTaggedHeapObjectVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(1);
 }
 
 void BranchIfTaggedHeapObjectVertex::Dump(std::ostream &output) const
@@ -996,7 +1003,6 @@ void I32ToTaggedIntVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-    SetTemporariesNeeded(1);
 }
 
 void I32ToTaggedIntVertex::Dump(std::ostream &output) const

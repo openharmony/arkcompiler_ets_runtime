@@ -227,6 +227,7 @@ public:
     void Mov(const VRegister &vd, const VRegister &vn);
     void Fmov(const VRegister &vd, const Register &rn);  // FMOV Dd, Xn - move from GP to V register
     void Fmov(const Register &rd, const VRegister &vn);  // FMOV Xd, Dn - move from V register to GP
+    bool TryFmov(const VRegister &vd, double immediate);
     void Orr(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Orr(const Register &rd, const Register &rn, const Operand &operand);
     void Eor(const Register &rd, const Register &rn, const LogicalImmediate &imm);

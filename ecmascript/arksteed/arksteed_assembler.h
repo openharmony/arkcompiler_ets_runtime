@@ -38,8 +38,17 @@ class Graph;
 using Label = panda::ecmascript::Label;
 
 class ArkSteedAssembler;
-class ScratchRegisterScope;
 class TemporaryRegisterScope;
+
+#if defined(PANDA_TARGET_AMD64)
+constexpr x64::Register X64_SCRATCH_REGISTER = x64::r10;
+constexpr x64::DoubleRegister X64_SCRATCH_DOUBLE_REGISTER = x64::xmm15;
+#elif defined(PANDA_TARGET_ARM64)
+constexpr aarch64::Register kScratchRegister = aarch64::x16;
+constexpr aarch64::Register kScratchRegister2 = aarch64::x17;
+constexpr aarch64::DoubleRegister kScratchDoubleRegister = aarch64::d30;
+constexpr aarch64::DoubleRegister kScratchDoubleRegister2 = aarch64::d31;
+#endif
 
 // =============================================================================
 // ArkSteedAssembler - Platform-agnostic assembler interface
@@ -126,6 +135,7 @@ public:
 
     void Add(ArkSteedRegister dst, ArkSteedRegister src);
     void Add(ArkSteedRegister dst, int32_t immediate);
+    void Add(ArkSteedRegister dst, int64_t immediate);
     void Sub(ArkSteedRegister dst, ArkSteedRegister src);
     void Sub(ArkSteedRegister dst, int32_t immediate);
     void SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src);
@@ -152,8 +162,10 @@ public:
     // Bitwise Operations
     // =========================================================================
 
+    void Or(ArkSteedRegister dst, int32_t immediate);
     void Or(ArkSteedRegister dst, int64_t immediate);
     void Or(ArkSteedRegister dst, ArkSteedRegister src);
+    void And(ArkSteedRegister dst, int32_t immediate);
     void And(ArkSteedRegister dst, int64_t immediate);
     void And(ArkSteedRegister dst, ArkSteedRegister src);
     void Lsr(ArkSteedRegister dst, uint32_t shift);
@@ -184,6 +196,7 @@ public:
     void Compare(ArkSteedRegister lhs, ArkSteedRegister rhs);
     void CompareInt32(ArkSteedRegister lhs, ArkSteedRegister rhs);
     void Compare(ArkSteedRegister lhs, int32_t immediate);
+    void Compare(ArkSteedRegister lhs, int64_t immediate);
     void CompareInt32(ArkSteedRegister lhs, int32_t immediate);
     void CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs);
 
@@ -288,6 +301,9 @@ private:
 #elif defined(PANDA_TARGET_ARM64)
     using PlatformAssembler = aarch64::AssemblerAarch64;
     aarch64::Condition ToPhysicalCondition(Condition condition) const;
+    aarch64::MemoryOperand MaterializeAddress(const aarch64::MemoryOperand &operand);
+    void LoadRegisterWithOperand(const aarch64::Register &dst, const aarch64::MemoryOperand &src);
+    void StoreRegisterWithOperand(const aarch64::Register &src, const aarch64::MemoryOperand &dst);
 #endif
 
     PlatformAssembler assembler_;
@@ -309,19 +325,21 @@ public:
     {
         previous_ = assembler_->temporaryRegisterScope_;
         if (previous_ != nullptr) {
-            available_ = previous_->available_;
-            availableDouble_ = previous_->availableDouble_;
-            fixedAvailable_ = previous_->fixedAvailable_;
-            fixedAvailableDouble_ = previous_->fixedAvailableDouble_;
+            availableTemporaryGPRs_ = previous_->availableTemporaryGPRs_;
+            availableTemporaryFPRs_ = previous_->availableTemporaryFPRs_;
+            requiredSpecificGPRs_ = previous_->requiredSpecificGPRs_;
+            requiredSpecificFPRs_ = previous_->requiredSpecificFPRs_;
+            availableScratchGPRs_ = previous_->availableScratchGPRs_;
+            availableScratchFPRs_ = previous_->availableScratchFPRs_;
         } else {
 #if defined(PANDA_TARGET_AMD64)
-            fixedAvailable_.Set(x64::r10);
-            fixedAvailableDouble_.Set(x64::xmm15);
+            availableScratchGPRs_.Set(X64_SCRATCH_REGISTER);
+            availableScratchFPRs_.Set(X64_SCRATCH_DOUBLE_REGISTER);
 #elif defined(PANDA_TARGET_ARM64)
-            fixedAvailable_.Set(aarch64::x16);
-            fixedAvailable_.Set(aarch64::x17);
-            fixedAvailableDouble_.Set(aarch64::d30);
-            fixedAvailableDouble_.Set(aarch64::d31);
+            availableScratchGPRs_.Set(kScratchRegister);
+            availableScratchGPRs_.Set(kScratchRegister2);
+            availableScratchFPRs_.Set(kScratchDoubleRegister);
+            availableScratchFPRs_.Set(kScratchDoubleRegister2);
 #endif
         }
         assembler_->temporaryRegisterScope_ = this;
@@ -338,39 +356,85 @@ public:
 
     void Include(const ArkSteedRegList &registers)
     {
-        available_ |= registers;
+        ASSERT((registers - GetAllocatableGeneralRegisters()).IsEmpty());
+        availableTemporaryGPRs_ |= registers;
     }
 
     void IncludeDouble(const ArkDoubleRegList &registers)
     {
-        availableDouble_ |= registers;
+        ASSERT((registers - GetAllocatableDoubleRegisters()).IsEmpty());
+        availableTemporaryFPRs_ |= registers;
+    }
+
+    void IncludeSpecific(const ArkSteedRegList &registers)
+    {
+        ASSERT((registers - GetAllocatableGeneralRegisters()).IsEmpty());
+        requiredSpecificGPRs_ |= registers;
+    }
+
+    void IncludeSpecificDouble(const ArkDoubleRegList &registers)
+    {
+        ASSERT((registers - GetAllocatableDoubleRegisters()).IsEmpty());
+        requiredSpecificFPRs_ |= registers;
+    }
+
+    ArkSteedRegister Acquire()
+    {
+        if (availableTemporaryGPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "RA temporary GPR pool exhausted";
+        }
+        return availableTemporaryGPRs_.PopFirst();
+    }
+
+    ArkSteedDoubleRegister AcquireDouble()
+    {
+        if (availableTemporaryFPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "RA temporary FPR pool exhausted";
+        }
+        return availableTemporaryFPRs_.PopFirst();
+    }
+
+    ArkSteedRegister AcquireSpecific(ArkSteedRegister reg) const
+    {
+        if (!requiredSpecificGPRs_.Has(reg)) {
+            LOG_JIT(FATAL) << "Undeclared specific GPR temporary: " << static_cast<int32_t>(reg.Code());
+        }
+        return reg;
+    }
+
+    ArkSteedDoubleRegister AcquireSpecificDouble(ArkSteedDoubleRegister reg) const
+    {
+        if (!requiredSpecificFPRs_.Has(reg)) {
+            LOG_JIT(FATAL) << "Undeclared specific FPR temporary: " << static_cast<int32_t>(reg.Code());
+        }
+        return reg;
     }
 
     ArkSteedRegister AcquireScratch()
     {
-        if (!fixedAvailable_.IsEmpty()) {
-            return fixedAvailable_.PopFirst();
+        if (availableScratchGPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "Architecture scratch GPR pool exhausted";
         }
-        ASSERT(!available_.IsEmpty());
-        return available_.PopFirst();
+        return availableScratchGPRs_.PopFirst();
     }
 
     ArkSteedDoubleRegister AcquireDoubleScratch()
     {
-        if (!fixedAvailableDouble_.IsEmpty()) {
-            return fixedAvailableDouble_.PopFirst();
+        if (availableScratchFPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "Architecture scratch FPR pool exhausted";
         }
-        ASSERT(!availableDouble_.IsEmpty());
-        return availableDouble_.PopFirst();
+        return availableScratchFPRs_.PopFirst();
     }
 
 private:
     ArkSteedAssembler *assembler_;
     TemporaryRegisterScope *previous_ = nullptr;
-    ArkSteedRegList available_;
-    ArkDoubleRegList availableDouble_;
-    ArkSteedRegList fixedAvailable_;
-    ArkDoubleRegList fixedAvailableDouble_;
+    ArkSteedRegList availableTemporaryGPRs_;
+    ArkDoubleRegList availableTemporaryFPRs_;
+    ArkSteedRegList requiredSpecificGPRs_;
+    ArkDoubleRegList requiredSpecificFPRs_;
+    ArkSteedRegList availableScratchGPRs_;
+    ArkDoubleRegList availableScratchFPRs_;
 };
 
 }  // namespace panda::ecmascript::arksteed

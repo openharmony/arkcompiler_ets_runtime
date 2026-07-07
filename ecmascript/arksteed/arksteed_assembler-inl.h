@@ -114,7 +114,7 @@ inline void ArkSteedAssembler::CallCommonStub(uint32_t stubId)
 
 inline void ArkSteedAssembler::CallDeoptHandler(kungfu::DeoptType deoptType)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ASSERT(entryThread_ != nullptr);
     Address address = entryThread_->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
     auto scratch = scope.AcquireScratch();

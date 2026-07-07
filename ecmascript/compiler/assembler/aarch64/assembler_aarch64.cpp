@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/base/bit_helper.h"
 
 
 namespace panda::ecmascript::aarch64 {
@@ -1409,6 +1410,35 @@ void AssemblerAarch64::Fmov(const Register &rd, const VRegister &vn)
     encoding |= static_cast<uint32_t>(vn.Code()) << 5;  // 5: Dn field position
     encoding |= static_cast<uint32_t>(rd.Code());       // d (Xd)
     EmitU32(encoding);
+}
+
+bool AssemblerAarch64::TryFmov(const VRegister &vd, double immediate)
+{
+    ASSERT(vd.IsD());
+    uint64_t bits = base::bit_cast<uint64_t>(immediate);
+
+    // An ARM64 FP immediate expands an 8-bit value as aBbb.bbbb.bbcd.efgh followed by 48 zero bits.
+    if ((bits & 0xFFFFFFFFFFFFULL) != 0) {
+        return false;
+    }
+
+    // The expanded exponent requires bits[61:54] to match and bits[62:61] to be opposite.
+    uint32_t exponentPattern = static_cast<uint32_t>((bits >> 48U) & 0x3FC0U);
+    if (exponentPattern != 0 && exponentPattern != 0x3FC0U) {
+        return false;
+    }
+    if (((bits ^ (bits << 1U)) & 0x4000000000000000ULL) == 0) {
+        return false;
+    }
+
+    // Pack sign, the complemented exponent bit, and the top six fraction/exponent bits into imm8.
+    uint32_t imm8 = static_cast<uint32_t>(((bits >> 56U) & 0x80U) |
+                                          ((bits >> 55U) & 0x40U) |
+                                          ((bits >> 48U) & 0x3FU));
+    constexpr uint32_t FMOV_D_IMMEDIATE = 0x1E601000U;
+    constexpr uint32_t IMM8_SHIFT = 13U;
+    EmitU32(FMOV_D_IMMEDIATE | (imm8 << IMM8_SHIFT) | static_cast<uint32_t>(vd.Code()));
+    return true;
 }
 
 void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)

@@ -65,11 +65,11 @@ private:
     int PrepareRuntimeStubStackArguments(const Vertex *callVertex, int argCount, int runtimeId);
     void LoadSteedExpectedArgc(ArkSteedRegister target, ArkSteedRegister expectedArgc);
     void ComputeSteedCallSlotCount(CallVertex *call, ArkSteedRegister slotCount);
-    void PrepareArkSteedCall(CallVertex *call, ArkSteedRegister target);
+    void PrepareArkSteedCall(CallVertex *call, ArkSteedRegister target, ArkSteedRegister scratch);
     void FreeArkSteedCallFrame(CallVertex *call);
-    void EmitCallArkSteed(CallVertex *call, ArkSteedRegister target, Label *exit);
-    void EmitCallGeneric(CallVertex *call);
-    int PrepareTrampolineArguments(CallVertex *call);
+    void EmitCallArkSteed(CallVertex *call, ArkSteedRegister target, ArkSteedRegister scratch, Label *exit);
+    void EmitCallGeneric(CallVertex *call, ArkSteedRegister scratch);
+    int PrepareTrampolineArguments(CallVertex *call, ArkSteedRegister scratch);
 
     template <class VertexT>
     void VisitNonControlVertex(VertexT *vertex);
