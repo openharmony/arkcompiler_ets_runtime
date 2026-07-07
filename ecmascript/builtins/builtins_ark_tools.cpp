@@ -1741,6 +1741,9 @@ JSTaggedValue BuiltinsArkTools::TriggerSharedGC(EcmaRuntimeCallInfo *info)
     auto globalConst = thread->GlobalConstants();
     SharedHeap *sHeap = SharedHeap::GetInstance();
     sHeap->WaitGCFinished(thread);
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return JSTaggedValue::Undefined();
+    }
     if (JSTaggedValue::StrictEqual(thread, globalConst->GetSharedGcCause(), type)) {
         sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::TRIGGER_BY_JS>(thread);
         sHeap->WaitGCFinished(thread);
