@@ -19,8 +19,10 @@
 | `ecmascript/jit/` | 🟡 中 | JIT 编译器；性能敏感 |
 | `ecmascript/ic/` | 🟡 中 | 内联缓存；与解释器紧密耦合 |
 | `ecmascript/ts_types/` | 🟡 中 | 类型元数据；影响 AOT 编译质量 |
-| `ecmascript/dfx/` | 🟡 中 | 性能、内存、trace、stack等调优工具|
-| `ecmascript/debugger/` | 🟡 中 | 调试器 |
+| `ecmascript/dfx/` | 🟡 中 | 诊断/观测/性能分析（CPU 采样、堆快照、栈追踪、tracing） |
+| `ecmascript/debugger/` | 🟡 中 | JS调试器（断点/单步/热重载/DropFrame） |
+| `ecmascript/extractortool/` | 🟡 中 | HAP/ZIP文件提取与SourceMap解析 |
+| `ecmascript/patch/` | 🟡 中 | Quick Fix/Hot Reload/Cold Patch方法替换 |
 | `common_components/` | 🟢 低 | 共享基础设施；稳定，较少变更 |
 | `test/` | 🟢 低 | 测试相关 |
 | `docs/` | 🟢 低 | 仅文档 |
@@ -33,7 +35,10 @@
 - AOT/JIT 编译器变更 → `ecmascript/compiler/` + `ecmascript/stubs/`
 - ES 标准库变更 → `ecmascript/builtins/` + 对照 ECMA2021 规范
 - 模块加载器变更 → `ecmascript/module/` + `ecmascript/require/`
-- 调试器变更 → `ecmascript/debugger/`
+- 调试器变更 → `ecmascript/debugger/` + `docs/knowledge/Debugger-Subsystem.md`
+- DFX/Profiling/堆快照变更 → `ecmascript/dfx/` + `docs/knowledge/DFX-Subsystem.md`
+- ExtractorTool/HAP提取/SourceMap变更 → `ecmascript/extractortool/` + `docs/knowledge/ExtractorTool-Subsystem.md`
+- Quick Fix/热重载/Patch变更 → `ecmascript/patch/` + `docs/knowledge/Patch-Subsystem.md`
 - 构建系统变更 → 根目录 `BUILD.gn` + `bundle.json`
 
 ## 2. 知识路由
@@ -46,8 +51,10 @@
 - 公共 API 或 NAPI 行为变更 → 阅读 `ecmascript/napi/AGENTS.md`
 - 架构或模块边界变更 → 阅读 `docs/overview.md`
 - GC、内存或分配变更 → 阅读 `docs/knowledge/ArkTS-GC.md`
-- DFX、日志、profiling 变更 → 阅读 `docs/knowledge/ArkTS-DFX.md`（待创建）
-- 调试、debugger变更 -> 阅读 `ecmascript/debugger/AGENTS.md`
+- DFX、profiling、堆快照、栈追踪、tracing 变更 → 阅读 `docs/knowledge/DFX-Subsystem.md` + 子模块 AGENTS.md
+- 调试、断点、dropframe、debugger hot reload 变更 → 阅读 `docs/knowledge/Debugger-Subsystem.md` + `ecmascript/debugger/AGENTS.md`
+- HAP文件提取、SourceMap、ZIP解析变更 → 阅读 `docs/knowledge/ExtractorTool-Subsystem.md`
+- Quick Fix、热重载、冷补丁、Patch 变更 → 阅读 `docs/knowledge/Patch-Subsystem.md`
 - AOT 编译变更 → 阅读 `docs/aot-guide_zh.md` + `compiler_service/AGENTS.md`
 - 模块化变更 -> 阅读 `docs/knowledge/ArkTS-Module.md`
 
@@ -59,7 +66,10 @@
 - `ecmascript/interpreter/` → 解释器相关修改，须进行性能回归测试
 - `common_components/heap/` → 共享GC基础设施；同时影响 ets_runtime 和 runtime_core
 - `ecmascript/module/` → 模块加载相关
-- `ecmascript/debugger/` -> 调试调优相关
+- `ecmascript/dfx/` → 诊断/观测/性能分析子系统；先读 `docs/knowledge/DFX-Subsystem.md`
+- `ecmascript/debugger/` → 调试器子系统；先读 `docs/knowledge/Debugger-Subsystem.md`
+- `ecmascript/extractortool/` → 文件提取与SourceMap；先读 `docs/knowledge/ExtractorTool-Subsystem.md`
+- `ecmascript/patch/` → Quick Fix/Hot Reload/Patch；先读 `docs/knowledge/Patch-Subsystem.md`
 - `ecmascript/builtins/` -> ES 标准库相关
 
 ### 基于术语的路由
@@ -71,13 +81,16 @@
 | NAPI / JSNAPI | 提供napi C++ API inner接口层；签名变更会破坏下游 | `ecmascript/napi/AGENTS.md` |
 | AOT / ark_aot_compiler | 机器码编译；与 compiler_service SA 协同工作 | `compiler_service/AGENTS.md` + `docs/aot-guide_zh.md` |
 | GC / CMS-GC / Partial-Compressing-GC | 内存管理关键路径；修改需关注性能与稳定性风险 | `docs/knowledge/ArkTS-GC.md` |
-| DFX / HiLog / heapsnapshot / profiling | 可调试性、可观测性；内存和性能调优 | `docs/knowledge/ArkTS-DFX.md` |
+| DFX / HiLog / heapsnapshot / CPU profiling / SIGPROF / tracing | 诊断/观测/性能分析；旁路路径不得影响主链路性能 | `docs/knowledge/DFX-Subsystem.md` |
+| debugger / 调试器 / 断点 / dropframe / single step | 调试器子系统；BytecodePcChanged是热路径，非调试模式须零开销 | `docs/knowledge/Debugger-Subsystem.md` |
 | interpreter / IC / 内联缓存 | 与解释器紧密耦合；性能敏感 | `ecmascript/ic/AGENTS.md` + `ecmascript/interpreter/AGENTS.md` |
-| PGO | 配置文件引导优化；与 AOT 关联 | `ecmascript/pgo_profiler/AGENTS.md` + `docs/aot-guide_zh.md` |
+| PGO | 配置文件引导优化；与 AOT 关联 | `ecmascript/` 下 PGO 子模块 AGENTS.md + `docs/aot-guide_zh.md` |
 | TaskPool / Actor / Sendable| 并发模型；影响启动性能 | `docs/knowledge/ArkTS-Concurrency.md` | （待创建）
 | .abc / 字节码 / jspandafile | 字节码格式；须保持向后兼容 | `ecmascript/jspandafile/AGENTS.md` |
 | Stub / StubCompiler | 运行时桩代码；必须匹配解释器调用约定 | `ecmascript/stubs/AGENTS.md` |
 | Module | 模块加载器 | `docs/knowledge/ArkTS-Module.md` |
+| HAP / SourceMap / VLQ / Extractor / extractortool | 文件提取层，纯I/O层不得依赖JS运行时 | `docs/knowledge/ExtractorTool-Subsystem.md` |
+| Quick Fix / Hot Reload / Cold Patch / patch / 热重载 / 补丁 | 运行时代码替换，方法不在调用栈上才能替换 | `docs/knowledge/Patch-Subsystem.md` |
 
 
 ## 3. 约束与边界
@@ -90,6 +103,8 @@
 - NAPI 是唯一支持的 C++ 互操作路径。
 - .abc 中的类型元数据须保持编译器工具链与运行时版本之间的向后兼容。
 - GC 堆布局变更须保持与 runtime_core 的 ABI 兼容性。
+- DFX 代码必须是旁路观测路径，采样/追踪开关关闭时须零开销或仅一次条件分支。
+- Patch 方法替换必须在方法不在当前调用栈上时进行，`StageOfHotReload` 是全局状态，变更需检查所有读取点。
 
 ### 不要做
 
