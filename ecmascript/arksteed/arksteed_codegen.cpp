@@ -32,11 +32,6 @@ namespace panda::ecmascript::arksteed {
 #define __ assembler_->
 
 class GapMoveResolver {
-    static constexpr uint8_t UNVISITED = 0;
-    static constexpr uint8_t VISITING = 1;
-    static constexpr uint8_t TEMP_REQUIRED = 2;
-    static constexpr uint8_t DONE = 3;
-
 public:
     using AssignmentPair = std::pair<AllocatedState, AllocatedState>;
 
@@ -44,7 +39,6 @@ public:
         : scratchGPR_(scratchGPR),
           scratchFPR_(scratchFPR),
           assignments_(chunk),
-          reorderedAssignments_(chunk),
           sortedList_(chunk),
           sourceOperands_(chunk),
           hasSourceOperands_(chunk),
@@ -60,26 +54,25 @@ public:
         assignments_.emplace_back(dest, src);
     }
 
-    void Resolve()
+    template <typename EmitMoveFn, typename SaveScratchFn, typename RestoreScratchFn>
+    void Resolve(EmitMoveFn &&emitMove, SaveScratchFn &&saveScratch, RestoreScratchFn &&restoreScratch)
     {
         if (assignments_.empty()) {
             return;
         }
         BuildSortedOperandList();
         BuildAdjacencyLists();
-        reorderedAssignments_.reserve(assignments_.size() * 2);  // 2: reserve space for both src and dest
-        size_t n = sortedList_.size();
-        ChunkVector<uint8_t> states(n, GetChunk());
-        for (size_t i = 0; i < n; i++) {
-            if (states[i] == UNVISITED) {
-                DFS(static_cast<uint32_t>(i), states);
-            }
-        }
-    }
 
-    Span<const AssignmentPair> ReorderedAssignments() const
-    {
-        return {reorderedAssignments_.data(), reorderedAssignments_.size()};
+        for (uint32_t i = 0; i < sortedList_.size(); i++) {
+            if (!ValueInStorage(i).IsAnyRegister()) {
+                continue;
+            }
+            StartEmitMoveChain(i, emitMove, saveScratch, restoreScratch);
+        }
+
+        while (auto stackSourceIndex = FirstPendingStackSource()) {
+            StartEmitMoveChain(*stackSourceIndex, emitMove, saveScratch, restoreScratch);
+        }
     }
 
 private:
@@ -190,44 +183,135 @@ private:
         }
     }
 
-    void DFS(uint32_t index, ChunkVector<uint8_t> &states)
-    {
-        states[index] = VISITING;
-        for (uint32_t edgeIndex : adjLists_[index]) {
-            uint32_t destIndex = edges_[edgeIndex].destIndex;
-            if (states[destIndex] == VISITING) {
-                AllocatedState tempDest = ScratchOperandLike(ValueInStorage(destIndex));
-                reorderedAssignments_.emplace_back(tempDest, ValueInStorage(destIndex));
-                states[destIndex] = TEMP_REQUIRED;
-            } else if (states[destIndex] == UNVISITED) {
-                DFS(destIndex, states);
-            } else {
-                ASSERT(states[destIndex] == TEMP_REQUIRED || states[destIndex] == DONE);
-            }
-        }
-        if (states[index] == TEMP_REQUIRED) {
-            for (uint32_t edgeIndex : adjLists_[index]) {
-                AllocatedState tempSrc = ScratchOperandLike(edges_[edgeIndex].src);
-                reorderedAssignments_.emplace_back(edges_[edgeIndex].dest, tempSrc);
-            }
-            states[index] = DONE;
-        } else {
-            ASSERT(states[index] == VISITING);
-            for (uint32_t edgeIndex : adjLists_[index]) {
-                const AssignmentEdge &edge = edges_[edgeIndex];
-                ASSERT(edge.dest.GetRepresentation() == edge.src.GetRepresentation());
-                reorderedAssignments_.emplace_back(edge.dest, edge.src);
-            }
-            states[index] = DONE;
-        }
-    }
-
     AllocatedState ValueInStorage(uint32_t index) const
     {
         if (hasSourceOperands_[index] != 0) {
             return sourceOperands_[index];
         }
         return sortedList_[index];
+    }
+
+    ChunkVector<uint32_t> PopTargets(uint32_t sourceIndex)
+    {
+        ChunkVector<uint32_t> targets(GetChunk());
+        targets.swap(adjLists_[sourceIndex]);
+        return targets;
+    }
+
+    std::optional<uint32_t> FirstPendingStackSource() const
+    {
+        for (uint32_t i = 0; i < sortedList_.size(); i++) {
+            if (!ValueInStorage(i).IsAnyStackSlot()) {
+                continue;
+            }
+            if (!adjLists_[i].empty()) {
+                return i;
+            }
+        }
+        return std::nullopt;
+    }
+
+    template <typename EmitMoveFn, typename SaveScratchFn, typename RestoreScratchFn>
+    void StartEmitMoveChain(uint32_t sourceIndex, EmitMoveFn &emitMove, SaveScratchFn &saveScratch,
+                            RestoreScratchFn &restoreScratch)
+    {
+        ASSERT(!scratchHasCycleStart_);
+        cycleScratch_.reset();
+
+        ChunkVector<uint32_t> targets = PopTargets(sourceIndex);
+        if (targets.empty()) {
+            return;
+        }
+
+        bool hasCycle = RecursivelyEmitMoveChainTargets(sourceIndex, targets, emitMove, saveScratch, restoreScratch);
+        if (hasCycle) {
+            ASSERT(cycleScratch_.has_value());
+            if (!scratchHasCycleStart_) {
+                restoreScratch(*cycleScratch_);
+                scratchHasCycleStart_ = true;
+            }
+            EmitMovesFromSource(*cycleScratch_, targets, emitMove, saveScratch);
+            scratchHasCycleStart_ = false;
+        } else {
+            EmitMovesFromSource(ValueInStorage(sourceIndex), targets, emitMove, saveScratch);
+        }
+        cycleScratch_.reset();
+    }
+
+    template <typename EmitMoveFn, typename SaveScratchFn, typename RestoreScratchFn>
+    bool ContinueEmitMoveChain(uint32_t chainStartIndex, uint32_t sourceIndex, EmitMoveFn &emitMove,
+                               SaveScratchFn &saveScratch, RestoreScratchFn &restoreScratch)
+    {
+        if (chainStartIndex == sourceIndex) {
+            ASSERT(!cycleScratch_.has_value());
+            cycleScratch_ = ScratchOperandLike(ValueInStorage(chainStartIndex));
+            emitMove(*cycleScratch_, ValueInStorage(chainStartIndex));
+            scratchHasCycleStart_ = true;
+            return true;
+        }
+
+        ChunkVector<uint32_t> targets = PopTargets(sourceIndex);
+        if (targets.empty()) {
+            return false;
+        }
+
+        bool hasCycle = RecursivelyEmitMoveChainTargets(chainStartIndex, targets, emitMove, saveScratch, restoreScratch);
+        EmitMovesFromSource(ValueInStorage(sourceIndex), targets, emitMove, saveScratch);
+        return hasCycle;
+    }
+
+    template <typename EmitMoveFn, typename SaveScratchFn, typename RestoreScratchFn>
+    bool RecursivelyEmitMoveChainTargets(uint32_t chainStartIndex, ChunkVector<uint32_t> &targets, EmitMoveFn &emitMove,
+                                         SaveScratchFn &saveScratch, RestoreScratchFn &restoreScratch)
+    {
+        bool hasCycle = false;
+        for (uint32_t edgeIndex : targets) {
+            hasCycle |= ContinueEmitMoveChain(chainStartIndex, edges_[edgeIndex].destIndex, emitMove, saveScratch,
+                                              restoreScratch);
+        }
+        return hasCycle;
+    }
+
+    template <typename EmitMoveFn, typename SaveScratchFn>
+    void EmitMovesFromSource(AllocatedState source, ChunkVector<uint32_t> &targets, EmitMoveFn &emitMove,
+                             SaveScratchFn &saveScratch)
+    {
+        if (source.IsAnyRegister()) {
+            for (uint32_t edgeIndex : targets) {
+                emitMove(edges_[edgeIndex].dest, source);
+            }
+            return;
+        }
+
+        ASSERT(source.IsAnyStackSlot());
+
+        std::optional<size_t> registerTargetIndex;
+        for (size_t i = 0; i < targets.size(); i++) {
+            if (edges_[targets[i]].dest.IsAnyRegister()) {
+                registerTargetIndex = i;
+                break;
+            }
+        }
+
+        AllocatedState cachedSource;
+        if (registerTargetIndex.has_value()) {
+            cachedSource = edges_[targets[*registerTargetIndex]].dest;
+            emitMove(cachedSource, source);
+        } else {
+            cachedSource = ScratchOperandLike(source);
+            if (scratchHasCycleStart_ && cycleScratch_.has_value() && SameStorage(*cycleScratch_, cachedSource)) {
+                saveScratch(cachedSource);
+                scratchHasCycleStart_ = false;
+            }
+            emitMove(cachedSource, source);
+        }
+
+        for (size_t i = 0; i < targets.size(); i++) {
+            if (registerTargetIndex.has_value() && i == *registerTargetIndex) {
+                continue;
+            }
+            emitMove(edges_[targets[i]].dest, cachedSource);
+        }
     }
 
     AllocatedState ScratchOperandLike(AllocatedState input)
@@ -256,12 +340,13 @@ private:
     ArkSteedRegister scratchGPR_;
     ArkSteedDoubleRegister scratchFPR_;
     ChunkVector<AssignmentPair> assignments_;
-    ChunkVector<AssignmentPair> reorderedAssignments_;
     ChunkVector<AllocatedState> sortedList_;
     ChunkVector<AllocatedState> sourceOperands_;
     ChunkVector<uint8_t> hasSourceOperands_;
     ChunkVector<AssignmentEdge> edges_;
     ChunkVector<ChunkVector<uint32_t>> adjLists_;
+    std::optional<AllocatedState> cycleScratch_;
+    bool scratchHasCycleStart_ = false;
 };
 
 namespace {
@@ -315,22 +400,6 @@ bool TryGetIntPtrConstant(const ValueVertex *vertex, intptr_t *value)
     return true;
 }
 
-template <typename T>
-struct GetRegister;
-template <>
-struct GetRegister<ArkSteedRegister> {
-    static ArkSteedRegister Get(AllocatedState target)
-    {
-        return target.GetRegister();
-    }
-};
-template <>
-struct GetRegister<ArkSteedDoubleRegister> {
-    static ArkSteedDoubleRegister Get(AllocatedState target)
-    {
-        return target.GetDoubleRegister();
-    }
-};
 bool IsGapMoveVertex(Vertex *vertex)
 {
     return vertex->Is<GapMoveVertex>() || vertex->Is<ConstantGapMoveVertex>();
@@ -532,18 +601,6 @@ void ArkSteedCodeGenerator::LoadConstantToRegister(const ValueVertex *constVerte
             break;
         case VertexOpcode::TaggedConstant:
             constVertex->Cast<TaggedConstantVertex>()->DoLoadToRegister(assembler_, reg);
-            break;
-        default:
-            UNREACHABLE();
-    }
-}
-
-void ArkSteedCodeGenerator::LoadConstantToDoubleRegister(const ValueVertex *constVertex, ArkSteedDoubleRegister reg)
-{
-    ASSERT(constVertex != nullptr);
-    switch (constVertex->GetOpcode()) {
-        case VertexOpcode::Float64Constant:
-            constVertex->Cast<Float64ConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
         default:
             UNREACHABLE();
@@ -1100,7 +1157,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<GapMoveVertex>(GapMoveVertex *
 #endif
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister scratchGPR = scope.AcquireScratch();
-    ExecuteGapMove(target, source, &scratchGPR);
+    ArkSteedDoubleRegister scratchFPR = scope.AcquireDoubleScratch();
+    ExecuteGapMove(target, source, &scratchGPR, &scratchFPR);
 }
 
 template <typename VertexType>
@@ -1127,7 +1185,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ConstantGapMoveVertex>(Constan
         case VertexOpcode::Name: {                                                                               \
             auto *v = vertex->Cast<Name##Vertex>();                                                              \
             LogConstGapMove(v, target);                                                                          \
-            v->DoLoadToRegister(assembler_, GetRegister<Name##Vertex::OutputRegister>::Get(target));             \
+            ExecuteConstantMove(target, v);                                                                      \
             break;                                                                                               \
         }
         CONSTANT_VALUE_VERTEX_LIST(CONST_GAP_CASE)
@@ -2345,30 +2403,46 @@ void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, uint32_t p
     ArkSteedRegister scratchGPR = scope.AcquireScratch();
     ArkSteedDoubleRegister scratchFPR = scope.AcquireDoubleScratch();
 
-    GapMoveResolver resolver(graph_->GetChunk(), scratchGPR, scratchFPR);
+    GapMoveResolver generalResolver(graph_->GetChunk(), scratchGPR, scratchFPR);
+    GapMoveResolver doubleResolver(graph_->GetChunk(), scratchGPR, scratchFPR);
     ChunkVector<std::pair<AllocatedState, ValueVertex *>> constantMoves(graph_->GetChunk());
     ArkSteedRegList registersSetByPhis;
     ArkDoubleRegList doubleRegistersSetByPhis;
-    CollectPhiMoves(&resolver, successor, predecessorId, &registersSetByPhis, &doubleRegistersSetByPhis,
+    CollectPhiMoves(&generalResolver, &doubleResolver, successor, predecessorId,
+                    &registersSetByPhis, &doubleRegistersSetByPhis,
                     &constantMoves);
-    CollectRegisterStateMoves(&resolver,
-                              successor,
-                              predecessorId,
-                              registersSetByPhis,
-                              doubleRegistersSetByPhis,
-                              &constantMoves);
+    CollectRegisterStateMoves(&generalResolver, &doubleResolver, successor, predecessorId,
+                              registersSetByPhis, doubleRegistersSetByPhis, &constantMoves);
 
-    resolver.Resolve();
-    for (auto [dest, src] : resolver.ReorderedAssignments()) {
-        RecordGapMoveComment(src, dest, nullptr);
-        ExecuteGapMove(dest, src, &scratchGPR);
-    }
+    generalResolver.Resolve(
+        [&](AllocatedState dest, AllocatedState src) {
+            RecordGapMoveComment(src, dest, nullptr);
+            ExecuteGapMove(dest, src, &scratchGPR, &scratchFPR);
+        },
+        [&](AllocatedState) {
+            __ Push(scratchGPR);
+        },
+        [&](AllocatedState) {
+            __ Pop(scratchGPR);
+        });
+    doubleResolver.Resolve(
+        [&](AllocatedState dest, AllocatedState src) {
+            RecordGapMoveComment(src, dest, nullptr);
+            ExecuteGapMove(dest, src, &scratchGPR, &scratchFPR);
+        },
+        [&](AllocatedState) {
+            __ Push(scratchFPR);
+        },
+        [&](AllocatedState) {
+            __ Pop(scratchFPR);
+        });
     for (auto [dest, constVertex] : constantMoves) {
-        ExecuteConstantPhiMove(dest, constVertex, &scratchGPR, &scratchFPR);
+        ExecuteConstantMove(dest, constVertex, &scratchGPR, &scratchFPR);
     }
 }
 
-void ArkSteedCodeGenerator::CollectPhiMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
+void ArkSteedCodeGenerator::CollectPhiMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver,
+                                            BB *successor, int predecessorId,
                                             ArkSteedRegList *registersSetByPhis,
                                             ArkDoubleRegList *doubleRegistersSetByPhis,
                                             ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves)
@@ -2388,7 +2462,12 @@ void ArkSteedCodeGenerator::CollectPhiMoves(GapMoveResolver *resolver, BB *succe
         if (src.IsConstant()) {
             constantMoves->emplace_back(AllocatedState::Cast(dest), phi->GetInput(predecessorId));
         } else {
-            resolver->Add(AllocatedState::Cast(dest), AllocatedState::Cast(src));
+            AllocatedState allocatedDest = AllocatedState::Cast(dest);
+            if (allocatedDest.GetRepresentation() == MachineRepresentation::Float64) {
+                doubleResolver->Add(allocatedDest, AllocatedState::Cast(src));
+            } else {
+                generalResolver->Add(allocatedDest, AllocatedState::Cast(src));
+            }
         }
 
         auto target = AllocatedState::Cast(dest);
@@ -2400,7 +2479,8 @@ void ArkSteedCodeGenerator::CollectPhiMoves(GapMoveResolver *resolver, BB *succe
     }
 }
 
-void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
+void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver,
+    BB *successor, int predecessorId,
     const ArkSteedRegList &registersSetByPhis, const ArkDoubleRegList &doubleRegistersSetByPhis,
     ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves)
 {
@@ -2433,7 +2513,7 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
         if (src.IsConstant()) {
             constantMoves->emplace_back(dest, vertex);
         } else if (src != dest) {
-            resolver->Add(dest, AllocatedState::Cast(src));
+            generalResolver->Add(dest, AllocatedState::Cast(src));
         }
     });
 
@@ -2453,28 +2533,35 @@ void ArkSteedCodeGenerator::CollectRegisterStateMoves(GapMoveResolver *resolver,
         if (src.IsConstant()) {
             constantMoves->emplace_back(dest, vertex);
         } else if (src != dest) {
-            resolver->Add(dest, AllocatedState::Cast(src));
+            doubleResolver->Add(dest, AllocatedState::Cast(src));
         }
     });
 }
 
-void ArkSteedCodeGenerator::ExecuteConstantPhiMove(const AllocatedState &dest, ValueVertex *constVertex,
-                                                   const ArkSteedRegister *scratchGPR,
-                                                   const ArkSteedDoubleRegister *scratchFPR)
+void ArkSteedCodeGenerator::ExecuteConstantMove(const AllocatedState &dest, ValueVertex *constVertex,
+                                                const ArkSteedRegister *scratchGPR,
+                                                const ArkSteedDoubleRegister *scratchFPR)
 {
     ASSERT(constVertex != nullptr);
 
     ArkSteedRegister localGPR = ArkSteedRegister::Invalid();
     ArkSteedDoubleRegister localFPR = ArkSteedDoubleRegister::Invalid();
     TemporaryRegisterScope scope(assembler_);
-    if (scratchGPR == nullptr) {
-        localGPR = scope.AcquireScratch();
-        scratchGPR = &localGPR;
-    }
-    if (scratchFPR == nullptr) {
-        localFPR = scope.AcquireDoubleScratch();
-        scratchFPR = &localFPR;
-    }
+
+    auto getScratchGPR = [&]() {
+        if (scratchGPR == nullptr) {
+            localGPR = scope.AcquireScratch();
+            scratchGPR = &localGPR;
+        }
+        return *scratchGPR;
+    };
+    auto getScratchFPR = [&]() {
+        if (scratchFPR == nullptr) {
+            localFPR = scope.AcquireDoubleScratch();
+            scratchFPR = &localFPR;
+        }
+        return *scratchFPR;
+    };
 
     auto loadConstant = [&](ArkSteedRegister reg) {
         if (dest.GetRepresentation() == MachineRepresentation::Tagged) {
@@ -2490,24 +2577,25 @@ void ArkSteedCodeGenerator::ExecuteConstantPhiMove(const AllocatedState &dest, V
     }
     if (dest.IsDoubleRegister()) {
         Float64ConstantVertex *f64const = constVertex->Cast<Float64ConstantVertex>();
-        __ Move(dest.GetDoubleRegister(), f64const->GetValue(), *scratchGPR);
+        __ Move(dest.GetDoubleRegister(), f64const->GetValue(), getScratchGPR());
         return;
     }
     ASSERT(dest.IsAnyStackSlot());
 
     if (dest.GetRepresentation() == MachineRepresentation::Float64) {
-        LoadConstantToDoubleRegister(constVertex, *scratchFPR);
-        __ Move(*scratchGPR, *scratchFPR);
-        __ MoveRepr(MachineRepresentation::Word64, __ ToMemOperand(dest), *scratchGPR);
+        Float64ConstantVertex *f64const = constVertex->Cast<Float64ConstantVertex>();
+        __ StoreFloat64Constant(__ ToMemOperand(dest), f64const->GetValue(), getScratchGPR(), getScratchFPR());
         return;
     }
 
-    loadConstant(*scratchGPR);
-    __ MoveRepr(dest.GetRepresentation(), __ ToMemOperand(dest), *scratchGPR);
+    ArkSteedRegister scratch = getScratchGPR();
+    loadConstant(scratch);
+    __ MoveRepr(dest.GetRepresentation(), __ ToMemOperand(dest), scratch);
 }
 
 void ArkSteedCodeGenerator::ExecuteGapMove(const InstructionOperand &dest, const InstructionOperand &src,
-                                           const ArkSteedRegister *scratchGPR)
+                                           const ArkSteedRegister *scratchGPR,
+                                           const ArkSteedDoubleRegister *scratchFPR)
 {
     ASSERT(dest.IsAllocated() && src.IsAllocated());
     const AllocatedState &destOp = AllocatedState::Cast(dest);
@@ -2534,9 +2622,7 @@ void ArkSteedCodeGenerator::ExecuteGapMove(const InstructionOperand &dest, const
         if (destOp.IsDoubleRegister()) {
             __ Move(destOp.GetDoubleRegister(), srcOp.GetDoubleRegister());
         } else if (destOp.IsAnyStackSlot()) {
-            ASSERT(scratchGPR != nullptr);
-            __ Move(*scratchGPR, srcOp.GetDoubleRegister());
-            __ MoveRepr(MachineRepresentation::Word64, __ ToMemOperand(destOp), *scratchGPR);
+            __ StoreFloat64(__ ToMemOperand(destOp), srcOp.GetDoubleRegister());
         } else {
             UNREACHABLE();
         }
@@ -2549,9 +2635,9 @@ void ArkSteedCodeGenerator::ExecuteGapMove(const InstructionOperand &dest, const
         } else {
             ASSERT(destOp.IsAnyStackSlot());
             if (repr == MachineRepresentation::Float64) {
-                ASSERT(scratchGPR != nullptr);
-                __ MoveRepr(MachineRepresentation::Word64, *scratchGPR, srcMem);
-                __ MoveRepr(MachineRepresentation::Word64, __ ToMemOperand(destOp), *scratchGPR);
+                ASSERT(scratchFPR != nullptr);
+                __ LoadFloat64(*scratchFPR, srcMem);
+                __ StoreFloat64(__ ToMemOperand(destOp), *scratchFPR);
             } else if (scratchGPR != nullptr) {
                 __ MoveRepr(repr, *scratchGPR, srcMem);
                 __ MoveRepr(repr, __ ToMemOperand(destOp), *scratchGPR);

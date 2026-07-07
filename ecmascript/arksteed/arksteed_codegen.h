@@ -45,20 +45,22 @@ private:
     void ProcessNonControlVertex(NonControlVertex *vertex);
     void ProcessControlVertex(ControlVertex *vertex);
     void DeconstructPhisInSuccessor(BB *successor, uint32_t predecessorId);
-    void CollectPhiMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
+    void CollectPhiMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver,
+                         BB *successor, int predecessorId,
                          ArkSteedRegList *registersSetByPhis, ArkDoubleRegList *doubleRegistersSetByPhis,
                          ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
-    void CollectRegisterStateMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
+    void CollectRegisterStateMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver,
+                                   BB *successor, int predecessorId,
                                    const ArkSteedRegList &registersSetByPhis,
                                    const ArkDoubleRegList &doubleRegistersSetByPhis,
                                    ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
     void LoadConstantToRegister(const ValueVertex *constVertex, ArkSteedRegister reg);
-    void LoadConstantToDoubleRegister(const ValueVertex *constVertex, ArkSteedDoubleRegister reg);
-    void ExecuteConstantPhiMove(const AllocatedState &dest, ValueVertex *constVertex,
-                                const ArkSteedRegister *scratchGPR = nullptr,
-                                const ArkSteedDoubleRegister *scratchFPR = nullptr);
+    void ExecuteConstantMove(const AllocatedState &dest, ValueVertex *constVertex,
+                             const ArkSteedRegister *scratchGPR = nullptr,
+                             const ArkSteedDoubleRegister *scratchFPR = nullptr);
     void ExecuteGapMove(const InstructionOperand &dest, const InstructionOperand &src,
-                        const ArkSteedRegister *scratchGPR = nullptr);
+                        const ArkSteedRegister *scratchGPR = nullptr,
+                        const ArkSteedDoubleRegister *scratchFPR = nullptr);
     void StoreStubStackArgument(const Vertex *callVertex, int paramIdx, ArkSteedAssembler::MemoryOperand destMem);
 
     int PrepareCommonStubStackArguments(const Vertex *callVertex, int argCount);

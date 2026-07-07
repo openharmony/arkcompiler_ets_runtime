@@ -128,6 +128,8 @@ public:
 
     void LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp);
     void StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src);
+    void StoreFloat64Constant(MemoryOperand dstOp, double immediate, ArkSteedRegister scratchGPR,
+                              ArkSteedDoubleRegister scratchFPR);
 
     // =========================================================================
     // Arithmetic Operations
@@ -241,13 +243,14 @@ public:
     // Stack Operations
     // =========================================================================
 
-#if defined(PANDA_TARGET_AMD64)
     void Push(ArkSteedRegister reg);
     void Pop(ArkSteedRegister reg);
-#elif defined(PANDA_TARGET_ARM64)
+#if defined(PANDA_TARGET_ARM64)
     void Push(ArkSteedRegister reg1, ArkSteedRegister reg2);
     void Pop(ArkSteedRegister reg1, ArkSteedRegister reg2);
 #endif
+    void Push(ArkSteedDoubleRegister reg);
+    void Pop(ArkSteedDoubleRegister reg);
 
     // =========================================================================
     // Function Prologue/Epilogue

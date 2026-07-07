@@ -134,6 +134,19 @@ void ArkSteedAssembler::StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister
     assembler_.Movsd(dstOp, src);
 }
 
+void ArkSteedAssembler::StoreFloat64Constant(MemoryOperand dstOp, double immediate, ArkSteedRegister scratchGPR,
+                                             [[maybe_unused]] ArkSteedDoubleRegister scratchFPR)
+{
+    uint64_t bits = base::bit_cast<uint64_t>(immediate);
+    int32_t immediate32 = static_cast<int32_t>(bits);
+    if (static_cast<uint64_t>(static_cast<int64_t>(immediate32)) == bits) {
+        assembler_.Movq(x64::Immediate(immediate32), dstOp);
+        return;
+    }
+    assembler_.Movabs(bits, scratchGPR);
+    assembler_.Movq(scratchGPR, dstOp);
+}
+
 // =============================================================================
 // Arithmetic Operations
 // =============================================================================
@@ -656,6 +669,18 @@ void ArkSteedAssembler::Push(ArkSteedRegister reg)
 void ArkSteedAssembler::Pop(ArkSteedRegister reg)
 {
     assembler_.Popq(reg);
+}
+
+void ArkSteedAssembler::Push(ArkSteedDoubleRegister reg)
+{
+    assembler_.Subq(x64::Immediate(FRAME_SLOT_SIZE), x64::rsp);
+    assembler_.Movsd(x64::Operand(x64::rsp, 0), reg);
+}
+
+void ArkSteedAssembler::Pop(ArkSteedDoubleRegister reg)
+{
+    assembler_.Movsd(reg, x64::Operand(x64::rsp, 0));
+    assembler_.Addq(x64::Immediate(FRAME_SLOT_SIZE), x64::rsp);
 }
 
 void ArkSteedAssembler::ReserveCallArgSlots(int32_t slotCount)

@@ -165,6 +165,23 @@ void ArkSteedAssembler::StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister
     assembler_.Str(src, MaterializeAddress(dstOp));
 }
 
+void ArkSteedAssembler::StoreFloat64Constant(MemoryOperand dstOp, double immediate, ArkSteedRegister scratchGPR,
+                                             ArkSteedDoubleRegister scratchFPR)
+{
+    uint64_t bits = base::bit_cast<uint64_t>(immediate);
+    if (bits == 0) {
+        assembler_.Fmov(scratchFPR, aarch64::xzr);
+        StoreFloat64(dstOp, scratchFPR);
+        return;
+    }
+    if (assembler_.TryFmov(scratchFPR, immediate)) {
+        StoreFloat64(dstOp, scratchFPR);
+        return;
+    }
+    Move(scratchGPR, bits);
+    MoveRepr(MachineRepresentation::Word64, dstOp, scratchGPR);
+}
+
 // =============================================================================
 // Arithmetic Operations
 // =============================================================================
@@ -649,6 +666,16 @@ void ArkSteedAssembler::Return()
 // Stack Operations
 // =============================================================================
 
+void ArkSteedAssembler::Push(ArkSteedRegister reg)
+{
+    Push(reg, aarch64::xzr);
+}
+
+void ArkSteedAssembler::Pop(ArkSteedRegister reg)
+{
+    Pop(reg, aarch64::xzr);
+}
+
 void ArkSteedAssembler::Push(ArkSteedRegister reg1, ArkSteedRegister reg2)
 {
     // -16: space for two 64-bit registers (16 bytes)
@@ -662,6 +689,18 @@ void ArkSteedAssembler::Pop(ArkSteedRegister reg1, ArkSteedRegister reg2)
     // 16: space for two 64-bit registers (16 bytes)
     aarch64::MemoryOperand operand(aarch64::sp, 16, aarch64::AddrMode::POSTINDEX);
     assembler_.Ldp(reg2, reg1, operand);
+}
+
+void ArkSteedAssembler::Push(ArkSteedDoubleRegister reg)
+{
+    aarch64::MemoryOperand operand(aarch64::sp, -2 * FRAME_SLOT_SIZE, aarch64::AddrMode::PREINDEX);
+    assembler_.Str(reg, operand);
+}
+
+void ArkSteedAssembler::Pop(ArkSteedDoubleRegister reg)
+{
+    aarch64::MemoryOperand operand(aarch64::sp, 2 * FRAME_SLOT_SIZE, aarch64::AddrMode::POSTINDEX);
+    assembler_.Ldr(reg, operand);
 }
 
 void ArkSteedAssembler::ReserveCallArgSlots(int32_t slotCount)
