@@ -68,21 +68,21 @@ public:
         return inputCount_;
     }
 
-    void AddGeneralTemporary(ArkSteedRegister reg)
+    void RequireSpecificTemporary(ArkSteedRegister reg)
     {
-        generalTemporaries_.Set(reg);
+        requiredSpecificGPRs_.Set(reg);
     }
-    void AddDoubleTemporary(ArkSteedDoubleRegister reg)
+    void RequireSpecificDoubleTemporary(ArkSteedDoubleRegister reg)
     {
-        doubleTemporaries_.Set(reg);
+        requiredSpecificFPRs_.Set(reg);
     }
-    void ClearGeneralTemporaries()
+    const ArkSteedRegList &GetRequiredSpecificGPRs() const
     {
-        generalTemporaries_.Reset();
+        return requiredSpecificGPRs_;
     }
-    void ClearDoubleTemporaries()
+    const ArkDoubleRegList &GetRequiredSpecificFPRs() const
     {
-        doubleTemporaries_.Reset();
+        return requiredSpecificFPRs_;
     }
     const ArkSteedRegList &GetGeneralTemporaries() const
     {
@@ -103,31 +103,6 @@ public:
     bool HasTemporaries() const
     {
         return !generalTemporaries_.IsEmpty() || !doubleTemporaries_.IsEmpty();
-    }
-
-    template <size_t N>
-    std::array<ArkSteedRegister, N> TakeGeneralTemporaries() const
-    {
-        return TakeTemporaries<ArkSteedRegister, N>();
-    }
-    template <size_t N>
-    std::array<ArkSteedDoubleRegister, N> TakeDoubleTemporaries() const
-    {
-        return TakeTemporaries<ArkSteedDoubleRegister, N>();
-    }
-
-    template <typename RegisterT, size_t N>
-    std::array<RegisterT, N> TakeTemporaries() const
-    {
-        RegListBase<RegisterT> temporaries = GetTemporaries<RegisterT>();
-        ASSERT(temporaries.Count() >= N);
-
-        std::array<RegisterT, N> res;
-        for (size_t i = 0; i < N; i++) {
-            res[i] = temporaries.First();
-            temporaries.PopFirst();
-        }
-        return res;
     }
 
     // Template methods for temporaries
@@ -152,17 +127,19 @@ public:
     }
 
     template <typename RegisterT>
-    void ClearTemporaries()
+    const RegListBase<RegisterT> &GetRequiredSpecificTemporaries() const
     {
         if constexpr (std::is_same_v<RegisterT, ArkSteedRegister>) {
-            generalTemporaries_.Reset();
+            return requiredSpecificGPRs_;
         } else {
-            doubleTemporaries_.Reset();
+            return requiredSpecificFPRs_;
         }
     }
 
 protected:
     VertexId id_ = INVALID_VERTEX_ID;
+    ArkSteedRegList requiredSpecificGPRs_;
+    ArkDoubleRegList requiredSpecificFPRs_;
     ArkSteedRegList generalTemporaries_;
     ArkDoubleRegList doubleTemporaries_;
     InputLocation *inputLocations_ = nullptr;

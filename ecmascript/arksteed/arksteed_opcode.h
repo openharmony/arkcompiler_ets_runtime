@@ -2266,6 +2266,13 @@ inline void DefineAsFixed(ValueVertex *vertex, uint32_t regCode)
     vertex->Result().SetUnallocated(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode, NO_VREG);
 }
 
+inline void DefineAsFixed(ValueVertex *vertex, ArkSteedRegister reg)
+{
+    vertex->Result().SetUnallocated(UnallocatedState::ExtendedPolicy::FIXED_REGISTER,
+                                    static_cast<uint32_t>(reg.Code()),
+                                    NO_VREG);
+}
+
 inline void DefineSameAsFirst(ValueVertex *vertex)
 {
     vertex->Result().SetUnallocated(NO_VREG, 0);
@@ -2301,18 +2308,57 @@ inline void UseSlot(Input input)
 
 inline void UseFixed(Input input, uint32_t regCode)
 {
-    UnallocatedState fixedRegister(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode, NO_VREG);
-    input.GetLocation()->GetOperand() = fixedRegister;
+    input.GetLocation()->GetOperand() =
+        UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode, NO_VREG);
     // Hint the input's vertex towards this register to avoid a later move.
-    input.vertex()->GetRegallocInfo()->SetHint(fixedRegister);
+    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+}
+
+inline void UseFixed(Input input, ArkSteedRegister reg)
+{
+    input.GetLocation()->GetOperand() =
+        UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, static_cast<uint32_t>(reg.Code()), NO_VREG);
+    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+}
+
+inline void UseFixed(Input input, ArkSteedDoubleRegister reg)
+{
+    input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER,
+                                                         static_cast<uint32_t>(reg.Code()), NO_VREG);
+    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
 }
 
 inline void UseAndClobberFixed(Input input, uint32_t regCode)
 {
-    UnallocatedState fixedRegister(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode,
-                                   UnallocatedState::LifetimeFlag::USED_AT_START, NO_VREG);
-    input.GetLocation()->GetOperand() = fixedRegister;
-    input.vertex()->GetRegallocInfo()->SetHint(fixedRegister);
+    input.GetLocation()->GetOperand() =
+        UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER,
+                         UnallocatedState::LifetimeFlag::USED_AT_START,
+                         regCode,
+                         NO_VREG);
+    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+}
+
+inline void UseAndClobberFixed(Input input, ArkSteedRegister reg)
+{
+    // Use this for fixed GPR inputs that are consumed at the start of a node and
+    // then clobbered by the node's ABI sequence. Machine-instruction clobbers
+    // that are not inputs should be modeled with RequireSpecificTemporary().
+    input.GetLocation()->GetOperand() =
+        UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER,
+                         UnallocatedState::LifetimeFlag::USED_AT_START,
+                         static_cast<uint32_t>(reg.Code()),
+                         NO_VREG);
+    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+}
+
+inline void RequireSpecificTemporary(Vertex *vertex, ArkSteedRegister reg)
+{
+    vertex->GetRegallocInfo()->RequireSpecificTemporary(reg);
+}
+
+inline void RequireSpecificDoubleTemporary(Vertex *vertex, ArkSteedDoubleRegister reg)
+{
+    vertex->GetRegallocInfo()->RequireSpecificDoubleTemporary(reg);
 }
 
 }  // namespace panda::ecmascript::arksteed

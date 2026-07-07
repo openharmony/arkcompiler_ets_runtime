@@ -1258,6 +1258,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << check->GetId() << ": CheckedTaggedStringVertex";
 #endif
     auto value = GetInputRegister(check, CheckedTaggedStringVertex::INPUT_INDEX);
+    ASSERT(GetResultRegister(check) == value);
     ArkSteedRegister scratch = check->GetRegallocInfo()->GetGeneralTemporaries().First();
     Label deopt;
     Label done;
@@ -1385,11 +1386,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
         I32##Name##WithOverflowVertex *op)                                                                    \
     {                                                                                                         \
         auto dst = GetResultRegister(op);                                                                       \
-        auto left = GetInputRegister(op, I32##Name##WithOverflowVertex::LEFT_INDEX);                          \
         auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                        \
-        if (dst != left) {                                                                                      \
-            __ Move(dst, left);                                                                        \
-        }                                                                                                       \
+        ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::LEFT_INDEX));                       \
         Label deopt;                                                                                            \
         Label done;                                                                                             \
         __ Op(dst, right);                                                                             \
@@ -1413,9 +1411,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     auto dst = GetResultRegister(op);
     auto left = GetInputRegister(op, I32MulWithOverflowVertex::LEFT_INDEX);
     auto right = GetInputRegister(op, I32MulWithOverflowVertex::RIGHT_INDEX);
-    if (dst != left) {
-        __ Move(dst, left);
-    }
+    ASSERT(dst == left);
 
     Label overflow;
     Label negativeZero;
@@ -1663,10 +1659,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32BitwiseBinaryVertex>(I32Bit
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32BitwiseBinaryVertex";
 #endif
     auto dst = GetResultRegister(op);
-    auto left = GetInputRegister(op, I32BitwiseBinaryVertex::LEFT_INDEX);
-    if (dst != left) {
-        __ Move(dst, left);
-    }
+    ASSERT(dst == GetInputRegister(op, I32BitwiseBinaryVertex::LEFT_INDEX));
 
     if (std::optional<int32_t> rightConstant = TryGetInt32ConstantInput(op, I32BitwiseBinaryVertex::RIGHT_INDEX)) {
         uint32_t shift = static_cast<uint32_t>(*rightConstant) & 31U;
@@ -1803,10 +1796,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         I32##Name##WithOverflowVertex *op)                                                            \
     {                                                                                                 \
         auto dst = GetResultRegister(op);                                                             \
-        auto value = GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX);                \
-        if (dst != value) {                                                                           \
-            __ Move(dst, value);                                                             \
-        }                                                                                             \
+        ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX));              \
         Label deopt;                                                                                  \
         Label done;                                                                                   \
         if constexpr (NeedZeroCheck) {                                                                \
@@ -1833,10 +1823,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32BNotVertex>(I32BNotVertex *
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I32BNotVertex";
 #endif
     auto dst = GetResultRegister(op);
-    auto value = GetInputRegister(op, I32BNotVertex::VALUE_INDEX);
-    if (dst != value) {
-        __ Move(dst, value);
-    }
+    ASSERT(dst == GetInputRegister(op, I32BNotVertex::VALUE_INDEX));
     __ Int32BNot(dst);
 }
 
@@ -1848,13 +1835,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64NegVertex>(F64NegVertex *op
 #endif
     auto dst = GetResultDoubleRegister(op);
     auto value = GetInputDoubleRegister(op, F64NegVertex::VALUE_INDEX);
-    TemporaryRegisterScope scope(assembler_);
-    ArkSteedDoubleRegister zero = scope.AcquireDoubleScratch();
-    __ Float64Neg(zero, zero);
-    __ Float64Sub(zero, value);
-    if (dst != zero) {
-        __ Move(dst, zero);
-    }
+    __ Float64Neg(dst, value);
 }
 
 template <>
@@ -1889,9 +1870,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToTaggedDoubleVertex>(F64To
         auto dst = GetResultDoubleRegister(op);                                                    \
         auto left = GetInputDoubleRegister(op, F64##Name##Vertex::LEFT_INDEX);                     \
         auto right = GetInputDoubleRegister(op, F64##Name##Vertex::RIGHT_INDEX);                   \
-        if (dst != left) {                                                                         \
-            __ Move(dst, left);                                                           \
-        }                                                                                          \
+        ASSERT(dst == left);                                                                       \
         __ Op(dst, right);                                                                \
     }
 

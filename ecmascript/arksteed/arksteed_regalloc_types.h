@@ -246,6 +246,16 @@ public:
         value_ |= LifetimeField::Encode(static_cast<uint8_t>(lifetime));
     }
 
+    UnallocatedState(ExtendedPolicy policy, LifetimeFlag lifetime, int index, int virtualRegister)
+        : UnallocatedState(virtualRegister)
+    {
+        ASSERT(policy == ExtendedPolicy::FIXED_REGISTER || policy == ExtendedPolicy::FIXED_FP_REGISTER);
+        value_ |= BasicPolicyField::Encode(BasicPolicy::EXTENDED_POLICY);
+        value_ |= ExtendedPolicyField::Encode(policy);
+        value_ |= LifetimeField::Encode(static_cast<uint8_t>(lifetime));
+        value_ |= FixedRegisterField::Encode(static_cast<uint32_t>(index));
+    }
+
     ExtendedPolicy GetExtendedPolicy() const
     {
         ASSERT(BasicPolicyField::Decode(value_) == BasicPolicy::EXTENDED_POLICY);

@@ -257,8 +257,15 @@ void ArkSteedAssembler::Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleReg
 
 void ArkSteedAssembler::Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
 {
-    assembler_.Xorpd(dst, dst);
-    assembler_.Subsd(src, dst);
+    if (dst != src) {
+        Move(dst, src);
+    }
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratchGPR = scope.AcquireScratch();
+    ArkSteedDoubleRegister scratchFPR = scope.AcquireDoubleScratch();
+    Move(scratchGPR, static_cast<uint64_t>(1ULL << 63U));
+    Move(scratchFPR, scratchGPR);
+    assembler_.Xorpd(scratchFPR, dst);
 }
 
 void ArkSteedAssembler::CompareFloat64(ArkSteedDoubleRegister left, ArkSteedDoubleRegister right)

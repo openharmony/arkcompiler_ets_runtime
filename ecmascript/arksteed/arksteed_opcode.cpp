@@ -42,7 +42,7 @@ void SetStubValueLocationConstraints(Vertex *vertex)
     for (size_t paramIdx = 0; paramIdx < inputCount; paramIdx++) {
         if (paramIdx < static_cast<size_t>(ArkSteedAssembler::NUM_ARG_REGISTERS)) {
             ArkSteedRegister paramReg = ArkSteedAssembler::GetParameterRegister(static_cast<int>(paramIdx));
-            UseFixed(vertex->Arg(paramIdx), static_cast<uint32_t>(paramReg.Code()));
+            UseAndClobberFixed(vertex->Arg(paramIdx), paramReg);
         } else {
             UseAny(vertex->Arg(paramIdx));
         }
@@ -371,7 +371,7 @@ void StoreTaggedFieldVertex::Dump(std::ostream &output) const
 void StoreTaggedFieldWithBarrierVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);
-    GetRegallocInfo()->AddGeneralTemporary(ArkSteedAssembler::GetParameterRegister(2));
+    RequireSpecificTemporary(this, ArkSteedAssembler::GetParameterRegister(2));
     UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
     UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
     UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
@@ -385,7 +385,7 @@ void StoreTaggedFieldWithBarrierVertex::Dump(std::ostream &output) const
 void StoreSharedFieldWithBarrierVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);
-    GetRegallocInfo()->AddGeneralTemporary(ArkSteedAssembler::GetParameterRegister(2));
+    RequireSpecificTemporary(this, ArkSteedAssembler::GetParameterRegister(2));
     UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
     UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
     UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
@@ -579,10 +579,11 @@ void I32MulWithOverflowVertex::Dump(std::ostream &output) const
 void I32DivWithOverflowVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
-    DefineAsFixed(this, static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
-    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+    DefineAsFixed(this, x64::rax);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    RequireSpecificTemporary(this, x64::rax);
+    RequireSpecificTemporary(this, x64::rdx);
 #else
     DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
@@ -599,11 +600,12 @@ void I32DivWithOverflowVertex::Dump(std::ostream &output) const
 void I32DivByConstWithCheckVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
-    DefineAsFixed(this, static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(INPUT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
-    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
-    GetRegallocInfo()->AddGeneralTemporary(x64::rcx);
-    GetRegallocInfo()->AddGeneralTemporary(x64::r8);
+    DefineAsFixed(this, x64::rax);
+    UseRegister(Arg(INPUT_INDEX));
+    RequireSpecificTemporary(this, x64::rax);
+    RequireSpecificTemporary(this, x64::rdx);
+    RequireSpecificTemporary(this, x64::rcx);
+    RequireSpecificTemporary(this, x64::r8);
 #else
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
@@ -619,9 +621,9 @@ void I32DivByConstWithCheckVertex::Dump(std::ostream &output) const
 
 void I32AddVertex::SetValueLocationConstraints()
 {
-    DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
+    DefineSameAsFirst(this);
 }
 
 void I32AddVertex::Dump(std::ostream &output) const
@@ -631,9 +633,9 @@ void I32AddVertex::Dump(std::ostream &output) const
 
 void I32SubVertex::SetValueLocationConstraints()
 {
-    DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
+    DefineSameAsFirst(this);
 }
 
 void I32SubVertex::Dump(std::ostream &output) const
@@ -643,9 +645,9 @@ void I32SubVertex::Dump(std::ostream &output) const
 
 void I32MulVertex::SetValueLocationConstraints()
 {
-    DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
+    DefineSameAsFirst(this);
 }
 
 void I32MulVertex::Dump(std::ostream &output) const
@@ -656,10 +658,11 @@ void I32MulVertex::Dump(std::ostream &output) const
 void I32DivVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
-    DefineAsFixed(this, static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
-    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+    DefineAsFixed(this, x64::rax);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    RequireSpecificTemporary(this, x64::rax);
+    RequireSpecificTemporary(this, x64::rdx);
 #else
     DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
@@ -676,9 +679,10 @@ void CheckedI32ModVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
     DefineAsRegister(this);
-    UseFixed(Arg(LEFT_INDEX), static_cast<uint32_t>(x64::rax.Code()));
-    UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
-    GetRegallocInfo()->AddGeneralTemporary(x64::rdx);
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    RequireSpecificTemporary(this, x64::rax);
+    RequireSpecificTemporary(this, x64::rdx);
 #else
     DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
@@ -699,7 +703,7 @@ void I32BitwiseBinaryVertex::SetValueLocationConstraints()
         UseAny(Arg(RIGHT_INDEX));
     } else if (IsShift()) {
 #if defined(PANDA_TARGET_AMD64)
-        UseFixed(Arg(RIGHT_INDEX), static_cast<uint32_t>(x64::rcx.Code()));
+        UseFixed(Arg(RIGHT_INDEX), x64::rcx);
 #else
         UseRegister(Arg(RIGHT_INDEX));
 #endif
@@ -729,8 +733,8 @@ void CheckedNonNegativeI32ToTaggedIntVertex::Dump(std::ostream &output) const
 
 void I32BNotVertex::SetValueLocationConstraints()
 {
-    DefineAsRegister(this);
     UseRegister(Arg(VALUE_INDEX));
+    DefineSameAsFirst(this);
 }
 
 void I32BNotVertex::Dump(std::ostream &output) const
@@ -828,8 +832,12 @@ void F64ToTaggedDoubleVertex::Dump(std::ostream &output) const
 
 void F64NegVertex::SetValueLocationConstraints()
 {
-    DefineAsRegister(this);
     UseRegister(Arg(VALUE_INDEX));
+#if defined(PANDA_TARGET_AMD64)
+    DefineSameAsFirst(this);
+#else
+    DefineAsRegister(this);
+#endif
 }
 
 void F64NegVertex::Dump(std::ostream &output) const
@@ -840,9 +848,9 @@ void F64NegVertex::Dump(std::ostream &output) const
 #define DEFINE_F64_BINOP_CONSTRAINTS(Name)       \
     void F64##Name##Vertex::SetValueLocationConstraints() \
     {                                           \
-        DefineAsRegister(this);                 \
         UseRegister(Arg(LEFT_INDEX));           \
         UseRegister(Arg(RIGHT_INDEX));          \
+        DefineSameAsFirst(this);                \
     }                                           \
                                                 \
     void F64##Name##Vertex::Dump(std::ostream &output) const \
