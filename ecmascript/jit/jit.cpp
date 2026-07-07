@@ -170,6 +170,8 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
     LockHolder holder(setEnableLock_);
     bool enableJit = isEnableFastJit || isEnableBaselineJit;
     if (enableJit) {
+        // disable evacuate nonmovable space in jit
+        Runtime::GetInstance()->DisableEvacuateNonMovableSpace();
         CreateJitResources();
     }
 

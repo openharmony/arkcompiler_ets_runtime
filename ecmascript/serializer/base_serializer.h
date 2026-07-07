@@ -57,7 +57,7 @@ protected:
 
         void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
                                   VisitObjectArea area) override;
-        void VisitObjectHClassImpl(BaseObject *hclass) override;
+        void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
     private:
         BaseSerializer *serializer_ {nullptr};
     };

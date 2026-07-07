@@ -71,8 +71,9 @@ public:
     void Reset();
     void ResetTopPointer(uintptr_t top);
     uintptr_t Allocate(size_t size, bool allowGC = true);
-    bool Expand();
+    virtual bool Expand();
 
+    void PrepareForIterate() const;
     void RebuildFreeList();
 
     // For sweeping
@@ -285,7 +286,32 @@ public:
     NO_COPY_SEMANTIC(NonMovableSpace);
     NO_MOVE_SEMANTIC(NonMovableSpace);
 
-    uintptr_t  CheckAndAllocate(size_t size);
+    uintptr_t CheckAndAllocate(size_t size);
+
+    uintptr_t AllocateSyncInGC(size_t size);
+
+    bool Expand() override;
+
+    void SelectCSet();
+    void RevertCSet();
+    void ReclaimCSet();
+    void PrepareCompact();
+
+    template<class Callback>
+    void EnumerateCollectRegionSet(const Callback &cb) const
+    {
+        for (Region *current : collectRegionSet_) {
+            if (current != nullptr) {
+                cb(current);
+            }
+        }
+    }
+
+private:
+    void ForceExpandInGC();
+
+    std::vector<Region *> collectRegionSet_ {};
+    Mutex gcAllocLock_ {};
 };
 
 class AppSpawnSpace : public SparseSpace {

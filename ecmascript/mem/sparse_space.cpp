@@ -21,6 +21,11 @@
 
 namespace panda::ecmascript {
 
+void SparseSpace::PrepareForIterate() const
+{
+    allocator_->FillBumpPointer();
+}
+
 void SparseSpace::RebuildFreeList()
 {
     allocator_->RebuildFreeList();
@@ -307,9 +312,6 @@ void SparseSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
 {
     allocator_->FillBumpPointer();
     EnumerateRegions([&](Region *region) {
-        if (region->InCollectSet()) {
-            return;
-        }
         uintptr_t curPtr = region->GetBegin();
         uintptr_t endPtr = region->GetEnd();
         while (curPtr < endPtr) {
@@ -744,6 +746,11 @@ void LocalSpace::Stop()
     }
 }
 
+NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
+    : SparseSpace(heap, MemSpaceType::NON_MOVABLE, initialCapacity, maximumCapacity)
+{
+}
+
 uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
 {
     if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
@@ -753,9 +760,88 @@ uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
     return Allocate(size);
 }
 
-NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
-    : SparseSpace(heap, MemSpaceType::NON_MOVABLE, initialCapacity, maximumCapacity)
+bool NonMovableSpace::Expand()
 {
+    ASSERT(!localHeap_->InGC());
+    bool success = SparseSpace::Expand();
+    if (!success) {
+        return false;
+    }
+    if (localHeap_->GetEvacuateNonMovableSpace()) {
+        ASSERT(localHeap_->IsFullMark());
+        ASSERT(!localHeap_->GetJSThread()->IsReadyToConcurrentMark());
+        Region *region = GetCurrentRegion();
+        collectRegionSet_.emplace_back(region);
+        region->SetGCFlag(RegionGCFlags::IN_COLLECT_SET);
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+    }
+    return true;
+}
+
+void NonMovableSpace::ForceExpandInGC()
+{
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    AddRegion(region);
+    allocator_->AddFree(region);
+}
+
+uintptr_t NonMovableSpace::AllocateSyncInGC(size_t size)
+{
+    LockHolder holder(gcAllocLock_);
+    uintptr_t object = allocator_->Allocate(size);
+    CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+
+    ForceExpandInGC();
+    object = allocator_->Allocate(size);
+    ASSERT(object != 0);
+    CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+
+    return 0;
+}
+
+void NonMovableSpace::SelectCSet()
+{
+    ASSERT(collectRegionSet_.empty());
+    EnumerateRegions([this](Region *region) {
+        collectRegionSet_.emplace_back(region);
+        region->SetGCFlag(RegionGCFlags::IN_COLLECT_SET);
+    });
+}
+
+void NonMovableSpace::RevertCSet()
+{
+    EnumerateCollectRegionSet([&](Region *region) {
+        region->ClearGCFlag(RegionGCFlags::IN_COLLECT_SET);
+    });
+    collectRegionSet_.clear();
+}
+
+void NonMovableSpace::ReclaimCSet()
+{
+    size_t cachedSize = localHeap_->GetRegionCachedSize();
+    EnumerateCollectRegionSet([this, cachedSize](Region *region) {
+        region->DeleteCrossRegionRSet();
+        region->DeleteOldToNewRSet();
+        region->DeleteLocalToShareRSet();
+        region->DeleteSweepingOldToNewRSet();
+        region->DeleteSweepingLocalToShareRSet();
+        DefaultRegion::FromRegion(region)->DestroyFreeObjectSets();
+        heapRegionAllocator_->FreeRegion(region, cachedSize);
+    });
+    collectRegionSet_.clear();
+}
+
+void NonMovableSpace::PrepareCompact()
+{
+    allocator_->RebuildFreeList();
+    EnumerateCollectRegionSet([this](Region *region) {
+        RemoveRegion(region);
+    });
+    ASSERT(regionList_.IsEmpty());
+    ASSERT(GetCommittedSize() == 0);
+    ASSERT(GetObjectSize() == 0);
+    liveObjectSize_ = 0;
 }
 
 AppSpawnSpace::AppSpawnSpace(Heap *heap, size_t initialCapacity)

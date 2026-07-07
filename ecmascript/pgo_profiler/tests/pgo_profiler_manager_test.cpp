@@ -45,12 +45,19 @@ public:
     void SetUp() override
     {
         PGOProfilerManager::GetInstance()->Destroy();
+        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
     }
 
     void TearDown() override
     {
+        TestHelper::DestroyEcmaVMWithScope(instance, scope);
         PGOProfilerManager::GetInstance()->Destroy();
     }
+
+private:
+    EcmaVM *instance {nullptr};
+    EcmaHandleScope *scope {nullptr};
+    JSThread *thread {nullptr};
 };
 
 HWTEST_F_L0(PGOProfilerManagerTest, GetInstanceTest)

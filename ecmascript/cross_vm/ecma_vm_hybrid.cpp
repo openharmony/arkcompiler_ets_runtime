@@ -29,7 +29,7 @@ void EcmaVM::CreateHybridParam()
 #ifdef PANDA_JS_ETS_HYBRID_MODE
         crossVMOperator_ = new CrossVMOperator(this);
 #endif
-        JSHClass *hClass = JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject());
+        JSHandle<JSHClass> hClass(thread_->GlobalConstants()->GetHandledHClassClass());
         JSHandle<JSHClass> ecmaHclass =
             factory_->NewEcmaHClass(hClass, JSWrappedNapiObject::SIZE, JSType::JS_XREF_OBJECT);
         CacheToGlobalConstants(ecmaHclass.GetTaggedValue(), ConstantIndex::XREF_OBJECT_HCLASS_INDEX);

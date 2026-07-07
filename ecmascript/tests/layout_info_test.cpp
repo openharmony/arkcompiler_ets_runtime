@@ -164,40 +164,39 @@ HWTEST_F_L0(LayoutInfoTest, FindElementNonSharedCache)
     cache->Clear();
 
 #if ENABLE_V70_OPTIMIZATION
-    JSHClass *rawHClass = *hclass;
     constexpr int kNotFound = PropertiesCache::NOT_FOUND;
     constexpr int kKeyAbsent = PropertiesCache::NOT_CACHED;
 
     // 1. First lookup: cache miss -> populates cache with found result
-    int result = layoutInfo->FindElement(thread, rawHClass, keys[5].GetTaggedValue(), propertiesNumber);
+    int result = layoutInfo->FindElement(thread, *hclass, keys[5].GetTaggedValue(), propertiesNumber);
     EXPECT_EQ(result, 5);
     // Verify cache was populated
-    int cachedResult = cache->Get(thread, rawHClass, keys[5].GetTaggedValue());
+    int cachedResult = cache->Get(thread, *hclass, keys[5].GetTaggedValue());
     EXPECT_EQ(cachedResult, 5);
 
     // 2. Second lookup: should hit cache
-    result = layoutInfo->FindElement(thread, rawHClass, keys[5].GetTaggedValue(), propertiesNumber);
+    result = layoutInfo->FindElement(thread, *hclass, keys[5].GetTaggedValue(), propertiesNumber);
     EXPECT_EQ(result, 5);
 
     // 3. NOT_FOUND lookup: for non-shared, NOT_FOUND should be cached
     JSHandle<JSTaggedValue> missingKey(factory->NewFromASCII("nonExistent"));
-    result = layoutInfo->FindElement(thread, rawHClass, missingKey.GetTaggedValue(), propertiesNumber);
+    result = layoutInfo->FindElement(thread, *hclass, missingKey.GetTaggedValue(), propertiesNumber);
     EXPECT_EQ(result, kNotFound);
-    cachedResult = cache->Get(thread, rawHClass, missingKey.GetTaggedValue());
+    cachedResult = cache->Get(thread, *hclass, missingKey.GetTaggedValue());
     EXPECT_EQ(cachedResult, kNotFound);
 
     // 4. Repeated NOT_FOUND lookup: should hit cache
-    result = layoutInfo->FindElement(thread, rawHClass, missingKey.GetTaggedValue(), propertiesNumber);
+    result = layoutInfo->FindElement(thread, *hclass, missingKey.GetTaggedValue(), propertiesNumber);
     EXPECT_EQ(result, kNotFound);
 
     // 5. Verify cache miss returns NOT_CACHED for uncached key
     JSHandle<JSTaggedValue> uncachedKey(factory->NewFromASCII("neverLookedUp"));
-    cachedResult = cache->Get(thread, rawHClass, uncachedKey.GetTaggedValue());
+    cachedResult = cache->Get(thread, *hclass, uncachedKey.GetTaggedValue());
     EXPECT_EQ(cachedResult, kKeyAbsent);
 
     // 6. Check all keys are findable
     for (int i = 0; i < propsLen; i++) {
-        result = layoutInfo->FindElement(thread, rawHClass, keys[i].GetTaggedValue(), propertiesNumber);
+        result = layoutInfo->FindElement(thread, *hclass, keys[i].GetTaggedValue(), propertiesNumber);
         EXPECT_EQ(result, i);
     }
 #else
@@ -240,31 +239,30 @@ HWTEST_F_L0(LayoutInfoTest, FindElementSharedCache)
     cache->Clear();
 
 #if ENABLE_V70_OPTIMIZATION
-    JSHClass *rawHClass = *hclass;
     constexpr int kNotFound = PropertiesCache::NOT_FOUND;
     constexpr int kKeyAbsent = PropertiesCache::NOT_CACHED;
 
     // 1. Found result on shared HClass: should be cached
-    int result = layoutInfo->FindElement(thread, rawHClass, keys[3].GetTaggedValue(), propertiesNumber);
+    int result = layoutInfo->FindElement(thread, *hclass, keys[3].GetTaggedValue(), propertiesNumber);
     EXPECT_EQ(result, 3);
-    int cachedResult = cache->Get(thread, rawHClass, keys[3].GetTaggedValue());
+    int cachedResult = cache->Get(thread, *hclass, keys[3].GetTaggedValue());
     EXPECT_EQ(cachedResult, 3);
 
     // 2. NOT_FOUND on shared HClass: should NOT be cached
     //    (shared hclass can add properties without creating a new hclass,
     //     so caching NOT_FOUND would give stale results)
     JSHandle<JSTaggedValue> missingKey(factory->NewFromASCII("sharedMissing"));
-    result = layoutInfo->FindElement(thread, rawHClass, missingKey.GetTaggedValue(), propertiesNumber);
+    result = layoutInfo->FindElement(thread, *hclass, missingKey.GetTaggedValue(), propertiesNumber);
     EXPECT_EQ(result, kNotFound);
-    cachedResult = cache->Get(thread, rawHClass, missingKey.GetTaggedValue());
+    cachedResult = cache->Get(thread, *hclass, missingKey.GetTaggedValue());
     // NOT_FOUND should not have been cached for shared hclass
     EXPECT_EQ(cachedResult, kKeyAbsent);
 
     // 3. All existing keys should still be findable and cached
     for (int i = 0; i < propsLen; i++) {
-        result = layoutInfo->FindElement(thread, rawHClass, keys[i].GetTaggedValue(), propertiesNumber);
+        result = layoutInfo->FindElement(thread, *hclass, keys[i].GetTaggedValue(), propertiesNumber);
         EXPECT_EQ(result, i);
-        cachedResult = cache->Get(thread, rawHClass, keys[i].GetTaggedValue());
+        cachedResult = cache->Get(thread, *hclass, keys[i].GetTaggedValue());
         EXPECT_EQ(cachedResult, i);
     }
 
@@ -272,9 +270,9 @@ HWTEST_F_L0(LayoutInfoTest, FindElementSharedCache)
     for (int i = 0; i < 5; i++) {
         std::string missStr = "miss" + std::to_string(i);
         JSHandle<JSTaggedValue> missKey(factory->NewFromASCII(missStr.c_str()));
-        result = layoutInfo->FindElement(thread, rawHClass, missKey.GetTaggedValue(), propertiesNumber);
+        result = layoutInfo->FindElement(thread, *hclass, missKey.GetTaggedValue(), propertiesNumber);
         EXPECT_EQ(result, kNotFound);
-        cachedResult = cache->Get(thread, rawHClass, missKey.GetTaggedValue());
+        cachedResult = cache->Get(thread, *hclass, missKey.GetTaggedValue());
         EXPECT_EQ(cachedResult, kKeyAbsent);
     }
 #else

@@ -727,7 +727,8 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
 #if ECMASCRIPT_ENABLE_IC
-    JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, typedArray->GetJSHClass()), notOnHeapHclass);
+    JSHandle<JSHClass> oldHClass(thread, typedArray->GetJSHClass());
+    JSHClass::NotifyHclassChanged(thread, oldHClass, notOnHeapHclass);
 #endif
     TaggedObject::Cast(*typedArray)->SynchronizedTransitionClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
@@ -758,7 +759,8 @@ JSTaggedValue JSSharedTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHan
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetSharedNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
 #if ECMASCRIPT_ENABLE_IC
-    JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, typedArray->GetJSHClass()), notOnHeapHclass);
+    JSHandle<JSHClass> oldHClass(thread, typedArray->GetJSHClass());
+    JSHClass::NotifyHclassChanged(thread, oldHClass, notOnHeapHclass);
 #endif
     TaggedObject::Cast(*typedArray)->SynchronizedTransitionClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 

@@ -51,7 +51,7 @@ EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+        thread_, JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledLineStringClass()), size));
     return str;
 }
 
@@ -59,7 +59,7 @@ EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
 {
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+        thread_, JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledLineStringClass()), size));
     return str;
 }
 
@@ -67,7 +67,7 @@ EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 {
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+        thread_, JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledLineStringClass()), size));
     return str;
 }
 
@@ -75,7 +75,7 @@ EcmaString *ObjectFactory::AllocReadOnlyLineStringObject(size_t size)
 {
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateReadOnlyOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+        thread_, JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledLineStringClass()), size));
     return str;
 }
 
@@ -84,7 +84,7 @@ EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
     ASSERT(IsSMemSpace(type));
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(SlicedString::SIZE,
-        JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
+        JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledSlicedStringClass()), type));
     return str;
 }
 
@@ -92,7 +92,7 @@ EcmaString *ObjectFactory::AllocTreeStringObject()
 {
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()),
+        thread_, JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledTreeStringClass()),
         TreeString::SIZE));
     return str;
 }
@@ -101,7 +101,7 @@ EcmaString *ObjectFactory::AllocCachedExternalStringObject()
 {
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetCachedExternalStringClass().GetTaggedObject()),
+        thread_, JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledCachedExternalStringClass()),
         CachedExternalString::SIZE));
     return str;
 }
@@ -116,7 +116,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
 {
     NewObjectHook();
     TaggedObject *header;
-    auto jsNativePointerClass = JSHClass::Cast(thread_->GlobalConstants()->GetJSNativePointerClass().GetTaggedObject());
+    JSHandle<JSHClass> jsNativePointerClass(thread_->GlobalConstants()->GetHandledJSNativePointerClass());
     if (nonMovable) {
         header = heap_->AllocateNonMovableOrHugeObject(jsNativePointerClass);
     } else {
@@ -152,7 +152,7 @@ LexicalEnv *ObjectFactory::InlineNewLexicalEnv(int numSlots)
     }
     size_t size = LexicalEnv::ComputeSize(numSlots);
     auto header = heap_->TryAllocateYoungGeneration(
-        JSHClass::Cast(thread_->GlobalConstants()->GetLexicalEnvClass().GetTaggedObject()), size);
+        JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledLexicalEnvClass()), size);
     if (UNLIKELY(header == nullptr)) {
         return nullptr;
     }
@@ -176,7 +176,7 @@ void ObjectFactory::NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const
     obj->SetIcuField(thread_, pointer.GetTaggedValue());
 }
 
-TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type)
+TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHandle<JSHClass> cls, MemSpaceType type)
 {
     switch (type) {
         case MemSpaceType::SEMI_SPACE:
@@ -204,10 +204,10 @@ JSHandle<BigInt> ObjectFactory::NewBigIntWithoutInitData(uint32_t length)
     TaggedObject *header;
     if (type == MemSpaceType::SHARED_READ_ONLY_SPACE) {
         header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
-            JSHClass::Cast(thread_->GlobalConstants()->GetBigIntClass().GetTaggedObject()), size);
+            JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledBigIntClass()), size);
     } else {
         header = sHeap_->AllocateOldOrHugeObject(thread_,
-            JSHClass::Cast(thread_->GlobalConstants()->GetBigIntClass().GetTaggedObject()), size);
+            JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledBigIntClass()), size);
     }
     JSHandle<BigInt> bigint(thread_, header);
     bigint->SetLength(length);

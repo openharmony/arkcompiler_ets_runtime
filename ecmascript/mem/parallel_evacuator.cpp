@@ -171,11 +171,26 @@ void ParallelEvacuator::EvacuateSpace()
         }
     }
     auto &workloadSet = evacuateWorkloadSet_;
-    if (heap_->IsConcurrentFullMark() || heap_->IsYoungMark()) {
+    {
         ProcessFromSpaceEvacuation();
-        heap_->GetOldSpace()->EnumerateCollectRegionSet([this, &workloadSet](Region *current) {
+        size_t oldCSet = 0;
+        size_t nonMovableCSet = 0;
+        heap_->GetOldSpace()->EnumerateCollectRegionSet([this, &workloadSet, &oldCSet](Region *current) {
             workloadSet.Add(std::make_unique<EvacuateWorkload>(this, current));
+            ++oldCSet;
         });
+        if (heap_->GetEvacuateNonMovableSpace()) {
+            NonMovableSpace *nonMovableSpace = heap_->GetNonMovableSpace();
+            nonMovableSpace->PrepareCompact();
+            nonMovableSpace->EnumerateCollectRegionSet([this, &workloadSet, &nonMovableCSet](Region *region) {
+                workloadSet.Add(std::make_unique<EvacuateWorkload>(this, region));
+                ++nonMovableCSet;
+            });
+        }
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+            ("GC::EvacuateSpace" + std::to_string(heap_->IsConcurrentFullMark())
+            + ";oldCSet" + std::to_string(oldCSet)
+            + ";nonMovableCSet" + std::to_string(nonMovableCSet)).c_str(), "");
     }
     workloadSet.PrepareWorkloads();
     if (heap_->IsParallelGCEnabled()) {
@@ -199,6 +214,9 @@ void ParallelEvacuator::EvacuateSpace()
         GCStats::Scope sp2(GCStats::Scope::ScopeId::WaitFinish, heap_->GetEcmaVM()->GetEcmaGCStats());
         WaitFinished();
     }
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        heap_->GetNonMovableSpace()->PrepareForIterate();
+    }
 }
 
 bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, uint32_t idOrder, bool isMain)
@@ -206,8 +224,18 @@ bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadI
     UpdateRecordWeakReferenceInParallel(idOrder);
 
     auto &arrayTrackInfoSet = ArrayTrackInfoSet(threadIndex);
-    DrainWorkloads(evacuateWorkloadSet_, [&](std::unique_ptr<Workload> &region) {
-        EvacuateRegion(allocator, region->GetRegion(), arrayTrackInfoSet);
+    bool updateHClass = heap_->GetEvacuateNonMovableSpace();
+    DrainWorkloads(evacuateWorkloadSet_, [&](std::unique_ptr<Workload> &workload) {
+        Region *region = workload->GetRegion();
+        if (region->InNonMovableSpace()) {
+            EvacuateNonMovableSpaceRegion(allocator, region);
+        } else {
+            if (updateHClass) {
+                EvacuateRegion<true>(allocator, region, arrayTrackInfoSet);
+            } else {
+                EvacuateRegion<false>(allocator, region, arrayTrackInfoSet);
+            }
+        }
     });
     allocator->Finalize();
     if (!isMain) {
@@ -300,6 +328,7 @@ void ParallelEvacuator::UpdateRecordWeakLinkedHashMap(uint32_t threadId)
     }
 }
 
+template <bool updateHClass>
 void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
                                        std::unordered_set<JSTaggedType> &trackSet)
 {
@@ -353,10 +382,37 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
 
         if (actualPromoted) {
+            if constexpr (updateHClass) {
+                Region *toRegion = Region::ObjectAddressToRange(address);
+                toRegion->InsertCrossRegionRSet(address);
+            }
             SetObjectFieldRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
     });
     promotedSize_.fetch_add(promotedSize);
+}
+
+void ParallelEvacuator::EvacuateNonMovableSpaceRegion(TlabAllocator *allocator, Region *region)
+{
+    bool inHeapProfiler = heap_->InHeapProfiler();
+    ASSERT(region->InNonMovableSpace());
+    Heap *heap = heap_;
+    region->IterateAllMarkedBits([inHeapProfiler, allocator, heap](void *mem) {
+        auto header = reinterpret_cast<TaggedObject *>(mem);
+        auto klass = header->GetClass();
+        auto size = header->GetSize();
+
+        uintptr_t address = allocator->Allocate(size, NON_MOVABLE);
+        ASSERT(address != 0);
+
+        if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+        if (inHeapProfiler) {
+            heap->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
+        }
+        Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
+    });
 }
 
 void ParallelEvacuator::UpdateReference()
@@ -373,24 +429,31 @@ void ParallelEvacuator::UpdateReference()
         if (current->InNewToNewSet()) {
             workloadSet.Add(
                 std::make_unique<UpdateAndSweepNewRegionWorkload>(
-                    this, current, heap_->IsYoungMark()));
+                    this, current, heap_->IsYoungMark(), heap_->GetEvacuateNonMovableSpace()));
             youngeRegionMoveCount++;
         } else {
             workloadSet.Add(
-                std::make_unique<UpdateNewRegionWorkload>(this, current, heap_->IsYoungMark()));
+                std::make_unique<UpdateNewRegionWorkload>(
+                    this, current, heap_->IsYoungMark(), heap_->GetEvacuateNonMovableSpace()));
             youngeRegionCopyCount++;
         }
     });
-    heap_->EnumerateOldSpaceRegions([this, &oldRegionCount, &workloadSet](Region *current) {
+    bool evacuateNonMovableSpace = heap_->GetEvacuateNonMovableSpace();
+    heap_->EnumerateOldSpaceRegions([this, &oldRegionCount, &workloadSet, evacuateNonMovableSpace](Region *current) {
         if (current->InCollectSet()) {
             return;
         }
         if (current->InNewToOldSet()) {
             hasNewToOldRegions_ = true;
             promotedSize_.fetch_add(current->AliveObject(), std::memory_order_relaxed);
-            workloadSet.Add(std::make_unique<UpdateNewToOldEvacuationWorkload>(this, current, heap_->IsYoungMark()));
+            workloadSet.Add(std::make_unique<UpdateNewToOldEvacuationWorkload>(
+                this, current, heap_->IsYoungMark(), heap_->GetEvacuateNonMovableSpace()));
         } else {
-            workloadSet.Add(std::make_unique<UpdateRSetWorkload<false>>(this, current));
+            if (evacuateNonMovableSpace && current->InNonMovableSpace()) {
+                workloadSet.Add(std::make_unique<UpdateNonMovableRegionWorkload>(this, current));
+            } else {
+                workloadSet.Add(std::make_unique<UpdateRSetWorkload<false>>(this, current));
+            }
         }
         oldRegionCount++;
     });
@@ -555,7 +618,7 @@ void ParallelEvacuator::UpdateRSet(Region *region)
     region->DeleteCrossRegionRSet();
 }
 
-template<TriggerGCType gcType, bool needUpdateLocalToShare>
+template<TriggerGCType gcType, bool needUpdateLocalToShare, bool updateHClass>
 void ParallelEvacuator::UpdateNewRegionReference(Region *region)
 {
     UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> updateFieldVisitor(this);
@@ -577,7 +640,7 @@ void ParallelEvacuator::UpdateNewRegionReference(Region *region)
         if (!freeObject->IsFreeObject()) {
             auto obj = reinterpret_cast<TaggedObject *>(curPtr);
             auto klass = obj->GetClass();
-            UpdateNewObjectField<gcType, needUpdateLocalToShare>(obj, klass, updateFieldVisitor);
+            UpdateNewObjectField<gcType, needUpdateLocalToShare, updateHClass>(obj, klass, updateFieldVisitor);
             objSize = obj->GetSize();
         } else {
             freeObject->AsanUnPoisonFreeObject();
@@ -590,7 +653,7 @@ void ParallelEvacuator::UpdateNewRegionReference(Region *region)
     CHECK_REGION_END(curPtr, endPtr);
 }
 
-template<TriggerGCType gcType, bool needUpdateLocalToShare>
+template<TriggerGCType gcType, bool needUpdateLocalToShare, bool updateHClass>
 void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
 {
     UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> updateFieldVisitor(this);
@@ -600,7 +663,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         JSHClass *klass = header->GetClass();
-        UpdateNewObjectField<gcType, needUpdateLocalToShare>(header, klass, updateFieldVisitor);
+        UpdateNewObjectField<gcType, needUpdateLocalToShare, updateHClass>(header, klass, updateFieldVisitor);
 
         uintptr_t freeEnd = ToUintPtr(mem);
         if (freeStart != freeEnd) {
@@ -652,19 +715,68 @@ void ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToSha
     }
 }
 
-template<TriggerGCType gcType, bool needUpdateLocalToShare>
+template<TriggerGCType gcType, bool needUpdateLocalToShare, bool updateHClass>
 void ParallelEvacuator::UpdateNewObjectField(TaggedObject *object, JSHClass *cls,
     UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> &updateFieldVisitor)
 {
+    if constexpr (updateHClass) {
+        ObjectSlot hClassSlot(ToUintPtr(object));
+        UpdateHClassSlot(hClassSlot, cls);
+    }
     ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, updateFieldVisitor);
 }
 
-template<TriggerGCType gcType>
+template<TriggerGCType gcType, bool updateHClass>
 void ParallelEvacuator::UpdateNewToOldEvacuationReference(Region *region, uint32_t threadIndex)
 {
     std::unordered_set<JSTaggedType> *sets = &arrayTrackInfoSets_[threadIndex];
-    NewToOldEvacuationVisitor<gcType> visitor(heap_, sets, this);
+    NewToOldEvacuationVisitor<gcType, updateHClass> visitor(heap_, sets, this);
     region->IterateAllMarkedBits(visitor);
+}
+
+ParallelEvacuator::UpdateNonMovableObjectFieldVisitor::UpdateNonMovableObjectFieldVisitor(ParallelEvacuator *evacuator)
+    : evacuator_(evacuator)
+{
+}
+
+void ParallelEvacuator::UpdateNonMovableObjectFieldVisitor::VisitObjectRangeImpl(
+    BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
+{
+    ObjectSlot start(startAddr);
+    ObjectSlot end(endAddr);
+    ASSERT(area != VisitObjectArea::IN_OBJECT);
+    Region *rootRegion = Region::ObjectAddressToRange(rootObject);
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        evacuator_->UpdateNonMovableObjectSlot(rootRegion, slot);
+    }
+}
+
+void ParallelEvacuator::UpdateNonMovableReference(Region *region)
+{
+    UpdateNonMovableObjectFieldVisitor updateFieldVisitor(this);
+    uintptr_t curPtr = region->GetBegin();
+    uintptr_t endPtr = region->GetEnd();
+    while (curPtr < endPtr) {
+        FreeObject *freeObject = FreeObject::Cast(curPtr);
+        size_t objSize;
+        // If curPtr is freeObject, It must to mark unpoison first.
+        ASAN_UNPOISON_MEMORY_REGION(freeObject, TaggedObject::TaggedObjectSize());
+        if (!freeObject->IsFreeObject()) {
+            TaggedObject *object = reinterpret_cast<TaggedObject *>(curPtr);
+            ObjectSlot hClassSlot(ToUintPtr(object));
+            JSHClass *klass = object->GetClass();
+            UpdateHClassSlot(hClassSlot, klass);
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass, updateFieldVisitor);
+            objSize = object->GetSize();
+        } else {
+            freeObject->AsanUnPoisonFreeObject();
+            objSize = freeObject->Available();
+            freeObject->AsanPoisonFreeObject();
+        }
+        curPtr += objSize;
+        CHECK_OBJECT_SIZE(objSize);
+    }
+    CHECK_REGION_END(curPtr, endPtr);
 }
 
 void ParallelEvacuator::WaitFinished()
@@ -684,7 +796,7 @@ bool ParallelEvacuator::ProcessWorkloads(bool isMain, uint32_t threadIndex)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::ProcessWorkloads", "");
     DrainWorkloads(updateWorkloadSet_, [&](std::unique_ptr<Workload> &region) {
         region->Process(isMain, threadIndex);
-        });
+    });
     if (!isMain) {
         LockHolder holder(mutex_);
         if (--parallel_ <= 0) {
@@ -812,9 +924,14 @@ bool ParallelEvacuator::UpdateNewRegionWorkload::Process([[maybe_unused]] bool i
                                                          [[maybe_unused]] uint32_t threadIndex)
 {
     if (isYoungGC_) {
-        GetEvacuator()->UpdateNewRegionReference<TriggerGCType::YOUNG_GC, true>(GetRegion());
+        ASSERT(!updateHClass_);
+        GetEvacuator()->UpdateNewRegionReference<TriggerGCType::YOUNG_GC, true, false>(GetRegion());
     } else {
-        GetEvacuator()->UpdateNewRegionReference<TriggerGCType::OLD_GC, true>(GetRegion());
+        if (updateHClass_) {
+            GetEvacuator()->UpdateNewRegionReference<TriggerGCType::OLD_GC, true, true>(GetRegion());
+        } else {
+            GetEvacuator()->UpdateNewRegionReference<TriggerGCType::OLD_GC, true, false>(GetRegion());
+        }
     }
     return true;
 }
@@ -823,9 +940,14 @@ bool ParallelEvacuator::UpdateAndSweepNewRegionWorkload::Process([[maybe_unused]
                                                                  [[maybe_unused]] uint32_t threadIndex)
 {
     if (isYoungGC_) {
-        GetEvacuator()->UpdateAndSweepNewRegionReference<TriggerGCType::YOUNG_GC, false>(GetRegion());
+        ASSERT(!updateHClass_);
+        GetEvacuator()->UpdateAndSweepNewRegionReference<TriggerGCType::YOUNG_GC, false, false>(GetRegion());
     } else {
-        GetEvacuator()->UpdateAndSweepNewRegionReference<TriggerGCType::OLD_GC, false>(GetRegion());
+        if (updateHClass_) {
+            GetEvacuator()->UpdateAndSweepNewRegionReference<TriggerGCType::OLD_GC, false, true>(GetRegion());
+        } else {
+            GetEvacuator()->UpdateAndSweepNewRegionReference<TriggerGCType::OLD_GC, false, false>(GetRegion());
+        }
     }
     return true;
 }
@@ -833,10 +955,22 @@ bool ParallelEvacuator::UpdateAndSweepNewRegionWorkload::Process([[maybe_unused]
 bool ParallelEvacuator::UpdateNewToOldEvacuationWorkload::Process([[maybe_unused]] bool isMain, uint32_t threadIndex)
 {
     if (isYoungGC_) {
-        GetEvacuator()->UpdateNewToOldEvacuationReference<TriggerGCType::YOUNG_GC>(GetRegion(), threadIndex);
+        ASSERT(!updateHClass_);
+        GetEvacuator()->UpdateNewToOldEvacuationReference<TriggerGCType::YOUNG_GC, false>(GetRegion(), threadIndex);
     } else {
-        GetEvacuator()->UpdateNewToOldEvacuationReference<TriggerGCType::OLD_GC>(GetRegion(), threadIndex);
+        if (updateHClass_) {
+            GetEvacuator()->UpdateNewToOldEvacuationReference<TriggerGCType::OLD_GC, true>(GetRegion(), threadIndex);
+        } else {
+            GetEvacuator()->UpdateNewToOldEvacuationReference<TriggerGCType::OLD_GC, false>(GetRegion(), threadIndex);
+        }
     }
+    return true;
+}
+
+bool ParallelEvacuator::UpdateNonMovableRegionWorkload::Process([[maybe_unused]] bool isMain,
+                                                                [[maybe_unused]] uint32_t threadIndex)
+{
+    GetEvacuator()->UpdateNonMovableReference(GetRegion());
     return true;
 }
 }  // namespace panda::ecmascript

@@ -77,6 +77,8 @@ int Main(const int argc, const char **argv)
     runtimeOptions.SetEnableAsmInterpreter(false);
     runtimeOptions.SetOptionsForTargetCompilation();
     runtimeOptions.DisableGCTimeoutCheck();
+    // disable evacuate nonmovable space in aot compiler
+    runtimeOptions.DisableEvacuateNonMovableSpace();
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";

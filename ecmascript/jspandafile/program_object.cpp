@@ -153,15 +153,18 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
     if (!last.IsTaggedArray()) {
         return;
     }
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     auto snapshotCachedArray = TaggedArray::Cast(last);
     auto curCached = vm->GetGlobalEnv()->GetObjectLiteralHClassCache();
     auto length = snapshotCachedArray->GetLength();
     auto prototype = vm->GetGlobalEnv()->GetObjectFunctionPrototype();
+    JSMutableHandle<JSHClass> newValueHandle(thread, JSTaggedValue::Undefined());
     if (curCached->IsHole()) {
         for (uint32_t i = 0; i < length; i++) {
             auto newValue = snapshotCachedArray->Get(thread, i);
             if (newValue.IsJSHClass()) {
-                JSHClass::Cast(newValue.GetTaggedObject())->SetPrototype(thread, prototype);
+                newValueHandle.Update(newValue);
+                JSHClass::SetPrototype(thread, newValueHandle, prototype);
             }
         }
         vm->GetGlobalEnv()->SetObjectLiteralHClassCache(thread, last);
@@ -178,8 +181,9 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
         if (curValue.IsJSHClass() && JSHClass::Cast(curValue.GetTaggedObject())->IsAOT()) {
             break;
         }
-        JSHClass::Cast(newValue.GetTaggedObject())->SetPrototype(thread, prototype);
-        curCachedArray->Set(thread, i, newValue);
+        newValueHandle.Update(newValue);
+        JSHClass::SetPrototype(thread, newValueHandle, prototype);
+        curCachedArray->Set(thread, i, newValueHandle.GetTaggedValue());
     }
 }
 

@@ -123,6 +123,7 @@ void ConcurrentMarker::Finish()
     workManager_->Finish();
     heap_->SetCmsGC(false);
     heap_->SetDisableCmsGC(false);
+    heap_->SetEvacuateNonMovableSpace(false);
 }
 
 void ConcurrentMarker::ReMark()
@@ -169,6 +170,7 @@ void ConcurrentMarker::Reset(bool revertCSet)
         // fixme: refactor?
         if constexpr (!G_USE_CMS_GC) {
             heap_->GetOldSpace()->RevertCSet();
+            heap_->GetNonMovableSpace()->RevertCSet();
         }
         auto callback = [](Region *region) {
             region->ResetRegionTypeFlag();
@@ -199,6 +201,10 @@ void ConcurrentMarker::InitializeMarking()
             && heap_->InSensitiveStatus()
             && !heap_->GetDisableCmsGC();
         heap_->SetCmsGC(useCms);
+        if (heap_->IsFullMark()) {
+            bool evacuateNonMovableSpace = !useCms && Runtime::GetInstance()->IsEnableEvacuateNonMovableSpace();
+            heap_->SetEvacuateNonMovableSpace(evacuateNonMovableSpace);
+        }
     }
 #endif
     ASSERT(VerifyAllRegionsNonFresh());
@@ -238,6 +244,9 @@ void ConcurrentMarker::InitializeMarking()
         });
         if (heap_->IsConcurrentFullMark() && !G_USE_CMS_GC) {
             heap_->GetOldSpace()->SelectCSet();
+            if (heap_->GetEvacuateNonMovableSpace()) {
+                heap_->GetNonMovableSpace()->SelectCSet();
+            }
         } else if constexpr (G_USE_STICKY_CMS_GC) {
             heap_->ClearGCBitSetForCMS();
         }

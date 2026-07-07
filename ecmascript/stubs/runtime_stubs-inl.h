@@ -1212,16 +1212,18 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
         }
     }
 
-    ctor->GetTaggedObject()->GetClass()->SetPrototype(thread, parent); // __proto__
+    JSHandle<JSHClass> ctorHClass(thread, ctor->GetTaggedObject()->GetClass());
+    JSHClass::SetPrototype(thread, ctorHClass, parent); // __proto__
 
     JSHandle<JSObject> clsPrototype(thread, JSHandle<JSFunction>(ctor)->GetFunctionPrototype(thread));
-    clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+    JSHandle<JSHClass> clsPrototypeHClass(thread, clsPrototype->GetClass());
+    JSHClass::SetPrototype(thread, clsPrototypeHClass, parentPrototype);
 
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, clsPrototype.GetTaggedValue(),
                                                  parentPrototype.GetTaggedValue());
 
     // ctor -> hclass -> EnableProtoChangeMarker
-    auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
+    JSHandle<JSFunction> constructor(ctor);
     if (constructor->GetClass()->IsAOT()) {
         JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
         // prototype -> hclass -> EnableProtoChangeMarker
@@ -2462,7 +2464,8 @@ void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread* thread,
         // build inheritance
         JSHandle<JSTaggedValue> parentPrototype = env->GetObjectFunctionPrototype();
         JSHandle<JSObject> clsPrototype(thread, func->GetFunctionPrototype(thread));
-        clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
+        JSHandle<JSHClass> clsPrototypeHClass(thread, clsPrototype->GetClass());
+        JSHClass::SetPrototype(thread, clsPrototypeHClass, parentPrototype);
 
         // set "constructor" in prototype
         JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();

@@ -238,7 +238,7 @@ bool JsonStringifier::CheckProtoChainForInterestingProperties(const JSHandle<JSH
                                                               JSTaggedValue current)
 {
     while (current.IsECMAObject()) {
-        JSHClass *hclass = current.GetTaggedObject()->GetClass();
+        JSHandle<JSHClass> hclass(thread_, current.GetTaggedObject()->GetClass());
         if (hclass->IsJSProxy()) {
             receiverHClass->SetMayHaveInterestingProperties(true);
             return true;

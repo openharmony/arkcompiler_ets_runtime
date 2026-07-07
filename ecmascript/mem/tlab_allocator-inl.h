@@ -27,11 +27,12 @@ static constexpr size_t MIN_BUFFER_SIZE = 31_KB;
 static constexpr size_t SMALL_OBJECT_SIZE = 8_KB;
 
 TlabAllocator::TlabAllocator(Heap *heap)
-    : heap_(heap), enableExpandYoung_(true), enableStealOldRegion_(true)
+    : heap_(heap), enableExpandYoung_(true), enableStealOldRegion_(true), nonMovableSpace_(heap_->GetNonMovableSpace())
 {
     size_t maxOldSpaceCapacity = heap->GetOldSpace()->GetMaximumCapacity();
     localSpace_ = new LocalSpace(heap, maxOldSpaceCapacity, maxOldSpaceCapacity);
     youngAllocator_.Reset();
+    nonMovableAllocator_.Reset();
 }
 
 inline void TlabAllocator::Finalize()
@@ -39,6 +40,10 @@ inline void TlabAllocator::Finalize()
     if (youngAllocator_.Available() != 0) {
         FreeObject::FillFreeObject(heap_, youngAllocator_.GetTop(), youngAllocator_.Available());
         youngAllocator_.Reset();
+    }
+    if (nonMovableAllocator_.Available() != 0) {
+        FreeObject::FillFreeObject(heap_, nonMovableAllocator_.GetTop(), nonMovableAllocator_.Available());
+        nonMovableAllocator_.Reset();
     }
 
     heap_->MergeToOldSpaceSync(localSpace_);
@@ -56,6 +61,9 @@ uintptr_t TlabAllocator::Allocate(size_t size, MemSpaceType space)
             break;
         case COMPRESS_SPACE:
             result = AllocateInCompressSpace(size);
+            break;
+        case NON_MOVABLE:
+            result = AllocateInNonMovableSpace(size);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -87,6 +95,24 @@ uintptr_t TlabAllocator::AllocateInCompressSpace(size_t size)
     ASSERT(AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) == size);
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     uintptr_t result = localSpace_->Allocate(size, true);
+    ASSERT(result != 0);
+    return result;
+}
+
+uintptr_t TlabAllocator::AllocateInNonMovableSpace(size_t size)
+{
+    ASSERT(AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) == size);
+    uintptr_t result = nonMovableAllocator_.Allocate(size);
+    if (LIKELY(result != 0)) {
+        return result;
+    }
+    if (UNLIKELY(size > SMALL_OBJECT_SIZE)) {
+        result = nonMovableSpace_->AllocateSyncInGC(size);
+        ASSERT(result != 0);
+        return result;
+    }
+    ExpandNonMovable();
+    result = nonMovableAllocator_.Allocate(size);
     ASSERT(result != 0);
     return result;
 }
@@ -138,6 +164,22 @@ bool TlabAllocator::ExpandCompressFromOld(size_t size)
         return true;
     }
     return false;
+}
+
+void TlabAllocator::ExpandNonMovable()
+{
+    uintptr_t buffer = nonMovableSpace_->AllocateSyncInGC(MIN_BUFFER_SIZE);
+    ASSERT(buffer != 0);
+    uintptr_t end = buffer + MIN_BUFFER_SIZE;
+
+    if (buffer == nonMovableAllocator_.GetEnd()) {
+        buffer = nonMovableAllocator_.GetTop();
+    } else {
+        if (nonMovableAllocator_.Available() != 0) {
+            FreeObject::FillFreeObject(heap_, nonMovableAllocator_.GetTop(), nonMovableAllocator_.Available());
+        }
+    }
+    nonMovableAllocator_.Reset(buffer, end);
 }
 
 void CCTlabAllocator::Setup(Heap *heap)

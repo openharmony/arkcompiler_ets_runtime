@@ -139,9 +139,8 @@ DEF_RUNTIME_STUBS(HeapAlloc)
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto result = factory->AllocObjectWithSpaceType(size, hclass, mtype);
+    auto result = factory->AllocObjectWithSpaceType(size, hclassHandle, mtype);
     return JSTaggedValue(result).GetRawData();
 }
 

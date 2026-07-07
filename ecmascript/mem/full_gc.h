@@ -22,6 +22,7 @@
 
 namespace panda {
 namespace ecmascript {
+template <bool evacuateNonMovableSpace>
 class FullGCRunner;
 
 class FullGC final : public GarbageCollector {
@@ -44,9 +45,17 @@ protected:
 private:
     void MarkRoots();
     void MarkUntilFixPoint();
+    template <bool evacuateNonMovableSpace>
+    void MarkUntilFixPointImpl();
     void ProcessSharedGCRSetWorkList();
+    template <bool evacuateNonMovableSpace>
+    void SweepImpl();
+    template <bool evacuateNonMovableSpace>
     bool HasEvacuated(Region *region);
+    template <bool evacuateNonMovableSpace>
     void UpdateRecordWeakReference(uint32_t threadId);
+    template <bool evacuateNonMovableSpace>
+    void UpdateWeakRoots();
     void UpdateRecordWeakLinkedHashMap(uint32_t threadId);
 
     Heap *heap_;
@@ -58,9 +67,10 @@ private:
     friend class Heap;
 };
 
+template <bool evacuateNonMovableSpace>
 class FullGCMarkRootVisitor final : public RootVisitor {
 public:
-    inline explicit FullGCMarkRootVisitor(FullGCRunner *runner);
+    inline explicit FullGCMarkRootVisitor(FullGCRunner<evacuateNonMovableSpace> *runner);
     ~FullGCMarkRootVisitor() override = default;
 
     inline void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
@@ -70,27 +80,30 @@ public:
     inline void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
                                         uintptr_t baseOldObject) override;
 private:
-    FullGCRunner *runner_ {nullptr};
+    FullGCRunner<evacuateNonMovableSpace> *runner_ {nullptr};
 };
 
-class FullGCMarkObjectVisitor final : public BaseObjectVisitor<FullGCMarkObjectVisitor> {
+template <bool evacuateNonMovableSpace>
+class FullGCMarkObjectVisitor final : public BaseObjectVisitor<FullGCMarkObjectVisitor<evacuateNonMovableSpace>> {
 public:
-    inline explicit FullGCMarkObjectVisitor(FullGCRunner *runner);
+    inline explicit FullGCMarkObjectVisitor(FullGCRunner<evacuateNonMovableSpace> *runner);
     ~FullGCMarkObjectVisitor() override = default;
 
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 
-    inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
+    inline void VisitObjectHClassImpl(BaseObject *root, BaseObject *hclass) override;
 
-    inline void VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass);
+    inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:
-    FullGCRunner *runner_ {nullptr};
+    FullGCRunner<evacuateNonMovableSpace> *runner_ {nullptr};
 };
 
-class FullGCUpdateLocalToShareRSetVisitor final : public BaseObjectVisitor<FullGCUpdateLocalToShareRSetVisitor> {
+template <bool evacuateNonMovableSpace>
+class FullGCUpdateLocalToShareRSetVisitor final
+    : public BaseObjectVisitor<FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>> {
 public:
-    inline explicit FullGCUpdateLocalToShareRSetVisitor(FullGCRunner *runner);
+    inline explicit FullGCUpdateLocalToShareRSetVisitor(FullGCRunner<evacuateNonMovableSpace> *runner);
     ~FullGCUpdateLocalToShareRSetVisitor() override = default;
 
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
@@ -98,16 +111,17 @@ public:
 private:
     inline void SetLocalToShareRSet(ObjectSlot slot, Region *rootRegion);
 
-    FullGCRunner *runner_ {nullptr};
+    FullGCRunner<evacuateNonMovableSpace> *runner_ {nullptr};
 };
 
+template <bool evacuateNonMovableSpace>
 class FullGCRunner {
 public:
     inline explicit FullGCRunner(Heap *heap, WorkNodeHolder *workNodeHolder, bool isAppSpawn);
     ~FullGCRunner() = default;
 
-    inline FullGCMarkRootVisitor &GetMarkRootVisitor();
-    inline FullGCMarkObjectVisitor &GetMarkObjectVisitor();
+    inline FullGCMarkRootVisitor<evacuateNonMovableSpace> &GetMarkRootVisitor();
+    inline FullGCMarkObjectVisitor<evacuateNonMovableSpace> &GetMarkObjectVisitor();
 
 protected:
     inline void HandleMarkingSlot(ObjectSlot slot);
@@ -128,9 +142,9 @@ private:
 
     inline void EvacuateObject(ObjectSlot slot, TaggedObject *object, const MarkWord &markWord);
 
-    inline uintptr_t AllocateForwardAddress(size_t size);
+    inline uintptr_t AllocateForwardAddress(size_t size, MemSpaceType space);
 
-    inline uintptr_t AllocateDstSpace(size_t size);
+    inline uintptr_t AllocateDstSpace(size_t size, MemSpaceType space);
 
     inline uintptr_t AllocateAppSpawnSpace(size_t size);
 
@@ -154,14 +168,14 @@ private:
     Heap *heap_ {nullptr};
     WorkNodeHolder *workNodeHolder_ {nullptr};
     bool isAppSpawn_ {false};
-    FullGCMarkRootVisitor markRootVisitor_;
-    FullGCMarkObjectVisitor markObjectVisitor_;
-    FullGCUpdateLocalToShareRSetVisitor updateLocalToShareRSetVisitor_;
+    FullGCMarkRootVisitor<evacuateNonMovableSpace> markRootVisitor_;
+    FullGCMarkObjectVisitor<evacuateNonMovableSpace> markObjectVisitor_;
+    FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace> updateLocalToShareRSetVisitor_;
 
     friend class FullGC;
-    friend class FullGCMarkRootVisitor;
-    friend class FullGCMarkObjectVisitor;
-    friend class FullGCUpdateLocalToShareRSetVisitor;
+    friend class FullGCMarkRootVisitor<evacuateNonMovableSpace>;
+    friend class FullGCMarkObjectVisitor<evacuateNonMovableSpace>;
+    friend class FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>;
     friend class CompressGCMarker;
 };
 }  // namespace ecmascript

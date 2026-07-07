@@ -86,6 +86,16 @@ private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
 
+    class UpdateNonMovableObjectFieldVisitor final : public BaseObjectVisitor<UpdateNonMovableObjectFieldVisitor> {
+    public:
+        explicit UpdateNonMovableObjectFieldVisitor(ParallelEvacuator *evacuator);
+        ~UpdateNonMovableObjectFieldVisitor() = default;
+
+        void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
+    private:
+        ParallelEvacuator *evacuator_ {nullptr};
+    };
+
     class EvacuationTask : public common::Task {
     public:
         EvacuationTask(int32_t id, uint32_t idOrder, ParallelEvacuator *evacuator);
@@ -179,32 +189,44 @@ private:
 
     class UpdateNewRegionWorkload : public Workload {
     public:
-        UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
-            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
+        UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC, bool updateHClass)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC), updateHClass_(updateHClass) {}
         ~UpdateNewRegionWorkload() override = default;
         bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
+        bool updateHClass_ {false};
     };
 
     class UpdateAndSweepNewRegionWorkload : public Workload {
     public:
-        UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
-            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
+        UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC, bool updateHClass)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC), updateHClass_(updateHClass) {}
         ~UpdateAndSweepNewRegionWorkload() override = default;
         bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
+        bool updateHClass_ {false};
     };
 
     class UpdateNewToOldEvacuationWorkload : public Workload {
     public:
-        UpdateNewToOldEvacuationWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
-            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
+        UpdateNewToOldEvacuationWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC,
+                                         bool updateHClass)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC), updateHClass_(updateHClass) {}
         ~UpdateNewToOldEvacuationWorkload() override = default;
         bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
+        bool updateHClass_ {false};
+    };
+
+    class UpdateNonMovableRegionWorkload : public Workload {
+    public:
+        UpdateNonMovableRegionWorkload(ParallelEvacuator *evacuator, Region *region)
+            : Workload(evacuator, region) {}
+        ~UpdateNonMovableRegionWorkload() override = default;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     };
 
     template <typename WorkloadCallback>
@@ -230,7 +252,9 @@ private:
     void UpdateRecordWeakReference(uint32_t threadId);
     template <TriggerGCType gcType>
     void UpdateRecordWeakLinkedHashMap(uint32_t threadId);
+    template <bool updateHClass>
     void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
+    void EvacuateNonMovableSpaceRegion(TlabAllocator *allocator, Region *region);
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
@@ -242,6 +266,7 @@ private:
     void VerifyHeapObject(TaggedObject *object);
 
     void UpdateReference();
+    void UpdateNonMovableReference(Region *region);
     void UpdateRoot();
     template<TriggerGCType gcType, bool cmsGC>
     auto GetUpdateWeakReferenceOptVisitor();
@@ -249,14 +274,14 @@ private:
     void UpdateWeakReferenceOpt();
     template <bool cmsGC>
     void UpdateRSet(Region *region);
-    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    template<TriggerGCType gcType, bool needUpdateLocalToShare, bool updateHClass>
     void UpdateNewRegionReference(Region *region);
-    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    template<TriggerGCType gcType, bool needUpdateLocalToShare, bool updateHClass>
     void UpdateAndSweepNewRegionReference(Region *region);
-    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    template<TriggerGCType gcType, bool needUpdateLocalToShare, bool updateHClass>
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls,
-        UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> &updateFieldVisito);
-    template<TriggerGCType gcType>
+        UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> &updateFieldVisitor);
+    template<TriggerGCType gcType, bool updateHClass>
     void UpdateNewToOldEvacuationReference(Region *region, uint32_t threadIndex);
 
     inline bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak);
@@ -267,6 +292,8 @@ private:
     inline void UpdateCrossRegionObjectSlot(ObjectSlot &slot);
     template<TriggerGCType gcType, bool needUpdateLocalToShare>
     inline void UpdateNewObjectSlot(ObjectSlot &slot);
+    inline void UpdateHClassSlot(ObjectSlot slot, TaggedObject *hClass);
+    inline void UpdateNonMovableObjectSlot(Region *objectRegion, ObjectSlot slot);
     inline void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot);
 
     inline int CalculateEvacuationThreadNum();
@@ -291,6 +318,9 @@ private:
 
     template<TriggerGCType gcType>
     friend class SlotUpdateRangeVisitor;
+
+    template<TriggerGCType gcType, bool updateHClass>
+    friend class NewToOldEvacuationVisitor;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_EVACUATOR_H

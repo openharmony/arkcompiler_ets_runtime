@@ -79,7 +79,7 @@ void GlobalMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t s
     }
 }
 
-void GlobalMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
+void GlobalMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *hclassObject)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
     HandleObject(hclass, Region::ObjectAddressToRange(hclass));

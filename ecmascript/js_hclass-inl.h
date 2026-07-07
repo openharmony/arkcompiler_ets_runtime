@@ -282,15 +282,14 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
     return size;
 }
 
-inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
+inline void JSHClass::Copy(const JSThread *thread, JSHandle<JSHClass> newHClass, JSHandle<JSHClass> oldHClass)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-
-    SetPrototype(thread, jshclass->GetPrototype(thread));
-    SetBitField(jshclass->GetBitField());
-    SetIsAllTaggedProp(jshclass->IsAllTaggedProp());
-    SetNumberOfProps(jshclass->NumberOfProps());
-    SetBitField2(jshclass->GetBitField2() & BIT_FIELD2_RESERVED_MASK);
+    // copy jshclass
+    SetPrototype(thread, newHClass, oldHClass->GetPrototype(thread));
+    newHClass->SetBitField(oldHClass->GetBitField());
+    newHClass->SetIsAllTaggedProp(oldHClass->IsAllTaggedProp());
+    newHClass->SetNumberOfProps(oldHClass->NumberOfProps());
+    newHClass->SetBitField2(oldHClass->GetBitField2() & BIT_FIELD2_RESERVED_MASK);
 }
 
 inline JSHClass *JSHClass::FindRootHClass(const JSThread *thread, JSHClass *hclass)
@@ -488,8 +487,9 @@ JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHa
     JSHClass *newClass = jshclass->FindTransitions(thread,
         key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()), rep);
     if (newClass != nullptr) {
-        newClass->SetPrototype(thread, jshclass->GetPrototype(thread));
-        return JSHandle<JSHClass>(thread, newClass);
+        JSHandle<JSHClass> newClassHandle(thread, newClass);
+        SetPrototype(thread, newClassHandle, jshclass->GetPrototype(thread));
+        return newClassHandle;
     }
 
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass, specificInlinedProps, specificNumInlinedProps);

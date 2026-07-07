@@ -1143,7 +1143,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         JSHandle<JSObject>::Cast(ctor)->SetPropertyInlinedProps(
             thread, ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX, elementsDic.GetTaggedValue());
     }
-    iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(clsPrototype));
+    JSHClass::SetPrototype(thread, iHClass, JSHandle<JSTaggedValue>(clsPrototype));
     iHClass->SetExtensible(false);
     ctor->SetProtoOrHClass(thread, iHClass);
     ctor->GetJSHClass()->SetExtensible(false);

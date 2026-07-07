@@ -57,8 +57,10 @@ void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRang
 }
 
 template <SerializeType serializeType>
-void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectHClassImpl(BaseObject *hclass)
+void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectHClassImpl(
+    BaseObject *rootObject, BaseObject *hclass)
 {
+    (void)rootObject;
     serializer_->SerializeJSTaggedValue(JSTaggedValue(TaggedObject::Cast(hclass)));
 }
 

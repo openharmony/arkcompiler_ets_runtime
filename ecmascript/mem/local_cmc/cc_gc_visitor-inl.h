@@ -89,7 +89,7 @@ void CCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
     workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
-void CCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *object)
+void CCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *object)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(object);
     ASSERT(hclass->GetClass()->IsHClass());

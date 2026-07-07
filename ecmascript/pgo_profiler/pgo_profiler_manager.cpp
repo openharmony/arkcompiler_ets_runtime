@@ -254,6 +254,8 @@ bool PGOProfilerManager::InitializeData()
     if (!enableSignalSaving_) {
         RegisterSavingSignal();
     }
+    // disable evacuate nonmovable space in pgo
+    Runtime::GetInstance()->DisableEvacuateNonMovableSpace();
     LOG_PGO(INFO) << "pgo profiler data is initialized";
     return true;
 }

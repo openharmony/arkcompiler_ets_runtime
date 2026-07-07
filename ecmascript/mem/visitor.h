@@ -74,9 +74,9 @@ public:
         static_cast<DerivedVisitor*>(this)->VisitObjectRangeImpl(rootObject, startAddr, endAddr, area);
     }
 
-    void VisitHClass(BaseObject *hclass)
+    void VisitHClass(BaseObject *rootObject, BaseObject *hclass)
     {
-        static_cast<DerivedVisitor*>(this)->VisitObjectHClassImpl(hclass);
+        static_cast<DerivedVisitor*>(this)->VisitObjectHClassImpl(rootObject, hclass);
     }
 
     void VisitWeakLinkedHashMap(BaseObject *rootObject)
@@ -90,7 +90,7 @@ public:
     {
     }
 
-    virtual void VisitObjectHClassImpl([[maybe_unused]] BaseObject *hclass)
+    virtual void VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] BaseObject *hclass)
     {
     }
 
@@ -192,7 +192,7 @@ public:
     template <class DerivedVisitor>
     static inline void IterateHClass(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor)
     {
-        visitor.VisitHClass(root->GetClass());
+        visitor.VisitHClass(root, root->GetClass());
     }
 
     template <class DerivedVisitor>
@@ -246,7 +246,7 @@ public:
     {
         size_t hclassEnd = sizeof(JSTaggedType);
         ASSERT(startOffset > hclassEnd);
-        visitor.VisitHClass(root->GetClass());
+        visitor.VisitHClass(root, root->GetClass());
         IteratorRange(root, visitor, hclassEnd, startOffset);
     }
 

@@ -66,30 +66,35 @@ void SlotUpdateRangeVisitor<gcType>::UpdateSlot(ObjectSlot slot, Region *rootReg
     }
 }
 
-template <TriggerGCType gcType>
-NewToOldEvacuationVisitor<gcType>::NewToOldEvacuationVisitor(Heap *heap, std::unordered_set<JSTaggedType> *set,
-                                                             ParallelEvacuator *evacuator)
+template <TriggerGCType gcType, bool updateHClass>
+NewToOldEvacuationVisitor<gcType, updateHClass>::NewToOldEvacuationVisitor(Heap *heap,
+    std::unordered_set<JSTaggedType> *set, ParallelEvacuator *evacuator)
     : pgoEnabled_(heap->GetJSThread()->IsPGOProfilerEnable()),
       thread_(heap->GetJSThread()),
       pgoProfiler_(heap->GetEcmaVM()->GetPGOProfiler()),
       trackSet_(set),
+      evacuator_(evacuator),
       slotUpdateRangeVisitor_(evacuator)
 {
 }
 
-template<TriggerGCType gcType>
-void NewToOldEvacuationVisitor<gcType>::operator()(void *mem)
+template<TriggerGCType gcType, bool updateHClass>
+void NewToOldEvacuationVisitor<gcType, updateHClass>::operator()(void *mem)
 {
     auto object = reinterpret_cast<TaggedObject *>(mem);
     JSHClass *klass = object->GetClass();
+    if constexpr (updateHClass) {
+        ObjectSlot hClassSlot(ToUintPtr(mem));
+        evacuator_->UpdateHClassSlot(hClassSlot, klass);
+    }
     ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass, slotUpdateRangeVisitor_);
     if (pgoEnabled_) {
         UpdateTrackInfo(object, klass);
     }
 }
 
-template<TriggerGCType gcType>
-void NewToOldEvacuationVisitor<gcType>::UpdateTrackInfo(TaggedObject *header, JSHClass *klass)
+template<TriggerGCType gcType, bool updateHClass>
+void NewToOldEvacuationVisitor<gcType, updateHClass>::UpdateTrackInfo(TaggedObject *header, JSHClass *klass)
 {
     if (klass->IsJSArray()) {
         auto trackInfo = JSArray::Cast(header)->GetTrackInfo(thread_);

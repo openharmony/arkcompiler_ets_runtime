@@ -46,7 +46,7 @@ public:
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 
-    inline void VisitObjectHClassImpl(BaseObject *hclass) override;
+    inline void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
 
 private:
     inline void HandleSlot(ObjectSlot slot, Region *rootRegion);

@@ -251,17 +251,16 @@ HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByValue1)
 
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSTaggedValue handleObjClassVal(handleObj->GetClass());
-    TaggedObject *handleTaggedObject = handleObjClassVal.GetWeakReferentUnChecked();
-    JSHClass *handleNewObjClass = static_cast<JSHClass *>(handleTaggedObject);
+    JSHandle<JSTaggedValue> handleObjClassVal(thread, handleObj->GetClass());
+    JSHandle<TaggedObject> handleTaggedObject(thread, handleObjClassVal.GetTaggedValue().GetWeakReferentUnChecked());
 
-    JSHandle<JSObject> handleNewObj = factory->NewJSObject(JSHandle<JSHClass>(thread, handleNewObjClass));
+    JSHandle<JSObject> handleNewObj = factory->NewJSObject(JSHandle<JSHClass>(handleTaggedObject));
     JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(1);
     handleNewObj->SetElements(thread, handleTaggedArray.GetTaggedValue());
 
     uint32_t handler = 0U;
     KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
-    JSTaggedValue handleFirstVal(handleTaggedObject);
+    JSTaggedValue handleFirstVal = handleTaggedObject.GetTaggedValue();
     JSTaggedValue handleSecondHandlerVal(handler);
     JSTaggedValue handleReceiver = handleNewObj.GetTaggedValue();
     JSTaggedValue handleStoreVal(2);
@@ -269,6 +268,8 @@ HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByValue1)
     // fistValue GetWeakReferentUnChecked is equal the receiver class
     ICRuntimeStub::TryStoreICByValue(thread, handleReceiver, JSTaggedValue(0),
                                      handleFirstVal, handleSecondHandlerVal, handleStoreVal);
+    handleFirstVal = handleTaggedObject.GetTaggedValue();
+    handleReceiver = handleNewObj.GetTaggedValue();
     JSTaggedValue resultValue = ICRuntimeStub::TryLoadICByValue(thread, handleReceiver, JSTaggedValue(0),
                                                                 handleFirstVal, handleSecondHandlerVal);
     EXPECT_EQ(resultValue.GetInt(), handleStoreVal.GetInt());
@@ -281,18 +282,17 @@ HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByValue2)
 
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    JSTaggedValue handleObjClassVal(handleObj->GetClass());
-    handleObjClassVal.CreateWeakRef();
-    TaggedObject *handleTaggedObject = TaggedObject::Cast(handleObjClassVal.GetWeakReferent());
-    JSHClass *handleNewObjClass = static_cast<JSHClass *>(handleTaggedObject);
+    JSHandle<JSTaggedValue> handleObjClassVal(thread, handleObj->GetClass());
     JSHandle<TaggedArray> handleTypeArr = factory->NewTaggedArray(1);
-    JSHandle<JSObject> handleNewObj = factory->NewJSObject(JSHandle<JSHClass>(thread, handleNewObjClass));
+    JSHandle<JSObject> handleNewObj = factory->NewJSObject(JSHandle<JSHClass>(handleObjClassVal));
     handleNewObj->SetProperties(thread, handleTypeArr.GetTaggedValue());
 
     uint32_t handler = 0U;
     KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
     JSHandle<TaggedArray> handleSecondValArr = factory->NewTaggedArray(2);
-    handleSecondValArr->Set(thread, 0, handleObjClassVal);
+    JSTaggedValue weakClass = handleObjClassVal.GetTaggedValue();
+    weakClass.CreateWeakRef();
+    handleSecondValArr->Set(thread, 0, weakClass);
     handleSecondValArr->Set(thread, 1, JSTaggedValue(handler));
     JSTaggedValue handleReceiver = handleNewObj.GetTaggedValue();
     JSTaggedValue handleSecondArrVal = handleSecondValArr.GetTaggedValue();
@@ -301,6 +301,8 @@ HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByValue2)
     // fistvalue is equal the key value.
     ICRuntimeStub::TryStoreICByValue(thread, handleReceiver, JSTaggedValue(0),
                                      JSTaggedValue(0), handleSecondArrVal, handleStoreVal);
+    handleReceiver = handleNewObj.GetTaggedValue();
+    handleSecondArrVal = handleSecondValArr.GetTaggedValue();
     JSTaggedValue resultValue = ICRuntimeStub::TryLoadICByValue(thread, handleReceiver, JSTaggedValue(0),
                                                                 JSTaggedValue(0), handleSecondArrVal);
     EXPECT_EQ(resultValue.GetInt(), handleStoreVal.GetInt());
@@ -463,7 +465,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSHandle<JSHClass> originHClass(thread, handleObj->GetJSHClass());
     JSHandle<JSObject> handleArrObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrFun), arrFun);
-    auto hclass = handleArrObj->SynchronizedGetClass();
+    JSHandle<JSHClass> hclass(thread, handleArrObj->SynchronizedGetClass());
 
     uint32_t handler = 0U;
     uint32_t bitOffset = 1U;
@@ -475,7 +477,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
     handleObj->SetProperties(thread, handleTaggedArr.GetTaggedValue());
 
     JSHandle<TransitionHandler> handleTranHandler = factory->NewTransitionHandler();
-    handleTranHandler->SetTransitionHClass(thread, JSTaggedValue(hclass));
+    handleTranHandler->SetTransitionHClass(thread, hclass.GetTaggedValue());
     handleTranHandler->SetHandlerInfo(thread, JSTaggedValue(handler));
 
     // test handler is InlinedProps and store in filed

@@ -65,7 +65,7 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     size_t length = 10;
     auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), 10);
-    TaggedObject *header = heap->AllocateYoungOrHugeObject(*objectClass, size);
+    TaggedObject *header = heap->AllocateYoungOrHugeObject(objectClass, size);
     JSHandle<TaggedArray> array(thread, header);
     array->SetLength(length);
     for (int i = 0; i < length; ++i) {
@@ -101,17 +101,17 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 #endif
     // size is an integral multiple of eight
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
-    TaggedObject *header3 = heap->AllocateYoungOrHugeObject(*objectClass, length);
+    TaggedObject *header3 = heap->AllocateYoungOrHugeObject(objectClass, length);
     objectSize = objectClass->SizeFromJSHClass(header3);
     EXPECT_EQ(objectSize, 56U);
 
     objectClass = factory->NewEcmaHClass(JSObject::SIZE + 1, JSType::JS_OBJECT, nullHandle);
-    TaggedObject *header4 = heap->AllocateYoungOrHugeObject(*objectClass, length);
+    TaggedObject *header4 = heap->AllocateYoungOrHugeObject(objectClass, length);
     objectSize = objectClass->SizeFromJSHClass(header4);
     EXPECT_EQ(objectSize, 64U);
 
     objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    TaggedObject *header5 = heap->AllocateYoungOrHugeObject(*objectClass, length);
+    TaggedObject *header5 = heap->AllocateYoungOrHugeObject(objectClass, length);
     objectSize = objectClass->SizeFromJSHClass(header5);
     EXPECT_EQ(objectSize, 64U);
 }
@@ -458,7 +458,7 @@ HWTEST_F_L0(JSHClassTest, SetPrototype)
 
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
     EXPECT_EQ(objectClass->GetPrototype(thread), nullHandle.GetTaggedValue());
-    objectClass->SetPrototype(thread, objectFuncPrototype);
+    JSHClass::SetPrototype(thread, objectClass, objectFuncPrototype);
     EXPECT_EQ(objectClass->GetPrototype(thread), objectFuncPrototype.GetTaggedValue());
 }
 

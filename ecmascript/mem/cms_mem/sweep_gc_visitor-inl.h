@@ -106,7 +106,7 @@ void SweepGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject
     workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
-void SweepGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
+void SweepGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *hclassObject)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
     ASSERT(hclass->GetClass()->IsHClass());

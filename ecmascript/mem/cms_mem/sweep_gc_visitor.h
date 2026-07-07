@@ -46,7 +46,7 @@ public:
     inline void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 
-    inline void VisitObjectHClassImpl(BaseObject *hclass) override;
+    inline void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
 
     inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:

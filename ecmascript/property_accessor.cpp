@@ -135,7 +135,7 @@ void PropertyAccessor::InitSimplePropertiesEnumCache()
 {
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> receiverObj(receiver_);
-    JSHClass *jsHClass = receiverObj->GetJSHClass();
+    JSHandle<JSHClass> jsHClass(thread_, receiverObj->GetJSHClass());
 
     ASSERT(receiverObj->GetNumberOfElements(thread_) == 0);
     ASSERT(!receiver_->IsInSharedHeap());
@@ -158,7 +158,7 @@ void PropertyAccessor::InitSimplePropertiesEnumCache()
         JSHandle<EnumCache> enumCache = JSObject::GetOrCreateEnumCache(thread_,
             JSHandle<JSHClass>(thread_, proto.GetTaggedObject()->GetClass()));
         enumCache->SetProtoChainInfoEnumCache(thread_, JSTaggedValue::Undefined());
-        JSHClass::EnableProtoChangeMarker(thread_, JSHandle<JSHClass>(thread_, jsHClass));
+        JSHClass::EnableProtoChangeMarker(thread_, jsHClass);
     }
 
     JSObject::SetEnumCacheKind(thread_, JSHandle<EnumCache>::Cast(enumCache_), EnumCacheKind::SIMPLE);

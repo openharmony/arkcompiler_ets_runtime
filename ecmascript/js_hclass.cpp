@@ -138,7 +138,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
         SetIsJSFunction(true);
     }
-    SetPrototype(thread, JSTaggedValue::Null());
+    SetProto(thread, JSTaggedValue::Null());
 
     SetObjectType(type);
     SetExtensible(true);
@@ -238,7 +238,7 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     }
 
     // Copy all
-    newJsHClass->Copy(thread, *jshclass);
+    Copy(thread, newJsHClass, jshclass);
     newJsHClass->SetIsStable(true);
     newJsHClass->SetAOT(false);
     
@@ -260,7 +260,7 @@ JSHandle<JSHClass> JSHClass::CloneWithNewSizeAndType(const JSThread *thread, con
     }
 
     // Copy all
-    newJsHClass->Copy(thread, *jsHClass);
+    Copy(thread, newJsHClass, jsHClass);
     newJsHClass->SetObjectType(type);
     newJsHClass->SetIsStable(true);
     newJsHClass->SetAOT(false);
@@ -345,22 +345,22 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHClass *newClass = jshclass->FindTransitions(thread, key.GetTaggedValue(), metadata, rep);
     if (newClass != nullptr) {
         // The transition hclass from AOT, which does not have a prototype, needs to be reset here.
-        if (newClass->IsAOT()) {
-            newClass->SetPrototype(thread, jshclass->GetPrototype(thread));
+        JSHandle<JSHClass> newClassHandle(thread, newClass);
+        if (newClassHandle->IsAOT()) {
+            SetPrototype(thread, newClassHandle, jshclass->GetPrototype(thread));
         }
         // Because we currently only supports Fast ElementsKind
-        RestoreElementsKindToGeneric(newClass);
-        obj->SynchronizedTransitionClass(thread, newClass);
+        RestoreElementsKindToGeneric(*newClassHandle);
+        obj->SynchronizedTransitionClass(thread, *newClassHandle);
 #if ECMASCRIPT_ENABLE_IC
         // The transition hclass from AOT, which does not have protochangemarker, needs to be reset here
-        JSHandle<JSHClass> newHClass = JSHandle<JSHClass>(thread, newClass);
-        if (newClass->IsAOT() && newClass->IsPrototype()) {
-            JSHClass::ProcessAotHClassTransition(thread, jshclass, newHClass, key.GetTaggedValue());
+        if (newClassHandle->IsAOT() && newClassHandle->IsPrototype()) {
+            JSHClass::ProcessAotHClassTransition(thread, jshclass, newClassHandle, key.GetTaggedValue());
         } else {
-            if (newClass->IsPrototype()) {
-                newHClass->SetProtoChangeDetails(thread, jshclass->GetProtoChangeDetails(thread));
+            if (newClassHandle->IsPrototype()) {
+                newClassHandle->SetProtoChangeDetails(thread, jshclass->GetProtoChangeDetails(thread));
             }
-            JSHClass::NotifyHclassChanged(thread, jshclass, newHClass);
+            JSHClass::NotifyHclassChanged(thread, jshclass, newClassHandle);
         }
 #endif
         return;
@@ -406,8 +406,9 @@ JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const J
         auto *newClass =
             jshclass->FindTransitions(thread, key.GetTaggedValue(), JSTaggedValue(0), Representation::NONE);
         if (newClass != nullptr) {
-            newClass->SetPrototype(thread, jshclass->GetPrototype(thread));
-            return JSHandle<JSHClass>(thread, newClass);
+            JSHandle<JSHClass> newClassHandle(thread, newClass);
+            SetPrototype(thread, newClassHandle, jshclass->GetPrototype(thread));
+            return newClassHandle;
         }
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -447,7 +448,7 @@ JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHan
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 2. new a hclass
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->SetPrototype(thread, proto.GetTaggedValue(), isChangeProto);
+    SetPrototype(thread, newJsHClass, proto.GetTaggedValue(), isChangeProto);
 
     JSTaggedValue layout = newJsHClass->GetLayout(thread);
     {
@@ -503,7 +504,8 @@ void JSHClass::ReBuildFunctionInheritanceRelationship(const JSThread *thread,
     proto->GetTaggedObject()->SynchronizedTransitionClass(thread, JSHClass::Cast(transPhc->GetTaggedObject()));
     ASSERT(JSHClass::Cast(transPhc->GetTaggedObject())->IsPrototype());
     // update the prototype of new phc
-    JSHClass::Cast(transPhc->GetTaggedObject())->SetPrototype(thread, oldPhc->GetPrototype(thread));
+    JSHandle<JSHClass> transPhcClass(thread, transPhc->GetTaggedObject());
+    SetPrototype(thread, transPhcClass, oldPhc->GetPrototype(thread));
     // enable prototype change marker
     JSTaggedValue phcPrototype = JSHClass::Cast(transPhc->GetTaggedObject())->GetPrototype(thread);
     JSHandle<JSTaggedValue> parentPrototype(thread, phcPrototype);
@@ -535,7 +537,7 @@ JSHandle<JSHClass> JSHClass::CloneWithAddProto(const JSThread *thread, const JSH
 {
     // 1. new a hclass
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->SetPrototype(thread, proto.GetTaggedValue());
+    SetPrototype(thread, newJsHClass, proto.GetTaggedValue());
 
     // 2. Add newJsHClass to old jshclass's parent's transitions.
     AddProtoTransitions(thread, jshclass, newJsHClass, key, proto);
@@ -558,21 +560,23 @@ JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, con
     return CloneWithAddProto(thread, jshclass, key, proto);
 }
 
-void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto, bool isChangeProto)
+// static
+void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                            JSTaggedValue proto, bool isChangeProto)
 {
-    // Because the heap-space of hclass is non-movable, this function can be non-static.
     JSHandle<JSTaggedValue> protoHandle(thread, proto);
-    SetPrototype(thread, protoHandle, isChangeProto);
+    SetPrototype(thread, hclass, protoHandle, isChangeProto);
 }
 
-void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<GlobalEnv> &env,
-    JSTaggedValue proto, bool isChangeProto)
+// static
+void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                            const JSHandle<GlobalEnv> &env, JSTaggedValue proto, bool isChangeProto)
 {
     JSHandle<JSTaggedValue> protoHandle(thread, proto);
     if (protoHandle.GetTaggedValue().IsJSObject()) {
         OptimizePrototypeForIC(thread, env, protoHandle, isChangeProto);
     }
-    SetProto(thread, protoHandle);
+    hclass->SetProto(thread, protoHandle);
 }
 
 JSHandle<JSHClass> JSHClass::SetPrototypeWithNotification(const JSThread *thread,
@@ -606,13 +610,14 @@ void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject>
                                                  proto.GetTaggedValue());
 }
 
-void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
+// static
+void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                            const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
-    // Because the heap-space of hclass is non-movable, this function can be non-static.
     if (proto->IsJSObject()) {
         OptimizePrototypeForIC(thread, thread->GetGlobalEnv(), proto, isChangeProto);
     }
-    SetProto(thread, proto);
+    hclass->SetProto(thread, proto);
 }
 
 void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<GlobalEnv> &env,
@@ -1501,7 +1506,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
     ASSERT(rootDesc->GetObjectType() == JSType::JS_OBJECT);
     JSHandle<JSHClass> hclass = factory->GetObjectLiteralRootHClass(literalLength, maxPropsNum);
     JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(literalLength, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
-    hclass->SetPrototype(thread, JSTaggedValue::Null());
+    SetPrototype(thread, hclass, JSTaggedValue::Null());
     hclass->SetLayout(thread, layout);
     hclass->SetAOT(true);
     rootDesc->IterateProps([thread, factory, &index, &hclass, &maxPropsNum](const pgo::PropertyDesc& propDesc) {
@@ -1518,7 +1523,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
 
         JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep, true, maxPropsNum);
         child->SetParent(thread, hclass);
-        child->SetPrototype(thread, JSTaggedValue::Null());
+        SetPrototype(thread, child, JSTaggedValue::Null());
         child->SetAOT(true);
         hclass = child;
     });

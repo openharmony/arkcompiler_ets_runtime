@@ -2502,6 +2502,16 @@ public:
         return arkTSMode_;
     }
 
+    void DisableEvacuateNonMovableSpace()
+    {
+        enableEvacuateNonMovableSpace_ = false;
+    }
+
+    bool IsEnableEvacuateNonMovableSpace() const
+    {
+        return enableEvacuateNonMovableSpace_;
+    }
+
     static bool ParseBool(const std::string &arg, bool* argBool);
     static bool ParseInt(const std::string &arg, int* argInt);
     static bool ParseUint32(const std::string &arg, uint32_t* argUInt32);
@@ -2836,6 +2846,7 @@ private:
     bool disableModuleSnapshot_ { false };
     bool enableGCTimeoutCheck_ {true};
     ArkTSMode arkTSMode_ {ArkTSMode::DYNAMIC};
+    bool enableEvacuateNonMovableSpace_ {false};
 };
 } // namespace panda::ecmascript
 
