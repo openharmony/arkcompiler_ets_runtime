@@ -1687,8 +1687,8 @@ HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_Multiple)
 HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_CapacityLimit)
 {
     LocalScope scope(vm_);
-    // SO_LOAD_FAILURE_CAPACITY is 20: list keeps at most 20 records, while the
-    // counter keeps growing with every call.
+    // SO_LOAD_FAILURE_CAPACITY is 20: the list keeps at most 20 records, while
+    // the counter keeps growing with every distinct moduleName.
     constexpr uint32_t capacity = 20;
     constexpr uint32_t totalCount = 25;
     for (uint32_t i = 0; i < totalCount; i++) {
@@ -1736,20 +1736,19 @@ HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_EmptyModuleName)
 HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_DuplicateModuleName)
 {
     LocalScope scope(vm_);
-    // Repeated identical records are all kept (no de-duplication).
+    // Duplicate moduleName is de-duplicated: only the first record is kept and
+    // the counter only increments once.
     const std::string moduleName = "libdup.so";
     const std::string failureInfo = "same reason";
     DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
     DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
     DFXJSNApi::InsertSoLoadFailure(vm_, StringRef::NewFromUtf8(vm_, moduleName.c_str()), failureInfo);
 
-    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 3U);
+    EXPECT_EQ(vm_->GetSoLoadFailureNum(), 1U);
     const auto &failures = vm_->GetAllSoLoadFailures();
-    ASSERT_EQ(failures.size(), 3U);
-    for (const auto &failure : failures) {
-        EXPECT_STREQ(failure.first.c_str(), moduleName.c_str());
-        EXPECT_STREQ(failure.second.c_str(), failureInfo.c_str());
-    }
+    ASSERT_EQ(failures.size(), 1U);
+    EXPECT_STREQ(failures[0].first.c_str(), moduleName.c_str());
+    EXPECT_STREQ(failures[0].second.c_str(), failureInfo.c_str());
 }
 
 HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_ExactlyAtCapacity)
