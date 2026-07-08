@@ -1,35 +1,14 @@
-# Known failure list for ut - debug - x64 - ets_runtime -cmc -gc
+# x64: Unit Tests Debug Runtime
 
-#26061
-#22962
-obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
-
-#26530
+#26090
 obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest
 
-#27094
-obj/arkcompiler/ets_runtime/test/aottest/forin_enum_cache_chain/forin_enum_cache_chain/pgo
-
-#27282
-obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
-
-#25962
-obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Hclass_Test
-
-#34822
+#34822 
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_IdleGCTrigger_Test
 
-#25939
-obj/arkcompiler/ets_runtime/test/jittest/icnotfound/icnotfound
-
-#23099
-obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
-
-#27862
-obj/arkcompiler/ets_runtime/test/moduletest/stringreplace/stringreplaceAsmAssert
-
-#30050
-obj/arkcompiler/ets_runtime/common_components/common_runtime/tests/Base_Runtime_Test
-
-#28270
+#28270 
 obj/arkcompiler/ets_runtime/ecmascript/tests/ECMA_StringTable_Test
+
+#35677
+obj/arkcompiler/ets_runtime/test/jittest/lazy_deopt_10/lazy_deopt_10
+
