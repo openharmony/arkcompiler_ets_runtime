@@ -39,7 +39,16 @@ enum class VertexOpcode : uint16_t;
 
 class AlternativeNodes {
 public:
-    enum class Kind : uint8_t { TAGGED, INT32, UINT32, FLOAT64, HOLEY_FLOAT64, INT_PTR, CHECKED_VALUE, COUNT };
+    enum class Kind : uint8_t {
+        TAGGED,
+        INT32,
+        UINT32,
+        INT64,
+        FLOAT64,
+        HOLEY_FLOAT64,
+        CHECKED_VALUE,
+        COUNT,
+    };
 
     AlternativeNodes();
 

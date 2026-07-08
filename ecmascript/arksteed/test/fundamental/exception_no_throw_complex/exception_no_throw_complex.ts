@@ -24,13 +24,13 @@ function exception_no_throw_complex(a: number, b: number, c: number, d: number):
       throw new Error("a or b must be positive");
     }
     let result = a * b;
-    
+
     try {
       if (c <= 0 || d <= 0) {
         throw new Error("c or d must be positive");
       }
       let temp = c + d;
-      
+
       try {
         if (temp > 1000) {
           throw new Error("sum too large");
@@ -42,7 +42,7 @@ function exception_no_throw_complex(a: number, b: number, c: number, d: number):
     } catch (e) {
       return -2;
     }
-    
+
     return result;
   } catch (e) {
     return -1;

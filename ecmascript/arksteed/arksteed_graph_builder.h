@@ -89,7 +89,13 @@ private:
 
     JumpVertex *FinishBlockWithJump(BB *owner, BB *target);
     JumpLoopVertex *FinishBlockWithJumpLoop(BB *owner, BB *target);
+
+    [[deprecated("Use FinishBlockWithBranch<BranchVertexT>() instead")]]
     ControlVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
+
+    template <class BranchVertexT, class... Args>
+    BranchVertexT *FinishBlockWithBranch(BB *owner, std::initializer_list<ValueVertex *> input,
+                                         BB *targetIfTrue, BB *targetIfFalse, Args &&...args);
 
     // VertexT should be control vertex
     template <class VertexT, class... Args>

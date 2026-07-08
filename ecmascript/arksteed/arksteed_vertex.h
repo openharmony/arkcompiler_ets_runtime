@@ -49,13 +49,14 @@ enum class SideEffectKind : uint8_t {
 
 // ValueRepresentation describes the machine representation of a value
 enum class ValueRepresentation : uint8_t {
-    TAGGED,         // Tagged pointer to JS objects
-    INT32,          // 32-bit signed integer
-    UINT32,         // 32-bit unsigned integer
-    FLOAT64,        // 64-bit floating point (non-NaN values)
-    HOLEY_FLOAT64,  // 64-bit floating point (may contain NaN/holes)
-    INT_PTR,        // Pointer-sized integer (depends on architecture)
-    NONE,           // No specific representation
+    TAGGED,          // Tagged pointer to JS objects
+    INT32,           // 32-bit signed integer
+    UINT32,          // 32-bit unsigned integer
+    INT64,           // 64-bit integer
+    INT_PTR = INT64, // TODO: adaptation for 32-bit platform — aliases INT64 for now
+    FLOAT64,         // 64-bit floating point (non-NaN values)
+    HOLEY_FLOAT64,   // 64-bit floating point (may contain NaN/holes)
+    NONE,            // No specific representation
 };
 
 constexpr const char *ValueRepresentationName(ValueRepresentation repr)
@@ -67,12 +68,12 @@ constexpr const char *ValueRepresentationName(ValueRepresentation repr)
             return "int32";
         case ValueRepresentation::UINT32:
             return "uint32";
+        case ValueRepresentation::INT64:
+            return "int64";
         case ValueRepresentation::FLOAT64:
             return "float64";
         case ValueRepresentation::HOLEY_FLOAT64:
             return "holey_float64";
-        case ValueRepresentation::INT_PTR:
-            return "intptr";
         case ValueRepresentation::NONE:
             return "none";
     }
@@ -286,14 +287,20 @@ public:
         return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::UINT32));
     }
 
+    static constexpr VertexProperties Int64()
+    {
+        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::INT64));
+    }
+
+    // TODO: adaptation for 32-bit platform — forwards to Int64 for now
+    static constexpr VertexProperties IntPtr()
+    {
+        return Int64();
+    }
+
     static constexpr VertexProperties Float64()
     {
         return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::FLOAT64));
-    }
-
-    static constexpr VertexProperties IntPtr()
-    {
-        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::INT_PTR));
     }
 
     static constexpr VertexProperties ConversionVertex()
@@ -670,11 +677,11 @@ public:
             case ValueRepresentation::INT32:
             case ValueRepresentation::UINT32:
                 return MachineRepresentation::Word32;
+            case ValueRepresentation::INT64:
+                return MachineRepresentation::Word64;
             case ValueRepresentation::FLOAT64:
             case ValueRepresentation::HOLEY_FLOAT64:
                 return MachineRepresentation::Float64;
-            case ValueRepresentation::INT_PTR:
-                return MachineRepresentation::Word64;
             case ValueRepresentation::NONE:
                 return MachineRepresentation::None;
         }
@@ -701,9 +708,15 @@ public:
         return GetValueRepresentation() == ValueRepresentation::UINT32;
     }
 
+    bool IsInt64() const
+    {
+        return GetValueRepresentation() == ValueRepresentation::INT64;
+    }
+
+    // TODO: adaptation for 32-bit platform — forwards to IsInt64 for now
     bool IsIntPtr() const
     {
-        return GetValueRepresentation() == ValueRepresentation::INT_PTR;
+        return IsInt64();
     }
 
     bool IsFloat64() const

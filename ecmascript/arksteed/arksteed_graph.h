@@ -39,7 +39,7 @@ public:
           blocks_(chunk),
           parameters_(chunk),
           int32Constants_(chunk),
-          intPtrConstants_(chunk),
+          int64Constants_(chunk),
           float64Constants_(chunk),
           taggedConstants_(chunk),
           maxCallStackArgs_(0),
@@ -58,9 +58,15 @@ public:
         return GetOrAddNewConstantVertex(int32Constants_, value);
     }
 
+    ValueVertex *GetInt64Constant(int64_t value)
+    {
+        return GetOrAddNewConstantVertex(int64Constants_, value);
+    }
+
+    // TODO: adaptation for 32-bit platform — forwards to GetInt64Constant for now
     ValueVertex *GetIntPtrConstant(intptr_t value)
     {
-        return GetOrAddNewConstantVertex(intPtrConstants_, value);
+        return GetInt64Constant(static_cast<int64_t>(value));
     }
 
     ValueVertex *GetFloat64Constant(double value)
@@ -78,9 +84,15 @@ public:
         return int32Constants_;
     }
 
-    const ChunkMap<intptr_t, IntPtrConstantVertex *> &GetIntPtrConstants() const
+    const ChunkMap<int64_t, Int64ConstantVertex *> &GetInt64Constants() const
     {
-        return intPtrConstants_;
+        return int64Constants_;
+    }
+
+    // TODO: adaptation for 32-bit platform — forwards to GetInt64Constants for now
+    const ChunkMap<int64_t, Int64ConstantVertex *> &GetIntPtrConstants() const
+    {
+        return GetInt64Constants();
     }
 
     const ChunkMap<double, Float64ConstantVertex *> &GetFloat64Constants() const
@@ -267,7 +279,7 @@ private:
     ChunkVector<BB *> blocks_;
     ChunkVector<ValueVertex *> parameters_;
     ChunkMap<int32_t, Int32ConstantVertex *> int32Constants_;
-    ChunkMap<intptr_t, IntPtrConstantVertex *> intPtrConstants_;
+    ChunkMap<int64_t, Int64ConstantVertex *> int64Constants_;
     ChunkMap<double, Float64ConstantVertex *> float64Constants_;
     ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
     uint32_t maxCallStackArgs_ = 0;

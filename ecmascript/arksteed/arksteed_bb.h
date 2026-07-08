@@ -187,7 +187,7 @@ public:
         }
     }
 
-    BB *GetPredecessor(uint32_t index) 
+    BB *GetPredecessor(uint32_t index)
     {
         return predecessors_[index];
     }

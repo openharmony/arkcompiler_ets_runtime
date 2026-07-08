@@ -22,7 +22,7 @@ function loop_for_of_map(n: number): number {
         for (let entry of map) {
             sum += entry[1];
         }
-    } 
+    }
     return sum;
 }
 

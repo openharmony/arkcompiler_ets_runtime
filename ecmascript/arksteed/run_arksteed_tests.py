@@ -24,27 +24,39 @@ Each test case is a subdirectory containing:
   - extra_options.txt (optional)
 
 Usage:
-  ./run_arksteed_tests.py [debug|release]
+  ./run_arksteed_tests.py [options] [debug|release]
   Default: debug
 
 Options:
-  --exclude REGEX    Exclude test case directories by regex (comma-separated)
-                    Example: --exclude "mega_ic_test,timeout_test"
+  --skip-build                  Skip build step
+  --keep-going N                Continue on error (N=allow N errors, 0=ignore all)
+  --verbose                     Verbose output
+  -f, --skip-stub               Skip stub file generation
+  --filter FILTER               Filter test cases (subdir, dir name, or regex)
+  --exclude REGEX               Exclude test case directories by regex (comma-separated)
   --rerun-failed-from-latest-log
-                    Only run test cases that failed in the newest log under
-                    out/arksteed_test_logs/, skipping cases that passed.
-  --external-repo URL
-                    Git URL of an external test-case repository.
-                    If test/external/ does not exist, it is cloned automatically
-                    (lazy fetch). Use --external-dir to change the sub-directory name.
-  --external-dir NAME
-                    Local sub-directory under test/ for external cases
-                    (default: external).
-  --skip-external   Skip cloning external test cases even when --external-repo is set.
+                                Only rerun cases that failed in the newest log
+  --clean                       Clean generated files in test directories
+  --log-level LEVEL             Log level: error, warning, info, debug
+  --log-components COMP         Log components (comma-separated, e.g. runtime,compiler)
+  --print-graph                 Enable ArkSteed graph printing
+  --print-asm-code              Enable assembly code printing with code comments
+  --check-live-range            Check live range correctness (default: enabled)
+  --no-check-live-range         Disable live range correctness check
+  --summary-output-path         Write test summary to a file
+  -j, --num-workers N           Number of parallel workers (default: 12)
+  --no-codex-analysis           Disable automatic Codex report analysis
+  --codex-analysis-timeout N    Timeout for Codex analysis (default: 3000s)
+  --hotness-threshold N         JIT hotness threshold (default: 1)
+  --enable-heap-verify          Enable heap verification
+  --external-repo URL           Git URL of external test-case repository
+  --external-dir NAME           Local sub-directory under test/ for external cases
+  --skip-external               Skip cloning external test cases
 
 Defaults:
-  --print-graph and --check-live-range are enabled by default.
-  Use --no-check-live-range to disable live range checking.
+  --check-live-range is enabled by default.
+  --print-graph is auto-enabled when --check-live-range is on.
+  --print-asm-code also enables --compiler-arksteed-enable-code-comment.
 """
 
 from __future__ import annotations
@@ -426,6 +438,7 @@ class RunContext:
     log_level: Optional[str] = None
     log_components: Optional[str] = None
     print_graph: bool = False
+    print_asm_code: bool = False
     check_live_range_flag: bool = False
     hotness_threshold: int = 1
     enable_heap_verify: bool = False
@@ -549,6 +562,11 @@ def parse_args() -> argparse.Namespace:
         "--print-graph",
         action="store_true",
         help="Enable ArkSteed graph printing during test execution",
+    )
+    parser.add_argument(
+        "--print-asm-code",
+        action="store_true",
+        help="Enable ArkSteed print compiled code (assembly) with code comments during test execution",
     )
     parser.add_argument(
         "--check-live-range",
@@ -745,7 +763,7 @@ def find_test_cases(
 
 def clean_test_cases() -> bool:
     """Clean generated files (disasm.txt, .abc, .actual_output.txt) recursively.
-    
+
     NOTE: expected_output.txt, expected_output.preproc.txt, expected_output.liveness.txt
     are NOT cleaned as they are reference files for test validation.
     """
@@ -1257,12 +1275,7 @@ def run_ark_vm(
     entry_point: str,
     extra_args: List[str],
     tools: BuildConfig,
-    verbose: bool = False,
-    log_level: Optional[str] = None,
-    log_components: Optional[str] = None,
-    print_graph: bool = False,
-    hotness_threshold: int = 1,
-    enable_heap_verify: bool = False,
+    ctx: RunContext,
     timeout: int = DEFAULT_EXECUTION_TIMEOUT,
 ) -> Tuple[Optional[CommandResult], str, str, bool]:
     """Use ark_js_vm to execute .abc file, return (result, cmd_str, ld_library_path, timed_out)."""
@@ -1275,16 +1288,19 @@ def run_ark_vm(
         cmd.append(f"--stub-file={tools.stub_file}")
     if tools.icu_data_path is not None:
         cmd.append(f"--icu-data-path={tools.icu_data_path}")
-    if log_level is not None:
-        cmd.append(f"--log-level={log_level}")
-    if log_components is not None:
-        cmd.append(f"--log-components={log_components}")
-    cmd.append(f"--compiler-jit-hotness-threshold={hotness_threshold}")
-    if print_graph:
+    if ctx.log_level is not None:
+        cmd.append(f"--log-level={ctx.log_level}")
+    if ctx.log_components is not None:
+        cmd.append(f"--log-components={ctx.log_components}")
+    cmd.append(f"--compiler-jit-hotness-threshold={ctx.hotness_threshold}")
+    if ctx.print_graph:
         cmd.append("--compiler-arksteed-print-graph=true")
+    if ctx.print_asm_code:
+        cmd.append("--compiler-arksteed-print-code=true")
+        cmd.append("--compiler-arksteed-enable-code-comment=true")
     cmd.append("--compiler-arksteed-print-method-name=false")
     cmd.append("--open-ark-tools=true")
-    if enable_heap_verify:
+    if ctx.enable_heap_verify:
         cmd.append("--enable-heap-verify=true")
     cmd.extend([f"--entry-point={entry_point}", str(abc_path)])
     cmd_str = " ".join(cmd)
@@ -1292,18 +1308,18 @@ def run_ark_vm(
     env = os.environ.copy()
     ld_library_path = ":".join(str(p) for p in tools.lib_paths)
     env[LIB_PATH_ENV_VAR] = ld_library_path
-    if verbose:
+    if ctx.verbose:
         print(f"{LIB_PATH_ENV_VAR}: {ld_library_path}")
 
     try:
-        result = run_command_real_time(cmd, env=env, timeout=timeout, verbose=verbose)
+        result = run_command_real_time(cmd, env=env, timeout=timeout, verbose=ctx.verbose)
         return result, cmd_str, ld_library_path, False
     except subprocess.TimeoutExpired:
-        if verbose:
+        if ctx.verbose:
             print("Execution timeout", file=sys.stderr)
         return None, cmd_str, ld_library_path, True
     except Exception as e:
-        if verbose:
+        if ctx.verbose:
             print(f"Execution exception: {e}", file=sys.stderr)
         return None, cmd_str, ld_library_path, False
 
@@ -1404,13 +1420,7 @@ def execute_test_case(
         entry_point,
         read_extra_options(test.extra_options_file),
         tools,
-        ctx.verbose,
-        ctx.log_level,
-        ctx.log_components,
-        ctx.print_graph,
-        ctx.hotness_threshold,
-        ctx.enable_heap_verify,
-        DEFAULT_EXECUTION_TIMEOUT,
+        ctx,
     )
 
 
@@ -1431,11 +1441,11 @@ def check_live_range_only(
     actual_output: str,
     cmd_str: str,
     ld_library_path: str,
-    check_live_range_flag: bool,
+    ctx: RunContext,
     returncode: int,
 ) -> TestResult:
     """Check result for app_preheat test case (live range only, no output comparison)."""
-    if check_live_range_flag and actual_output:
+    if ctx.check_live_range_flag and actual_output:
         lr_ok, lr_errors, lr_ok_count, _ = check_live_range(actual_output)
         if not lr_ok:
             return TestResult(
@@ -1463,9 +1473,7 @@ def check_standard_test_result(
     actual_output: str,
     cmd_str: str,
     ld_library_path: str,
-    check_live_range_flag: bool,
-    log_level: Optional[str],
-    log_components: Optional[str],
+    ctx: RunContext,
     returncode: int = 0,
 ) -> TestResult:
     """Check test result for standard test cases (output comparison + optional live range)."""
@@ -1482,7 +1490,7 @@ def check_standard_test_result(
             returncode,
         )
 
-    if check_live_range_flag and actual_output:
+    if ctx.check_live_range_flag and actual_output:
         lr_ok, lr_errors, lr_ok_count, lr_error_msgs = check_live_range(actual_output)
         if not lr_ok:
             return TestResult(
@@ -1511,13 +1519,11 @@ def check_compiler_result(
     actual_output: str,
     cmd_str: str,
     ld_library_path: str,
-    check_live_range_flag: bool,
-    log_level: Optional[str],
-    log_components: Optional[str],
+    ctx: RunContext,
     returncode: int = 0,
 ) -> TestResult:
     """Check compiler stage results: RA live range only (no output comparison)."""
-    if not check_live_range_flag:
+    if not ctx.check_live_range_flag:
         return TestResult(
             test.case_name,
             True,
@@ -1528,7 +1534,7 @@ def check_compiler_result(
             returncode,
         )
 
-    if check_live_range_flag and actual_output:
+    if ctx.check_live_range_flag and actual_output:
         lr_ok, lr_errors, lr_ok_count, lr_error_msgs = check_live_range(actual_output)
         if not lr_ok:
             return TestResult(
@@ -1557,9 +1563,7 @@ def check_test_result(
     actual_output: str,
     cmd_str: str,
     ld_library_path: str,
-    check_live_range_flag: bool,
-    log_level: Optional[str],
-    log_components: Optional[str],
+    ctx: RunContext,
     returncode: int = 0,
 ) -> TestResult:
     """Check test result against expected output and live range. Returns TestResult."""
@@ -1569,11 +1573,11 @@ def check_test_result(
             actual_output,
             cmd_str,
             ld_library_path,
-            check_live_range_flag,
+            ctx,
             returncode,
         )
     return check_standard_test_result(
-        test, actual_output, cmd_str, ld_library_path, check_live_range_flag, log_level, log_components, returncode
+        test, actual_output, cmd_str, ld_library_path, ctx, returncode
     )
 
 
@@ -1653,9 +1657,7 @@ def run_test_case(
         actual_output,
         cmd_str,
         ld_library_path,
-        ctx.check_live_range_flag,
-        ctx.log_level,
-        ctx.log_components,
+        ctx,
         result.returncode,
     )
 
@@ -2486,6 +2488,7 @@ def main() -> None:
         log_level=args.log_level,
         log_components=args.log_components,
         print_graph=print_graph,
+        print_asm_code=args.print_asm_code,
         check_live_range_flag=check_live_range_flag,
         hotness_threshold=args.hotness_threshold,
         enable_heap_verify=args.enable_heap_verify,

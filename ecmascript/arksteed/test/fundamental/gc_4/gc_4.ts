@@ -37,7 +37,7 @@ function gc_4(): Point {
     for (let i = 0; i < LOOP_COUNT; i++) {
         const p: Point = {x: myRandom(), y: myRandom()};
         consumePoint(dest, p);
-    }   
+    }
     return dest;
 }
 

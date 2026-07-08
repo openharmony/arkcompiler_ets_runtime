@@ -345,19 +345,21 @@ int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
     switch (value->GetOpcode()) {
         case VertexOpcode::TaggedConstant:
             return static_cast<int64_t>(value->Cast<TaggedConstantVertex>()->GetValue());
-        case VertexOpcode::Int32Constant:
+        case VertexOpcode::Int32Constant: {
             if (vregId == static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX) ||
                 vregId == static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH)) {
                 return value->Cast<Int32ConstantVertex>()->GetValue();
             }
             return static_cast<int64_t>(JSTaggedValue(value->Cast<Int32ConstantVertex>()->GetValue()).GetRawData());
-        case VertexOpcode::IntPtrConstant:
+        }
+        case VertexOpcode::Int64Constant: {
             if (vregId == static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX) ||
                 vregId == static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH)) {
-                return static_cast<int64_t>(value->Cast<IntPtrConstantVertex>()->GetValue());
+                return static_cast<int64_t>(value->Cast<Int64ConstantVertex>()->GetValue());
             }
-            return static_cast<int64_t>(JSTaggedValue(static_cast<int>(value->Cast<IntPtrConstantVertex>()->GetValue()))
-                                            .GetRawData());
+            int64_t rawValue = value->Cast<Int64ConstantVertex>()->GetValue();
+            return static_cast<int64_t>(JSTaggedValue(static_cast<int>(rawValue)).GetRawData());
+        }
         default:
             UNREACHABLE();
     }
@@ -400,20 +402,20 @@ void EmitUseSlotDeopt(ArkSteedAssembler *assembler_, ArkSteedSafepointTableBuild
     safepointBuilder->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
 }
 
-Condition ConditionFromInt32Condition(Int32ConditionKind condition)
+Condition ConditionFromIntCondition(IntConditionKind condition)
 {
     switch (condition) {
-        case Int32ConditionKind::EQUAL:
+        case IntConditionKind::EQUAL:
             return Condition::COND_EQUAL;
-        case Int32ConditionKind::NOT_EQUAL:
+        case IntConditionKind::NOT_EQUAL:
             return Condition::COND_NOT_EQUAL;
-        case Int32ConditionKind::LESS_THAN:
+        case IntConditionKind::LESS_THAN:
             return Condition::COND_LESS_THAN;
-        case Int32ConditionKind::LESS_THAN_OR_EQUAL:
+        case IntConditionKind::LESS_THAN_OR_EQUAL:
             return Condition::COND_LESS_THAN_OR_EQUAL;
-        case Int32ConditionKind::GREATER_THAN:
+        case IntConditionKind::GREATER_THAN:
             return Condition::COND_GREATER_THAN;
-        case Int32ConditionKind::GREATER_THAN_OR_EQUAL:
+        case IntConditionKind::GREATER_THAN_OR_EQUAL:
             return Condition::COND_GREATER_THAN_OR_EQUAL;
         default:
             UNREACHABLE();
@@ -432,20 +434,20 @@ void EmitTaggedBooleanFromCondition(ArkSteedAssembler *assembler_, ArkSteedRegis
     __ Bind(&done);
 }
 
-Condition OrderedFloat64ConditionFromInt32Condition(Int32ConditionKind condition)
+Condition OrderedFloat64ConditionFromInt32Condition(IntConditionKind condition)
 {
     switch (condition) {
-        case Int32ConditionKind::EQUAL:
+        case IntConditionKind::EQUAL:
             return Condition::COND_EQUAL;
-        case Int32ConditionKind::NOT_EQUAL:
+        case IntConditionKind::NOT_EQUAL:
             return Condition::COND_NOT_EQUAL;
-        case Int32ConditionKind::LESS_THAN:
+        case IntConditionKind::LESS_THAN:
             return Condition::COND_BELOW;
-        case Int32ConditionKind::LESS_THAN_OR_EQUAL:
+        case IntConditionKind::LESS_THAN_OR_EQUAL:
             return Condition::COND_BELOW_OR_EQUAL;
-        case Int32ConditionKind::GREATER_THAN:
+        case IntConditionKind::GREATER_THAN:
             return Condition::COND_ABOVE;
-        case Int32ConditionKind::GREATER_THAN_OR_EQUAL:
+        case IntConditionKind::GREATER_THAN_OR_EQUAL:
             return Condition::COND_ABOVE_OR_EQUAL;
         default:
             UNREACHABLE();
@@ -453,12 +455,12 @@ Condition OrderedFloat64ConditionFromInt32Condition(Int32ConditionKind condition
 }
 
 void EmitTaggedBooleanFromFloat64Compare(ArkSteedAssembler *assembler_, ArkSteedRegister dst,
-                                         Int32ConditionKind condition)
+                                         IntConditionKind condition)
 {
     Label trueLabel;
     Label falseLabel;
     Label done;
-    if (condition == Int32ConditionKind::NOT_EQUAL) {
+    if (condition == IntConditionKind::NOT_EQUAL) {
         __ JumpIf(Condition::COND_PARITY, &trueLabel);
         __ JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), &trueLabel);
         __ Jump(&falseLabel);
@@ -475,9 +477,9 @@ void EmitTaggedBooleanFromFloat64Compare(ArkSteedAssembler *assembler_, ArkSteed
     __ Bind(&done);
 }
 
-void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, Int32ConditionKind condition, Label *ifTrue, Label *ifFalse)
+void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind condition, Label *ifTrue, Label *ifFalse)
 {
-    if (condition == Int32ConditionKind::NOT_EQUAL) {
+    if (condition == IntConditionKind::NOT_EQUAL) {
         __ JumpIf(Condition::COND_PARITY, ifTrue);
         __ JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), ifTrue);
         __ Jump(ifFalse);
@@ -515,8 +517,8 @@ void ArkSteedCodeGenerator::LoadConstantToRegister(const ValueVertex *constVerte
         case VertexOpcode::Int32Constant:
             constVertex->Cast<Int32ConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
-        case VertexOpcode::IntPtrConstant:
-            constVertex->Cast<IntPtrConstantVertex>()->DoLoadToRegister(assembler_, reg);
+        case VertexOpcode::Int64Constant:
+            constVertex->Cast<Int64ConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
         case VertexOpcode::TaggedConstant:
             constVertex->Cast<TaggedConstantVertex>()->DoLoadToRegister(assembler_, reg);
@@ -736,8 +738,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallRuntimeVertex>(CallRuntime
 
     int stackArgCount = PrepareRuntimeStubStackArguments(callRuntime,
                                                          callRuntime->GetArgCount(),
-                                                         static_cast<int>(callRuntime->GetRuntimeId()));
-    __ CallRuntime(callRuntime->GetRuntimeId());
+                                                         static_cast<int>(callRuntime->GetRuntimeStubID()));
+    __ CallRuntime(callRuntime->GetRuntimeStubID());
     __ FreeCallArgSlots(stackArgCount);
     safepointBuilder_->DefineSafepoint(__ GetPcOffset());
 }
@@ -811,7 +813,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(D
     Label deopt;
     Label done;
     __ CompareInt32(left, right);
-    __ JumpIf(ConditionFromInt32Condition(check->GetCondition()), &deopt);
+    __ JumpIf(ConditionFromIntCondition(check->GetCondition()), &deopt);
     __ Jump(&done);
     __ Bind(&deopt);
     EmitUseSlotDeopt(assembler_, safepointBuilder_, check, check->GetDeoptType());
@@ -888,14 +890,47 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ActualArgcVertex>(ActualArgcVe
 // ========================================= Slow Value Opcode =========================================
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<LoadFromAddressVertex>(LoadFromAddressVertex *loadField)
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedFromAddressVertex>(LoadTaggedFromAddressVertex *loadField)
 {
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadField->GetId() << ": LoadFromAddressVertex";
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadField->GetId() << ": LoadTaggedFromAddressVertex";
 #endif
     auto dst = GetResultRegister(loadField);
-    auto obj = GetInputRegister(loadField, LoadFromAddressVertex::OBJECT_INDEX);
+    auto obj = GetInputRegister(loadField, LoadTaggedFromAddressVertex::OBJECT_INDEX);
     __ LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadI32FromAddressVertex>(LoadI32FromAddressVertex *loadField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadField->GetId() << ": LoadI32FromAddressVertex";
+#endif
+    auto dst = GetResultRegister(loadField);
+    auto obj = GetInputRegister(loadField, LoadI32FromAddressVertex::OBJECT_INDEX);
+    __ LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadI64FromAddressVertex>(LoadI64FromAddressVertex *loadField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadField->GetId() << ": LoadI64FromAddressVertex";
+#endif
+    auto dst = GetResultRegister(loadField);
+    auto obj = GetInputRegister(loadField, LoadI64FromAddressVertex::OBJECT_INDEX);
+    __ LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadF64FromAddressVertex>(LoadF64FromAddressVertex *loadField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadField->GetId() << ": LoadF64FromAddressVertex";
+#endif
+    auto dst = GetResultDoubleRegister(loadField);
+    auto obj = GetInputRegister(loadField, LoadF64FromAddressVertex::OBJECT_INDEX);
+    __ LoadFloat64(dst, ArkSteedAssembler::MemoryOperand(obj, loadField->GetOffset()));
 }
 
 template <>
@@ -921,14 +956,47 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedFieldVertex>(LoadTag
 }
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<StoreToAddressVertex>(StoreToAddressVertex *storeField)
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedToAddressVertex>(StoreTaggedToAddressVertex *storeField)
 {
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreToAddressVertex";
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreTaggedToAddressVertex";
 #endif
-    auto obj = GetInputRegister(storeField, StoreToAddressVertex::OBJECT_INDEX);
-    auto value = GetInputRegister(storeField, StoreToAddressVertex::VALUE_INDEX);
+    auto obj = GetInputRegister(storeField, StoreTaggedToAddressVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeField, StoreTaggedToAddressVertex::VALUE_INDEX);
     __ StoreField(value, obj, storeField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreI32ToAddressVertex>(StoreI32ToAddressVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreI32ToAddressVertex";
+#endif
+    auto obj = GetInputRegister(storeField, StoreI32ToAddressVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeField, StoreI32ToAddressVertex::VALUE_INDEX);
+    __ StoreField(value, obj, storeField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreI64ToAddressVertex>(StoreI64ToAddressVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreI64ToAddressVertex";
+#endif
+    auto obj = GetInputRegister(storeField, StoreI64ToAddressVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeField, StoreI64ToAddressVertex::VALUE_INDEX);
+    __ StoreField(value, obj, storeField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreF64ToAddressVertex>(StoreF64ToAddressVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreF64ToAddressVertex";
+#endif
+    auto obj = GetInputRegister(storeField, StoreF64ToAddressVertex::OBJECT_INDEX);
+    auto value = GetInputDoubleRegister(storeField, StoreF64ToAddressVertex::VALUE_INDEX);
+    __ StoreFloat64(ArkSteedAssembler::MemoryOperand(obj, storeField->GetOffset()), value);
 }
 
 template <>
@@ -980,65 +1048,6 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<SetValueWithBarrierVertex>(
 // ========================================= Non-Value Opcode =========================================
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<ThrowIfSuperNotCorrectCallVertex>(
-    ThrowIfSuperNotCorrectCallVertex *throwIfSuper)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << throwIfSuper->GetId() << ": ThrowIfSuperNotCorrectCallVertex";
-#endif
-    int stackArgCount = PrepareRuntimeStubStackArguments(throwIfSuper,
-                                                         throwIfSuper->GetArgCount(),
-                                                         static_cast<int>(throwIfSuper->GetRuntimeId()));
-    __ CallRuntime(throwIfSuper->GetRuntimeId());
-    __ FreeCallArgSlots(stackArgCount);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-}
-
-template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<ThrowIfNotObjectVertex>(ThrowIfNotObjectVertex *throwIfNotObj)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << throwIfNotObj->GetId() << ": ThrowIfNotObjectVertex";
-#endif
-    int stackArgCount = PrepareRuntimeStubStackArguments(throwIfNotObj,
-                                                         throwIfNotObj->GetArgCount(),
-                                                         static_cast<int>(throwIfNotObj->GetRuntimeId()));
-    __ CallRuntime(throwIfNotObj->GetRuntimeId());
-    __ FreeCallArgSlots(stackArgCount);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-}
-
-template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<ThrowUndefinedIfHoleVertex>(ThrowUndefinedIfHoleVertex *throwIfHole)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << throwIfHole->GetId() << ": ThrowUndefinedIfHoleVertex";
-#endif
-    int stackArgCount = PrepareRuntimeStubStackArguments(throwIfHole,
-                                                         throwIfHole->GetArgCount(),
-                                                         static_cast<int>(throwIfHole->GetRuntimeId()));
-    __ CallRuntime(throwIfHole->GetRuntimeId());
-    __ FreeCallArgSlots(stackArgCount);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-}
-
-template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<ThrowUndefinedIfHoleWithNameVertex>(
-    ThrowUndefinedIfHoleWithNameVertex *throwIfHoleWithName)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << throwIfHoleWithName->GetId()
-                        << ": ThrowUndefinedIfHoleWithNameVertex";
-#endif
-    int stackArgCount = PrepareRuntimeStubStackArguments(throwIfHoleWithName,
-                                                         throwIfHoleWithName->GetArgCount(),
-                                                         static_cast<int>(throwIfHoleWithName->GetRuntimeId()));
-    __ CallRuntime(throwIfHoleWithName->GetRuntimeId());
-    __ FreeCallArgSlots(stackArgCount);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-}
-
-template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<GapMoveVertex>(GapMoveVertex *gapMove)
 {
     const AllocatedState &source = gapMove->GetSource();
@@ -1088,17 +1097,67 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ConstantGapMoveVertex>(Constan
 }
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<ToTaggedIntVertex>(ToTaggedIntVertex *toTaggedInt)
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32ToTaggedIntVertex>(I32ToTaggedIntVertex *toTaggedInt)
 {
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << toTaggedInt->GetId() << ": ToTaggedIntVertex";
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << toTaggedInt->GetId() << ": I32ToTaggedIntVertex";
 #endif
     auto dst = GetResultRegister(toTaggedInt);
-    auto src = GetInputRegister(toTaggedInt, ToTaggedIntVertex::INPUT_INDEX);
+    auto src = GetInputRegister(toTaggedInt, I32ToTaggedIntVertex::INPUT_INDEX);
     ArkSteedRegister scratch = toTaggedInt->GetRegallocInfo()->GetGeneralTemporaries().First();
     __ SignExtendInt32ToInt64(dst, src);
     __ Move(scratch, static_cast<int64_t>(JSTaggedValue::TAG_INT));
     __ Or(dst, scratch);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<RawI64ToTaggedVertex>(RawI64ToTaggedVertex *toTagged)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << toTagged->GetId() << ": RawI64ToTaggedVertex";
+#endif
+    auto dst = GetResultRegister(toTagged);
+    auto src = GetInputRegister(toTagged, RawI64ToTaggedVertex::INPUT_INDEX);
+    if (dst != src) {
+        __ Move(dst, src);
+    }
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TaggedToRawI64Vertex>(TaggedToRawI64Vertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": TaggedToRawI64Vertex";
+#endif
+    auto dst = GetResultRegister(convert);
+    auto src = GetInputRegister(convert, TaggedToRawI64Vertex::INPUT_INDEX);
+    if (dst != src) {
+        __ Move(dst, src);
+    }
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I64BitwiseBinaryVertex>(I64BitwiseBinaryVertex *op)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << op->GetId() << ": I64BitwiseBinaryVertex";
+#endif
+    auto dst = GetResultRegister(op);
+    auto left = GetInputRegister(op, I64BitwiseBinaryVertex::LEFT_INDEX);
+    if (dst != left) {
+        __ Move(dst, left);
+    }
+    auto right = GetInputRegister(op, I64BitwiseBinaryVertex::RIGHT_INDEX);
+    switch (op->GetKind()) {
+        case IntBitwiseKind::BITWISE_AND:
+            __ And(dst, right);
+            break;
+        case IntBitwiseKind::BITWISE_OR:
+            __ Or(dst, right);
+            break;
+        default:
+            UNREACHABLE();
+    }
 }
 
 template <>
@@ -1199,7 +1258,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32ConditionCheckVertex>(I32Co
     auto left = GetInputRegister(check, I32ConditionCheckVertex::LEFT_INDEX);
     auto right = GetInputRegister(check, I32ConditionCheckVertex::RIGHT_INDEX);
     __ CompareInt32(left, right);
-    EmitTaggedBooleanFromCondition(assembler_, dst, ConditionFromInt32Condition(check->GetCondition()));
+    EmitTaggedBooleanFromCondition(assembler_, dst, ConditionFromIntCondition(check->GetCondition()));
 }
 
 template <>
@@ -1557,26 +1616,26 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32BitwiseBinaryVertex>(I32Bit
     if (std::optional<int32_t> rightConstant = TryGetInt32ConstantInput(op, I32BitwiseBinaryVertex::RIGHT_INDEX)) {
         uint32_t shift = static_cast<uint32_t>(*rightConstant) & 31U;
         switch (op->GetKind()) {
-            case Int32BitwiseKind::BITWISE_AND:
+            case IntBitwiseKind::BITWISE_AND:
                 __ Int32And(dst, *rightConstant);
                 break;
-            case Int32BitwiseKind::BITWISE_OR:
+            case IntBitwiseKind::BITWISE_OR:
                 __ Int32Or(dst, *rightConstant);
                 break;
-            case Int32BitwiseKind::BITWISE_XOR:
+            case IntBitwiseKind::BITWISE_XOR:
                 __ Int32Xor(dst, *rightConstant);
                 break;
-            case Int32BitwiseKind::SHIFT_LEFT:
+            case IntBitwiseKind::SHIFT_LEFT:
                 if (shift != 0) {
                     __ Int32ShiftLeft(dst, shift);
                 }
                 break;
-            case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+            case IntBitwiseKind::SHIFT_RIGHT_LOGICAL:
                 if (shift != 0) {
                     __ Int32ShiftRightLogical(dst, shift);
                 }
                 break;
-            case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+            case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
                 if (shift != 0) {
                     __ Int32ShiftRightArithmetic(dst, shift);
                 }
@@ -1590,28 +1649,28 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32BitwiseBinaryVertex>(I32Bit
 
     auto right = GetInputRegister(op, I32BitwiseBinaryVertex::RIGHT_INDEX);
     switch (op->GetKind()) {
-        case Int32BitwiseKind::BITWISE_AND:
+        case IntBitwiseKind::BITWISE_AND:
             __ Int32And(dst, right);
             break;
-        case Int32BitwiseKind::BITWISE_OR:
+        case IntBitwiseKind::BITWISE_OR:
             __ Int32Or(dst, right);
             break;
-        case Int32BitwiseKind::BITWISE_XOR:
+        case IntBitwiseKind::BITWISE_XOR:
             __ Int32Xor(dst, right);
             break;
-        case Int32BitwiseKind::SHIFT_LEFT:
+        case IntBitwiseKind::SHIFT_LEFT:
 #if defined(PANDA_TARGET_AMD64)
             ASSERT(right == x64::rcx);
 #endif
             __ Int32ShiftLeftByRegister(dst, right);
             break;
-        case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+        case IntBitwiseKind::SHIFT_RIGHT_LOGICAL:
 #if defined(PANDA_TARGET_AMD64)
             ASSERT(right == x64::rcx);
 #endif
             __ Int32ShiftRightLogicalByRegister(dst, right);
             break;
-        case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+        case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
 #if defined(PANDA_TARGET_AMD64)
             ASSERT(right == x64::rcx);
 #endif
@@ -1794,7 +1853,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallComm
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << callCommonStub->GetId() << ": CallCommonStubVertex";
 #endif
     int stackArgCount = PrepareCommonStubStackArguments(callCommonStub, callCommonStub->GetArgCount());
-    __ CallCommonStub(callCommonStub->GetStubId());
+    __ CallCommonStub(callCommonStub->GetCommonStubID());
     safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     __ FreeCallArgSlots(stackArgCount);
 }
@@ -1952,7 +2011,32 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfInt32CompareVertex>(Branc
     auto left = GetInputRegister(jumpIf, BranchIfInt32CompareVertex::LEFT_INDEX);
     auto right = GetInputRegister(jumpIf, BranchIfInt32CompareVertex::RIGHT_INDEX);
     __ CompareInt32(left, right);
-    __ Branch(ConditionFromInt32Condition(jumpIf->GetCondition()),
+    __ Branch(ConditionFromIntCondition(jumpIf->GetCondition()),
+                       ifTrue->GetLabel(),
+                       trueBranchIsFallthrough,
+                       ifFalse->GetLabel(),
+                       falseBranchIsFallthrough);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfInt64CompareVertex>(BranchIfInt64CompareVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId() << ": BranchIfInt64CompareVertex to BB #"
+                        << ifTrue->GetId() << (trueBranchIsFallthrough ? " (fallthrough)" : "")
+                        << " if true; to BB #" << ifFalse->GetId()
+                        << (falseBranchIsFallthrough ? " (fallthrough)" : "") << " if false.";
+#endif
+
+    auto left = GetInputRegister(jumpIf, BranchIfInt64CompareVertex::LEFT_INDEX);
+    auto right = GetInputRegister(jumpIf, BranchIfInt64CompareVertex::RIGHT_INDEX);
+    __ Compare(left, right);
+    __ Branch(ConditionFromIntCondition(jumpIf->GetCondition()),
                        ifTrue->GetLabel(),
                        trueBranchIsFallthrough,
                        ifFalse->GetLabel(),
@@ -1978,6 +2062,35 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfFloat64CompareVertex>(Bra
     auto right = GetInputDoubleRegister(jumpIf, BranchIfFloat64CompareVertex::RIGHT_INDEX);
     __ CompareFloat64(left, right);
     BranchOnFloat64Compare(assembler_, jumpIf->GetCondition(), ifTrue->GetLabel(), ifFalse->GetLabel());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTaggedHeapObjectVertex>(
+    BranchIfTaggedHeapObjectVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId() << ": BranchIfTaggedHeapObjectVertex to BB #"
+                        << ifTrue->GetId() << (trueBranchIsFallthrough ? " (fallthrough)" : "")
+                        << " if true; to BB #" << ifFalse->GetId()
+                        << (falseBranchIsFallthrough ? " (fallthrough)" : "") << " if false.";
+#endif
+
+    auto value = GetInputRegister(jumpIf, BranchIfTaggedHeapObjectVertex::VALUE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    assembler_->Move(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    assembler_->And(scratch, value);
+    assembler_->Compare(scratch, 0);
+    assembler_->Branch(Condition::COND_EQUAL,
+                       ifTrue->GetLabel(),
+                       trueBranchIsFallthrough,
+                       ifFalse->GetLabel(),
+                       falseBranchIsFallthrough);
 }
 
 template <>
@@ -2022,8 +2135,8 @@ void ArkSteedCodeGenerator::VisitControlVertex<ThrowVertex>(ThrowVertex *throws)
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << throws->GetId() << ": ThrowVertex";
 #endif
     int stackArgCount =
-        PrepareRuntimeStubStackArguments(throws, throws->GetArgCount(), static_cast<int>(throws->GetRuntimeId()));
-    __ CallRuntime(throws->GetRuntimeId());
+        PrepareRuntimeStubStackArguments(throws, throws->GetArgCount(), static_cast<int>(throws->GetRuntimeStubID()));
+    __ CallRuntime(throws->GetRuntimeStubID());
     __ FreeCallArgSlots(stackArgCount);
     safepointBuilder_->DefineSafepoint(__ GetPcOffset());
 

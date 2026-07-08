@@ -21,7 +21,7 @@ function f(arr) {
       }
       return element === 0;
     });
-  
+
     print(String.prototype.concat);
 }
 

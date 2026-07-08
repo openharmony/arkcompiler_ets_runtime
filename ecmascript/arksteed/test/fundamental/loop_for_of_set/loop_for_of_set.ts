@@ -22,7 +22,7 @@ function loop_for_of_set(n: number): number {
         for (let key of set.keys()) {
             sum += key;
         }
-    } 
+    }
     return sum;
 }
 

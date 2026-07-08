@@ -73,14 +73,14 @@ std::string PrintVertex::BuildOutputString() const
             case ValueRepresentation::UINT32:
                 result += "uint32";
                 break;
+            case ValueRepresentation::INT64:
+                result += "int64";
+                break;
             case ValueRepresentation::FLOAT64:
                 result += "float64";
                 break;
             case ValueRepresentation::HOLEY_FLOAT64:
                 result += "holey_float64";
-                break;
-            case ValueRepresentation::INT_PTR:
-                result += "int_ptr";
                 break;
             case ValueRepresentation::NONE:
                 result += "none";

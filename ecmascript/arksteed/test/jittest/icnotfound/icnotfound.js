@@ -138,7 +138,7 @@ function Test5() {
             sum += obj.x;
         }
     }
-    
+
     obj2.x = 235;
     for (let i = 0 ; i < 200; i++) {
         add(obj1);
@@ -250,7 +250,7 @@ function Test10()
     let b = new B();
     b.x = 1;
     print(b.y);
-    
+
 
     let arr = [1, 2, 3];
     print(arr.x);
@@ -307,7 +307,7 @@ Test10();
 
 function Test11(obj)
 {
-    print(obj.y);   
+    print(obj.y);
 }
 
 {
@@ -323,7 +323,7 @@ function Test11(obj)
     let s = "1";
     Test11(s);
     let n = 123;
-    
+
     ArkTools.arkSteedCompileSync(Test11);
     print(true);
     Test11(b);

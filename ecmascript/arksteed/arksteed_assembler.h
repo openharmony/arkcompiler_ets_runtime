@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_ASSEMBLER_H
 
 #include "ecmascript/arksteed/arksteed_comment.h"
+#include "ecmascript/arksteed/arksteed_condition_code.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
@@ -39,68 +40,6 @@ using Label = panda::ecmascript::Label;
 class ArkSteedAssembler;
 class ScratchRegisterScope;
 class TemporaryRegisterScope;
-
-// =============================================================================
-// Condition - Platform-agnostic condition codes
-// =============================================================================
-
-enum class Condition {
-    COND_EQUAL,
-    COND_NOT_EQUAL,
-    COND_LESS_THAN,
-    COND_LESS_THAN_OR_EQUAL,
-    COND_GREATER_THAN,
-    COND_GREATER_THAN_OR_EQUAL,
-    COND_ABOVE,
-    COND_BELOW,
-    COND_ABOVE_OR_EQUAL,
-    COND_BELOW_OR_EQUAL,
-    COND_ZERO,
-    COND_NOT_ZERO,
-    COND_OVERFLOW,
-    COND_NOT_OVERFLOW,
-    COND_PARITY,
-    COND_NOT_PARITY
-};
-inline Condition NegateCondition(Condition cond)
-{
-    switch (cond) {
-        case Condition::COND_EQUAL:
-            return Condition::COND_NOT_EQUAL;
-        case Condition::COND_NOT_EQUAL:
-            return Condition::COND_EQUAL;
-        case Condition::COND_LESS_THAN:
-            return Condition::COND_GREATER_THAN_OR_EQUAL;
-        case Condition::COND_LESS_THAN_OR_EQUAL:
-            return Condition::COND_GREATER_THAN;
-        case Condition::COND_GREATER_THAN:
-            return Condition::COND_LESS_THAN_OR_EQUAL;
-        case Condition::COND_GREATER_THAN_OR_EQUAL:
-            return Condition::COND_LESS_THAN;
-        case Condition::COND_ABOVE:
-            return Condition::COND_BELOW_OR_EQUAL;
-        case Condition::COND_BELOW:
-            return Condition::COND_ABOVE_OR_EQUAL;
-        case Condition::COND_ABOVE_OR_EQUAL:
-            return Condition::COND_BELOW;
-        case Condition::COND_BELOW_OR_EQUAL:
-            return Condition::COND_ABOVE;
-        case Condition::COND_ZERO:
-            return Condition::COND_NOT_ZERO;
-        case Condition::COND_NOT_ZERO:
-            return Condition::COND_ZERO;
-        case Condition::COND_OVERFLOW:
-            return Condition::COND_NOT_OVERFLOW;
-        case Condition::COND_NOT_OVERFLOW:
-            return Condition::COND_OVERFLOW;
-        case Condition::COND_PARITY:
-            return Condition::COND_NOT_PARITY;
-        case Condition::COND_NOT_PARITY:
-            return Condition::COND_PARITY;
-        default:
-            UNREACHABLE();
-    }
-}
 
 // =============================================================================
 // ArkSteedAssembler - Platform-agnostic assembler interface

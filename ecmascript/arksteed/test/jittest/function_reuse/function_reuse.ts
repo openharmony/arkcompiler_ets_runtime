@@ -15,16 +15,16 @@
 
 class Matrix {
     A;
-    
+
     constructor(A) {
         (() => {this.A = A;})();
     }
-    
+
     getArray() {
         return this.A;
     }
 }
-    
+
 let B;
 
 function getArray_test() {
@@ -36,7 +36,7 @@ function getArray_test() {
         B = A.getArray();
     }
 }
-    
+
 getArray_test();
 function sleep(delay) {
     const start = Date.now();

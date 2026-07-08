@@ -54,7 +54,7 @@ f3(2.2);
 // Test scenario: No deopt check when performing conversions between int32 and float64.
 function f4(x) {
     if (x++ < -1) {
-        x++;  
+        x++;
     }
     return x
 }

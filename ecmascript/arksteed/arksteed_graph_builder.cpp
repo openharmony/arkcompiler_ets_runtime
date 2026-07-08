@@ -71,12 +71,12 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
             return true;
         case kungfu::MachineType::ARCH:
         case kungfu::MachineType::I64:
-            return value->IsIntPtr();
+            return value->IsInt64();
         case kungfu::MachineType::I1:
         case kungfu::MachineType::I8:
         case kungfu::MachineType::I16:
         case kungfu::MachineType::I32:
-            return value->IsInt32() || value->IsUint32() || value->IsIntPtr();
+            return value->IsInt32() || value->IsUint32() || value->IsInt64();
         case kungfu::MachineType::F32:
         case kungfu::MachineType::F64:
             return value->IsAnyFloat64();
@@ -171,7 +171,6 @@ private:
 
     std::vector<JSHClass *> intersectSet_;
 };
-}  // namespace
 
 bool SupportsI32CheckedBinOp(BinaryOpKind kind)
 {
@@ -290,23 +289,23 @@ bool EvaluateFloat64Compare(CompareOpKind kind, double left, double right)
     UNREACHABLE();
 }
 
-Int32ConditionKind Int32ConditionFromCompare(CompareOpKind kind)
+IntConditionKind Int32ConditionFromCompare(CompareOpKind kind)
 {
     switch (kind) {
         case CompareOpKind::EQUAL:
         case CompareOpKind::STRICT_EQUAL:
-            return Int32ConditionKind::EQUAL;
+            return IntConditionKind::EQUAL;
         case CompareOpKind::NOT_EQUAL:
         case CompareOpKind::STRICT_NOT_EQUAL:
-            return Int32ConditionKind::NOT_EQUAL;
+            return IntConditionKind::NOT_EQUAL;
         case CompareOpKind::LESS_THAN:
-            return Int32ConditionKind::LESS_THAN;
+            return IntConditionKind::LESS_THAN;
         case CompareOpKind::LESS_THAN_OR_EQUAL:
-            return Int32ConditionKind::LESS_THAN_OR_EQUAL;
+            return IntConditionKind::LESS_THAN_OR_EQUAL;
         case CompareOpKind::GREATER_THAN:
-            return Int32ConditionKind::GREATER_THAN;
+            return IntConditionKind::GREATER_THAN;
         case CompareOpKind::GREATER_THAN_OR_EQUAL:
-            return Int32ConditionKind::GREATER_THAN_OR_EQUAL;
+            return IntConditionKind::GREATER_THAN_OR_EQUAL;
     }
     UNREACHABLE();
 }
@@ -391,7 +390,7 @@ constexpr bool CseIsExcludedAvailableExpressionOpcode(VertexOpcode opcode)
 {
     switch (opcode) {
         case VertexOpcode::Int32Constant:
-        case VertexOpcode::IntPtrConstant:
+        case VertexOpcode::Int64Constant:
         case VertexOpcode::Float64Constant:
         case VertexOpcode::TaggedConstant:
         case VertexOpcode::InitialValue:
@@ -419,6 +418,7 @@ constexpr bool CseCanUseAvailableExpression()
                !props.CanRead() && !props.IsAnyCall() && !props.CanAllocate() && !props.CanThrow();
     }
 }
+}  // namespace
 
 // Condensed storage: [vA, vA, vA, vB, vB, vB, vB, vB, vB, vC, vC, vC, vC]
 //                 => [(vA, 3),    (vB, 6),                (vC, 4)]
@@ -772,7 +772,7 @@ void GraphBuilder::WriteBackFrameStateToLoopHeader(SharedBCFrameState current, u
 }
 
 void GraphBuilder::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
-                                      uint32_t actualPredIndex, uint32_t actualNumPreds)
+                                   uint32_t actualPredIndex, uint32_t actualNumPreds)
 {
     const kungfu::BitSet &liveIn = analysis_->GetLiveIn(rpoIndex);
     frameStates_[predRpoIndex].ForEach([&, this](ValueVertex *fromPred, VRegIDType vregIndex) {
@@ -853,8 +853,8 @@ VertexT *GraphBuilder::NewVertex(
         CseBuildExpressionOptions(options, args...);
         uint32_t hash = CseHashExpression(Vertex::opcode_of<VertexT>(), expressionInputs, options);
         bool needsEpochCheck = VertexT::PROPERTIES.CanRead();
-        ValueVertex *cached = compileInfoFacts->FindExpression(hash, Vertex::opcode_of<VertexT>(),
-                                                              expressionInputs, options, needsEpochCheck);
+        ValueVertex *cached = compileInfoFacts->FindExpression(
+            hash, Vertex::opcode_of<VertexT>(), expressionInputs, options, needsEpochCheck);
         if (cached != nullptr) {
             return cached->Cast<VertexT>();
         }
@@ -903,14 +903,14 @@ ControlVertex *GraphBuilder::FinishBlockWithBranch(
             owner,
             {compare->GetInput(I32ConditionCheckVertex::LEFT_INDEX),
              compare->GetInput(I32ConditionCheckVertex::RIGHT_INDEX)},
-            compare->GetCondition(), targetIfTrue, targetIfFalse));
+            targetIfTrue, targetIfFalse, compare->GetCondition()));
     }
     if (auto *compare = input->TryCast<F64ConditionCheckVertex>()) {
         return finishWithTargets(FinishBlockWith<BranchIfFloat64CompareVertex>(
             owner,
             {compare->GetInput(F64ConditionCheckVertex::LEFT_INDEX),
              compare->GetInput(F64ConditionCheckVertex::RIGHT_INDEX)},
-            compare->GetCondition(), targetIfTrue, targetIfFalse));
+            targetIfTrue, targetIfFalse, compare->GetCondition()));
     }
     if (auto *equal = input->TryCast<TaggedEqualVertex>()) {
         return finishWithTargets(FinishBlockWith<BranchIfReferenceEqualVertex>(
@@ -928,6 +928,17 @@ ControlVertex *GraphBuilder::FinishBlockWithBranch(
 
     auto *branchVertex = FinishBlockWith<BranchIfTrueVertex>(owner, {input}, targetIfTrue, targetIfFalse);
     return finishWithTargets(branchVertex);
+}
+
+template <class BranchVertexT, class... Args>
+BranchVertexT *GraphBuilder::FinishBlockWithBranch(
+    BB *owner, std::initializer_list<ValueVertex *> inputs, BB *targetIfTrue, BB *targetIfFalse, Args &&...args)
+{
+    auto *vertex = FinishBlockWith<BranchVertexT>(
+        owner, inputs, targetIfTrue, targetIfFalse, std::forward<Args>(args)...);
+    targetIfTrue->AddPredecessor(owner);
+    targetIfFalse->AddPredecessor(owner);
+    return vertex;
 }
 
 template <class VertexT, class... Args>
@@ -1751,7 +1762,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::SHIFT_LEFT));
+        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::SHIFT_LEFT));
     }
 
     void LowerShr2(const BytecodeInfo *bcInfo)
@@ -1763,7 +1774,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::SHIFT_RIGHT_LOGICAL));
+        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_LOGICAL));
     }
 
     void LowerAshr2(const BytecodeInfo *bcInfo)
@@ -1775,7 +1786,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC));
+        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC));
     }
 
     void LowerAnd2(const BytecodeInfo *bcInfo)
@@ -1787,7 +1798,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::BITWISE_AND));
+        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::BITWISE_AND));
     }
 
     void LowerOr2(const BytecodeInfo *bcInfo)
@@ -1799,7 +1810,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::BITWISE_OR));
+        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::BITWISE_OR));
     }
 
     void LowerXor2(const BytecodeInfo *bcInfo)
@@ -1811,7 +1822,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(Int32BitwiseKind::BITWISE_XOR));
+        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::BITWISE_XOR));
     }
 
     // -------- Category #5: Comparisons --------
@@ -2886,64 +2897,138 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerThrow()
     {
-        constexpr bool HAS_INPUT = true;
         ValueVertex *exception = frameState.GetAcc();
-        auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw), HAS_INPUT);
+        auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw));
         UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowConstAssignment(const BytecodeInfo *bcInfo)
     {
-        constexpr bool HAS_INPUT = true;
         ValueVertex *value = LoadRegister(bcInfo, 0);
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment), HAS_INPUT);
+            currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment));
         UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowNotExists()
     {
-        constexpr bool HAS_INPUT = false;
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {self->undefinedValue_}, RTSTUB_ID(ThrowThrowNotExists), HAS_INPUT);
+            currentBlock, {}, RTSTUB_ID(ThrowThrowNotExists));
         UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowPatternNonCoercible()
     {
-        constexpr bool HAS_INPUT = false;
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {self->undefinedValue_}, RTSTUB_ID(ThrowPatternNonCoercible), HAS_INPUT);
+            currentBlock, {}, RTSTUB_ID(ThrowPatternNonCoercible));
         UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowDeleteSuperProperty()
     {
-        constexpr bool HAS_INPUT = false;
         auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {self->undefinedValue_}, RTSTUB_ID(ThrowDeleteSuperProperty), HAS_INPUT);
+            currentBlock, {}, RTSTUB_ID(ThrowDeleteSuperProperty));
         UpdateCatchBlockData(vertex);
     }
 
     void LowerThrowIfNotObject(const BytecodeInfo *bcInfo)
     {
-        // Requires sub-graph mechanism which is unsupported currently.
-        (void)bcInfo;
-        LOG_COMPILER(WARN) << "Unimplemented: LowerThrowIfNotObject";
+        ValueVertex *value = LoadRegister(bcInfo, 0);
+
+        BB *isHeapObjectBlock = self->NewBlock();
+        BB *checkLowerDoneBlock = self->NewBlock();
+        BB *checkUpperDoneBlock = self->NewBlock();
+
+        // Note: each failure branch requires an independent throwing block to prevent critical edges in the subgraph.
+        BB *notHeapObjectBlock = self->NewBlock();
+        BB *checkLowerFailedBlock = self->NewBlock();
+        BB *checkUpperFailedBlock = self->NewBlock();
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
+            currentBlock, {value}, isHeapObjectBlock, notHeapObjectBlock);
+
+        // Hot path: value is a heap object → check HClass type range inline.
+        currentBlock = isHeapObjectBlock;
+
+        ValueVertex *hclass = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {value}, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+        ValueVertex *hclassRaw = self->NewVertex<TaggedToRawI64Vertex>(compileInfoFacts_, currentBlock, {hclass});
+
+        ValueVertex *addrMask = self->graph_->GetInt64Constant(static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+        ValueVertex *hclassMasked = self->NewVertex<I64BitwiseBinaryVertex>(
+            compileInfoFacts_, currentBlock, {hclassRaw, addrMask}, IntBitwiseKind::BITWISE_AND);
+
+        ValueVertex *bitField = self->NewVertex<LoadTaggedFromAddressVertex>(
+            compileInfoFacts_, currentBlock, {hclassMasked}, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+        ValueVertex *bitFieldRaw = self->NewVertex<TaggedToRawI64Vertex>(compileInfoFacts_, currentBlock, {bitField});
+
+        // Type is encoded to the first 8 bits of JSHClass::bitfield
+        static_assert(JSHClass::ObjectTypeBits::START_BIT == 0);
+        ValueVertex *typeMask = self->graph_->GetInt64Constant((1U << JSHClass::ObjectTypeBits::SIZE) - 1);
+        ValueVertex *typeBits = self->NewVertex<I64BitwiseBinaryVertex>(
+            compileInfoFacts_, currentBlock, {bitFieldRaw, typeMask}, IntBitwiseKind::BITWISE_AND);
+
+        // Whether type is in [ECMA_OBJECT_FIRST, ECMA_OBJECT_LAST]
+        ValueVertex *firstType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST));
+        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
+            currentBlock, {typeBits, firstType},
+            checkLowerDoneBlock, checkLowerFailedBlock, IntConditionKind::GREATER_THAN_OR_EQUAL);
+
+        currentBlock = checkLowerDoneBlock;
+        ValueVertex *lastType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST));
+        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
+            currentBlock, {typeBits, lastType},
+            checkUpperDoneBlock, checkUpperFailedBlock, IntConditionKind::LESS_THAN_OR_EQUAL);
+
+        for (BB *exceptionBlock : {notHeapObjectBlock, checkLowerFailedBlock, checkUpperFailedBlock}) {
+            currentBlock = exceptionBlock;
+            currentBlock->SetDeferred(true);
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowIfNotObject));
+            UpdateCatchBlockData(vertex);
+        }
+
+        // Success: value is an ECMA object.
+        currentBlock = checkUpperDoneBlock;
     }
 
+    // WARNING: THIS BYTECODE IS POSSIBLY INACTIVATED AND IS GUARDED BY NO TEST CASES.
     void LowerThrowUndefinedIfHole(const BytecodeInfo *bcInfo)
     {
-        // Requires sub-graph mechanism which is unsupported currently.
-        (void)bcInfo;
-        LOG_COMPILER(WARN) << "Unimplemented: LowerThrowUndefinedIfHole";
+        ValueVertex *receiver = LoadRegister(bcInfo, 0);
+        ValueVertex *obj = LoadRegister(bcInfo, 1);
+
+        BB *throwBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        self->FinishBlockWith<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock, doneBlock);
+
+        currentBlock = throwBlock;
+        currentBlock->SetDeferred(true);
+        auto *throwVertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+        UpdateCatchBlockData(throwVertex);
+
+        currentBlock = doneBlock;
     }
 
     void LowerThrowUndefinedIfHoleWithName(const BytecodeInfo *bcInfo)
     {
-        // Requires sub-graph mechanism which is unsupported currently.
-        (void)bcInfo;
-        LOG_COMPILER(WARN) << "Unimplemented: LowerThrowUndefinedIfHoleWithName";
+        ValueVertex *receiver = frameState.GetAcc();
+        ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
+        ValueVertex *str = StringFromConstPool(strID);
+
+        BB *throwBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        self->FinishBlockWith<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock, doneBlock);
+
+        currentBlock = throwBlock;
+        currentBlock->SetDeferred(true);
+        auto *throwVertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+        UpdateCatchBlockData(throwVertex);
+
+        currentBlock = doneBlock;
     }
 
     void LowerThrowIfSuperNotCorrectCall(const BytecodeInfo *bcInfo)
@@ -2951,9 +3036,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *thisValue = frameState.GetAcc();
 
-        auto *vertex = self->NewVertex<ThrowIfSuperNotCorrectCallVertex>(
-            currentBlock, {index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
-        UpdateCatchBlockData(vertex);
+        RuntimeCall({index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
     }
 
     // -------- Category #16: Control Flow --------
@@ -3104,7 +3187,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *TaggedActualArgc()
     {
         ValueVertex *argc = ActualArgc();
-        return self->NewVertex<ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {argc});
+        return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {argc});
     }
 
     std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const
@@ -3128,7 +3211,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         auto *call = value->TryCast<CallCommonStubVertex>();
         if (call == nullptr ||
-            call->GetStubId() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
+            call->GetCommonStubID() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
             return false;
         }
 
@@ -3310,9 +3393,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const std::vector<JSHClass *> &maps,
-                                                            const NamedAccessFeedback &feedback,
-                                                            uint16_t constDataId) const
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(
+        const std::vector<JSHClass *> &maps, const NamedAccessFeedback &feedback, uint16_t constDataId) const
     {
         std::vector<NamedLoadAccessInfo> result;
         for (JSHClass *map : maps) {
@@ -3356,12 +3438,12 @@ struct GraphBuilder::BytecodeVisitor {
                 case ValueRepresentation::TAGGED:
                     return value;
                 case ValueRepresentation::INT32:
-                    return self->NewVertex<ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
+                    return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
                 case ValueRepresentation::FLOAT64:
                 case ValueRepresentation::HOLEY_FLOAT64:
                     return self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
                 case ValueRepresentation::UINT32:
-                case ValueRepresentation::INT_PTR:
+                case ValueRepresentation::INT64:
                 case ValueRepresentation::NONE:
                     break;
             }
@@ -3518,7 +3600,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildTaggedI32Result(ValueVertex *rawResult)
     {
         ValueVertex *taggedResult =
-            self->NewVertex<ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{rawResult});
+            self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{rawResult});
         compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::INT32, rawResult);
         return taggedResult;
@@ -3660,7 +3742,7 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildTaggedI32Result(rawResult);
     }
 
-    void BuildDeoptIfInt32Condition(ValueVertex *leftI32, ValueVertex *rightI32, Int32ConditionKind condition,
+    void BuildDeoptIfInt32Condition(ValueVertex *leftI32, ValueVertex *rightI32, IntConditionKind condition,
                                     kungfu::DeoptType deoptType)
     {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
@@ -3688,7 +3770,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
-        BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), Int32ConditionKind::LESS_THAN,
+        BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), IntConditionKind::LESS_THAN,
                                    kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
         return BuildTaggedIntConstant(0);
     }
@@ -3703,7 +3785,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
         ValueVertex *zeroI32 = self->graph_->GetInt32Constant(0);
         if (!constant.has_value()) {
-            BuildDeoptIfInt32Condition(valueI32, zeroI32, Int32ConditionKind::EQUAL, kungfu::DeoptType::DIVZERO2);
+            BuildDeoptIfInt32Condition(valueI32, zeroI32, IntConditionKind::EQUAL, kungfu::DeoptType::DIVZERO2);
         }
         ValueVertex *rawResult = BuildI32BinOpWithOverflow(BinaryOpKind::SUB, zeroI32, valueI32);
         return BuildTaggedI32Result(rawResult);
@@ -3724,9 +3806,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
         if (divisor == -1) {
             BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(std::numeric_limits<int32_t>::min()),
-                                       Int32ConditionKind::EQUAL, kungfu::DeoptType::INT32OVERFLOW1);
+                                       IntConditionKind::EQUAL, kungfu::DeoptType::INT32OVERFLOW1);
         }
-        BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(0), Int32ConditionKind::LESS_THAN,
+        BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(0), IntConditionKind::LESS_THAN,
                                    kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
         return BuildTaggedIntConstant(0);
     }
@@ -4013,26 +4095,26 @@ struct GraphBuilder::BytecodeVisitor {
         return tagged;
     }
 
-    ValueVertex *BuildGenericBitwiseBinOp(Int32BitwiseKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *BuildGenericBitwiseBinOp(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right)
     {
         switch (kind) {
-            case Int32BitwiseKind::BITWISE_AND:
+            case IntBitwiseKind::BITWISE_AND:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::And);
-            case Int32BitwiseKind::BITWISE_OR:
+            case IntBitwiseKind::BITWISE_OR:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Or);
-            case Int32BitwiseKind::BITWISE_XOR:
+            case IntBitwiseKind::BITWISE_XOR:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Xor);
-            case Int32BitwiseKind::SHIFT_LEFT:
+            case IntBitwiseKind::SHIFT_LEFT:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Shl);
-            case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+            case IntBitwiseKind::SHIFT_RIGHT_LOGICAL:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Shr);
-            case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+            case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
                 return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Ashr);
         }
         UNREACHABLE();
     }
 
-    ValueVertex *TryBuildI32BitwiseReduction(Int32BitwiseKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *TryBuildI32BitwiseReduction(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right)
     {
         std::optional<int32_t> leftValue = TryGetInt32Value(left);
         std::optional<int32_t> rightValue = TryGetInt32Value(right);
@@ -4050,17 +4132,17 @@ struct GraphBuilder::BytecodeVisitor {
             int32_t lhs = *leftValue;
             uint32_t shift = static_cast<uint32_t>(*rightValue) & 31U;
             switch (kind) {
-                case Int32BitwiseKind::BITWISE_AND:
+                case IntBitwiseKind::BITWISE_AND:
                     return taggedIntConstant(lhs & *rightValue);
-                case Int32BitwiseKind::BITWISE_OR:
+                case IntBitwiseKind::BITWISE_OR:
                     return taggedIntConstant(lhs | *rightValue);
-                case Int32BitwiseKind::BITWISE_XOR:
+                case IntBitwiseKind::BITWISE_XOR:
                     return taggedIntConstant(lhs ^ *rightValue);
-                case Int32BitwiseKind::SHIFT_LEFT:
+                case IntBitwiseKind::SHIFT_LEFT:
                     return taggedIntConstant(static_cast<int32_t>(static_cast<uint32_t>(lhs) << shift));
-                case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
                     return taggedIntConstant(lhs >> static_cast<int32_t>(shift));
-                case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL: {
+                case IntBitwiseKind::SHIFT_RIGHT_LOGICAL: {
                     // >>> yields a uint32; fold only when it fits int32 (non-negative), otherwise
                     // leave it so the SHR tagging path (CheckedNonNegativeI32ToTaggedInt) deopts
                     // to double as JS requires (e.g. (-1) >>> 0 === 4294967295).
@@ -4077,7 +4159,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         if (rightValue.has_value()) {
             switch (kind) {
-                case Int32BitwiseKind::BITWISE_AND:
+                case IntBitwiseKind::BITWISE_AND:
                     if (*rightValue == -1) {
                         return knownInt(left);
                     }
@@ -4085,7 +4167,7 @@ struct GraphBuilder::BytecodeVisitor {
                         return taggedIntConstant(0);
                     }
                     break;
-                case Int32BitwiseKind::BITWISE_OR:
+                case IntBitwiseKind::BITWISE_OR:
                     if (*rightValue == 0) {
                         return knownInt(left);
                     }
@@ -4093,25 +4175,25 @@ struct GraphBuilder::BytecodeVisitor {
                         return taggedIntConstant(-1);
                     }
                     break;
-                case Int32BitwiseKind::BITWISE_XOR:
+                case IntBitwiseKind::BITWISE_XOR:
                     if (*rightValue == 0) {
                         return knownInt(left);
                     }
                     break;
-                case Int32BitwiseKind::SHIFT_LEFT:
-                case Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                case IntBitwiseKind::SHIFT_LEFT:
+                case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
                     if ((static_cast<uint32_t>(*rightValue) & 31U) == 0) {
                         return knownInt(left);
                     }
                     break;
-                case Int32BitwiseKind::SHIFT_RIGHT_LOGICAL:
+                case IntBitwiseKind::SHIFT_RIGHT_LOGICAL:
                     break;
             }
         }
 
         if (leftValue.has_value()) {
             switch (kind) {
-                case Int32BitwiseKind::BITWISE_AND:
+                case IntBitwiseKind::BITWISE_AND:
                     if (*leftValue == -1) {
                         return knownInt(right);
                     }
@@ -4119,7 +4201,7 @@ struct GraphBuilder::BytecodeVisitor {
                         return taggedIntConstant(0);
                     }
                     break;
-                case Int32BitwiseKind::BITWISE_OR:
+                case IntBitwiseKind::BITWISE_OR:
                     if (*leftValue == 0) {
                         return knownInt(right);
                     }
@@ -4127,7 +4209,7 @@ struct GraphBuilder::BytecodeVisitor {
                         return taggedIntConstant(-1);
                     }
                     break;
-                case Int32BitwiseKind::BITWISE_XOR:
+                case IntBitwiseKind::BITWISE_XOR:
                     if (*leftValue == 0) {
                         return knownInt(right);
                     }
@@ -4140,17 +4222,17 @@ struct GraphBuilder::BytecodeVisitor {
         return nullptr;
     }
 
-    ValueVertex *BuildI32BitwiseTaggedValue(Int32BitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
+    ValueVertex *BuildI32BitwiseTaggedValue(IntBitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
         ValueVertex *raw =
             self->NewVertex<I32BitwiseBinaryVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, kind);
-        if (kind != Int32BitwiseKind::SHIFT_RIGHT_LOGICAL) {
+        if (kind != IntBitwiseKind::SHIFT_RIGHT_LOGICAL) {
             return BuildTaggedI32Result(raw);
         }
         return BuildCheckedNonNegativeI32ToTaggedInt(raw);
     }
 
-    ValueVertex *BuildI32BitwiseBinOp(Int32BitwiseKind kind, ValueVertex *left, ValueVertex *right,
+    ValueVertex *BuildI32BitwiseBinOp(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right,
                                        bool leftKnownInt, bool rightKnownInt)
     {
         if (leftKnownInt && rightKnownInt) {
@@ -4174,7 +4256,7 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
     }
 
-    ValueVertex *BuildBitwiseOperation(Int32BitwiseKind kind)
+    ValueVertex *BuildBitwiseOperation(IntBitwiseKind kind)
     {
         ValueVertex *left = LoadRegister(currentBcInfo, 0);
         ValueVertex *right = frameState.GetAcc();
@@ -4271,8 +4353,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *valueI32 = BuildTaggedIntToI32(value);
         ValueVertex *zero = self->graph_->GetInt32Constant(0);
-        Int32ConditionKind condition =
-            trueIfNonZero ? Int32ConditionKind::NOT_EQUAL : Int32ConditionKind::EQUAL;
+        IntConditionKind condition =
+            trueIfNonZero ? IntConditionKind::NOT_EQUAL : IntConditionKind::EQUAL;
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
             compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32, zero}, condition);
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
@@ -5116,10 +5198,10 @@ struct GraphBuilder::BytecodeVisitor {
         return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array}, offset);
     }
 
-    ValueVertex *SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
+    void SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
     {
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        return self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array, value}, offset);
+        self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array, value}, offset);
     }
 
     ValueVertex *SharedConstPool()

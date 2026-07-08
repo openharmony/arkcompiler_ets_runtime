@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "ecmascript/arksteed/arksteed_condition_code.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/arksteed/arksteed_vreg.h"
@@ -28,7 +29,8 @@
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::arksteed {
-using VirtualRegister = kungfu::VirtualRegister;
+using CommonStubID = kungfu::CommonStubCSigns::ID;
+using RuntimeStubID = kungfu::RuntimeStubCSigns::ID;
 
 class BB;
 class ArkSteedState;
@@ -43,7 +45,7 @@ enum class BinaryOpKind : uint8_t {
     EXP,
 };
 
-enum class Int32ConditionKind : uint8_t {
+enum class IntConditionKind : uint8_t {
     EQUAL,
     NOT_EQUAL,
     LESS_THAN,
@@ -63,7 +65,7 @@ enum class CompareOpKind : uint8_t {
     STRICT_NOT_EQUAL,
 };
 
-enum class Int32BitwiseKind : uint8_t {
+enum class IntBitwiseKind : uint8_t {
     BITWISE_AND,
     BITWISE_OR,
     BITWISE_XOR,
@@ -213,6 +215,57 @@ private:
     struct HasInputTypes<T, decltype(void(T::INPUT_TYPES))> : std::true_type {};
 };
 
+class CommonStubIDMixin {
+public:
+    explicit CommonStubIDMixin(CommonStubID id) : id_(id) {}
+
+    CommonStubID GetCommonStubID() const
+    {
+        return id_;
+    }
+    void SetCommonStubID(CommonStubID id)
+    {
+        id_ = id;
+    }
+
+private:
+    CommonStubID id_;
+};
+
+class RuntimeStubIDMixin {
+public:
+    explicit RuntimeStubIDMixin(RuntimeStubID id) : id_(id) {}
+
+    RuntimeStubID GetRuntimeStubID() const
+    {
+        return id_;
+    }
+    void SetRuntimeStubID(RuntimeStubID id)
+    {
+        id_ = id;
+    }
+
+private:
+    RuntimeStubID id_;
+};
+
+class ConditionCodeMixin {
+public:
+    explicit ConditionCodeMixin(Condition cc) : cc_(cc) {}
+
+    Condition GetConditionCode() const
+    {
+        return cc_;
+    }
+    void SetConditionCode(Condition cc)
+    {
+        cc_ = cc;
+    }
+
+private:
+    Condition cc_;
+};
+
 class ThrowableMixin {
 public:
     BB *CaughtBy() const
@@ -314,14 +367,14 @@ private:
     int32_t value_;
 };
 
-class IntPtrConstantVertex : public FixedInputVertexMixin<0, ValueVertex, IntPtrConstantVertex> {
+class Int64ConstantVertex : public FixedInputVertexMixin<0, ValueVertex, Int64ConstantVertex> {
 public:
     using OutputRegister = ArkSteedRegister;
-    static constexpr VertexProperties PROPERTIES = VertexProperties::IntPtr();
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int64();
 
-    IntPtrConstantVertex(uint64_t bitfield, intptr_t value) : FixedInputVertexMixin(bitfield), value_(value) {}
+    Int64ConstantVertex(uint64_t bitfield, int64_t value) : FixedInputVertexMixin(bitfield), value_(value) {}
 
-    intptr_t GetValue() const
+    int64_t GetValue() const
     {
         return value_;
     }
@@ -331,8 +384,11 @@ public:
     void Dump(std::ostream &output) const;
 
 private:
-    intptr_t value_;
+    int64_t value_;
 };
+
+// TODO: Adaptation to 32-bit platform
+using IntPtrConstantVertex = Int64ConstantVertex;
 
 class Float64ConstantVertex : public FixedInputVertexMixin<0, ValueVertex, Float64ConstantVertex> {
 public:
@@ -404,17 +460,16 @@ public:
     void Dump(std::ostream &output) const;
 };
 
-// Loads from raw pointer
-class LoadFromAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadFromAddressVertex> {
+// Loads TaggedValue from raw pointer
+class LoadTaggedFromAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadTaggedFromAddressVertex> {
 public:
-    // Currently LoadFromAddressVertex can load TaggedValue only.
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
     // 1 : Object
     static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::INT_PTR);
 
     static constexpr size_t OBJECT_INDEX = 0;
 
-    explicit LoadFromAddressVertex(uint64_t bitfield, int32_t offset)
+    explicit LoadTaggedFromAddressVertex(uint64_t bitfield, int32_t offset)
         : FixedInputVertexMixin(bitfield), offset_(offset) {}
 
     int32_t GetOffset() const
@@ -445,18 +500,163 @@ public:
     void Dump(std::ostream &output) const;
 };
 
-// Stores to raw pointer. 2 : Two inputs
-class StoreToAddressVertex : public FixedInputVertexMixin<2, ValueVertex, StoreToAddressVertex> {
+// Stores TaggedValue to raw pointer. 2 : Two inputs
+class StoreTaggedToAddressVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreTaggedToAddressVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties(0);
-    // 2: object and value to be stored (Currently StoreToAddressVertex can store TaggedValue only)
+    // 2: object and value to be stored
     static constexpr auto INPUT_TYPES =
         detail::InputTypes<2>(ValueRepresentation::INT_PTR, ValueRepresentation::TAGGED);
 
     static constexpr size_t OBJECT_INDEX = 0;
     static constexpr size_t VALUE_INDEX = 1;
 
-    explicit StoreToAddressVertex(uint64_t bitfield, int32_t offset)
+    explicit StoreTaggedToAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Loads Int32 from raw pointer
+class LoadI32FromAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadI32FromAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::INT_PTR);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+
+    explicit LoadI32FromAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Stores Int32 to raw pointer. 2 : Two inputs
+class StoreI32ToAddressVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreI32ToAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties(0);
+    static constexpr auto INPUT_TYPES =
+        detail::InputTypes<2>(ValueRepresentation::INT_PTR, ValueRepresentation::INT32);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+    static constexpr size_t VALUE_INDEX = 1;
+
+    explicit StoreI32ToAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Loads Int64 from raw pointer
+class LoadI64FromAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadI64FromAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int64();
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::INT_PTR);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+
+    explicit LoadI64FromAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Stores Int64 to raw pointer. 2 : Two inputs
+class StoreI64ToAddressVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreI64ToAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties(0);
+    static constexpr auto INPUT_TYPES =
+        detail::InputTypes<2>(ValueRepresentation::INT_PTR, ValueRepresentation::INT64);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+    static constexpr size_t VALUE_INDEX = 1;
+
+    explicit StoreI64ToAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Loads Float64 from raw pointer
+class LoadF64FromAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadF64FromAddressVertex> {
+public:
+    using OutputRegister = ArkSteedDoubleRegister;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Float64();
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::INT_PTR);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+
+    explicit LoadF64FromAddressVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset) {}
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_;
+};
+
+// Stores Float64 to raw pointer. 2 : Two inputs
+class StoreF64ToAddressVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreF64ToAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties(0);
+    static constexpr auto INPUT_TYPES =
+        detail::InputTypes<2>(ValueRepresentation::INT_PTR, ValueRepresentation::FLOAT64);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+    static constexpr size_t VALUE_INDEX = 1;
+
+    explicit StoreF64ToAddressVertex(uint64_t bitfield, int32_t offset)
         : FixedInputVertexMixin(bitfield), offset_(offset) {}
 
     int32_t GetOffset() const
@@ -495,7 +695,7 @@ private:
 };
 
 // 2: object and value inputs
-class StoreTaggedFieldVertex : public FixedInputVertexMixin<2, ValueVertex, StoreTaggedFieldVertex> {
+class StoreTaggedFieldVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreTaggedFieldVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::DeferredCall();
 
@@ -529,7 +729,7 @@ private:
     uint32_t propertyId_;
 };
 
-class StoreEnvSlotVertex : public FixedInputVertexMixin<2, ValueVertex, StoreEnvSlotVertex> {
+class StoreEnvSlotVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreEnvSlotVertex> {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp();
 
@@ -584,22 +784,19 @@ private:
 /**
  * CallRuntime vertex - for runtime function calls
  */
-class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex>, public ThrowableMixin {
+class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex>,
+                          public ThrowableMixin,
+                          public RuntimeStubIDMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
     CallRuntimeVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id,
                       SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
-        : VertexMixin(bitfield), runtimeId_(id), sideEffectKind_(sideEffectKind)
+        : VertexMixin(bitfield), RuntimeStubIDMixin(id), sideEffectKind_(sideEffectKind)
     {
-        // Only UNKNOWN_CALL and SAFE_CALL are supported by now.
         ASSERT(sideEffectKind_ == SideEffectKind::UNKNOWN_CALL || sideEffectKind_ == SideEffectKind::SAFE_CALL);
     }
 
-    kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
-    {
-        return runtimeId_;
-    }
     size_t GetArgCount() const
     {
         return GetInputCount();
@@ -616,7 +813,6 @@ public:
     void VerifyInputs() const {}
 
 private:
-    kungfu::RuntimeStubCSigns::ID runtimeId_;
     SideEffectKind sideEffectKind_;
 };
 
@@ -658,22 +854,19 @@ private:
 /**
  * CallCommonStub vertex - for common stub calls
  */
-class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVertex>, public ThrowableMixin {
+class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVertex>,
+                             public ThrowableMixin,
+                             public CommonStubIDMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
-    CallCommonStubVertex(uint64_t bitfield, uint32_t stubId,
+    CallCommonStubVertex(uint64_t bitfield, CommonStubID stubId,
                          SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
-        : VertexMixin(bitfield), stubId_(stubId), sideEffectKind_(sideEffectKind)
+        : VertexMixin(bitfield), CommonStubIDMixin(stubId), sideEffectKind_(sideEffectKind)
     {
-        // Only UNKNOWN_CALL and SAFE_CALL are supported by now.
         ASSERT(sideEffectKind_ == SideEffectKind::UNKNOWN_CALL || sideEffectKind_ == SideEffectKind::SAFE_CALL);
     }
 
-    uint32_t GetStubId() const
-    {
-        return stubId_;
-    }
     size_t GetArgCount() const
     {
         return GetInputCount();
@@ -694,7 +887,6 @@ public:
     }
 
 private:
-    uint32_t stubId_;
     SideEffectKind sideEffectKind_;
 };
 
@@ -761,11 +953,11 @@ public:
     static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
 
-    explicit I32ConditionCheckVertex(uint64_t bitfield, Int32ConditionKind condition)
+    explicit I32ConditionCheckVertex(uint64_t bitfield, IntConditionKind condition)
         : FixedInputVertexMixin(bitfield), condition_(condition)
     {}
 
-    Int32ConditionKind GetCondition() const
+    IntConditionKind GetCondition() const
     {
         return condition_;
     }
@@ -774,7 +966,7 @@ public:
     void Dump(std::ostream &output) const;
 
 private:
-    Int32ConditionKind condition_;
+    IntConditionKind condition_;
 };
 
 class F64ConditionCheckVertex : public FixedInputVertexMixin<2, ValueVertex, F64ConditionCheckVertex> {
@@ -784,11 +976,11 @@ public:
     static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::FLOAT64, ValueRepresentation::FLOAT64};
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
 
-    explicit F64ConditionCheckVertex(uint64_t bitfield, Int32ConditionKind condition)
+    explicit F64ConditionCheckVertex(uint64_t bitfield, IntConditionKind condition)
         : FixedInputVertexMixin(bitfield), condition_(condition)
     {}
 
-    Int32ConditionKind GetCondition() const
+    IntConditionKind GetCondition() const
     {
         return condition_;
     }
@@ -797,7 +989,7 @@ public:
     void Dump(std::ostream &output) const;
 
 private:
-    Int32ConditionKind condition_;
+    IntConditionKind condition_;
 };
 
 class TaggedEqualVertex : public FixedInputVertexMixin<2, ValueVertex, TaggedEqualVertex> {
@@ -1070,11 +1262,11 @@ public:
     static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
     static constexpr VertexProperties PROPERTIES = VertexProperties::Int32();
 
-    explicit I32BitwiseBinaryVertex(uint64_t bitfield, Int32BitwiseKind kind)
+    explicit I32BitwiseBinaryVertex(uint64_t bitfield, IntBitwiseKind kind)
         : FixedInputVertexMixin(bitfield), kind_(kind)
     {}
 
-    Int32BitwiseKind GetKind() const
+    IntBitwiseKind GetKind() const
     {
         return kind_;
     }
@@ -1086,16 +1278,16 @@ public:
 
     bool IsShift() const
     {
-        return kind_ == Int32BitwiseKind::SHIFT_LEFT ||
-               kind_ == Int32BitwiseKind::SHIFT_RIGHT_LOGICAL ||
-               kind_ == Int32BitwiseKind::SHIFT_RIGHT_ARITHMETIC;
+        return kind_ == IntBitwiseKind::SHIFT_LEFT ||
+               kind_ == IntBitwiseKind::SHIFT_RIGHT_LOGICAL ||
+               kind_ == IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC;
     }
 
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
 
 private:
-    Int32BitwiseKind kind_;
+    IntBitwiseKind kind_;
 };
 
 class CheckedNonNegativeI32ToTaggedIntVertex
@@ -1372,14 +1564,14 @@ public:
 
     explicit DeoptIfInt32ConditionVertex(uint64_t bitfield, uint32_t firstDeoptInputIndex,
                                          ChunkVector<VRegIDType> deoptVRegs, uint32_t bytecodeOffset,
-                                         Int32ConditionKind condition, kungfu::DeoptType deoptType)
+                                         IntConditionKind condition, kungfu::DeoptType deoptType)
         : VertexMixin(bitfield),
           DeoptimizableMixin(firstDeoptInputIndex, std::move(deoptVRegs), bytecodeOffset),
           condition_(condition),
           deoptType_(deoptType)
     {}
 
-    Int32ConditionKind GetCondition() const
+    IntConditionKind GetCondition() const
     {
         return condition_;
     }
@@ -1401,7 +1593,7 @@ public:
     }
 
 private:
-    Int32ConditionKind condition_;
+    IntConditionKind condition_;
     kungfu::DeoptType deoptType_;
 };
 
@@ -1590,11 +1782,11 @@ public:
     static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT32, ValueRepresentation::INT32};
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
-    BranchIfInt32CompareVertex(uint64_t bitfield, Int32ConditionKind condition, BB *ifTrue, BB *ifFalse)
+    BranchIfInt32CompareVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse, IntConditionKind condition)
         : BranchControlVertexT(bitfield, ifTrue, ifFalse), condition_(condition)
     {}
 
-    Int32ConditionKind GetCondition() const
+    IntConditionKind GetCondition() const
     {
         return condition_;
     }
@@ -1603,7 +1795,30 @@ public:
     void Dump(std::ostream &output) const;
 
 private:
-    Int32ConditionKind condition_;
+    IntConditionKind condition_;
+};
+
+class BranchIfInt64CompareVertex : public BranchControlVertexT<2, BranchIfInt64CompareVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT64, ValueRepresentation::INT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfInt64CompareVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse, IntConditionKind condition)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse), condition_(condition)
+    {}
+
+    IntConditionKind GetCondition() const
+    {
+        return condition_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    IntConditionKind condition_;
 };
 
 class BranchIfFloat64CompareVertex : public BranchControlVertexT<2, BranchIfFloat64CompareVertex> {
@@ -1613,11 +1828,11 @@ public:
     static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::FLOAT64, ValueRepresentation::FLOAT64};
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
-    BranchIfFloat64CompareVertex(uint64_t bitfield, Int32ConditionKind condition, BB *ifTrue, BB *ifFalse)
+    BranchIfFloat64CompareVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse, IntConditionKind condition)
         : BranchControlVertexT(bitfield, ifTrue, ifFalse), condition_(condition)
     {}
 
-    Int32ConditionKind GetCondition() const
+    IntConditionKind GetCondition() const
     {
         return condition_;
     }
@@ -1626,7 +1841,7 @@ public:
     void Dump(std::ostream &output) const;
 
 private:
-    Int32ConditionKind condition_;
+    IntConditionKind condition_;
 };
 
 class BranchIfReferenceEqualVertex : public BranchControlVertexT<2, BranchIfReferenceEqualVertex> {
@@ -1637,6 +1852,25 @@ public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
 
     BranchIfReferenceEqualVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse)
+    {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+/**
+ * BranchIfTaggedHeapObject vertex - branch based on whether a tagged value is a heap object.
+ * Jumps to ifTrue if the value is a tagged heap object (tag bits == 0),
+ * otherwise jumps to ifFalse.
+ */
+class BranchIfTaggedHeapObjectVertex : public BranchControlVertexT<1, BranchIfTaggedHeapObjectVertex> {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfTaggedHeapObjectVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse)
         : BranchControlVertexT(bitfield, ifTrue, ifFalse)
     {}
 
@@ -1705,29 +1939,15 @@ public:
 /**
  * Throw vertex - exception throw
  */
-class ThrowVertex : public VertexMixin<ControlVertex, ThrowVertex>, public ThrowableMixin {
+class ThrowVertex : public VertexMixin<ControlVertex, ThrowVertex>, public ThrowableMixin, public RuntimeStubIDMixin {
 public:
-    static constexpr int EXCEPTION_INDEX = 0;
-
     static constexpr VertexProperties PROPERTIES =
         VertexProperties::CanThrowProp() | VertexProperties::Call() | VertexProperties::NotIdempotent();
 
-    explicit ThrowVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id, bool hasInput)
-        : VertexMixin(bitfield), id_(id), hasInput_(hasInput)
+    explicit ThrowVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id)
+        : VertexMixin(bitfield), RuntimeStubIDMixin(id)
     {}
-    kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
-    {
-        return id_;
-    }
-    bool HasInput() const
-    {
-        return hasInput_;
-    }
-    ValueVertex *GetException()
-    {
-        ASSERT(HasInput());
-        return GetInput(EXCEPTION_INDEX);
-    }
+
     size_t GetArgCount() const
     {
         return GetInputCount();
@@ -1736,156 +1956,8 @@ public:
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
 
-    // VerifyInputs: Variable-input vertex must validate input matches hasInput flag
+    // VerifyInputs: Variable-input vertex
     void VerifyInputs() const {}
-
-private:
-    kungfu::RuntimeStubCSigns::ID id_;
-    bool hasInput_;
-};
-
-class ThrowIfSuperNotCorrectCallVertex
-    // 2: index and thisValue inputs
-    : public FixedInputVertexMixin<2, NonControlVertex, ThrowIfSuperNotCorrectCallVertex>, public ThrowableMixin {
-public:
-    static constexpr int INDEX_INDEX = 0;
-    static constexpr int THIS_VALUE_INDEX = 1;
-
-    static constexpr VertexProperties PROPERTIES =
-        VertexProperties::CanThrowProp() | VertexProperties::Call() | VertexProperties::DeferredCall();
-
-    explicit ThrowIfSuperNotCorrectCallVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id)
-        : FixedInputVertexMixin(bitfield), id_(id)
-    {}
-
-    kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
-    {
-        return id_;
-    }
-    ValueVertex *GetIndex()
-    {
-        return GetInput(INDEX_INDEX);
-    }
-    ValueVertex *GetThisValue()
-    {
-        return GetInput(THIS_VALUE_INDEX);
-    }
-    size_t GetArgCount() const
-    {
-        return GetInputCount();
-    }
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    kungfu::RuntimeStubCSigns::ID id_;
-};
-
-class ThrowIfNotObjectVertex : public FixedInputVertexMixin<1, NonControlVertex, ThrowIfNotObjectVertex> {
-public:
-    static constexpr int VALUE_INDEX = 0;
-
-    static constexpr VertexProperties PROPERTIES =
-        VertexProperties::CanThrowProp() | VertexProperties::Call() | VertexProperties::DeferredCall();
-
-    explicit ThrowIfNotObjectVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id)
-        : FixedInputVertexMixin(bitfield), runtimeId_(id)
-    {}
-
-    kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
-    {
-        return runtimeId_;
-    }
-    ValueVertex *GetValue()
-    {
-        return GetInput(VALUE_INDEX);
-    }
-    size_t GetArgCount() const
-    {
-        return GetInputCount();
-    }
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    kungfu::RuntimeStubCSigns::ID runtimeId_;
-};
-
-// 2: hole and obj inputs
-class ThrowUndefinedIfHoleVertex : public FixedInputVertexMixin<2, NonControlVertex, ThrowUndefinedIfHoleVertex> {
-public:
-    static constexpr int HOLE_INDEX = 0;
-    static constexpr int OBJ_INDEX = 1;
-
-    static constexpr VertexProperties PROPERTIES =
-        VertexProperties::CanThrowProp() | VertexProperties::Call() | VertexProperties::DeferredCall();
-
-    explicit ThrowUndefinedIfHoleVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id)
-        : FixedInputVertexMixin(bitfield), runtimeId_(id)
-    {}
-
-    kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
-    {
-        return runtimeId_;
-    }
-    ValueVertex *GetHole()
-    {
-        return GetInput(HOLE_INDEX);
-    }
-    ValueVertex *GetObj()
-    {
-        return GetInput(OBJ_INDEX);
-    }
-    size_t GetArgCount() const
-    {
-        return GetInputCount();
-    }
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    kungfu::RuntimeStubCSigns::ID runtimeId_;
-};
-
-class ThrowUndefinedIfHoleWithNameVertex
-    // 2: stringId and hole inputs
-    : public FixedInputVertexMixin<2, NonControlVertex, ThrowUndefinedIfHoleWithNameVertex> {
-public:
-    static constexpr int STRING_ID_INDEX = 0;
-    static constexpr int HOLE_INDEX = 1;
-
-    static constexpr VertexProperties PROPERTIES =
-        VertexProperties::CanThrowProp() | VertexProperties::Call() | VertexProperties::DeferredCall();
-
-    explicit ThrowUndefinedIfHoleWithNameVertex(uint64_t bitfield, kungfu::RuntimeStubCSigns::ID id)
-        : FixedInputVertexMixin(bitfield), runtimeId_(id)
-    {}
-
-    kungfu::RuntimeStubCSigns::ID GetRuntimeId() const
-    {
-        return runtimeId_;
-    }
-    ValueVertex *GetStringIdInput()
-    {
-        return GetInput(STRING_ID_INDEX);
-    }
-    ValueVertex *GetHole()
-    {
-        return GetInput(HOLE_INDEX);
-    }
-    size_t GetArgCount() const
-    {
-        return GetInputCount();
-    }
-
-    void SetValueLocationConstraints();
-    void Dump(std::ostream &output) const;
-
-private:
-    kungfu::RuntimeStubCSigns::ID runtimeId_;
 };
 
 class GapMoveVertex : public FixedInputVertexMixin<0, NonControlVertex, GapMoveVertex> {
@@ -1983,12 +2055,12 @@ public:
     const VirtualRegister owner_;
 };
 
-class ToTaggedIntVertex : public FixedInputVertexMixin<1, ValueVertex, ToTaggedIntVertex> {
+class I32ToTaggedIntVertex : public FixedInputVertexMixin<1, ValueVertex, I32ToTaggedIntVertex> {
 public:
     static constexpr int INPUT_INDEX = 0;
     static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
 
-    explicit ToTaggedIntVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+    explicit I32ToTaggedIntVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
 
     const ValueVertex *GetInputValue() const
     {
@@ -1997,6 +2069,51 @@ public:
 
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
+};
+
+class RawI64ToTaggedVertex : public FixedInputVertexMixin<1, ValueVertex, RawI64ToTaggedVertex> {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    explicit RawI64ToTaggedVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class TaggedToRawI64Vertex : public FixedInputVertexMixin<1, ValueVertex, TaggedToRawI64Vertex> {
+public:
+    static constexpr int INPUT_INDEX = 0;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int64();
+
+    explicit TaggedToRawI64Vertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class I64BitwiseBinaryVertex : public FixedInputVertexMixin<2, ValueVertex, I64BitwiseBinaryVertex> {
+public:
+    static constexpr int LEFT_INDEX = 0;
+    static constexpr int RIGHT_INDEX = 1;
+    static constexpr detail::InputTypes<2> INPUT_TYPES {ValueRepresentation::INT64, ValueRepresentation::INT64};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Int64();
+
+    explicit I64BitwiseBinaryVertex(uint64_t bitfield, IntBitwiseKind kind)
+        : FixedInputVertexMixin(bitfield), kind_(kind)
+    {}
+
+    IntBitwiseKind GetKind() const
+    {
+        return kind_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    IntBitwiseKind kind_;
 };
 
 inline BB *CatchBlockOf(Vertex *vertex)

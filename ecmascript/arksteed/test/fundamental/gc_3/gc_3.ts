@@ -33,7 +33,7 @@ function gc_3(): void {
     const LOOP_COUNT = 50_000_000;
     for (let i = 0; i < LOOP_COUNT; i++) {
         consumePoint({x: myRandom(), y: myRandom()});
-    }   
+    }
 }
 
 ArkTools.arkSteedCompileSync(myRandom);

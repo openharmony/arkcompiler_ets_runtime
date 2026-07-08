@@ -389,10 +389,10 @@ std::string GraphPrinter::FormatVertexStubInfo(Vertex *vertex) const
     std::string line;
     if (vertex->Is<CallRuntimeVertex>()) {
         CallRuntimeVertex *callRuntime = vertex->Cast<CallRuntimeVertex>();
-        line += " [" + kungfu::RuntimeStubCSigns::GetRTName(static_cast<int>(callRuntime->GetRuntimeId())) + "]";
+        line += " [" + kungfu::RuntimeStubCSigns::GetRTName(static_cast<int>(callRuntime->GetRuntimeStubID())) + "]";
     } else if (vertex->Is<CallCommonStubVertex>()) {
         CallCommonStubVertex *callStub = vertex->Cast<CallCommonStubVertex>();
-        line += " [" + kungfu::CommonStubCSigns::GetName(callStub->GetStubId()) + "]";
+        line += " [" + kungfu::CommonStubCSigns::GetName(callStub->GetCommonStubID()) + "]";
     } else if (vertex->Is<ValueVertex>()) {
         ValueVertex *valueVertex = vertex->Cast<ValueVertex>();
         line += " [" + ValueRepresentationToString(valueVertex->GetValueRepresentation()) + "]";
@@ -538,12 +538,12 @@ std::string GraphPrinter::ValueRepresentationToString(ValueRepresentation repr) 
             return "Int32";
         case ValueRepresentation::UINT32:
             return "Uint32";
+        case ValueRepresentation::INT64:
+            return "Int64";
         case ValueRepresentation::FLOAT64:
             return "Float64";
         case ValueRepresentation::HOLEY_FLOAT64:
             return "HoleyFloat64";
-        case ValueRepresentation::INT_PTR:
-            return "IntPtr";
         case ValueRepresentation::NONE:
             return "None";
         default:

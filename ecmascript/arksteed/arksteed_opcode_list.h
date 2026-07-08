@@ -32,7 +32,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 // List of constant value vertices (for constant folding, etc.)
 #define CONSTANT_VALUE_VERTEX_LIST(V) \
     V(Int32Constant)                  \
-    V(IntPtrConstant)                 \
+    V(Int64Constant)                  \
     V(Float64Constant)                \
     V(TaggedConstant)
 
@@ -47,11 +47,11 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(Phi)
 
 #define VALUE_VERTEX_LIST(V)    \
-    V(LoadFromAddress)          \
-    V(StoreToAddress)           \
+    V(LoadTaggedFromAddress)    \
+    V(LoadI32FromAddress)       \
+    V(LoadI64FromAddress)       \
+    V(LoadF64FromAddress)       \
     V(LoadTaggedField)          \
-    V(StoreTaggedField)         \
-    V(StoreEnvSlot)             \
     V(LoadException)            \
     V(TaggedIntToI32)           \
     V(CheckedTaggedIntToI32)    \
@@ -72,6 +72,10 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(I32Div)                   \
     V(CheckedI32Mod)            \
     V(I32BitwiseBinary)         \
+    V(I32ToTaggedInt)           \
+    V(RawI64ToTagged)           \
+    V(TaggedToRawI64)           \
+    V(I64BitwiseBinary)         \
     V(CheckedNonNegativeI32ToTaggedInt) \
     V(I32BNot)                  \
     V(I32NegWithOverflow)       \
@@ -86,34 +90,35 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(F64Sub)                   \
     V(F64Mul)                   \
     V(F64Div)                   \
-    COMMON_VALUE_VERTEX_LIST(V) \
-    CONVERSION_VERTEX_LIST(V)
+    COMMON_VALUE_VERTEX_LIST(V)
 
 #define NON_CONTROL_VERTEX_LIST(V) \
     NON_VALUE_VERTEX_LIST(V)       \
     VALUE_VERTEX_LIST(V)
 
 #define NON_VALUE_VERTEX_LIST(V)    \
-    V(ThrowIfSuperNotCorrectCall)   \
-    V(ThrowIfNotObject)             \
-    V(ThrowUndefinedIfHole)         \
-    V(ThrowUndefinedIfHoleWithName) \
     V(DeoptIfHClassMismatch)        \
     V(DeoptIfInt32Condition)        \
     V(DeoptIfNotNumber)             \
     V(Deopt)                        \
+    V(StoreTaggedToAddress)         \
+    V(StoreI32ToAddress)            \
+    V(StoreI64ToAddress)            \
+    V(StoreF64ToAddress)            \
+    V(StoreTaggedField)             \
+    V(StoreEnvSlot)                 \
     V(SetValueWithBarrier)          \
     V(GapMove)                      \
     V(ConstantGapMove)
-
-#define CONVERSION_VERTEX_LIST(V) V(ToTaggedInt)
 
 #define BRANCH_CONTROL_VERTEX_LIST(V) \
     V(BranchIfTrue)                   \
     V(BranchIfTaggedString)           \
     V(BranchIfInt32Compare)           \
+    V(BranchIfInt64Compare)           \
     V(BranchIfFloat64Compare)         \
-    V(BranchIfReferenceEqual)
+    V(BranchIfReferenceEqual)         \
+    V(BranchIfTaggedHeapObject)
 
 #define CONDITION_CONTROL_VERTEX_LIST(V) BRANCH_CONTROL_VERTEX_LIST(V)
 
