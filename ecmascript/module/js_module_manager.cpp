@@ -452,18 +452,16 @@ void ModuleManager::ResetConstPoolLiterals(const CString &recordName)
     for (const auto& [unsharedConstPoolIndex, indexes] : iter->second) {
         JSTaggedValue unsharedConstPool = vm_->FindUnsharedConstpool(unsharedConstPoolIndex);
         if (!unsharedConstPool.IsHole()) {
+            uint32_t size = ConstantPool::Cast(unsharedConstPool.GetTaggedObject())->GetConstpoolLength();
             for (uint32_t index : indexes) {
+                if (index >= size) {
+                    LOG_ECMA(ERROR) << "ResetConstPoolLiterals index >= size";
+                    break;
+                }
                 ConstantPool::Cast(unsharedConstPool.GetTaggedObject())->SetObjectToCache(thread, index, holeValue);
             }
-        }
-    }
-}
-
-void ModuleManager::EraseClassLiteralConstPoolMapItem(int32_t unsharedConstPoolIndex)
-{
-    for (auto &record : classLiteralConstPoolMap_) {
-        if (record.second.erase(static_cast<uint32_t>(unsharedConstPoolIndex)) > 0) {
-            return;
+        } else {
+            LOG_ECMA(INFO) << "ResetConstPoolLiterals unsharedConstPool is hole";
         }
     }
 }

@@ -1968,7 +1968,6 @@ void EcmaVM::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index,
 {
     // unshared constpool index is default INT32_MAX.
     ASSERT(0 <= constpoolIndex && constpoolIndex < GetUnsharedConstpoolsArrayLen());
-    thread_->GetModuleManager()->EraseClassLiteralConstPoolMapItem(constpoolIndex);
     SetUnsharedConstpool(constpoolIndex, JSTaggedValue::Hole());
     auto iter = cachedSharedConstpools_.find(jsPandaFile);
     if (iter == cachedSharedConstpools_.end()) {
