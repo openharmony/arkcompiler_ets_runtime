@@ -1251,7 +1251,7 @@ void ArkSteedRegisterAllocator::AllocateSpillSlot(ValueVertex *vertex)
     SpillLocations &slots = isTagged ? tagged_ : untagged_;
     uint32_t freeSlot = slots.top;
     bool reuseSlot = false;
-    if (vertexInfo->HasValidLiveRange() && !slots.freeSlots.empty()) {
+    if (graph_->GetReuseStackSlots() && vertexInfo->HasValidLiveRange() && !slots.freeSlots.empty()) {
         VertexId start = vertexInfo->GetLiveRange().start;
 #ifndef NDEBUG
         for (size_t i = 1; i < slots.freeSlots.size(); ++i) {
@@ -1507,6 +1507,7 @@ void ArkSteedRegisterAllocator::HoistLoopReloads(BB *target)
             break;
         }
         if (vertexInfo->IsDoubleRegister()) {
+            // to do: Support double register reload hints.
             continue;
         }
         if (vertexInfo->HasRegisterResult()) {
@@ -1820,13 +1821,15 @@ void ArkSteedRegisterAllocator::UpdateUse(ValueVertex *vertex, InputLocation *in
 
     if (vertexInfo->IsSpilled()) {
         // Value is dead: return its spill slot to the pool for later reuse.
-        AllocatedState spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
-        if (spillSlot.GetIndex() >= 0) {
-            bool isTagged = (spillSlot.GetRepresentation() == MachineRepresentation::Tagged);
-            bool doubleSlot = (spillSlot.GetRepresentation() == MachineRepresentation::Float64);
-            SpillLocations &slots = isTagged ? tagged_ : untagged_;
-            slots.freeSlots.emplace_back(static_cast<uint32_t>(spillSlot.GetIndex()), vertexInfo->GetEndId(),
-                                         doubleSlot);
+        if (graph_->GetReuseStackSlots()) {
+            AllocatedState spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
+            if (spillSlot.GetIndex() >= 0) {
+                bool isTagged = (spillSlot.GetRepresentation() == MachineRepresentation::Tagged);
+                bool doubleSlot = (spillSlot.GetRepresentation() == MachineRepresentation::Float64);
+                SpillLocations &slots = isTagged ? tagged_ : untagged_;
+                slots.freeSlots.emplace_back(static_cast<uint32_t>(spillSlot.GetIndex()), vertexInfo->GetEndId(),
+                                             doubleSlot);
+            }
         }
     }
 }

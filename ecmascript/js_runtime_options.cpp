@@ -69,6 +69,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-arksteed-print-method-name: Enable printing method name via ArkSteed runtime stub. "
     "Default: 'true'\n"
     "--compiler-arksteed-print-code:       Enable printing ArkSteed generated code. Default: 'false'\n"
+    "--compiler-arksteed-reuse-stack-slots: Enable stack slot reuse in ArkSteed regalloc. Default: 'true'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
@@ -261,6 +262,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-arksteed-enable-code-comment", required_argument, nullptr,
          OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT},
         {"compiler-arksteed-print-code", required_argument, nullptr, OPTION_COMPILER_ARKSTEED_PRINT_CODE},
+        {"compiler-arksteed-reuse-stack-slots", required_argument, nullptr,
+         OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"compiler-log-all-methods-time", required_argument, nullptr, OPTION_COMPILER_LOG_ALL_METHODS_TIME},
@@ -907,6 +910,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerArkSteedPrintCode(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedReuseStackSlots(argBool);
                 } else {
                     return false;
                 }

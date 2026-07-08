@@ -221,6 +221,8 @@ bool ArkSteedCompilerTask::Compile()
     }
 
     // Register allocation
+    graph_->SetReuseStackSlots(
+        arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedReuseStackSlots());
     ArkSteedRegisterAllocator registerAllocator(graph_);
 
     // Code generation

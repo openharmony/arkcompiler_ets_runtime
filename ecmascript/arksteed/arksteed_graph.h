@@ -255,6 +255,16 @@ public:
         return untaggedStackSlots_;
     }
 
+    void SetReuseStackSlots(bool reuse)
+    {
+        reuseStackSlots_ = reuse;
+    }
+
+    bool GetReuseStackSlots() const
+    {
+        return reuseStackSlots_;
+    }
+
     // Debugging
     void Print() const;
 
@@ -289,6 +299,7 @@ private:
     uint32_t maxBlockId_;
     bool hasRecursiveCalls_;
     bool mayHaveUnreachableBlocks_;
+    bool reuseStackSlots_ = true;
 };
 
 }  // namespace panda::ecmascript::arksteed
