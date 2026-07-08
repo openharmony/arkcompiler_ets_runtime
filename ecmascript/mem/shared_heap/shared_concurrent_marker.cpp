@@ -84,17 +84,10 @@ public:
     }
 };
 
-class InitialMarkFlipFunction : public Closure {
-public:
-    InitialMarkFlipFunction() = default;
-    ~InitialMarkFlipFunction() override = default;
-
-    NO_COPY_SEMANTIC(InitialMarkFlipFunction);
-    NO_MOVE_SEMANTIC(InitialMarkFlipFunction);
-
-    void Run(JSThread *thread) override
+class SharedMarkFlipFunctionBase : public Closure {
+protected:
+    void MarkRoots(JSThread *thread)
     {
-        ASSERT(!thread->IsConcurrentCopying());
         SharedHeap *sHeap = SharedHeap::GetInstance();
         SharedGCMarker *marker = sHeap->GetSharedGCMarker();
         SharedGCWorkNodeHolder *temporaryHolder = sHeap->GetWorkManager()->GetTemporaryWorkNodeHolder();
@@ -106,6 +99,42 @@ public:
     }
 };
 
+class InitialMarkFlipFunction : public SharedMarkFlipFunctionBase {
+public:
+    InitialMarkFlipFunction() = default;
+    ~InitialMarkFlipFunction() override = default;
+
+    NO_COPY_SEMANTIC(InitialMarkFlipFunction);
+    NO_MOVE_SEMANTIC(InitialMarkFlipFunction);
+
+    void Run(JSThread *thread) override
+    {
+        ASSERT(!thread->IsConcurrentCopying());
+        MarkRoots(thread);
+    }
+};
+
+class CCMarkFlipFunction : public SharedMarkFlipFunctionBase {
+public:
+    CCMarkFlipFunction() = default;
+    ~CCMarkFlipFunction() override = default;
+
+    NO_COPY_SEMANTIC(CCMarkFlipFunction);
+    NO_MOVE_SEMANTIC(CCMarkFlipFunction);
+
+    void Run(JSThread *thread) override
+    {
+        ASSERT(!thread->IsConcurrentCopying());
+        if (thread->GetSharedCCStatus() != SharedCCStatus::READY) {
+            if (thread->GetLastLeaveFrame() == nullptr) {
+                thread->SwitchAllStub(false);
+                thread->SetSharedCCStatus(SharedCCStatus::READY);
+            }
+        }
+        MarkRoots(thread);
+    }
+};
+
 void SharedConcurrentMarker::Mark(TriggerGCType gcType)
 {
     RecursionScope recurScope(this);
@@ -114,8 +143,13 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
     {
         ThreadManagedScope runningScope(dThread_);
         InitialMarkSuspendCallback suspendCallback;
-        InitialMarkFlipFunction flipFunction;
-        Runtime::GetInstance()->FlipAllThreads(dThread_, &suspendCallback, &flipFunction);
+        if (IsCCMode()) {
+            CCMarkFlipFunction flipFunction;
+            Runtime::GetInstance()->FlipAllThreads(dThread_, &suspendCallback, &flipFunction);
+        } else {
+            InitialMarkFlipFunction flipFunction;
+            Runtime::GetInstance()->FlipAllThreads(dThread_, &suspendCallback, &flipFunction);
+        }
     }
     // Daemon thread do not need to post task to GC_Thread
     ASSERT(!dThread_->IsInRunningState());
@@ -136,6 +170,7 @@ void SharedConcurrentMarker::ReMark()
 #endif
     TRACE_GC(GCStats::Scope::ScopeId::ReMark, sHeap_->GetEcmaGCStats());
     LOG_GC(DEBUG) << "SharedConcurrentMarker: Remarking Begin";
+
     // TODO: support shared runtime state
     SharedGCMarker *sharedGCMarker = sHeap_->GetSharedGCMarker();
     // If enable shared concurrent mark, the recorded weak reference slots from local to share may be changed
@@ -217,6 +252,9 @@ void SharedConcurrentMarker::FinishMarking(float spendTime)
 void SharedConcurrentMarker::HandleMarkingFinished()
 {
     sHeap_->WaitSensitiveStatusFinished();
+    if (IsCCMode()) {
+        return;
+    }
     if (gcType_ == TriggerGCType::SHARED_PARTIAL_GC) {
         sHeap_->DaemonCollectGarbageWithFlip(gcType_, GCReason::HANDLE_MARKING_FINISHED);
     } else {

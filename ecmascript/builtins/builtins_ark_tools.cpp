@@ -1775,6 +1775,17 @@ JSTaggedValue BuiltinsArkTools::TriggerLocalCCGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::TriggerSharedCC(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->WaitGCFinished(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_CC, GCReason::TRIGGER_BY_JS>(thread);
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::EnableProcDumpInSharedOOM(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

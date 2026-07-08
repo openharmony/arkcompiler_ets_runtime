@@ -26,7 +26,7 @@ namespace panda::ecmascript {
     bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread)
     {
         ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
-        LockHolder lock(waitGCFinishedMutex_);
+        LockHolder lock(sharedGCSyncMutex_);
         DaemonThread::PostTaskResult res = DaemonThread::GetInstance()
             ->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
         if (res == DaemonThread::PostTaskResult::SUCCESS) {

@@ -171,7 +171,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 {
     SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
-    vm_->GetHeap()->WaitAndHandleCCFinished();
+    const_cast<Heap*>(vm_->GetHeap())->WaitAndHandleCCFinished();
     snapshot->UpdateNodes();
 }
 

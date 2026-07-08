@@ -73,6 +73,7 @@ class GlobalEnvConstants;
 enum class ElementsKind : uint8_t;
 enum class NodeKind : uint8_t;
 class CCEvacuator;
+class SharedCCEvacuator;
 
 class MachineCode;
 class DependentInfos;
@@ -91,6 +92,13 @@ enum class CCStatus : uint8_t {
     READY,
     COPYING,
     COPY_FINISHED,
+};
+
+enum class SharedCCStatus : uint8_t {
+    IDLE,
+    PENDING,
+    READY,
+    SUSPENDED,
 };
 
 enum class GCKind : uint8_t {
@@ -658,6 +666,85 @@ public:
     {
         auto status = CCStatusBits::Decode(glueData_.gcStateBitField_);
         return status == CCStatus::COPY_FINISHED;
+    }
+
+    SharedCCStatus GetSharedCCStatus() const
+    {
+        LockHolder lock(ccStatusMutex_);
+        return ccStatus_;
+    }
+
+    void SetSharedCCStatus(SharedCCStatus status)
+    {
+        LockHolder lock(ccStatusMutex_);
+        ccStatus_ = status;
+    }
+
+    template<typename Callback>
+    void WithCCStatusLock(Callback &&cb)
+    {
+        LockHolder lock(ccStatusMutex_);
+        cb(ccStatus_);
+    }
+
+    // Atomically set PENDING and try to mark task-pending under ccStatusMutex_.
+    // Returns true if a new task should be posted (first time), false if already pending.
+    bool TryMarkCCTaskPending()
+    {
+        LockHolder lock(ccStatusMutex_);
+        ccStatus_ = SharedCCStatus::PENDING;
+        if (ccTaskPending_) {
+            return false;
+        }
+        ccTaskPending_ = true;
+        return true;
+    }
+
+    // CC_SUSPEND: block thread from transitioning to RUNNING during SharedCC copy phase
+    void SetCCSuspend()
+    {
+        SetFlag(ThreadFlag::CC_SUSPEND);
+    }
+
+    bool HasCCSuspend() const
+    {
+        return ReadFlag(ThreadFlag::CC_SUSPEND);
+    }
+
+    void WaitCCSuspend();
+    void ClearCCSuspend();
+
+    // Marker: thread is blocked inside WaitGCFinished waiting for shared GC
+    bool IsWaitingSharedGCFinished() const
+    {
+        return waitingSharedGCFinished_;
+    }
+
+    void SetWaitingSharedGCFinished(bool v)
+    {
+        waitingSharedGCFinished_ = v;
+    }
+
+    // Called on target thread (via PostTaskToThread callback) to complete stub switch
+    void ExecuteSharedCCStubSwitch();
+
+    using PostTaskToThreadCallback = std::function<void(std::function<void()> task)>;
+
+    void SetPostTaskToThreadCallback(PostTaskToThreadCallback cb)
+    {
+        postTaskToThreadCallback_ = std::move(cb);
+    }
+
+    bool HasPostTaskToThreadCallback() const
+    {
+        return postTaskToThreadCallback_ != nullptr;
+    }
+
+    void PostTaskToThread(std::function<void()> task)
+    {
+        if (postTaskToThreadCallback_ != nullptr) {
+            postTaskToThreadCallback_(std::move(task));
+        }
     }
 
     SharedMarkStatus GetSharedMarkStatus() const
@@ -1260,6 +1347,16 @@ public:
     void InstallLocalCCEvacuator(CCEvacuator *evacuator)
     {
         localEvacuator_ = evacuator;
+    }
+
+    SharedCCEvacuator *GetSharedCCEvacuator() const
+    {
+        return sharedCCEvacuator_;
+    }
+
+    void InstallSharedCCEvacuator(SharedCCEvacuator *evacuator)
+    {
+        sharedCCEvacuator_ = evacuator;
     }
 
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -2339,6 +2436,7 @@ private:
     void *env_ {nullptr};
     Area *regExpCacheArea_ {nullptr};
     CCEvacuator *localEvacuator_ {nullptr};
+    SharedCCEvacuator *sharedCCEvacuator_ {nullptr};
     static thread_local ThreadId currentThreadId_;
     // MM: handles, global-handles, and aot-stubs.
     int nestedLevel_ = 0;
@@ -2394,6 +2492,11 @@ private:
     bool suspendByConcurrentTask_ {false};
     // Shared heap collect local heap Rset
     bool processingLocalToSharedRset_ {false};
+    bool waitingSharedGCFinished_ {false};
+    SharedCCStatus ccStatus_ {SharedCCStatus::IDLE};
+    bool ccTaskPending_ {false};
+    mutable Mutex ccStatusMutex_;
+    PostTaskToThreadCallback postTaskToThreadCallback_ {nullptr};
 
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 

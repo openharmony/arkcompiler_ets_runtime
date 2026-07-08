@@ -37,6 +37,7 @@
 #include "ecmascript/mem/shared_heap/global_gc_marker.h"
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_partial_gc.h"
+#include "ecmascript/mem/shared_heap/shared_cc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
@@ -70,6 +71,7 @@ static bool g_futVersion = OHOS::system::GetIntParameter("const.product.dfx.fans
 #endif
 
 namespace panda::ecmascript {
+RWLock BaseHeap::gcExclusiveRWLock_;
 SharedHeap *SharedHeap::instance_ = nullptr;
 
 void SharedHeap::CreateNewInstance()
@@ -107,6 +109,7 @@ void SharedHeap::DestroyInstance()
 
 void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread)
 {
+    ASSERT(gcType != TriggerGCType::SHARED_CC);
     RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
     {
         SuspendAllScope scope(thread);
@@ -188,7 +191,7 @@ void SharedHeap::CollectGarbageNearOOM(JSThread *thread)
 {
     auto fragmentationSize = sOldSpace_->GetCommittedSize() - sOldSpace_->GetHeapObjectSize();
     if (fragmentationSize >= fragmentationLimitForSharedFullGC_) {
-        CollectGarbage<TriggerGCType::SHARED_FULL_GC,  GCReason::ALLOCATION_FAILED>(thread);
+        CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::ALLOCATION_FAILED>(thread);
     } else {
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
     }
@@ -388,6 +391,7 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     globalGC_ = new GlobalGC(this);
     sEvacuator_ = new SharedGCEvacuator(this);
     sharedFullGC_ = new SharedFullGC(this);
+    sharedCC_ = new SharedCC(this);
     if (Runtime::GetInstance()->IsHybridVm()) {
         unifiedGC_ = new UnifiedGC();
     }
@@ -464,9 +468,9 @@ bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 void SharedHeap::NotifyGCCompleted()
 {
     ASSERT(JSThread::GetCurrent() == dThread_);
-    LockHolder lock(waitGCFinishedMutex_);
+    LockHolder lock(sharedGCSyncMutex_);
     gcFinished_ = true;
-    waitGCFinishedCV_.SignalAll();
+    sharedGCSyncCV_.SignalAll();
 }
 
 void SharedHeap::WaitGCFinished(JSThread *thread)
@@ -475,30 +479,68 @@ void SharedHeap::WaitGCFinished(JSThread *thread)
     ASSERT(thread->IsInRunningState());
     ThreadSuspensionScope scope(thread);
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SuspendTime::WaitGCFinished", "");
-    LockHolder lock(waitGCFinishedMutex_);
+    LockHolder lock(sharedGCSyncMutex_);
+    thread->SetWaitingSharedGCFinished(true);
+    sharedGCSyncCV_.SignalAll();
     while (!gcFinished_) {
-        waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);
+        sharedGCSyncCV_.Wait(&sharedGCSyncMutex_);
     }
+    thread->SetWaitingSharedGCFinished(false);
 }
 
 void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
 {
     ASSERT(Runtime::GetInstance()->vmCount_ == 0);
-    LockHolder lock(waitGCFinishedMutex_);
+    LockHolder lock(sharedGCSyncMutex_);
     while (!gcFinished_) {
-        waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);
+        sharedGCSyncCV_.Wait(&sharedGCSyncMutex_);
     }
+}
+
+void SharedHeap::TriggerSharedCC(GCReason gcReason)
+{
+    sharedCC_->Trigger(gcReason);
+}
+
+void SharedHeap::RunSharedGC(TriggerGCType gcType, GCReason gcReason)
+{
+    ASSERT(gcType != TriggerGCType::SHARED_CC);
+    CheckInHeapProfiler();
+    gcType_ = gcType;
+    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
+    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+        sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
+        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
+    }
+    switch (gcType) {
+        case TriggerGCType::SHARED_PARTIAL_GC:
+        case TriggerGCType::SHARED_GC:
+            sharedGC_->RunPhases();
+            break;
+        case TriggerGCType::SHARED_FULL_GC:
+            sharedFullGC_->RunPhases();
+            break;
+        default: // LOCV_EXCL_BR_LINE
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            break;
+    }
+    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+        LOG_ECMA(DEBUG) << "after gc shared heap verify";
+        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    }
+    CollectGarbageFinish(true, gcType);
 }
 
 bool SharedHeap::NeedSwitchRBStub() const
 {
-    return sharedPartialGC_ && sharedPartialGC_->IsConcurrentUpdating();
+    return (sharedPartialGC_ && sharedPartialGC_->IsConcurrentUpdating()) ||
+           (sharedCC_ && sharedCC_->IsRunning());
 }
 
 void SharedHeap::DaemonCollectGarbageWithFlip([[maybe_unused]]TriggerGCType gcType, GCReason gcReason)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_PARTIAL_GC);
-    ASSERT(JSThread::GetCurrent() == dThread_);
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
     RuntimeLock(dThread_, suspensionRequestMutex);
@@ -516,7 +558,8 @@ void SharedHeap::DaemonCollectGarbageWithFlip([[maybe_unused]]TriggerGCType gcTy
 void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
 {
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
-        gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC);
+        gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC
+    );
     ASSERT(JSThread::GetCurrent() == dThread_);
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
@@ -658,7 +701,8 @@ SharedHeap::SharedGCScope::SharedGCScope()
 SharedHeap::SharedGCScope::~SharedGCScope()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll() ||
+               os::thread::GetCurrentThreadId() == DaemonThread::GetInstance()->GetThreadId());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
@@ -692,7 +736,7 @@ void SharedHeap::Reclaim(TriggerGCType gcType)
 
 void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
 {
-    if (gcType == TriggerGCType::SHARED_FULL_GC) {
+    if (gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::SHARED_CC) {
         sCompressSpace_->Reset();
     }
     if (gcThread) {
@@ -798,28 +842,27 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
     return failCount;
 }
 
-void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
+void SharedHeap::FinishGCTask()
 {
-    if (inDaemon) {
-        ASSERT(JSThread::GetCurrent() == dThread_);
-#ifndef NDEBUG
-        ASSERT(dThread_->HasLaunchedSuspendAll());
-#endif
-        dThread_->FinishRunningTask();
-        if (InSensitiveStatus()) {
-            recordSensitiveSize_ = GetHeapObjectSize();
-        }
-        NotifyGCCompleted();
-        // Update to forceGC_ is in DaemeanSuspendAll, and protected by the `Runtime::SuspendAll`,
-        // so do not need lock.
-        smartGCStats_.forceGC_ = false;
+    ASSERT(JSThread::GetCurrent() == dThread_);
+    dThread_->FinishRunningTask();
+    if (InSensitiveStatus()) {
+        recordSensitiveSize_ = GetHeapObjectSize();
     }
-    localFullMarkTriggered_ = false;
-    // Record alive object size after shared gc and other stats
+    smartGCStats_.forceGC_ = false;
+}
+
+void SharedHeap::UpdateGCThresholds(TriggerGCType gcType)
+{
     UpdateHeapStatsAfterGC(gcType);
-    // Adjust shared gc trigger threshold
     AdjustGlobalSpaceAllocLimit();
     spaceOvershoot_.store(0, std::memory_order_relaxed);
+}
+
+void SharedHeap::FinishGCStats(TriggerGCType gcType)
+{
+    localFullMarkTriggered_ = false;
+    UpdateGCThresholds(gcType);
     GetEcmaGCStats()->RecordStatisticAfterGC();
     GetEcmaGCStats()->PrintGCStatistic();
     ProcessAllGCListeners();
@@ -832,9 +875,23 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     }
 }
 
+void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
+{
+    // SharedCC calls FinishGCTask/FinishGCStats directly via friend access.
+    if (inDaemon) {
+        ASSERT(JSThread::GetCurrent() == dThread_);
+#ifndef NDEBUG
+        ASSERT(dThread_->HasLaunchedSuspendAll());
+#endif
+        FinishGCTask();
+        NotifyGCCompleted();
+    }
+    FinishGCStats(gcType);
+}
+
 void SharedHeap::NotifyDeferFreezeFinish(TriggerGCType gcType)
 {
-    if (gcType == TriggerGCType::SHARED_FULL_GC) {
+    if (gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::SHARED_CC) {
         auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
         if (notifyDeferFreezeCallback != nullptr) {
             notifyDeferFreezeCallback(true);
@@ -1304,6 +1361,11 @@ void Heap::Destroy()
 {
     ProcessSharedGCRSetWorkList();
     ProcessSharedGCMarkingLocalBuffer();
+    SharedCC *cc = sHeap_->GetSharedCC();
+    if (cc != nullptr && cc->IsRunning()) {
+        cc->SkipThreadWorkload(thread_);
+        thread_->InstallSharedCCEvacuator(nullptr);
+    }
     if (sOldTlab_ != nullptr) {
         sOldTlab_->Reset();
         delete sOldTlab_;
@@ -1453,7 +1515,7 @@ void Heap::Prepare()
 
 void Heap::PrepareForIteration() const
 {
-    WaitAndHandleCCFinished();
+    const_cast<Heap*>(this)->WaitAndHandleCCFinished();
     sweeper_->EnsureAllTaskFinished();
 }
 
@@ -1625,6 +1687,12 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         }
     }
     ASSERT("CollectGarbageImpl should not be called" && !g_isEnableCMCGC);
+    // Read-lock prevents SharedCC from starting (it needs write-lock). Safe because:
+    // 1) Local GC never triggers SHARED_CC internally (only SHARED_GC via CheckAndTriggerSharedGC,
+    //    and RunSharedGC does not acquire write-lock).
+    // 2) If SharedCC holds write-lock, JS thread blocks here in WAIT state; SuspendAllScope
+    //    treats WAIT threads as suspended (IsSuspended() == true), so no deadlock.
+    RuntimeReadLockHolder gcReadLock(thread_, BaseHeap::gcExclusiveRWLock_);
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
@@ -1868,6 +1936,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         bool async = true;
         if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
             gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+            gcType == TriggerGCType::SHARED_CC ||
             reason == GCReason::ALLOCATION_FAILED) {
             cmcReason = common::GC_REASON_BACKUP;
             async = false;
@@ -1904,6 +1973,9 @@ void Heap::CollectGarbageFromCCMark(GCReason reason)
     if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
         return;
     }
+    // Acquire read-lock for the entire local CC lifecycle. Released by
+    // ConcurrentCopyGC::HandleUpdateFinished when LocalCC completes.
+    RuntimeReadLock(thread_, BaseHeap::gcExclusiveRWLock_);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     [[maybe_unused]] GcStateScope scope(thread_);
 #endif
@@ -2751,7 +2823,7 @@ void Heap::WaitCCFinished() const
     }
 }
 
-void Heap::WaitAndHandleCCFinished() const
+void Heap::WaitAndHandleCCFinished()
 {
     if (thread_->IsConcurrentCopying()) {
         ccGC_->WaitFinished();
@@ -3251,7 +3323,8 @@ void SharedHeap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
 {
     heapAliveSizeAfterGC_ = GetHeapObjectSize();
     fragmentSizeAfterGC_ = GetCommittedSize() - GetHeapObjectSize();
-    if (gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC) {
+    if (gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+        gcType == TriggerGCType::SHARED_CC) {
         heapBasicLoss_ = fragmentSizeAfterGC_;
     }
 }
@@ -3454,7 +3527,8 @@ void Heap::ProcessGCListeners()
 void SharedHeap::ProcessAllGCListeners()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll() ||
+               os::thread::GetCurrentThreadId() == DaemonThread::GetInstance()->GetThreadId());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
     });
 }

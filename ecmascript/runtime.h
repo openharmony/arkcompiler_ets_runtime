@@ -104,6 +104,8 @@ public:
         GCIterateThreadListUnsafe(cb);
     }
 
+    // Iterate ALL threads including JIT thread (skipped by GCIterateThreadList
+    // due to readyForGCIterating_=false). Used for CC_SUSPEND on JIT thread.
     template<class Callback>
     void IterateAllThreadList(const Callback &cb)
     {
@@ -239,7 +241,6 @@ public:
 
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
     void IteratorNativeDeleteInSharedGC(WeakVisitor &visitor);
-
     void ProcessSharedDelete(const WeakRootVisitor &visitor);
     void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
     void InvokeSharedNativePointerCallbacks();

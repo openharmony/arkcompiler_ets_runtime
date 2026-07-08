@@ -105,6 +105,26 @@ JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+static bool TriggerSharedGC(JSThread *thread, TriggerGCType cause)
+{
+    switch (cause) {
+        case SHARED_GC:
+        case SHARED_PARTIAL_GC:
+            SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER>(thread);
+            return true;
+        case SHARED_FULL_GC:
+            SharedHeap::GetInstance()
+                ->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::EXTERNAL_TRIGGER>(thread);
+            return true;
+        case APPSPAWN_SHARED_FULL_GC:
+            SharedHeap::GetInstance()
+                ->CollectGarbage<TriggerGCType::APPSPAWN_SHARED_FULL_GC, GCReason::EXTERNAL_TRIGGER>(thread);
+            return true;
+        default:
+            return false;
+    }
+}
+
 JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
 {
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
@@ -117,24 +137,10 @@ JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
     if (cause == GC_TYPE_LAST) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid GC trigger type", JSTaggedValue::Exception());
     }
-    switch (cause) {
-        case SHARED_GC:
-        case SHARED_PARTIAL_GC:
-            SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER>(thread);
-            return JSTaggedValue(0);
-        case SHARED_FULL_GC:
-            SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::EXTERNAL_TRIGGER>(
-                thread);
-            return JSTaggedValue(0);
-        case APPSPAWN_SHARED_FULL_GC:
-            SharedHeap::GetInstance()
-                ->CollectGarbage<TriggerGCType::APPSPAWN_SHARED_FULL_GC, GCReason::EXTERNAL_TRIGGER>(thread);
-            return JSTaggedValue(0);
-        default:
-            break;
+    if (TriggerSharedGC(thread, cause)) {
+        return JSTaggedValue(0);
     }
     if (cause != OLD_GC) {
-        // except OLD_GC all run in place implicitly
         heap->CollectGarbage(cause, GCReason::EXTERNAL_TRIGGER);
         return JSTaggedValue(0);
     }
@@ -221,7 +227,7 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 
 TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
 {
-    static_assert(GC_TYPE_LAST == 13, "Update this method after TrigerGCType change");
+    static_assert(GC_TYPE_LAST == 14, "Update this method after TrigerGCType change");
     if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetYoungGcCause(), cause)) {
         return YOUNG_GC;
     }

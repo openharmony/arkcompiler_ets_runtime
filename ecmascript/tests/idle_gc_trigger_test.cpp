@@ -26,7 +26,7 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 using TRIGGER_IDLE_GC_TYPE = panda::JSNApi::TRIGGER_IDLE_GC_TYPE;
-using TriggerGCData = std::pair<void*, uint8_t>;
+using TriggerGCData = std::pair<void*, uint16_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 
 namespace panda::test {

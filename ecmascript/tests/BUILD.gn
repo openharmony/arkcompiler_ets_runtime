@@ -3947,6 +3947,33 @@ host_unittest_action("GC_SharedHeap_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GC_SharedCC_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "shared_cc_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_KeyStats_Test") {
   module_out_path = module_output_path
 
@@ -4041,6 +4068,7 @@ group("unittest") {
     ":GC_WeakRefOldGC_Test",
     ":GC_WeakRefSemiGC_Test",
     ":GC_SharedHeap_Test",
+    ":GC_SharedCC_Test",
     ":GC_KeyStats_Test",
     ":JS_APIArrayListIterator_Test",
     ":JS_APIArrayList_Test",
@@ -4177,6 +4205,7 @@ group("unittest") {
       ":GC_WeakRefOldGC_Test",
       ":GC_WeakRefSemiGC_Test",
       ":GC_SharedHeap_Test",
+      ":GC_SharedCC_Test",
       ":GC_KeyStats_Test",
       ":JS_Barrier_Test",
       ":JS_FinalizationRegistry_Test",
@@ -4240,6 +4269,7 @@ group("host_unittest") {
     ":GC_WeakRefOldGC_TestAction",
     ":GC_WeakRefSemiGC_TestAction",
     ":GC_SharedHeap_TestAction",
+    ":GC_SharedCC_TestAction",
     ":GC_KeyStats_TestAction",
     ":JS_APIArrayListIterator_TestAction",
     ":JS_APIArrayList_TestAction",
@@ -4389,6 +4419,7 @@ group("host_unittest") {
       ":GC_WeakRefOldGC_TestAction",
       ":GC_WeakRefSemiGC_TestAction",
       ":GC_SharedHeap_TestAction",
+      ":GC_SharedCC_TestAction",
       ":GC_KeyStats_TestAction",
       ":JS_APIArrayListIterator_TestAction",
       ":JS_APIArrayList_TestAction",
@@ -4518,6 +4549,7 @@ group("host_unittest") {
       ":GC_WeakRefOldGC_TestAction",
       ":GC_WeakRefSemiGC_TestAction",
       ":GC_SharedHeap_TestAction",
+      ":GC_SharedCC_TestAction",
       ":JS_Barrier_TestAction",
       ":JS_FinalizationRegistry_TestAction",
       ":JS_GlueRegs_TestAction",

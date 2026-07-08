@@ -89,7 +89,7 @@ public:
         }
         if constexpr (SlotBarrier == ChainedHashMapConfig::NeedSlotBarrier) {
             return reinterpret_cast<BaseString*>(
-                static_cast<uintptr_t>(Barriers::ReadBarrierForStringTableSlot(value)));
+                static_cast<uintptr_t>(Barriers::ReadBarrierForStringTableSlot(value, JSThread::GetCurrent())));
         }
         return reinterpret_cast<BaseString*>(common::Heap::GetBarrier().ReadStringTableStaticRef(
             *reinterpret_cast<common::RefField<false>*>((void*)(&value))));

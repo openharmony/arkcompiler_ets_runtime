@@ -59,6 +59,7 @@ const char *GCStats::GetGCStatisticType(GCType type)
         case GCType::SHARED_PARTIAL_GC:
         case GCType::SHARED_FULL_GC:
         case GCType::GLOBAL_GC:
+        case GCType::SHARED_CC:
             return "Shared GC";
         case GCType::PARTIAL_YOUNG_GC:
         case GCType::PARTIAL_OLD_GC:
@@ -982,6 +983,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::SHARED_PARTIAL_GC;
         case TriggerGCType::SHARED_FULL_GC:
             return GCType::SHARED_FULL_GC;
+        case TriggerGCType::SHARED_CC:
+            return GCType::SHARED_CC;
         case TriggerGCType::GLOBAL_GC:
             return GCType::GLOBAL_GC;
         case TriggerGCType::CMS_GC:
@@ -1024,7 +1027,7 @@ void SharedGCStats::PrintGCStatistic()
         PrintSharedGCDuration();
         PrintGCMemoryStatistic();
         PrintSharedGCSummaryStatistic();
-    } else if (gcType_ == GCType::SHARED_PARTIAL_GC) {
+    } else if (gcType_ == GCType::SHARED_PARTIAL_GC || gcType_ == GCType::SHARED_CC) {
         PrintSharedGCOverview();
         PrintGCMemoryStatistic();
     }

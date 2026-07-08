@@ -20,6 +20,7 @@
 
 namespace panda::ecmascript {
 class Heap;
+class SharedLocalSpace;
 
 class TlabAllocatorBase {
 public:
@@ -101,6 +102,11 @@ public:
     inline void Finalize();
 
     inline uintptr_t Allocate(size_t size, MemSpaceType space);
+
+    SharedLocalSpace *GetSharedLocalSpace() const
+    {
+        return sLocalSpace_;
+    }
 
 private:
     inline uintptr_t AllocateInCompressSpace(size_t size);

@@ -491,6 +491,7 @@ void SharedOldSpace::ReclaimCSets()
 void SharedOldSpace::Merge(SharedLocalSpace *localSpace)
 {
     localSpace->FreeBumpPoint();
+
     LockHolder lock(lock_);
     size_t oldCommittedSize = committedSize_;
     localSpace->EnumerateRegions([&](Region *region) {

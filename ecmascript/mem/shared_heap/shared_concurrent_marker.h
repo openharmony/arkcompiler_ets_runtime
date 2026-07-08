@@ -119,6 +119,11 @@ private:
 
     void Finish();                              // In daemon thread
 
+    bool IsCCMode() const
+    {
+        return gcType_ == TriggerGCType::SHARED_CC;
+    }
+
     SharedHeap *sHeap_ {nullptr};
     DaemonThread *dThread_ {nullptr};
 

@@ -44,6 +44,17 @@ TriggerCollectGarbageTask<gcType, gcReason>::TriggerCollectGarbageTask(JSThread 
     : DaemonTask(thread, DaemonTaskType::TRIGGER_COLLECT_GARBAGE, DaemonTaskGroup::GC_GROUP,
                  &TriggerCollectGarbageTaskRunner<gcType, gcReason>, nullptr) {}
 
+template<GCReason gcReason>
+void TriggerSharedCCTaskRunner()
+{
+    SharedHeap::GetInstance()->TriggerSharedCC(gcReason);
+}
+
+template<GCReason gcReason>
+TriggerSharedCCTask<gcReason>::TriggerSharedCCTask(JSThread *thread)
+    : DaemonTask(thread, DaemonTaskType::TRIGGER_SHARED_CC, DaemonTaskGroup::GC_GROUP,
+                 &TriggerSharedCCTaskRunner<gcReason>, nullptr) {}
+
 inline void TerminateDaemonTaskRunner()
 {
     DaemonThread *dThread = DaemonThread::GetInstance();

@@ -82,7 +82,8 @@ inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *th
 #endif
 }
 
-inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForStringTableSlot(JSTaggedType value)
+inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForStringTableSlot(JSTaggedType value,
+    [[maybe_unused]] const JSThread *thread)
 {
     LOG_COMMON(FATAL) << "Not implemented";
     UNREACHABLE();
