@@ -33,7 +33,9 @@ public:
     GateRef GetHash(GateRef key);
     
 private:
-    void CalcHashcodeForNumber(GateRef key, Variable *res, Label *exit);
+    void CalcHashcodeForNumber(GateRef key, Variable *res);
+    void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res);
+    void CalcHashcodeForDouble(GateRef value, Variable *res);
 
     GateRef glue_;
 };

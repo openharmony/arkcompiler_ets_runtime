@@ -112,16 +112,22 @@ void CircuitBuilder::SubCfgExit()
 
 GateRef CircuitBuilder::Return(GateRef value)
 {
-    auto control = GetCurrentLabel()->GetControl();
-    auto depend = GetCurrentLabel()->GetDepend();
-    return Return(control, depend, value);
+    auto currentLabel = GetCurrentLabel();
+    auto control = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
+    auto ret = Return(control, depend, value);
+    env_->SetCurrentLabel(nullptr);
+    return ret;
 }
 
 GateRef CircuitBuilder::Return()
 {
-    auto control = GetCurrentLabel()->GetControl();
-    auto depend = GetCurrentLabel()->GetDepend();
-    return ReturnVoid(control, depend);
+    auto currentLabel = GetCurrentLabel();
+    auto control = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
+    auto ret = ReturnVoid(control, depend);
+    env_->SetCurrentLabel(nullptr);
+    return ret;
 }
 
 void CircuitBuilder::Bind(Label *label)
@@ -163,7 +169,7 @@ void CircuitBuilder::SetState(GateRef state)
     GetCurrentLabel()->SetControl(state);
 }
 
-Label *CircuitBuilder::GetCurrentLabel() const
+LabelImpl *CircuitBuilder::GetCurrentLabel() const
 {
     return GetCurrentEnvironment()->GetCurrentLabel();
 }

@@ -16,9 +16,12 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_STUB_BUILDER_H
 
+#include <string>
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/lcr_gate_meta_data.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
@@ -78,6 +81,11 @@ using namespace panda::ecmascript;
         !GetEnvironment()->IsBaselineBuiltin()) {                                   \
         SUBENTRY(messageId, condition);                                             \
         EXITENTRY();                                                                \
+    }
+#define ASM_ASSERT_WITH_LINE(messageId, condition, line)                                                     \
+    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit() && !GetEnvironment()->IsBaselineBuiltin()) { \
+        SUBENTRY_WITH_LINE(messageId, condition, line);                                                      \
+        EXITENTRY();                                                                                         \
     }
 #define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
     SUBENTRY_WITH_GLUE(messageId, condition, glue)
@@ -188,7 +196,12 @@ public:
     GateRef Return(GateRef value);
     GateRef Return();
     void Bind(Label *label);
+    void Bind(LabelImpl *label);
     void Jump(Label *label);
+    void Jump(LabelImpl *label);
+    void Branch(GateRef condition, LabelImpl *trueLabel, LabelImpl *falseLabel,
+                uint32_t trueWeight = BranchWeight::ONE_WEIGHT, uint32_t falseWeight = BranchWeight::ONE_WEIGHT,
+                const char *comment = nullptr);
     void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
                        uint32_t trueWeight = BranchWeight::ONE_WEIGHT, uint32_t falseWeight = BranchWeight::ONE_WEIGHT,
                        const char *comment = nullptr);
@@ -198,9 +211,13 @@ public:
     void Switch(GateRef index, Label *defaultLabel,
                 const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
+    void LoopBegin(LabelImpl *loopHead);
     void LoopEnd(Label *loopHead);
+    void LoopEnd(LabelImpl *loopHead);
     GateRef GetReservedRegister();
     void LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue);
+    void LoopEndWithCheckSafePoint(LabelImpl *loopHead, Environment *env, GateRef glue);
+    void CheckSafePointAtLoopEnd(Environment *env, GateRef glue);
     GateRef CheckSuspend(GateRef glue);
     GateRef CheckSuspendForCMCGC(GateRef glue);
     // call operation
@@ -616,8 +633,7 @@ public:
     void SetArrayElementsGuardians(GateRef glue, GateRef env, GateRef value);
     GateRef GetLengthFromString(GateRef value);
     GateRef CalcHashcodeForInt(GateRef value);
-    void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);
-    void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit);
+    GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
     inline void SetMixHashcode(GateRef glue, GateRef str, GateRef mixHashcode);
     GateRef TryGetHashcodeFromString(GateRef string);
@@ -1445,7 +1461,6 @@ private:
                                      GateRef valueRegion);
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
-    GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
     GateRef CalIteratorKey(GateRef glue);
 
     template <class LabelPtrGetter>
@@ -1458,5 +1473,179 @@ private:
     GateRef globalEnv_ {Gate::InvalidGateRef};
     std::function<GateRef()> lazyGetGlobalEnvCallBack_ {nullptr};
 };
+
+struct BranchOptions {
+    static BranchOptions From()
+    {
+        return {};
+    }
+
+    static BranchOptions From(BranchOptions options)
+    {
+        return options;
+    }
+
+    static BranchOptions Likely()
+    {
+        return {BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT};
+    }
+
+    static BranchOptions Unlikely()
+    {
+        return {BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT};
+    }
+
+    static BranchOptions NoWeight()
+    {
+        return {BranchWeight::ZERO_WEIGHT, BranchWeight::ZERO_WEIGHT};
+    }
+
+    uint32_t trueWeight {BranchWeight::ONE_WEIGHT};
+    uint32_t falseWeight {BranchWeight::ONE_WEIGHT};
+};
+
+class IfElseHelper {
+public:
+    IfElseHelper(StubBuilder *builder, Environment *env, GateRef condition,
+                 BranchOptions options = {}, const char *comment = nullptr);
+    void Advance();
+    bool IsTrueBranch() const;
+    bool IsFalseBranch() const;
+    bool IsDone() const;
+private:
+    enum class State { TRUE_BRANCH, FALSE_BRANCH, DONE };
+    LabelImpl *EnsureMergeLabel();
+
+    StubBuilder *builder_;
+    Environment *env_;
+    LabelImpl *trueLabel_;
+    LabelImpl *falseLabel_;
+    LabelImpl *mergeLabel_;
+    State state_;
+};
+
+// Structured IR branch. IR_IF without IR_ELSE merges the false path with the code
+// following the macro. Nested branches are supported; write else-if as
+// IR_ELSE { IR_IF (...) { ... } }. BranchOptions controls the branch weights.
+//
+// IR_IF and IR_ELSE build IR control flow rather than C++ control flow. Jump,
+// Branch, Return, and Dispatch terminate the current IR path by clearing the
+// current label. If both branches terminate, no internal merge is bound.
+#define IR_CONTROL_FLOW_COMMENT(kind, condition)                                        \
+    (std::string(__func__) + ": " kind "(" #condition ")").c_str()
+
+#define IR_IF_IMPL(condition, options, kind)                                            \
+    for (IfElseHelper _ife(this, GetEnvironment(), condition, options,                  \
+            IR_CONTROL_FLOW_COMMENT(kind, condition));                                  \
+         !_ife.IsDone(); _ife.Advance())                                                \
+        if (_ife.IsTrueBranch())
+
+#define IR_IF(condition, ...)                                                           \
+    IR_IF_IMPL(condition, BranchOptions::From(__VA_ARGS__), "IR_IF")
+
+#define IR_IF_LIKELY(condition)                                                         \
+    IR_IF_IMPL(condition, BranchOptions::Likely(), "IR_IF_LIKELY")
+
+#define IR_IF_UNLIKELY(condition)                                                       \
+    IR_IF_IMPL(condition, BranchOptions::Unlikely(), "IR_IF_UNLIKELY")
+
+#define IR_IF_NO_WEIGHT(condition)                                                      \
+    IR_IF_IMPL(condition, BranchOptions::NoWeight(), "IR_IF_NO_WEIGHT")
+
+#define IR_ELSE                                                                         \
+        else if (_ife.IsFalseBranch())
+
+struct LoopSafepoint {
+    explicit LoopSafepoint(GateRef value) : glue(value) {}
+
+    GateRef glue;
+};
+
+class LoopOptions {
+public:
+    template<class... Options>
+    static LoopOptions From(Options... options)
+    {
+        LoopOptions result;
+        (result.Apply(options), ...);
+        return result;
+    }
+
+    const BranchOptions &GetBranchOptions() const
+    {
+        return branchOptions_;
+    }
+
+    bool NeedCheckSafePoint() const
+    {
+        return needCheckSafePoint_;
+    }
+
+    GateRef GetGlue() const
+    {
+        return glue_;
+    }
+
+private:
+    void Apply(BranchOptions options)
+    {
+        branchOptions_ = options;
+    }
+
+    void Apply(LoopSafepoint option)
+    {
+        needCheckSafePoint_ = true;
+        glue_ = option.glue;
+    }
+
+    BranchOptions branchOptions_ {};
+    GateRef glue_ {Circuit::NullGate()};
+    bool needCheckSafePoint_ {false};
+};
+
+class WhileHelper {
+public:
+    using ConditionBuilder = std::function<GateRef()>;
+
+    WhileHelper(StubBuilder *builder, Environment *env, ConditionBuilder condition,
+                LoopOptions options = {}, const char *comment = nullptr);
+    void Finish();
+    void Break();
+    void Continue();
+    bool IsActive() const;
+
+private:
+    bool IsReachable() const;
+    LabelImpl *EnsureBackEdge();
+    void EmitLoopEnd();
+
+    StubBuilder *builder_;
+    Environment *env_;
+    LabelImpl *header_;
+    LabelImpl *body_;
+    LabelImpl *exit_;
+    LabelImpl *backEdge_;
+    LoopOptions options_;
+    bool active_;
+};
+
+// Structured IR while loop. The condition is built at the loop header so reads
+// of loop-carried Variables create the correct pending Phi nodes. BranchOptions
+// controls the condition branch weights; LoopSafepoint adds a safepoint check
+// before the backedge.
+//
+// IR_BREAK() and IR_CONTINUE() target the innermost IR_WHILE through C++ lexical
+// scoping. They emit IR jumps and do not alter C++ control flow, so subsequent IR
+// construction must be placed in IR_ELSE or start from another bound label.
+// Every IR_WHILE must have a natural fallthrough or an IR_CONTINUE() backedge;
+// a loop whose body always breaks, returns, or throws should be written as IR_IF.
+#define IR_WHILE(condition, ...)                                                        \
+    for (WhileHelper _loop(this, GetEnvironment(),                                      \
+            [&]() -> GateRef { return (condition); }, LoopOptions::From(__VA_ARGS__),   \
+            IR_CONTROL_FLOW_COMMENT("IR_WHILE", condition));                            \
+         _loop.IsActive(); _loop.Finish())
+
+#define IR_BREAK() _loop.Break()
+#define IR_CONTINUE() _loop.Continue()
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H

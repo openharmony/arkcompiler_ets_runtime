@@ -39,7 +39,7 @@ Environment::Environment(size_t arguments, CircuitBuilder *builder)
         arguments_[i] = circuitBuilder_->Arguments(i);
     }
     entry_ = Label(NewLabel(this, circuit_->GetStateRoot()));
-    currentLabel_ = &entry_;
+    currentLabel_ = entry_.GetRawLabel();
     currentLabel_->Seal();
     auto depend_entry = circuit_->GetDependRoot();
     currentLabel_->SetDepend(depend_entry);
@@ -52,7 +52,7 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     GateAccessor acc(circuit);
     entry_ = Label(NewLabel(this, acc.GetIn(hir, 0)));
-    currentLabel_ = &entry_;
+    currentLabel_ = entry_.GetRawLabel();
     currentLabel_->Seal();
     auto dependEntry = acc.GetDep(hir);
     currentLabel_->SetDepend(dependEntry);
@@ -68,7 +68,7 @@ Environment::Environment(GateRef stateEntry, GateRef dependEntry,
     circuitBuilder_->SetEnvironment(this);
     SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     entry_ = Label(NewLabel(this, stateEntry));
-    currentLabel_ = &entry_;
+    currentLabel_ = entry_.GetRawLabel();
     currentLabel_->Seal();
     currentLabel_->SetDepend(dependEntry);
     for (auto in : args) {
@@ -98,7 +98,7 @@ Label::Label(CircuitBuilder *cirBuilder)
     impl_ = env->NewLabel(env);
 }
 
-void Label::LabelImpl::Seal()
+void LabelImpl::Seal()
 {
     for (auto &[variable, gate] : incompletePhis_) {
         variable->AddPhiOperand(gate);
@@ -106,12 +106,12 @@ void Label::LabelImpl::Seal()
     isSealed_ = true;
 }
 
-void Label::LabelImpl::WriteVariable(Variable *var, GateRef value)
+void LabelImpl::WriteVariable(Variable *var, GateRef value)
 {
     valueMap_[var] = value;
 }
 
-GateRef Label::LabelImpl::ReadVariable(Variable *var)
+GateRef LabelImpl::ReadVariable(Variable *var)
 {
     if (valueMap_.find(var) != valueMap_.end()) {
         auto result = valueMap_.at(var);
@@ -123,7 +123,7 @@ GateRef Label::LabelImpl::ReadVariable(Variable *var)
     return ReadVariableRecursive(var);
 }
 
-GateRef Label::LabelImpl::ReadVariableRecursive(Variable *var)
+GateRef LabelImpl::ReadVariableRecursive(Variable *var)
 {
     GateRef val;
     MachineType machineType = CircuitBuilder::GetMachineTypeFromVariableType(var->Type());
@@ -157,7 +157,7 @@ GateRef Label::LabelImpl::ReadVariableRecursive(Variable *var)
     return val;
 }
 
-void Label::LabelImpl::Bind()
+void LabelImpl::Bind()
 {
     ASSERT(!predecessors_.empty());
     if (IsLoopHead()) {
@@ -173,7 +173,7 @@ void Label::LabelImpl::Bind()
     }
 }
 
-void Label::LabelImpl::MergeAllControl()
+void LabelImpl::MergeAllControl()
 {
     if (predecessors_.size() < 2) {  // 2 : Loop Head only support two predecessors_
         return;
@@ -201,7 +201,7 @@ void Label::LabelImpl::MergeAllControl()
     control_ = merge;
 }
 
-void Label::LabelImpl::MergeAllDepend()
+void LabelImpl::MergeAllDepend()
 {
     if (predecessors_.size() < 2) {  // 2 : Loop Head only support two predecessors_
         depend_ = predecessors_[0]->GetDepend();
@@ -229,25 +229,25 @@ void Label::LabelImpl::MergeAllDepend()
         predeControl_, dependsList, dependsList.size());
 }
 
-void Label::LabelImpl::AppendPredecessor(Label::LabelImpl *predecessor)
+void LabelImpl::AppendPredecessor(LabelImpl *predecessor)
 {
     if (predecessor != nullptr) {
         predecessors_.push_back(predecessor);
     }
 }
 
-bool Label::LabelImpl::IsNeedSeal() const
+bool LabelImpl::IsNeedSeal() const
 {
     auto stateCount = GateAccessor(env_->GetCircuit()).GetStateCount(predeControl_);
     return predecessors_.size() >= stateCount;
 }
 
-bool Label::LabelImpl::IsLoopHead() const
+bool LabelImpl::IsLoopHead() const
 {
     return GateAccessor(env_->GetCircuit()).IsLoopHead(predeControl_);
 }
 
-bool Label::LabelImpl::IsControlCase() const
+bool LabelImpl::IsControlCase() const
 {
     return GateAccessor(env_->GetCircuit()).IsControlCase(predeControl_);
 }

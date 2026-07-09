@@ -213,32 +213,20 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define METHOD_ENTRY_ENV_DEFINED(func)                                                            \
     GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
     GateRef isDebugMode = LoadPrimitive(VariableType::BOOL(), glue, isDebugModeOffset);           \
-    Label isDebugModeTrue(env);                                                                   \
-    Label isDebugModeFalse(env);                                                                  \
-    BRANCH(isDebugMode, &isDebugModeTrue, &isDebugModeFalse);                                     \
-    Bind(&isDebugModeTrue);                                                                       \
-    {                                                                                             \
+    IR_IF (isDebugMode) {                                                                         \
         CallRuntime(glue, RTSTUB_ID(MethodEntry), { func });                                      \
-        Jump(&isDebugModeFalse);                                                                  \
-    }                                                                                             \
-    Bind(&isDebugModeFalse)
+    }
 
 #define METHOD_EXIT()                                                                                           \
-    Label NeedCallRuntimeTrue(env);                                                                             \
-    Label NeedCallRuntimeFalse(env);                                                                            \
     GateRef isDebugModeOrTracing = LogicOrBuilder(env)                                                          \
         .Or(LoadPrimitive(VariableType::BOOL(), glue,                                                           \
             IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit()))))                                  \
         .Or(LoadPrimitive(VariableType::BOOL(), glue,                                                           \
             IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()))))                                    \
         .Done();                                                                                                \
-    BRANCH(isDebugModeOrTracing, &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);                                  \
-    Bind(&NeedCallRuntimeTrue);                                                                                 \
-    {                                                                                                           \
+    IR_IF (isDebugModeOrTracing) {                                                                              \
         CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                                           \
-        Jump(&NeedCallRuntimeFalse);                                                                            \
-    }                                                                                                           \
-    Bind(&NeedCallRuntimeFalse)
+    }
 
 #define TRY_OSR()                                                                                                    \
     DEFVARIABLE(varOsrCache, VariableType::NATIVE_POINTER(), Undefined());                                           \
@@ -585,28 +573,26 @@ DECLARE_ASM_HANDLER(HandleGetunmappedargs)
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
 
-    Label newArgumentsObj(env);
-    Label checkException(env);
-    Label dispatch(env);
     Label slowPath(env);
     NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
     Label afterArgumentsList(env);
     newBuilder.NewArgumentsList(&argumentsList, &afterArgumentsList, sp, startIdx, numArgs);
     Bind(&afterArgumentsList);
-    BRANCH(TaggedIsException(*argumentsList), &slowPath, &newArgumentsObj);
-    Bind(&newArgumentsObj);
+    IR_IF (TaggedIsException(*argumentsList)) {
+        Jump(&slowPath);
+    }
     Label afterArgumentsObj(env);
     newBuilder.NewArgumentsObj(&argumentsObj, &afterArgumentsObj, *argumentsList, numArgs);
     Bind(&afterArgumentsObj);
-    BRANCH(TaggedIsException(*argumentsObj), &slowPath, &checkException);
-    Bind(&checkException);
-    BRANCH(HasPendingException(glue), &slowPath, &dispatch);
-    Bind(&dispatch);
-    {
-        varAcc = *argumentsObj;
-        DISPATCH_WITH_ACC(GETUNMAPPEDARGS);
+    IR_IF (TaggedIsException(*argumentsObj)) {
+        Jump(&slowPath);
     }
+    IR_IF (HasPendingException(glue)) {
+        Jump(&slowPath);
+    }
+    varAcc = *argumentsObj;
+    DISPATCH_WITH_ACC(GETUNMAPPEDARGS);
 
     Bind(&slowPath);
     {
@@ -625,8 +611,6 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(glue, sp, restIdx);
     GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32)));
     GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
-    Label dispatch(env);
-    Label slowPath(env);
     // For the args, we use ElementsKind::GENERIC as the kind
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
@@ -657,18 +641,13 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     }
     LoopEnd(&setArgumentsBegin);
     Bind(&setArgumentsEnd);
-    BRANCH(HasPendingException(glue), &slowPath, &dispatch);
-    Bind(&dispatch);
-    {
-        varAcc = *res;
-        DISPATCH_WITH_ACC(COPYRESTARGS_IMM8);
-    }
-
-    Bind(&slowPath);
-    {
+    IR_IF (HasPendingException(glue)) {
         GateRef result2 = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(CopyRestArgs),
                                                    { IntToTaggedInt(restIdx) });
         CHECK_EXCEPTION_WITH_ACC(result2, INT_PTR(COPYRESTARGS_IMM8));
+    } IR_ELSE {
+        varAcc = *res;
+        DISPATCH_WITH_ACC(COPYRESTARGS_IMM8);
     }
 }
 
@@ -1487,18 +1466,10 @@ DECLARE_ASM_HANDLER(HandleResumegenerator)
     GateRef curFunc = GetFunctionFromFrame(glue, frame);
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, curFunc, False() });
 #endif
-    Label isAsyncGeneratorObj(env);
-    Label notAsyncGeneratorObj(env);
-    Label dispatch(env);
-    BRANCH(TaggedIsAsyncGeneratorObject(glue, obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
-    Bind(&isAsyncGeneratorObj);
-    {
+    IR_IF (TaggedIsAsyncGeneratorObject(glue, obj)) {
         GateRef resumeResultOffset = IntPtr(JSAsyncGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         varAcc = Load(VariableType::JS_ANY(), glue, obj, resumeResultOffset);
-        Jump(&dispatch);
-    }
-    Bind(&notAsyncGeneratorObj);
-    {
+    } IR_ELSE {
         GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         varAcc = Load(VariableType::JS_ANY(), glue, obj, resumeResultOffset);
         GateRef taskInfoOffset = IntPtr(JSGeneratorObject::TASK_INFO_OFFSET);
@@ -1507,9 +1478,7 @@ DECLARE_ASM_HANDLER(HandleResumegenerator)
             IntPtr(JSThread::GlueData::GetTaskInfoOffset(env->Is32Bit())), taskInfo);
         Store(VariableType::NATIVE_POINTER(), glue, obj,
             IntPtr(JSGeneratorObject::TASK_INFO_OFFSET), IntPtr(0));
-        Jump(&dispatch);
     }
-    Bind(&dispatch);
     DISPATCH_WITH_ACC(RESUMEGENERATOR);
 }
 
@@ -1524,23 +1493,13 @@ DECLARE_ASM_HANDLER(HandleDeprecatedResumegeneratorPrefV8)
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, curFunc, False() });
 #endif
 
-    Label isAsyncGeneratorObj(env);
-    Label notAsyncGeneratorObj(env);
-    Label dispatch(env);
-    BRANCH(TaggedIsAsyncGeneratorObject(glue, obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
-    Bind(&isAsyncGeneratorObj);
-    {
+    IR_IF (TaggedIsAsyncGeneratorObject(glue, obj)) {
         GateRef resumeResultOffset = IntPtr(JSAsyncGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         varAcc = Load(VariableType::JS_ANY(), glue, obj, resumeResultOffset);
-        Jump(&dispatch);
-    }
-    Bind(&notAsyncGeneratorObj);
-    {
+    } IR_ELSE {
         GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         varAcc = Load(VariableType::JS_ANY(), glue, obj, resumeResultOffset);
-        Jump(&dispatch);
     }
-    Bind(&dispatch);
     DISPATCH_WITH_ACC(DEPRECATED_RESUMEGENERATOR_PREF_V8);
 }
 
@@ -1550,21 +1509,11 @@ DECLARE_ASM_HANDLER(HandleGetresumemode)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef obj = *varAcc;
 
-    Label isAsyncGeneratorObj(env);
-    Label notAsyncGeneratorObj(env);
-    Label dispatch(env);
-    BRANCH(TaggedIsAsyncGeneratorObject(glue, obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
-    Bind(&isAsyncGeneratorObj);
-    {
+    IR_IF (TaggedIsAsyncGeneratorObject(glue, obj)) {
         varAcc = IntToTaggedPtr(GetResumeModeFromAsyncGeneratorObject(obj));
-        Jump(&dispatch);
-    }
-    Bind(&notAsyncGeneratorObj);
-    {
+    } IR_ELSE {
         varAcc = IntToTaggedPtr(GetResumeModeFromGeneratorObject(obj));
-        Jump(&dispatch);
     }
-    Bind(&dispatch);
     DISPATCH_WITH_ACC(GETRESUMEMODE);
 }
 
@@ -1574,21 +1523,11 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGetresumemodePrefV8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
 
-    Label isAsyncGeneratorObj(env);
-    Label notAsyncGeneratorObj(env);
-    Label dispatch(env);
-    BRANCH(TaggedIsAsyncGeneratorObject(glue, obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
-    Bind(&isAsyncGeneratorObj);
-    {
+    IR_IF (TaggedIsAsyncGeneratorObject(glue, obj)) {
         varAcc = IntToTaggedPtr(GetResumeModeFromAsyncGeneratorObject(obj));
-        Jump(&dispatch);
-    }
-    Bind(&notAsyncGeneratorObj);
-    {
+    } IR_ELSE {
         varAcc = IntToTaggedPtr(GetResumeModeFromGeneratorObject(obj));
-        Jump(&dispatch);
     }
-    Bind(&dispatch);
     DISPATCH_WITH_ACC(DEPRECATED_GETRESUMEMODE_PREF_V8);
 }
 
@@ -1648,17 +1587,11 @@ DECLARE_ASM_HANDLER(HandleThrowIfnotobjectPrefV8)
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
-    Label isEcmaObject(env);
-    Label notEcmaObject(env);
-    Label isHeapObject(env);
-    BRANCH(TaggedIsHeapObject(value), &isHeapObject, &notEcmaObject);
-    Bind(&isHeapObject);
-    BRANCH(TaggedObjectIsEcmaObject(glue, value), &isEcmaObject, &notEcmaObject);
-    Bind(&isEcmaObject);
-    {
-        DISPATCH(THROW_IFNOTOBJECT_PREF_V8);
+    IR_IF (TaggedIsHeapObject(value)) {
+        IR_IF (TaggedObjectIsEcmaObject(glue, value)) {
+            DISPATCH(THROW_IFNOTOBJECT_PREF_V8);
+        }
     }
-    Bind(&notEcmaObject);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfNotObject), {});
     DISPATCH_LAST();
@@ -1838,19 +1771,15 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedifholePrefV8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef v1 = ReadInst8_2(pc);
     GateRef hole = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
-    Label isHole(env);
-    Label notHole(env);
-    BRANCH(TaggedIsHole(hole), &isHole, &notHole);
-    Bind(&notHole);
-    {
+    IR_IF (TaggedIsHole(hole)) {
+        GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
+        // assert obj.IsString()
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowUndefinedIfHole), { obj });
+        DISPATCH_LAST();
+    } IR_ELSE {
         DISPATCH(THROW_UNDEFINEDIFHOLE_PREF_V8_V8);
     }
-    Bind(&isHole);
-    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
-    // assert obj.IsString()
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowUndefinedIfHole), { obj });
-    DISPATCH_LAST();
 }
 
 DECLARE_ASM_HANDLER(HandleThrowUndefinedifholewithnamePrefId16)
@@ -1858,20 +1787,16 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedifholewithnamePrefId16)
     auto env = GetEnvironment();
 
     GateRef hole = acc;
-    Label isHole(env);
-    Label notHole(env);
-    BRANCH(TaggedIsHole(hole), &isHole, &notHole);
-    Bind(&notHole);
-    {
+    IR_IF (TaggedIsHole(hole)) {
+        GateRef stringId = ReadInst16_1(pc);
+        GateRef str = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+        // assert obj.IsString()
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowUndefinedIfHole), { str });
+        DISPATCH_LAST();
+    } IR_ELSE {
         DISPATCH(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
     }
-    Bind(&isHole);
-    GateRef stringId = ReadInst16_1(pc);
-    GateRef str = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
-    // assert obj.IsString()
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowUndefinedIfHole), { str });
-    DISPATCH_LAST();
 }
 
 DECLARE_ASM_HANDLER(HandleCopydatapropertiesV8)
@@ -1915,10 +1840,11 @@ DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm8V8)
     GateRef obj = *varAcc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetObjectWithProto), { proto, obj });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    DISPATCH_WITH_ACC(SETOBJECTWITHPROTO_IMM8_V8);
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        DISPATCH_WITH_ACC(SETOBJECTWITHPROTO_IMM8_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm16V8)
@@ -1931,10 +1857,11 @@ DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm16V8)
     GateRef obj = *varAcc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetObjectWithProto), { proto, obj });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    DISPATCH_WITH_ACC(SETOBJECTWITHPROTO_IMM16_V8);
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        DISPATCH_WITH_ACC(SETOBJECTWITHPROTO_IMM16_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedSetobjectwithprotoPrefV8V8)
@@ -1946,10 +1873,11 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSetobjectwithprotoPrefV8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetObjectWithProto), { proto, obj });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    DISPATCH_WITH_ACC(DEPRECATED_SETOBJECTWITHPROTO_PREF_V8_V8);
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        DISPATCH_WITH_ACC(DEPRECATED_SETOBJECTWITHPROTO_PREF_V8_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
@@ -3162,12 +3090,6 @@ DECLARE_ASM_HANDLER(HandleReturn)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
-    Label isBaselineBuiltinFrame(env);
-    Label notBaselineBuiltinFrame(env);
-    Label pcEqualNullptr(env);
-    Label pcNotEqualNullptr(env);
-    Label pcEqualBaseline(env);
-    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -3210,43 +3132,30 @@ DECLARE_ASM_HANDLER(HandleReturn)
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef maybeFrameType = LoadZeroOffsetPrimitive(VariableType::INT64(), typePos);
-    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
-           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
-    Bind(&isBaselineBuiltinFrame);
-    {
+    IR_IF (Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME)))) {
         varSp = LoadZeroOffsetPrimitive(VariableType::NATIVE_POINTER(), *varSp);
-        Jump(&notBaselineBuiltinFrame);
     }
-    Bind(&notBaselineBuiltinFrame);
     prevState = GetFrame(*varSp);
     varPc = GetPcFromFrame(*prevState);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
-    Bind(&pcEqualNullptr);
-    {
+    IR_IF (IntPtrEqual(*varPc, IntPtr(0))) {
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varAcc, *varSp, currentSp });
-        Return();
+    } IR_ELSE {
+        IR_IF (IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG))) {
+            GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        } IR_ELSE {
+            GateRef function = GetFunctionFromFrame(glue, *prevState);
+            GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+            varConstpool = GetConstpoolFromMethod(glue, method);
+            varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
+            varHotnessCounter = GetHotnessCounterFromMethod(method);
+            GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
+                { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+                *varAcc, *varHotnessCounter, jumpSize });
+        }
     }
-    Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
-    Bind(&pcEqualBaseline);
-    {
-        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
-        Return();
-    }
-    Bind(&pcNotEqualBaseline);
-    {
-        GateRef function = GetFunctionFromFrame(glue, *prevState);
-        GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(glue, method);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
-        varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-            *varAcc, *varHotnessCounter, jumpSize });
-        Return();
-    }
+    Return();
 }
 
 DECLARE_ASM_HANDLER(HandleReturnundefined)
@@ -3261,12 +3170,6 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
-    Label isBaselineBuiltinFrame(env);
-    Label notBaselineBuiltinFrame(env);
-    Label pcEqualNullptr(env);
-    Label pcNotEqualNullptr(env);
-    Label pcEqualBaseline(env);
-    Label pcNotEqualBaseline(env);
     Label updateHotness(env);
     Label isStable(env);
     Label tryContinue(env);
@@ -3309,44 +3212,31 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef maybeFrameType = LoadZeroOffsetPrimitive(VariableType::INT64(), typePos);
-    BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
-           &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
-    Bind(&isBaselineBuiltinFrame);
-    {
+    IR_IF (Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME)))) {
         varSp = LoadZeroOffsetPrimitive(VariableType::NATIVE_POINTER(), *varSp);
-        Jump(&notBaselineBuiltinFrame);
     }
-    Bind(&notBaselineBuiltinFrame);
     prevState = GetFrame(*varSp);
     varPc = GetPcFromFrame(*prevState);
     varAcc = Undefined();
-    BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
-    Bind(&pcEqualNullptr);
-    {
+    IR_IF (IntPtrEqual(*varPc, IntPtr(0))) {
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varAcc, *varSp, currentSp });
-        Return();
+    } IR_ELSE {
+        IR_IF (IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG))) {
+            GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        } IR_ELSE {
+            GateRef function = GetFunctionFromFrame(glue, *prevState);
+            GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+            varConstpool = GetConstpoolFromMethod(glue, method);
+            varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
+            varHotnessCounter = GetHotnessCounterFromMethod(method);
+            GateRef jumpSize = GetCallSizeFromFrame(*prevState);
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
+                { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+                *varAcc, *varHotnessCounter, jumpSize });
+        }
     }
-    Bind(&pcNotEqualNullptr);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
-    Bind(&pcEqualBaseline);
-    {
-        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
-        Return();
-    }
-    Bind(&pcNotEqualBaseline);
-    {
-        GateRef function = GetFunctionFromFrame(glue, *prevState);
-        GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(glue, method);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
-        varHotnessCounter = GetHotnessCounterFromMethod(method);
-        GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-            { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-            *varAcc, *varHotnessCounter, jumpSize });
-        Return();
-    }
+    Return();
 }
 
 DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
@@ -3724,16 +3614,10 @@ DECLARE_ASM_HANDLER(HandleTonumberImm8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = *varAcc;
-    Label valueIsNumber(env);
-    Label valueNotNumber(env);
-    BRANCH(TaggedIsNumber(value), &valueIsNumber, &valueNotNumber);
-    Bind(&valueIsNumber);
-    {
+    IR_IF (TaggedIsNumber(value)) {
         varAcc = value;
         DISPATCH_WITH_ACC(TONUMBER_IMM8);
-    }
-    Bind(&valueNotNumber);
-    {
+    } IR_ELSE {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumber), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(TONUMBER_IMM8));
@@ -3745,16 +3629,10 @@ DECLARE_ASM_HANDLER(HandleDeprecatedTonumberPrefV8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    Label valueIsNumber(env);
-    Label valueNotNumber(env);
-    BRANCH(TaggedIsNumber(value), &valueIsNumber, &valueNotNumber);
-    Bind(&valueIsNumber);
-    {
+    IR_IF (TaggedIsNumber(value)) {
         varAcc = value;
         DISPATCH_WITH_ACC(DEPRECATED_TONUMBER_PREF_V8);
-    }
-    Bind(&valueNotNumber);
-    {
+    } IR_ELSE {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumber), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(DEPRECATED_TONUMBER_PREF_V8));
@@ -3809,38 +3687,19 @@ DECLARE_ASM_HANDLER(HandleTonumericImm8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = *varAcc;
-    Label valueIsNumeric(env);
-    Label valueNotNumeric(env);
-    BRANCH(TaggedIsNumeric(glue, value), &valueIsNumeric, &valueNotNumeric);
-    Bind(&valueIsNumeric);
-    {
+    IR_IF (TaggedIsNumeric(glue, value)) {
         if (!callback.IsEmpty()) {
-            Label valueIsNumber(env);
-            Label profilerEnd(env);
-            BRANCH(TaggedIsNumber(value), &valueIsNumber, &profilerEnd);
-            Bind(&valueIsNumber);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                BRANCH(TaggedIsInt(value), &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
+            IR_IF (TaggedIsNumber(value)) {
+                IR_IF (TaggedIsInt(value)) {
                     callback.ProfileOpType(TaggedInt(PGOSampleType::IntType()));
-                    Jump(&profilerEnd);
-                }
-                Bind(&valueIsDouble);
-                {
+                } IR_ELSE {
                     callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
-                    Jump(&profilerEnd);
                 }
             }
-            Bind(&profilerEnd);
         }
         varAcc = value;
         DISPATCH_WITH_ACC(TONUMERIC_IMM8);
-    }
-    Bind(&valueNotNumeric);
-    {
+    } IR_ELSE {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumeric), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(TONUMERIC_IMM8));
@@ -3852,16 +3711,10 @@ DECLARE_ASM_HANDLER(HandleDeprecatedTonumericPrefV8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    Label valueIsNumeric(env);
-    Label valueNotNumeric(env);
-    BRANCH(TaggedIsNumeric(glue, value), &valueIsNumeric, &valueNotNumeric);
-    Bind(&valueIsNumeric);
-    {
+    IR_IF (TaggedIsNumeric(glue, value)) {
         varAcc = value;
         DISPATCH_WITH_ACC(DEPRECATED_TONUMERIC_PREF_V8);
-    }
-    Bind(&valueNotNumeric);
-    {
+    } IR_ELSE {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumeric), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(DEPRECATED_TONUMERIC_PREF_V8));
@@ -3899,16 +3752,12 @@ DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
     GateRef genFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateAsyncGeneratorObj), { genFunc });
-    Label isException(env);
-    Label notException(env);
-    BRANCH(TaggedIsException(result), &isException, &notException);
-    Bind(&isException);
-    {
+    IR_IF (TaggedIsException(result)) {
         DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = result;
+        DISPATCH_WITH_ACC(CREATEASYNCGENERATOROBJ_V8);
     }
-    Bind(&notException);
-    varAcc = result;
-    DISPATCH_WITH_ACC(CREATEASYNCGENERATOROBJ_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
@@ -4718,12 +4567,13 @@ DECLARE_ASM_HANDLER(HandleNewlexenvImm8)
     Label afterNew(env);
     newBuilder.NewLexicalEnv(&result, &afterNew, ZExtInt16ToInt32(numVars), parent);
     Bind(&afterNew);
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-    Bind(&notException);
-    varAcc = *result;
-    SetEnvToFrame(glue, GetFrame(sp), *result);
-    DISPATCH_WITH_ACC(NEWLEXENV_IMM8);
+    IR_IF (TaggedIsException(*result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = *result;
+        SetEnvToFrame(glue, GetFrame(sp), *result);
+        DISPATCH_WITH_ACC(NEWLEXENV_IMM8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleWideNewlexenvPrefImm16)
@@ -4739,12 +4589,13 @@ DECLARE_ASM_HANDLER(HandleWideNewlexenvPrefImm16)
     Label afterNew(env);
     newBuilder.NewLexicalEnv(&result, &afterNew, ZExtInt16ToInt32(numVars), parent);
     Bind(&afterNew);
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-    Bind(&notException);
-    varAcc = *result;
-    SetEnvToFrame(glue, GetFrame(sp), *result);
-    DISPATCH_WITH_ACC(WIDE_NEWLEXENV_PREF_IMM16);
+    IR_IF (TaggedIsException(*result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = *result;
+        SetEnvToFrame(glue, GetFrame(sp), *result);
+        DISPATCH_WITH_ACC(WIDE_NEWLEXENV_PREF_IMM16);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleNewlexenvwithnameImm8Id16)
@@ -4757,12 +4608,13 @@ DECLARE_ASM_HANDLER(HandleNewlexenvwithnameImm8Id16)
     GateRef currentEnv = GetEnvFromFrame(glue, state);
     GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewLexicalEnvWithName),
                                             { Int16ToTaggedInt(numVars), Int16ToTaggedInt(scopeId) });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
-    Bind(&notException);
-    varAcc = res;
-    SetEnvToFrame(glue, state, res);
-    DISPATCH_WITH_ACC(NEWLEXENVWITHNAME_IMM8_ID16);
+    IR_IF (TaggedIsException(res)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = res;
+        SetEnvToFrame(glue, state, res);
+        DISPATCH_WITH_ACC(NEWLEXENVWITHNAME_IMM8_ID16);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleWideNewlexenvwithnamePrefImm16Id16)
@@ -4775,12 +4627,13 @@ DECLARE_ASM_HANDLER(HandleWideNewlexenvwithnamePrefImm16Id16)
     GateRef currentEnv = GetEnvFromFrame(glue, state);
     GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewLexicalEnvWithName),
                                             { Int16ToTaggedInt(numVars), Int16ToTaggedInt(scopeId) });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
-    Bind(&notException);
-    varAcc = res;
-    SetEnvToFrame(glue, state, res);
-    DISPATCH_WITH_ACC(WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16);
+    IR_IF (TaggedIsException(res)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = res;
+        SetEnvToFrame(glue, state, res);
+        DISPATCH_WITH_ACC(WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
@@ -4801,21 +4654,17 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
         { proto, currentEnv, constpool, Int16ToTaggedInt(methodId), Int16ToTaggedInt(literalId),
         module, Int16ToTaggedInt(length) });
 
-    Label isException(env);
-    Label isNotException(env);
-    BRANCH(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    {
+    IR_IF (TaggedIsException(res)) {
         DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&isNotException);
+    } IR_ELSE {
 #if ECMASCRIPT_ENABLE_IC
-    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-    UpdateProfileTypeInfoCellToFunction(glue, res, profileTypeInfo, slotId);
-    callback.ProfileDefineClass(res);
+        GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+        UpdateProfileTypeInfoCellToFunction(glue, res, profileTypeInfo, slotId);
+        callback.ProfileDefineClass(res);
 #endif
-    varAcc = res;
-    DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
+        varAcc = res;
+        DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
@@ -4836,21 +4685,17 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
         { proto, currentEnv, constpool, Int16ToTaggedInt(methodId),
         Int16ToTaggedInt(literalId), module, Int16ToTaggedInt(length) });
 
-    Label isException(env);
-    Label isNotException(env);
-    BRANCH(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    {
+    IR_IF (TaggedIsException(res)) {
         DISPATCH_LAST_WITH_ACC();
-    }
-    Bind(&isNotException);
+    } IR_ELSE {
 #if ECMASCRIPT_ENABLE_IC
-    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-    UpdateProfileTypeInfoCellToFunction(glue, res, profileTypeInfo, slotId);
-    callback.ProfileDefineClass(res);
+        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+        UpdateProfileTypeInfoCellToFunction(glue, res, profileTypeInfo, slotId);
+        callback.ProfileDefineClass(res);
 #endif
-    varAcc = res;
-    DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
+        varAcc = res;
+        DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
@@ -4874,16 +4719,12 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
         { proto, lexicalEnv, constpool, Int16ToTaggedInt(methodId),
         Int16ToTaggedInt(literalId), module, Int16ToTaggedInt(length) });
 
-    Label isException(env);
-    Label isNotException(env);
-    BRANCH(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    {
+    IR_IF (TaggedIsException(res)) {
         DISPATCH_LAST_WITH_ACC();
+    } IR_ELSE {
+        varAcc = res;
+        DISPATCH_WITH_ACC(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
     }
-    Bind(&isNotException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
@@ -5413,15 +5254,13 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
 
     auto env = GetEnvironment();
-    Label isException(env);
-    Label isNotException(env);
-    BRANCH(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    DISPATCH_LAST();
-    Bind(&isNotException);
-    callback.ProfileCreateObject(res);
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
-    DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
+    IR_IF (TaggedIsException(res)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        callback.ProfileCreateObject(res);
+        DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
+        DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
@@ -5437,15 +5276,13 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
 
     auto env = GetEnvironment();
-    Label isException(env);
-    Label isNotException(env);
-    BRANCH(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    DISPATCH_LAST();
-    Bind(&isNotException);
-    callback.ProfileCreateObject(res);
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
-    DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
+    IR_IF (TaggedIsException(res)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        callback.ProfileCreateObject(res);
+        DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
+        DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)
@@ -5701,38 +5538,23 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
         auto frame = GetFrame(sp);
         GateRef currentFunc = GetFunctionFromFrame(glue, frame);
         GateRef module = GetModuleFromFunction(glue, currentFunc);
-        Label isSendableFunc(env);
-        Label isNotSendableFunc(env);
-        Label afterSendableFunc(env);
-        BRANCH(IsSendableFunction(GetMethodFromFunction(glue, result)), &isSendableFunc, &isNotSendableFunc);
-        Bind(&isSendableFunc);
-        {
+        IR_IF (IsSendableFunction(GetMethodFromFunction(glue, result))) {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
-            Label isSourceTextModule(env);
-            Label isNotSourceTextModule(env);
-            BRANCH(IsSourceTextModule(glue, module), &isSourceTextModule, &isNotSourceTextModule);
-            Bind(&isSourceTextModule);
-            {
+            IR_IF (IsSourceTextModule(glue, module)) {
                 SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(glue, module));
-                Jump(&isNotSourceTextModule);
             }
-            Bind(&isNotSourceTextModule);
             SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
             GateRef emptySFunctionEnvHandle = GetGlobalConstantValue(VariableType::JS_ANY(),
                                                                      glue, ConstantIndex::EMPTY_SFUNCTION_ENV_INDEX);
             SetLexicalEnvToFunction(glue, result, emptySFunctionEnvHandle);
-            Jump(&afterSendableFunc);
-        }
-        Bind(&isNotSendableFunc);
-        {
+        } IR_ELSE {
             GateRef envHandle = GetEnvFromFrame(glue, frame);
             SetLexicalEnvToFunction(glue, result, envHandle);
             SetModuleToFunction(glue, result, module);
@@ -5742,9 +5564,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
             UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
             callback.ProfileDefineClass(result);
 #endif
-            Jump(&afterSendableFunc);
         }
-        Bind(&afterSendableFunc);
         EndTraceDefineFunc(glue);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
@@ -5761,38 +5581,23 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
         auto frame = GetFrame(sp);
         GateRef currentFunc = GetFunctionFromFrame(glue, frame);
         GateRef module = GetModuleFromFunction(glue, currentFunc);
-        Label isSendableFunc(env);
-        Label isNotSendableFunc(env);
-        Label afterSendableFunc(env);
-        BRANCH(IsSendableFunction(GetMethodFromFunction(glue, result)), &isSendableFunc, &isNotSendableFunc);
-        Bind(&isSendableFunc);
-        {
+        IR_IF (IsSendableFunction(GetMethodFromFunction(glue, result))) {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
-            Label isSourceTextModule(env);
-            Label isNotSourceTextModule(env);
-            BRANCH(IsSourceTextModule(glue, module), &isSourceTextModule, &isNotSourceTextModule);
-            Bind(&isSourceTextModule);
-            {
+            IR_IF (IsSourceTextModule(glue, module)) {
                 SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(glue, module));
-                Jump(&isNotSourceTextModule);
             }
-            Bind(&isNotSourceTextModule);
             SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
             GateRef emptySFunctionEnvHandle = GetGlobalConstantValue(VariableType::JS_ANY(),
                                                                      glue, ConstantIndex::EMPTY_SFUNCTION_ENV_INDEX);
             SetLexicalEnvToFunction(glue, result, emptySFunctionEnvHandle);
-            Jump(&afterSendableFunc);
-        }
-        Bind(&isNotSendableFunc);
-        {
+        } IR_ELSE {
             GateRef envHandle = GetEnvFromFrame(glue, frame);
             SetLexicalEnvToFunction(glue, result, envHandle);
             SetModuleToFunction(glue, result, module);
@@ -5802,9 +5607,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
             UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
             callback.ProfileDefineClass(result);
 #endif
-            Jump(&afterSendableFunc);
         }
-        Bind(&afterSendableFunc);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }
@@ -5828,10 +5631,9 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     UpdateProfileTypeInfoCellToFunction(glue, *result, profileTypeInfo, slotId);
 #endif
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEMETHOD_IMM8_ID16_IMM8);
     }
@@ -5855,10 +5657,9 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     UpdateProfileTypeInfoCellToFunction(glue, *result, profileTypeInfo, slotId);
 #endif
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *result;
         DISPATCH_WITH_ACC(DEFINEMETHOD_IMM16_ID16_IMM8);
     }
@@ -6248,20 +6049,13 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
 
-    Label pcIsInvalid(env);
-    Label pcNotInvalid(env);
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env->IsArch32Bit()));
     GateRef exception = LoadPrimitive(VariableType::JS_ANY(), glue, exceptionOffset);
     varPc = TaggedCastToIntPtr(CallRuntime(glue, RTSTUB_ID(UpFrame), {}));
     varSp = GetCurrentFrame(glue);
-    BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcIsInvalid, &pcNotInvalid);
-    Bind(&pcIsInvalid);
-    {
+    IR_IF (IntPtrEqual(*varPc, IntPtr(0))) {
         CallNGCRuntime(glue, RTSTUB_ID(ResumeUncaughtFrameAndReturn), { glue, *varSp, *varAcc });
-        Return();
-    }
-    Bind(&pcNotInvalid);
-    {
+    } IR_ELSE {
         varAcc = exception;
         // clear exception
         Store(VariableType::INT64(), glue, glue, exceptionOffset, Hole());
@@ -6276,8 +6070,8 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
         CallNGCRuntime(glue, RTSTUB_ID(ResumeCaughtFrameAndDispatch), {
             glue, *varSp, *varPc, *varConstpool,
             *varProfileTypeInfo, *varAcc, *varHotnessCounter});
-        Return();
     }
+    Return();
 }
 
 DECLARE_ASM_HANDLER(SingleStepDebugging)
@@ -6299,17 +6093,10 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
                                              IntToTaggedInt(hotnessCounter)}));
     GateRef frameAfter = GetFrame(*varSp);
     varPc = GetPcFromFrame(frameAfter);
-    Label shouldReturn(env);
-    Label shouldContinue(env);
-
-    BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &shouldReturn, &shouldContinue);
-    Bind(&shouldReturn);
-    {
+    IR_IF (IntPtrEqual(*varPc, IntPtr(0))) {
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { Undefined(), *varSp, currentSp });
         Return();
-    }
-    Bind(&shouldContinue);
-    {
+    } IR_ELSE {
         varAcc = GetAccFromFrame(glue, frameAfter);
         GateRef function = GetFunctionFromFrame(glue, frameAfter);
         GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
@@ -6317,14 +6104,12 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
         varConstpool = GetConstpoolFromMethod(glue, method);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
     }
-    Label isException(env);
-    Label notException(env);
-    BRANCH(TaggedIsException(*varAcc), &isException, &notException);
-    Bind(&isException);
-    DispatchLast(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,
-                 *varHotnessCounter);
-    Bind(&notException);
-    DISPATCH_BAK(SSD, IntPtr(0));
+    IR_IF (TaggedIsException(*varAcc)) {
+        DispatchLast(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc,
+                     *varHotnessCounter);
+    } IR_ELSE {
+        DISPATCH_BAK(SSD, IntPtr(0));
+    }
 }
 
 DECLARE_ASM_HANDLER(BCDebuggerEntry)
@@ -6466,10 +6251,9 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
         SetLexicalEnvToFunction(glue, result, currentEnv);
         GateRef currentFunc = GetFunctionFromFrame(glue, frame);
@@ -6497,10 +6281,9 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(result, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(result)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
         SetLexicalEnvToFunction(glue, result, currentEnv);
         GateRef currentFunc = GetFunctionFromFrame(glue, frame);
@@ -6653,16 +6436,12 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8
                                 Int16ToTaggedInt(literalId),
                                 Int16ToTaggedInt(length), module });
 
-    Label isException(env);
-    Label isNotException(env);
-    BRANCH(TaggedIsException(res), &isException, &isNotException);
-    Bind(&isException);
-    {
+    IR_IF (TaggedIsException(res)) {
         DISPATCH_LAST_WITH_ACC();
+    } IR_ELSE {
+        varAcc = res;
+        DISPATCH_WITH_ACC(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
     }
-    Bind(&isNotException);
-    varAcc = res;
-    DISPATCH_WITH_ACC(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableClassPrefImm16)
@@ -6685,10 +6464,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendableexternalmodulevarImm8)
     moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), {Int8ToTaggedInt(index), currentFunc});
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8);
     }
@@ -6707,10 +6485,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
         CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), {Int16ToTaggedInt(index), currentFunc});
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
     }
@@ -6723,14 +6500,15 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm8)
     GateRef numVars = ZExtInt8ToInt16(ReadInst8_1(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(NewSendableEnv),
                               { Int16ToTaggedInt(numVars) });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
-    Bind(&notException);
-    varAcc = res;
-    GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
-    GateRef module = GetModuleFromFunction(glue, currentFunc);
-    SetSendableEnvToModule(glue, module, res);
-    DISPATCH_WITH_ACC(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8);
+    IR_IF (TaggedIsException(res)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = res;
+        GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
+        GateRef module = GetModuleFromFunction(glue, currentFunc);
+        SetSendableEnvToModule(glue, module, res);
+        DISPATCH_WITH_ACC(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm16)
@@ -6740,14 +6518,15 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNewSendableEnvImm16)
     GateRef numVars = ReadInst16_1(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(NewSendableEnv),
                               { Int16ToTaggedInt(numVars) });
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(res, &notException);
-    Bind(&notException);
-    varAcc = res;
-    GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
-    GateRef module = GetModuleFromFunction(glue, currentFunc);
-    SetSendableEnvToModule(glue, module, res);
-    DISPATCH_WITH_ACC(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16);
+    IR_IF (TaggedIsException(res)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
+        varAcc = res;
+        GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
+        GateRef module = GetModuleFromFunction(glue, currentFunc);
+        SetSendableEnvToModule(glue, module, res);
+        DISPATCH_WITH_ACC(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeStSendableVarImm4Imm4)
@@ -6931,10 +6710,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdLazyModuleVarPrefImm8)
                                           { Int8ToTaggedInt(index), currentFunc });
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8);
     }
@@ -6953,10 +6731,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdLazyModuleVarPrefImm16)
                                           { Int16ToTaggedInt(index), currentFunc });
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16);
     }
@@ -6973,10 +6750,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdLazySendableModuleVarPrefImm8)
         { Int8ToTaggedInt(index), currentFunc });
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8);
     }
@@ -6994,10 +6770,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdLazySendableModuleVarPrefImm16)
         { Int16ToTaggedInt(index), currentFunc });
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16);
     }
@@ -7009,26 +6784,17 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeSuperCallForwardAllArgsV8)
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
     auto env = GetEnvironment();
-    Label resIsException(env);
-    Label isException(env);
-    Label dispatch(env);
-
     GateRef thisFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
 
-    BRANCH(TaggedIsException(*res), &resIsException, &dispatch);
-    Bind(&resIsException);
-    BRANCH(HasPendingException(glue), &isException, &dispatch);
-    Bind(&isException);
-    {
-        DISPATCH_LAST();
+    IR_IF (TaggedIsException(*res)) {
+        IR_IF (HasPendingException(glue)) {
+            DISPATCH_LAST();
+        }
     }
-    Bind(&dispatch);
-    {
-        varAcc = *res;
-        DISPATCH_WITH_ACC(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
-    }
+    varAcc = *res;
+    DISPATCH_WITH_ACC(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendablelocalmodulevarImm8)
@@ -7042,10 +6808,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendablelocalmodulevarImm8)
     moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableLocalModuleVarByIndex), {Int8ToTaggedInt(index), currentFunc});
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8);
     }
@@ -7064,10 +6829,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendablelocalmodulevarPrefImm16)
         CallRuntime(glue, RTSTUB_ID(LdSendableLocalModuleVarByIndex), {Int16ToTaggedInt(index), currentFunc});
 
     auto env = GetEnvironment();
-    Label notException(env);
-    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
-    Bind(&notException);
-    {
+    IR_IF (TaggedIsException(*moduleRef)) {
+        DISPATCH_LAST();
+    } IR_ELSE {
         varAcc = *moduleRef;
         DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16);
     }

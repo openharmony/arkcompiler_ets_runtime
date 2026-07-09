@@ -127,32 +127,22 @@ void BuiltinsDataViewStubBuilder::SetValueInBufferForInt32(GateRef glue, GateRef
     auto env = GetEnvironment();
     Label subentry(env);
     env->SubCfgEntry(&subentry);
-    Label exit(env);
-    Label littleEnd(env);
-    Label notLittleEnd(env);
     GateRef b0 = Int32And(value, Int32(0xFF));
     GateRef b1 = Int32And(Int32LSR(value, Int32(builtins::BITS_EIGHT)), Int32(0xFF));
     GateRef b2 = Int32And(Int32LSR(value, Int32(2 * builtins::BITS_EIGHT)), Int32(0xFF));
     GateRef b3 = Int32LSR(value, Int32(builtins::BITS_TWENTY_FOUR));
-    
-    BRANCH(TaggedIsTrue(littleEndianHandle), &littleEnd, &notLittleEnd);
-    Bind(&littleEnd);
-    {
+
+    IR_IF (TaggedIsTrue(littleEndianHandle)) {
         Store(VariableType::INT8(), glue, pointer, offset, TruncInt32ToInt8(b0));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(1)), TruncInt32ToInt8(b1));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::TWO)), TruncInt32ToInt8(b2));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::THREE)), TruncInt32ToInt8(b3));
-        Jump(&exit);
-    }
-    Bind(&notLittleEnd);
-    {
+    } IR_ELSE {
         Store(VariableType::INT8(), glue, pointer, offset, TruncInt32ToInt8(b3));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(1)), TruncInt32ToInt8(b2));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::TWO)), TruncInt32ToInt8(b1));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::THREE)), TruncInt32ToInt8(b0));
-        Jump(&exit);
     }
-    Bind(&exit);
     env->SubCfgExit();
 }
 
@@ -162,9 +152,6 @@ void BuiltinsDataViewStubBuilder::SetValueInBufferForInt64(GateRef glue, GateRef
     auto env = GetEnvironment();
     Label subentry(env);
     env->SubCfgEntry(&subentry);
-    Label exit(env);
-    Label littleEnd(env);
-    Label notLittleEnd(env);
     GateRef lowerInt32 = TruncInt64ToInt32(Int64And(value, Int64(0xFFFFFFFF))); // NOLINT
     GateRef highInt32 = TruncInt64ToInt32(Int64LSR(Int64And(value, Int64(0xFFFFFFFF00000000)), Int64(32))); // NOLINT
 
@@ -178,10 +165,8 @@ void BuiltinsDataViewStubBuilder::SetValueInBufferForInt64(GateRef glue, GateRef
     // 2: 2 * 8 bits
     GateRef b6 = Int32And(Int32LSR(highInt32, Int32(2 * builtins::BITS_EIGHT)), Int32(builtins::BITS_MASK_FF));
     GateRef b7 = Int32LSR(highInt32, Int32(builtins::BITS_TWENTY_FOUR));
-    
-    BRANCH(TaggedIsTrue(littleEndianHandle), &littleEnd, &notLittleEnd);
-    Bind(&littleEnd);
-    {
+
+    IR_IF (TaggedIsTrue(littleEndianHandle)) {
         Store(VariableType::INT8(), glue, pointer, offset, TruncInt32ToInt8(b0));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(1)), TruncInt32ToInt8(b1));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::TWO)), TruncInt32ToInt8(b2));
@@ -190,10 +175,7 @@ void BuiltinsDataViewStubBuilder::SetValueInBufferForInt64(GateRef glue, GateRef
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::FIVE)), TruncInt32ToInt8(b5));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::SIX)), TruncInt32ToInt8(b6));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::SEVEN)), TruncInt32ToInt8(b7));
-        Jump(&exit);
-    }
-    Bind(&notLittleEnd);
-    {
+    } IR_ELSE {
         Store(VariableType::INT8(), glue, pointer, offset, TruncInt32ToInt8(b7));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(1)), TruncInt32ToInt8(b6));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::TWO)), TruncInt32ToInt8(b5));
@@ -202,9 +184,7 @@ void BuiltinsDataViewStubBuilder::SetValueInBufferForInt64(GateRef glue, GateRef
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::FIVE)), TruncInt32ToInt8(b2));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::SIX)), TruncInt32ToInt8(b1));
         Store(VariableType::INT8(), glue, pointer, Int32Add(offset, Int32(OffsetIndex::SEVEN)), TruncInt32ToInt8(b0));
-        Jump(&exit);
     }
-    Bind(&exit);
     env->SubCfgExit();
 }
 
