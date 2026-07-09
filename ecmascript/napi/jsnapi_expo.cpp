@@ -7347,6 +7347,11 @@ void JSNApi::SetTaskpoolShrinkCallback(const EcmaVM *vm, TaskPoolShrinkCallback 
     ecmascript::Runtime::GetInstance()->SetTaskpoolShrinkCallback(callback);
 }
 
+void JSNApi::ExecuteTaskpoolShrinkCallback(bool inBackground)
+{
+    ecmascript::Runtime::GetInstance()->ExecuteTaskpoolShrinkCallback(inBackground);
+}
+
 
 uint32_t JSNApi::GetCurrentWorkerCount(const EcmaVM *vm)
 {
