@@ -159,6 +159,13 @@ template <typename T> void NativeFinalizeCallback(void *ptr)
     delete i;
 }
 
+template <typename T> void DeleteTypedCallback(void *env, void *buffer, void *data)
+{
+    (void)env;
+    (void)data;
+    delete static_cast<T *>(buffer);
+}
+
 void CalculateForTime()
 {
     gettimeofday(&g_beginTime, nullptr);
@@ -7828,20 +7835,15 @@ HWTEST_F_L0(JSNApiSplTest, NativePointerRef_Value)
     LocalScope scope(vm_);
     CalculateForTime();
     void *vps = static_cast<void *>(new std::string("test"));
-    void *vps1 = static_cast<void *>(new std::string("test"));
     void *vpd = new double(123.456);
-    void *vpd1 = new double(123.456);
     void *vpc = new char('a');
-    void *vpc1 = new char('c');
     void *vpl = new long(123456);
-    void *vpl1 = new long(123456);
     void *vpi = new int(123);
-    void *vpi1 = new int(123);
-    Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
-    Local<NativePointerRef> res_vpd = NativePointerRef::New(vm_, vpd, NativeAreaAllocator::FreeBufferFunc, vpd1, 0);
-    Local<NativePointerRef> res_vpc = NativePointerRef::New(vm_, vpc, NativeAreaAllocator::FreeBufferFunc, vpc1, 0);
-    Local<NativePointerRef> res_vpl = NativePointerRef::New(vm_, vpl, NativeAreaAllocator::FreeBufferFunc, vpl1, 0);
-    Local<NativePointerRef> res_vpi = NativePointerRef::New(vm_, vpi, NativeAreaAllocator::FreeBufferFunc, vpi1, 0);
+    Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, DeleteTypedCallback<std::string>, nullptr, 0);
+    Local<NativePointerRef> res_vpd = NativePointerRef::New(vm_, vpd, DeleteTypedCallback<double>, nullptr, 0);
+    Local<NativePointerRef> res_vpc = NativePointerRef::New(vm_, vpc, DeleteTypedCallback<char>, nullptr, 0);
+    Local<NativePointerRef> res_vpl = NativePointerRef::New(vm_, vpl, DeleteTypedCallback<long>, nullptr, 0);
+    Local<NativePointerRef> res_vpi = NativePointerRef::New(vm_, vpi, DeleteTypedCallback<int>, nullptr, 0);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         res_vps->Value();
