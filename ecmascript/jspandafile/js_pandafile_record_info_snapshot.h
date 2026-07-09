@@ -24,7 +24,7 @@ namespace panda::ecmascript {
  *
  * The recordInfo is stored in the js_pandafile_snapshot's _Pandafile.ams.
  * It contains:
- * - numClasses_, numMethods_, isBundlePack_
+ * - numClasses_
  * - jsRecordInfo_ (with owned strings to avoid string_view dangling)
  * - npmEntries_ (with owned strings)
  */

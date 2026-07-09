@@ -197,8 +197,6 @@ public:
     static std::vector<uint8_t> BuildValidRecordInfoSectionBuffer()
     {
         uint32_t numClasses = 1;
-        uint32_t numMethods = 1;
-        uint8_t isBundlePack = 0;
         uint32_t recordCount = 1;
         const char *recordName = "test";
         uint32_t recordNameLen = std::strlen(recordName);
@@ -214,7 +212,7 @@ public:
         uint32_t keyLen = std::strlen(key);
         const char *value = "value";
         uint32_t valLen = std::strlen(value);
-        constexpr size_t baseSectionSize = sizeof(numClasses) + sizeof(numMethods) + sizeof(isBundlePack);
+        constexpr size_t baseSectionSize = sizeof(numClasses);
         const size_t jsRecordInfoSize = sizeof(recordCount) + sizeof(recordNameLen) + recordNameLen + sizeof(flags) +
                                         sizeof(jsonStringId) + sizeof(moduleRecordIdx) + sizeof(lazyImportIdx) +
                                         sizeof(classId) + sizeof(pkgNameLen) + pkgNameLen;
@@ -223,8 +221,6 @@ public:
         std::vector<uint8_t> buffer(bufLen, 0);
         size_t offset = 0;
         WriteBufferData(buffer, offset, bufLen, &numClasses, sizeof(numClasses));
-        WriteBufferData(buffer, offset, bufLen, &numMethods, sizeof(numMethods));
-        WriteBufferData(buffer, offset, bufLen, &isBundlePack, sizeof(isBundlePack));
         WriteBufferData(buffer, offset, bufLen, &recordCount, sizeof(recordCount));
         WriteBufferData(buffer, offset, bufLen, &recordNameLen, sizeof(recordNameLen));
         WriteBufferData(buffer, offset, bufLen, recordName, recordNameLen);
@@ -275,6 +271,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, SerializeAndDeserializeTest)
     // deserialize
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     JSPandaFile *deserializePf = pf.get();
+    deserializePf->SetBundlePack(false);
     ASSERT_TRUE(JSPandaFileSnapshot::ReadDataFromFile(thread, deserializePf, path, version));
 
     // check numMethods
@@ -502,6 +499,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteAndReadRecordInfoSectionWithMergedPF)
     deserializePf->jsRecordInfo_.clear();
     deserializePf->npmEntries_.clear();
     deserializePf->methodLiterals_ = nullptr;
+    deserializePf->SetBundlePack(false);
 #if ENABLE_LATEST_OPTIMIZATION
     deserializePf->methodLiteralMap_.Clear();
 #else
@@ -563,14 +561,11 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ReadRecordInfoSection_EmptyPkgNameAndZeroMe
 {
     std::vector<uint8_t> buffer = BuildValidRecordInfoSectionBuffer();
     constexpr uint32_t zero = 0;
-    constexpr size_t numMethodsOffset = sizeof(uint32_t);
     constexpr size_t recordNameLen = sizeof("test") - 1;
-    constexpr size_t pkgNameLenOffset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) +
+    constexpr size_t pkgNameLenOffset = sizeof(uint32_t) + sizeof(uint32_t) +
                                         sizeof(uint32_t) + recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) * 4;
     buffer.resize(pkgNameLenOffset + sizeof(uint32_t) * 2);
-    size_t offset = numMethodsOffset;
-    WriteBufferData(buffer, offset, buffer.size(), &zero, sizeof(uint32_t));
-    offset = pkgNameLenOffset;
+    size_t offset = pkgNameLenOffset;
     WriteBufferData(buffer, offset, buffer.size(), &zero, sizeof(uint32_t));
     WriteBufferData(buffer, offset, buffer.size(), &zero, sizeof(uint32_t));
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
@@ -601,33 +596,21 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_NumClas
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_NumClasses"));
 }
 
-HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_NumMethods)
-{
-    size_t offset = sizeof(uint32_t);
-    ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_NumMethods"));
-}
-
-HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_IsBundlePack)
-{
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t);
-    ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_IsBundlePack"));
-}
-
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_RecordCount)
 {
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t);
+    size_t offset = sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_RecordCount"));
 }
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_RecordNameLen)
 {
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t);
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_RecordNameLen"));
 }
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_RecordName)
 {
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t);
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_RecordName"));
 }
 
@@ -635,14 +618,14 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_Flags)
 {
     size_t recordNameLen = std::strlen("test");
     size_t offset =
-        sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + recordNameLen;
+        sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + recordNameLen;
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_Flags"));
 }
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_JsonStringId)
 {
     size_t recordNameLen = std::strlen("test");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_JsonStringId"));
 }
@@ -650,7 +633,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_JsonStr
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_ModuleRecordIdx)
 {
     size_t recordNameLen = std::strlen("test");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_ModuleRecordIdx"));
 }
@@ -658,7 +641,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_ModuleR
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_LazyImportIdx)
 {
     size_t recordNameLen = std::strlen("test");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_LazyImportIdx"));
 }
@@ -666,7 +649,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_LazyImp
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_ClassId)
 {
     size_t recordNameLen = std::strlen("test");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_ClassId"));
 }
@@ -674,7 +657,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_ClassId
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_PkgNameLen)
 {
     size_t recordNameLen = std::strlen("test");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_PkgNameLen"));
@@ -683,7 +666,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_PkgName
 HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_PkgName)
 {
     size_t recordNameLen = std::strlen("test");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_PkgName"));
@@ -693,7 +676,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_NpmCoun
 {
     size_t recordNameLen = std::strlen("test");
     size_t pkgNameLen = std::strlen("@ohos/testpkg");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t) + sizeof(uint32_t) + pkgNameLen;
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_NpmCount"));
@@ -703,7 +686,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_KeyLen)
 {
     size_t recordNameLen = std::strlen("test");
     size_t pkgNameLen = std::strlen("@ohos/testpkg");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t) + sizeof(uint32_t) + pkgNameLen + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_KeyLen"));
@@ -713,7 +696,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_Key)
 {
     size_t recordNameLen = std::strlen("test");
     size_t pkgNameLen = std::strlen("@ohos/testpkg");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t) + sizeof(uint32_t) + pkgNameLen + sizeof(uint32_t) + sizeof(uint32_t);
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_Key"));
@@ -724,7 +707,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_ValLen)
     size_t recordNameLen = std::strlen("test");
     size_t pkgNameLen = std::strlen("@ohos/testpkg");
     size_t keyLen = std::strlen("key");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t) + sizeof(uint32_t) + pkgNameLen + sizeof(uint32_t) + sizeof(uint32_t) + keyLen;
     ASSERT_FALSE(ReadCorruptRecordInfoSection(offset, "CorruptRecordInfo_ValLen"));
@@ -735,7 +718,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, RecordInfoSection_CorruptRecordInfo_Value)
     size_t recordNameLen = std::strlen("test");
     size_t pkgNameLen = std::strlen("@ohos/testpkg");
     size_t keyLen = std::strlen("key");
-    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) +
+    size_t offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     recordNameLen + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) +
                     sizeof(uint32_t) + sizeof(uint32_t) + pkgNameLen + sizeof(uint32_t) + sizeof(uint32_t) + keyLen +
                     sizeof(uint32_t);

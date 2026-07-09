@@ -31,8 +31,7 @@ size_t JSPandaFileRecordInfoSnapshot::CalculateRecordInfoSectionSize(const JSPan
     const auto &jsRecordInfo = jsPandaFile->jsRecordInfo_;
     const auto &npmEntries = jsPandaFile->npmEntries_;
 
-    constexpr size_t baseSectionSize =
-        sizeof(jsPandaFile->numClasses_) + sizeof(jsPandaFile->numMethods_) + sizeof(uint8_t);
+    constexpr size_t baseSectionSize = sizeof(jsPandaFile->numClasses_);
     constexpr size_t recordCountSize = sizeof(uint32_t);
     constexpr size_t npmEntriesCountSize = sizeof(uint32_t);
     constexpr size_t flagsSize = sizeof(uint8_t);
@@ -73,14 +72,6 @@ bool JSPandaFileRecordInfoSnapshot::WriteRecordInfoSection(const EcmaVM *vm, con
     // Write numClasses_
     uint32_t numClasses = jsPandaFile->numClasses_;
     writer.WriteSingleData(&numClasses, sizeof(numClasses), "numClasses");
-
-    // Write numMethods_
-    uint32_t numMethods = jsPandaFile->numMethods_;
-    writer.WriteSingleData(&numMethods, sizeof(numMethods), "numMethods");
-
-    // Write isBundlePack_
-    uint8_t isBundlePack = jsPandaFile->isBundlePack_ ? 1 : 0;
-    writer.WriteSingleData(&isBundlePack, sizeof(isBundlePack), "isBundlePack");
 
     // Write jsRecordInfo count
     const auto &jsRecordInfo = jsPandaFile->GetJSRecordInfo();
@@ -142,20 +133,6 @@ bool JSPandaFileRecordInfoSnapshot::ReadRecordInfoSection(JSPandaFile *jsPandaFi
         return false;
     }
     jsPandaFile->numClasses_ = numClasses;
-
-    // Read numMethods_
-    uint32_t numMethods = 0;
-    if (!reader.ReadSingleData(&numMethods, sizeof(numMethods), "numMethods")) {
-        return false;
-    }
-    jsPandaFile->numMethods_ = numMethods;
-
-    // Read isBundlePack_
-    uint8_t isBundlePack = 0;
-    if (!reader.ReadSingleData(&isBundlePack, sizeof(isBundlePack), "isBundlePack")) {
-        return false;
-    }
-    jsPandaFile->isBundlePack_ = (isBundlePack != 0);
 
     // Read jsRecordInfo count
     uint32_t recordCount = 0;
@@ -267,18 +244,6 @@ bool JSPandaFileRecordInfoSnapshot::ReadRecordInfoSection(JSPandaFile *jsPandaFi
         // Create string_view keys pointing to persistent owned strings
         jsPandaFile->npmEntries_.emplace(std::string_view(storedEntry.first.c_str(), storedEntry.first.size()),
                                          std::string_view(storedEntry.second.c_str(), storedEntry.second.size()));
-    }
-
-    // Allocate methodLiterals_ buffer
-    if (numMethods > 0) {
-        jsPandaFile->methodLiterals_ = static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(
-            sizeof(MethodLiteral) * numMethods, jsPandaFile->isBundlePack_, jsPandaFile->mode_));
-
-#if ENABLE_LATEST_OPTIMIZATION
-        jsPandaFile->methodLiteralMap_.Reserve(numMethods);
-#else
-        jsPandaFile->methodLiteralMap_.reserve(numMethods);
-#endif
     }
 
     LOG_ECMA(INFO) << "JSPandaFileRecordInfoSnapshot::ReadRecordInfoSection success";
