@@ -110,6 +110,9 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest001)
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<ResolvedRecordBinding> record = factory->NewSResolvedRecordBindingRecord();
     JSHandle<JSTaggedValue> undefinedValue = thread->GlobalConstants()->GetHandledUndefined();
+    EXPECT_EQ(ResolvedRecordBinding::BINDING_NAME_OFFSET % JSTaggedValue::TaggedTypeSize(), 0U);
+    EXPECT_EQ(ResolvedRecordBinding::SIZE % JSTaggedValue::TaggedTypeSize(), 0U);
+    EXPECT_EQ(record->GetClass()->GetObjectSize(), ResolvedRecordBinding::SIZE);
     ASSERT_EQ(record->GetBindingName(thread).GetRawData(), undefinedValue->GetRawData());
 }
 

@@ -105,12 +105,15 @@ public:
     CAST_CHECK(ResolvedRecordBinding, IsResolvedRecordBinding);
 
     static constexpr size_t MODULE_RECORD_OFFSET = Record::SIZE;
-    ACCESSORS_PRIMITIVE_FIELD(ModuleRecord, uintptr_t, MODULE_RECORD_OFFSET, BINDING_NAME_OFFSET);
+    // Store the native pointer in one tagged-width slot so BindingName stays aligned on 32-bit builds.
+    ACCESSORS_PRIMITIVE_FIELD(ModuleRecord, JSTaggedType, MODULE_RECORD_OFFSET, BINDING_NAME_OFFSET);
     ACCESSORS(BindingName, BINDING_NAME_OFFSET, SIZE);
+    static_assert(BINDING_NAME_OFFSET % JSTaggedValue::TaggedTypeSize() == 0);
+    static_assert(SIZE % JSTaggedValue::TaggedTypeSize() == 0);
 
     inline const CString *GetModuleRecordName() const
     {
-        return reinterpret_cast<const CString *>(GetModuleRecord());
+        return reinterpret_cast<const CString *>(static_cast<uintptr_t>(GetModuleRecord()));
     }
 
     inline CString GetModuleRecordNameString() const
@@ -124,7 +127,7 @@ public:
 
     inline void SetModuleRecordName(const CString *recordName)
     {
-        SetModuleRecord(reinterpret_cast<uintptr_t>(recordName));
+        SetModuleRecord(static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(recordName)));
     }
 
     DECL_DUMP()
