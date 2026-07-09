@@ -489,7 +489,7 @@ public:
     {
         return ModuleValueAccessor::LogModuleLoadInfo(thread, module, requiredModule, index, isSendable);
     }
-    static JSHandle<JSTaggedValue> GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule)
+    static JSHandle<JSTaggedValue> GetNativeOrCjsExports(JSThread *thread, JSHandle<SourceTextModule> resolvedModule)
     {
         return ModuleValueAccessor::GetNativeOrCjsExports(thread, resolvedModule);
     }
@@ -6987,7 +6987,7 @@ HWTEST_F_L0(EcmaModuleTest, ModuleValueAccessor_GetNativeOrCjsExports_OtherModul
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     module->SetTypes(ModuleTypes::ECMA_MODULE);
-    JSHandle<JSTaggedValue> exports = MockModuleValueAccessor::GetNativeOrCjsExports(thread, module.GetTaggedValue());
+    JSHandle<JSTaggedValue> exports = MockModuleValueAccessor::GetNativeOrCjsExports(thread, module);
     EXPECT_TRUE(exports->IsUndefined());
 }
 
