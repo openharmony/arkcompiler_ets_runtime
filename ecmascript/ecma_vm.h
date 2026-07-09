@@ -1647,11 +1647,13 @@ public:
     static void NotifyANR();
     inline void InsertSoLoadFailure(const CString &moduleName, const CString &errorMessage)
     {
-        soLoadFailureNum_++;
-        if (soLoadFailureList_.size() >= SO_LOAD_FAILURE_CAPACITY) {
+        if (GetSoLoadFailureByModuleName(moduleName).has_value()) {
             return;
         }
-        soLoadFailureList_.emplace_back(moduleName, errorMessage);
+        ++soLoadFailureNum_;
+        if (soLoadFailureList_.size() < SO_LOAD_FAILURE_CAPACITY) {
+            soLoadFailureList_.emplace_back(moduleName, errorMessage);
+        }
     }
 
     inline const CVector<std::pair<CString, CString>>& GetAllSoLoadFailures() const
