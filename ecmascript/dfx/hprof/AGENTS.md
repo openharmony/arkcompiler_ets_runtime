@@ -75,6 +75,10 @@ Tests are organized into multiple test suites in `tests/BUILD.gn`:
 - **JSMetadataTest**
 - **LocalHandleLeakDetectTest** / **GlobalHandleLeakDetectTest**
 
+### Notes
+
+- `JSMetadataTest`: Some metadata JSON offsets are computed for 64-bit targets. When changing metadata records, object layouts, or expected offsets, verify 32-bit and 64-bit compatibility; if they diverge, update or gate the test expectations by architecture.
+
 ### Running Tests
 
 From the `ark_standalone_build` directory, you can use the standalone build commands without pulling the full OpenHarmony code:
