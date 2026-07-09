@@ -962,6 +962,14 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
+void JSThread::CheckSwitchRBStub()
+{
+    if (switchRBStubRequest_ && GetLastLeaveFrame() == nullptr) {
+        SwitchAllStub(false);
+        switchRBStubRequest_ = false;
+    }
+}
+
 #if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
 void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
 {

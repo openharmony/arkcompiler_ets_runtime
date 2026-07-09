@@ -218,6 +218,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
+    thread->CheckSwitchRBStub();
     thread->CheckSafepoint();
     uint32_t argc = info->GetArgsNumber();
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());

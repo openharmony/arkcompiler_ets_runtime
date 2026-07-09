@@ -469,6 +469,7 @@ protected:
 
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
     static constexpr size_t COLD_STARTUP_COMPRESS_LIMIT = 20_MB;
+    static constexpr size_t FRAGMENTATION_COMPRESS_LIMIT = 50_MB;
 
 public:
     // local GC takes ReadLock, shared GC takes WriteLock for mutual exclusion.
@@ -654,6 +655,22 @@ public:
             return true;
         }
         return false;
+    }
+
+    bool HintSharedPartialGCByFragment() const
+    {
+#if ENABLE_MEMORY_OPTIMIZATION
+        if (!concurrentMarkEnabled_) {
+            return false;
+        }
+        size_t oldSpaceFragment = sOldSpace_->GetCommittedSize() - sOldSpace_->GetHeapObjectSize();
+        if (oldSpaceFragment > FRAGMENTATION_COMPRESS_LIMIT && GetStartupStatus() == StartupStatus::FINISH_STARTUP) {
+            return true;
+        }
+        return false;
+#else
+        return false;
+#endif
     }
 
     bool NeedSwitchRBStub() const;

@@ -1136,7 +1136,11 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     }
     if (triggerConcurrentMark) {
         // currently, SharedHeap::TryTriggerConcurrentMarking is called only when allocate object in SharedHeap
-        TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::ALLOCATION_LIMIT>(thread);
+        if (HintSharedPartialGCByFragment()) {
+            TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::ALLOCATION_LIMIT>(thread);
+        } else {
+            TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::ALLOCATION_LIMIT>(thread);
+        }
     }
 }
 

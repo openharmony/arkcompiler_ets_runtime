@@ -50,9 +50,6 @@ void SharedPartialGC::RunPhases()
     PreSweep();
     Evacuate();
     Sweep();
-    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
-        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
-    }
     Finish();
     if (!concurrentProcessStringTable_) {
         sHeap_->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
@@ -95,6 +92,7 @@ public:
 
     void Run(JSThread *thread) override
     {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedPartialGC::RunFlipFunction", "");
         EcmaVM *vm = thread->GetEcmaVM();
         auto sHeap = SharedHeap::GetInstance();
         if (sHeap->HasCSetRegions()) {
@@ -118,6 +116,11 @@ void SharedPartialGC::RunFlip(GCReason reason)
     sHeap_->Reclaim(TriggerGCType::SHARED_PARTIAL_GC);
     PostProcessLocalThread();
     sHeap_->GetSharedGCEvacuator()->MergeBackAndResetRSetWorkListHandler();
+    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+        // post gc heap verify
+        LOG_ECMA(DEBUG) << "after gc shared heap verify";
+        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    }
     SignalConcurrentUpdateFinished();
 }
 
@@ -275,6 +278,7 @@ void SharedPartialGC::PostProcessLocalThread()
         }
         Heap *heap = thread->GetEcmaVM()->GetHeap();
         heap->ProcessGCListeners();
+        thread->SetSwitchRBStubRequest(false);
         // LocalCC also need read barrier.
         if (thread->SuspendByConcurrentTask()) {
             thread->ResumeThread(true);

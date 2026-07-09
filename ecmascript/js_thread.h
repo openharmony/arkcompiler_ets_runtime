@@ -583,6 +583,7 @@ public:
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
+    void CheckSwitchRBStub();
 #if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
     void SwitchJitProfileStubs(bool isEnablePgo);
 #endif
@@ -1997,6 +1998,11 @@ public:
         suspendByConcurrentTask_ = flag;
     }
 
+    void SetSwitchRBStubRequest(bool request)
+    {
+        switchRBStubRequest_ = request;
+    }
+
     Closure *GetFlipFunction() const
     {
         return flipFunction_;
@@ -2490,6 +2496,7 @@ private:
     bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
     bool suspendByConcurrentTask_ {false};
+    bool switchRBStubRequest_ {false};
     // Shared heap collect local heap Rset
     bool processingLocalToSharedRset_ {false};
     bool waitingSharedGCFinished_ {false};

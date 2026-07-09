@@ -67,8 +67,12 @@ public:
             + ";NativeLimitGC" + std::to_string(sHeap->GetNativeSizeTriggerSharedGC())
             + ";NativeLimitCM" + std::to_string(sHeap->GetNativeSizeTriggerSharedCM())).c_str(), "");
         CHECK_DAEMON_THREAD();
-        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+        JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
+        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
             thread->GetEcmaVM()->GetHeap()->WaitAndHandleCCFinished();
+            if (thread == mainThread && sHeap->GetConcurrentMarker()->IsSharedPartialGCMode()) {
+                thread->SetSwitchRBStubRequest(true);
+            }
         });
         // fixme: support shared runtime state
         if (UNLIKELY(sHeap->ShouldVerifyHeap())) {
@@ -218,7 +222,7 @@ void SharedConcurrentMarker::InitializeMarking()
         current->ClearMarkGCBitset();
         current->ClearCrossRegionRSet();
     });
-    bool needCSet = (gcType_ == TriggerGCType::SHARED_PARTIAL_GC);
+    bool needCSet = IsSharedPartialGCMode();
     sHeap_->EnumerateOldSpaceRegions([needCSet](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         ASSERT(!current->InSCollectSet());
@@ -255,7 +259,7 @@ void SharedConcurrentMarker::HandleMarkingFinished()
     if (IsCCMode()) {
         return;
     }
-    if (gcType_ == TriggerGCType::SHARED_PARTIAL_GC) {
+    if (IsSharedPartialGCMode()) {
         sHeap_->DaemonCollectGarbageWithFlip(gcType_, GCReason::HANDLE_MARKING_FINISHED);
     } else {
         sHeap_->DaemonCollectGarbage(gcType_, GCReason::HANDLE_MARKING_FINISHED);
