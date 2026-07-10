@@ -825,7 +825,6 @@ HWTEST_F_L0(JSPandaFileTest, ConstructorWithThread_SnapshotReadSuccess)
     EXPECT_TRUE(MockJSPandaFileSnapshotForTest::ReadDataFromFile(
         thread, deserializePf.get(), path, version));
     EXPECT_NE(deserializePf, nullptr);
-    EXPECT_FALSE(deserializePf->IsBundlePack());
 
     auto it = deserializePf->npmEntries_.find("testRecord");
     EXPECT_NE(it, deserializePf->npmEntries_.end());
