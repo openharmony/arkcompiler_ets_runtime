@@ -164,7 +164,6 @@ public:
 
     void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
     void ResetConstPoolLiterals(const CString &recordName);
-    void EraseClassLiteralConstPoolMapItem(int32_t unsharedConstPoolIndex);
 
     CUnorderedSet<CString, CStringHash>& GetModuleImportSet()
     {
