@@ -1206,9 +1206,6 @@ void EcmaVM::HandleLeakDetect(uintptr_t handle)
 #if defined(ENABLE_BACKTRACE_LOCAL)
     std::string backtrace;
     if (job::GetBacktrace(backtrace, true)) {
-        if (backtrace.find("data/storage") == std::string::npos) {
-            return;
-        }
         auto it = std::find_if(handleLeakRecords_.begin(), handleLeakRecords_.end(),
             [&backtrace](const HandleLeakRecord &record) { return record.backtrace == backtrace; });
         if (it != handleLeakRecords_.end()) {
