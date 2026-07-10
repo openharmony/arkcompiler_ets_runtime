@@ -130,3 +130,4 @@ Add new tests as `*_test.cpp` under `tests/` and register via `host_unittest_act
 - Keep backend-specific logic inside `codegen/maple/` or `codegen/llvm/` — do not mix backend internals into pass files.
 - Calling-convention changes must be synchronized across `call_signature*`, `rt_call_signature*`, and `trampoline/`.
 - Source ownership is defined in `BUILD.gn` — keep it in sync when adding files.
+- In `StubBuilder`/builtins stub generation, use `Variable` for IR values that are reassigned across labels, branches, or loops. Do not model mutable state with a repeatedly reassigned `GateRef`: it keeps stale gates in the generated circuit and produces incorrect assembly.

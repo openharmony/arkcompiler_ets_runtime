@@ -91,6 +91,10 @@
 - .abc 中的类型元数据须保持编译器工具链与运行时版本之间的向后兼容。
 - GC 堆布局变更须保持与 runtime_core 的 ABI 兼容性。
 
+### 开发注意事项
+
+- 修改 `TaggedObject` 派生类布局时，需注意不同数据类型在 32/64 位平台上的宽度差异；`JSTaggedValue` 或 GC 访问的 tagged 字段需按 `JSTaggedValue::TaggedTypeSize()` 对齐，`SIZE` 也应为该粒度的倍数，避免 `HClass` object size 截断或字段越界。
+
 ### 不要做
 
 - 除非明确要求，不要修改公共 NAPI 签名、错误码或生命周期语义。
