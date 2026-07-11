@@ -36,7 +36,6 @@ void QuickFixManager::RegisterQuickFixQueryFunc(const std::function<bool(std::st
 void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *baseFile)
 {
 #if defined(CROSS_PLATFORM) && !defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    LOG_ECMA(INFO) << "LoadPatchIfNeeded is not supported in cross-platform mode without debugger";
     return;
 #else
     // callback and load patch.
