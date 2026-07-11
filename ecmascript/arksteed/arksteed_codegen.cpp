@@ -497,6 +497,19 @@ void EmitExceptionLazyDeoptSafepoint(ArkSteedAssembler *assembler_,
     safepointBuilder->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts), ExceptionHandlerKind::LAZY_DEOPT);
 }
 
+bool DeoptPayloadEquals(const std::vector<kungfu::ARKDeopt> &lhs, const std::vector<kungfu::ARKDeopt> &rhs)
+{
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    for (size_t index = 0; index < lhs.size(); ++index) {
+        if (lhs[index].id != rhs[index].id || lhs[index].kind != rhs[index].kind || lhs[index].value != rhs[index].value) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Condition ConditionFromIntCondition(IntConditionKind condition)
 {
     switch (condition) {
@@ -586,14 +599,49 @@ void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind cond
 }
 }  // namespace
 
-Label *ArkSteedCodeGenerator::RecordEagerDeoptExit(const Vertex *vertex, const DeoptimizableMixin *frameState,
-                                                   kungfu::DeoptType type)
+Label *ArkSteedCodeGenerator::RecordEagerDeoptTargetImpl(const Vertex *vertex,
+                                                         const DeoptimizableMixin *frameState,
+                                                         kungfu::DeoptType type)
 {
     ASSERT(safepointBuilder_ != nullptr);
+    auto vertexTarget = eagerDeoptTargetsByVertex_.find(frameState);
+    if (vertexTarget != eagerDeoptTargetsByVertex_.end()) {
+        return &vertexTarget->second->label;
+    }
+
+    uint32_t bytecodeOffset = frameState->GetBytecodeOffset();
     auto deopts = BuildUseSlotDeopts(assembler_, vertex, frameState);
-    auto *exit = graph_->GetChunk()->New<EagerDeoptExit>(type, std::move(deopts));
-    eagerDeoptExits_.push_back(exit);
-    return &exit->label;
+    EagerDeoptTarget *target = nullptr;
+    for (EagerDeoptTarget *existingTarget : eagerDeoptTargets_) {
+        if (existingTarget->bytecodeOffset == bytecodeOffset &&
+            DeoptPayloadEquals(existingTarget->deopts, deopts)) {
+            target = existingTarget;
+            break;
+        }
+    }
+    if (target == nullptr) {
+        target = graph_->GetChunk()->New<EagerDeoptTarget>(bytecodeOffset, type, std::move(deopts));
+        eagerDeoptTargets_.push_back(target);
+    }
+    eagerDeoptTargetsByVertex_.emplace(frameState, target);
+    return &target->label;
+}
+
+void ArkSteedCodeGenerator::BranchToEagerDeoptTargetImpl(Condition condition, const Vertex *vertex,
+                                                         const DeoptimizableMixin *frameState,
+                                                         kungfu::DeoptType type)
+{
+#if defined(PANDA_TARGET_AMD64)
+    __ JumpIf(condition, RecordEagerDeoptTargetImpl(vertex, frameState, type));
+#else
+    Label deopt;
+    Label done;
+    __ JumpIf(condition, &deopt);
+    __ Jump(&done);
+    __ Bind(&deopt);
+    EmitEagerDeoptExitImpl(vertex, frameState, type);
+    __ Bind(&done);
+#endif
 }
 
 void ArkSteedCodeGenerator::EmitEagerDeoptExitImpl(const Vertex *vertex, const DeoptimizableMixin *frameState,
@@ -601,15 +649,15 @@ void ArkSteedCodeGenerator::EmitEagerDeoptExitImpl(const Vertex *vertex, const D
 {
     // Keep the conditional branch target close to the failing check. This avoids using a long conditional branch
     // on AArch64; the local target only performs an unconditional jump to the tail deopt exit.
-    __ Jump(RecordEagerDeoptExit(vertex, frameState, type));
+    __ Jump(RecordEagerDeoptTargetImpl(vertex, frameState, type));
 }
 
 void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
 {
-    for (EagerDeoptExit *exit : eagerDeoptExits_) {
-        __ Bind(&exit->label);
-        __ CallDeoptHandler(exit->type);
-        safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(exit->deopts));
+    for (EagerDeoptTarget *target : eagerDeoptTargets_) {
+        __ Bind(&target->label);
+        __ CallDeoptHandler(target->type);
+        safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(target->deopts));
     }
 }
 
@@ -908,13 +956,18 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     ArkSteedRegister actualHClass = scope.Acquire();
     ArkSteedRegister expectedHClass = scope.Acquire();
     ArkSteedRegister receiver = GetInputRegister(checkHClass, RECEIVER_INDEX);
-    Label deopt;
+#if defined(PANDA_TARGET_AMD64)
+    Label *deopt = RecordEagerDeoptTarget(checkHClass, kungfu::DeoptType::KEYMISSMATCH);
+#else
+    Label deoptLabel;
     Label pass;
+    Label *deopt = &deoptLabel;
+#endif
     __ Move(actualHClass, receiver);
     __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     __ And(actualHClass, expectedHClass);
     __ Compare(actualHClass, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    __ JumpIf(Condition::COND_NOT_EQUAL, deopt);
 
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
@@ -922,12 +975,14 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     __ Move(expectedHClass, reinterpret_cast<uint64_t>(checkHClass->GetExpectedHClass()) &
                                     TaggedStateWord::ADDRESS_MASK);
     __ Compare(actualHClass, expectedHClass);
+#if defined(PANDA_TARGET_AMD64)
+    __ JumpIf(Condition::COND_NOT_EQUAL, deopt);
+#else
     __ JumpIf(Condition::COND_EQUAL, &pass);
-
-    __ Bind(&deopt);
+    __ Bind(deopt);
     EmitEagerDeoptExit(checkHClass, kungfu::DeoptType::KEYMISSMATCH);
-
     __ Bind(&pass);
+#endif
 }
 
 template <>
@@ -970,14 +1025,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(D
 {
     auto left = GetInputRegister(check, DeoptIfInt32ConditionVertex::LEFT_INDEX);
     auto right = GetInputRegister(check, DeoptIfInt32ConditionVertex::RIGHT_INDEX);
-    Label deopt;
-    Label done;
     __ CompareInt32(left, right);
-    __ JumpIf(ConditionFromIntCondition(check->GetCondition()), &deopt);
-    __ Jump(&done);
-    __ Bind(&deopt);
-    EmitEagerDeoptExit(check, check->GetDeoptType());
-    __ Bind(&done);
+    BranchToEagerDeoptTarget(ConditionFromIntCondition(check->GetCondition()), check, check->GetDeoptType());
 }
 
 template <>
@@ -986,22 +1035,27 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfNotNumberVertex>(DeoptI
     auto value = GetInputRegister(check, DeoptIfNotNumberVertex::VALUE_INDEX);
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister bits = scope.Acquire();
-    Label deopt;
     Label done;
-
     __ Move(bits, value);
     __ And(bits, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
     __ Compare(bits, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
     __ JumpIf(Condition::COND_EQUAL, &done);
 
+#if defined(PANDA_TARGET_AMD64)
+    Label *deopt = RecordEagerDeoptTarget(check, kungfu::DeoptType::NOTNUMBER1);
+#else
+    Label deoptLabel;
+    Label *deopt = &deoptLabel;
+#endif
     __ Compare(value, static_cast<int64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
-    __ JumpIf(Condition::COND_BELOW, &deopt);
+    __ JumpIf(Condition::COND_BELOW, deopt);
     __ Compare(value, static_cast<int64_t>(JSTaggedValue::TAG_INT));
     __ JumpIf(Condition::COND_BELOW, &done);
-    __ Jump(&deopt);
-
-    __ Bind(&deopt);
+    __ JumpIf(Condition::COND_ABOVE_OR_EQUAL, deopt);
+#if !defined(PANDA_TARGET_AMD64)
+    __ Bind(deopt);
     EmitEagerDeoptExit(check, kungfu::DeoptType::NOTNUMBER1);
+#endif
     __ Bind(&done);
 }
 
@@ -1372,19 +1426,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedIntToI32Vertex>(C
     auto src = GetInputRegister(convert, CheckedTaggedIntToI32Vertex::INPUT_INDEX);
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister scratch = scope.Acquire();
-    Label deopt;
-    Label done;
-
     __ Move(scratch, src);
     __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
     __ Compare(scratch, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
-    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    BranchToEagerDeoptTarget(Condition::COND_NOT_EQUAL, convert, kungfu::DeoptType::NOTINT1);
     __ SignExtendInt32ToInt64(dst, src);
-    __ Jump(&done);
-
-    __ Bind(&deopt);
-    EmitEagerDeoptExit(convert, kungfu::DeoptType::NOTINT1);
-    __ Bind(&done);
 }
 
 template <>
@@ -1394,6 +1440,18 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
     ASSERT(GetResultRegister(check) == value);
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister scratch = scope.Acquire();
+#if defined(PANDA_TARGET_AMD64)
+    Label *deopt = RecordEagerDeoptTarget(check, kungfu::DeoptType::NOTSTRING1);
+    __ JumpIfNotTaggedHeapObject(value, deopt);
+    __ LoadField(scratch, value, TaggedObject::HCLASS_OFFSET);
+    __ And(scratch, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    __ LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
+    __ And(scratch, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
+    __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
+    __ JumpIf(Condition::COND_LESS_THAN, deopt);
+    __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
+    __ JumpIf(Condition::COND_GREATER_THAN, deopt);
+#else
     Label deopt;
     Label done;
 
@@ -1411,6 +1469,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
     __ Bind(&deopt);
     EmitEagerDeoptExit(check, kungfu::DeoptType::NOTSTRING1);
     __ Bind(&done);
+#endif
 }
 
 template <>
@@ -1530,14 +1589,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
         auto dst = GetResultRegister(op);                                                                       \
         auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                        \
         ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::LEFT_INDEX));                       \
-        Label deopt;                                                                                            \
-        Label done;                                                                                             \
         __ Op(dst, right);                                                                             \
-        __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                                   \
-        __ Jump(&done);                                                                                \
-        __ Bind(&deopt);                                                                               \
-        EmitEagerDeoptExit(op, kungfu::DeoptType::INT32OVERFLOW1);                   \
-        __ Bind(&done);                                                                                \
+        BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);     \
     }
 
 DEFINE_I32_WITH_OVERFLOW_CODEGEN(Add, Int32Add)
@@ -1552,10 +1605,12 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     auto right = GetInputRegister(op, I32MulWithOverflowVertex::RIGHT_INDEX);
     ASSERT(dst == left);
 
+    Label success;
+#if defined(PANDA_TARGET_ARM64)
     Label overflow;
     Label negativeZero;
-    Label success;
     Label done;
+#endif
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister savedLeft = scope.Acquire();
     __ Move(savedLeft, left);
@@ -1569,12 +1624,13 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     __ SignExtendInt32ToInt64(dst, product);
 #else
     __ Int32Mul(dst, right);
-    __ JumpIf(Condition::COND_OVERFLOW, &overflow);
+    BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);
 #endif
     __ CompareInt32(dst, 0);
     __ JumpIf(Condition::COND_NOT_EQUAL, &success);
     __ Int32Or(savedLeft, right);
     __ CompareInt32(savedLeft, 0);
+#if defined(PANDA_TARGET_ARM64)
     __ JumpIf(Condition::COND_LESS_THAN, &negativeZero);
     __ Bind(&success);
     __ Jump(&done);
@@ -1584,6 +1640,10 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     __ Bind(&negativeZero);
     EmitEagerDeoptExit(op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
     __ Bind(&done);
+#else
+    BranchToEagerDeoptTarget(Condition::COND_LESS_THAN, op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
+    __ Bind(&success);
+#endif
 }
 
 template <>
@@ -1592,19 +1652,29 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32D
     auto dst = GetResultRegister(op);
     auto left = GetInputRegister(op, I32DivWithOverflowVertex::LEFT_INDEX);
     auto right = GetInputRegister(op, I32DivWithOverflowVertex::RIGHT_INDEX);
+    Label divisorReady;
+    Label done;
+#if defined(PANDA_TARGET_ARM64)
     Label divideZero;
     Label overflow;
     Label notInt;
     Label negativeZero;
-    Label divisorReady;
-    Label done;
+#endif
 
     __ CompareInt32(right, 0);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, kungfu::DeoptType::DIVZERO1);
+#else
     __ JumpIf(Condition::COND_EQUAL, &divideZero);
+#endif
     __ CompareInt32(left, std::numeric_limits<int32_t>::min());
     __ JumpIf(Condition::COND_NOT_EQUAL, &divisorReady);
     __ CompareInt32(right, -1);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, kungfu::DeoptType::INT32OVERFLOW1);
+#else
     __ JumpIf(Condition::COND_EQUAL, &overflow);
+#endif
     __ Bind(&divisorReady);
 #if defined(PANDA_TARGET_AMD64)
     TemporaryRegisterScope scope(assembler_);
@@ -1618,13 +1688,19 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32D
     __ Int32DivAndRemainder(dst, remainder, left, right);
 #endif
     __ CompareInt32(remainder, 0);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_NOT_EQUAL, op, kungfu::DeoptType::NOTINT5);
+#else
     __ JumpIf(Condition::COND_NOT_EQUAL, &notInt);
+#endif
     __ CompareInt32(dst, 0);
     __ JumpIf(Condition::COND_NOT_EQUAL, &done);
     __ CompareInt32(right, 0);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_LESS_THAN, op, kungfu::DeoptType::DIVZERO2);
+#else
     __ JumpIf(Condition::COND_LESS_THAN, &negativeZero);
     __ Jump(&done);
-
     __ Bind(&divideZero);
     EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO1);
     __ Jump(&done);
@@ -1636,6 +1712,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32D
     __ Jump(&done);
     __ Bind(&negativeZero);
     EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO2);
+#endif
 
     __ Bind(&done);
 }
@@ -1657,18 +1734,21 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
     ArkSteedRegister work = scope.Acquire();
     ArkSteedRegister original = scope.Acquire();
     ArkSteedRegister mulDividend = dividend;
-#endif
     Label negativeZero;
     Label notInt;
     Label done;
-
+#endif
     __ Move(original, dividend);
 #if defined(PANDA_TARGET_AMD64)
     __ Move(mulDividend, dividend);
 #endif
     if (op->GetDivisor() < 0) {
         __ CompareInt32(original, 0);
+#if defined(PANDA_TARGET_AMD64)
+        BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, kungfu::DeoptType::DIVZERO2);
+#else
         __ JumpIf(Condition::COND_EQUAL, &negativeZero);
+#endif
     }
 
     __ Move(work, op->GetMagic());
@@ -1696,15 +1776,18 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
     __ Int32Mul(work, dst);
 #endif
     __ CompareInt32(work, original);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_NOT_EQUAL, op, kungfu::DeoptType::NOTINT5);
+#else
     __ JumpIf(Condition::COND_NOT_EQUAL, &notInt);
     __ Jump(&done);
-
     __ Bind(&negativeZero);
     EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO2);
     __ Jump(&done);
     __ Bind(&notInt);
     EmitEagerDeoptExit(op, kungfu::DeoptType::NOTINT5);
     __ Bind(&done);
+#endif
 }
 
 template <>
@@ -1734,22 +1817,31 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister quotient = scope.AcquireSpecific(x64::rax);
     ArkSteedRegister remainder = scope.AcquireSpecific(x64::rdx);
-#endif
+#else
     Label divideZero;
     Label overflow;
     Label negativeZero;
+#endif
     Label divisorReady;
     Label leftNeg;
     Label done;
 
     // divisor == 0 -> NaN (a double), deopt.
     __ CompareInt32(right, 0);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_EQUAL, mod, kungfu::DeoptType::MODZERO1);
+#else
     __ JumpIf(Condition::COND_EQUAL, &divideZero);
+#endif
     // INT_MIN % -1 traps idiv (#DE); deopt to the interpreter (mathematically 0).
     __ CompareInt32(left, std::numeric_limits<int32_t>::min());
     __ JumpIf(Condition::COND_NOT_EQUAL, &divisorReady);
     __ CompareInt32(right, -1);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_EQUAL, mod, kungfu::DeoptType::INT32OVERFLOW1);
+#else
     __ JumpIf(Condition::COND_EQUAL, &overflow);
+#endif
     __ Bind(&divisorReady);
     // Read the dividend sign before PositiveInt32Mod, which clobbers the left input
     // register. remainder == 0 with a negative dividend is JS -0.0 (not Int32) -> deopt.
@@ -1771,9 +1863,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
     __ PositiveInt32Mod(dst, left, right);
 #endif
     __ CompareInt32(dst, 0);
+#if defined(PANDA_TARGET_AMD64)
+    BranchToEagerDeoptTarget(Condition::COND_EQUAL, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+#else
     __ JumpIf(Condition::COND_EQUAL, &negativeZero);
     __ Jump(&done);
-
     __ Bind(&divideZero);
     EmitEagerDeoptExit(mod, kungfu::DeoptType::MODZERO1);
     __ Jump(&done);
@@ -1782,6 +1876,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
     __ Jump(&done);
     __ Bind(&negativeZero);
     EmitEagerDeoptExit(mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+#endif
     __ Bind(&done);
 }
 
@@ -1791,18 +1886,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNonNegativeI32ToTaggedI
 {
     auto dst = GetResultRegister(convert);
     auto src = GetInputRegister(convert, CheckedNonNegativeI32ToTaggedIntVertex::INPUT_INDEX);
-    Label deopt;
-    Label done;
 
     __ CompareInt32(src, 0);
-    __ JumpIf(Condition::COND_LESS_THAN, &deopt);
+    BranchToEagerDeoptTarget(Condition::COND_LESS_THAN, convert, kungfu::DeoptType::NOTINT5);
     __ SignExtendInt32ToInt64(dst, src);
     __ Or(dst, static_cast<int64_t>(JSTaggedValue::TAG_INT));
-    __ Jump(&done);
-
-    __ Bind(&deopt);
-    EmitEagerDeoptExit(convert, kungfu::DeoptType::NOTINT5);
-    __ Bind(&done);
 }
 
 template <>
@@ -1896,7 +1984,6 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(Chec
     ArkSteedRegister bits = scope.Acquire();
     ArkSteedRegister scratch = scope.Acquire();
     Label intCase;
-    Label deopt;
     Label done;
 
     __ Move(bits, input);
@@ -1905,7 +1992,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(Chec
     __ Compare(bits, scratch);
     __ JumpIf(Condition::COND_EQUAL, &intCase);
     __ Compare(bits, static_cast<int64_t>(JSTaggedValue::TAG_OBJECT));
-    __ JumpIf(Condition::COND_EQUAL, &deopt);
+    BranchToEagerDeoptTarget(Condition::COND_EQUAL, convert, kungfu::DeoptType::NOTNUMBER1);
 
     __ Move(bits, input);
     __ Move(scratch, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
@@ -1918,8 +2005,6 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(Chec
     __ Int32ToFloat64(dst, bits);
     __ Jump(&done);
 
-    __ Bind(&deopt);
-    EmitEagerDeoptExit(convert, kungfu::DeoptType::NOTNUMBER1);
     __ Bind(&done);
 }
 
@@ -1930,7 +2015,23 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
                                        GetInputDoubleRegister(op, F64ToI32TruncVertex::INPUT_INDEX));
 }
 
-#define DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Name, AsmOp, DeoptType, NeedZeroCheck)                \
+#if defined(PANDA_TARGET_AMD64)
+#define DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Name, AsmOp, DeoptType, NeedZeroCheck)                 \
+    template <>                                                                                       \
+    void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##WithOverflowVertex>(                 \
+        I32##Name##WithOverflowVertex *op)                                                            \
+    {                                                                                                 \
+        auto dst = GetResultRegister(op);                                                             \
+        ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX));              \
+        if constexpr (NeedZeroCheck) {                                                                \
+            __ CompareInt32(dst, 0);                                                                  \
+            BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, DeoptType);                           \
+        }                                                                                             \
+        __ AsmOp(dst);                                                                                \
+        BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, DeoptType);                            \
+    }
+#else
+#define DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Name, AsmOp, DeoptType, NeedZeroCheck)                 \
     template <>                                                                                       \
     void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##WithOverflowVertex>(                 \
         I32##Name##WithOverflowVertex *op)                                                            \
@@ -1940,16 +2041,17 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         Label deopt;                                                                                  \
         Label done;                                                                                   \
         if constexpr (NeedZeroCheck) {                                                                \
-            __ CompareInt32(dst, 0);                                                         \
-            __ JumpIf(Condition::COND_EQUAL, &deopt);                                        \
+            __ CompareInt32(dst, 0);                                                                  \
+            __ JumpIf(Condition::COND_EQUAL, &deopt);                                                 \
         }                                                                                             \
-        __ AsmOp(dst);                                                                       \
-        __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                         \
-        __ Jump(&done);                                                                      \
-        __ Bind(&deopt);                                                                     \
-        EmitEagerDeoptExit(op, DeoptType);                               \
-        __ Bind(&done);                                                                      \
+        __ AsmOp(dst);                                                                                \
+        __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                                  \
+        __ Jump(&done);                                                                               \
+        __ Bind(&deopt);                                                                              \
+        EmitEagerDeoptExit(op, DeoptType);                                                            \
+        __ Bind(&done);                                                                               \
     }
+#endif
 
 DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Neg, Int32Neg, kungfu::DeoptType::NOTNEGOV1, true)
 DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Inc, Int32Inc, kungfu::DeoptType::INT32OVERFLOW1, false)
