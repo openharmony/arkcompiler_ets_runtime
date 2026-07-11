@@ -22,6 +22,9 @@
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 
+#include <utility>
+#include <vector>
+
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedSafepointTableBuilder;
@@ -34,6 +37,7 @@ public:
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
+          eagerDeoptExits_(graph->GetChunk()),
           blockColorAssignment_(graph->GetChunk()),
           deferredCode_(graph->GetChunk())
     {}
@@ -64,6 +68,28 @@ private:
                         const ArkSteedRegister *scratchGPR = nullptr,
                         const ArkSteedDoubleRegister *scratchFPR = nullptr);
     void StoreStubStackArgument(const Vertex *callVertex, int paramIdx, ArkSteedAssembler::MemoryOperand destMem);
+
+    struct EagerDeoptExit {
+        Label label;
+        kungfu::DeoptType type;
+        std::vector<kungfu::ARKDeopt> deopts;
+
+        EagerDeoptExit(kungfu::DeoptType deoptType, std::vector<kungfu::ARKDeopt> deoptInfo)
+            : type(deoptType), deopts(std::move(deoptInfo))
+        {}
+    };
+
+    Label *RecordEagerDeoptExit(const Vertex *vertex, const DeoptimizableMixin *frameState,
+                                kungfu::DeoptType type);
+    void EmitEagerDeoptExitImpl(const Vertex *vertex, const DeoptimizableMixin *frameState,
+                                kungfu::DeoptType type);
+    template <class VertexT>
+    void EmitEagerDeoptExit(VertexT *vertex, kungfu::DeoptType type)
+    {
+        EmitEagerDeoptExitImpl(static_cast<const Vertex *>(vertex),
+                               static_cast<const DeoptimizableMixin *>(vertex), type);
+    }
+    void EmitQueuedEagerDeoptExits();
 
     int PrepareCommonStubStackArguments(const Vertex *callVertex, int argCount);
     int PrepareRuntimeStubStackArguments(const Vertex *callVertex, int argCount, int runtimeId);
@@ -144,6 +170,7 @@ private:
     ArkSteedAssembler *assembler_;
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
+    ChunkVector<EagerDeoptExit *> eagerDeoptExits_;
     const char *currentBlockColor_ = "";
     BB *currentLayoutNextBlock_ = nullptr;
 

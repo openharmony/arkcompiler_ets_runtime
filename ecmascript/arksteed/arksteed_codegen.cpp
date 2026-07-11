@@ -447,7 +447,7 @@ int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
 }
 
 void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *vertex, int inputIndex,
-                      int32_t vregId, ArkSteedAssembler *assembler_)
+                      int32_t vregId, ArkSteedAssembler *assembler)
 {
     const InputLocation *loc = vertex->GetInputLocation(inputIndex);
     const InstructionOperand &operand = loc->GetOperand();
@@ -462,25 +462,22 @@ void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *verte
     deoptValue.id = static_cast<kungfu::LLVMStackMapType::VRegId>(vregId);
     deoptValue.kind = kungfu::LocationTy::Kind::INDIRECT;
     int32_t offset =
-        __ GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
+        assembler->GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
     deoptValue.value = std::make_pair(static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GCStackMapRegisters::FP),
                                       static_cast<kungfu::LLVMStackMapType::OffsetType>(offset));
     deopts->emplace_back(deoptValue);
 }
 
-template <class NodeT>
-void EmitUseSlotDeopt(ArkSteedAssembler *assembler_, ArkSteedSafepointTableBuilder *safepointBuilder,
-                      const NodeT *vertex, kungfu::DeoptType type)
+std::vector<kungfu::ARKDeopt> BuildUseSlotDeopts(ArkSteedAssembler *assembler, const Vertex *vertex,
+                                                 const DeoptimizableMixin *frameState)
 {
-    ASSERT(safepointBuilder != nullptr);
     std::vector<kungfu::ARKDeopt> deopts;
     deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    for (uint32_t index = 0; index < vertex->DeoptInputCount(); ++index) {
-        AppendDeoptInput(&deopts, vertex, vertex->DeoptInputIndex(index),
-                         vertex->GetDeoptVReg(index), assembler_);
+    for (uint32_t index = 0; index < frameState->DeoptInputCount(); ++index) {
+        AppendDeoptInput(&deopts, vertex, frameState->DeoptInputIndex(index), frameState->GetDeoptVReg(index),
+                         assembler);
     }
-    __ CallDeoptHandler(type);
-    safepointBuilder->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
+    return deopts;
 }
 
 template <class CallVertexT>
@@ -588,6 +585,33 @@ void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind cond
     __ Jump(ifFalse);
 }
 }  // namespace
+
+Label *ArkSteedCodeGenerator::RecordEagerDeoptExit(const Vertex *vertex, const DeoptimizableMixin *frameState,
+                                                   kungfu::DeoptType type)
+{
+    ASSERT(safepointBuilder_ != nullptr);
+    auto deopts = BuildUseSlotDeopts(assembler_, vertex, frameState);
+    auto *exit = graph_->GetChunk()->New<EagerDeoptExit>(type, std::move(deopts));
+    eagerDeoptExits_.push_back(exit);
+    return &exit->label;
+}
+
+void ArkSteedCodeGenerator::EmitEagerDeoptExitImpl(const Vertex *vertex, const DeoptimizableMixin *frameState,
+                                                   kungfu::DeoptType type)
+{
+    // Keep the conditional branch target close to the failing check. This avoids using a long conditional branch
+    // on AArch64; the local target only performs an unconditional jump to the tail deopt exit.
+    __ Jump(RecordEagerDeoptExit(vertex, frameState, type));
+}
+
+void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
+{
+    for (EagerDeoptExit *exit : eagerDeoptExits_) {
+        __ Bind(&exit->label);
+        __ CallDeoptHandler(exit->type);
+        safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(exit->deopts));
+    }
+}
 
 template <class VertexT>
 void ArkSteedCodeGenerator::VisitNonControlVertex(VertexT *vertex)
@@ -901,14 +925,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     __ JumpIf(Condition::COND_EQUAL, &pass);
 
     __ Bind(&deopt);
-    std::vector<kungfu::ARKDeopt> deopts;
-    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    for (int index = 0; index < static_cast<int>(checkHClass->GetDeoptVRegs().size()); index++) {
-        AppendDeoptInput(&deopts, checkHClass, RECEIVER_INDEX + 1 + index,
-                         checkHClass->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
-    }
-    __ CallDeoptHandler(kungfu::DeoptType::KEYMISSMATCH);
-    safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
+    EmitEagerDeoptExit(checkHClass, kungfu::DeoptType::KEYMISSMATCH);
 
     __ Bind(&pass);
 }
@@ -943,14 +960,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(Deop
     }
 
     __ Bind(&deopt);
-    std::vector<kungfu::ARKDeopt> deopts;
-    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    for (int index = 0; index < static_cast<int>(checkHClass->GetDeoptVRegs().size()); index++) {
-        AppendDeoptInput(&deopts, checkHClass, RECEIVER_INDEX + 1 + index,
-                         checkHClass->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
-    }
-    __ CallDeoptHandler(kungfu::DeoptType::KEYMISSMATCH);
-    safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
+    EmitEagerDeoptExit(checkHClass, kungfu::DeoptType::KEYMISSMATCH);
 
     __ Bind(&pass);
 }
@@ -966,7 +976,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(D
     __ JumpIf(ConditionFromIntCondition(check->GetCondition()), &deopt);
     __ Jump(&done);
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, check, check->GetDeoptType());
+    EmitEagerDeoptExit(check, check->GetDeoptType());
     __ Bind(&done);
 }
 
@@ -991,21 +1001,14 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfNotNumberVertex>(DeoptI
     __ Jump(&deopt);
 
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, check, kungfu::DeoptType::NOTNUMBER1);
+    EmitEagerDeoptExit(check, kungfu::DeoptType::NOTNUMBER1);
     __ Bind(&done);
 }
 
 template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptVertex>(DeoptVertex *deopt)
 {
-    ASSERT(safepointBuilder_ != nullptr);
-    std::vector<kungfu::ARKDeopt> deopts;
-    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    for (uint32_t index = 0, n = deopt->GetInputCount(); index < n; index++) {
-        AppendDeoptInput(&deopts, deopt, index, deopt->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
-    }
-    __ CallDeoptHandler(deopt->GetDeoptType());
-    safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
+    EmitEagerDeoptExit(deopt, deopt->GetDeoptType());
 }
 
 template <>
@@ -1143,11 +1146,10 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVer
     __ Jump(&pass);
 
     __ Bind(&protoChanged);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, loadHolder, kungfu::DeoptType::PROTOTYPECHANGED2);
-    __ Jump(&pass);
+    EmitEagerDeoptExit(loadHolder, kungfu::DeoptType::PROTOTYPECHANGED2);
 
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, loadHolder, kungfu::DeoptType::INCONSISTENTHCLASS2);
+    EmitEagerDeoptExit(loadHolder, kungfu::DeoptType::INCONSISTENTHCLASS2);
     __ Bind(&pass);
 }
 
@@ -1381,7 +1383,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedIntToI32Vertex>(C
     __ Jump(&done);
 
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, convert, kungfu::DeoptType::NOTINT1);
+    EmitEagerDeoptExit(convert, kungfu::DeoptType::NOTINT1);
     __ Bind(&done);
 }
 
@@ -1407,7 +1409,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
     __ Jump(&done);
 
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, check, kungfu::DeoptType::NOTSTRING1);
+    EmitEagerDeoptExit(check, kungfu::DeoptType::NOTSTRING1);
     __ Bind(&done);
 }
 
@@ -1534,7 +1536,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
         __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                                   \
         __ Jump(&done);                                                                                \
         __ Bind(&deopt);                                                                               \
-        EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::INT32OVERFLOW1);                   \
+        EmitEagerDeoptExit(op, kungfu::DeoptType::INT32OVERFLOW1);                   \
         __ Bind(&done);                                                                                \
     }
 
@@ -1577,10 +1579,10 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     __ Bind(&success);
     __ Jump(&done);
     __ Bind(&overflow);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::INT32OVERFLOW1);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::INT32OVERFLOW1);
     __ Jump(&done);
     __ Bind(&negativeZero);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
     __ Bind(&done);
 }
 
@@ -1624,16 +1626,16 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32D
     __ Jump(&done);
 
     __ Bind(&divideZero);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::DIVZERO1);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO1);
     __ Jump(&done);
     __ Bind(&overflow);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::INT32OVERFLOW1);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::INT32OVERFLOW1);
     __ Jump(&done);
     __ Bind(&notInt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::NOTINT5);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::NOTINT5);
     __ Jump(&done);
     __ Bind(&negativeZero);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::DIVZERO2);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO2);
 
     __ Bind(&done);
 }
@@ -1698,10 +1700,10 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
     __ Jump(&done);
 
     __ Bind(&negativeZero);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::DIVZERO2);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO2);
     __ Jump(&done);
     __ Bind(&notInt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, op, kungfu::DeoptType::NOTINT5);
+    EmitEagerDeoptExit(op, kungfu::DeoptType::NOTINT5);
     __ Bind(&done);
 }
 
@@ -1773,13 +1775,13 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
     __ Jump(&done);
 
     __ Bind(&divideZero);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::MODZERO1);
+    EmitEagerDeoptExit(mod, kungfu::DeoptType::MODZERO1);
     __ Jump(&done);
     __ Bind(&overflow);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::INT32OVERFLOW1);
+    EmitEagerDeoptExit(mod, kungfu::DeoptType::INT32OVERFLOW1);
     __ Jump(&done);
     __ Bind(&negativeZero);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+    EmitEagerDeoptExit(mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
     __ Bind(&done);
 }
 
@@ -1799,7 +1801,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNonNegativeI32ToTaggedI
     __ Jump(&done);
 
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, convert, kungfu::DeoptType::NOTINT5);
+    EmitEagerDeoptExit(convert, kungfu::DeoptType::NOTINT5);
     __ Bind(&done);
 }
 
@@ -1917,7 +1919,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(Chec
     __ Jump(&done);
 
     __ Bind(&deopt);
-    EmitUseSlotDeopt(assembler_, safepointBuilder_, convert, kungfu::DeoptType::NOTNUMBER1);
+    EmitEagerDeoptExit(convert, kungfu::DeoptType::NOTNUMBER1);
     __ Bind(&done);
 }
 
@@ -1945,7 +1947,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                         \
         __ Jump(&done);                                                                      \
         __ Bind(&deopt);                                                                     \
-        EmitUseSlotDeopt(assembler_, safepointBuilder_, op, DeoptType);                               \
+        EmitEagerDeoptExit(op, DeoptType);                               \
         __ Bind(&done);                                                                      \
     }
 
@@ -2293,6 +2295,7 @@ void ArkSteedCodeGenerator::Generate()
         ProcessControlVertex(controlVertex);
     }
     EmitDeferredCode();
+    EmitQueuedEagerDeoptExits();
 }
 
 void ArkSteedCodeGenerator::EmitDeferredCode()
