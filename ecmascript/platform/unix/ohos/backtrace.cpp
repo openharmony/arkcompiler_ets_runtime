@@ -80,11 +80,12 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
         return;
     }
     stack << "=====================Backtrace========================";
+    size_t frameIndex = 0;
     for (size_t i = 0; i < stackSize; i++) {
         Dl_info info;
         if (!FindStackInfoCache(pcs[i], info)) {
             if (!dladdr(pcs[i], &info)) {
-                break;
+                continue;
             }
             if (enableCache) {
                 EmplaceStackInfoCache(pcs[i], info);
@@ -96,13 +97,14 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
         int ret = 0;
         ret = static_cast<int>(snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, frameFormatWithMapName, \
-            i, offset, file));
+            frameIndex, offset, file));
         if (ret <= 0) {
             LOG_ECMA(ERROR) << "Backtrace snprintf_s failed";
             return;
         }
         stack << std::endl;
         stack << buf;
+        frameIndex++;
     }
 #elif defined(ENABLE_UNWINDER)
     LockHolder lock(unwinderMutex);
