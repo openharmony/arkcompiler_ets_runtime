@@ -31,6 +31,10 @@ using fd_t = int;
 
 namespace OHOS::ArkCompiler {
 
+extern "C" {
+    typedef int32_t (*ParseBundleNameAndAppIdentifierFunc)(const int32_t, std::string&, std::string&);
+}
+
 class AotArgsVerify {
 public:
 
@@ -70,9 +74,9 @@ private:
     static bool CheckEncryptedBundle(uint32_t isEncryptedBundle);
     static bool CheckHapBundleInfo(const std::string &hapPath, const std::string &expectedBundleName,
         const std::string *expectedAppIdentifier,
-        int32_t (*parseFunc)(const int32_t, std::string&, std::string&));
+        ParseBundleNameAndAppIdentifierFunc parseFunc);
     static bool CheckExternalPackages(const std::vector<HspModuleInfo> &externalPkgs,
-        int32_t (*parseFunc)(const int32_t, std::string&, std::string&));
+        ParseBundleNameAndAppIdentifierFunc parseFunc);
 };
 
 } // namespace OHOS::ArkCompiler

@@ -508,7 +508,7 @@ bool AotArgsVerify::CheckHapFsVerity(int fd)
 }
 
 bool AotArgsVerify::CheckHapBundleInfo(const std::string &hapPath, const std::string &expectedBundleName,
-    const std::string* expectedAppIdentifier, int32_t (*parseFunc)(const int32_t, std::string&, std::string&))
+    const std::string* expectedAppIdentifier, ParseBundleNameAndAppIdentifierFunc parseFunc)
 {
     std::string realPath;
     if (!panda::ecmascript::RealPath(hapPath.c_str(), realPath, true)) {
@@ -556,7 +556,7 @@ bool AotArgsVerify::CheckHapBundleInfo(const std::string &hapPath, const std::st
 }
 
 bool AotArgsVerify::CheckExternalPackages(const std::vector<HspModuleInfo> &externalPkgs,
-    int32_t (*parseFunc)(const int32_t, std::string&, std::string&))
+    ParseBundleNameAndAppIdentifierFunc parseFunc)
 {
     if (externalPkgs.empty()) {
         LOG_SA(INFO) << "No external packages to verify";
@@ -603,7 +603,6 @@ bool AotArgsVerify::CheckBundleNameAndAppIdentifier(const std::string &bundleNam
         return false;
     }
 
-    using ParseBundleNameAndAppIdentifierFunc = int32_t (*)(const int32_t, std::string&, std::string&);
     ParseBundleNameAndAppIdentifierFunc parseFunc =
         reinterpret_cast<ParseBundleNameAndAppIdentifierFunc>(
             dlsym(handle, "ParseBundleNameAndAppIdentifier"));
