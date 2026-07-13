@@ -85,6 +85,7 @@ HWTEST_F_L0(GlobalRefTrackTest, TestDisableClearsMap)
     ASSERT_EQ(thread_->FindGlobalRefMapping(slotAddr), nullptr);
 }
 
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(GlobalRefTrackTest, TestStoreWithoutTracking)
 {
     ASSERT_FALSE(JSNApi::IsTrackGlobalRefEnabled());
@@ -95,7 +96,6 @@ HWTEST_F_L0(GlobalRefTrackTest, TestStoreWithoutTracking)
     ASSERT_EQ(thread_->FindGlobalRefMapping(slotAddr), nullptr);
 }
 
-#if defined(ENABLE_DUMP_IN_FAULTLOG)
 HWTEST_F_L0(GlobalRefTrackTest, TestJSNApiBridge)
 {
     JSNApi::SetTrackGlobalRef(false);
@@ -190,4 +190,5 @@ HWTEST_F_L0(GlobalRefTrackTest, TestGuardBlocksStoreWhenDisabled)
     ASSERT_EQ(thread_->FindGlobalRefMapping(slotA), &refA);
 }
 #endif
+
 }  // namespace panda::test

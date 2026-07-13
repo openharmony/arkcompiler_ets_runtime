@@ -120,5 +120,10 @@ static constexpr uint8_t TRUE_VALUE = 0x52U;       // 0101 0010
 static constexpr uint8_t FALS_VALUE = 0x62U;       // 0110 0010
 static constexpr uint8_t INTL_VALUE = 0x04U;       // 0000 0100
 static constexpr uint8_t DOUB_VALUE = 0x06U;       // 0000 0110
+
+// Sentinel the dumper writes as the globalRef group count when track-global-ref
+// is disabled. Translator treats it as "tracking off, no payload follows".
+// Shared between rawheap_dump.cpp (writer) and rawheap_translate.cpp (reader).
+constexpr uint32_t GLOBAL_REF_TRACK_OFF_MARK = 0xFFFFFFFFU;
 }  // namespace rawheap_translate
 #endif  // RAWHEAP_TRANSLATE_COMMON_H

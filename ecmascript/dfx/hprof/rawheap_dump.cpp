@@ -209,6 +209,7 @@ void RawHeapDump::BinaryDump()
     DumpMetadataFields();
 
     marker_.MarkRootObjects();
+
     DumpRootTable();
 
     marker_.ProcessMarkObjectsFromRoot();
@@ -391,6 +392,38 @@ void RawHeapDump::AddSectionBlockSize()
     secIndexVec_.push_back(GetRawHeapFileOffset() - preOffset_);
 }
 
+void RawHeapDump::WriteGlobalRefGroup()
+{
+    if (!JSNApi::IsTrackGlobalRefEnabled()) {
+        WriteU32(rawheap_translate::GLOBAL_REF_TRACK_OFF_MARK);
+        return;
+    }
+    CVector<GlobalRefMappingEntry> entries;
+    auto collector = [&entries](uintptr_t slotAddr, void *ref) {
+        JSTaggedType raw = *reinterpret_cast<JSTaggedType *>(slotAddr);
+        JSTaggedValue value(raw);
+        if (!value.IsHeapObject()) {
+            return;
+        }
+        if (value.IsWeak()) {
+            value.RemoveWeakTag();
+        }
+        entries.push_back({reinterpret_cast<uintptr_t>(ref), value.GetRawData()});
+    };
+    if (dumpOption_->isProcDump) {
+        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+            thread->IterateGlobalRefMappings(collector);
+        });
+    } else {
+        vm_->GetAssociatedJSThread()->IterateGlobalRefMappings(collector);
+    }
+    WriteU32(static_cast<uint32_t>(entries.size()));
+    for (const auto &e : entries) {
+        WriteU64(static_cast<uint64_t>(e.refAddr));
+        WriteGlobalRefHeapObjAddr(e.heapObjAddr);
+    }
+}
+
 StringId RawHeapDump::GenerateStringIdForJSObject(TaggedObject *object, JSThread *thread)
 {
     JSTaggedValue entry(object);
@@ -520,6 +553,42 @@ RawHeapDumpV1::~RawHeapDumpV1()
     strIdMapObjVec_.clear();
 }
 
+/*
+ *  Root table section layout (V1 / V2 share the same shape; only the
+ *  per-address width W differs — W = 8 bytes in V1, W = 4 bytes in V2).
+ *  The marked-root header's `rootUnit` field equals W.
+ *
+ *  AddSectionOffset() / AddSectionBlockSize() bracket ONLY the marked-root
+ *  list (header + address array). The four root-type groups and the global-
+ *  ref group below are appended afterwards but still inside the file region
+ *  [sections_[0], sections_[2]].
+ *
+ *  +-----------------------------+----------+-----------------------+
+ *  | region                      | size     | encoding              |
+ *  +-----------------------------+----------+-----------------------+
+ *  | marked-root header          |    8 B   | rootCnt | rootUnit=W  |
+ *  | marked-root address list    |  N * W   | one addr per entry    |
+ *  +-----------------------------+----------+-----------------------+
+ *  | localHandle  group header   |    4 B   | localHandleCnt        |
+ *  | localHandle  address list   | M1 * W   | one addr per entry    |
+ *  +-----------------------------+----------+-----------------------+
+ *  | globalHandle group header   |    4 B   | globalHandleCnt       |
+ *  | globalHandle address list   | M2 * W   | one addr per entry    |
+ *  +-----------------------------+----------+-----------------------+
+ *  | vmRoot       group header   |    4 B   | vmRootCnt             |
+ *  | vmRoot       address list   | M3 * W   | one addr per entry    |
+ *  +-----------------------------+----------+-----------------------+
+ *  | frameRoot    group header   |    4 B   | frameRootCnt          |
+ *  | frameRoot    address list   | M4 * W   | one addr per entry    |
+ *  +-----------------------------+----------+-----------------------+
+ *  | globalRef    group header   |    4 B   | globalRefCnt          |
+ *  | globalRef    entry payload  | K * (8+W)| refAddr | heapObjAddr |
+ *  +-----------------------------+----------+-----------------------+
+ *
+ *  The globalRef group header is ALWAYS emitted. When track-global-ref is
+ *  off, globalRefCnt = GLOBAL_REF_TRACK_OFF_MARK (0xFFFFFFFF) and no payload
+ *  follows; when on, globalRefCnt = K and K entries follow.
+ */
 void RawHeapDumpV1::DumpRootTable()
 {
     AddSectionOffset();
@@ -535,7 +604,14 @@ void RawHeapDumpV1::DumpRootTable()
     CollectRootAddrByType(GetVmRoots()); // ROOT_VM
     CollectRootAddrByType(GetFrameRoots()); // ROOT_FRAME
 
+    WriteGlobalRefGroup();
+
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
+}
+
+void RawHeapDumpV1::WriteGlobalRefHeapObjAddr(JSTaggedType addr)
+{
+    WriteU64(static_cast<uint64_t>(addr));
 }
 
 void RawHeapDumpV1::CollectRootAddrByType(const CSet<JSTaggedType>& rootSet)
@@ -662,6 +738,10 @@ RawHeapDumpV2::~RawHeapDumpV2()
     regionIdMap_.clear();
 }
 
+/*
+ *  Root table section layout — see RawHeapDumpV1::DumpRootTable for the
+ *  full table. V2 differs only in W = 4 (synthetic 32-bit addresses).
+ */
 void RawHeapDumpV2::DumpRootTable()
 {
     AddSectionOffset();
@@ -677,7 +757,14 @@ void RawHeapDumpV2::DumpRootTable()
     CollectRootAddrByType(GetVmRoots()); // ROOT_VM
     CollectRootAddrByType(GetFrameRoots()); // ROOT_FRAME
 
+    WriteGlobalRefGroup();
+
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
+}
+
+void RawHeapDumpV2::WriteGlobalRefHeapObjAddr(JSTaggedType addr)
+{
+    WriteU32(GenerateSyntheticAddr(addr));
 }
 
 void RawHeapDumpV2::CollectRootAddrByType(const CSet<JSTaggedType>& rootSet)
