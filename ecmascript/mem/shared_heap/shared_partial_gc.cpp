@@ -40,7 +40,6 @@ void SharedPartialGC::RunPhases()
         + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
         + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
-    sHeap_->SetGCThreadQosPriority(common::PriorityMode::STW);
     markingInProgress_ = sHeap_->CheckOngoingConcurrentMarking();
     Initialize();
     Mark();
@@ -54,9 +53,6 @@ void SharedPartialGC::RunPhases()
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
     }
     Finish();
-    if (!concurrentProcessStringTable_) {
-        sHeap_->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
-    }
     sHeap_->ResetNativeSizeAfterLastGC();
 }
 

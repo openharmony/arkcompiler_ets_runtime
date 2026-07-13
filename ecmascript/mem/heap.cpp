@@ -566,6 +566,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     RuntimeLock(dThread_, suspensionRequestMutex);
     {
         ThreadManagedScope runningScope(dThread_);
+        SetGCThreadQosPriority(common::PriorityMode::STW);
         SuspendAllScope scope(dThread_);
         SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
         CheckInHeapProfiler();
@@ -610,8 +611,8 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         sharedGC_->IsConcurrentProcessStringTable()) {
         Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->
             WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThread(dThread_);
-        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     }
+    SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     RuntimeUnLock(suspensionRequestMutex);
 }
 
