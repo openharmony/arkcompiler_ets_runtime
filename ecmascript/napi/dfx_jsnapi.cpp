@@ -175,7 +175,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
 
     // Write in faultlog for heap leak.
     int32_t fd;
-    if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
+    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
     } else {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
