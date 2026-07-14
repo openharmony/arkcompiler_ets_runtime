@@ -291,7 +291,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
 
     GateRef newTop = builder_.PtrAdd(top, size);
     GateRef condition = builder_.Int64GreaterThan(newTop, end);
-    Label *currentLabel = env.GetCurrentLabel();
+    auto currentLabel = env.GetCurrentLabel();
     BRANCH_CIR(condition, &callRuntime, &success);
     {
         GateRef ifBranch = currentLabel->GetControl();
@@ -424,7 +424,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGateForCMCGC(GateRef gate,
 
     GateRef newAllocPtr = builder_.PtrAdd(allocPtr, size);
     GateRef condition = builder_.Int64GreaterThan(newAllocPtr, regionEnd);
-    Label *currentLabel = env.GetCurrentLabel();
+    auto currentLabel = env.GetCurrentLabel();
     BRANCH_CIR(condition, &callRuntime, &success);
     {
         GateRef ifBranch = currentLabel->GetControl();
@@ -789,7 +789,7 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
 
     Label exit(&builder_);
     Label isHeapObject(&builder_);
-    Label *currentLabel = env.GetCurrentLabel();
+    auto currentLabel = env.GetCurrentLabel();
     if (compilationEnv_ != nullptr && compilationEnv_->SupportIntrinsic() && !acc_.IsConstant(value)) {
         GateRef heapObjectCheck = builder_.TaggedIsHeapObject(value, compilationEnv_);
         BRANCH_CIR(heapObjectCheck, &isHeapObject, &exit);
@@ -952,7 +952,7 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
     GateRef readBarrierStateBit = builder_.Int64And(gcStateBitField, readBarrierStateMask);
     GateRef conditionValue = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef condition = builder_.Equal(readBarrierStateBit, conditionValue);
-    Label *currentLabel = env.GetCurrentLabel();
+    auto currentLabel = env.GetCurrentLabel();
     BRANCH_CIR_LIKELY(condition, &noBarrier, &callRuntime);
     {
         GateRef ifBranch = currentLabel->GetControl();

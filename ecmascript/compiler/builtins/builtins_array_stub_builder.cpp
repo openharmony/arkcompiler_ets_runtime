@@ -647,26 +647,12 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     GateRef receiver = NewArray(glue, thisArrLen);
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label loopExit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int64LessThan(*i, thisArrLen), &next, &loopExit);
-        Bind(&next);
-        {
-            GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
-            SetValueWithElementsKind(glue, receiver, ele, *i, Boolean(true),
-                Int32(Elements::ToUint(ElementsKind::NONE)));
-            Jump(&loopEnd);
-        }
+    IR_WHILE (Int64LessThan(*i, thisArrLen)) {
+        GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
+        SetValueWithElementsKind(glue, receiver, ele, *i, Boolean(true),
+            Int32(Elements::ToUint(ElementsKind::NONE)));
+        i = Int64Add(*i, Int64(1));
     }
-    Bind(&loopEnd);
-    i = Int64Add(*i, Int64(1));
-    LoopEnd(&loopHead);
-    Bind(&loopExit);
     result->WriteVariable(DoSort(glue, receiver, true, result, exit, slowPath));
     Jump(exit);
 }
@@ -1383,7 +1369,6 @@ GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef
 {
     auto env = GetEnvironment();
     Label subentry(env);
-    Label exit(env);
     env->SubCfgEntry(&subentry);
     DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
 
@@ -1393,40 +1378,18 @@ GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef
     result = newArray;
 
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label loopExit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32LessThan(*i, actualDeleteCount), &next, &loopExit);
-        Bind(&next);
-        Label setHole(env);
-        Label setSrc(env);
-        BRANCH(Int32GreaterThanOrEqual(Int32Add(*i, start),
-            GetLengthOfTaggedArray(*srcElements)), &setHole, &setSrc);
-        Bind(&setHole);
-        {
+    IR_WHILE (Int32LessThan(*i, actualDeleteCount), LoopSafepoint(glue)) {
+        IR_IF (Int32GreaterThanOrEqual(Int32Add(*i, start),
+            GetLengthOfTaggedArray(*srcElements))) {
             SetValueWithElementsKind(glue, newArray, Hole(), *i, Boolean(true),
                                      Int32(Elements::ToUint(ElementsKind::NONE)));
-            Jump(&loopEnd);
-        }
-        Bind(&setSrc);
-        {
+        } IR_ELSE {
             GateRef val = GetTaggedValueWithElementsKind(glue, thisValue, Int32Add(start, *i));
             SetValueWithElementsKind(glue, newArray, val, *i, Boolean(true),
                                      Int32(Elements::ToUint(ElementsKind::NONE)));
-            Jump(&loopEnd);
         }
+        i = Int32Add(*i, Int32(1));
     }
-    Bind(&loopEnd);
-    i = Int32Add(*i, Int32(1));
-    LoopEndWithCheckSafePoint(&loopHead, env, glue);
-    Bind(&loopExit);
-    Jump(&exit);
-
-    Bind(&exit);
     auto res = *result;
     env->SubCfgExit();
     return res;

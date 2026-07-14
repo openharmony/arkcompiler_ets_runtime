@@ -1954,23 +1954,11 @@ void LdLexVarStubBuilder::GenerateCircuit()
     GateRef slot = Int32Argument(2);
     DEFVARIABLE(currentEnv, VariableType::JS_ANY(), TaggedArgument(3)); // 3: Get current lexEnv
     GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
-    Label exit(env);
-    Label loopHead(env);
-    Label loopBody(env);
-
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32LessThan(*i, level), &loopBody, &exit);
-        Bind(&loopBody);
-        {
-            currentEnv = GetValueFromTaggedArray(glue, *currentEnv, index);
-            i = Int32Add(*i, Int32(1));
-            LoopEnd(&loopHead);
-        }
+    IR_WHILE (Int32LessThan(*i, level)) {
+        currentEnv = GetValueFromTaggedArray(glue, *currentEnv, index);
+        i = Int32Add(*i, Int32(1));
     }
-    Bind(&exit);
     GateRef valueIndex = Int32Add(slot, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     GateRef result = GetValueFromTaggedArray(glue, *currentEnv, valueIndex);
     Return(result);
@@ -1985,23 +1973,11 @@ void StLexVarStubBuilder::GenerateCircuit()
     DEFVARIABLE(currentEnv, VariableType::JS_ANY(), TaggedArgument(3)); // 3: Get current lexEnv
     GateRef value = TaggedArgument(4); // 4: value to store
     GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
-    Label exit(env);
-    Label loopHead(env);
-    Label loopBody(env);
-
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32LessThan(*i, level), &loopBody, &exit);
-        Bind(&loopBody);
-        {
-            currentEnv = GetValueFromTaggedArray(glue, *currentEnv, index);
-            i = Int32Add(*i, Int32(1));
-            LoopEnd(&loopHead);
-        }
+    IR_WHILE (Int32LessThan(*i, level)) {
+        currentEnv = GetValueFromTaggedArray(glue, *currentEnv, index);
+        i = Int32Add(*i, Int32(1));
     }
-    Bind(&exit);
     GateRef valueIndex = Int32Add(slot, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, *currentEnv, valueIndex, value);
     Return(*currentEnv);

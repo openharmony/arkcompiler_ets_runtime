@@ -440,7 +440,6 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-    Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(linkedTable, VariableType::JS_ANY(), srcLinkedTable);
 
@@ -450,76 +449,43 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     DEFVARIABLE(totalElements, VariableType::INT32(), tmpTotalElements);
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
 
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label loopExit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32LessThan(*index, *totalElements), &next, &loopExit);
-        Bind(&next);
+    IR_WHILE (Int32LessThan(*index, *totalElements)) {
         GateRef valueIndex = *index;
 
         GateRef key = GetKey(*linkedTable, *index);
         index = Int32Add(*index, Int32(1));
-        Label keyNotHole(env);
-        BRANCH(TaggedIsHole(key), &loopEnd, &keyNotHole);
-        Bind(&keyNotHole);
+        IR_IF (TaggedIsHole(key)) {
+            IR_CONTINUE();
+        }
 
         GateRef value = key;
         if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
             value = GetValue(*linkedTable, valueIndex);
         }
-        Label hasException(env);
-        Label notHasException(env);
         JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
         callArgs.callThisArg3WithReturnArgs = { thisArg, value, key, thisValue };
         CallStubBuilder callBuilder(this, glue_, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
             Circuit::NullGate(), callArgs, ProfileOperation(), false);
         GateRef retValue = callBuilder.JSCallDispatch();
-        BRANCH(HasPendingException(glue_), &hasException, &notHasException);
-        Bind(&hasException);
-        {
+        IR_IF (HasPendingException(glue_)) {
             res = retValue;
-            Jump(&exit);
-        }
-        Bind(&notHasException);
-        {
+            IR_BREAK();
+        } IR_ELSE {
             // Maybe add or delete, get next table
             GateRef tmpNextTable = GetNextTable(*linkedTable);
             DEFVARIABLE(nextTable, VariableType::JS_ANY(), tmpNextTable);
-            Label loopHead1(env);
-            Label loopEnd1(env);
-            Label next1(env);
-            Label loopExit1(env);
-            Jump(&loopHead1);
-            LoopBegin(&loopHead1);
-            {
-                BRANCH(TaggedIsHole(*nextTable), &loopExit1, &next1);
-                Bind(&next1);
+            IR_WHILE (BoolNot(TaggedIsHole(*nextTable))) {
                 GateRef deleted = GetDeletedElementsAt(*linkedTable, *index);
                 index = Int32Sub(*index, deleted);
                 linkedTable = *nextTable;
                 nextTable = GetNextTable(*linkedTable);
-                Jump(&loopEnd1);
             }
-            Bind(&loopEnd1);
-            LoopEnd(&loopHead1);
-            Bind(&loopExit1);
             // update totalElements
             GateRef numberOfEle = GetNumberOfElements(*linkedTable);
             GateRef numberOfDeletedEle = GetNumberOfDeletedElements(*linkedTable);
             totalElements = Int32Add(numberOfEle, numberOfDeletedEle);
-            Jump(&loopEnd);
         }
     }
-    Bind(&loopEnd);
-    LoopEnd(&loopHead);
-    Bind(&loopExit);
-    Jump(&exit);
-
-    Bind(&exit);
     env->SubCfgExit();
     return *res;
 }

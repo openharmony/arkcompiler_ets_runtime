@@ -41,6 +41,7 @@ class BuiltinsStringStubBuilder;
 class CompilationConfig;
 class Environment;
 class Label;
+class LabelImpl;
 class NTypeBytecodeLowering;
 class SlowPathLowering;
 class StubBuilder;
@@ -450,7 +451,7 @@ public:
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
     void LoopExit(const std::vector<Variable*> &vars, size_t diff = 1);
-    inline Label *GetCurrentLabel() const;
+    inline LabelImpl *GetCurrentLabel() const;
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
     inline StateDepend GetStateDepend() const;

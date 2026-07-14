@@ -1632,38 +1632,24 @@ GateRef BuiltinsStringStubBuilder::CanBeCompressed(GateRef data, GateRef len, bo
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::BOOL(), True());
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label nextCount(env);
-    Label isNotASCIICharacter(env);
-    Label exit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32LessThan(*i, len), &nextCount, &exit);
-        Bind(&nextCount);
-        {
-            if (isUtf16) {
-                GateRef tmp = LoadPrimitive(VariableType::INT16(), data,
-                    PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint16_t))));
-                BRANCH(IsASCIICharacter(ZExtInt16ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
-            } else {
-                GateRef tmp = LoadPrimitive(VariableType::INT8(), data,
-                    PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint8_t))));
-                BRANCH(IsASCIICharacter(ZExtInt8ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
-            }
-            Bind(&isNotASCIICharacter);
-            {
-                result = False();
-                Jump(&exit);
-            }
+    IR_WHILE (Int32LessThan(*i, len)) {
+        GateRef character;
+        if (isUtf16) {
+            GateRef value = LoadPrimitive(VariableType::INT16(), data,
+                PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint16_t))));
+            character = ZExtInt16ToInt32(value);
+        } else {
+            GateRef value = LoadPrimitive(VariableType::INT8(), data,
+                PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint8_t))));
+            character = ZExtInt8ToInt32(value);
+        }
+        IR_IF (IsASCIICharacter(character)) {
+            i = Int32Add(*i, Int32(1));
+        } IR_ELSE {
+            result = False();
+            IR_BREAK();
         }
     }
-    Bind(&loopEnd);
-    i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead);
-
-    Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
@@ -1682,30 +1668,13 @@ void BuiltinsStringStubBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateR
     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
     DEFVARIABLE(sourceTmp, VariableType::NATIVE_POINTER(), src);
     DEFVARIABLE(len, VariableType::INT32(), sourceLength);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label exit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, &exit);
-        Bind(&next);
-        {
-            len = Int32Sub(*len, Int32(1));
-            GateRef i = LoadZeroOffsetPrimitive(VariableType::INT8(), *sourceTmp);
-            Store(VariableType::INT16(), glue, *dstTmp, IntPtr(0), ZExtInt8ToInt16(i));
-            Jump(&loopEnd);
-        }
+    IR_WHILE (Int32GreaterThan(*len, Int32(0))) {
+        len = Int32Sub(*len, Int32(1));
+        GateRef i = LoadZeroOffsetPrimitive(VariableType::INT8(), *sourceTmp);
+        Store(VariableType::INT16(), glue, *dstTmp, IntPtr(0), ZExtInt8ToInt16(i));
+        sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint8_t)));
+        dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint16_t)));
     }
-
-    Bind(&loopEnd);
-    sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint8_t)));
-    dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint16_t)));
-    // Work with low level buffers, we can't call GC. Loop is simple.
-    LoopEnd(&loopHead);
-
-    Bind(&exit);
     env->SubCfgExit();
     return;
 }
@@ -1723,30 +1692,13 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
     DEFVARIABLE(sourceTmp, VariableType::NATIVE_POINTER(), src);
     DEFVARIABLE(len, VariableType::INT32(), sourceLength);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label exit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, &exit);
-        Bind(&next);
-        {
-            len = Int32Sub(*len, Int32(1));
-            GateRef i = LoadZeroOffsetPrimitive(VariableType::INT16(), *sourceTmp);
-            Store(VariableType::INT8(), glue, *dstTmp, IntPtr(0), TruncInt16ToInt8(i));
-            Jump(&loopEnd);
-        }
+    IR_WHILE (Int32GreaterThan(*len, Int32(0))) {
+        len = Int32Sub(*len, Int32(1));
+        GateRef i = LoadZeroOffsetPrimitive(VariableType::INT16(), *sourceTmp);
+        Store(VariableType::INT8(), glue, *dstTmp, IntPtr(0), TruncInt16ToInt8(i));
+        sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint16_t)));
+        dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint8_t)));
     }
-
-    Bind(&loopEnd);
-    sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint16_t)));
-    dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint8_t)));
-    // Work with low level buffers, we can't call GC. Loop is simple.
-    LoopEnd(&loopHead);
-
-    Bind(&exit);
     env->SubCfgExit();
     return;
 }

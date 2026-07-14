@@ -104,6 +104,21 @@ host_unittest_action("LoopOptimizationTest") {
   ]
 }
 
+host_unittest_action("StructuredControlFlowTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "structured_control_flow_test.cpp",
+  ]
+
+  deps = [
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
+}
+
 host_unittest_action("ConstantFoldingTest") {
   module_out_path = module_output_path
 
@@ -290,6 +305,7 @@ group("host_unittest") {
     ":InstructionCombineTestAction",
     ":LoopOptimizationTestAction",
     ":NumberSpeculativeRetypeTestAction",
+    ":StructuredControlFlowTestAction",
     ":TypedArrayLoweringTestAction",
   ]
 

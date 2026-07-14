@@ -52,6 +52,18 @@ void StubBuilder::Jump(Label *label)
     env_->SetCurrentLabel(nullptr);
 }
 
+void StubBuilder::Jump(LabelImpl *label)
+{
+    ASSERT(label);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto jump = env_->GetBuilder()->Goto(currentControl);
+    currentLabel->SetControl(jump);
+    label->AppendPredecessor(currentLabel);
+    label->MergeControl(currentLabel->GetControl());
+    env_->SetCurrentLabel(nullptr);
+}
+
 void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
                         uint32_t trueWeight, uint32_t falseWeight, const char *comment)
 {
@@ -64,6 +76,22 @@ void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
     trueLabel->MergeControl(ifTrue);
     GateRef ifFalse = env_->GetBuilder()->IfFalse(ifBranch);
     falseLabel->AppendPredecessor(env_->GetCurrentLabel());
+    falseLabel->MergeControl(ifFalse);
+    env_->SetCurrentLabel(nullptr);
+}
+
+void StubBuilder::Branch(GateRef condition, LabelImpl *trueLabel, LabelImpl *falseLabel,
+                         uint32_t trueWeight, uint32_t falseWeight, const char *comment)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    GateRef ifBranch = env_->GetBuilder()->Branch(currentControl, condition, trueWeight, falseWeight, comment);
+    currentLabel->SetControl(ifBranch);
+    GateRef ifTrue = env_->GetBuilder()->IfTrue(ifBranch);
+    trueLabel->AppendPredecessor(currentLabel);
+    trueLabel->MergeControl(ifTrue);
+    GateRef ifFalse = env_->GetBuilder()->IfFalse(ifBranch);
+    falseLabel->AppendPredecessor(currentLabel);
     falseLabel->MergeControl(ifFalse);
     env_->SetCurrentLabel(nullptr);
 }
@@ -117,6 +145,16 @@ void StubBuilder::LoopBegin(Label *loopHead)
     env_->SetCurrentLabel(loopHead);
 }
 
+void StubBuilder::LoopBegin(LabelImpl *loopHead)
+{
+    ASSERT(loopHead);
+    auto loopControl = env_->GetBuilder()->LoopBegin(loopHead->GetControl());
+    loopHead->SetControl(loopControl);
+    loopHead->SetPreControl(loopControl);
+    loopHead->Bind();
+    env_->SetCurrentLabel(loopHead);
+}
+
 GateRef StubBuilder::CheckSuspend(GateRef glue)
 {
     GateRef stateAndFlagsOffset = IntPtr(JSThread::GlueData::GetStateAndFlagsOffset(env_->IsArch32Bit()));
@@ -135,6 +173,18 @@ GateRef StubBuilder::CheckSuspendForCMCGC(GateRef glue)
 
 void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue)
 {
+    CheckSafePointAtLoopEnd(env, glue);
+    LoopEnd(loopHead);
+}
+
+void StubBuilder::LoopEndWithCheckSafePoint(LabelImpl *loopHead, Environment *env, GateRef glue)
+{
+    CheckSafePointAtLoopEnd(env, glue);
+    LoopEnd(loopHead);
+}
+
+void StubBuilder::CheckSafePointAtLoopEnd(Environment *env, GateRef glue)
+{
     Label loopEnd(env);
     Label needSuspend(env);
     Label checkSuspendForCMCGC(env);
@@ -152,10 +202,24 @@ void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, G
         Jump(&loopEnd);
     }
     Bind(&loopEnd);
-    LoopEnd(loopHead);
 }
 
 void StubBuilder::LoopEnd(Label *loopHead)
+{
+    ASSERT(loopHead);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto loopend = env_->GetBuilder()->LoopEnd(currentControl);
+    currentLabel->SetControl(loopend);
+    loopHead->AppendPredecessor(currentLabel);
+    loopHead->MergeControl(loopend);
+    loopHead->Seal();
+    loopHead->MergeAllControl();
+    loopHead->MergeAllDepend();
+    env_->SetCurrentLabel(nullptr);
+}
+
+void StubBuilder::LoopEnd(LabelImpl *loopHead)
 {
     ASSERT(loopHead);
     auto currentLabel = env_->GetCurrentLabel();
@@ -10333,57 +10397,6 @@ GateRef StubBuilder::CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef
         .Done();
 }
 
-void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-    GateRef xInt64 = Int64Sub(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
-    GateRef fractionBits = Int64And(xInt64, Int64(base::DOUBLE_SIGNIFICAND_MASK));
-    GateRef expBits = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef isZero = BitAnd(
-        Int64Equal(expBits, Int64(0)),
-        Int64Equal(fractionBits, Int64(0)));
-    Label zero(env);
-    Label nonZero(env);
-
-    BRANCH(isZero, &zero, &nonZero);
-    Bind(&nonZero);
-    {
-        DEFVARIABLE(value, VariableType::JS_ANY(), x);
-        // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
-        GateRef exp = Int64Sub(
-            Int64LSR(expBits, Int64(base::DOUBLE_SIGNIFICAND_SIZE)),
-            Int64(base::DOUBLE_EXPONENT_BIAS));
-        Label convertToInt(env);
-        Label calcHash(env);
-        BRANCH(CanDoubleRepresentInt(exp, expBits, fractionBits), &calcHash, &convertToInt);
-        Bind(&convertToInt);
-        {
-            *res = ChangeFloat64ToInt32(CastInt64ToFloat64(xInt64));
-            Jump(exit);
-        }
-        Bind(&calcHash);
-        {
-            Label isNaN(env);
-            Label notNaN(env);
-            BRANCH(DoubleIsNAN(CastInt64ToFloat64(xInt64)), &isNaN, &notNaN);
-            Bind(&isNaN);
-            {
-                *res = Int32(base::NAN_HASH);
-                Jump(exit);
-            }
-            Bind(&notNaN);
-            {
-                *res = env_->GetBuilder()->CalcHashcodeForInt(*value);
-                Jump(exit);
-            }
-        }
-    }
-
-    Bind(&zero);
-    *res = Int32(0);
-    Jump(exit);
-}
-
 GateRef StubBuilder::GetHash(GateRef glue, GateRef object)
 {
     auto env = GetEnvironment();
@@ -10492,30 +10505,6 @@ void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
     }
     Bind(&exit);
     env->SubCfgExit();
-}
-
-void StubBuilder::CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-
-    GateRef hash = GetHash(glue, value);
-    *res = hash;
-    Label calcHash(env);
-    BRANCH(Int32Equal(**res, Int32(0)), &calcHash, exit);
-    Bind(&calcHash);
-    GateRef offset = IntPtr(JSThread::GlueData::GetRandomStatePtrOffset(env_->Is32Bit()));
-    GateRef randomStatePtr = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, offset);
-    GateRef randomState = LoadPrimitive(VariableType::INT64(), randomStatePtr, IntPtr(0));
-    GateRef k1 = Int64Xor(randomState, Int64LSR(randomState, Int64(base::RIGHT12)));
-    GateRef k2 = Int64Xor(k1, Int64LSL(k1, Int64(base::LEFT25)));
-    GateRef k3 = Int64Xor(k2, Int64LSR(k2, Int64(base::RIGHT27)));
-    Store(VariableType::INT64(), glue, randomStatePtr, IntPtr(0), k3);
-    GateRef k4 = Int64Mul(k3, Int64(base::GET_MULTIPLY));
-    GateRef k5 = Int64LSR(k4, Int64(base::INT64_BITS - base::INT32_BITS));
-    GateRef k6 = Int32And(TruncInt64ToInt32(k5), Int32(INT32_MAX));
-    SetHash(glue, value, k6);
-    *res = k6;
-    Jump(exit);
 }
 
 GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir)
@@ -14275,7 +14264,6 @@ ConstantIndex StubBuilder::SPECIAL_STRING_INDEX[SPECIAL_VALUE_NUM] = {
     ConstantIndex::EMPTY_STRING_OBJECT_INDEX
 };
 
-
 GateRef StubBuilder::ThreeInt64Min(GateRef first, GateRef second, GateRef third)
 {
     return env_->GetBuilder()->ThreeInt64Min(first, second, third);
@@ -14309,5 +14297,144 @@ GateRef StubBuilder::GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv)
     auto ret = *globalEnv;
     env0->SubCfgExit();
     return ret;
+}
+
+IfElseHelper::IfElseHelper(StubBuilder *builder, Environment *env, GateRef condition,
+                           BranchOptions options, const char *comment)
+    : builder_(builder),
+      env_(env),
+      trueLabel_(env->NewLabel(env)),
+      falseLabel_(env->NewLabel(env)),
+      mergeLabel_(nullptr),
+      state_(State::TRUE_BRANCH)
+{
+    builder_->Branch(condition, trueLabel_, falseLabel_,
+                     options.trueWeight, options.falseWeight, comment);
+    builder_->Bind(trueLabel_);
+}
+
+LabelImpl *IfElseHelper::EnsureMergeLabel()
+{
+    if (mergeLabel_ == nullptr) {
+        mergeLabel_ = env_->NewLabel(env_);
+    }
+    return mergeLabel_;
+}
+
+void IfElseHelper::Advance()
+{
+    switch (state_) {
+        case State::TRUE_BRANCH:
+            if (env_->GetCurrentLabel() != nullptr) {
+                builder_->Jump(EnsureMergeLabel());
+            }
+            builder_->Bind(falseLabel_);
+            state_ = State::FALSE_BRANCH;
+            break;
+        case State::FALSE_BRANCH:
+            if (env_->GetCurrentLabel() != nullptr) {
+                builder_->Jump(EnsureMergeLabel());
+            }
+            if (mergeLabel_ != nullptr) {
+                builder_->Bind(mergeLabel_);
+            } else {
+                // Both branches ended outside this helper; no internal merge is reachable.
+                env_->SetCurrentLabel(nullptr);
+            }
+            state_ = State::DONE;
+            break;
+        case State::DONE:
+            break;
+    }
+}
+
+bool IfElseHelper::IsTrueBranch() const { return state_ == State::TRUE_BRANCH; }
+bool IfElseHelper::IsFalseBranch() const { return state_ == State::FALSE_BRANCH; }
+bool IfElseHelper::IsDone() const { return state_ == State::DONE; }
+
+WhileHelper::WhileHelper(StubBuilder *builder, Environment *env, ConditionBuilder condition,
+                         LoopOptions options, const char *comment)
+    : builder_(builder),
+      env_(env),
+      header_(env->NewLabel(env)),
+      body_(env->NewLabel(env)),
+      exit_(env->NewLabel(env)),
+      backEdge_(nullptr),
+      options_(options),
+      active_(true)
+{
+    ASSERT(builder_ != nullptr);
+    ASSERT(env_ != nullptr);
+    ASSERT(condition != nullptr);
+
+    builder_->Jump(header_);
+    builder_->LoopBegin(header_);
+    GateRef conditionGate = condition();
+    const auto &branchOptions = options_.GetBranchOptions();
+    builder_->Branch(conditionGate, body_, exit_,
+                     branchOptions.trueWeight, branchOptions.falseWeight, comment);
+    builder_->Bind(body_);
+}
+
+bool WhileHelper::IsReachable() const
+{
+    return env_->GetCurrentLabel() != nullptr;
+}
+
+LabelImpl *WhileHelper::EnsureBackEdge()
+{
+    if (backEdge_ == nullptr) {
+        backEdge_ = env_->NewLabel(env_);
+    }
+    return backEdge_;
+}
+
+void WhileHelper::Break()
+{
+    ASSERT(active_);
+    if (IsReachable()) {
+        builder_->Jump(exit_);
+    }
+}
+
+void WhileHelper::Continue()
+{
+    ASSERT(active_);
+    if (IsReachable()) {
+        builder_->Jump(EnsureBackEdge());
+    }
+}
+
+void WhileHelper::EmitLoopEnd()
+{
+    if (options_.NeedCheckSafePoint()) {
+        builder_->LoopEndWithCheckSafePoint(header_, env_, options_.GetGlue());
+        return;
+    }
+    builder_->LoopEnd(header_);
+}
+
+void WhileHelper::Finish()
+{
+    ASSERT(active_);
+    if (backEdge_ == nullptr) {
+        // IR_WHILE requires either a natural fallthrough or an IR_CONTINUE backedge.
+        ASSERT(IsReachable());
+        EmitLoopEnd();
+    } else {
+        if (IsReachable()) {
+            builder_->Jump(backEdge_);
+        }
+        ASSERT(!backEdge_->GetPredecessors().empty());
+        builder_->Bind(backEdge_);
+        EmitLoopEnd();
+    }
+    builder_->Bind(exit_);
+    active_ = false;
+}
+
+bool WhileHelper::IsActive() const
+{
+    return active_;
 }
 }  // namespace panda::ecmascript::kungfu

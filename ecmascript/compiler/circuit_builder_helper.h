@@ -110,6 +110,78 @@ private:
     bool typedOpProfiling_ {false};
 };
 
+class LabelImpl {
+public:
+    LabelImpl(Environment *env, GateRef control)
+        : env_(env), control_(control), predeControl_(-1), isSealed_(false)
+    {
+    }
+    ~LabelImpl() = default;
+    NO_MOVE_SEMANTIC(LabelImpl);
+    NO_COPY_SEMANTIC(LabelImpl);
+    void Seal();
+    void WriteVariable(Variable *var, GateRef value);
+    GateRef ReadVariable(Variable *var);
+    void Bind();
+    void MergeAllControl();
+    void MergeAllDepend();
+    void AppendPredecessor(LabelImpl *predecessor);
+    std::vector<LabelImpl *> GetPredecessors() const
+    {
+        return predecessors_;
+    }
+    void SetControl(GateRef control)
+    {
+        control_ = control;
+    }
+    void SetPreControl(GateRef control)
+    {
+        predeControl_ = control;
+    }
+    void MergeControl(GateRef control)
+    {
+        if (predeControl_ == Circuit::NullGate()) {
+            predeControl_ = control;
+            control_ = predeControl_;
+        } else {
+            otherPredeControls_.push_back(control);
+        }
+    }
+    GateRef GetControl() const
+    {
+        return control_;
+    }
+    void SetDepend(GateRef depend)
+    {
+        depend_ = depend;
+    }
+    GateRef GetDepend() const
+    {
+        return depend_;
+    }
+
+private:
+    bool IsNeedSeal() const;
+    bool IsSealed() const
+    {
+        return isSealed_;
+    }
+    bool IsLoopHead() const;
+    bool IsControlCase() const;
+    GateRef ReadVariableRecursive(Variable *var);
+    Environment *env_;
+    GateRef control_;
+    GateRef predeControl_ {Circuit::NullGate()};
+    GateRef depend_ {Circuit::NullGate()};
+    GateRef loopDepend_ {Circuit::NullGate()};
+    std::vector<GateRef> otherPredeControls_;
+    bool isSealed_ {false};
+    std::map<Variable *, GateRef> valueMap_;
+    std::vector<GateRef> phi;
+    std::vector<LabelImpl *> predecessors_;
+    std::map<Variable *, GateRef> incompletePhis_;
+};
+
 class Label {
 public:
     Label() = default;
@@ -148,6 +220,10 @@ public:
     {
         impl_->AppendPredecessor(predecessor->GetRawLabel());
     }
+    inline void AppendPredecessor(LabelImpl *predecessor)
+    {
+        impl_->AppendPredecessor(predecessor);
+    }
     inline std::vector<Label> GetPredecessors() const
     {
         std::vector<Label> labels;
@@ -182,79 +258,8 @@ public:
     }
 
 private:
-    class LabelImpl {
-    public:
-        LabelImpl(Environment *env, GateRef control)
-            : env_(env), control_(control), predeControl_(-1), isSealed_(false)
-        {
-        }
-        ~LabelImpl() = default;
-        NO_MOVE_SEMANTIC(LabelImpl);
-        NO_COPY_SEMANTIC(LabelImpl);
-        void Seal();
-        void WriteVariable(Variable *var, GateRef value);
-        GateRef ReadVariable(Variable *var);
-        void Bind();
-        void MergeAllControl();
-        void MergeAllDepend();
-        void AppendPredecessor(LabelImpl *predecessor);
-        std::vector<LabelImpl *> GetPredecessors() const
-        {
-            return predecessors_;
-        }
-        void SetControl(GateRef control)
-        {
-            control_ = control;
-        }
-        void SetPreControl(GateRef control)
-        {
-            predeControl_ = control;
-        }
-        void MergeControl(GateRef control)
-        {
-            if (predeControl_ == Circuit::NullGate()) {
-                predeControl_ = control;
-                control_ = predeControl_;
-            } else {
-                otherPredeControls_.push_back(control);
-            }
-        }
-        GateRef GetControl() const
-        {
-            return control_;
-        }
-        void SetDepend(GateRef depend)
-        {
-            depend_ = depend;
-        }
-        GateRef GetDepend() const
-        {
-            return depend_;
-        }
-
-    private:
-        bool IsNeedSeal() const;
-        bool IsSealed() const
-        {
-            return isSealed_;
-        }
-        bool IsLoopHead() const;
-        bool IsControlCase() const;
-        GateRef ReadVariableRecursive(Variable *var);
-        Environment *env_;
-        GateRef control_;
-        GateRef predeControl_ {Circuit::NullGate()};
-        GateRef depend_ {Circuit::NullGate()};
-        GateRef loopDepend_ {Circuit::NullGate()};
-        std::vector<GateRef> otherPredeControls_;
-        bool isSealed_ {false};
-        std::map<Variable *, GateRef> valueMap_;
-        std::vector<GateRef> phi;
-        std::vector<LabelImpl *> predecessors_;
-        std::map<Variable *, GateRef> incompletePhis_;
-    };
-
     explicit Label(LabelImpl *impl) : impl_(impl) {}
+    friend class LabelImpl;
     friend class Environment;
     LabelImpl *GetRawLabel() const
     {
@@ -265,19 +270,26 @@ private:
 
 class Environment {
 public:
-    using LabelImpl = Label::LabelImpl;
     Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder);
     Environment(GateRef stateEntry, GateRef dependEntry, const std::initializer_list<GateRef>& args,
                 Circuit *circuit, CircuitBuilder *builder);
     Environment(size_t arguments, CircuitBuilder *builder);
     ~Environment();
-    Label *GetCurrentLabel() const
+    LabelImpl *GetCurrentLabel() const
     {
         return currentLabel_;
     }
     void SetCurrentLabel(Label *label)
     {
+        currentLabel_ = label == nullptr ? nullptr : label->GetRawLabel();
+    }
+    void SetCurrentLabel(LabelImpl *label)
+    {
         currentLabel_ = label;
+    }
+    void SetCurrentLabel(decltype(nullptr))
+    {
+        currentLabel_ = nullptr;
     }
     CircuitBuilder *GetBuilder() const
     {
@@ -333,7 +345,7 @@ public:
     }
     inline Label GetLabelFromSelector(GateRef sel)
     {
-        Label::LabelImpl *rawlabel = phiToLabels_[sel];
+        LabelImpl *rawlabel = phiToLabels_[sel];
         return Label(rawlabel);
     }
     inline void AddSelectorToLabel(GateRef sel, Label label)
@@ -342,7 +354,7 @@ public:
     }
     inline LabelImpl *NewLabel(Environment *env, GateRef control = -1)
     {
-        auto impl = new Label::LabelImpl(env, control);
+        auto impl = new LabelImpl(env, control);
         rawLabels_.emplace_back(impl);
         return impl;
     }
@@ -352,22 +364,28 @@ public:
             GateRef control = currentLabel_->GetControl();
             GateRef depend = currentLabel_->GetDepend();
             stack_.push(currentLabel_);
-            currentLabel_ = entry;
+            currentLabel_ = entry->GetRawLabel();
             currentLabel_->SetControl(control);
             currentLabel_->SetDepend(depend);
         }
     }
     void SubCfgExit()
     {
-        if (currentLabel_ != nullptr) {
-            GateRef control = currentLabel_->GetControl();
-            GateRef depend = currentLabel_->GetDepend();
+        if (currentLabel_ == nullptr) {
+            // The sub-CFG has already terminated, but the parent CFG stack still
+            // needs to be unwound so later bindings do not observe a stale scope.
             if (!stack_.empty()) {
-                currentLabel_ = stack_.top();
-                currentLabel_->SetControl(control);
-                currentLabel_->SetDepend(depend);
                 stack_.pop();
             }
+            return;
+        }
+        GateRef control = currentLabel_->GetControl();
+        GateRef depend = currentLabel_->GetDepend();
+        if (!stack_.empty()) {
+            currentLabel_ = stack_.top();
+            currentLabel_->SetControl(control);
+            currentLabel_->SetDepend(depend);
+            stack_.pop();
         }
     }
     inline GateRef GetInput(size_t index) const
@@ -376,14 +394,14 @@ public:
     }
 
 private:
-    Label *currentLabel_ {nullptr};
+    LabelImpl *currentLabel_ {nullptr};
     Circuit *circuit_ {nullptr};
     CircuitBuilder *circuitBuilder_ {nullptr};
     std::unordered_map<GateRef, LabelImpl *> phiToLabels_;
     std::vector<GateRef> inputList_;
     Label entry_;
     std::vector<LabelImpl *> rawLabels_;
-    std::stack<Label *> stack_;
+    std::stack<LabelImpl *> stack_;
     int nextVariableId_ {0};
     std::vector<GateRef> arguments_;
     const CompilationConfig *ccfg_ {nullptr};

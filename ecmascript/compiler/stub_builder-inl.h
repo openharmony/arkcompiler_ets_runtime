@@ -223,21 +223,33 @@ inline GateRef StubBuilder::Alloca(int size)
 
 inline GateRef StubBuilder::Return(GateRef value)
 {
-    auto control = env_->GetCurrentLabel()->GetControl();
-    auto depend = env_->GetCurrentLabel()->GetDepend();
-    return env_->GetBuilder()->Return(control, depend, value);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto control = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
+    auto ret = env_->GetBuilder()->Return(control, depend, value);
+    env_->SetCurrentLabel(nullptr);
+    return ret;
 }
 
 inline GateRef StubBuilder::Return()
 {
-    auto control = env_->GetCurrentLabel()->GetControl();
-    auto depend = env_->GetCurrentLabel()->GetDepend();
-    return env_->GetBuilder()->ReturnVoid(control, depend);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto control = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
+    auto ret = env_->GetBuilder()->ReturnVoid(control, depend);
+    env_->SetCurrentLabel(nullptr);
+    return ret;
 }
 
 inline void StubBuilder::Bind(Label *label)
 {
     env_->GetBuilder()->Bind(label);
+}
+
+inline void StubBuilder::Bind(LabelImpl *label)
+{
+    label->Bind();
+    env_->SetCurrentLabel(label);
 }
 
 inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args)
@@ -768,34 +780,17 @@ inline GateRef StubBuilder::TaggedIsSharedType(GateRef glue, GateRef value)
     Label entry(env_);
     env_->SubCfgEntry(&entry);
 
-    Label setTrue(env_);
-    Label checkIsBool(env_);
-    Label checkIsUndefinedOrNull(env_);
-    Label checkIsSharedObj(env_);
-    Label exit(env_);
-
     DEFVARIABLE(result, VariableType::BOOL(), False());
 
-    BRANCH(TaggedIsNumber(value), &setTrue, &checkIsBool);
-    Bind(&checkIsBool);
-    {
-        BRANCH(TaggedIsBoolean(value), &setTrue, &checkIsUndefinedOrNull);
-    }
-    Bind(&checkIsUndefinedOrNull);
-    {
-        BRANCH(TaggedIsUndefinedOrNull(value), &setTrue, &checkIsSharedObj);
-    }
-    Bind(&checkIsSharedObj);
-    {
-        BRANCH(TaggedIsSharedObj(glue, value), &setTrue, &exit);
-    }
-
-    Bind(&setTrue);
-    {
+    GateRef isSharedType = LogicOrBuilder(env_)
+        .Or(TaggedIsNumber(value))
+        .Or(TaggedIsBoolean(value))
+        .Or(TaggedIsUndefinedOrNull(value))
+        .Or(TaggedIsSharedObj(glue, value))
+        .Done();
+    IR_IF (isSharedType) {
         result = True();
-        Jump(&exit);
     }
-    Bind(&exit);
     auto ret = *result;
     env_->SubCfgExit();
     return ret;
@@ -1023,7 +1018,6 @@ inline GateRef StubBuilder::DoubleTrunc(GateRef x)
     env_->SubCfgEntry(&entry);
 
     DEFVARIABLE(result, VariableType::FLOAT64(), x);
-    Label exit(env_);
 
     constexpr int64_t DOUBLE_FRACTION_BITS = 52;
     constexpr int64_t DOUBLE_EXP_MASK = 0x7ff;
@@ -1032,31 +1026,18 @@ inline GateRef StubBuilder::DoubleTrunc(GateRef x)
     GateRef exp = Int64Sub(Int64And(Int64LSR(bits, Int64(DOUBLE_FRACTION_BITS)), Int64(DOUBLE_EXP_MASK)),
                            Int64(DOUBLE_EXP_OFFSET));
 
-    Label trunc(env_);
-    BRANCH(Int64GreaterThanOrEqual(exp, Int64(DOUBLE_FRACTION_BITS)), &exit, &trunc);
-    Bind(&trunc);
-    {
-        Label zero(env_);
-        Label nonZero(env_);
-        BRANCH(Int64LessThan(exp, Int64(0)), &zero, &nonZero);
-        Bind(&zero);
-        {
+    IR_IF (Int64LessThan(exp, Int64(DOUBLE_FRACTION_BITS))) {
+        IR_IF (Int64LessThan(exp, Int64(0))) {
             constexpr int64_t DOUBLE_SIGN_SHIFT = 63;
             constexpr int64_t mask = static_cast<int64_t>(1) << DOUBLE_SIGN_SHIFT;
             result = CastInt64ToFloat64(Int64And(bits, Int64(mask)));
-            Jump(&exit);
-        }
-        Bind(&nonZero);
-        {
+        } IR_ELSE {
             constexpr int64_t DOUBLE_NON_FRACTION_BITS = 12;
             constexpr int64_t NEG_ONE = -1;
             GateRef mask = Int64LSR(Int64(NEG_ONE), Int64Add(exp, Int64(DOUBLE_NON_FRACTION_BITS)));
             result = CastInt64ToFloat64(Int64And(bits, Int64Not(mask)));
-            Jump(&exit);
         }
     }
-
-    Bind(&exit);
     auto ret = *result;
     env_->SubCfgExit();
     return ret;
