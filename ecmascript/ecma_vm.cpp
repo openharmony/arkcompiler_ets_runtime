@@ -1343,6 +1343,7 @@ bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
         return false;
     }
 
+    // disable evacuate nonmovable space in aot.
     Runtime::GetInstance()->DisableEvacuateNonMovableSpace();   // may gc in load ai
     std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
     if (!aotFileManager_->LoadAiFile(aiFile)) {

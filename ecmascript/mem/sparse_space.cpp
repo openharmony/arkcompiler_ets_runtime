@@ -647,7 +647,7 @@ void OldSpace::ReclaimCSet()
 
 bool OldSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
 {
-    if (committedSize_ + region->GetCapacity() > maximumCapacity_) {
+    if (committedSize_ + region->GetCapacity() >= maximumCapacity_) {
         return false;
     }
     fromSpace->RemoveRegion(region);
