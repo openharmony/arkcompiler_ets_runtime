@@ -18,18 +18,21 @@
 
 #include <string>
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
 
 enum AbcBufferType { NORMAL_BUFFER, SECURE_BUFFER };
 struct AbcBufferInfo {
-    void *buffer_ ;
-    size_t size_;
-    AbcBufferType bufferType_;
+    void *buffer_ {nullptr};
+    size_t size_ {0};
+    AbcBufferType bufferType_ {AbcBufferType::NORMAL_BUFFER};
+    bool needUpdate_ {false};
+    void *fileMapper_ {nullptr};
 
-    AbcBufferInfo(void *buffer, size_t size, AbcBufferType bufferType)
-        : buffer_(buffer), size_(size), bufferType_(bufferType) {}
+    AbcBufferInfo(void *buffer, size_t size, AbcBufferType bufferType, bool needUpdate, void *fileMapper)
+        : buffer_(buffer), size_(size), bufferType_(bufferType), needUpdate_(needUpdate), fileMapper_(fileMapper) {}
     AbcBufferInfo()
         : buffer_(nullptr), size_(0), bufferType_(AbcBufferType::NORMAL_BUFFER) {}
 };
@@ -47,9 +50,11 @@ public:
         abcBufferMap_.clear();
     }
 
-    void AddAbcBufferToCache(const CString &fileName, const void *buffer, size_t size, AbcBufferType bufferType)
+    void AddAbcBufferToCache(const CString &fileName, const void *buffer, size_t size,
+                             AbcBufferType bufferType, bool needUpdate = false, void *fileMapper = nullptr)
     {
-        abcBufferMap_.emplace(fileName, AbcBufferInfo(const_cast<void *>(buffer), size, bufferType));
+        abcBufferMap_.emplace(fileName,
+            AbcBufferInfo(const_cast<void *>(buffer), size, bufferType, needUpdate, fileMapper));
     }
 
     void DeleteAbcBufferFromCache(const CString &fileName)
@@ -85,13 +90,13 @@ public:
     }
 
     AbcBufferCacheScope(JSThread *thread, const CString &filename, const void *buffer, size_t size,
-        JSPandaFile *jsPandaFile, void *fileMapper)
-        : filename_(filename), jsPandaFile_(jsPandaFile), fileMapper_(fileMapper)
+        bool needUpdate, void *fileMapper): filename_(filename), fileMapper_(fileMapper)
     {
         abcBufferCache_ = thread->GetEcmaVM()->GetAbcBufferCache();
         ASSERT(abcBufferCache_ != nullptr);
         // if input has fileMapper, assume it's secure memory
-        abcBufferCache_->AddAbcBufferToCache(filename_, buffer, size, AbcBufferType::SECURE_BUFFER);
+        abcBufferCache_->AddAbcBufferToCache(
+            filename_, buffer, size, AbcBufferType::SECURE_BUFFER, needUpdate, fileMapper_);
     }
 
     ~AbcBufferCacheScope()
@@ -99,7 +104,11 @@ public:
         ASSERT(abcBufferCache_ != nullptr);
         abcBufferCache_->DeleteAbcBufferFromCache(filename_);
         // secure memory & make sure buffer is not used in pandafile
-        if (fileMapper_ != nullptr && jsPandaFile_->GetFileMapper() != fileMapper_) {
+        std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(filename_);
+        if (jsPandaFile == nullptr) {
+            return;
+        }
+        if (fileMapper_ != nullptr && jsPandaFile->GetFileMapper() != fileMapper_) {
             // release secure memory buffer
             JSPandaFile::CallReleaseSecureMemFunc(fileMapper_);
         }
@@ -107,7 +116,6 @@ public:
 
 private:
     const CString filename_;
-    JSPandaFile *jsPandaFile_ {nullptr};
     void *fileMapper_ {nullptr};
     AbcBufferCache *abcBufferCache_ {nullptr};
 };

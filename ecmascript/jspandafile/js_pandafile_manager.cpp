@@ -682,7 +682,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCa
     JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
     if (bufferInfo.bufferType_ == AbcBufferType::SECURE_BUFFER) {
         return jsPandaFileManager->LoadJSPandaFileSecure(
-            thread, filename, entryPoint, reinterpret_cast<uint8_t *>(bufferInfo.buffer_), bufferInfo.size_);
+            thread, filename, entryPoint, reinterpret_cast<uint8_t *>(bufferInfo.buffer_),
+            bufferInfo.size_, bufferInfo.needUpdate_, bufferInfo.fileMapper_);
     }
     return jsPandaFileManager->LoadJSPandaFile(
         thread, filename, entryPoint, bufferInfo.buffer_, bufferInfo.size_);
