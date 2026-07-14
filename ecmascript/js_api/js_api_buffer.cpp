@@ -621,10 +621,13 @@ JSTaggedValue JSAPIFastBuffer::AllocateFromBufferObject(JSThread *thread, const 
                                                         uint32_t byteOffset)
 {
     auto uint8Array = GetUInt8ArrayFromBufferObject(thread, src);
-    uint32_t maxLength = std::min(uint8Array->GetByteLength(), byteLength);
+    uint32_t arrayByteLength = uint8Array->GetByteLength();
+    uint32_t actualOffset = std::min(arrayByteLength, byteOffset);
+    uint32_t actualAvailable = arrayByteLength > actualOffset ? arrayByteLength - actualOffset : 0;
+    uint32_t maxLength = std::min(actualAvailable, byteLength);
     buffer->SetFastBufferData(thread, JSTaggedValue(uint8Array));
     buffer->SetLength(maxLength);
-    buffer->SetOffset(std::min(maxLength, byteOffset));
+    buffer->SetOffset(actualOffset);
     return buffer.GetTaggedValue();
 }
 
