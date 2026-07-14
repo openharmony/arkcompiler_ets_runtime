@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_PGO_ACCESS_INFO_H
 
 #include <array>
+#include <vector>
 
 #include "ecmascript/arksteed/arksteed_heap_ref.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -128,6 +129,7 @@ struct PropertyAccessInfo {
     ArkSteedHClassRef transitionHClass {};
     ArkSteedHClassRef fieldOwnerHClass {};
     ArkSteedHClassRef fieldHClass {};
+    uint32_t holderDepth {0};
     bool holderIsReceiver {true};
     bool hasProtoCell {false};
     bool hasNotFoundProtoCellGuard {false};
@@ -196,7 +198,12 @@ struct PropertyAccessInfo {
 
     bool HasHolder() const
     {
-        return !holderIsReceiver && holder.IsSafeForCompile();
+        return HasHolderHClass();
+    }
+
+    bool HasHolderHClass() const
+    {
+        return !holderIsReceiver && fieldOwnerHClass.IsSafeForCompile();
     }
 
     bool HasTransitionHClass() const

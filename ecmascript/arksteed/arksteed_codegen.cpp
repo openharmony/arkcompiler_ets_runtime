@@ -26,6 +26,7 @@
 #include "ecmascript/arksteed/arksteed_write_barrier.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
@@ -912,6 +913,48 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(DeoptIfHClassNotInVertex *checkHClass)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << checkHClass->GetId() << ": DeoptIfHClassNotInVertex";
+#endif
+    constexpr int RECEIVER_INDEX = static_cast<int>(DeoptIfHClassNotInVertex::RECEIVER_INDEX);
+    ASSERT(safepointBuilder_ != nullptr);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister actualHClass = scope.Acquire();
+    ArkSteedRegister expectedHClass = scope.Acquire();
+    ArkSteedRegister receiver = GetInputRegister(checkHClass, RECEIVER_INDEX);
+    Label deopt;
+    Label pass;
+    __ Move(actualHClass, receiver);
+    __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    __ And(actualHClass, expectedHClass);
+    __ Compare(actualHClass, 0);
+    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+
+    __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
+    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    __ And(actualHClass, expectedHClass);
+    for (JSHClass *hclass : checkHClass->GetExpectedHClasses()) {
+        __ Move(expectedHClass, reinterpret_cast<uint64_t>(hclass) & TaggedStateWord::ADDRESS_MASK);
+        __ Compare(actualHClass, expectedHClass);
+        __ JumpIf(Condition::COND_EQUAL, &pass);
+    }
+
+    __ Bind(&deopt);
+    std::vector<kungfu::ARKDeopt> deopts;
+    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
+    for (int index = 0; index < static_cast<int>(checkHClass->GetDeoptVRegs().size()); index++) {
+        AppendDeoptInput(&deopts, checkHClass, RECEIVER_INDEX + 1 + index,
+                         checkHClass->GetDeoptVReg(static_cast<VRegIDType>(index)), assembler_);
+    }
+    __ CallDeoptHandler(kungfu::DeoptType::KEYMISSMATCH);
+    safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
+
+    __ Bind(&pass);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(DeoptIfInt32ConditionVertex *check)
 {
     auto left = GetInputRegister(check, DeoptIfInt32ConditionVertex::LEFT_INDEX);
@@ -1024,6 +1067,104 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedFieldVertex>(LoadTag
     auto dst = GetResultRegister(loadField);
     auto obj = GetInputRegister(loadField, LoadTaggedFieldVertex::OBJECT_INDEX);
     __ LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeFromObjectVertex>(
+    LoadPrototypeFromObjectVertex *loadPrototype)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadPrototype->GetId()
+                        << ": LoadPrototypeFromObjectVertex";
+#endif
+    auto dst = GetResultRegister(loadPrototype);
+    auto obj = GetInputRegister(loadPrototype, LoadPrototypeFromObjectVertex::OBJECT_INDEX);
+    __ LoadField(dst, obj, TaggedObject::HCLASS_OFFSET);
+    __ And(dst, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ LoadField(dst, dst, JSHClass::PROTOTYPE_OFFSET);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVertex>(
+    LoadPrototypeHolderByHClassVertex *loadHolder)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadHolder->GetId()
+                        << ": LoadPrototypeHolderByHClassVertex";
+#endif
+    constexpr int RECEIVER_INDEX = static_cast<int>(LoadPrototypeHolderByHClassVertex::RECEIVER_INDEX);
+    ASSERT(safepointBuilder_ != nullptr);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister currentHClass = scope.Acquire();
+    ArkSteedRegister expectedHClass = scope.Acquire();
+    ArkSteedRegister receiver = GetInputRegister(loadHolder, RECEIVER_INDEX);
+    ArkSteedRegister holder = GetResultRegister(loadHolder);
+    const auto &expectedPrototypeHClasses = loadHolder->GetExpectedPrototypeHClasses();
+    Label protoChanged;
+    Label deopt;
+    Label pass;
+
+    __ LoadField(currentHClass, receiver, TaggedObject::HCLASS_OFFSET);
+    __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ LoadField(holder, currentHClass, JSHClass::PROTOTYPE_OFFSET);
+
+    __ Move(expectedHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
+    __ Compare(holder, expectedHClass);
+    __ JumpIf(Condition::COND_EQUAL, &deopt);
+    __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
+    __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ LoadField(expectedHClass, currentHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    __ Move(currentHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
+    __ Compare(expectedHClass, currentHClass);
+    __ JumpIf(Condition::COND_EQUAL, &protoChanged);
+    __ And(expectedHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ LoadField(currentHClass, expectedHClass, ProtoChangeMarker::BIT_FIELD_OFFSET);
+    __ And(currentHClass, static_cast<int64_t>((1LLU << (ProtoChangeMarker::HAS_CHANGED_BITS - 1))));
+    __ Compare(currentHClass, 0);
+    __ JumpIf(Condition::COND_NOT_EQUAL, &protoChanged);
+
+    for (size_t i = 0; i < expectedPrototypeHClasses.size(); ++i) {
+        JSHClass *expectedPrototypeHClass = expectedPrototypeHClasses[i];
+        ASSERT(expectedPrototypeHClass != nullptr);
+        __ Move(expectedHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
+        __ Compare(holder, expectedHClass);
+        __ JumpIf(Condition::COND_EQUAL, &deopt);
+        __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
+        __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+        __ Move(expectedHClass,
+                reinterpret_cast<uint64_t>(expectedPrototypeHClass) & TaggedStateWord::ADDRESS_MASK);
+        __ Compare(currentHClass, expectedHClass);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &protoChanged);
+        if (i + 1 < expectedPrototypeHClasses.size()) {
+            __ LoadField(holder, currentHClass, JSHClass::PROTOTYPE_OFFSET);
+        }
+    }
+    __ Jump(&pass);
+
+    __ Bind(&protoChanged);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, loadHolder, kungfu::DeoptType::PROTOTYPECHANGED2);
+    __ Jump(&pass);
+
+    __ Bind(&deopt);
+    EmitUseSlotDeopt(assembler_, safepointBuilder_, loadHolder, kungfu::DeoptType::INCONSISTENTHCLASS2);
+    __ Bind(&pass);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<ConvertHoleToUndefinedVertex>(
+    ConvertHoleToUndefinedVertex *convert)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << convert->GetId() << ": ConvertHoleToUndefinedVertex";
+#endif
+    auto dst = GetResultRegister(convert);
+    auto value = GetInputRegister(convert, ConvertHoleToUndefinedVertex::VALUE_INDEX);
+    Label done;
+    __ Move(dst, value);
+    __ Compare(dst, static_cast<int64_t>(JSTaggedValue::Hole().GetRawData()));
+    __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+    __ Move(dst, static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED));
+    __ Bind(&done);
 }
 
 template <>

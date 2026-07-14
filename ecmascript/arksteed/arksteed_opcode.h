@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_ARKSTEED_OPCODE_H
 #define ECMASCRIPT_ARKSTEED_OPCODE_H
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -711,6 +712,91 @@ public:
 
 private:
     int32_t offset_;
+};
+
+class LoadPrototypeFromObjectVertex : public FixedInputVertexMixin<1, ValueVertex, LoadPrototypeFromObjectVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::CanReadProp();
+
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::TAGGED);
+
+    static constexpr size_t OBJECT_INDEX = 0;
+
+    explicit LoadPrototypeFromObjectVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class LoadPrototypeHolderByHClassVertex : public VertexMixin<ValueVertex, LoadPrototypeHolderByHClassVertex>,
+                                          public DeoptimizableMixin {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() |
+                                                   VertexProperties::CanReadProp() |
+                                                   VertexProperties::EagerDeopt();
+
+    static constexpr size_t RECEIVER_INDEX = 0;
+
+    explicit LoadPrototypeHolderByHClassVertex(uint64_t bitfield,
+                                               JSHClass *holderHClass,
+                                               std::vector<JSHClass *> expectedPrototypeHClasses,
+                                               uint32_t holderDepth,
+                                               ChunkVector<VRegIDType> deoptVRegs,
+                                               uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          DeoptimizableMixin(RECEIVER_INDEX + 1, std::move(deoptVRegs), bytecodeOffset),
+          holderHClass_(holderHClass),
+          expectedPrototypeHClasses_(std::move(expectedPrototypeHClasses)),
+          holderDepth_(holderDepth)
+    {}
+
+    JSHClass *GetHolderHClass() const
+    {
+        return holderHClass_;
+    }
+
+    uint32_t GetHolderDepth() const
+    {
+        return holderDepth_;
+    }
+
+    const std::vector<JSHClass *> &GetExpectedPrototypeHClasses() const
+    {
+        return expectedPrototypeHClasses_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(holderHClass_ != nullptr);
+        ASSERT(holderDepth_ != 0);
+        ASSERT(!expectedPrototypeHClasses_.empty());
+        ASSERT(expectedPrototypeHClasses_.size() == holderDepth_);
+        ASSERT(expectedPrototypeHClasses_.back() == holderHClass_);
+        ASSERT(GetInputCount() == static_cast<uint32_t>(GetDeoptVRegs().size() + 1));
+        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    JSHClass *holderHClass_ {nullptr};
+    std::vector<JSHClass *> expectedPrototypeHClasses_;
+    uint32_t holderDepth_ {0};
+};
+
+class ConvertHoleToUndefinedVertex : public FixedInputVertexMixin<1, ValueVertex, ConvertHoleToUndefinedVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue();
+
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::TAGGED);
+
+    static constexpr size_t VALUE_INDEX = 0;
+
+    explicit ConvertHoleToUndefinedVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
 };
 
 enum class ArkSteedWriteBarrierKind : uint8_t {
@@ -1667,6 +1753,43 @@ public:
 
 private:
     JSHClass *expectedHClass_;
+};
+
+class DeoptIfHClassNotInVertex : public VertexMixin<NonControlVertex, DeoptIfHClassNotInVertex>,
+                                 public DeoptimizableMixin {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt() | VertexProperties::CanReadProp();
+
+    static constexpr size_t RECEIVER_INDEX = 0;
+
+    explicit DeoptIfHClassNotInVertex(uint64_t bitfield,
+                                      std::vector<JSHClass *> expectedHClasses,
+                                      ChunkVector<VRegIDType> deoptVRegs,
+                                      uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          DeoptimizableMixin(RECEIVER_INDEX + 1, std::move(deoptVRegs), bytecodeOffset),
+          expectedHClasses_(std::move(expectedHClasses))
+    {}
+
+    const std::vector<JSHClass *> &GetExpectedHClasses() const
+    {
+        return expectedHClasses_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(!expectedHClasses_.empty());
+        ASSERT(std::all_of(expectedHClasses_.begin(), expectedHClasses_.end(), [](JSHClass *hclass) {
+            return hclass != nullptr;
+        }));
+        ASSERT(GetInputCount() == static_cast<uint32_t>(GetDeoptVRegs().size() + 1));
+    }
+
+private:
+    std::vector<JSHClass *> expectedHClasses_;
 };
 
 class DeoptIfInt32ConditionVertex : public VertexMixin<NonControlVertex, DeoptIfInt32ConditionVertex>,

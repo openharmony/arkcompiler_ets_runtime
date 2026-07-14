@@ -118,60 +118,6 @@ void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, kungfu::CommonS
 #endif
 }
 
-bool TryAppendHClassFromWeak(JSTaggedValue maybeWeak, std::vector<JSHClass *> &maps)
-{
-    if (!maybeWeak.IsWeak()) {
-        return false;
-    }
-    TaggedObject *referent = maybeWeak.GetWeakReferent();
-    if (referent == nullptr || !JSTaggedValue(referent).IsJSHClass()) {
-        return false;
-    }
-    JSHClass *hclass = JSHClass::Cast(referent);
-    if (std::find(maps.begin(), maps.end(), hclass) == maps.end()) {
-        maps.push_back(hclass);
-    }
-    return true;
-}
-
-class KnownHClassesMerger {
-public:
-    explicit KnownHClassesMerger(const std::vector<JSHClass *> &feedbackMaps)
-    {
-        for (JSHClass *hclass : feedbackMaps) {
-            AppendIfMissing(intersectSet_, hclass);
-        }
-    }
-
-    void IntersectWithCompileInfoFacts(const std::optional<std::vector<JSHClass *>> &knownMaps)
-    {
-        if (!knownMaps.has_value()) {
-            return;
-        }
-        std::vector<JSHClass *> intersection;
-        for (JSHClass *hclass : intersectSet_) {
-            if (std::find(knownMaps->begin(), knownMaps->end(), hclass) != knownMaps->end()) {
-                AppendIfMissing(intersection, hclass);
-            }
-        }
-        intersectSet_ = std::move(intersection);
-    }
-
-    const std::vector<JSHClass *> &GetIntersection() const
-    {
-        return intersectSet_;
-    }
-
-private:
-    static void AppendIfMissing(std::vector<JSHClass *> &maps, JSHClass *hclass)
-    {
-        if (hclass != nullptr && std::find(maps.begin(), maps.end(), hclass) == maps.end()) {
-            maps.push_back(hclass);
-        }
-    }
-
-    std::vector<JSHClass *> intersectSet_;
-};
 bool SupportsI32CheckedBinOp(BinaryOpKind kind)
 {
     switch (kind) {
@@ -1009,14 +955,10 @@ struct GraphBuilder::BytecodeVisitor {
         JSHClass *receiverHClass {nullptr};
         JSHClass *holderHClass {nullptr};
         std::vector<JSHClass *> lookupStartObjectHClasses;
-        std::optional<JSTaggedValue> handler;
+        std::vector<JSHClass *> expectedPrototypeHClasses;
         PropertyLookupResult plr;
+        uint32_t holderDepth {0};
         bool isConst {false};
-    };
-
-    struct NamedAccessFeedback {
-        std::vector<JSHClass *> maps;
-        std::vector<JSTaggedValue> handlers;
     };
 
     using NamedLoadAccessInfoOpt = std::optional<NamedLoadAccessInfo>;
@@ -3218,21 +3160,6 @@ struct GraphBuilder::BytecodeVisitor {
         return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {argc});
     }
 
-    std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const
-    {
-        if (node == nullptr || !node->IsTagged()) {
-            return std::nullopt;
-        }
-
-        JSTaggedValue value;
-        if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
-            value = JSTaggedValue(constant->GetValue());
-        } else {
-            return std::nullopt;
-        }
-        return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
-    }
-
     // LDA_STR "" is currently represented by GetStringFromConstPool.
     // When heap constants are added, recognize empty string heap constants here too.
     bool IsEmptyStringConstant(ValueVertex *value) const
@@ -3285,132 +3212,153 @@ struct GraphBuilder::BytecodeVisitor {
         return name;
     }
 
-    std::optional<std::vector<JSHClass *>> TryGetPossibleHClasses(ValueVertex *node) const
+    std::optional<ArkSteedNameRef> TryGetNameRefFromConstDataId(uint16_t constDataId) const
     {
-        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(node)) {
-            if (constant->IsHole() || !constant->IsHeapObject()) {
-                return std::nullopt;
-            }
-            return std::vector<JSHClass *> {constant->GetTaggedObject()->GetClass()};
+        if (self->preproc_->GetEnv() == nullptr || self->preproc_->GetEnv()->GetMethodLiteral() == nullptr) {
+            return std::nullopt;
         }
-        return compileInfoFacts_->TryGetPossibleHClasses(node);
+
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return std::nullopt;
+        }
+
+        ArkSteedNameRef name;
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryGetNameRefFromConstDataId");
+        if (!broker->TryGetNameFromConstantPool(constDataId, &name)) {
+            return std::nullopt;
+        }
+        return name;
     }
 
-    std::optional<NamedAccessFeedback> TryGetLoadObjByNameFeedback(kungfu::ICSlotIdType slotId) const
+    std::optional<PropertyLookupResult> TryLookupPropertyInPGOHClass(
+        JSHClass *hclass, const ArkSteedNameRef &nameRef) const
     {
-        ALLOW_DEREF_HANDLE;
-        JSHandle<ProfileTypeInfo> profileTypeInfo = self->preproc_->GetEnv()->GetProfileTypeInfo();
-        if (profileTypeInfo.GetAddress() == 0 || !profileTypeInfo.GetTaggedValue().IsTaggedArray()) {
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        JSTaggedValue name = JSTaggedValue::Undefined();
+        if (hclass == nullptr || broker == nullptr || !broker->TryResolveRef(nameRef, &name) || !name.IsString()) {
             return std::nullopt;
         }
-
-        auto *profile = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedValue().GetTaggedObject());
-        uint32_t index = static_cast<uint32_t>(slotId);
-        if (index + 1 >= profile->GetIcSlotLength()) {
-            return std::nullopt;
-        }
-        IcAccessor accessor(self->compilerThread_, profileTypeInfo, index, ICKind::NamedLoadIC);
-        IcAccessor::ICState state = accessor.GetICState();
-        if (state == IcAccessor::ICState::UNINIT) {
-            return std::nullopt;
-        }
-
-        NamedAccessFeedback feedback;
-        if (state == IcAccessor::ICState::MEGA || state == IcAccessor::ICState::IC_MEGA) {
-            return feedback;
-        }
-
-        JSTaggedValue first = profile->GetIcSlot(self->compilerThread_, index);
-        if (state == IcAccessor::ICState::MONO) {
-            if (!TryAppendHClassFromWeak(first, feedback.maps)) {
-                return std::nullopt;
-            }
-            feedback.handlers.push_back(profile->GetIcSlot(self->compilerThread_, index + 1));
-            return feedback;
-        }
-        if (state != IcAccessor::ICState::POLY || !first.IsTaggedArray()) {
-            return std::nullopt;
-        }
-
-        TaggedArray *mapsAndHandlers = TaggedArray::Cast(first.GetTaggedObject());
-        constexpr uint32_t entrySize = 2;
-        for (uint32_t i = 0; i + 1 < mapsAndHandlers->GetLength(); i += entrySize) {
-            JSTaggedValue maybeWeak = mapsAndHandlers->Get(self->compilerThread_, i);
-            if (maybeWeak.IsUndefined()) {
-                continue;
-            }
-            if (!TryAppendHClassFromWeak(maybeWeak, feedback.maps)) {
-                return std::nullopt;
-            }
-            feedback.handlers.push_back(mapsAndHandlers->Get(self->compilerThread_, i + 1));
-        }
-        return feedback.maps.empty() ? std::nullopt : std::optional<NamedAccessFeedback>(std::move(feedback));
+        return JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, hclass, name);
     }
 
-    std::optional<JSTaggedValue> TryFindFeedbackHandler(const NamedAccessFeedback &feedback, JSHClass *map) const
+    std::optional<JSHClass *> TryResolveHClassRef(const ArkSteedHClassRef &hclassRef) const
     {
-        auto it = std::find(feedback.maps.begin(), feedback.maps.end(), map);
-        if (it == feedback.maps.end()) {
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        JSTaggedValue hclassValue = JSTaggedValue::Undefined();
+        if (broker == nullptr || !broker->TryResolveRef(hclassRef, &hclassValue) || !hclassValue.IsJSHClass()) {
             return std::nullopt;
         }
-        size_t index = static_cast<size_t>(std::distance(feedback.maps.begin(), it));
-        return index < feedback.handlers.size() ? std::optional<JSTaggedValue>(feedback.handlers[index])
-                                                : std::nullopt;
+        return JSHClass::Cast(hclassValue.GetTaggedObject());
     }
 
-    static bool IsSupportedMonoNamedLoad(const NamedLoadAccessInfo &accessInfo)
+    static bool IsSupportedNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo)
     {
-        PropertyLookupResult plr = accessInfo.plr;
-        return accessInfo.receiverHClass != nullptr && !accessInfo.lookupStartObjectHClasses.empty() &&
-               accessInfo.holderHClass == accessInfo.receiverHClass && plr.IsFound() && plr.IsLocal() &&
-               plr.IsNotHole() && !plr.IsAccessor() && !plr.IsFunction() && !plr.IsLoadFromIterResult();
-    }
-
-    NamedLoadAccessInfoOpt TryGetPropertyAccessInfo(JSHClass *map, uint16_t constDataId,
-                                                     std::optional<JSTaggedValue> handler) const
-    {
-        if (map == nullptr) {
-            return std::nullopt;
-        }
-        std::optional<JSTaggedValue> name = TryGetNameFromConstDataId(constDataId);
-        if (!name.has_value() || !map->GetLayout(self->compilerThread_).IsTaggedArray()) {
-            return std::nullopt;
-        }
-
-        PropertyLookupResult plr =
-            JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, map, name.value());
-        NamedLoadAccessInfo accessInfo {
-            .receiverHClass = map,
-            .holderHClass = map,
-            .lookupStartObjectHClasses = {map},
-            .handler = handler,
-            .plr = plr,
-            .isConst = plr.IsFound() && !plr.IsWritable() && kungfu::StableHClassDependency::IsValid(map),
-        };
-        return IsSupportedMonoNamedLoad(accessInfo) ? NamedLoadAccessInfoOpt(std::move(accessInfo)) : std::nullopt;
-    }
-
-    bool RecordNamedAccessInfoDependencies(const NamedLoadAccessInfo &accessInfo) const
-    {
-        if (!accessInfo.isConst) {
-            return true;
-        }
-        auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
-        if (dependencies == nullptr) {
+        if (accessInfo.mode != AccessMode::NAMED_LOAD || !accessInfo.IsDataField() ||
+            accessInfo.fieldRepresentation != AccessFieldRepresentation::TAGGED ||
+            (accessInfo.fieldStorage != AccessFieldStorage::IN_OBJECT &&
+             accessInfo.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) ||
+            !accessInfo.expectedHClass.IsSafeForCompile()) {
             return false;
-        }
-        for (JSHClass *hclass : accessInfo.lookupStartObjectHClasses) {
-            if (hclass != nullptr && kungfu::StableHClassDependency::IsValid(hclass) &&
-                !dependencies->DependOnStableHClass(hclass)) {
-                return false;
-            }
         }
         return true;
     }
 
+    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(
+        const PropertyAccessInfo &accessInfo, JSHClass *holderHClass, uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(holderHClass, nameRef.value());
+        if (!maybePlr.has_value()) {
+            return std::nullopt;
+        }
+        PropertyLookupResult plr = maybePlr.value();
+        bool hasSameStorage = (accessInfo.fieldStorage == AccessFieldStorage::IN_OBJECT && plr.IsInlinedProps() &&
+                               plr.GetOffset() == static_cast<uint32_t>(accessInfo.fieldOffset)) ||
+                              (accessInfo.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY &&
+                               !plr.IsInlinedProps() && plr.GetOffset() == accessInfo.fieldIndex);
+        if (!plr.IsFound() || !plr.IsLocal() ||
+            plr.IsAccessor() || plr.IsFunction() ||
+            plr.IsLoadFromIterResult() || plr.GetRepresentation() != Representation::TAGGED ||
+            !hasSameStorage) {
+            return std::nullopt;
+        }
+        return plr;
+    }
+
+    NamedLoadAccessInfoOpt TryConvertNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                         uint16_t constDataId) const
+    {
+        if (!IsSupportedNamedLoadAccessInfo(accessInfo)) {
+            return std::nullopt;
+        }
+        std::optional<JSHClass *> receiverHClass = TryResolveHClassRef(accessInfo.expectedHClass);
+        if (!receiverHClass.has_value() || receiverHClass.value() == nullptr ||
+            !receiverHClass.value()->GetLayout(self->compilerThread_).IsTaggedArray()) {
+            return std::nullopt;
+        }
+        JSHClass *holderHClass = receiverHClass.value();
+        uint32_t holderDepth = 0;
+        std::vector<JSHClass *> expectedPrototypeHClasses;
+        if (!accessInfo.holderIsReceiver) {
+            std::optional<JSHClass *> holder = TryResolveHClassRef(accessInfo.fieldOwnerHClass);
+            if (!holder.has_value()) {
+                return std::nullopt;
+            }
+            holderHClass = holder.value();
+            if (holderHClass == nullptr || !holderHClass->GetLayout(self->compilerThread_).IsTaggedArray()) {
+                return std::nullopt;
+            }
+            JSTaggedValue current = receiverHClass.value()->GetPrototype(self->compilerThread_);
+            holderDepth = 1;
+            while (current.IsHeapObject()) {
+                JSHClass *currentHClass = current.GetTaggedObject()->GetClass();
+                expectedPrototypeHClasses.push_back(currentHClass);
+                if (currentHClass == holderHClass) {
+                    break;
+                }
+                current = currentHClass->GetPrototype(self->compilerThread_);
+                holderDepth++;
+            }
+            if (!current.IsHeapObject()) {
+                return std::nullopt;
+            }
+            if (expectedPrototypeHClasses.empty() || expectedPrototypeHClasses.back() != holderHClass ||
+                expectedPrototypeHClasses.size() != holderDepth) {
+                return std::nullopt;
+            }
+        }
+        std::optional<PropertyLookupResult> plr =
+            TryMakePropertyLookupResultFromAccessInfo(accessInfo, holderHClass, constDataId);
+        if (!plr.has_value()) {
+            return std::nullopt;
+        }
+        NamedLoadAccessInfo result {
+            .receiverHClass = receiverHClass.value(),
+            .holderHClass = holderHClass,
+            .lookupStartObjectHClasses = {receiverHClass.value()},
+            .expectedPrototypeHClasses = std::move(expectedPrototypeHClasses),
+            .plr = plr.value(),
+            .holderDepth = holderDepth,
+            .isConst = false,
+        };
+        return result;
+    }
+
     static bool HasSameLoadFieldAccess(const NamedLoadAccessInfo &lhs, const NamedLoadAccessInfo &rhs)
     {
-        return lhs.plr.GetData() == rhs.plr.GetData() && lhs.isConst == rhs.isConst;
+        if (lhs.plr.GetData() != rhs.plr.GetData() || lhs.isConst != rhs.isConst ||
+            lhs.holderDepth != rhs.holderDepth) {
+            return false;
+        }
+        if (lhs.holderDepth == 0) {
+            return true;
+        }
+        return lhs.holderHClass == rhs.holderHClass &&
+               lhs.expectedPrototypeHClasses == rhs.expectedPrototypeHClasses;
     }
 
     static void AppendHClassIfMissing(std::vector<JSHClass *> *hclasses, JSHClass *hclass)
@@ -3421,13 +3369,19 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(
-        const std::vector<JSHClass *> &maps, const NamedAccessFeedback &feedback, uint16_t constDataId) const
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const PropertyAccessSet &accessSet,
+                                                           uint16_t constDataId) const
     {
+        if (accessSet.caseCount > 1) {
+            for (uint32_t i = 0; i < accessSet.caseCount && i < accessSet.cases.size(); ++i) {
+                if (!accessSet.cases[i].holderIsReceiver) {
+                    return std::nullopt;
+                }
+            }
+        }
         std::vector<NamedLoadAccessInfo> result;
-        for (JSHClass *map : maps) {
-            NamedLoadAccessInfoOpt accessInfo =
-                TryGetPropertyAccessInfo(map, constDataId, TryFindFeedbackHandler(feedback, map));
+        for (uint32_t i = 0; i < accessSet.caseCount && i < accessSet.cases.size(); ++i) {
+            NamedLoadAccessInfoOpt accessInfo = TryConvertNamedLoadAccessInfo(accessSet.cases[i], constDataId);
             if (!accessInfo.has_value()) {
                 return std::nullopt;
             }
@@ -3449,11 +3403,6 @@ struct GraphBuilder::BytecodeVisitor {
         }
         if (result.empty()) {
             return std::nullopt;
-        }
-        for (const NamedLoadAccessInfo &accessInfo : result) {
-            if (!RecordNamedAccessInfoDependencies(accessInfo)) {
-                return std::nullopt;
-            }
         }
         return result;
     }
@@ -4988,15 +4937,6 @@ struct GraphBuilder::BytecodeVisitor {
         if (compileInfoFacts_->TryGetHClass(object) == hclass) {
             return true;
         }
-        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(object)) {
-            if (constant->IsHole() || !constant->IsHeapObject() ||
-                constant->GetTaggedObject()->GetClass() != hclass) {
-                return false;
-            }
-            compileInfoFacts_->RecordHClass(object, hclass, kungfu::StableHClassDependency::IsValid(hclass));
-            return true;
-        }
-
         if (kungfu::StableHClassDependency::IsValid(hclass)) {
             auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
             if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
@@ -5027,6 +4967,13 @@ struct GraphBuilder::BytecodeVisitor {
         });
     }
 
+    static bool IsHClassSubset(const std::vector<JSHClass *> &subset, const std::vector<JSHClass *> &superset)
+    {
+        return std::all_of(subset.begin(), subset.end(), [&superset](JSHClass *hclass) {
+            return std::find(superset.begin(), superset.end(), hclass) != superset.end();
+        });
+    }
+
     bool BuildCheckHClasses(
         uint32_t bcIndex, ValueVertex *object, const std::vector<JSHClass *> &hclasses, bool mapsAreKnownFresh)
     {
@@ -5038,28 +4985,52 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         std::optional<std::vector<JSHClass *>> knownHClasses = compileInfoFacts_->TryGetPossibleHClasses(object);
-        if (!mapsAreKnownFresh || !knownHClasses.has_value() ||
-            !ContainsSameHClasses(knownHClasses.value(), hclasses)) {
-            return false;
-        }
         bool allStable = std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
             return hclass != nullptr && kungfu::StableHClassDependency::IsValid(hclass);
         });
+        if (mapsAreKnownFresh && knownHClasses.has_value() && ContainsSameHClasses(knownHClasses.value(), hclasses)) {
+            compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
+            return true;
+        }
+        if (knownHClasses.has_value() && !knownHClasses->empty() && IsHClassSubset(knownHClasses.value(), hclasses)) {
+            return true;
+        }
+
+        if (std::any_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
+            return hclass == nullptr;
+        })) {
+            return false;
+        }
+        std::vector<ValueVertex *> checkInputs {object};
+        ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
+        BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+        self->NewVertex<DeoptIfHClassNotInVertex>(
+            currentBlock, checkInputs, hclasses, std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
         compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
         return true;
     }
 
     ValueVertex *BuildLoadField(ValueVertex *object, PropertyLookupResult plr)
     {
+        auto convertHoleToUndefined = [this, plr](ValueVertex *value) -> ValueVertex * {
+            if (plr.IsNotHole() || !plr.IsLoadFromIterResult()) {
+                return value;
+            }
+            return self->NewVertex<ConvertHoleToUndefinedVertex>(compileInfoFacts_, currentBlock, {value});
+        };
         if (plr.IsInlinedProps()) {
             int32_t offset = static_cast<int32_t>(plr.GetOffset());
-            return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object}, offset);
+            ValueVertex *result =
+                self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object}, offset);
+            return convertHoleToUndefined(result);
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
                                               plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
-        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
+        ValueVertex *result =
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
+        return convertHoleToUndefined(result);
     }
 
     void BuildStoreTaggedField(ValueVertex *object, int32_t offset, ValueVertex *value)
@@ -5086,7 +5057,7 @@ struct GraphBuilder::BytecodeVisitor {
         BuildStoreTaggedField(properties, offset, value);
     }
 
-    ValueVertex *TryBuildPropertyLoad(ValueVertex *object, uint16_t constDataId,
+    ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, uint16_t constDataId,
                                       const NamedLoadAccessInfo &accessInfo)
     {
         LoadedPropertyKey key = LoadedPropertyKey::ConstDataId(object, constDataId, accessInfo.plr);
@@ -5098,7 +5069,17 @@ struct GraphBuilder::BytecodeVisitor {
             return cached;
         }
 
-        ValueVertex *result = BuildLoadField(object, accessInfo.plr);
+        ValueVertex *loadSource = object;
+        if (accessInfo.holderDepth != 0) {
+            std::vector<ValueVertex *> checkInputs {object};
+            ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
+            BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+            loadSource = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
+                compileInfoFacts_, currentBlock, checkInputs, accessInfo.holderHClass,
+                accessInfo.expectedPrototypeHClasses, accessInfo.holderDepth,
+                std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
+        }
+        ValueVertex *result = BuildLoadField(loadSource, accessInfo.plr);
         if (accessInfo.isConst) {
             compileInfoFacts_->RecordLoadedConstantProperty(key, result);
         } else {
@@ -5126,49 +5107,31 @@ struct GraphBuilder::BytecodeVisitor {
         if (hasHClassOfString || !BuildCheckHClasses(bcIndex, receiver, maps, mapsAreKnownFresh)) {
             return false;
         }
-        frameState.SetAcc(TryBuildPropertyLoad(receiver, constDataId, accessInfo));
+        ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, constDataId, accessInfo);
+        if (result == nullptr) {
+            return false;
+        }
+        frameState.SetAcc(result);
         return true;
     }
 
     bool TryBuildLoadNamedProperty(
         const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId)
     {
-        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(receiver)) {
-            if (constant->IsHole() || !constant->IsHeapObject()) {
-                return false;
-            }
-            JSHClass *hclass = constant->GetTaggedObject()->GetClass();
-            NamedLoadAccessInfoOpt accessInfo = TryGetPropertyAccessInfo(hclass, constDataId, std::nullopt);
-            if (!accessInfo.has_value() || !RecordNamedAccessInfoDependencies(accessInfo.value())) {
-                return false;
-            }
-            return TryBuildNamedAccess(bcIndex, receiver, constDataId, {accessInfo.value()}, false);
-        }
-
-        std::optional<NamedAccessFeedback> feedback =
-            TryGetLoadObjByNameFeedback(GetICSlotId<kungfu::ICSlotIdType>(bcInfo, 0));
-        if (!feedback.has_value()) {
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        PropertyAccessSet accessSet;
+        if (!factory.TryBuildNamedLoadAccessInfo(0, &accessSet)) {
             return false;
         }
 
-        std::optional<std::vector<JSHClass *>> inferredMaps;
-        bool mapsAreKnownFresh = false;
-        if (feedback->maps.empty()) {
-            inferredMaps = TryGetPossibleHClasses(receiver);
-            mapsAreKnownFresh = inferredMaps.has_value();
-        } else {
-            KnownHClassesMerger merger(feedback->maps);
-            merger.IntersectWithCompileInfoFacts(TryGetPossibleHClasses(receiver));
-            inferredMaps = merger.GetIntersection();
-        }
-        if (!inferredMaps.has_value() || inferredMaps->empty()) {
+        NamedLoadAccessInfosOpt accessInfos = TryGetLoadObjByNameAccessInfos(accessSet, constDataId);
+        if (!accessInfos.has_value()) {
             return false;
         }
-
-        NamedLoadAccessInfosOpt accessInfos =
-            TryGetLoadObjByNameAccessInfos(inferredMaps.value(), feedback.value(), constDataId);
-        return accessInfos.has_value() &&
-               TryBuildNamedAccess(bcIndex, receiver, constDataId, accessInfos.value(), mapsAreKnownFresh);
+        if (!TryBuildNamedAccess(bcIndex, receiver, constDataId, accessInfos.value(), false)) {
+            return false;
+        }
+        return true;
     }
 
     bool TryBuildStoreNamedProperty(const BytecodeInfo *bcInfo, ValueVertex *receiver,
@@ -5178,18 +5141,24 @@ struct GraphBuilder::BytecodeVisitor {
         if (hclass == nullptr) {
             return false;
         }
-        std::optional<JSTaggedValue> name = TryGetNameFromConstDataId(constDataId);
-        if (!name.has_value()) {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
             return false;
         }
-        PropertyLookupResult plr =
-            JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, hclass, name.value());
+        std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(hclass, nameRef.value());
+        if (!maybePlr.has_value()) {
+            return false;
+        }
+        PropertyLookupResult plr = maybePlr.value();
         if (!plr.IsFound() || !plr.IsLocal() || !plr.IsWritable() || plr.IsAccessor()) {
             return false;
         }
+        auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
+        if (dependencies == nullptr || !dependencies->DependOnNotPrototype(hclass)) {
+            return false;
+        }
         if (kungfu::StableHClassDependency::IsValid(hclass)) {
-            auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
-            if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
+            if (!dependencies->DependOnStableHClass(hclass)) {
                 return false;
             }
         }

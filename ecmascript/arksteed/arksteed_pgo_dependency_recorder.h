@@ -58,9 +58,11 @@ private:
         }
         if (access.dependencies.protoCellDependency == AccessDependencyKind::PROTOTYPE_CELL) {
             bool dependOnFullProtoChain = access.IsNotFound() && !access.HasHolder();
-            return DependOnStableProtoChain(access.expectedHClass, access.holder,
-                                            access.holderIsReceiver || dependOnFullProtoChain,
-                                            access.hasProtoCell);
+            if (!DependOnStableProtoChain(access.expectedHClass, access,
+                                          access.holderIsReceiver || dependOnFullProtoChain,
+                                          access.hasProtoCell)) {
+                return false;
+            }
         }
         return true;
     }
@@ -73,9 +75,11 @@ private:
         }
         if (access.dependencies.protoCellDependency == AccessDependencyKind::PROTOTYPE_CELL) {
             bool dependOnFullProtoChain = access.IsNotFound() && !access.HasHolder();
-            return CheckStableProtoChain(access.expectedHClass, access.holder,
-                                         access.holderIsReceiver || dependOnFullProtoChain,
-                                         access.hasProtoCell);
+            if (!CheckStableProtoChain(access.expectedHClass, access,
+                                       access.holderIsReceiver || dependOnFullProtoChain,
+                                       access.hasProtoCell)) {
+                return false;
+            }
         }
         return true;
     }
@@ -89,7 +93,22 @@ private:
         return kungfu::LazyDeoptAllDependencies::CheckStableHClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
     }
 
-    bool CheckStableProtoChain(ArkSteedHClassRef receiverHClass, ArkSteedObjectRef holder,
+    bool TryResolveHolderHClass(const PropertyAccessInfo &access, JSHClass *receiver, bool holderIsReceiver,
+                                JSHClass **holderHClass) const
+    {
+        *holderHClass = receiver;
+        if (holderIsReceiver) {
+            return true;
+        }
+        JSTaggedValue holderHClassValue = JSTaggedValue::Undefined();
+        if (broker_->TryResolveRef(access.fieldOwnerHClass, &holderHClassValue) && holderHClassValue.IsJSHClass()) {
+            *holderHClass = JSHClass::Cast(holderHClassValue.GetTaggedObject());
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckStableProtoChain(ArkSteedHClassRef receiverHClass, const PropertyAccessInfo &access,
                                bool holderIsReceiver, bool hasProtoCell) const
     {
         JSTaggedValue receiverHClassValue = JSTaggedValue::Undefined();
@@ -98,13 +117,9 @@ private:
             return false;
         }
         JSHClass *receiver = JSHClass::Cast(receiverHClassValue.GetTaggedObject());
-        JSHClass *holderHClass = receiver;
-        if (!holderIsReceiver) {
-            JSTaggedValue holderValue = JSTaggedValue::Undefined();
-            if (!broker_->TryResolveRef(holder, &holderValue) || !holderValue.IsHeapObject()) {
-                return false;
-            }
-            holderHClass = holderValue.GetTaggedObject()->GetClass();
+        JSHClass *holderHClass = nullptr;
+        if (!TryResolveHolderHClass(access, receiver, holderIsReceiver, &holderHClass)) {
+            return false;
         }
         return kungfu::LazyDeoptAllDependencies::CheckStableProtoChain(compilerThread_, receiver, holderHClass,
                                                                        env_->GetGlobalEnv().GetObject<GlobalEnv>());
@@ -119,7 +134,7 @@ private:
         return env_->GetDependencies()->DependOnStableHClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
     }
 
-    bool DependOnStableProtoChain(ArkSteedHClassRef receiverHClass, ArkSteedObjectRef holder,
+    bool DependOnStableProtoChain(ArkSteedHClassRef receiverHClass, const PropertyAccessInfo &access,
                                   bool holderIsReceiver, bool hasProtoCell) const
     {
         JSTaggedValue receiverHClassValue = JSTaggedValue::Undefined();
@@ -128,13 +143,9 @@ private:
             return false;
         }
         JSHClass *receiver = JSHClass::Cast(receiverHClassValue.GetTaggedObject());
-        JSHClass *holderHClass = receiver;
-        if (!holderIsReceiver) {
-            JSTaggedValue holderValue = JSTaggedValue::Undefined();
-            if (!broker_->TryResolveRef(holder, &holderValue) || !holderValue.IsHeapObject()) {
-                return false;
-            }
-            holderHClass = holderValue.GetTaggedObject()->GetClass();
+        JSHClass *holderHClass = nullptr;
+        if (!TryResolveHolderHClass(access, receiver, holderIsReceiver, &holderHClass)) {
+            return false;
         }
         return env_->GetDependencies()->DependOnStableProtoChain(compilerThread_, receiver, holderHClass,
                                                                  env_->GetGlobalEnv().GetObject<GlobalEnv>());

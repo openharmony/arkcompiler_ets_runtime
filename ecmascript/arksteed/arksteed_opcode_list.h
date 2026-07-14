@@ -52,6 +52,9 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(LoadI64FromAddress)       \
     V(LoadF64FromAddress)       \
     V(LoadTaggedField)          \
+    V(LoadPrototypeFromObject)  \
+    V(LoadPrototypeHolderByHClass) \
+    V(ConvertHoleToUndefined)   \
     V(LoadException)            \
     V(TaggedIntToI32)           \
     V(CheckedTaggedIntToI32)    \
@@ -98,6 +101,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 #define NON_VALUE_VERTEX_LIST(V)    \
     V(DeoptIfHClassMismatch)        \
+    V(DeoptIfHClassNotIn)           \
     V(DeoptIfInt32Condition)        \
     V(DeoptIfNotNumber)             \
     V(Deopt)                        \

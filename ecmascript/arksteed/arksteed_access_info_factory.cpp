@@ -33,8 +33,9 @@ struct ParsedStoreHandler {
 
 struct ParsedLoadHandler {
     uint64_t handlerInfo {0};
-    ArkSteedObjectRef holder {};
+    ArkSteedHClassRef holderHClass {};
     ArkSteedProtoCellRef protoCell {};
+    uint32_t holderDepth {0};
     bool holderIsReceiver {true};
     bool hasProtoCell {false};
 };
@@ -117,13 +118,13 @@ bool TryReadPrototypeLoadHandler(const ArkSteedHeapBroker *broker, JSThread *com
     result->handlerInfo = handlerInfoValue.GetLargeUInt();
     result->holderIsReceiver = false;
     JSTaggedValue holderValue = prototypeHandler->GetHolder(compilerThread);
-    if (!holderValue.IsUndefined()) {
-        result->holder = broker->MakeObjectRef(holderValue);
+    if (holderValue.IsHeapObject()) {
+        result->holderHClass = broker->MakeHClassRef(JSTaggedValue(holderValue.GetTaggedObject()->GetClass()));
     }
     result->protoCell = broker->MakeProtoCellRef(protoCellValue);
     result->hasProtoCell = true;
     bool hasValidHolder = holderValue.IsUndefined() ? HandlerBase::IsNonExist(result->handlerInfo) :
-                                                      result->holder.IsSafeForCompile();
+                                                      result->holderHClass.IsSafeForCompile();
     return hasValidHolder && result->protoCell.IsSafeForCompile();
 }
 
@@ -198,6 +199,12 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     if (!TryReadLoadHandler(broker_, compilerThread_, caseFeedback.handler, &parsed)) {
         return false;
     }
+    if (!parsed.holderIsReceiver) {
+        if (!parsed.holderHClass.IsSafeForCompile()) {
+            return false;
+        }
+        parsed.holderDepth = 1;
+    }
 
     if (!HandlerBase::IsNonExist(parsed.handlerInfo)) {
         if (!HandlerBase::IsField(parsed.handlerInfo) || HandlerBase::IsAccessor(parsed.handlerInfo) ||
@@ -210,11 +217,12 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     info->mode = AccessMode::NAMED_LOAD;
     info->kind = HandlerBase::IsNonExist(parsed.handlerInfo) ? AccessKind::NON_EXIST :
         (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD);
-    info->holder = parsed.holder;
+    info->fieldOwnerHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
+    info->fieldHClass = info->fieldOwnerHClass;
+    info->hasFieldHClass = info->fieldOwnerHClass.IsSafeForCompile();
+    info->holderDepth = parsed.holderDepth;
     info->holderIsReceiver = parsed.holderIsReceiver;
     info->hasNotFoundProtoCellGuard = parsed.hasProtoCell && HandlerBase::IsNonExist(parsed.handlerInfo);
-    info->guards.holder = parsed.holder;
-    info->guards.hasHolder = !parsed.holderIsReceiver && parsed.holder.IsSafeForCompile();
     info->guards.holderIsReceiver = parsed.holderIsReceiver;
     info->guards.hasNotFoundProtoCellGuard = info->hasNotFoundProtoCellGuard;
     FillNamedAccessInfo(caseFeedback, parsed.handlerInfo, parsed.protoCell, parsed.hasProtoCell, info);
@@ -301,10 +309,6 @@ bool ArkSteedAccessInfoFactory::ComputeNamedLoadAccessInfo(const NamedAccessFeed
     }
     bool success = feedback.base.source.isPoly ? access->caseCount >= 2 : access->caseCount == 1;
     if (!success) {
-        *access = {};
-        return false;
-    }
-    if (!RegisterDependencies(*access)) {
         *access = {};
         return false;
     }

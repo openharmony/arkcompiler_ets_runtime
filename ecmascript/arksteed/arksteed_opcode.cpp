@@ -216,6 +216,25 @@ void DeoptIfHClassMismatchVertex::Dump(std::ostream &output) const
            << ", pc=" << GetBytecodeOffset();
 }
 
+void DeoptIfHClassNotInVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseDeoptFrameSlots(this, this);
+}
+
+void DeoptIfHClassNotInVertex::Dump(std::ostream &output) const
+{
+    output << "  DeoptIfHClassNotIn: expected=[";
+    for (size_t i = 0; i < expectedHClasses_.size(); ++i) {
+        if (i != 0) {
+            output << ", ";
+        }
+        output << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses_[i]) << std::dec;
+    }
+    output << "], pc=" << GetBytecodeOffset();
+}
+
 void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
@@ -319,6 +338,53 @@ void LoadTaggedFieldVertex::SetValueLocationConstraints()
 void LoadTaggedFieldVertex::Dump(std::ostream &output) const
 {
     output << "  LoadTaggedField: offset=" << offset_;
+}
+
+void LoadPrototypeFromObjectVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(OBJECT_INDEX));
+}
+
+void LoadPrototypeFromObjectVertex::Dump(std::ostream &output) const
+{
+    output << "  LoadPrototypeFromObject";
+}
+
+void LoadPrototypeHolderByHClassVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseDeoptFrameSlots(this, this);
+    SetTemporariesNeeded(2);  // 2: current hclass and expected hclass
+}
+
+void LoadPrototypeHolderByHClassVertex::Dump(std::ostream &output) const
+{
+    output << "  LoadPrototypeHolderByHClass: holderHClass=0x"
+           << std::hex << reinterpret_cast<uintptr_t>(GetHolderHClass()) << std::dec
+           << ", holderDepth=" << GetHolderDepth()
+           << ", expectedPrototypeHClasses=[";
+    const auto &expectedHClasses = GetExpectedPrototypeHClasses();
+    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
+        if (i != 0) {
+            output << ", ";
+        }
+        output << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses[i]) << std::dec;
+    }
+    output << "]"
+           << ", pc=" << GetBytecodeOffset();
+}
+
+void ConvertHoleToUndefinedVertex::SetValueLocationConstraints()
+{
+    DefineSameAsFirst(this);
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void ConvertHoleToUndefinedVertex::Dump(std::ostream &output) const
+{
+    output << "  ConvertHoleToUndefined";
 }
 
 void StoreTaggedToAddressVertex::SetValueLocationConstraints()
