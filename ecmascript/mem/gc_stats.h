@@ -80,6 +80,8 @@ enum class RecordDuration : uint8_t {
     FIRST_DATA = SEMI_MIN_PAUSE,
 };
 
+// SharedCC finalizes TotalGC and STW3(SuspendAll) manually (see SharedCC::RunPhases/FinalizeAndReclaim);
+// do not wrap them with TRACE_GC.
 #define TRACE_GC(scope_id, gc_stats)    \
     [[maybe_unused]] GCStats::Scope sp(scope_id, gc_stats)
 
@@ -232,6 +234,11 @@ public:
     float GetScopeDuration(int pos) const
     {
         return scopeDuration_[pos];
+    }
+
+    void RecordScopeDuration(Scope::ScopeId id, float duration)
+    {
+        SetScopeId(id, duration);
     }
 
     void IncreaseTotalDuration(float duration)

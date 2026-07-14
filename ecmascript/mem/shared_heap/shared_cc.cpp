@@ -56,8 +56,8 @@ void SharedCC::RunPhases(GCReason gcReason)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ("SharedCC::RunPhases;GCReason " + std::to_string(static_cast<int>(gcReason))
         + ";MarkReason" + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))).c_str(), "");
-    GCStats *gcStats = sHeap_->GetEcmaGCStats();
-    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
+    // TotalGC is finalized in FinalizeAndReclaim; see totalGcTimer_ and the TRACE_GC note in gc_stats.h.
+    totalGcTimer_.Reset();
 
     PrepareAllThreads();
 
@@ -113,17 +113,23 @@ void SharedCC::ReMarkAndPrepare(GCReason gcReason)
 void SharedCC::FinalizeAndReclaim()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::FinalizeAndReclaim", "");
-    TRACE_GC(GCStats::Scope::ScopeId::SuspendAll, sHeap_->GetEcmaGCStats());
+    // STW3 is finalized via stw3Timer_ below; do not wrap with TRACE_GC(SuspendAll) (RAII pitfall, see gc_stats.h).
+    stw3Timer_.Reset();
     ThreadManagedScope runningScope(dThread_);
     SuspendAllScope scope(dThread_);
 
     FinalizeCopy();
-    sHeap_->FinishGCStats(TriggerGCType::SHARED_CC);
-
     // Sweep was already prepared and posted in PrepareForCopy (STW1).
     // Ensure async sweep is finished before Reclaim.
     sHeap_->GetSweeper()->TryFillSweptRegion();
     sHeap_->Reclaim(TriggerGCType::SHARED_CC);
+
+    // Finalize durations after Reclaim (still in STW) so STW3/TotalGC include Reclaim.
+    sHeap_->GetEcmaGCStats()->RecordScopeDuration(
+        GCStats::Scope::ScopeId::TotalGC, totalGcTimer_.TotalSpentTime());
+    sHeap_->GetEcmaGCStats()->RecordScopeDuration(
+        GCStats::Scope::ScopeId::SuspendAll, stw3Timer_.TotalSpentTime());
+    sHeap_->FinishGCStats(TriggerGCType::SHARED_CC);
 
     ccRunning_ = false;
     RestoreThreadStates();
