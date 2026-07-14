@@ -6,9 +6,6 @@ obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest
 #34822 
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_IdleGCTrigger_Test
 
-#28270 
-obj/arkcompiler/ets_runtime/ecmascript/tests/ECMA_StringTable_Test
-
 #35677
 obj/arkcompiler/ets_runtime/test/jittest/lazy_deopt_10/lazy_deopt_10
 
