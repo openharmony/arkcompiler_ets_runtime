@@ -1436,8 +1436,8 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
 
     __ Bind(&baselineCodeUndefined);
     {
-        // X19, fp, x20, x21,      x22,     x23,  x24
-        // glue sp   pc  constpool  profile  acc   hotness
+        // X19, fp, x20, x21,      x22,     x23
+        // glue sp   pc  constpool  profile  acc
         __ Ldr(callTargetRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFunctionOffset(false)));
         __ Ldr(x20, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)));
         __ Ldr(x23, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetAccOffset(false)));

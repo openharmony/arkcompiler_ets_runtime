@@ -1088,12 +1088,12 @@ void RuntimeStubs::SetProfileTypeInfoCellToFunction(JSThread *thread, const JSHa
     ASSERT(!profileTypeInfo.IsUndefined());
 
     JSHandle<ProfileTypeInfo> profileTypeArray(thread, profileTypeInfo);
-    JSTaggedValue slotValue = profileTypeArray->Get(thread, slotId);
+    JSTaggedValue slotValue = profileTypeArray->GetICSlot(thread, slotId);
     if (slotValue.IsUndefined()) {
         JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
         JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
             thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
-        profileTypeArray->Set(thread, slotId, newProfileTypeInfoCell);
+        profileTypeArray->SetICSlot(thread, slotId, newProfileTypeInfoCell);
         definedFunc->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
     } else {
         auto cellPtr = ProfileTypeInfoCell::Cast(slotValue.GetTaggedObject());
@@ -2414,7 +2414,7 @@ void RuntimeStubs::DumpInfoForLdObjByValue(JSThread *thread, JSHandle<JSTaggedVa
     } else {
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
-        auto first = prof->GetIcSlot(thread, slot);
+        auto first = prof->GetICSlot(thread, slot);
         if (first.IsHole()) {
             msg += "state: mega";
         } else if (first.IsUndefined()) {
@@ -2422,7 +2422,7 @@ void RuntimeStubs::DumpInfoForLdObjByValue(JSThread *thread, JSHandle<JSTaggedVa
         } else if (first.IsWeak()) {
             msg += "state: mono";
         } else {
-            auto second = prof->GetIcSlot(thread, slot + 1);
+            auto second = prof->GetICSlot(thread, slot + 1);
             if (second.IsTaggedArray()) {
                 TaggedArray *elements = TaggedArray::Cast(second.GetTaggedObject());
                 if (elements->GetLength() == MONO_NUM) {

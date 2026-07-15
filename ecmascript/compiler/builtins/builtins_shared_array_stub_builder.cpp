@@ -815,8 +815,8 @@ GateRef BuiltinsSharedArrayStubBuilder::FindImpl(GateRef glue, GateRef thisValue
             Label notHasException(env);
             JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
             callArgs.callThisArg3WithReturnArgs = { thisArgHandle, *kValue, *key, thisValue };
-            CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                Circuit::NullGate(), callArgs);
+            CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                        0, nullptr, callArgs);
             GateRef retValue = callBuilder.JSCallDispatch();
 
             // @ref Find: RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread)

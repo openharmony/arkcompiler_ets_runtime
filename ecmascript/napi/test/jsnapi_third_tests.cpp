@@ -1800,7 +1800,7 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastEquivalentStringKeysKeepMono)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::LoadIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_FALSE(callsiteInfo->GetIcSlot(thread_, 0).IsHole());
+    EXPECT_FALSE(callsiteInfo->GetICSlot(thread_, 0).IsHole());
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
 }
@@ -1831,7 +1831,7 @@ HWTEST_F_L0(JSNApiTests, NapiSetPropertyFastEquivalentStringKeysKeepMono)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::StoreIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_FALSE(callsiteInfo->GetIcSlot(thread_, 0).IsHole());
+    EXPECT_FALSE(callsiteInfo->GetICSlot(thread_, 0).IsHole());
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
 }
@@ -1862,7 +1862,7 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastNumericKeyGoesViaElementIC)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::LoadIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsWeak());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsWeak());
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
 }
@@ -1893,7 +1893,7 @@ HWTEST_F_L0(JSNApiTests, NapiSetPropertyFastNumericKeyGoesViaElementIC)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::StoreIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsWeak());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsWeak());
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
 }
@@ -1945,7 +1945,7 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastIntegerKeyHitsElementIC)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::LoadIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsWeak());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsWeak());
 
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
@@ -1978,7 +1978,7 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastElementIndexStringKey)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::LoadIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsWeak());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsWeak());
 
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
@@ -2011,7 +2011,7 @@ HWTEST_F_L0(JSNApiTests, NapiSetPropertyFastElementIndexStringKey)
     EXPECT_EQ(GetCallsiteState(thread_, info, ICKind::StoreIC), IcAccessor::ICState::MONO);
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsWeak());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsWeak());
 
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
@@ -2044,7 +2044,7 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastSymbolKeyViaKeyIC)
 
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsSymbol());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsSymbol());
 
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
@@ -2121,7 +2121,7 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastSameContentDifferentPointer)
 
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsString());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsString());
 
     ASSERT_FALSE(thread_->HasPendingException());
     JSNApi::NapiDeleteCallsiteInfo(vm_, info);
@@ -2592,12 +2592,12 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastMonoPolyMegaTransition)
 
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsHole());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsHole());
     auto finalState = GetCallsiteState(thread_, info, ICKind::LoadIC);
     if (finalState == IcAccessor::ICState::IC_MEGA) {
-        EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 1).IsString());
+        EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 1).IsString());
     } else {
-        EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 1).IsHole());
+        EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 1).IsHole());
     }
 
     ASSERT_FALSE(thread_->HasPendingException());
@@ -2635,12 +2635,12 @@ HWTEST_F_L0(JSNApiTests, NapiSetPropertyFastMonoPolyMegaTransition)
 
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *callsiteInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 0).IsHole());
+    EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 0).IsHole());
     auto finalState = GetCallsiteState(thread_, info, ICKind::StoreIC);
     if (finalState == IcAccessor::ICState::IC_MEGA) {
-        EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 1).IsString());
+        EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 1).IsString());
     } else {
-        EXPECT_TRUE(callsiteInfo->GetIcSlot(thread_, 1).IsHole());
+        EXPECT_TRUE(callsiteInfo->GetICSlot(thread_, 1).IsHole());
     }
 
     ASSERT_FALSE(thread_->HasPendingException());
@@ -3929,8 +3929,8 @@ HWTEST_F_L0(JSNApiTests, NapiGetPropertyFastDirectMegaSlotFallback)
     // Manually set slot[0] = Hole to simulate MEGA state.
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *icInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    icInfo->SetIcSlot(thread_, 0, JSTaggedValue::Hole());
-    icInfo->SetIcSlot(thread_, 1, JSTaggedValue::Hole());
+    icInfo->SetICSlot(thread_, 0, JSTaggedValue::Hole());
+    icInfo->SetICSlot(thread_, 1, JSTaggedValue::Hole());
 
     // With MEGA state, should fall back to NapiGetProperty slow path.
     Local<JSValueRef> res = JSNApi::NapiGetPropertyWithCallsiteInfo(vm_, reinterpret_cast<uintptr_t>(*object),
@@ -3957,8 +3957,8 @@ HWTEST_F_L0(JSNApiTests, NapiSetPropertyFastDirectMegaSlotFallback)
     // Manually set slot[0] = Hole to simulate MEGA state.
     JSTaggedValue infoVal = *reinterpret_cast<JSTaggedValue *>(info);
     ICInfo *icInfo = ICInfo::Cast(infoVal.GetTaggedObject());
-    icInfo->SetIcSlot(thread_, 0, JSTaggedValue::Hole());
-    icInfo->SetIcSlot(thread_, 1, JSTaggedValue::Hole());
+    icInfo->SetICSlot(thread_, 0, JSTaggedValue::Hole());
+    icInfo->SetICSlot(thread_, 1, JSTaggedValue::Hole());
 
     // With MEGA state, should fall back to normal Set() slow path.
     Local<JSValueRef> value = IntegerRef::New(vm_, 888);

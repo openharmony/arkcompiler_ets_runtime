@@ -902,7 +902,6 @@ void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNo
     if (jumpSize_ != 0) {
         SaveJumpSizeIfNeeded(glue_, jumpSize_);
     }
-    SaveHotnessCounterIfNeeded(glue_, sp_, hotnessCounter_, callArgs_.mode);
 
     int idxForAsmInterpreter = isForBaseline_ ?
         (hasBaselineCode ?

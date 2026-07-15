@@ -1150,19 +1150,18 @@ DEF_CALL_SIGNATURE(BuiltinsWithArgv)
 
 DEF_CALL_SIGNATURE(BytecodeHandler)
 {
-    // 7 : 7 input parameters
-    CallSignature bytecodeHandler("BytecodeHandler", 0, 7,
+    // 6 : 6 input parameters
+    CallSignature bytecodeHandler("BytecodeHandler", 0, 6,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = bytecodeHandler;
-    // 7 : 7 input parameters
-    std::array<VariableType, 7> params = {
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_ANY(),
-        VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::BYTECODE_HANDLER);
@@ -1171,18 +1170,17 @@ DEF_CALL_SIGNATURE(BytecodeHandler)
 
 DEF_CALL_SIGNATURE(BytecodeDebuggerHandler)
 {
-    // 7 : 7 input parameters
-    CallSignature bytecodeHandler("BytecodeDebuggerHandler", 0, 7,
+    // 6 : 6 input parameters
+    CallSignature bytecodeHandler("BytecodeDebuggerHandler", 0, 6,
                                   ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = bytecodeHandler;
-    // 7 : 7 input parameters
-    std::array<VariableType, 7> params = { VariableType::NATIVE_POINTER(),
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = { VariableType::NATIVE_POINTER(),
                                            VariableType::NATIVE_POINTER(),
                                            VariableType::NATIVE_POINTER(),
                                            VariableType::JS_POINTER(),
                                            VariableType::JS_POINTER(),
-                                           VariableType::JS_ANY(),
-                                           VariableType::INT32() };
+                                           VariableType::JS_ANY() };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::BYTECODE_DEBUGGER_HANDLER);
 }
@@ -1644,18 +1642,17 @@ DEF_CALL_SIGNATURE(SteedCallWithArgVAndPushArgv)
 
 DEF_CALL_SIGNATURE(ResumeRspAndDispatch)
 {
-    // 8 : 8 input parameters
-    CallSignature resumeRspAndDispatch("ResumeRspAndDispatch", 0, 8,
+    // 7 : 7 input parameters
+    CallSignature resumeRspAndDispatch("ResumeRspAndDispatch", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = resumeRspAndDispatch;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_ANY(),
-        VariableType::INT32(),
         VariableType::NATIVE_POINTER(),
     };
     callSign->SetParameters(params.data());
@@ -1699,19 +1696,18 @@ DEF_CALL_SIGNATURE(ResumeRspAndReturnBaseline)
 
 DEF_CALL_SIGNATURE(ResumeCaughtFrameAndDispatch)
 {
-    // 7 : 7 input parameters
-    CallSignature resumeCaughtFrameAndDispatch("ResumeCaughtFrameAndDispatch", 0, 7,
+    // 6 : 6 input parameters
+    CallSignature resumeCaughtFrameAndDispatch("ResumeCaughtFrameAndDispatch", 0, 6,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = resumeCaughtFrameAndDispatch;
-    // 7 : 7 input parameters
-    std::array<VariableType, 7> params = {
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_ANY(),
-        VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
@@ -1736,18 +1732,17 @@ DEF_CALL_SIGNATURE(ResumeUncaughtFrameAndReturn)
 
 DEF_CALL_SIGNATURE(ResumeRspAndRollback)
 {
-    // 8 : 8 input parameters
-    CallSignature resumeRspAndRollback("ResumeRspAndRollback", 0, 8,
+    // 7 : 7 input parameters
+    CallSignature resumeRspAndRollback("ResumeRspAndRollback", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = resumeRspAndRollback;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_ANY(),
-        VariableType::INT32(),
         VariableType::NATIVE_POINTER(),
     };
     callSign->SetParameters(params.data());

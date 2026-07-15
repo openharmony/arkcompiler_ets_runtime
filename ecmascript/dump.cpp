@@ -1779,10 +1779,10 @@ void ConstantPool::Dump(const JSThread *thread, std::ostream &os) const
 void ProfileTypeInfo::Dump(const JSThread *thread, std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t len = GetIcSlotLength();
+    uint32_t len = GetICSlotLength();
     os << " <ProfileTypeInfo[" << std::dec << len << "]>\n";
     for (uint32_t i = 0; i < len; i++) {
-        JSTaggedValue val(Get(thread, i));
+        JSTaggedValue val(GetICSlot(thread, i));
         if (!val.IsHole()) {
             os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
             val.DumpTaggedValue(thread, os);
@@ -5216,10 +5216,10 @@ void VTable::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec
 void ProfileTypeInfo::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t len = GetIcSlotLength();
+    uint32_t len = GetICSlotLength();
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
-        JSTaggedValue val(Get(thread, i));
+        JSTaggedValue val(GetICSlot(thread, i));
         CString str = ToCString(i);
         vec.emplace_back(str, val);
     }

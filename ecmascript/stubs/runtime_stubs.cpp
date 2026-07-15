@@ -2639,13 +2639,12 @@ DEF_RUNTIME_STUBS(JumpToCInterpreter)
     JSTaggedValue constpool = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue profileTypeInfo = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue acc = GetArg(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue hotnessCounter = GetArg(argv, argc, 3);  // 3: means the third parameter
 
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
     const uint8_t *currentPc = reinterpret_cast<const uint8_t*>(GET_ASM_FRAME(sp)->pc);
 
     uint8_t opcode = currentPc[0];
-    asmDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc, hotnessCounter.GetInt());
+    asmDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc);
     sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
     return JSTaggedValue(reinterpret_cast<uint64_t>(sp)).GetRawData();
 #else
@@ -4522,8 +4521,8 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
     } else {
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
-        auto first = prof->GetIcSlot(thread, slot);
-        auto second = prof->GetIcSlot(thread, slot + 1);
+        auto first = prof->GetICSlot(thread, slot);
+        auto second = prof->GetICSlot(thread, slot + 1);
         if (first.IsHole()) {
             if (second.IsHole()) {
                 msg += "other-mega, ";
@@ -4661,7 +4660,7 @@ DEF_RUNTIME_STUBS(TraceCallDetail)
     } else {
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
-        auto slotValue = prof->GetIcSlot(slot);
+        auto slotValue = prof->GetICSlot(slot);
         if (slotValue.IsFuncSlot()) {
             auto funcSlot = FuncSlot::Cast(slotValue);
             auto thread = JSThread::GlueToJSThread(argGlue);
@@ -4748,8 +4747,8 @@ DEF_RUNTIME_STUBS(TraceStoreDetail)
     } else {
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
-        auto first = prof->GetIcSlot(slot);
-        auto second = prof->GetIcSlot(slot + 1);
+        auto first = prof->GetICSlot(slot);
+        auto second = prof->GetICSlot(slot + 1);
         if (first.IsHole()) {
             if (second.IsHole()) {
                 msg += "mega, ";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/ic/ic_runtime.h"
+#include "ecmascript/ic/napi_ic_runtime.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
@@ -29,8 +29,8 @@
 
 namespace panda::ecmascript {
 
-bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &hclass,
-                           JSHandle<JSTaggedValue> &handlerValue)
+bool NapiICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &hclass,
+                               JSHandle<JSTaggedValue> &handlerValue)
 {
     // Solve Global IC.
     if (IsGlobalLoadIC(GetICKind())) {
@@ -102,10 +102,10 @@ bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &h
     return true;
 }
 
-void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
-                                  JSHandle<JSTaggedValue> receiver)
+void NapiICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
+                                      JSHandle<JSTaggedValue> receiver)
 {
-    if (nexus_.GetICState() == ProfileTypeInfoNexus::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
@@ -125,7 +125,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
 
     if (!GetHandler(op, hclass, handlerValue)) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         return;
     }
 
@@ -141,41 +141,41 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     }
 
     if (IsNamedIC(GetICKind())) {
-        nexus_.AddHandlerWithoutKey(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue, key, MegaICCache::Load);
+        icAccessor_.AddHandlerWithoutKey(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue, key, MegaICCache::Load);
     } else if (op.IsElement()) {
-        nexus_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+        icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
     } else {
-        nexus_.AddHandlerWithKey(key, JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+        icAccessor_.AddHandlerWithKey(key, JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
     }
 }
 
-void ICRuntime::UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver)
+void NapiICRuntime::UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver)
 {
-    if (nexus_.GetICState() == ProfileTypeInfoNexus::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
     JSHandle<JSTaggedValue> handlerValue = LoadHandler::LoadStringElement(thread_);
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
-    nexus_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+    icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
 }
 
-void ICRuntime::UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver)
+void NapiICRuntime::UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver)
 {
-    if (nexus_.GetICState() == ProfileTypeInfoNexus::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
     JSHandle<JSTaggedValue> handlerValue =
         LoadHandler::LoadTypedArrayElement(thread_, JSHandle<JSTypedArray>(receiver));
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
-    nexus_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+    icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
 }
 
-void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
-                                   JSHandle<JSTaggedValue> receiver)
+void NapiICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
+                                       JSHandle<JSTaggedValue> receiver)
 {
     JSHandle<JSTaggedValue> handlerValue;
     ASSERT(op.IsFound());
-    if (nexus_.GetICState() == ProfileTypeInfoNexus::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
 
@@ -204,25 +204,25 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
     }
 
     if (IsNamedIC(GetICKind())) {
-        nexus_.AddHandlerWithoutKey(receiverHClass_, handlerValue, key, MegaICCache::Store);
+        icAccessor_.AddHandlerWithoutKey(receiverHClass_, handlerValue, key, MegaICCache::Store);
     } else if (op.IsElement()) {
         // do not support global element ic
         if (IsGlobalStoreIC(GetICKind())) {
             return;
         }
-        nexus_.AddElementHandler(receiverHClass_, handlerValue);
+        icAccessor_.AddElementHandler(receiverHClass_, handlerValue);
     } else {
-        nexus_.AddHandlerWithKey(key, receiverHClass_, handlerValue);
+        icAccessor_.AddHandlerWithKey(key, receiverHClass_, handlerValue);
     }
 }
 
-JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+JSTaggedValue NapiLoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     JSTaggedValue::RequireObjectCoercible(thread_, receiver, "Cannot load property of null or undefined");
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
 
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) && !receiver->IsString()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
@@ -232,7 +232,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     }
     // fixme(hzzhouzebin) Open IC for SharedArray later.
     if (receiver->IsJSSharedArray()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK,
                                           SCheckMode::CHECK).GetValue().GetTaggedValue();
     }
@@ -243,7 +243,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     if (receiver->IsString()) {
          // do not cache element
         if (!op.IsFastMode()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
         UpdateLoadStringHandler(receiver);
@@ -254,13 +254,13 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
         // ic-switch
         if (!GetThread()->GetEcmaVM()->ICEnabled()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
         TraceIC(GetThread(), receiver, key);
         // do not cache element
         if (!op.IsFastMode()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
         UpdateLoadHandler(op, key, receiver);
@@ -274,7 +274,7 @@ static bool IsSupportedICPrimitiveType(JSHandle<JSTaggedValue> receiver)
     return receiver->IsString() || receiver->IsNumber() || receiver->IsBoolean();
 }
 
-JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+JSTaggedValue NapiLoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) &&
          !IsSupportedICPrimitiveType(receiver)) {
@@ -287,8 +287,8 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
         if (!box.IsUndefined()) {
             ASSERT(box.IsPropertyBox());
-            if (nexus_.GetICState() != ProfileTypeInfoNexus::ICState::MEGA) {
-                nexus_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            if (icAccessor_.GetICState() != IcAccessor::ICState::MEGA) {
+                icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
             }
             return PropertyBox::Cast(box.GetTaggedObject())->GetValue(thread_);
         }
@@ -310,19 +310,19 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
     // ic-switch
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         return result.GetTaggedValue();
     }
     TraceIC(GetThread(), receiver, key);
 
 #if ENABLE_V70_OPTIMIZATION
     if (!op.IsFastMode() && op.IsFound()) {
-        nexus_.SetAsMegaForTraceSlowMode(op);
+        icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
     }
 #else
     if (!op.IsFastMode()) {
-        nexus_.SetAsMegaForTraceSlowMode(op);
+        icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
     }
 #endif
@@ -330,15 +330,15 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     return result.GetTaggedValue();
 }
 
-JSTaggedValue LoadICRuntime::LoadOrdinaryGet(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+JSTaggedValue NapiLoadICRuntime::LoadOrdinaryGet(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
-    nexus_.SetAsMega();
+    icAccessor_.SetAsMega();
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
 }
 
-inline JSTaggedValue LoadICRuntime::CallPrivateGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+inline JSTaggedValue NapiLoadICRuntime::CallPrivateGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
@@ -348,7 +348,7 @@ inline JSTaggedValue LoadICRuntime::CallPrivateGetter(JSHandle<JSTaggedValue> re
     return resGetter;
 }
 
-JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+JSTaggedValue NapiLoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(GetThread(), key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
@@ -357,7 +357,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
     if (!numericIndex.IsUndefined()) {
         if (!JSTypedArray::IsValidIntegerIndex(GetThread(), receiver, numericIndex) ||
             !GetThread()->GetEcmaVM()->ICEnabled()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             return JSTaggedValue::GetProperty(GetThread(), receiver, propKey).GetValue().GetTaggedValue();
         }
         UpdateTypedArrayHandler(receiver);
@@ -377,13 +377,13 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
         // ic-switch
         if (!GetThread()->GetEcmaVM()->ICEnabled()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
         TraceIC(GetThread(), receiver, key);
         // do not cache element
         if (!op.IsFastMode()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
         UpdateLoadHandler(op, key, receiver);
@@ -391,15 +391,15 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
     }
 }
 
-JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                        JSHandle<JSTaggedValue> value, bool isOwn, bool isDefPropByName)
+JSTaggedValue NapiStoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                                            JSHandle<JSTaggedValue> value, bool isOwn, bool isDefPropByName)
 {
     ICKind kind = GetICKind();
     if (IsValueIC(kind)) {
         key = JSTaggedValue::ToPropertyKey(GetThread(), key);
     }
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return JSTaggedValue::Undefined();
@@ -415,8 +415,8 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             ASSERT(box.IsPropertyBox());
             SlowRuntimeStub::TryUpdateGlobalRecord(thread_, key.GetTaggedValue(), value.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            if (nexus_.GetICState() != ProfileTypeInfoNexus::ICState::MEGA) {
-                nexus_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            if (icAccessor_.GetICState() != IcAccessor::ICState::MEGA) {
+                icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
             }
             return JSTaggedValue::Undefined();
         }
@@ -425,7 +425,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
 
     // fixme(hzzhouzebin) Open IC for SharedArray later.
     if (receiver->IsJSSharedArray()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
@@ -459,7 +459,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
 
     // IC Disable
     if (!GetThread()->GetEcmaVM()->ICEnabled() || !op.IsFastMode()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         if (!success) {
             return JSTaggedValue::Exception();
         }
@@ -473,15 +473,16 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     if (success) {
         UpdateStoreHandler(op, key, receiver);
     }
-    nexus_.SetAsMegaIfUndefined();
+    icAccessor_.SetAsMegaIfUndefined();
     if (isAccessor) {
         return HandleAccesor(&op, value);
     }
     return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 
-inline JSTaggedValue StoreICRuntime::CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                                       JSHandle<JSTaggedValue> value)
+inline JSTaggedValue NapiStoreICRuntime::CallPrivateSetter(JSHandle<JSTaggedValue> receiver,
+                                                           JSHandle<JSTaggedValue> key,
+                                                           JSHandle<JSTaggedValue> value)
 {
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
@@ -493,8 +494,9 @@ inline JSTaggedValue StoreICRuntime::CallPrivateSetter(JSHandle<JSTaggedValue> r
     return resSetter;
 }
 
-JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                                       JSHandle<JSTaggedValue> value)
+JSTaggedValue NapiStoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver,
+                                                           JSHandle<JSTaggedValue> key,
+                                                           JSHandle<JSTaggedValue> value)
 {
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(GetThread(), key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
@@ -503,7 +505,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
     if (!numericIndex.IsUndefined()) {
         if (!JSTypedArray::IsValidIntegerIndex(GetThread(), receiver, numericIndex) || value->IsECMAObject() ||
             !GetThread()->GetEcmaVM()->ICEnabled()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             bool success = JSTaggedValue::SetProperty(GetThread(), receiver, propKey, value, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
             return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
@@ -528,7 +530,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
 
         // IC Disable
         if (!GetThread()->GetEcmaVM()->ICEnabled() || !op.IsFastMode()) {
-            nexus_.SetAsMega();
+            icAccessor_.SetAsMega();
             if (!success) {
                 return JSTaggedValue::Exception();
             }
@@ -542,7 +544,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
         if (success) {
             UpdateStoreHandler(op, key, receiver);
         }
-        nexus_.SetAsMegaIfUndefined();
+        icAccessor_.SetAsMegaIfUndefined();
         if (isAccessor) {
             return HandleAccesor(&op, value);
         }
@@ -550,19 +552,19 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
     }
 }
 
-JSTaggedValue StoreICRuntime::HandleAccesor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value)
+JSTaggedValue NapiStoreICRuntime::HandleAccesor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value)
 {
     bool success = JSObject::SetPropertyForAccessor(op, value);
     if (thread_->HasPendingException()) {
-        nexus_.SetAsMega();
+        icAccessor_.SetAsMega();
         return JSTaggedValue::Exception();
     }
     return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 
-void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
-                        [[maybe_unused]] JSHandle<JSTaggedValue> receiver,
-                        [[maybe_unused]] JSHandle<JSTaggedValue> key) const
+void NapiICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
+                            [[maybe_unused]] JSHandle<JSTaggedValue> receiver,
+                            [[maybe_unused]] JSHandle<JSTaggedValue> key) const
 {
 #if ECMASCRIPT_ENABLE_TRACE_IC
     // If BackTrace affects IC, can choose not to execute it.
@@ -587,7 +589,7 @@ void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
     LOG_ECMA(ERROR) << strTraceIC;
 
     auto kind = ICKindToString(GetICKind());
-    auto state = ProfileTypeInfoNexus::ICStateToString(nexus_.GetICState());
+    auto state = IcAccessor::ICStateToString(icAccessor_.GetICState());
     if (key->IsString()) {
         auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
         LOG_ECMA(ERROR) << kind << " miss, key is: " << EcmaStringAccessor(keyStrHandle).ToCString(thread)

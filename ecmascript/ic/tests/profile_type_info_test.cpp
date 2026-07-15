@@ -81,44 +81,35 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetICState)
     uint32_t arrayLength = 11;
     JSHandle<JSTaggedValue> HandleKey0(factory->NewFromASCII("key0"));
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
-    handleProfileTypeInfo->Set(thread, 1, JSTaggedValue::Hole());
-    handleProfileTypeInfo->Set(thread, 2, JSTaggedValue::Hole());
-    handleProfileTypeInfo->Set(thread, 3, newArray.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 4, newArray.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 5, newBox.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 6, newArray.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 7, JSTaggedValue::Hole());
-    handleProfileTypeInfo->Set(thread, 8, JSTaggedValue::Undefined());
-    handleProfileTypeInfo->Set(thread, 9, JSTaggedValue::Hole());
-    handleProfileTypeInfo->Set(thread, 10, HandleKey0.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 1, JSTaggedValue::Hole());
+    handleProfileTypeInfo->SetICSlot(thread, 2, JSTaggedValue::Hole());
+    handleProfileTypeInfo->SetICSlot(thread, 3, newArray.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 4, newArray.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 5, newBox.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 6, newArray.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 7, JSTaggedValue::Hole());
+    handleProfileTypeInfo->SetICSlot(thread, 8, JSTaggedValue::Undefined());
+    handleProfileTypeInfo->SetICSlot(thread, 9, JSTaggedValue::Hole());
+    handleProfileTypeInfo->SetICSlot(thread, 10, HandleKey0.GetTaggedValue());
 
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
-    // slotId = 0
-    JSHandle<ICInfo> csHandle(handleProfileTypeInfo);
-    IcAccessor handleIcAccessor0(thread, csHandle, 0, ICKind::StoreIC);
-    // slotId = 1,2
-    IcAccessor handleIcAccessor1(thread, csHandle, 1, ICKind::GlobalLoadIC);
-    // slotId = 3
-    IcAccessor handleIcAccessor2(thread, csHandle, 3, ICKind::NamedLoadIC);
-    // slotId = 4
-    IcAccessor handleIcAccessor3(thread, csHandle, 4, ICKind::LoadIC);
-    // slotId = 5
-    IcAccessor handleIcAccessor4(thread, csHandle, 5, ICKind::NamedGlobalLoadIC);
-    // slotId = 6
-    IcAccessor handleIcAccessor5(thread, csHandle, 6, ICKind::GlobalStoreIC);
-    // slotId = 7,8
-    IcAccessor handleIcAccessor6(thread, csHandle, 7, ICKind::GlobalLoadIC);
-    // slotId = 9,10
-    IcAccessor handleIcAccessor7(thread, csHandle, 9, ICKind::LoadIC);
+    ProfileTypeInfoNexus nexus0(thread, handleProfileTypeInfo, 0, ICKind::StoreIC);
+    ProfileTypeInfoNexus nexus1(thread, handleProfileTypeInfo, 1, ICKind::GlobalLoadIC);
+    ProfileTypeInfoNexus nexus2(thread, handleProfileTypeInfo, 3, ICKind::NamedLoadIC);
+    ProfileTypeInfoNexus nexus3(thread, handleProfileTypeInfo, 4, ICKind::LoadIC);
+    ProfileTypeInfoNexus nexus4(thread, handleProfileTypeInfo, 5, ICKind::NamedGlobalLoadIC);
+    ProfileTypeInfoNexus nexus5(thread, handleProfileTypeInfo, 6, ICKind::GlobalStoreIC);
+    ProfileTypeInfoNexus nexus6(thread, handleProfileTypeInfo, 7, ICKind::GlobalLoadIC);
+    ProfileTypeInfoNexus nexus7(thread, handleProfileTypeInfo, 9, ICKind::LoadIC);
 
-    EXPECT_EQ(handleIcAccessor0.GetICState(), IcAccessor::ICState::UNINIT);
-    EXPECT_EQ(handleIcAccessor1.GetICState(), IcAccessor::ICState::MEGA);
-    EXPECT_EQ(handleIcAccessor2.GetICState(), IcAccessor::ICState::POLY);
-    EXPECT_EQ(handleIcAccessor3.GetICState(), IcAccessor::ICState::MONO);
-    EXPECT_EQ(handleIcAccessor4.GetICState(), IcAccessor::ICState::MONO);
-    EXPECT_EQ(handleIcAccessor5.GetICState(), IcAccessor::ICState::MONO);
-    EXPECT_EQ(handleIcAccessor6.GetICState(), IcAccessor::ICState::MEGA);
-    EXPECT_EQ(handleIcAccessor7.GetICState(), IcAccessor::ICState::IC_MEGA);
+    EXPECT_EQ(nexus0.GetICState(), ProfileTypeInfoNexus::ICState::UNINIT);
+    EXPECT_EQ(nexus1.GetICState(), ProfileTypeInfoNexus::ICState::MEGA);
+    EXPECT_EQ(nexus2.GetICState(), ProfileTypeInfoNexus::ICState::POLY);
+    EXPECT_EQ(nexus3.GetICState(), ProfileTypeInfoNexus::ICState::MONO);
+    EXPECT_EQ(nexus4.GetICState(), ProfileTypeInfoNexus::ICState::MONO);
+    EXPECT_EQ(nexus5.GetICState(), ProfileTypeInfoNexus::ICState::MONO);
+    EXPECT_EQ(nexus6.GetICState(), ProfileTypeInfoNexus::ICState::MEGA);
+    EXPECT_EQ(nexus7.GetICState(), ProfileTypeInfoNexus::ICState::IC_MEGA);
 }
 
 /**
@@ -146,34 +137,34 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddHandlerWithoutKey)
     handleTaggedArray->Set(thread, 1, JSTaggedValue(2));
 
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(4);
-    handleProfileTypeInfo->Set(thread, 2, JSTaggedValue::Hole());
+    handleProfileTypeInfo->SetICSlot(thread, 2, JSTaggedValue::Hole());
 
     uint32_t slotId = 0; // test profileData is Undefined
-    IcAccessor handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    ProfileTypeInfoNexus handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor0.AddHandlerWithoutKey(objClassVal, HandlerValue);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsWeak());
-    EXPECT_EQ(handleProfileTypeInfo->Get(thread, slotId + 1).GetInt(), 2);
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId).IsWeak());
+    EXPECT_EQ(handleProfileTypeInfo->GetICSlot(thread, slotId + 1).GetInt(), 2);
 
     slotId = 1; // test POLY
-    handleProfileTypeInfo->Set(thread, slotId, handleTaggedArray.GetTaggedValue()); // Reset Value
-    IcAccessor handleIcAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    handleProfileTypeInfo->SetICSlot(thread, slotId, handleTaggedArray.GetTaggedValue()); // Reset Value
+    ProfileTypeInfoNexus handleIcAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor1.AddHandlerWithoutKey(objClassVal, HandlerValue);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsTaggedArray());
-    JSHandle<TaggedArray> resultArr1(thread, handleProfileTypeInfo->Get(thread, slotId));
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId).IsTaggedArray());
+    JSHandle<TaggedArray> resultArr1(thread, handleProfileTypeInfo->GetICSlot(thread, slotId));
     EXPECT_EQ(resultArr1->GetLength(), 4U); // 4 = 2 + 2
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId + 1).IsHole());
 
     slotId = 2; // test MONO to POLY
-    handleProfileTypeInfo->Set(thread, slotId, HandlerValue.GetTaggedValue()); // Reset Value
-    IcAccessor handleIcAccessor2(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    handleProfileTypeInfo->SetICSlot(thread, slotId, HandlerValue.GetTaggedValue()); // Reset Value
+    ProfileTypeInfoNexus handleIcAccessor2(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor2.AddHandlerWithoutKey(objClassVal, HandlerValue);
-    JSHandle<TaggedArray> resultArr2(thread, handleProfileTypeInfo->Get(thread, slotId));
+    JSHandle<TaggedArray> resultArr2(thread, handleProfileTypeInfo->GetICSlot(thread, slotId));
     EXPECT_EQ(resultArr2->GetLength(), 4U); // POLY_DEFAULT_LEN
     EXPECT_EQ(resultArr2->Get(thread, 0).GetInt(), 2);
     EXPECT_TRUE(resultArr2->Get(thread, 1).IsUndefined());
     EXPECT_TRUE(resultArr2->Get(thread, 2).IsWeak());
     EXPECT_EQ(resultArr2->Get(thread, 3).GetInt(), 2);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId + 1).IsHole());
 }
 
 /**
@@ -199,10 +190,10 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddElementHandler)
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(4);
 
     uint32_t slotId = 0;
-    IcAccessor handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    ProfileTypeInfoNexus handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor0.AddElementHandler(objClassVal, HandlerValue);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 0).IsWeak());
-    EXPECT_EQ(handleProfileTypeInfo->Get(thread, 1).GetInt(), 3);
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 0).IsWeak());
+    EXPECT_EQ(handleProfileTypeInfo->GetICSlot(thread, 1).GetInt(), 3);
 }
 
 /**
@@ -233,27 +224,27 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddHandlerWithKey)
     handleTaggedArray->Set(thread, 1, JSTaggedValue(2));
 
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(4);
-    handleProfileTypeInfo->Set(thread, 2, handleTaggedArray.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 3, handleTaggedArray.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 2, handleTaggedArray.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 3, handleTaggedArray.GetTaggedValue());
 
     uint32_t slotId = 0; // test profileData is Undefined
-    IcAccessor handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    ProfileTypeInfoNexus handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor0.AddHandlerWithKey(HandleKey1, objClassVal, HandlerValue);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 0).IsString());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsTaggedArray());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 0).IsString());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 1).IsTaggedArray());
 
     slotId = 1; // test profileData is equal the key
-    handleProfileTypeInfo->Set(thread, slotId, HandleKey1.GetTaggedValue()); // Reset Value
-    IcAccessor handleIcAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    handleProfileTypeInfo->SetICSlot(thread, slotId, HandleKey1.GetTaggedValue()); // Reset Value
+    ProfileTypeInfoNexus handleIcAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor1.AddHandlerWithKey(HandleKey1, objClassVal, HandlerValue);
-    JSHandle<TaggedArray> resultArr1(thread, handleProfileTypeInfo->Get(thread, slotId + 1));
+    JSHandle<TaggedArray> resultArr1(thread, handleProfileTypeInfo->GetICSlot(thread, slotId + 1));
     EXPECT_EQ(resultArr1->GetLength(), 4U); // 4 = 2 + 2
 
     slotId = 2; // test profileData is not equal the key
-    IcAccessor handleIcAccessor2(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    ProfileTypeInfoNexus handleIcAccessor2(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor2.AddHandlerWithKey(HandleKey0, objClassVal, HandlerValue);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsHole());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId + 1).IsHole());
 }
 
 /**
@@ -276,20 +267,20 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddGlobalHandlerKey)
     JSHandle<JSTaggedValue> arrayKey(factory->NewFromASCII("array"));
 
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(2);
-    handleProfileTypeInfo->Set(thread, 1, handleTaggedArray.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 1, handleTaggedArray.GetTaggedValue());
 
     uint32_t slotId = 0;
-    IcAccessor handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    ProfileTypeInfoNexus handleIcAccessor0(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor0.AddGlobalHandlerKey(arrayKey, HandlerValue);
-    JSHandle<TaggedArray> resultArr1(thread, handleProfileTypeInfo->Get(thread, slotId));
+    JSHandle<TaggedArray> resultArr1(thread, handleProfileTypeInfo->GetICSlot(thread, slotId));
     EXPECT_EQ(resultArr1->GetLength(), 2U);
     EXPECT_TRUE(resultArr1->Get(thread, 0).IsWeak());
     EXPECT_EQ(resultArr1->Get(thread, 1).GetInt(), 222);
 
     slotId = 1;
-    IcAccessor handleIcAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    ProfileTypeInfoNexus handleIcAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleIcAccessor1.AddGlobalHandlerKey(arrayKey, HandlerValue);
-    JSHandle<TaggedArray> resultArr2(thread, handleProfileTypeInfo->Get(thread, slotId));
+    JSHandle<TaggedArray> resultArr2(thread, handleProfileTypeInfo->GetICSlot(thread, slotId));
     EXPECT_EQ(resultArr2->GetLength(), 4U);
     EXPECT_TRUE(resultArr2->Get(thread, 0).IsWeak());
     EXPECT_EQ(resultArr2->Get(thread, 1).GetInt(), 222);
@@ -315,14 +306,14 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddGlobalRecordHandler)
 
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(2);
     uint32_t slotId = 0;
-    IcAccessor handleIcAccessor(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
-    handleIcAccessor.AddGlobalRecordHandler(HandlerValue1);
-    EXPECT_EQ(handleProfileTypeInfo->Get(thread, slotId).GetInt(), 232);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsUndefined());
+    ProfileTypeInfoNexus handleProfileTypeInfoNexus(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    handleProfileTypeInfoNexus.AddGlobalRecordHandler(HandlerValue1);
+    EXPECT_EQ(handleProfileTypeInfo->GetICSlot(thread, slotId).GetInt(), 232);
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId + 1).IsUndefined());
 
-    handleIcAccessor.AddGlobalRecordHandler(HandlerValue2);
-    EXPECT_EQ(handleProfileTypeInfo->Get(thread, slotId).GetInt(), 5);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsUndefined());
+    handleProfileTypeInfoNexus.AddGlobalRecordHandler(HandlerValue2);
+    EXPECT_EQ(handleProfileTypeInfo->GetICSlot(thread, slotId).GetInt(), 5);
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, slotId + 1).IsUndefined());
 }
 
 /**
@@ -337,16 +328,16 @@ HWTEST_F_L0(ProfileTypeInfoTest, SetAsMega)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 2;
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
-    handleProfileTypeInfo->Set(thread, 0, JSTaggedValue(111));
-    handleProfileTypeInfo->Set(thread, 1, JSTaggedValue(222));
+    handleProfileTypeInfo->SetICSlot(thread, 0, JSTaggedValue(111));
+    handleProfileTypeInfo->SetICSlot(thread, 1, JSTaggedValue(222));
 
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
     uint32_t slotId = 0;
-    IcAccessor handleIcAccessor(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
-    handleIcAccessor.SetAsMega();
+    ProfileTypeInfoNexus handleProfileTypeInfoNexus(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    handleProfileTypeInfoNexus.SetAsMega();
 
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 0).IsHole());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 0).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 1).IsHole());
 }
 
 /**
@@ -370,8 +361,8 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetWeakRef)
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
 
     uint32_t slotId = 0;
-    IcAccessor handleIcAccessor(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
-    EXPECT_TRUE(handleIcAccessor.GetWeakRef(weakRefValue).IsWeak());
+    ProfileTypeInfoNexus handleProfileTypeInfoNexus(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    EXPECT_TRUE(handleProfileTypeInfoNexus.GetWeakRef(weakRefValue).IsWeak());
 }
 
 /**
@@ -398,8 +389,8 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetRefFromWeak)
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
 
     uint32_t slotId = 0;
-    IcAccessor handleIcAccessor(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
-    EXPECT_EQ(handleIcAccessor.GetRefFromWeak(handleProfileType).GetTaggedObject(),
+    ProfileTypeInfoNexus handleProfileTypeInfoNexus(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
+    EXPECT_EQ(handleProfileTypeInfoNexus.GetRefFromWeak(handleProfileType).GetTaggedObject(),
                                                                            handleProfileType.GetTaggedWeakRef());
 }
 
@@ -546,20 +537,20 @@ HWTEST_F_L0(ProfileTypeInfoTest, ICInfoSlotOperations)
     JSHandle<ICInfo> icInfo = factory->NewICInfo(2);
 
     // Initial slots should be undefined
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 0).IsUndefined());
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 1).IsUndefined());
-    EXPECT_EQ(icInfo->GetIcSlotLength(), 2U);
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 0).IsUndefined());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 1).IsUndefined());
+    EXPECT_EQ(icInfo->GetICSlotLength(), 2U);
 
     // Set individual slots
-    icInfo->SetIcSlot(thread, 0, JSTaggedValue(100));
-    icInfo->SetIcSlot(thread, 1, JSTaggedValue(200));
-    EXPECT_EQ(icInfo->GetIcSlot(thread, 0).GetInt(), 100);
-    EXPECT_EQ(icInfo->GetIcSlot(thread, 1).GetInt(), 200);
+    icInfo->SetICSlot(thread, 0, JSTaggedValue(100));
+    icInfo->SetICSlot(thread, 1, JSTaggedValue(200));
+    EXPECT_EQ(icInfo->GetICSlot(thread, 0).GetInt(), 100);
+    EXPECT_EQ(icInfo->GetICSlot(thread, 1).GetInt(), 200);
 
     // SetMultiIcSlotLocked atomically sets both slots
     icInfo->SetMultiIcSlotLocked(thread, 0, JSTaggedValue::Hole(), 1, JSTaggedValue::Hole());
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 0).IsHole());
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 1).IsHole());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 0).IsHole());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 1).IsHole());
 }
 
 /**
@@ -581,8 +572,8 @@ HWTEST_F_L0(ProfileTypeInfoTest, IcAccessorWithICInfo)
 
     // SetAsMega with non-global IC should set both slots to Hole
     accessor.SetAsMega();
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 0).IsHole());
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 1).IsHole());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 0).IsHole());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 1).IsHole());
     EXPECT_EQ(accessor.GetICState(), IcAccessor::ICState::MEGA);
 }
 
@@ -597,23 +588,23 @@ HWTEST_F_L0(ProfileTypeInfoTest, IcAccessorSetAsMegaGlobalIC)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 4;
     JSHandle<ProfileTypeInfo> profileInfo = factory->NewProfileTypeInfo(arrayLength);
-    profileInfo->Set(thread, 0, JSTaggedValue(111));
-    profileInfo->Set(thread, 1, JSTaggedValue(222));
-    profileInfo->Set(thread, 2, JSTaggedValue(333));
-    profileInfo->Set(thread, 3, JSTaggedValue(444));
+    profileInfo->SetICSlot(thread, 0, JSTaggedValue(111));
+    profileInfo->SetICSlot(thread, 1, JSTaggedValue(222));
+    profileInfo->SetICSlot(thread, 2, JSTaggedValue(333));
+    profileInfo->SetICSlot(thread, 3, JSTaggedValue(444));
 
     // Global IC: SetAsMega should only set the single slot to Hole
-    IcAccessor globalAccessor(thread, profileInfo, 0, ICKind::GlobalLoadIC);
+    ProfileTypeInfoNexus globalAccessor(thread, profileInfo, 0, ICKind::GlobalLoadIC);
     globalAccessor.SetAsMega();
-    EXPECT_TRUE(profileInfo->Get(thread, 0).IsHole());
+    EXPECT_TRUE(profileInfo->GetICSlot(thread, 0).IsHole());
     // Slot 1 is independent — should remain unchanged
-    EXPECT_EQ(profileInfo->Get(thread, 1).GetInt(), 222);
+    EXPECT_EQ(profileInfo->GetICSlot(thread, 1).GetInt(), 222);
 
     // GlobalStoreIC
-    IcAccessor storeAccessor(thread, profileInfo, 2, ICKind::GlobalStoreIC);
+    ProfileTypeInfoNexus storeAccessor(thread, profileInfo, 2, ICKind::GlobalStoreIC);
     storeAccessor.SetAsMega();
-    EXPECT_TRUE(profileInfo->Get(thread, 2).IsHole());
-    EXPECT_EQ(profileInfo->Get(thread, 3).GetInt(), 444);
+    EXPECT_TRUE(profileInfo->GetICSlot(thread, 2).IsHole());
+    EXPECT_EQ(profileInfo->GetICSlot(thread, 3).GetInt(), 444);
 }
 
 /**
@@ -645,16 +636,16 @@ HWTEST_F_L0(ProfileTypeInfoTest, IcAccessorSetAsMegaIfUndefined)
     // Slots start as Undefined, so SetAsMegaIfUndefined should set them to Hole
     IcAccessor accessor(thread, icInfo, 0, ICKind::StoreIC);
     accessor.SetAsMegaIfUndefined();
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 0).IsHole());
-    EXPECT_TRUE(icInfo->GetIcSlot(thread, 1).IsHole());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 0).IsHole());
+    EXPECT_TRUE(icInfo->GetICSlot(thread, 1).IsHole());
 
     // Reset to non-Undefined (Hole = MEGA state)
     // SetAsMegaIfUndefined on non-Undefined should be a no-op
     JSHandle<ICInfo> icInfo2 = factory->NewICInfo(2);
-    icInfo2->SetIcSlot(thread, 0, JSTaggedValue(42));
+    icInfo2->SetICSlot(thread, 0, JSTaggedValue(42));
     IcAccessor accessor2(thread, icInfo2, 0, ICKind::StoreIC);
     accessor2.SetAsMegaIfUndefined();
     // Should NOT have changed — slot 0 was not Undefined
-    EXPECT_EQ(icInfo2->GetIcSlot(thread, 0).GetInt(), 42);
+    EXPECT_EQ(icInfo2->GetICSlot(thread, 0).GetInt(), 42);
 }
 } // namespace panda::test

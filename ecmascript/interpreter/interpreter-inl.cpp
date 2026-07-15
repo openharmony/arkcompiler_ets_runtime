@@ -1048,12 +1048,12 @@ void EcmaInterpreter::UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHa
 {
     if (!profileTypeInfo.IsUndefined()) {
         JSHandle<ProfileTypeInfo> profileTypeArray(thread, profileTypeInfo);
-        JSTaggedValue slotValue = profileTypeArray->Get(thread, slotId);
+        JSTaggedValue slotValue = profileTypeArray->GetICSlot(thread, slotId);
         if (slotValue.IsUndefined()) {
             JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
             JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
                 thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
-            profileTypeArray->Set(thread, slotId, newProfileTypeInfoCell);
+            profileTypeArray->SetICSlot(thread, slotId, newProfileTypeInfoCell);
             function->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
         } else if (!slotValue.IsHole()) {
             ProfileTypeInfoCell::Cast(slotValue.GetTaggedObject())->UpdateProfileTypeInfoCellType(thread);
@@ -2336,11 +2336,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             if (!profileTypeInfo.IsUndefined()) {
                 uint16_t slotId = READ_INST_8_0();
                 auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-                JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+                JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
                 JSTaggedValue instOfHandler = JSTaggedValue::Hole();
                 JSTaggedValue res = JSTaggedValue::Hole();
                 if (LIKELY(firstValue.IsHeapObject())) {
-                    JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                    JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                     instOfHandler = ICRuntimeStub::TryLoadICByName(thread, target, firstValue, secondValue);
                 }
                 if (LIKELY(!instOfHandler.IsHole())) {
@@ -2657,14 +2657,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue propKey = GET_VREG_VALUE(v1);
             JSTaggedValue value = GET_ACC();
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByValue(thread, receiver, propKey, firstValue, secondValue, value);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -2720,14 +2720,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue propKey = GET_VREG_VALUE(v1);
             JSTaggedValue value = GET_ACC();
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByValue(thread, receiver, propKey, firstValue, secondValue, value);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -3047,14 +3047,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             JSTaggedValue receiver = GET_VREG_VALUE(v0);
             JSTaggedValue value = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 [[maybe_unused]] EcmaHandleScope handleScope(thread);
                 res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
             }
@@ -3122,14 +3122,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             JSTaggedValue receiver = GET_VREG_VALUE(v0);
             JSTaggedValue value = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
             }
             if (LIKELY(!res.IsHole())) {
@@ -5546,11 +5546,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByValue(thread, receiver, propKey, firstValue, secondValue);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -5601,11 +5601,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByValue(thread, receiver, propKey, firstValue, secondValue);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -5914,11 +5914,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SAVE_ACC();
             uint32_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue value = GET_ACC();
             JSTaggedValue res = JSTaggedValue::Hole();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByValue(thread,
                                                        receiver, JSTaggedValue(index), firstValue, secondValue, value);
             }
@@ -5971,11 +5971,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SAVE_ACC();
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue value = GET_ACC();
             JSTaggedValue res = JSTaggedValue::Hole();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByValue(thread,
                                                        receiver, JSTaggedValue(index), firstValue, secondValue, value);
             }
@@ -6452,12 +6452,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             JSTaggedValue receiver = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
             }
             if (LIKELY(!res.IsHole())) {
@@ -6515,12 +6515,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             JSTaggedValue receiver = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
             }
             if (LIKELY(!res.IsHole())) {
@@ -7072,11 +7072,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByValue(thread, receiver, propKey, firstValue, secondValue);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -7125,11 +7125,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByValue(thread, receiver, propKey, firstValue, secondValue);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -7179,14 +7179,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue propKey = GET_VREG_VALUE(v0);
             JSTaggedValue value = GET_ACC();
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByValue(thread, receiver, propKey, firstValue, secondValue, value);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -7241,14 +7241,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue propKey = GET_VREG_VALUE(v0);
             JSTaggedValue value = GET_ACC();
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByValue(thread, receiver, propKey, firstValue, secondValue, value);
             }
             // IC miss and not enter the megamorphic state, store as polymorphic
@@ -7297,12 +7297,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             JSTaggedValue receiver = GetThis(sp);
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
             }
             if (LIKELY(!res.IsHole())) {
@@ -7356,12 +7356,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
 
             JSTaggedValue receiver = GetThis(sp);
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryLoadICByName(thread, receiver, firstValue, secondValue);
             }
             if (LIKELY(!res.IsHole())) {
@@ -7415,14 +7415,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             JSTaggedValue receiver = GetThis(sp);
             JSTaggedValue value = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
             }
             if (LIKELY(!res.IsHole())) {
@@ -7487,14 +7487,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
-            JSTaggedValue firstValue = profileTypeArray->Get(thread, slotId);
+            JSTaggedValue firstValue = profileTypeArray->GetICSlot(thread, slotId);
             JSTaggedValue res = JSTaggedValue::Hole();
             SAVE_ACC();
 
             JSTaggedValue receiver = GetThis(sp);
             JSTaggedValue value = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
-                JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                JSTaggedValue secondValue = profileTypeArray->GetICSlot(thread, slotId + 1);
                 res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
             }
             if (LIKELY(!res.IsHole())) {

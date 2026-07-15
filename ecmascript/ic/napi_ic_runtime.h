@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_IC_IC_RUNTIME_H
-#define ECMASCRIPT_IC_IC_RUNTIME_H
+#ifndef ECMASCRIPT_IC_NAPI_IC_RUNTIME_H
+#define ECMASCRIPT_IC_NAPI_IC_RUNTIME_H
 
-#include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_tagged_value.h"
@@ -28,11 +28,12 @@ class ICInfo;
 class JSThread;
 class ObjectOperator;
 
-class ICRuntime {
+// NAPI IC runtime — mirrors ICRuntime but uses IcAccessor for ICInfo objects.
+class NapiICRuntime {
 public:
-    ICRuntime(JSThread *thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
-        : thread_(thread), nexus_(thread, profileTypeInfo, slotId, kind) {}
-    ~ICRuntime() = default;
+    NapiICRuntime(JSThread *thread, JSHandle<ICInfo> icInfo, uint32_t slotId, ICKind kind)
+        : thread_(thread), icAccessor_(thread, icInfo, slotId, kind) {}
+    ~NapiICRuntime() = default;
 
     bool GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &hclass,
                     JSHandle<JSTaggedValue> &handlerValue);
@@ -41,24 +42,24 @@ public:
     void UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver);
     void UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
 
-    bool IsMegaIC() { return nexus_.GetICState() == ProfileTypeInfoNexus::ICState::IC_MEGA; }
+    bool IsMegaIC() { return icAccessor_.GetICState() == IcAccessor::ICState::IC_MEGA; }
     JSThread *GetThread() const { return thread_; }
     void UpdateReceiverHClass(JSHandle<JSTaggedValue> receiverHClass) { receiverHClass_ = receiverHClass; }
-    ICKind GetICKind() const { return nexus_.GetKind(); }
-    uint32_t GetSlotId() const { return nexus_.GetSlotId(); }
-    ProfileTypeInfoNexus &GetNexus() { return nexus_; }
+    ICKind GetICKind() const { return icAccessor_.GetKind(); }
+    uint32_t GetSlotId() const { return icAccessor_.GetSlotId(); }
+    IcAccessor &GetAccessor() { return icAccessor_; }
     void TraceIC(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key) const;
 
 protected:
     JSThread *thread_;
     JSHandle<JSTaggedValue> receiverHClass_{};
-    ProfileTypeInfoNexus nexus_;
+    IcAccessor icAccessor_;
 };
 
-class LoadICRuntime : public ICRuntime {
+class NapiLoadICRuntime : public NapiICRuntime {
 public:
-    using ICRuntime::ICRuntime;
-    ~LoadICRuntime() = default;
+    using NapiICRuntime::NapiICRuntime;
+    ~NapiLoadICRuntime() = default;
     JSTaggedValue LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
     JSTaggedValue LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
     JSTaggedValue LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
@@ -67,10 +68,10 @@ private:
     inline JSTaggedValue CallPrivateGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };
 
-class StoreICRuntime : public ICRuntime {
+class NapiStoreICRuntime : public NapiICRuntime {
 public:
-    using ICRuntime::ICRuntime;
-    ~StoreICRuntime() = default;
+    using NapiICRuntime::NapiICRuntime;
+    ~NapiStoreICRuntime() = default;
     JSTaggedValue StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                             JSHandle<JSTaggedValue> value, bool isOwn = false, bool isDefPropByName = false);
     JSTaggedValue StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
@@ -83,4 +84,4 @@ private:
 
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_IC_IC_RUNTIME_H
+#endif  // ECMASCRIPT_IC_NAPI_IC_RUNTIME_H

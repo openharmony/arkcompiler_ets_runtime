@@ -751,6 +751,8 @@ public:
     inline GateRef GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index);
     inline GateRef GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index, GateRef depend);
     inline GateRef GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index);
+    inline GateRef GetICSlot(GateRef glue, GateRef profileTypeInfo, GateRef index);
+    void SetICSlot(VariableType valType, GateRef glue, GateRef profileTypeInfo, GateRef index, GateRef val);
     inline GateRef GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index);
     inline GateRef GetArrayElementsGuardians(GateRef env);
     inline GateRef GetMapIteratorDetector(GateRef env);

@@ -19,6 +19,7 @@
 #include "ecmascript/js_hclass.h"
 
 #include "ecmascript/byte_array.h"
+#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/layout_info.h"
@@ -239,10 +240,13 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::COW_TAGGED_ARRAY:
         case JSType::MUTANT_TAGGED_ARRAY:
         case JSType::COW_MUTANT_TAGGED_ARRAY:
-        case JSType::PROFILE_TYPE_INFO:
         case JSType::IC_INFO:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
+            break;
+        case JSType::PROFILE_TYPE_INFO:
+            size = ProfileTypeInfo::ComputeSize(
+                reinterpret_cast<ProfileTypeInfo *>(header)->GetLength());
             break;
         case JSType::BYTE_ARRAY:
             size = ByteArray::ComputeSize(reinterpret_cast<ByteArray *>(header)->GetByteLength(),

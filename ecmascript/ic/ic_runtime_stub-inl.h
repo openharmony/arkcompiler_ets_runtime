@@ -41,7 +41,7 @@ JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInf
                                                 bool tryLoad)
 {
     INTERPRETER_TRACE(thread, LoadGlobalICByName);
-    JSTaggedValue handler = profileTypeInfo->Get(thread, slotId);
+    JSTaggedValue handler = profileTypeInfo->GetICSlot(thread, slotId);
     if (handler.IsHeapObject()) {
         auto result = LoadGlobal(thread, handler);
         if (!result.IsHole()) {
@@ -57,7 +57,7 @@ JSTaggedValue ICRuntimeStub::StoreGlobalICByName(JSThread *thread, ProfileTypeIn
                                                  JSTaggedValue value, uint32_t slotId, bool tryStore)
 {
     INTERPRETER_TRACE(thread, StoreGlobalICByName);
-    JSTaggedValue handler = profileTypeInfo->Get(thread, slotId);
+    JSTaggedValue handler = profileTypeInfo->GetICSlot(thread, slotId);
     if (handler.IsHeapObject()) {
         auto result = StoreGlobal(thread, value, handler);
         if (!result.IsHole()) {

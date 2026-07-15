@@ -836,6 +836,8 @@ private:
     friend class StoreICRuntime;
     friend class ObjectFastOperator;
     friend class ICRuntimeStub;
+    friend class NapiLoadICRuntime;
+    friend class NapiStoreICRuntime;
     friend class RuntimeStubs;
     friend class JSSharedArray;
     friend class builtins::BuiltinsArkTools;

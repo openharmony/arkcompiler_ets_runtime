@@ -101,14 +101,13 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
     jsFunction_->SetIsCompiledFastCall(codeObj->GetIsFastCall());
     JSHandle<ProfileTypeInfo> profileInfoHandle =
         JSHandle<ProfileTypeInfo>::Cast(JSHandle<JSTaggedValue>(hostThread_, profile));
-    uint32_t slotId = profileInfoHandle->GetIcSlotToOsrLength() - 1; // 1 : get last slot
-    auto profileData = profileInfoHandle->Get(hostThread_, slotId);
+    auto profileData = profileInfoHandle->GetJitOsr(hostThread_);
     auto factory = hostThread_->GetEcmaVM()->GetFactory();
     if (!profileData.IsTaggedArray()) {
         const uint32_t initLen = 1;
         JSHandle<TaggedArray> newArr = factory->NewTaggedArray(initLen);
         newArr->Set(hostThread_, 0, codeObj.GetTaggedValue());
-        profileInfoHandle->Set(hostThread_, slotId, newArr.GetTaggedValue());
+        profileInfoHandle->SetJitOsr(hostThread_, newArr.GetTaggedValue());
         LOG_JIT(DEBUG) << "[OSR] Install machine code:" << GetMethodName()
                        << ", code address: " << reinterpret_cast<void*>(codeObj->GetFuncAddr())
                        << ", index: " << newArr->GetLength() - 1;
@@ -121,7 +120,7 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
         newArr->Set(hostThread_, i, arr->Get(hostThread_, i));
     }
     newArr->Set(hostThread_, i, codeObj.GetTaggedValue());
-    profileInfoHandle->Set(hostThread_, slotId, newArr.GetTaggedValue());
+    profileInfoHandle->SetJitOsr(hostThread_, newArr.GetTaggedValue());
     LOG_JIT(DEBUG) << "[OSR] Install machine code:" << GetMethodName()
                    << ", code address: " << reinterpret_cast<void*>(codeObj->GetFuncAddr())
                    << ", index: " << newArr->GetLength() - 1;
@@ -437,8 +436,8 @@ void JitTask::CloneProfileTypeInfo()
             ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject()));
         newProfileTypeInfo = factory->NewProfileTypeInfo(slotSize);
         for (uint32_t i = 0; i < slotSize; i++) {
-            JSTaggedValue value = profileTypeInfo->Get(hostThread_, i);
-            newProfileTypeInfo->Set(hostThread_, i, value);
+            JSTaggedValue value = profileTypeInfo->GetICSlot(hostThread_, i);
+            newProfileTypeInfo->SetICSlot(hostThread_, i, value);
         }
     }
     SetProfileTypeInfo(newProfileTypeInfo);

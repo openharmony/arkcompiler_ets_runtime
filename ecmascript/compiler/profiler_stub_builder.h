@@ -137,7 +137,6 @@ private:
     void TryPreDumpInner(GateRef glue, GateRef func, GateRef profileTypeInfo);
 
     GateRef GetSlotID(const SlotIDInfo &slotInfo);
-    GateRef GetBitFieldOffsetFromProfileTypeInfo(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoInit(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoPreDumped(GateRef profileTypeInfo);
@@ -149,17 +148,13 @@ private:
     GateRef GetIterationFunctionId(GateRef glue, GateRef iterator);
     GateRef TryGetBuiltinFunctionId(GateRef glue, GateRef target);
     GateRef GetJitHotnessCnt(GateRef profileTypeInfo);
-    GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
-    GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
-    GateRef GetJitCallCntOffset(GateRef profileTypeInfo);
+    void SetJitCallCnt(GateRef glue, GateRef profileTypeInfo, GateRef jitCallCnt);
     GateRef GetJitCallCnt(GateRef profileTypeInfo);
-    GateRef GetInvocationCntOffset(GateRef profileTypeInfo);
+    void SetInvocationCnt(GateRef glue, GateRef profileTypeInfo, GateRef invocationCnt);
     GateRef GetInvocationCnt(GateRef profileTypeInfo);
-    GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
-    GateRef GetBaselineJitHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetBaselineJitHotnessThreshold(GateRef profileTypeInfo);
-    GateRef GetOsrHotnessCntOffset(GateRef profileTypeInfo);
+    void SetOsrHotnessCnt(GateRef glue, GateRef profileTypeInfo, GateRef osrHotnessCnt);
     GateRef GetOsrHotnessCnt(GateRef profileTypeInfo);
     void PGOProfiler(GateRef glue, GateRef func, GateRef profileTypeInfo, SlotIDInfo slotIdInfo,
         const std::vector<GateRef> &values, OperationType type);

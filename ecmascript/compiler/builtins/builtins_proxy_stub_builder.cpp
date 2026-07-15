@@ -227,8 +227,7 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
             {
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { handler, target, key, receiver };
-                CallStubBuilder callBuilder(this, glue_, trap,
-                    Int32(3), 0, nullptr, Circuit::NullGate(), callArgs); // 3 : three arg
+                CallStubBuilder callBuilder(this, glue_, trap, Int32(3), 0, nullptr, callArgs); // 3 : three arg
                 result = callBuilder.JSCallDispatch();
                 Jump(&checkGetTrapResult);
             }
@@ -316,8 +315,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
                 GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
                 callArgs.callThisArgvWithReturnArgs = { argsLength, argv, handler };
-                CallStubBuilder callBuilder(this, glue_, trap, argsLength, 0, nullptr,
-                    Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue_, trap, argsLength, 0, nullptr, callArgs);
                 GateRef trapResult = callBuilder.JSCallDispatch();
                 BRANCH(TaggedIsFalse(FastToBoolean(glue_, trapResult)), &trapResultIsFalse, &checkSetTrapResult);
                 Bind(&trapResultIsFalse);

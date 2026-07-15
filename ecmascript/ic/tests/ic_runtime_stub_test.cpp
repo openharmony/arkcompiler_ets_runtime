@@ -74,7 +74,7 @@ HWTEST_F_L0(ICRuntimeStubTest, LoadGlobalICByName)
 
     uint32_t arrayLength = 2U;
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
-    handleProfileTypeInfo->Set(thread, 0, handleBoxValue.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 0, handleBoxValue.GetTaggedValue());
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
         ICRuntimeStub::LoadGlobalICByName(thread, *handleProfileTypeInfo,
@@ -87,7 +87,7 @@ HWTEST_F_L0(ICRuntimeStubTest, LoadGlobalICByName)
         ICRuntimeStub::LoadGlobalICByName(thread, *handleProfileTypeInfo,
                                           globalValue.GetTaggedValue(), propKey.GetTaggedValue(), 1, true);
     EXPECT_EQ(resultValue2.GetInt(), 2);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsPropertyBox());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 1).IsPropertyBox());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
@@ -103,7 +103,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
 
     uint32_t arrayLength = 2U; // 2 means ProfileTypeInfo length
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
-    handleProfileTypeInfo->Set(thread, 0, handleBoxValue.GetTaggedValue());
+    handleProfileTypeInfo->SetICSlot(thread, 0, handleBoxValue.GetTaggedValue());
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
         ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, JSTaggedValue::Undefined(),
@@ -117,7 +117,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
         ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, globalValue.GetTaggedValue(),
                                            propKey.GetTaggedValue(), handleValue, 1, true);
     EXPECT_TRUE(resultValue2.IsUndefined());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsPropertyBox());
+    EXPECT_TRUE(handleProfileTypeInfo->GetICSlot(thread, 1).IsPropertyBox());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, CheckPolyHClass)

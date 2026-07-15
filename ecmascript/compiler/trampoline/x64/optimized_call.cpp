@@ -1481,8 +1481,8 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
 
     __ Bind(&baselineCodeUndefined);
     {
-        // r13, rbp, r12, rbx,      r14,     rsi,  rdi
-        // glue sp   pc  constpool  profile  acc   hotness
+        // r13, rbp, r12, rbx,      r14,     rsi
+        // glue sp   pc  constpool  profile  acc
         __ Movq(Operand(frameStateBase, AsmInterpretedFrame::GetFunctionOffset(false)), callTargetRegister);
         __ Movq(Operand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)), r12);
         __ Movq(Operand(frameStateBase, AsmInterpretedFrame::GetAccOffset(false)), rsi);

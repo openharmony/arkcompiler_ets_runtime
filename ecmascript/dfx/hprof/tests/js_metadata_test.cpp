@@ -1227,7 +1227,7 @@ public:
             {JSType::MUTANT_TAGGED_ARRAY, {"TAGGED_ARRAY"}},
             {JSType::NATIVE_MODULE_FAILURE_INFO, {"JS_OBJECT"}},
             {JSType::PENDING_JOB, {"RECORD"}},
-            {JSType::PROFILE_TYPE_INFO, {"IC_INFO"}},
+            {JSType::PROFILE_TYPE_INFO, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_0, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_1, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_N, {"TAGGED_OBJECT"}},

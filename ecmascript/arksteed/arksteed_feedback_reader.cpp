@@ -66,8 +66,8 @@ bool ArkSteedFeedbackReader::TryGetNamedICMonoSnapshot(int slotIndex, NamedICMon
         return false;
     }
 
-    JSTaggedValue first = profileTypeArray->Get(compilerThread_, slotId);
-    JSTaggedValue second = profileTypeArray->Get(compilerThread_, slotId + 1);
+    JSTaggedValue first = profileTypeArray->GetICSlot(compilerThread_, slotId);
+    JSTaggedValue second = profileTypeArray->GetICSlot(compilerThread_, slotId + 1);
     if (!first.IsWeak()) {
         return false;
     }
@@ -95,8 +95,8 @@ bool ArkSteedFeedbackReader::TryGetNamedICPolySnapshot(int slotIndex, NamedICPol
         return false;
     }
 
-    JSTaggedValue first = profileTypeArray->Get(compilerThread_, slotId);
-    JSTaggedValue second = profileTypeArray->Get(compilerThread_, slotId + 1);
+    JSTaggedValue first = profileTypeArray->GetICSlot(compilerThread_, slotId);
+    JSTaggedValue second = profileTypeArray->GetICSlot(compilerThread_, slotId + 1);
     if (first.IsWeak() || !first.IsHeapObject() || !first.IsTaggedArray() || !second.IsHole()) {
         return false;
     }

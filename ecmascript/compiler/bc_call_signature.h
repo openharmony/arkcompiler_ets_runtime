@@ -714,7 +714,6 @@ enum class InterpreterHandlerInputs : size_t {
     CONSTPOOL,
     PROFILE_TYPE_INFO,
     ACC,
-    HOTNESS_COUNTER,
     NUM_OF_INPUTS
 };
 
