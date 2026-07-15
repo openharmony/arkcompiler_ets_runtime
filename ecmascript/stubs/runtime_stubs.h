@@ -101,8 +101,12 @@ public:
     static void Comment(uintptr_t argStr);
     static void FatalPrint(int fmtMessageId, ...);
     static void FatalPrintCustom(uintptr_t fmt, ...);
+    // `object` must be the object header, not an interior slot address: the owning Region is
+    // resolved via ObjectAddressToRange(object), which mis-resolves for huge-object interiors.
+    // `offset` is header-relative. See .cpp and BarrierStubBuilder::HandleMark.
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
+    // Same header + header-relative offset contract as MarkingBarrier.
     static void SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
     static void TryFillSweptRegion(uintptr_t argGlue);
     static void CMCGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);

@@ -885,6 +885,10 @@ template("host_moduletest_assert_action") {
       js_vm_options += " --max-unmovable-space=524288"  # 0.5M
     }
 
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      js_vm_options += " --enable-force-gc=false"
+    }
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       js_vm_options += " --enable-ark-tools=true"
@@ -968,6 +972,10 @@ template("host_moduletest_assert_action") {
       js_vm_options += " --max-unmovable-space=524288"  # 0.5M
     }
 
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      js_vm_options += " --enable-force-gc=false"
+    }
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       js_vm_options += " --enable-ark-tools=true"
@@ -1026,6 +1034,10 @@ template("host_moduletest_assert_action") {
 
     if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
       _asm_run_options_ += " --enable-elements-kind=true"
+    }
+
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      _asm_run_options_ += " --enable-force-gc=false"
     }
 
     if (defined(invoker.is_enable_enableArkTools) &&
@@ -1087,6 +1099,10 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --enable-elements-kind=true"
     }
 
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      _asm_run_options_ += " --enable-force-gc=false"
+    }
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
@@ -1145,6 +1161,10 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
     }
 
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      _asm_run_options_ += " --enable-force-gc=false"
+    }
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
@@ -1198,6 +1218,10 @@ template("host_moduletest_assert_action") {
     if (defined(invoker.is_set_maxNonmovableSpaceCapacity) &&
         invoker.is_set_maxNonmovableSpaceCapacity) {
       _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
+    }
+
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      _asm_run_options_ += " --enable-force-gc=false"
     }
 
     if (defined(invoker.is_enable_enableArkTools) &&

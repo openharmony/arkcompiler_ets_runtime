@@ -459,6 +459,7 @@ group("ark_asm_assert_test") {
     "arrayfill",
     "array",
     "arrayconcat",
+    "arrayconcatbarrier",
     "arrayconstructor",
     "arrayderived",
     "arrayfillproto",
