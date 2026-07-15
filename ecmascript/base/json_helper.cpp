@@ -48,7 +48,7 @@ constexpr uint32_t K_PACKED_KEY_UTF16_MAX_CODE_UNITS = K_PACKED_KEY_UTF16_HALF_C
 PackedKey128 PackUtf8ObjectKeyBytes(const uint8_t *utf8Data, uint32_t utf8Len)
 {
     ASSERT(utf8Len <= K_PACKED_KEY_UTF8_MAX_BYTES);
-    PackedKey128 packed;
+    PackedKey128 packed = {};
     for (uint32_t i = 0; i < utf8Len; i++) {
         uint64_t value = static_cast<uint64_t>(utf8Data[i]);
         if (i < K_PACKED_KEY_UTF8_HALF_BYTES) {
@@ -63,7 +63,7 @@ PackedKey128 PackUtf8ObjectKeyBytes(const uint8_t *utf8Data, uint32_t utf8Len)
 PackedKey128 PackUtf16ObjectKeyBytes(const uint8_t *utf8Data, uint32_t utf16Len)
 {
     ASSERT(utf16Len <= K_PACKED_KEY_UTF16_MAX_CODE_UNITS);
-    PackedKey128 packed;
+    PackedKey128 packed = {};
     for (uint32_t i = 0; i < utf16Len; i++) {
         uint64_t value = static_cast<uint64_t>(utf8Data[i]);
         if (i < K_PACKED_KEY_UTF16_HALF_CODE_UNITS) {
@@ -86,7 +86,7 @@ size_t Utf8ObjectKeyCacheIndex(const PackedKey128 &packed, uint32_t utf8Len)
 PackedKey128 PackUtf16ObjectKeyCodeUnits(const uint16_t *utf16Data, uint32_t utf16Len)
 {
     ASSERT(utf16Len <= K_PACKED_KEY_UTF16_MAX_CODE_UNITS);
-    PackedKey128 packed;
+    PackedKey128 packed = {};
     for (uint32_t i = 0; i < utf16Len; i++) {
         uint64_t value = static_cast<uint64_t>(utf16Data[i]);
         if (i < K_PACKED_KEY_UTF16_HALF_CODE_UNITS) {
