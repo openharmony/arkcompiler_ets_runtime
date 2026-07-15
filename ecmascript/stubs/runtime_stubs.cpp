@@ -3715,6 +3715,12 @@ void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitset
     }
 }
 
+// `object` MUST be the object header (TaggedObject start), never an interior slot address.
+// The barrier resolves the owning Region via ObjectAddressToRange(object), which masks the
+// address to a 256KB-aligned Region start. A huge object spans several Regions, so an interior
+// address would mask to a bogus Region inside the object's data and crash in Barriers::Update.
+// `offset` is header-relative; the actual written slot is slotAddr = object + offset.
+// Caller-side rationale: see BarrierStubBuilder::HandleMark.
 void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
@@ -3734,6 +3740,9 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     }
 }
 
+// Same header + header-relative offset contract as MarkingBarrier: `object` must be the object
+// header, not an interior address, because the owning Region is resolved via
+// ObjectAddressToRange(object) (see MarkingBarrier for the huge-object hazard).
 void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value)
 {
     uintptr_t slotAddr = object + offset;

@@ -138,6 +138,10 @@ void BarrierStubBuilder::HandleMark()
                                           Int64(static_cast<int64_t>(SharedMarkStatus::READY_TO_CONCURRENT_MARK)));
     BRANCH_LIKELY(BitAnd(BoolNot(marking), BoolNot(sharedMarking)), &exit, &needMarking);
     Bind(&needMarking);
+    // Pass the object header with a header-relative offset: for huge objects dstAddr_ may cross a region
+    // boundary, making ObjectAddressToRange(dstAddr_) resolve to a wrong Region (see dstAddr_ in the
+    // header). slotAddr stays unchanged: dstObj_ + (dstOff + offset) == dstAddr_ + offset.
+    GateRef dstOff = PtrSub(dstAddr_, dstObj_);
     Label begin(env);
     Label body(env);
     Label endLoop(env);
@@ -161,7 +165,8 @@ void BarrierStubBuilder::HandleMark()
                              &callMarking, &doSharedMarking);
             Bind(&callMarking);
             {
-                CallNGCRuntime(glue_, RTSTUB_ID(MarkingBarrier), {glue_, dstAddr_, offset, value});
+                CallNGCRuntime(glue_, RTSTUB_ID(MarkingBarrier),
+                               {glue_, dstObj_, PtrAdd(dstOff, offset), value});
                 Jump(&endLoop);
             }
             Bind(&doSharedMarking);
@@ -172,7 +177,8 @@ void BarrierStubBuilder::HandleMark()
                     &callSharedMarking, &endLoop);
                 Bind(&callSharedMarking);
                 {
-                    CallNGCRuntime(glue_, RTSTUB_ID(SharedGCMarkingBarrier), {glue_, dstAddr_, offset, value});
+                    CallNGCRuntime(glue_, RTSTUB_ID(SharedGCMarkingBarrier),
+                                   {glue_, dstObj_, PtrAdd(dstOff, offset), value});
                     Jump(&endLoop);
                 }
             }

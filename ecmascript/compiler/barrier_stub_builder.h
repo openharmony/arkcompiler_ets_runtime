@@ -71,9 +71,33 @@ private:
     void BitSetRangeReverse(GateRef bitSet, GateRef startIdx, GateRef length);
     void DoMoveBarrierSameRegionKind(GateRef srcAddr, GateRef srcRegion, RegionKind regionKind);
     const GateRef glue_;
+    // Target object header (TaggedObject start) of the write barrier. Any barrier path that needs
+    // to resolve "the object's owning Region" must use dstObj_, never dstAddr_ (see dstAddr_).
     const GateRef dstObj_;
+    // Start address of the contiguous slot range to barrier. Usually equals dstObj_ (writing from
+    // the header), but Array.prototype.concat and the like copy a second source past an offset inside
+    // the result object, so dstAddr_ can be an interior address far beyond dstObj_ — potentially more
+    // than a Region away.
+    //
+    // Hazard: a huge object spans multiple 256KB Regions, but ObjectAddressToRange() is a plain
+    // address mask, so only the header's Region is valid:
+    //
+    //       Region 0 (256KB)           Region 1 (256KB)
+    //     +------------------+       +------------------+
+    //     | dstObj_ (header) |  ...  |  ^ dstAddr_      |   <- concat copy target (interior addr)
+    //     +------------------+       +------------------+
+    //
+    //   ObjectAddressToRange(dstObj_)  -> Region 0  (valid owning Region)
+    //   ObjectAddressToRange(dstAddr_) -> Region 1  (BOGUS: inside object data;
+    //                                                Barriers::Update deref -> SIGSEGV)
+    //
+    // Hence MarkingBarrier/SharedGCMarkingBarrier must be passed dstObj_ + a header-relative offset
+    // (see HandleMark); bitset barriers (DoBatchBarrierInternal etc.) instead use objectRegion_,
+    // resolved from dstObj_ at construction.
     const GateRef dstAddr_;
+    // Length of the slot range (in JSTaggedValue units).
     const GateRef slotCount_;
+    // Owning Region resolved from dstObj_, for use by bitset barriers.
     const GateRef objectRegion_;
 
     static constexpr int64_t BIT_PER_QUAD_MASK = 63;
