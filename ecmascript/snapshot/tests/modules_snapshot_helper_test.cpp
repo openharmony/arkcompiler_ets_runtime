@@ -1187,6 +1187,262 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_OnException_NonJSError
     ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
 }
 
+// ==================== SigchainHandler Tests ====================
+
+// SigchainHandler: returns false and writes nothing when snapshot feature is not loaded
+// Branch: DoNeedEscape() returns false (g_featureLoaded_ == DEFAULT)
+HWTEST_F_L0(ModulesSnapshotHelperTest, SigchainHandler_FeatureNotLoaded_ReturnsFalse)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    // feature not loaded -> DoNeedEscape() returns false at first check
+    ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::remove(stateFilePath.c_str());
+
+    bool result = ModulesSnapshotHelper::SigchainHandler(6, nullptr, nullptr);
+    EXPECT_FALSE(result);
+    // DoNeedEscape() returned false without setting the triggered flag
+    EXPECT_FALSE(ModulesSnapshotHelper::g_escaperTriggered_);
+    EXPECT_FALSE(FileExist(stateFilePath.c_str()));
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// SigchainHandler: returns false and writes nothing when escaper is disabled
+// Branch: DoNeedEscape() returns false (g_escaperDisabled_ == true)
+HWTEST_F_L0(ModulesSnapshotHelperTest, SigchainHandler_EscaperDisabled_ReturnsFalse)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    auto originalEscaperDisabled = ModulesSnapshotHelper::g_escaperDisabled_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = true;
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::remove(stateFilePath.c_str());
+
+    bool result = ModulesSnapshotHelper::SigchainHandler(6, nullptr, nullptr);
+    EXPECT_FALSE(result);
+    EXPECT_FALSE(ModulesSnapshotHelper::g_escaperTriggered_);
+    EXPECT_FALSE(FileExist(stateFilePath.c_str()));
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+    ModulesSnapshotHelper::g_escaperDisabled_ = originalEscaperDisabled;
+}
+
+// SigchainHandler: returns false and writes nothing when escaper is already triggered
+// Branch: DoNeedEscape() returns false (g_escaperTriggered_ == true)
+HWTEST_F_L0(ModulesSnapshotHelperTest, SigchainHandler_AlreadyTriggered_ReturnsFalse)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    // already triggered -> DoNeedEscape() returns false at third check
+    ModulesSnapshotHelper::g_escaperTriggered_ = true;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::remove(stateFilePath.c_str());
+
+    bool result = ModulesSnapshotHelper::SigchainHandler(6, nullptr, nullptr);
+    EXPECT_FALSE(result);
+    EXPECT_FALSE(FileExist(stateFilePath.c_str()));
+
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// SigchainHandler: success path - DoNeedEscape() returns true, disables snapshot via signal reason
+// Branch: DoNeedEscape() returns true -> TryDisableSnapshot(signo) is called
+HWTEST_F_L0(ModulesSnapshotHelperTest, SigchainHandler_Success_WritesSignalReason)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+
+    // SIGABRT (6): DoNeedEscape() returns true, TryDisableSnapshot(signo) converts to SIGNAL reason
+    bool result = ModulesSnapshotHelper::SigchainHandler(6, nullptr, nullptr);
+    EXPECT_FALSE(result); // SigchainHandler always returns false
+    EXPECT_TRUE(ModulesSnapshotHelper::g_escaperTriggered_);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    EXPECT_TRUE(ModulesSnapshotHelper::IsModuleSnapshotDisabled(snapshotDir));
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_SIGNAL) != std::string::npos);
+    // signo 6 is appended as extraInfo right after "SIGNAL"
+    EXPECT_TRUE(content.find("SIGNAL6,") != std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// ==================== TryDisableSnapshot(int reason) Tests (line 159+ branches) ====================
+
+// TryDisableSnapshot(int): positive single-digit reason -> IntToString returns 1, signo as extraInfo
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_IntReason_PositiveSingleDigit)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+
+    // reason=6 > 0 -> IntToString writes single digit "6" (needed=1 <= SIG_MAX_DIGITS=2)
+    bool result = ModulesSnapshotHelper::TryDisableSnapshot(6);
+    EXPECT_TRUE(result);
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_SIGNAL) != std::string::npos);
+    EXPECT_TRUE(content.find("SIGNAL6,") != std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// TryDisableSnapshot(int): positive two-digit reason -> IntToString returns 2, signo as extraInfo
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_IntReason_PositiveTwoDigits)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+
+    // reason=11 > 0 -> IntToString writes two digits "11" (needed=2 <= SIG_MAX_DIGITS=2)
+    bool result = ModulesSnapshotHelper::TryDisableSnapshot(11);
+    EXPECT_TRUE(result);
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_SIGNAL) != std::string::npos);
+    EXPECT_TRUE(content.find("SIGNAL11,") != std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// TryDisableSnapshot(int): reason with 3+ digits -> IntToString returns 0, extraInfo is empty
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_IntReason_DigitsExceedBuffer)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+
+    // reason=100 -> 3 digits, needed=3 > SIG_MAX_DIGITS=2, IntToString returns 0, extraInfo is empty
+    bool result = ModulesSnapshotHelper::TryDisableSnapshot(100);
+    EXPECT_TRUE(result);
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_REASON_SIGNAL) != std::string::npos);
+    // extraInfo empty: "SIGNAL" is directly followed by ","
+    EXPECT_TRUE(content.find("SIGNAL,") != std::string::npos);
+    ifs.close();
+
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// ==================== TryDisableSnapshot(JSThread*) Tests (line 211+ branch) ====================
+
+// TryDisableSnapshot(JSThread*): inner TryDisableSnapshot fails (state file unwritable) -> early return
+// Branch: !TryDisableSnapshot(DISABLE_REASON_UNCAUGHT_EXCEPTION) at line 211
+HWTEST_F_L0(ModulesSnapshotHelperTest, TryDisableSnapshot_Thread_InnerDisableFails)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    ModulesSnapshotHelper::g_escaperDisabled_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    auto validStateFilePath =
+        base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::remove(validStateFilePath.c_str());
+
+    // Redirect state file path to a non-existent directory so PosixFile open fails in inner call
+    constexpr size_t bufSize = sizeof(ModulesSnapshotHelper::g_stateFilePathBuffer_);
+    std::vector<char> originalPathBuffer(ModulesSnapshotHelper::g_stateFilePathBuffer_,
+                                         ModulesSnapshotHelper::g_stateFilePathBuffer_ + bufSize);
+    const std::string invalidPath = "/nonexistent_dir_xyz_123/ArkModuleSnapshot.state";
+    memset_s(ModulesSnapshotHelper::g_stateFilePathBuffer_, bufSize, 0, bufSize);
+    memcpy_s(ModulesSnapshotHelper::g_stateFilePathBuffer_, bufSize, invalidPath.c_str(), invalidPath.size() + 1);
+
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSObject> errorObj = factory->GetJSError(ErrorType::TYPE_ERROR, "should not be written");
+    thread->SetException(errorObj.GetTaggedValue());
+
+    // Inner TryDisableSnapshot(UNCAUGHT_EXCEPTION) returns false (PosixFile invalid) -> early return
+    ModulesSnapshotHelper::TryDisableSnapshot(thread);
+
+    // DoNeedEscape() was passed (flag set), but state file was not created anywhere
+    EXPECT_TRUE(ModulesSnapshotHelper::g_escaperTriggered_);
+    EXPECT_FALSE(FileExist(validStateFilePath.c_str()));
+    EXPECT_FALSE(FileExist(invalidPath.c_str()));
+
+    // Restore state file path buffer
+    memcpy_s(ModulesSnapshotHelper::g_stateFilePathBuffer_, bufSize, originalPathBuffer.data(), bufSize);
+    thread->ClearException();
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
 // ReadFileHeader: advances read pointer by header->Size()
 HWTEST_F_L0(ModulesSnapshotHelperTest, ReadFileHeader_AdvancesReadPointer)
 {
