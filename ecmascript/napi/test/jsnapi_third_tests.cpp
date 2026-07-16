@@ -5088,7 +5088,7 @@ HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_EmptyModuleFilename)
 
     JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
     testModule->SetEcmaModuleRecordNameString("entry&entry/Index&");
-    testModule->SetEcmaModuleFilenameString("");
+    testModule->SetEcmaModuleFilenameString(thread_, "");
 
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
     func->SetModule(thread_, testModule.GetTaggedValue());
@@ -5108,7 +5108,8 @@ HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_EmptyModuleRecordName)
     SetupNormalizedOhmUrlPack();
 
     JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
-    testModule->SetEcmaModuleFilenameString("/data/storage/el1/bundle/com.application.demo/entry/ets/modules.abc");
+    CString filename = "/data/storage/el1/bundle/com.application.demo/entry/ets/modules.abc";
+    testModule->SetEcmaModuleFilenameString(thread_, filename);
     testModule->SetEcmaModuleRecordNameString("");
 
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);
@@ -5130,7 +5131,8 @@ HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_CrossBundleHsp)
     JSNApi::SetBundleName(vm_, "com.application.demo");
 
     JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
-    testModule->SetEcmaModuleFilenameString("/data/storage/el1/bundle/com.application.demo1/crosshsp/ets/modules.abc");
+    CString filename = "/data/storage/el1/bundle/com.application.demo1/crosshsp/ets/modules.abc";
+    testModule->SetEcmaModuleFilenameString(thread_, filename);
     CString crossHspRecordName = "@normalized:N&crosshsp&com.application.demo1&crosshsp/Index&";
     testModule->SetEcmaModuleRecordNameString(crossHspRecordName);
 
@@ -5155,7 +5157,7 @@ HWTEST_F_L0(JSNApiTests, GetOhmurlByObject_Success)
     JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
     CString filename = "/data/storage/el1/bundle/com.application.demo/entry/ets/modules.abc";
     CString recordName = "com.application.demo&entry/Index&";
-    testModule->SetEcmaModuleFilenameString(filename);
+    testModule->SetEcmaModuleFilenameString(thread_, filename);
     testModule->SetEcmaModuleRecordNameString(recordName);
 
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), nullptr);

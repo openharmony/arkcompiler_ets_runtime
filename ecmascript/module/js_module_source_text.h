@@ -30,6 +30,7 @@ class EcmaModuleTest;
 namespace panda::ecmascript {
 using ResolvedMultiMap = CUnorderedMultiMap<CString *, JSHandle<JSTaggedValue>>;
 struct StateVisit;
+class ModuleManager;
 class ResolvedRecordIndexBinding;
 enum class ModuleStatus : uint8_t {
     // don't change order
@@ -291,12 +292,21 @@ public:
         return moduleName;
     }
 
-    inline void SetEcmaModuleFilenameString(const CString &fileName)
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    void SetEcmaModuleFilenameString(JSThread *thread, const CString &fileName);
+    void SetEcmaSharedModuleFilenameString(const CString &fileName);
+#else
+    inline void SetEcmaModuleFilenameString([[maybe_unused]] JSThread *thread, const CString &fileName)
     {
         CString *ptr = new CString(fileName);
-        DestroyEcmaModuleFilenameString();
+        DestroyEcmaModuleFilenameString(nullptr);
         SetEcmaModuleFilename(ToUintPtr(ptr));
     }
+    inline void SetEcmaSharedModuleFilenameString(const CString &fileName)
+    {
+        SetEcmaModuleFilenameString(nullptr, fileName);
+    }
+#endif
 
     inline void SetEcmaModuleRecordNameString(const CString &recordName)
     {
@@ -305,12 +315,21 @@ public:
         SetEcmaModuleRecordName(ToUintPtr(ptr));
     }
 
-    inline void DestroyEcmaModuleFilenameString()
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    void DestroyEcmaModuleFilenameString(ModuleManager *moduleManager);
+    void DestroyEcmaSharedModuleFilenameString();
+#else
+    inline void DestroyEcmaModuleFilenameString([[maybe_unused]] ModuleManager *moduleManager)
     {
         CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleFilename());
         delete ptr;
         SetEcmaModuleFilename(ToUintPtr(nullptr));
     }
+    inline void DestroyEcmaSharedModuleFilenameString()
+    {
+        DestroyEcmaModuleFilenameString(nullptr);
+    }
+#endif
 
     inline void DestroyEcmaModuleRecordNameString()
     {
@@ -324,11 +343,21 @@ public:
         SetLazyImportStatus(ToUintPtr(lazyImportArray));
     }
 
-    inline void SetEcmaModuleFilenameStringForDeserialize(const CString &fileName)
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    void SetEcmaModuleFilenameStringForDeserialize(JSThread *thread, const CString &fileName);
+    void SetEcmaSharedModuleFilenameStringForDeserialize(const CString &fileName);
+#else
+    inline void SetEcmaModuleFilenameStringForDeserialize([[maybe_unused]] JSThread *thread, const CString &fileName)
     {
         CString *ptr = new CString(fileName);
         SetEcmaModuleFilename(ToUintPtr(ptr));
     }
+    inline void SetEcmaSharedModuleFilenameStringForDeserialize(const CString &fileName)
+    {
+        CString *ptr = new CString(fileName);
+        SetEcmaModuleFilename(ToUintPtr(ptr));
+    }
+#endif
 
     inline void SetEcmaModuleRecordNameStringForDeserialize(const CString &recordName)
     {
@@ -336,10 +365,25 @@ public:
         SetEcmaModuleRecordName(ToUintPtr(ptr));
     }
 
-    inline void DestroyModuleCNativeFields()
+    inline void DestroyModuleCNativeFields(ModuleManager *moduleManager)
     {
         DestroyLazyImportArray();
-        DestroyEcmaModuleFilenameString();
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+        if (GetSharedType() > SharedTypes::UNSENDABLE_MODULE) {
+            DestroyEcmaSharedModuleFilenameString();
+        } else {
+            DestroyEcmaModuleFilenameString(moduleManager);
+        }
+#else
+        DestroyEcmaModuleFilenameString(moduleManager);
+#endif
+        DestroyEcmaModuleRecordNameString();
+    }
+
+    inline void DestroySharedModuleCNativeFields()
+    {
+        DestroyLazyImportArray();
+        DestroyEcmaSharedModuleFilenameString();
         DestroyEcmaModuleRecordNameString();
     }
 

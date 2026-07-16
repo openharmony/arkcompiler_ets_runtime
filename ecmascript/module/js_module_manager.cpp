@@ -388,8 +388,9 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
     if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
             ", when try to remove the module"; // LCOV_EXCL_BR_LINE
+        return;
     }
-    SourceTextModule::Cast(entry.value())->DestroyModuleCNativeFields();
+    SourceTextModule::Cast(entry.value())->DestroyModuleCNativeFields(this);
     ResetConstPoolLiterals(recordName);
     resolvedModules_.Erase(recordName);
     // remove sendableModule
@@ -397,7 +398,7 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
     if (!sendableModule) {
         return;
     }
-    SourceTextModule::Cast(sendableModule.value())->DestroyModuleCNativeFields();
+    SourceTextModule::Cast(sendableModule.value())->DestroySharedModuleCNativeFields();
     resolvedSendableModules_.Erase(recordName);
 }
 
@@ -465,4 +466,31 @@ void ModuleManager::ResetConstPoolLiterals(const CString &recordName)
         }
     }
 }
+
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+const CString *ModuleManager::AcquireModuleFilename(const CString &moduleFilename)
+{
+    auto result = moduleFilenameStorage_.try_emplace(moduleFilename, 0);
+    result.first->second++;
+    return &(result.first->first);
+}
+
+void ModuleManager::ReleaseModuleFilename(const CString *moduleFilename)
+{
+    if (moduleFilename == nullptr) {
+        return;
+    }
+    auto iter = moduleFilenameStorage_.find(*moduleFilename);
+    if (iter == moduleFilenameStorage_.end() ||
+        std::addressof(iter->first) != moduleFilename ||
+        iter->second == 0) {
+        LOG_ECMA(ERROR) << "ReleaseModuleFilename failed, moduleFilename is " << *moduleFilename;
+        return;
+    }
+    iter->second--;
+    if (iter->second == 0) {
+        moduleFilenameStorage_.erase(iter);
+    }
+}
+#endif
 } // namespace panda::ecmascript

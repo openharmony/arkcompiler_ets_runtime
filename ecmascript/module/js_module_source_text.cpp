@@ -20,6 +20,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_message_helper.h"
@@ -37,6 +38,55 @@ namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 using StringHelper = base::StringHelper;
 using GlobalError = containers::ContainerError;
+
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+void SourceTextModule::SetEcmaModuleFilenameString(JSThread *thread, const CString &fileName)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    const CString *ptr = moduleManager->AcquireModuleFilename(fileName);
+    DestroyEcmaModuleFilenameString(moduleManager);
+    SetEcmaModuleFilename(ToUintPtr(const_cast<CString *>(ptr)));
+}
+
+void SourceTextModule::SetEcmaSharedModuleFilenameString(const CString &fileName)
+{
+    const CString *ptr = SharedModuleManager::GetInstance()->AcquireModuleFilename(fileName);
+    DestroyEcmaSharedModuleFilenameString();
+    SetEcmaModuleFilename(ToUintPtr(const_cast<CString *>(ptr)));
+}
+
+void SourceTextModule::DestroyEcmaModuleFilenameString(ModuleManager *moduleManager)
+{
+    CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleFilename());
+    if (ptr == nullptr) {
+        return;
+    }
+    moduleManager->ReleaseModuleFilename(ptr);
+    SetEcmaModuleFilename(ToUintPtr(nullptr));
+}
+
+void SourceTextModule::DestroyEcmaSharedModuleFilenameString()
+{
+    CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleFilename());
+    if (ptr == nullptr) {
+        return;
+    }
+    SharedModuleManager::GetInstance()->ReleaseModuleFilename(ptr);
+    SetEcmaModuleFilename(ToUintPtr(nullptr));
+}
+
+void SourceTextModule::SetEcmaModuleFilenameStringForDeserialize(JSThread *thread, const CString &fileName)
+{
+    const CString *ptr = thread->GetModuleManager()->AcquireModuleFilename(fileName);
+    SetEcmaModuleFilename(ToUintPtr(const_cast<CString *>(ptr)));
+}
+
+void SourceTextModule::SetEcmaSharedModuleFilenameStringForDeserialize(const CString &fileName)
+{
+    const CString *ptr = SharedModuleManager::GetInstance()->AcquireModuleFilename(fileName);
+    SetEcmaModuleFilename(ToUintPtr(const_cast<CString *>(ptr)));
+}
+#endif
 
 CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                         const JSHandle<TaggedArray> &exportStarSet)

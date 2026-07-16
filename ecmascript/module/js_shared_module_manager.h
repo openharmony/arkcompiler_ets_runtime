@@ -46,6 +46,9 @@ public:
         // Called after the last VM is destroyed and shared GC tasks are finished.
         resolvedSharedModules_.Clear();
         ClearResolvedSendableBindingNameStorage();
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+        ClearModuleFilenameStorage();
+#endif
     }
 
     void Iterate(RootVisitor &v);
@@ -73,6 +76,14 @@ public:
     void SharedNativeObjDestroy();
 
     const CString *GetOrInsertResolvedSendableBindingName(const CString &recordName);
+
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    const CString *AcquireModuleFilename(const CString &moduleFilename);
+
+    void ReleaseModuleFilename(const CString *moduleFilename);
+
+    size_t GetModuleFilenameStorageSizeForTest();
+#endif
 
     RecursiveMutex& GetSharedMutex()
     {
@@ -105,6 +116,10 @@ private:
 
     void ClearResolvedSendableBindingNameStorage();
 
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    void ClearModuleFilenameStorage();
+#endif
+
     static constexpr uint32_t DEFAULT_DICTIONARY_CAPACITY = 4;
 #if ENABLE_LATEST_OPTIMIZATION
     ModuleManagerMap<CString, CStringHash> resolvedSharedModules_;
@@ -114,9 +129,17 @@ private:
     // Stores interned names used by resolved record bindings. Pointers to std::unordered_set elements stay valid
     // across rehash and are released only when the manager is destroyed.
     CUnorderedSet<CString, CStringHash> resolvedSendableBindingNameStorage_;
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    // SourceTextModules share immutable filenames. References remain valid across rehash and are released when the
+    // last module using a filename is destroyed.
+    CUnorderedMap<CString, size_t, CStringHash> moduleFilenameStorage_;
+#endif
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
     Mutex resolvedSendableBindingNameMutex_;
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    Mutex moduleFilenameMutex_;
+#endif
     RecursiveMutex sharedMutex_;
 
     friend class SourceTextModule;

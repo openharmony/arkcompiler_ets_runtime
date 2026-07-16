@@ -46,7 +46,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
                                                                                             currentEnvironment);
     sModule->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
     sModule->SetEnvironment(thread, sendableEnvironment);
-    sModule->SetEcmaModuleFilenameString(currentModule->GetEcmaModuleFilenameString());
+    sModule->SetEcmaSharedModuleFilenameString(currentModule->GetEcmaModuleFilenameString());
     sModule->SetEcmaModuleRecordNameString(recordName);
     sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     moduleManager->AddSendableModuleToCache(recordName, sModule.GetTaggedValue());
@@ -147,7 +147,7 @@ JSHandle<JSTaggedValue> SharedModuleHelper::ParseSharedModule(JSThread *thread, 
 
     bool hasTLA = jsPandaFile->GetHasTopLevelAwait(descriptor);
     moduleRecord->SetHasTLA(hasTLA);
-    moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
+    moduleRecord->SetEcmaSharedModuleFilenameString(moduleFilename);
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
     moduleRecord->SetIsNewBcVersion(true);

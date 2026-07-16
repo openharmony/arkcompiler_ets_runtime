@@ -112,7 +112,7 @@ HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_LoadedNot
     CString specifier = "@ohos:lazy_test_module";
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     module->SetEcmaModuleRecordNameString(specifier);
-    module->SetEcmaModuleFilenameString("");
+    module->SetEcmaModuleFilenameString(thread, "");
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::EVALUATING);
     moduleManager->AddResolveImportedModule(specifier, module.GetTaggedValue());
@@ -147,7 +147,7 @@ HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_ErroredMo
     CString specifier = "@ohos:errored_test_module";
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     module->SetEcmaModuleRecordNameString(specifier);
-    module->SetEcmaModuleFilenameString("");
+    module->SetEcmaModuleFilenameString(thread, "");
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::UNINSTANTIATED);
     JSHandle<JSTaggedValue> error(factory->NewFromASCII("test error"));

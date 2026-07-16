@@ -3612,7 +3612,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModule)
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
     CString recordName = "a";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
@@ -3620,7 +3620,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModule)
     JSHandle<TaggedArray> requestedModules = objectFactory->NewTaggedArray(2);
     module->SetRequestedModules(thread, requestedModules.GetTaggedValue());
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    module1->SetEcmaModuleFilenameString(baseFileName);
+    module1->SetEcmaModuleFilenameString(thread, baseFileName);
     requestedModules->Set(thread, 0, module1);
     JSHandle<JSTaggedValue> importName = val;
     JSHandle<JSTaggedValue> localName = val;
@@ -3678,42 +3678,42 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleStatusCheck)
     // module1
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
+    module1->SetEcmaModuleFilenameString(thread, baseFileName);
     module1->SetStatus(ModuleStatus::UNINSTANTIATED);
     serializerArray->Set(thread, 0, module1);
     // module2
     JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
+    module2->SetEcmaModuleFilenameString(thread, baseFileName);
     module2->SetStatus(ModuleStatus::PREINSTANTIATING);
     serializerArray->Set(thread, 1, module2);
     // module3
     JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
-    module3->SetEcmaModuleFilenameString(baseFileName);
+    module3->SetEcmaModuleFilenameString(thread, baseFileName);
     module3->SetStatus(ModuleStatus::INSTANTIATING);
     serializerArray->Set(thread, 2, module3);
     // module4
     JSHandle<SourceTextModule> module4 = objectFactory->NewSourceTextModule();
-    module4->SetEcmaModuleFilenameString(baseFileName);
+    module4->SetEcmaModuleFilenameString(thread, baseFileName);
     module4->SetStatus(ModuleStatus::INSTANTIATED);
     serializerArray->Set(thread, 3, module4);
     // module5
     JSHandle<SourceTextModule> module5 = objectFactory->NewSourceTextModule();
-    module5->SetEcmaModuleFilenameString(baseFileName);
+    module5->SetEcmaModuleFilenameString(thread, baseFileName);
     module5->SetStatus(ModuleStatus::EVALUATING);
     serializerArray->Set(thread, 4, module5);
     // module6
     JSHandle<SourceTextModule> module6 = objectFactory->NewSourceTextModule();
-    module6->SetEcmaModuleFilenameString(baseFileName);
+    module6->SetEcmaModuleFilenameString(thread, baseFileName);
     module6->SetStatus(ModuleStatus::EVALUATING_ASYNC);
     serializerArray->Set(thread, 5, module6);
     // module7
     JSHandle<SourceTextModule> module7 = objectFactory->NewSourceTextModule();
-    module7->SetEcmaModuleFilenameString(baseFileName);
+    module7->SetEcmaModuleFilenameString(thread, baseFileName);
     module7->SetStatus(ModuleStatus::EVALUATED);
     serializerArray->Set(thread, 6, module7);
     // module8
     JSHandle<SourceTextModule> module8 = objectFactory->NewSourceTextModule();
-    module8->SetEcmaModuleFilenameString(baseFileName);
+    module8->SetEcmaModuleFilenameString(thread, baseFileName);
     module8->SetStatus(ModuleStatus::ERRORED);
     serializerArray->Set(thread, 7, module8);
 
@@ -3737,7 +3737,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleLazy)
     ObjectFactory *objectFactory = vm->GetFactory();
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetStatus(ModuleStatus::EVALUATED);
     bool *lazyImportArray = new bool[5]();
     lazyImportArray[0] = 0;
@@ -3769,7 +3769,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
     ObjectFactory *objectFactory = vm->GetFactory();
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetStatus(ModuleStatus::EVALUATED);
     JSHandle<TaggedArray> environmentArray = objectFactory->NewTaggedArray(4);
     // sendable binding
@@ -3786,7 +3786,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
     // mormal binding
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
     CString baseFileName2 = "modules1.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName2);
+    module1->SetEcmaModuleFilenameString(thread, baseFileName2);
     module1->SetStatus(ModuleStatus::EVALUATED);
     JSHandle<ResolvedBinding> resolvedBinding = objectFactory->NewResolvedBindingRecord(module1, val);
     environmentArray->Set(thread, 2, resolvedBinding.GetTaggedValue());
@@ -4041,7 +4041,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleMutableFields)
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     CString baseFileName = "mutable_fields_test.abc";
     CString recordName = "testRecord";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
@@ -4081,7 +4081,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothNotEmpty)
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     CString baseFileName = "test_module.abc";
     CString recordName = "testRecord";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
@@ -4116,7 +4116,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameNotEmptyRecor
     ObjectFactory *objectFactory = vm->GetFactory();
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
     CString baseFileName = "test_module.abc";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
     auto serializer = CreateModuleSerializer();

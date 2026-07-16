@@ -176,14 +176,14 @@ void SharedModuleManager::SharedNativeObjDestroy()
 #if ENABLE_LATEST_OPTIMIZATION
     resolvedSharedModules_.ForEach([](const CString& key, GCRoot& root) {
         ASSERT(!key.empty());
-        SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+        SourceTextModule::Cast(root.Read())->DestroySharedModuleCNativeFields();
     });
 #else
     resolvedSharedModules_.ForEach([](auto it) {
         CString key = it->first;
         ASSERT(!key.empty());
         GCRoot &root = it->second;
-        SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+        SourceTextModule::Cast(root.Read())->DestroySharedModuleCNativeFields();
     });
 #endif
 }
@@ -195,9 +195,52 @@ const CString *SharedModuleManager::GetOrInsertResolvedSendableBindingName(const
     return &(*result.first);
 }
 
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+const CString *SharedModuleManager::AcquireModuleFilename(const CString &moduleFilename)
+{
+    LockHolder locker(moduleFilenameMutex_);
+    auto result = moduleFilenameStorage_.try_emplace(moduleFilename, 0);
+    result.first->second++;
+    return &(result.first->first);
+}
+
+void SharedModuleManager::ReleaseModuleFilename(const CString *moduleFilename)
+{
+    if (moduleFilename == nullptr) {
+        return;
+    }
+    LockHolder locker(moduleFilenameMutex_);
+    auto iter = moduleFilenameStorage_.find(*moduleFilename);
+    if (iter == moduleFilenameStorage_.end() ||
+        std::addressof(iter->first) != moduleFilename ||
+        iter->second == 0) {
+        LOG_ECMA(ERROR) << "ReleaseModuleFilename failed, moduleFilename is " << *moduleFilename;
+        return;
+    }
+    iter->second--;
+    if (iter->second == 0) {
+        moduleFilenameStorage_.erase(iter);
+    }
+}
+
+size_t SharedModuleManager::GetModuleFilenameStorageSizeForTest()
+{
+    LockHolder locker(moduleFilenameMutex_);
+    return moduleFilenameStorage_.size();
+}
+#endif
+
 void SharedModuleManager::ClearResolvedSendableBindingNameStorage()
 {
     LockHolder locker(resolvedSendableBindingNameMutex_);
     resolvedSendableBindingNameStorage_.clear();
 }
+
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+void SharedModuleManager::ClearModuleFilenameStorage()
+{
+    LockHolder locker(moduleFilenameMutex_);
+    moduleFilenameStorage_.clear();
+}
+#endif
 } // namespace panda::ecmascript
