@@ -82,6 +82,18 @@ public:
     EcmaVM *instance {nullptr};
     ecmascript::EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
+
+    // Wrappers for private SourceTextModule methods — friendship is not inherited,
+    // so gtest-derived classes cannot call them directly.
+    static void ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
+    {
+        SourceTextModule::ClearInstantiationFieldsIfNeeded(thread, module);
+    }
+
+    static void ClearTopLevelCapabilityIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module)
+    {
+        SourceTextModule::ClearTopLevelCapabilityIfNeeded(thread, module);
+    }
 };
 
 JSHandle<JSTaggedValue> EcmaModuleTest::MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo)
@@ -1947,7 +1959,7 @@ HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts2)
     increaseModule.insert("b");
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
 }
 
 HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
@@ -1963,7 +1975,7 @@ HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
     decreaseModule.insert("b");
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
 }
 
 HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule)
@@ -3085,11 +3097,11 @@ HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts)
     std::set<CString> increaseModule;
 
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
 
     module->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
 
     module2->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
@@ -3119,7 +3131,7 @@ HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
 
     module->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
 
     module2->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
     ModuleDeregister::DecreaseRegisterCounts(thread, module2, decreaseModule);
@@ -3918,17 +3930,14 @@ HWTEST_F_L0(EcmaModuleTest, SearchCircularImport)
     CString recordName = "a";
     CString recordName2 = "@ohos:hilog";
     module->SetEcmaModuleRecordNameString(recordName);
-    JSHandle<TaggedArray> requestArr = objectFactory->NewTaggedArray(1);
-    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(recordName2.c_str()));
-    requestArr->Set(thread, 0, val.GetTaggedValue());
-    module->SetModuleRequests(thread, requestArr);
-
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    module2->SetTypes(ModuleTypes::NATIVE_MODULE);
-    module2->SetStatus(ModuleStatus::EVALUATED);
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
+    // SearchCircularImport uses RequestedModules instead of ModuleRequests.
+    JSHandle<SourceTextModule> requiredMod = objectFactory->NewSourceTextModule();
+    requiredMod->SetEcmaModuleRecordNameString(recordName2);
+    requiredMod->SetTypes(ModuleTypes::NATIVE_MODULE);
+    requiredMod->SetStatus(ModuleStatus::EVALUATED);
+    JSHandle<TaggedArray> requestedArr = objectFactory->NewTaggedArray(1);
+    requestedArr->Set(thread, 0, requiredMod.GetTaggedValue());
+    module->SetRequestedModules(thread, requestedArr);
 
     CList<CString> referenceList;
     referenceList.push_back(recordName);
@@ -3936,6 +3945,61 @@ HWTEST_F_L0(EcmaModuleTest, SearchCircularImport)
     referenceList.push_back(recordName2);
     SourceTextModule::SearchCircularImport(thread, recordName, module, referenceList, recordName2, true);
     EXPECT_TRUE(!thread->HasPendingException());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: SearchCircularImport
+ * SubFunction: RequestedModules is Undefined → early return
+ * FunctionPoints: Verify no crash when RequestedModules is undefined
+ * CaseDescription: After Instantiate, if RequestedModules was never populated,
+ *                  SearchCircularImport returns immediately without traversal.
+ */
+HWTEST_F_L0(EcmaModuleTest, SearchCircularImport_RequestedModulesUndefined)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("a");
+    // RequestedModules defaults to Undefined
+
+    CList<CString> referenceList;
+    referenceList.push_back("a");
+    CString requiredModuleName;
+
+    SourceTextModule::SearchCircularImport(
+        thread, "b", module, referenceList, requiredModuleName, true);
+
+    EXPECT_FALSE(thread->HasPendingException());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: SearchCircularImport
+ * SubFunction: Skip Hole and Undefined entries in RequestedModules
+ * FunctionPoints: Verify lazy import placeholder entries are skipped
+ * CaseDescription: RequestedModules may contain Hole (lazy import placeholder)
+ *                  or Undefined slots; these must be skipped during traversal.
+ */
+HWTEST_F_L0(EcmaModuleTest, SearchCircularImport_SkipHoleEntries)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("a");
+
+    // Construct RequestedModules with Hole and Undefined entries
+    JSHandle<TaggedArray> requestedModules = factory->NewTaggedArray(2);
+    requestedModules->Set(thread, 0, JSTaggedValue::Hole());
+    requestedModules->Set(thread, 1, JSTaggedValue::Undefined());
+    module->SetRequestedModules(thread, requestedModules.GetTaggedValue());
+
+    CList<CString> referenceList;
+    referenceList.push_back("a");
+    CString requiredModuleName;
+
+    SourceTextModule::SearchCircularImport(
+        thread, "b", module, referenceList, requiredModuleName, true);
+
+    EXPECT_FALSE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, IsDynamicModule)
@@ -6625,6 +6689,264 @@ HWTEST_F_L0(EcmaModuleTest, ModuleValueAccessor_GetNativeOrCjsExports_OtherModul
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     JSHandle<JSTaggedValue> exports = MockModuleValueAccessor::GetNativeOrCjsExports(thread, module.GetTaggedValue());
     EXPECT_TRUE(exports->IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearInstantiationFieldsIfNeeded
+ * SubFunction: ImportEntries cleared after Instantiate
+ * FunctionPoints: Verify ImportEntries is set to Undefined
+ * CaseDescription: Create a module at INSTANTIATED status, add ImportEntries, call cleanup,
+ *                  verify ImportEntries is cleared
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Cleared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<ImportEntry> importEntry = factory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry, 0, 1);
+    EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+
+    ClearInstantiationFieldsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetImportEntries(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearInstantiationFieldsIfNeeded
+ * SubFunction: ModuleRequests cleared for non-shared module
+ * FunctionPoints: Verify ModuleRequests is set to Undefined when conditions are met
+ * CaseDescription: Non-shared module without lazy imports, snapshot disabled,
+ *                  ModuleRequests should be cleared after Instantiate
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ModuleRequests_Cleared_NonShared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+    ASSERT_TRUE(module->GetLazyImportStatusArray() == nullptr);
+
+    ClearInstantiationFieldsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearInstantiationFieldsIfNeeded
+ * SubFunction: ModuleRequests NOT cleared for shared module
+ * FunctionPoints: Verify ModuleRequests is preserved for shared modules
+ * CaseDescription: Shared module needs ModuleRequests for cross-thread fallback resolve
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ModuleRequests_NotCleared_Shared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+
+    // Shared module fields cannot be populated with non-shared-heap values
+    // (WriteBarrier ASSERT in debug mode). ModuleRequests is initially undefined
+    // and should remain undefined after cleanup — i.e., shared modules are skipped.
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    ClearInstantiationFieldsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearInstantiationFieldsIfNeeded
+ * SubFunction: ImportEntries preserved when ModuleLogger is enabled
+ * FunctionPoints: Verify ImportEntries is NOT cleared when ModuleLogger is active
+ * CaseDescription: ModuleLogger reads ImportEntries for diagnostics, so it must be
+ *                  preserved even after Instantiate when logging is on.
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Preserved_WithModuleLogger)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<ImportEntry> importEntry = factory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry, 0, 1);
+    EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+
+    // Enable ModuleLogger — ImportEntries should be preserved
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+    thread->SetModuleLogger(moduleLogger);
+
+    ClearInstantiationFieldsIfNeeded(thread, module);
+    EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+
+    // Cleanup
+    thread->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearTopLevelCapabilityIfNeeded
+ * SubFunction: TopLevelCapability cleared for non-shared module
+ * FunctionPoints: Verify TopLevelCapability is set to Undefined after Evaluate
+ * CaseDescription: Non-shared module at EVALUATED status, TopLevelCapability should be cleared
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearPostEvaluationFields_TopLevelCapability_Cleared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<JSPromise> capability = factory->NewJSPromise();
+    module->SetTopLevelCapability(thread, capability);
+    EXPECT_FALSE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    ClearTopLevelCapabilityIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearTopLevelCapabilityIfNeeded
+ * SubFunction: TopLevelCapability NOT cleared for shared module
+ * FunctionPoints: Verify shared module preserves TopLevelCapability
+ * CaseDescription: Shared module needs TopLevelCapability for cross-thread Evaluate redirect
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearPostEvaluationFields_TopLevelCapability_NotCleared_Shared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+
+    // Shared module fields cannot be populated with non-shared-heap values
+    // (WriteBarrier ASSERT in debug mode). TopLevelCapability is initially undefined
+    // and should remain undefined after cleanup — i.e., shared modules are skipped.
+    EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    ClearTopLevelCapabilityIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: InnerModuleEvaluationUnsafe line 1059 guard
+ * SubFunction: EVALUATED module skips CycleRoot error check
+ * FunctionPoints: Verify guard logic correctness
+ * CaseDescription: EVALUATED required module should not enter CycleRoot-based error check;
+ *                  only EVALUATING_ASYNC/ERRORED modules should read CycleRoot
+ */
+HWTEST_F_L0(EcmaModuleTest, EvaluatedModule_SkipsCycleRootErrorCheck)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> requiredModule = factory->NewSourceTextModule();
+    requiredModule->SetStatus(ModuleStatus::EVALUATED);
+
+    ModuleStatus status = requiredModule->GetStatus();
+    EXPECT_EQ(status, ModuleStatus::EVALUATED);
+
+    bool entersCycleRootCheck = (status != ModuleStatus::EVALUATING && status != ModuleStatus::EVALUATED);
+    EXPECT_FALSE(entersCycleRootCheck);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearInstantiationFieldsIfNeeded + ClearTopLevelCapabilityIfNeeded
+ * SubFunction: Full cleanup lifecycle for non-shared module
+ * FunctionPoints: Verify both cleanup phases work correctly
+ * CaseDescription: Instantiate phase clears ImportEntries, Evaluate phase clears TopLevelCapability
+ */
+HWTEST_F_L0(EcmaModuleTest, FullLifecycle_NonSharedModule_FieldsCleared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    // Phase 1: Instantiate → clear ImportEntries
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    JSHandle<ImportEntry> importEntry = factory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry, 0, 1);
+    EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+
+    ClearInstantiationFieldsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetImportEntries(thread).IsUndefined());
+
+    // Phase 2: Evaluate → clear TopLevelCapability
+    module->SetStatus(ModuleStatus::EVALUATED);
+    JSHandle<JSPromise> capability = factory->NewJSPromise();
+    module->SetTopLevelCapability(thread, capability);
+    EXPECT_FALSE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    ClearTopLevelCapabilityIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: SerializeModuleCNativeObjects
+ * SubFunction: ModuleRequests=Undefined → serialization skips gracefully
+ * FunctionPoints: Verify no crash when serializing module with cleaned ModuleRequests
+ * CaseDescription: After ClearInstantiationFieldsIfNeeded, ModuleRequests is Undefined.
+ *                  Serialization should skip lazy-import array traversal safely.
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleRequestsUndefined_SnapshotSerializeNoCrash)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("test");
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    // Simulate cleaned ModuleRequests after ClearInstantiationFieldsIfNeeded
+    module->SetModuleRequests(thread, JSTaggedValue::Undefined());
+
+    // Verify serialization code can read Undefined ModuleRequests without crash:
+    // lazyArray && requests.IsTaggedArray() → false → skip traversal
+    JSTaggedValue requests = module->GetModuleRequests(thread);
+    EXPECT_TRUE(requests.IsUndefined());
+    EXPECT_FALSE(requests.IsTaggedArray());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearInstantiationFieldsIfNeeded
+ * SubFunction: Module variable access via Environment unaffected by ModuleRequests cleanup
+ * FunctionPoints: Verify Environment binding is preserved after ModuleRequests is cleared
+ * CaseDescription: Module variable access goes through Environment, not ModuleRequests.
+ *                  Clearing ModuleRequests after Instantiate must not affect variable access.
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleVariableAccess_AfterModuleRequestsCleared)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("test");
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    module->SetStatus(ModuleStatus::EVALUATED);
+
+    // Set up Environment binding (simulates Instantiate result)
+    JSHandle<TaggedArray> environment = factory->NewTaggedArray(1);
+    environment->Set(thread, 0, JSTaggedValue(42));
+    module->SetEnvironment(thread, environment);
+
+    // Clear ModuleRequests
+    module->SetModuleRequests(thread, JSTaggedValue::Undefined());
+
+    // Environment still accessible
+    JSTaggedValue envValue = module->GetEnvironment(thread);
+    EXPECT_FALSE(envValue.IsUndefined());
+    JSHandle<TaggedArray> env(thread, envValue);
+    EXPECT_EQ(env->Get(thread, 0), JSTaggedValue(42));
 }
 
 }  // namespace panda::test

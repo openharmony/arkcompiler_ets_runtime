@@ -592,8 +592,8 @@ void SourceTextModule::DFSModuleInstantiation(JSThread *thread, JSHandle<SourceT
             stack.pop_back();
             // iii. Set requiredModule.[[Status]] to "instantiated".
             requiredModule->SetStatus(ModuleStatus::INSTANTIATED);
-#if ENABLE_MEMORY_OPTIMIZATION
-            ClearImportEntriesIfNeeded(thread, requiredModule);
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+            ClearInstantiationFieldsIfNeeded(thread, requiredModule);
 #endif
             // iv. If requiredModule and module are the same Module Record, set done to true.
             if (JSTaggedValue::SameValue(thread, module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
@@ -1113,6 +1113,11 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
             // v. Otherwise, set requiredModule.[[Status]] to EVALUATING-ASYNC.
             if (!requiredModule->IsAsyncEvaluating()) {
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+                ClearTopLevelCapabilityIfNeeded(thread, requiredModule);
+#else
+                ClearInstantiationFieldsIfNeeded(thread, requiredModule);
+#endif
             } else {
                 requiredModule->SetStatus(ModuleStatus::EVALUATING_ASYNC);
             }
@@ -1129,15 +1134,40 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
     return index;
 }
 
-void SourceTextModule::ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
+void SourceTextModule::ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
 {
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
     ASSERT(module->GetStatus() >= ModuleStatus::INSTANTIATED);
+#endif
     EcmaVM *vm = thread->GetEcmaVM();
-    if ((!vm->GetJsDebuggerManager()->IsDebugApp()) && thread->GetModuleLogger() == nullptr) {
-        // After the module is INSTANTIATED, requiredModule.[[ImportEntry]] is no longer meaningful.
-        // Set it to undefinedValue to allow the GC thread to reclaim the memory.
+    if (!vm->GetJsDebuggerManager()->IsDebugApp()) {
         JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
-        module->SetImportEntries(thread, undefinedValue);
+        // After the module is INSTANTIATED, requiredModule.[[ImportEntry]] is no longer meaningful.
+        // ModuleLogger reads ImportEntries for diagnostics, so preserve it when logging is enabled.
+        if (thread->GetModuleLogger() == nullptr) {
+            module->SetImportEntries(thread, undefinedValue);
+        }
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+        // ModuleRequests is only cleared for non-shared modules.
+        // Shared modules need ModuleRequests for cross-thread fallback resolve.
+        if (!IsSharedModule(module) &&
+            (!vm->GetJSOptions().EnableSnapshotSerialize() || module->GetLazyImportStatusArray() == nullptr)) {
+            module->SetModuleRequests(thread, undefinedValue);
+        }
+#endif
+    }
+}
+
+void SourceTextModule::ClearTopLevelCapabilityIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module)
+{
+    ASSERT(module->GetStatus() >= ModuleStatus::EVALUATED);
+    if (IsSharedModule(module)) {
+        return;
+    }
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (!vm->GetJsDebuggerManager()->IsDebugApp()) {
+        JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+        module->SetTopLevelCapability(thread, undefinedValue);
     }
 }
 
@@ -1940,6 +1970,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
         JSHandle<JSPromise> topLevelCapability(thread, JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
         JSHandle<JSTaggedValue> undefinedValue = globalConstants->GetHandledUndefined();
         JSPromise::FulfillPromise(thread, topLevelCapability, undefinedValue);
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+        ClearTopLevelCapabilityIfNeeded(thread, module);
+#endif
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     // 8. Let execList be a new empty List.
@@ -1982,6 +2015,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
                         JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
                     JSHandle<JSTaggedValue> undefinedValue = globalConstants->GetHandledUndefined();
                     JSPromise::FulfillPromise(thread, topLevelCapability, undefinedValue);
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+                    ClearTopLevelCapabilityIfNeeded(thread, m);
+#endif
                     RETURN_IF_ABRUPT_COMPLETION(thread);
                 }
             }
@@ -2088,19 +2124,31 @@ void SourceTextModule::SearchCircularImport(JSThread *thread, const CString &cir
                                             CList<CString> &referenceList,
                                             CString &requiredModuleName, bool printOtherCircular)
 {
-    if (module->GetModuleRequests(thread).IsUndefined()) {
+    // Use RequestedModules instead of ModuleRequests, because ModuleRequests may be
+    // cleared by ClearInstantiationFieldsIfNeeded after instantiation.
+    if (module->GetRequestedModules(thread).IsUndefined()) {
         return;
     }
     auto globalConstants = thread->GlobalConstants();
-    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests(thread));
-    size_t moduleRequestsLen = moduleRequests->GetLength();
-    JSMutableHandle<JSTaggedValue> required(thread, globalConstants->GetUndefined());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
+    size_t requestedModulesLen = requestedModules->GetLength();
+    JSMutableHandle<JSTaggedValue> request(thread, globalConstants->GetUndefined());
     JSMutableHandle<SourceTextModule> requiredModule(thread, globalConstants->GetUndefined());
-    for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
-        required.Update(moduleRequests->Get(thread, idx));
-        requiredModule.Update(JSHandle<SourceTextModule>::Cast(
-            ModuleResolver::HostResolveImportedModule(thread, module, required)));
-        RETURN_IF_ABRUPT_COMPLETION(thread);
+    for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+        request.Update(requestedModules->Get(thread, idx));
+        // Skip lazy import slots (Hole) and undefined slots
+        if (request->IsHole() || request->IsUndefined()) {
+            continue;
+        }
+        if (request->IsSourceTextModule()) {
+            // Non-shared module: RequestedModules stores SourceTextModule directly
+            requiredModule.Update(JSHandle<SourceTextModule>::Cast(request));
+        } else {
+            // Shared module: RequestedModules stores EcmaString module name, need HostResolveImportedModule
+            requiredModule.Update(JSHandle<SourceTextModule>::Cast(
+                ModuleResolver::HostResolveImportedModule(thread, module, request)));
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
         requiredModuleName = requiredModule->GetEcmaModuleRecordNameString();
         referenceList.push_back(requiredModuleName);
         if (requiredModuleName == circularModuleRecordName) {
