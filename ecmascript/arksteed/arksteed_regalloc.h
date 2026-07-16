@@ -360,7 +360,6 @@ private:
     void TryAllocatePhisToInput(ChunkVector<PhiVertex *> &phis);
     void TryAllocatePhisToRegister(ChunkVector<PhiVertex *> &phis);
     void SpillRemainingPhis(ChunkVector<PhiVertex *> &phis);
-    void LogPhiAllocationResult(ChunkVector<PhiVertex *> &phis);
 
     void MarkAsClobbered(ValueVertex *vertex, const AllocatedState &location);
 
@@ -368,7 +367,6 @@ private:
     void AssignArbitraryRegisterInput(Vertex *resultVertex, const Input &input);
     void AssignAnyInput(const Input &input);
     void AssignInputs(Vertex *vertex);
-    void VerifyInputs(Vertex *vertex);
 
     void AssignFixedTemporaries(Vertex *vertex);
     template <typename RegisterT>
@@ -493,15 +491,11 @@ private:
 
     void ClearRegisterValues();
     void InitializeRegisterValues(RegisterMergeState &registerState);
-    void DebugDumpRegisterValues(RegisterMergeState &registerState, uint32_t predecessorCount);
 
     template <typename Function>
     void ForEachRegisterMergeState(RegisterMergeState &mergeState, Function &&f);
 
     bool IsCurrentVertexLastUse(ValueVertex *vertex);
-
-    // to do: Remove this function after debugging done
-    void DumpCurrentRegisters(std::string_view prompt = "");
 
     Graph *graph_;
     BB *currentBlock_ = nullptr;

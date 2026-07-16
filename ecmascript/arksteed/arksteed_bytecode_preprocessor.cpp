@@ -826,13 +826,6 @@ std::ostream &operator<<(std::ostream &out, PrintBasicBlockIndex printIndex)
 std::string BytecodePreprocessor::Dump() const
 {
     std::ostringstream out;
-    out << "Bytecodes:";
-    for (size_t i = 0, bcCount = bytecodes_.size(); i < bcCount; i++) {
-        const BytecodeInfo &curBc = bytecodes_[i];
-        out << "\n[" << std::setw(3) << i << "] opcode = ";  // 3: width for bytecode index
-        out << kungfu::GetEcmaOpcodeStr(curBc.GetOpcode());
-    }
-
     out << DumpBasicBlocksString();
     out << DumpTryBlocksString();
     out << "\nGraphviz source code (basic blocks labelled by RPO index):\n" << DumpCFGAsGraphviz();

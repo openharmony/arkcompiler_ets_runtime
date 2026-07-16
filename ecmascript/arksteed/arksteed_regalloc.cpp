@@ -133,16 +133,8 @@ void ArkSteedRegisterAllocator::AddMoveBeforeCurrentVertex(ValueVertex *vertex, 
     NonControlVertex *gapMove = nullptr;
     if (source.IsConstant()) {
         gapMove = Vertex::New<ConstantGapMoveVertex>(chunk, 0, vertex, target);
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << 'v' << vertex->GetId() << " ConstantGapMove: " << source.Description() << " -> "
-                            << target.Description();
-#endif
     } else {
         gapMove = Vertex::New<GapMoveVertex>(chunk, 0, AllocatedState::Cast(source), target);
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << 'v' << vertex->GetId() << " GapMove: " << source.Description() << " -> "
-                            << target.Description();
-#endif
     }
 
     // Set up the regalloc info for the gap move
@@ -228,10 +220,6 @@ void ArkSteedRegisterAllocator::InitializeBlockState(BB *block)
         } else {
             RegisterMergeState &state = *block->GetRegisterMergeState();
             InitializeRegisterValues(state);
-#ifndef NDEBUG
-            LOG_COMPILER(DEBUG) << "Register states after initialization:";
-            DebugDumpRegisterValues(state, block->PredecessorCount());
-#endif
         }
     }
 }
@@ -241,17 +229,10 @@ void ArkSteedRegisterAllocator::AllocateBlock(BB *block)
     currentBlock_ = block;
     ASSERT(block->GetId() != INVALID_BLOCK_ID);
 
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "========================================================================";
-    LOG_COMPILER(DEBUG) << "RegAlloc: Starts BB #" << block->GetId();
-#endif
     InitializeBlockState(block);
 
     // Activate phis.
     AllocatePhis(block);
-#ifndef NDEBUG
-    DumpCurrentRegisters("After allocating Phis");
-#endif
     ASSERT(AllUsedRegistersLiveAt(block));
     VerifyRegisterState();
 
@@ -264,17 +245,8 @@ void ArkSteedRegisterAllocator::AllocateBlock(BB *block)
     }
 
     auto *controlVertex = block->GetControlVertex();
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Visiting control vertex #" << controlVertex->GetId() << ": "
-                        << OpcodeToString(controlVertex->GetOpcode());
-#endif
     AllocateControlVertex(controlVertex, block);
     ApplyPatches(block);
-
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "RegAlloc: Finishes BB #" << block->GetId();
-    LOG_COMPILER(DEBUG) << "========================================================================";
-#endif
 }
 
 void ArkSteedRegisterAllocator::AllocateRegisters()
@@ -298,7 +270,6 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
 
     currentVertex_ = vertex;
     AssignInputs(vertex);
-    VerifyInputs(vertex);
 
     // Spill registers if this is a call
     if (vertex->GetProperties().IsCall()) {
@@ -390,7 +361,6 @@ void ArkSteedRegisterAllocator::ProcessConditionalOrReturn(ControlVertex *vertex
 
     // Assign inputs
     AssignInputs(vertex);
-    VerifyInputs(vertex);
 
     ASSERT(!vertex->GetProperties().CanEagerDeopt());
     ASSERT(!vertex->GetProperties().CanLazyDeopt());
@@ -486,12 +456,6 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
     for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
         Input input(vertex, i);
         AssignFixedInput(input);
-#ifndef NDEBUG
-        if (input.GetOperand().IsAllocated()) {
-            LOG_COMPILER(DEBUG) << "Input #" << i << " (which is v" << input.vertex()->GetId()
-                                << ") is assigned to fixed location: " << input.GetOperand().Description();
-        }
-#endif
     }
     AssignFixedTemporaries(vertex);
     for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
@@ -500,12 +464,6 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
             continue;
         }
         AssignArbitraryRegisterInput(vertex, input);
-#ifndef NDEBUG
-        if (input.GetOperand().IsAllocated()) {
-            LOG_COMPILER(DEBUG) << "Input #" << i << " (which is v" << input.vertex()->GetId()
-                                << ") is assigned to arbitrary register: " << input.GetOperand().Description();
-        }
-#endif
     }
     AssignArbitraryTemporaries(vertex);
     for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
@@ -514,25 +472,7 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
             continue;
         }
         AssignAnyInput(input);
-#ifndef NDEBUG
-        if (input.GetOperand().IsAllocated()) {
-            LOG_COMPILER(DEBUG) << "Input #" << i << " (which is v" << input.vertex()->GetId()
-                                << ") is assigned to arbitrary location: " << input.GetOperand().Description();
-        }
-#endif
     }
-
-    for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
-        Input input(vertex, i);
-#ifndef NDEBUG
-        if (input.vertex()->GetRegallocInfo()->HasNoMoreUses()) {
-            LOG_COMPILER(DEBUG) << "\tv" << input.vertex()->GetId() << " is no more live.";
-        }
-#endif
-    }
-#ifndef NDEBUG
-    DumpCurrentRegisters("After allocating inputs");
-#endif
 }
 
 void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
@@ -874,9 +814,6 @@ void ArkSteedRegisterAllocator::SpillAndClearRegisters()
 {
     SpillAndClearRegisters(generalRegisters_);
     SpillAndClearRegisters(doubleRegisters_);
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CALL OPERATION: Registers spilled and cleared.";
-#endif
 }
 
 template <typename RegisterT>
@@ -908,9 +845,6 @@ void ArkSteedRegisterAllocator::SpillAndClearASMBarrierClobbers()
                          aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23,
                          aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27,
                          aarch64::d28, aarch64::d29});
-#endif
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "ASM BARRIER CALL: Clobbered registers spilled and cleared.";
 #endif
 }
 
@@ -1288,10 +1222,6 @@ void ArkSteedRegisterAllocator::AllocateSpillSlot(ValueVertex *vertex)
 
     AllocatedState spillSlot(AllocatedState::STACK_SLOT, rep, freeSlot);
     vertexInfo->SetSpillSlot(spillSlot);
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << (reuseSlot ? "REUSE SLOT: v" : "NEW SLOT: v") << vertex->GetId() << " assigned to "
-                        << spillSlot.Description();
-#endif
 }
 
 void ArkSteedRegisterAllocator::AllocateFixedSlotResult(ValueVertex *vertex)
@@ -1305,9 +1235,6 @@ void ArkSteedRegisterAllocator::AllocateFixedSlotResult(ValueVertex *vertex)
     AllocatedState location(AllocatedState::LocationKind::STACK_SLOT, vertex->GetMachineRepresentation(), slotIndex);
     vertexInfo->SetResultAllocated(location);
     vertexInfo->Spill(location);
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << 'v' << vertex->GetId() << " spilled to fixed slot: " << location.Description();
-#endif
 }
 
 void ArkSteedRegisterAllocator::AllocateByPolicy(ValueVertex *vertex, UnallocatedState &operand)
@@ -1377,10 +1304,6 @@ void ArkSteedRegisterAllocator::AllocateVertexResult(ValueVertex *vertex)
     }
 
     AllocateByPolicy(vertex, operand);
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << 'v' << vertex->GetId()
-                        << " allocated to: " << vertexInfo->GetResult().GetOperand().Description();
-#endif
 
     // Immediately kill the register use if the vertex doesn't have a valid live-range.
     // to do: Remove once we can avoid allocating such registers.
@@ -1388,9 +1311,6 @@ void ArkSteedRegisterAllocator::AllocateVertexResult(ValueVertex *vertex)
     if (!vertexInfo->HasValidLiveRange() && resultLocation.IsAnyRegister()) {
         ASSERT(vertexInfo->HasRegisterResult());
         FreeRegistersUsedBy(vertex);
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << 'v' << vertex->GetId() << " is no more live.";
-#endif
         ASSERT(!vertexInfo->HasRegisterResult());
         ASSERT(vertexInfo->HasNoMoreUses());
     }
@@ -1455,12 +1375,6 @@ bool ArkSteedRegisterAllocator::IsCurrentVertexLastUse(ValueVertex *vertex)
     // Uses the fixed live-range end, not HasNoMoreUses(): reuse callers run
     // before UpdateUse() advances the dynamic next-use for the current input.
     return vertex->GetRegallocInfo()->GetEndId() == currentVertex_->GetId();
-}
-
-void ArkSteedRegisterAllocator::VerifyInputs(Vertex * /*vertex*/)  // to do:
-{
-#ifndef NDEBUG
-#endif
 }
 
 void ArkSteedRegisterAllocator::VerifyRegisterState()  // to do:
@@ -1583,7 +1497,6 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVert
     RegisterMergeState &targetState = *target->GetRegisterMergeState();
     ASSERT(!targetState.IsInitialized());
 
-    bool hasChange = false;
     auto init = [&](auto &registers, auto reg, RegisterState &state) {
         ValueVertex *vertex = nullptr;
         ASSERT(registers.Blocked().IsEmpty());
@@ -1594,10 +1507,7 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVert
             }
         }
         state.SetValue(vertex);
-        // to do: Remove the following debug output
-
         if (vertex != nullptr) {
-            hasChange = true;
             if (target->PredecessorCount() > 1 && !vertex->GetRegallocInfo()->IsLoadable()) {
                 AllocatedState source(
                     LocationState::LocationKind::REGISTER, vertex->GetMachineRepresentation(), reg.Code());
@@ -1605,26 +1515,12 @@ void ArkSteedRegisterAllocator::InitializeBranchTargetRegisterValues(ControlVert
                 AddMoveBeforeCurrentVertex(
                     vertex, source, AllocatedState::Cast(vertex->GetRegallocInfo()->GetSpillSlot()));
             }
-#ifndef NDEBUG
-            LOG_COMPILER(DEBUG) << '\t' << (std::is_same_v<decltype(reg), ArkSteedDoubleRegister> ? "fr" : "r")
-                                << static_cast<unsigned>(reg.Code()) << " <- v" << vertex->GetId();
-#endif
         }
     };
     HoistLoopReloads(target);
     HoistLoopSpills(target);
 
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Initializing register states -> Block #" << target->GetId();
-    DumpCurrentRegisters("Before initializing");
-#endif
-
     ForEachRegisterMergeState(targetState, init);
-#ifndef NDEBUG
-    if (!hasChange) {
-        LOG_COMPILER(DEBUG) << "(Nothing to initialize)";
-    }
-#endif
     ASSERT(targetState.IsInitialized());
 }
 
@@ -1746,11 +1642,6 @@ void ArkSteedRegisterAllocator::MergeRegisterValues(ControlVertex *control, BB *
     auto merge = [&](auto &registers, auto reg, RegisterState &state) {
         MergeRegisterState(registers, reg, state, control, target, predecessorId, predecessorCount);
     };
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Merging register states -> Block #" << target->GetId() << " via predecessor #"
-                        << predecessorId;
-    DumpCurrentRegisters("Before merging");
-#endif
     ForEachRegisterMergeState(targetState, merge);
 }
 
@@ -1873,41 +1764,6 @@ void ArkSteedRegisterAllocator::InitializeRegisterValues(RegisterMergeState &reg
     doubleRegisters_.ClearBlocked();
 }
 
-void ArkSteedRegisterAllocator::DebugDumpRegisterValues(RegisterMergeState &registerState, uint32_t predecessorCount)
-{
-    bool isEmpty = true;
-    auto dumpFn = [&](auto &registers, auto reg, RegisterState &state) {
-        using RegT = decltype(reg);
-        constexpr std::string_view REG_NOTATION = std::is_same_v<RegT, ArkSteedDoubleRegister> ? "fr" : "r";
-
-        ValueVertex *vertex = nullptr;
-        RegisterMergeInfo *mergeInfo = nullptr;
-        state.LoadMergeState(&vertex, &mergeInfo);
-
-        std::ostringstream out;
-        if (mergeInfo != nullptr) {
-            isEmpty = false;
-            out << REG_NOTATION << static_cast<unsigned>(reg.Code()) << ": [M] ";
-            for (uint32_t i = 0; i < predecessorCount; i++) {
-                InstructionOperand operand = mergeInfo->Operand(i);
-                out << operand.Description() << ", ";
-            }
-            LOG_COMPILER(DEBUG) << out.str();
-        } else if (vertex != nullptr) {
-            isEmpty = false;
-            out << REG_NOTATION << static_cast<unsigned>(reg.Code()) << ": [V] ";
-            InstructionOperand operand = vertex->GetRegallocInfo()->GetResult().GetOperand();
-            out << operand.Description();
-            LOG_COMPILER(DEBUG) << out.str();
-        }
-    };
-    ForEachRegisterMergeState(registerState, dumpFn);
-    if (isEmpty) {
-        LOG_COMPILER(DEBUG) << "(Empty register state)";
-        return;
-    }
-}
-
 void ArkSteedRegisterAllocator::ClearRegisters()
 {
     ClearRegisters(generalRegisters_);
@@ -1944,15 +1800,9 @@ void ArkSteedRegisterAllocator::TryAllocatePhisToInput(ChunkVector<PhiVertex *> 
     for (auto &phi : phis) {
         if (!phi->GetRegallocInfo()->HasValidLiveRange()) {
             // Skip dead Phis
-            LOG_COMPILER(DEBUG) << 'v' << phi->GetId() << " is dead Phi. Skipped.";
             continue;
         }
         TryAllocateToInput(phi);
-#ifndef NDEBUG
-        if (phi->GetRegallocInfo()->GetResult().GetOperand().IsAllocated()) {
-            LOG_COMPILER(DEBUG) << "PHI v" << phi->GetId() << " allocated to one of input location.";
-        }
-#endif
     }
 }
 
@@ -1979,11 +1829,6 @@ void ArkSteedRegisterAllocator::TryAllocatePhisToRegister(ChunkVector<PhiVertex 
                 SetLoopPhiRegisterHint(phi, allocation.GetRegister());
             }
         }
-#ifndef NDEBUG
-        if (phi->GetRegallocInfo()->GetResult().GetOperand().IsAllocated()) {
-            LOG_COMPILER(DEBUG) << "PHI v" << phi->GetId() << " allocated to register.";
-        }
-#endif
     }
 }
 
@@ -1999,33 +1844,7 @@ void ArkSteedRegisterAllocator::SpillRemainingPhis(ChunkVector<PhiVertex *> &phi
         }
         AllocateSpillSlot(phi);
         phiInfo->SetResultAllocated(AllocatedState::Cast(phiInfo->GetSpillSlot()));
-#ifndef NDEBUG
-        if (phi->GetRegallocInfo()->GetResult().GetOperand().IsAllocated()) {
-            LOG_COMPILER(DEBUG) << "PHI v" << phi->GetId() << " spilled.";
-        }
-#endif
     }
-}
-
-void ArkSteedRegisterAllocator::LogPhiAllocationResult(ChunkVector<PhiVertex *> &phis)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Phi allocation result:";
-    for (const PhiVertex *phi : phis) {
-        std::ostringstream out;
-        InstructionOperand phiLoc = phi->GetRegallocInfo()->GetResult().GetOperand();
-        out << "\tv" << phi->GetId() << '(' << phiLoc.Description() << ") = phi ";
-        for (uint32_t i = 0, n = phi->GetInputCount(); i < n; i++) {
-            const ValueVertex *input = phi->GetInput(i);
-            InstructionOperand inputLoc = phi->GetRegallocInfo()->GetInputLocation(i)->GetOperand();
-            if (i > 0) {
-                out << ", ";
-            }
-            out << 'v' << input->GetId() << '(' << inputLoc.Description() << ')';
-        }
-        LOG_COMPILER(DEBUG) << out.str();
-    }
-#endif
 }
 
 void ArkSteedRegisterAllocator::AllocatePhis(BB *block)
@@ -2045,29 +1864,8 @@ void ArkSteedRegisterAllocator::AllocatePhis(BB *block)
     // Finally just use a stack slot.
     SpillRemainingPhis(phis);
 
-    LogPhiAllocationResult(phis);
-
     generalRegisters_.ClearBlocked();
     doubleRegisters_.ClearBlocked();
-}
-
-void ArkSteedRegisterAllocator::DumpCurrentRegisters(std::string_view prompt)
-{
-    std::ostringstream out;
-    if (!prompt.empty()) {
-        out << '[' << prompt << "] ";
-    }
-    out << "Current GPR list: Free = " << generalRegisters_.Free().Dump()
-        << ", Blocked = " << generalRegisters_.Blocked().Dump();
-    LOG_COMPILER(DEBUG) << out.str();
-    out.str("");
-    out.clear();
-    if (!prompt.empty()) {
-        out << '[' << prompt << "] ";
-    }
-    out << "Current FPR list: Free = " << doubleRegisters_.Free().Dump()
-        << ", Blocked = " << doubleRegisters_.Blocked().Dump();
-    LOG_COMPILER(DEBUG) << out.str();
 }
 
 }  // namespace panda::ecmascript::arksteed
