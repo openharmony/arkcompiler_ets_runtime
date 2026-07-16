@@ -694,7 +694,10 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t load
     return true;
 }
 
-uintptr_t GetBytecodeOffset(void *ctx, ReadMemFunc readMem, uintptr_t frameType, uintptr_t currentPtr)
+__attribute__((no_sanitize("hwaddress"))) uintptr_t GetBytecodeOffset(void *ctx,
+                                                                      ReadMemFunc readMem,
+                                                                      uintptr_t frameType,
+                                                                      uintptr_t currentPtr)
 {
     // currentPtr points to the frametype.
     uintptr_t bytecodePc = 0;
@@ -812,8 +815,11 @@ uintptr_t ArkGetFunction(void *ctx, ReadMemFunc readMem, uintptr_t currentPtr)
     return function;
 }
 
-bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
-                     uintptr_t &frameType, uintptr_t &pc)
+__attribute__((no_sanitize("hwaddress"))) bool ArkGetNextFrame(void *ctx,
+                                                               ReadMemFunc readMem,
+                                                               uintptr_t &currentPtr,
+                                                               uintptr_t &frameType,
+                                                               uintptr_t &pc)
 {
     currentPtr -= sizeof(FrameType);
     if (!readMem(ctx, currentPtr, &frameType)) {
@@ -994,7 +1000,9 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
     return true;
 }
 
-bool StepArk(void *ctx, ReadMemFunc readMem, ArkStepParam *arkStepParam)
+__attribute__((no_sanitize("hwaddress"))) bool StepArk(void *ctx,
+                                                       ReadMemFunc readMem,
+                                                       ArkStepParam *arkStepParam)
 {
     constexpr size_t FP_SIZE = sizeof(uintptr_t);
     uintptr_t currentPtr = *arkStepParam->fp;
