@@ -66,6 +66,12 @@ public:
     {
         return isConcurrentMarking_;
     }
+
+    bool IsSharedPartialGCMode() const
+    {
+        return gcType_ == TriggerGCType::SHARED_PARTIAL_GC;
+    }
+
     void Mark(TriggerGCType gcType);             // In daemon thread
     void ReMark();                          // In daemon thread
 

@@ -469,4 +469,16 @@ HWTEST_F_L0(SharedPartialGCTest, DisableParallelGCTest)
     EXPECT_FALSE(thread->NeedReadBarrier());
     EXPECT_TRUE(thread->HasSwitchedToStwStub());
 }
+
+HWTEST_F_L0(SharedPartialGCTest, CheckSwitchRBStubTest)
+{
+    instance->GetJSOptions().SetEnableForceGC(false);
+    thread->SetSwitchRBStubRequest(true);
+    thread->CheckSwitchRBStub();
+    EXPECT_TRUE(!thread->HasSwitchedToStwStub());
+    thread->SwitchAllStub(true);
+    thread->SetSwitchRBStubRequest(false);
+    thread->CheckSwitchRBStub();
+    EXPECT_TRUE(thread->HasSwitchedToStwStub());
+}
 } // namespace panda::test
