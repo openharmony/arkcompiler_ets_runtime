@@ -17,6 +17,7 @@
 
 #include "code_data_accessor-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_vreg.h"
+#include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "method_data_accessor-inl.h"  // IWYU pragma: keep
 
@@ -33,6 +34,7 @@ BytecodePreprocessor::BytecodePreprocessor(JitCompilationEnv *env, Chunk *chunk)
       method_(env->GetMethodLiteral()),
       numLocalVRegs_(method_->GetNumVregsWithCallField()),
       numParamVRegs_(method_->GetNumArgsForArkSteed()),
+      bcSizeBytes_(MethodLiteral::GetCodeSize(env_->GetJSPandaFile(), method_->GetMethodId())),
       tryBlocks_(chunk),
       basicBlocks_(chunk),
       bytecodes_(chunk),
@@ -104,6 +106,7 @@ uint32_t BytecodePreprocessor::AppendSyntheticJump(uint32_t targetBlockIndex, ui
         // Synthetic block: Use [NULL_INDEX, NULL_INDEX - 1] to represent an empty range
         .startBcIndex = NULL_INDEX,
         .endBcIndex = NULL_INDEX - 1,
+        .catchBlockState = CatchBlockProfileState::UNKNOWN,
         // No fallthrough
         .fallthroughBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
         .jumpBlock = BLOCK_INDEX_TO_PTR(targetBlockIndex),
@@ -123,24 +126,29 @@ uint32_t BytecodePreprocessor::AppendSyntheticJump(uint32_t targetBlockIndex, ui
 
 bool BytecodePreprocessor::CollectBytecodeInfo()
 {
-    uint32_t bcSizeBytes = MethodLiteral::GetCodeSize(env_->GetJSPandaFile(), method_->GetMethodId());
-    if (bcSizeBytes == 0) {
+    if (bcSizeBytes_ == 0) {
         return false;
     }
-    bytecodes_.reserve(bcSizeBytes);
-    bcIndexOfOffset_.resize(bcSizeBytes + 1, NULL_INDEX);
+    bytecodes_.reserve(bcSizeBytes_);
+    bcIndexOfOffset_.resize(bcSizeBytes_ + 1, NULL_INDEX);
 
     const uint8_t *startPc = env_->GetMethodPcStart();
     BytecodeInstruction bcIns(startPc);
-    BytecodeInstruction bcInsLast = bcIns.JumpTo(bcSizeBytes);
+    BytecodeInstruction bcInsLast = bcIns.JumpTo(bcSizeBytes_);
 
     VRegIDType envVRegIndex = VRegOfLexicalEnv(numLocalVRegs_, numParamVRegs_);
-    auto makeBytecodeDetails = [startPc, envVRegIndex](uint32_t curOffset) {
+    auto jitProfiler = env_->GetPGOProfiler()->GetJITProfile();
+
+    auto makeBytecodeDetails = [startPc, envVRegIndex, jitProfiler](uint32_t curOffset) {
         kungfu::BytecodeInfo res;
         res.SetMetaData(g_bytecodes.GetBytecodeMetaData(startPc + curOffset));
         // For jump instructions, only the opcode metadata is loaded
         if (!res.GetMetaData().IsJump()) {
             kungfu::BytecodeInfo::InitBytecodeInfo(res, startPc + curOffset, curOffset, envVRegIndex);
+        }
+        if (jitProfiler != nullptr) {
+            bool insufficientFlag = jitProfiler->BoolMapContains(static_cast<int32_t>(curOffset));
+            res.SetInsufficientProfile(insufficientFlag);
         }
         return res;
     };
@@ -156,7 +164,7 @@ bool BytecodePreprocessor::CollectBytecodeInfo()
 
     uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
     // May be used in CollectTryCatchBlockInfo() when converting endBcIndex from offset
-    bcIndexOfOffset_[bcSizeBytes] = bcCount;
+    bcIndexOfOffset_[bcSizeBytes_] = bcCount;
 
     jumpTargetBcIndices_.resize(bcCount, NULL_INDEX);
     for (uint32_t i = 0; i < bcCount; i++) {
@@ -169,11 +177,23 @@ bool BytecodePreprocessor::CollectBytecodeInfo()
 
 void BytecodePreprocessor::CollectTryCatchBlockInfo()
 {
+    using CDATryBlock = panda_file::CodeDataAccessor::TryBlock;
+    using CDACatchBlock = panda_file::CodeDataAccessor::CatchBlock;
+
     const panda_file::File *pf = env_->GetJSPandaFile()->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pf, method_->GetMethodId());
     panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
 
-    cda.EnumerateTryBlocks([this](panda_file::CodeDataAccessor::TryBlock &tryBlock) {
+    ChunkSet<uint32_t> catchOffsets(GetChunk());
+    catchOffsets.insert(bcSizeBytes_);
+    cda.EnumerateTryBlocks([&catchOffsets](CDATryBlock &tryBlock) {
+        tryBlock.EnumerateCatchBlocks([&catchOffsets](CDACatchBlock &catchBlock) {
+            catchOffsets.insert(catchBlock.GetHandlerPc());
+            return true;
+        });
+        return true;
+    });
+    cda.EnumerateTryBlocks([this, &catchOffsets](CDATryBlock &tryBlock) {
         // Half-open range [tryStartOffset, tryEndOffset) read from Panda file
         uint32_t tryStartOffset = tryBlock.GetStartPc();
         uint32_t tryEndOffset = tryBlock.GetStartPc() + tryBlock.GetLength();
@@ -184,12 +204,27 @@ void BytecodePreprocessor::CollectTryCatchBlockInfo()
         uint32_t startBcIndex = bcIndexOfOffset_[tryStartOffset];
         uint32_t endBcIndex = bcIndexOfOffset_[tryEndOffset] - 1;
 
-        TryBlockInfo curInfoItem{startBcIndex, endBcIndex, NULL_INDEX};
-        tryBlock.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catchBlock) {
+        TryBlockInfo curInfoItem{startBcIndex, endBcIndex, NULL_INDEX, CatchBlockProfileState::UNKNOWN};
+        tryBlock.EnumerateCatchBlocks([&](CDACatchBlock &catchBlock) {
             uint32_t pcOffset = catchBlock.GetHandlerPc();
             uint32_t catchBcIndex = bcIndexOfOffset_[pcOffset];
             ASSERT(curInfoItem.catchBcIndex == NULL_INDEX && "Expects exactly 1 catch block.");
             curInfoItem.catchBcIndex = catchBcIndex;
+
+            // Code size of catch block is optional in ABC file. Approximate size is taken when codeSize == 0
+            uint32_t catchSize = catchBlock.GetCodeSize();
+            uint32_t catchEndOffset = catchSize == 0 ? *catchOffsets.upper_bound(pcOffset) : pcOffset + catchSize;
+            uint32_t catchEndBcIndex = bcIndexOfOffset_[catchEndOffset];
+
+            // A catch block is assumed to be never-executed if at least 1 bytecode is marked IsInsufficientProfile()
+            for (uint32_t bcIndex = catchBcIndex; bcIndex < catchEndBcIndex; bcIndex++) {
+                if (bytecodes_[bcIndex].IsInsufficientProfile()) {
+                    curInfoItem.catchBlockState = CatchBlockProfileState::NEVER_EXECUTED;
+                    break;
+                }
+            }
+            LOG_COMPILER(DEBUG) << "Exception handler profile state: pc = [" << pcOffset << ", " << catchEndOffset
+                                << "), state = " << CatchBlockProfileStateString(curInfoItem.catchBlockState);
             return true;
         });
         tryBlocks_.push_back(curInfoItem);
@@ -269,6 +304,7 @@ void BytecodePreprocessor::CreateBasicBlocks(const ChunkVector<uint8_t> &blockSt
             .rpoIndex = NULL_INDEX,
             .startBcIndex = startBcIndex,
             .endBcIndex = nextStartBcIndex - 1,
+            .catchBlockState = CatchBlockProfileState::UNKNOWN,
             .fallthroughBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
             .jumpBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
             .catchBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
@@ -342,6 +378,7 @@ void BytecodePreprocessor::InitializeBlockEdges()
         if (innermostTryBlock != nullptr) {
             uint32_t catchBlockIndex = bcBlockIndices_[innermostTryBlock->catchBcIndex] - 1;
             curBlock.catchBlock = BLOCK_INDEX_TO_PTR(catchBlockIndex);
+            curBlock.catchBlockState = innermostTryBlock->catchBlockState;
             basicBlocks_[catchBlockIndex].catchPredecessors.push_back(BLOCK_INDEX_TO_PTR(i));
         }
     }
@@ -818,7 +855,8 @@ std::string BytecodePreprocessor::DumpBasicBlocksString() const
         out << ", endBcIndex = " << PrintIndex(curBlock.endBcIndex);
         out << "\n     fallthroughBlock = " << printBB(curBlock.fallthroughBlock);
         out << "\n     jumpBlock = " << printBB(curBlock.jumpBlock);
-        out << "\n     catchBlock = " << printBB(curBlock.catchBlock);
+        out << "\n     catchBlock = " << printBB(curBlock.catchBlock)
+            << " (" << CatchBlockProfileStateString(curBlock.catchBlockState) << ')';
         out << "\n     loopHeaderBlock = " << printBB(curBlock.loopHeaderBlock);
         out << "\n     loopBackBlock = " << printBB(curBlock.loopBackBlock);
         out << "\n     jumpPredecessors = [";
@@ -848,6 +886,7 @@ std::string BytecodePreprocessor::DumpTryBlocksString() const
         out << "\n[" << std::setw(2) << i << "] startBcIndex = " << curTryBlock.startBcIndex;
         out << "\n     endBcIndex = " << curTryBlock.endBcIndex;
         out << "\n     catchBcIndex = " << curTryBlock.catchBcIndex;
+        out << "\n     catchBlockState = " << CatchBlockProfileStateString(curTryBlock.catchBlockState);
     }
     return std::move(out).str();
 }

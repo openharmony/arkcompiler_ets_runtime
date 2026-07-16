@@ -18,10 +18,15 @@
 
 #include <vector>
 
-#include "ecmascript/common.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript::arksteed {
+
+enum class ExceptionHandlerKind : uint16_t {
+    NONE = 0,
+    COMPILED_CATCH = 1,
+    LAZY_DEOPT = 2,
+};
 
 // ArkSteed-style safepoint table
 //
@@ -37,7 +42,7 @@ namespace panda::ecmascript::arksteed {
 //     uint16_t taggedRegisterIndexes (bitmap: which pushed regs are tagged)
 //     uint32_t deoptOffset         (relative to the table start; 0 if absent)
 //     uint16_t deoptNum            (encoded pairs: <id, value>)
-//     uint16_t reserved
+//     uint16_t exceptionHandlerKind
 //
 // GC scanning:
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
@@ -58,7 +63,7 @@ struct ArkSteedSafepointEntry {
     uint16_t taggedRegisterIndexes;
     uint32_t deoptOffset;
     uint16_t deoptNum;
-    uint16_t reserved;
+    uint16_t exceptionHandlerKind;
 };
 #pragma pack()
 
@@ -92,7 +97,8 @@ public:
     };
 
     Safepoint DefineSafepoint(uint32_t pcOffset);
-    void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts);
+    void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts,
+                              ExceptionHandlerKind exceptionHandlerKind = ExceptionHandlerKind::NONE);
     void SetFrameSlots(uint32_t tagged, uint32_t untagged);
 
     size_t GetTableSize() const;
@@ -141,6 +147,7 @@ public:
 
     const ArkSteedSafepointEntry *FindEntry(uint32_t pcOffset) const;
     void GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const;
+    ExceptionHandlerKind GetExceptionHandlerKind(uint32_t pcOffset) const;
 
     bool IsValid() const
     {
@@ -151,6 +158,7 @@ private:
     const ArkSteedSafepointHeader *header_ = nullptr;
     const ArkSteedSafepointEntry *entries_ = nullptr;
     const uint8_t *data_ = nullptr;
+    size_t size_ = 0;
 };
 
 }  // namespace panda::ecmascript::arksteed

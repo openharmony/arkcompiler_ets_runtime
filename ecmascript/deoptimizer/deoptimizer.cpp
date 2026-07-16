@@ -23,6 +23,10 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/gc_helper.h"
 
+#ifdef ECMASCRIPT_ENABLE_ARK_STEED
+#include "ecmascript/arksteed/arksteed_safepoint_table.h"
+#endif
+
 namespace panda::ecmascript {
 
 extern "C" uintptr_t GetDeoptHandlerAsmOffset(bool isArch32)
@@ -826,9 +830,62 @@ void Deoptimizier::ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread,
 }
 
 // static
+bool Deoptimizier::PrepareForExceptionLazyDeopt(JSThread *thread, JSTaggedType *startFrame)
+{
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    JSTaggedType *current = startFrame;
+    if (current == nullptr) {
+        current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    }
+
+    FrameIterator it(current, thread);
+    uintptr_t *prevReturnAddrAddress = nullptr;
+    FrameType *prevFrameTypeAddress = nullptr;
+    uintptr_t prevFrameCallSiteSp = 0;
+
+    auto doAdvance = [&] {
+        prevReturnAddrAddress = it.GetReturnAddrAddress();
+        prevFrameTypeAddress = it.GetFrameTypeAddress();
+        prevFrameCallSiteSp = it.GetPrevFrameCallSiteSp();
+        it.Advance<GCVisitedFlag::VISITED>();
+    };
+
+    for (; !it.Done(); doAdvance()) {
+        if (!it.IsSteedFunctionFrame()) {
+            continue;
+        }
+        auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+        JSTaggedValue codeValue(machineCodeSlot.GetTaggedType());
+        if (!codeValue.IsMachineCodeObject()) {
+            continue;
+        }
+        MachineCode *machineCode = MachineCode::Cast(codeValue.GetTaggedObject());
+        arksteed::ArkSteedSafepointTable table(
+            machineCode->GetStackMapOrOffsetTableAddress(), machineCode->GetStackMapOrOffsetTableSize());
+        uint32_t returnPcOffset = static_cast<uint32_t>(it.GetOptimizedReturnAddr());
+
+        constexpr auto LAZY_DEOPT = arksteed::ExceptionHandlerKind::LAZY_DEOPT;
+        if (!table.IsValid() || table.GetExceptionHandlerKind(returnPcOffset) != LAZY_DEOPT) {
+            continue;
+        }
+        ASSERT(prevReturnAddrAddress != nullptr);
+        uintptr_t lazyDeoptTrampoline = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_LazyDeoptEntry);
+        if (*prevReturnAddrAddress != lazyDeoptTrampoline) {
+            ReplaceReturnAddrWithLazyDeoptTrampline(
+                thread, prevReturnAddrAddress, prevFrameTypeAddress, prevFrameCallSiteSp);
+            return true;
+        }
+    }
+#else
+    (void)thread;
+#endif
+    return false;
+}
+
+// static
 bool Deoptimizier::IsNeedLazyDeopt(const FrameIterator &it)
 {
-    if (!it.IsOptimizedJSFunctionFrame()) {
+    if (!it.IsOptimizedJSFunctionFrame() && !it.IsSteedFunctionFrame()) {
         return false;
     }
     auto function = it.GetFunction();
@@ -879,16 +936,15 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
 void Deoptimizier::ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint8_t* &resumePc,
                                     AsmInterpretedFrame *statePtr)
 {
-    if (NeedOverwriteAcc(resumePc)) {
+    bool hasPendingException = thread_->HasPendingException();
+    if (!hasPendingException && NeedOverwriteAcc(resumePc)) {
         statePtr->acc = maybeAcc.GetTaggedValue();
     }
 
     // Todo: add check constructor
 
-    if (!thread_->HasPendingException()) {
+    if (!hasPendingException) {
         EcmaOpcode curOpcode = kungfu::Bytecodes::GetOpcode(resumePc);
-        // Avoid adding the PC when a pending exception exists.
-        // Prevents ExceptionHandler from failing to identify try-catch blocks.
         resumePc += (BytecodeInstruction::Size(curOpcode));
     }
 }

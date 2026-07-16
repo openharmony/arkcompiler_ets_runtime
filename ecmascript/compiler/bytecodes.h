@@ -909,6 +909,11 @@ public:
         return isInsufficientProfile_;
     }
 
+    inline void SetInsufficientProfile(bool isInsufficientProfile)
+    {
+        isInsufficientProfile_ = isInsufficientProfile;
+    }
+
     static void InitBytecodeInfo(BytecodeCircuitBuilder *builder,
                                  BytecodeInfo &info, const uint8_t* pc);
     static void InitBytecodeInfo(BytecodeInfo &info, const uint8_t* pc,

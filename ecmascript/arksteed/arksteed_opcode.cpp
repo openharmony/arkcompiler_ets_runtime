@@ -34,11 +34,8 @@ void UseDeoptFrameSlots(Vertex *vertex, const DeoptimizableMixin *deopt)
 
 // Helper function for stub calls (CallRuntime, CallCommonStub)
 // Uses C calling convention (CCallConv) in arksteed
-void SetStubValueLocationConstraints(Vertex *vertex)
+void SetStubValueLocationConstraints(Vertex *vertex, size_t inputCount)
 {
-    size_t inputCount = static_cast<size_t>(vertex->GetInputCount());
-    // For parameters that fit in argument registers, use fixed registers
-    // For additional parameters, allow them to be in register or slot
     for (size_t paramIdx = 0; paramIdx < inputCount; paramIdx++) {
         if (paramIdx < static_cast<size_t>(ArkSteedAssembler::NUM_ARG_REGISTERS)) {
             ArkSteedRegister paramReg = ArkSteedAssembler::GetParameterRegister(static_cast<int>(paramIdx));
@@ -155,12 +152,13 @@ void CallRuntimeVertex::SetValueLocationConstraints()
     DefineAsFixed(this, 0);
 
     // Set parameter location constraints using helper function
-    SetStubValueLocationConstraints(this);
+    SetStubValueLocationConstraints(this, GetArgCount());
+    UseDeoptFrameSlots(this, this);
 }
 
 void CallRuntimeVertex::Dump(std::ostream &output) const
 {
-    output << "  CallRuntime (id=" << static_cast<int>(GetRuntimeStubID()) << ") with " << GetInputCount() << " args";
+    output << "  CallRuntime (id=" << static_cast<int>(GetRuntimeStubID()) << ") with " << GetArgCount() << " args";
 }
 
 void CallVertex::SetValueLocationConstraints()
@@ -176,9 +174,10 @@ void CallVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 #endif
     UseRegister(Arg(TARGET_INDEX));
-    for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
+    for (uint32_t i = NEW_TARGET_INDEX; i < FirstDeoptInputIndex(); i++) {
         UseAny(Arg(i));
     }
+    UseDeoptFrameSlots(this, this);
 }
 
 void CallVertex::Dump(std::ostream &output) const
@@ -192,12 +191,13 @@ void CallCommonStubVertex::SetValueLocationConstraints()
     DefineAsFixed(this, 0);
 
     // Set parameter location constraints using helper function
-    SetStubValueLocationConstraints(this);
+    SetStubValueLocationConstraints(this, GetArgCount());
+    UseDeoptFrameSlots(this, this);
 }
 
 void CallCommonStubVertex::Dump(std::ostream &output) const
 {
-    output << "  CallCommonStub (id=" << GetCommonStubID() << ") with " << GetInputCount() << " args";
+    output << "  CallCommonStub (id=" << GetCommonStubID() << ") with " << GetArgCount() << " args";
 }
 
 void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
@@ -515,7 +515,7 @@ void TaggedNotEqualVertex::Dump(std::ostream &output) const
 void StringEqualVertex::SetValueLocationConstraints()
 {
     DefineAsFixed(this, 0);
-    SetStubValueLocationConstraints(this);
+    SetStubValueLocationConstraints(this, GetInputCount());
 }
 
 void StringEqualVertex::Dump(std::ostream &output) const
@@ -953,7 +953,7 @@ void ReturnVertex::Dump(std::ostream &output) const
 
 void ThrowVertex::SetValueLocationConstraints()
 {
-    SetStubValueLocationConstraints(this);
+    SetStubValueLocationConstraints(this, GetArgCount());
 }
 
 void ThrowVertex::Dump(std::ostream &output) const

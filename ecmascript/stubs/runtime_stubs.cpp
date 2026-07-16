@@ -26,6 +26,7 @@
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_function.h"
@@ -86,6 +87,21 @@ namespace panda::ecmascript {
 
 #define GET_ASM_FRAME(CurrentSp) \
     (reinterpret_cast<AsmInterpretedFrame *>(CurrentSp) - 1) // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+extern "C" bool PrepareForExceptionLazyDeopt(uintptr_t argGlue)
+{
+    return Deoptimizier::PrepareForExceptionLazyDeopt(JSThread::GlueToJSThread(argGlue));
+}
+
+extern "C" bool PrepareForExceptionLazyDeoptFromLeaveFrame(uintptr_t argGlue)
+{
+    JSThread *thread = JSThread::GlueToJSThread(argGlue);
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+        return false;
+    }
+    auto *lastLeave = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
+    return Deoptimizier::PrepareForExceptionLazyDeopt(thread, lastLeave);
+}
 
 DEF_RUNTIME_STUBS(InitializeGeneratorFunction)
 {
@@ -1935,6 +1951,16 @@ DEF_RUNTIME_STUBS(OptCreateObjectWithExcludedKeys)
 DEF_RUNTIME_STUBS(UpFrame)
 {
     RUNTIME_STUBS_HEADER(UpFrame);
+    constexpr int32_t PREPARE_EXCEPTION_LAZY_DEOPT = 1;
+    if (argc == 1 && GetArg(argv, argc, 0).GetInt() == PREPARE_EXCEPTION_LAZY_DEOPT) {
+        if (thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+            PrepareForExceptionLazyDeoptFromLeaveFrame(thread->GetGlueAddr());
+        }
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+        PrepareForExceptionLazyDeopt(thread->GetGlueAddr());
+    }
     FrameHandler frameHandler(thread);
     uint32_t pcOffset = panda_file::INVALID_OFFSET;
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {

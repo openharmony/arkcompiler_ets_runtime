@@ -69,6 +69,11 @@ public:
     {
         return bcOffsetBoolMap_;
     }
+    bool BoolMapContains(int32_t bcOffset) const
+    {
+        auto iter = bcOffsetBoolMap_.find(bcOffset);
+        return iter != bcOffsetBoolMap_.end() && iter->second;
+    }
     void InitJITProfiler()
     {
         mainThread_ = vm_->GetJSThread();

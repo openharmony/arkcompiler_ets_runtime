@@ -48,6 +48,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
                                               uintptr_t prevFp);
 
 PUBLIC_API extern "C" JSTaggedType LazyDeoptEntry();
+PUBLIC_API extern "C" bool PrepareForExceptionLazyDeopt(uintptr_t argGlue);
+PUBLIC_API extern "C" bool PrepareForExceptionLazyDeoptFromLeaveFrame(uintptr_t argGlue);
+
 class RuntimeStubs {
 public:
     static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);

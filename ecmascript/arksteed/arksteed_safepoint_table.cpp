@@ -90,7 +90,8 @@ ArkSteedSafepointTableBuilder::Safepoint ArkSteedSafepointTableBuilder::DefineSa
     return Safepoint(&entries_.back());
 }
 
-void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts)
+void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(
+    uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts, ExceptionHandlerKind exceptionHandlerKind)
 {
     if (entries_.empty()) {
         deoptSideTable_.clear();
@@ -98,9 +99,21 @@ void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(uint32_t pcOffset, std:
     std::sort(deopts.begin(), deopts.end(), [](const kungfu::ARKDeopt &lhs, const kungfu::ARKDeopt &rhs) {
         return lhs.id < rhs.id;
     });
+    ASSERT(deopts.size() <= UINT16_MAX / DEOPT_ENTRY_SIZE);
     entries_.push_back(NewEntry(pcOffset));
     entries_.back().deoptNum = static_cast<uint16_t>(deopts.size() * DEOPT_ENTRY_SIZE);
+    entries_.back().exceptionHandlerKind = static_cast<uint16_t>(exceptionHandlerKind);
     deoptSideTable_.push_back(std::move(deopts));
+}
+
+ExceptionHandlerKind ArkSteedSafepointTable::GetExceptionHandlerKind(uint32_t pcOffset) const
+{
+    const ArkSteedSafepointEntry *entry = FindEntry(pcOffset);
+    if (entry == nullptr || entry->pcOffset != pcOffset) {
+        return ExceptionHandlerKind::NONE;
+    }
+    ASSERT(entry->exceptionHandlerKind <= static_cast<uint16_t>(ExceptionHandlerKind::LAZY_DEOPT));
+    return static_cast<ExceptionHandlerKind>(entry->exceptionHandlerKind);
 }
 
 void ArkSteedSafepointTableBuilder::SetFrameSlots(uint32_t tagged, uint32_t untagged)
@@ -173,9 +186,10 @@ ArkSteedSafepointTable::ArkSteedSafepointTable(const uint8_t *data, size_t size)
         return;
     }
     data_ = data;
+    size_ = size;
     header_ = reinterpret_cast<const ArkSteedSafepointHeader *>(data);
-    size_t expectedSize = sizeof(ArkSteedSafepointHeader) + header_->numEntries * sizeof(ArkSteedSafepointEntry);
-    if (size < expectedSize) {
+    size_t entriesCapacity = (size - sizeof(ArkSteedSafepointHeader)) / sizeof(ArkSteedSafepointEntry);
+    if (header_->numEntries > entriesCapacity) {
         header_ = nullptr;
         return;
     }
@@ -214,11 +228,15 @@ void ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu:
     }
 
     uint32_t offset = entry->deoptOffset;
+    size_t entriesEnd = sizeof(ArkSteedSafepointHeader) + header_->numEntries * sizeof(ArkSteedSafepointEntry);
+    ASSERT(offset >= entriesEnd && offset < size_);
     ASSERT(entry->deoptNum % DEOPT_ENTRY_SIZE == 0);
     for (uint32_t i = 0; i < entry->deoptNum; i += DEOPT_ENTRY_SIZE) {
+        ASSERT(offset < size_);
         auto [vregsInfo, vregsInfoSize, infoIsFull] =
             panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
         (void)infoIsFull;
+        ASSERT(vregsInfoSize > 0 && vregsInfoSize <= size_ - offset);
         kungfu::LLVMStackMapType::KindType kindType;
         kungfu::ARKDeopt deopt;
         kungfu::LLVMStackMapType::DecodeVRegsInfo(vregsInfo, deopt.id, kindType);
@@ -226,9 +244,11 @@ void ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu:
         ASSERT(kindType == kungfu::LLVMStackMapType::CONSTANT_TYPE ||
                kindType == kungfu::LLVMStackMapType::OFFSET_TYPE);
         if (kindType == kungfu::LLVMStackMapType::CONSTANT_TYPE) {
+            ASSERT(offset < size_);
             auto [constant, constantSize, constIsFull] =
                 panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
             (void)constIsFull;
+            ASSERT(constantSize > 0 && constantSize <= size_ - offset);
             if (constant > INT32_MAX || constant < INT32_MIN) {
                 deopt.kind = kungfu::LocationTy::Kind::CONSTANTNDEX;
                 deopt.value = static_cast<kungfu::LLVMStackMapType::LargeInt>(constant);
@@ -238,9 +258,11 @@ void ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu:
             }
             offset += constantSize;
         } else {
+            ASSERT(offset < size_);
             auto [regOffset, regOffsetSize, regOffIsFull] =
                 panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
             (void)regOffIsFull;
+            ASSERT(regOffsetSize > 0 && regOffsetSize <= size_ - offset);
             kungfu::LLVMStackMapType::DwarfRegType reg;
             kungfu::LLVMStackMapType::OffsetType stackOffset;
             kungfu::LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, stackOffset);

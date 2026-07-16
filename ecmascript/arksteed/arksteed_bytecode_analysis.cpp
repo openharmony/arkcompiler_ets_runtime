@@ -146,6 +146,8 @@ bool BytecodeAnalysis::UpdateLiveness()
 {
     bool hasChange = false;
     kungfu::BitSet temp(GetChunk(), numVRegs_);
+    kungfu::BitSet newLiveIn(GetChunk(), numVRegs_);
+    kungfu::BitSet exceptionalUE(GetChunk(), numVRegs_);
 
     uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
     for (uint32_t i = numBlocks - 1; i != static_cast<uint32_t>(-1); i--) {
@@ -156,31 +158,60 @@ bool BytecodeAnalysis::UpdateLiveness()
                 temp.Union(liveIn_[succBlock->rpoIndex]);
             }
         }
-        if (curBlock->catchBlock != nullptr) {
-            // Whether Acc will be used by some non-catch successor
-            bool accWasLive = TestAcc(temp);
-            temp.Union(liveIn_[curBlock->catchBlock->rpoIndex]);
-            // Acc will be overwritten by the exception object.
-            if (!accWasLive) {
-                ClearAcc(temp);
-            }
+
+        if (!temp.Equals(liveOut_[i])) {
+            hasChange = true;
+            liveOut_[i].CopyFrom(temp);
         }
-        if (temp.Equals(liveOut_[i])) {
-            continue;  // No change
+
+        newLiveIn.CopyFrom(liveOut_[i]);
+        newLiveIn.Exclude(killSet_[i]);
+        newLiveIn.Union(ueSet_[i]);
+
+        exceptionalUE.Reset();
+        ComputeExceptionalUE(i, exceptionalUE);
+        newLiveIn.Union(exceptionalUE);
+
+        if (!newLiveIn.Equals(liveIn_[i])) {
+            hasChange = true;
+            liveIn_[i].CopyFrom(newLiveIn);
         }
-        hasChange = true;
-        liveOut_[i].CopyFrom(temp);
-        UpdateLiveIn(i);
     }
     return hasChange;
 }
 
-// LiveIn(B) = UESet(B) ⋃ (LiveOut(B) - KillSet(B))
-void BytecodeAnalysis::UpdateLiveIn(uint32_t blockIndex)
+void BytecodeAnalysis::UpdateKilledBefore(const BytecodeInfo *info, kungfu::BitSet &killedBefore)
 {
-    liveIn_[blockIndex].CopyFrom(liveOut_[blockIndex]);
-    liveIn_[blockIndex].Exclude(killSet_[blockIndex]);
-    liveIn_[blockIndex].Union(ueSet_[blockIndex]);
+    if (info->AccOut()) {
+        SetAcc(killedBefore);
+    }
+    if (info->EnvOut()) {
+        VRegIDType lexicalEnv = numVRegs_ - EXTRA_VREG_COUNT + LEXICAL_ENV_EXTRA_INDEX;
+        SetVReg(killedBefore, lexicalEnv);
+    }
+    for (VRegIDType out : info->vregOut) {
+        SetVReg(killedBefore, out);
+    }
+}
+
+void BytecodeAnalysis::ComputeExceptionalUE(uint32_t blockIndex, kungfu::BitSet &exceptionalUE)
+{
+    const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(blockIndex);
+    if (curBlock->catchBlock == nullptr) {
+        return;
+    }
+    kungfu::BitSet killedBefore(GetChunk(), numVRegs_);
+    kungfu::BitSet liveAtThrow(GetChunk(), numVRegs_);
+    for (uint32_t bcIndex = curBlock->startBcIndex; bcIndex <= curBlock->endBcIndex; ++bcIndex) {
+        const BytecodeInfo *curBc = parent_->GetBytecode(bcIndex);
+        if (curBc->IsGeneral() && !curBc->NoThrow()) {
+            liveAtThrow.CopyFrom(liveIn_[curBlock->catchBlock->rpoIndex]);
+            liveAtThrow.Exclude(killedBefore);
+            ClearAcc(liveAtThrow);
+            exceptionalUE.Union(liveAtThrow);
+        }
+        UpdateKilledBefore(curBc, killedBefore);
+    }
 }
 
 std::string BytecodeAnalysis::Dump() const

@@ -59,6 +59,11 @@ private:
         return &preproc_->GetEnv()->GetJSOptions();
     }
 
+    bool IsExceptionLazyDeoptEnabled() const
+    {
+        return GetOptions()->IsEnableJitLazyDeopt();
+    }
+
     void DebugLog();
     void InitializeStartBlock(SharedBCFrameState frameState);
     void ProcessDeadBasicBlock(uint32_t rpoIndex);

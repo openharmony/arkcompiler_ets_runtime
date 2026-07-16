@@ -74,7 +74,7 @@ private:
     void FinalizeWithFixedParamsAndEnv();
 
     bool UpdateLiveness();
-    void UpdateLiveIn(uint32_t blockIndex);
+    void ComputeExceptionalUE(uint32_t blockIndex, kungfu::BitSet &exceptionalUE);
 
     void SetAcc(kungfu::BitSet &bitset)
     {
@@ -100,6 +100,8 @@ private:
         ASSERT(vreg < numVRegs_);
         return bitset.TestBit(vreg);
     }
+
+    void UpdateKilledBefore(const BytecodeInfo *info, kungfu::BitSet &killedBefore);
 
     std::string DumpBitset(const kungfu::BitSet &bitset) const;
 

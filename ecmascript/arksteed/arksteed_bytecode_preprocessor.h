@@ -24,6 +24,23 @@
 namespace panda::ecmascript::arksteed {
 using BytecodeInfo = kungfu::BytecodeInfo;
 
+enum class CatchBlockProfileState : uint8_t {
+    UNKNOWN = 0,
+    NEVER_EXECUTED = 1,
+};
+
+constexpr const char *CatchBlockProfileStateString(CatchBlockProfileState state)
+{
+    switch (state) {
+        case CatchBlockProfileState::UNKNOWN:
+            return "unknown";
+        case CatchBlockProfileState::NEVER_EXECUTED:
+            return "never_executed";
+        default:
+            return "<INVALID>";
+    }
+}
+
 class BytecodePreprocessor {
 public:
     static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
@@ -34,6 +51,8 @@ public:
         uint32_t endBcIndex;
         // Start position of the innermost catch block
         uint32_t catchBcIndex;
+        // Whether the catch block is executed
+        CatchBlockProfileState catchBlockState;
 
         bool ContainsBytecode(uint32_t bcIndex) const;
     };
@@ -46,6 +65,8 @@ public:
         // the range is [NULL_INDEX, NULL_INDEX - 1].
         uint32_t startBcIndex;
         uint32_t endBcIndex;
+        // State of catchBlock (moved here for better object layout).
+        CatchBlockProfileState catchBlockState;
         // nullptr if this block is terminating (RETURN, THROW) or unconditional jump.
         const BasicBlockInfo *fallthroughBlock;
         // nullptr if this block is not a jump.
@@ -167,6 +188,7 @@ private:
 
     VRegIDType numLocalVRegs_;
     VRegIDType numParamVRegs_;
+    uint32_t bcSizeBytes_;
 
     ChunkVector<TryBlockInfo> tryBlocks_;
     ChunkVector<BasicBlockInfo> basicBlocks_;

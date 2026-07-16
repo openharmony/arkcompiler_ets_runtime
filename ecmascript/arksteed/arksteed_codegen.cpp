@@ -481,6 +481,23 @@ void EmitUseSlotDeopt(ArkSteedAssembler *assembler_, ArkSteedSafepointTableBuild
     safepointBuilder->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts));
 }
 
+template <class CallVertexT>
+void EmitExceptionLazyDeoptSafepoint(ArkSteedAssembler *assembler_,
+                                     ArkSteedSafepointTableBuilder *safepointBuilder,
+                                     const CallVertexT *call)
+{
+    ASSERT(safepointBuilder != nullptr);
+    ASSERT(call->GetExceptionHandlingMode() == ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT);
+    ASSERT(call->DeoptInputCount() > 0);
+
+    std::vector<kungfu::ARKDeopt> deopts;
+    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
+    for (uint32_t index = 0; index < call->DeoptInputCount(); ++index) {
+        AppendDeoptInput(&deopts, call, call->DeoptInputIndex(index), call->GetDeoptVReg(index), assembler_);
+    }
+    safepointBuilder->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts), ExceptionHandlerKind::LAZY_DEOPT);
+}
+
 Condition ConditionFromIntCondition(IntConditionKind condition)
 {
     switch (condition) {
@@ -743,7 +760,11 @@ void ArkSteedCodeGenerator::EmitCallArkSteed(CallVertex *call, ArkSteedRegister 
     ArkSteedRegister codeEntry = scope.AcquireScratch();
     __ PrepareSteedCalleeContext(target, codeEntry);
     __ Call(codeEntry);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    if (call->GetExceptionHandlingMode() == ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT) {
+        EmitExceptionLazyDeoptSafepoint(assembler_, safepointBuilder_, call);
+    } else {
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
     FreeArkSteedCallFrame(call);
     __ Jump(exit);
 }
@@ -752,8 +773,42 @@ void ArkSteedCodeGenerator::EmitCallGeneric(CallVertex *call, ArkSteedRegister s
 {
     int stackArgCount = PrepareTrampolineArguments(call, scratch);
     __ CallTrampoline(RTSTUB_ID(JSCall));
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    if (call->GetExceptionHandlingMode() == ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT) {
+        EmitExceptionLazyDeoptSafepoint(assembler_, safepointBuilder_, call);
+    } else {
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
     __ FreeCallArgSlots(stackArgCount);
+}
+
+void ArkSteedCodeGenerator::EmitReturnWithPendingException()
+{
+    constexpr auto stubId = kungfu::RuntimeStubCSigns::ID_UpFrame;
+    constexpr int stackArgCount = 4;
+    constexpr int argCount = 1;
+    constexpr int prepareExceptionLazyDeopt = 1;
+    __ ReserveCallArgSlots(stackArgCount);
+    {
+        TemporaryRegisterScope scope(assembler_);
+        ArkSteedRegister scratch = scope.AcquireScratch();
+        __ Move(scratch, static_cast<int64_t>(stubId));
+        __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG0), scratch);
+        __ Move(scratch, argCount);
+        __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG1), scratch);
+        __ Move(scratch, JSTaggedValue(prepareExceptionLazyDeopt).GetRawData());
+        __ MoveRepr(MachineRepresentation::Tagged, __ GetCallArgSlot(CALL_ARG2), scratch);
+    }
+    __ CallRuntime(stubId);
+    __ FreeCallArgSlots(stackArgCount);
+    __ ReturnWithPendingException();
+}
+
+void ArkSteedCodeGenerator::EmitReturnIfPendingException()
+{
+    Label noPendingException;
+    __ BranchIfNoPendingException(&noPendingException);
+    EmitReturnWithPendingException();
+    __ Bind(&noPendingException);
 }
 
 int ArkSteedCodeGenerator::PrepareTrampolineArguments(CallVertex *call, ArkSteedRegister scratch)
@@ -794,12 +849,16 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallRuntimeVertex>(CallRuntime
     LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << callRuntime->GetId() << ": CallRuntimeVertex";
 #endif
 
-    int stackArgCount = PrepareRuntimeStubStackArguments(callRuntime,
-                                                         callRuntime->GetArgCount(),
-                                                         static_cast<int>(callRuntime->GetRuntimeStubID()));
+    int stackArgCount = PrepareRuntimeStubStackArguments(
+        callRuntime, callRuntime->GetArgCount(), static_cast<int>(callRuntime->GetRuntimeStubID()));
     __ CallRuntime(callRuntime->GetRuntimeStubID());
-    __ FreeCallArgSlots(stackArgCount);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    if (callRuntime->GetExceptionHandlingMode() == ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT) {
+        EmitExceptionLazyDeoptSafepoint(assembler_, safepointBuilder_, callRuntime);
+        __ FreeCallArgSlots(stackArgCount);
+    } else {
+        __ FreeCallArgSlots(stackArgCount);
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
 }
 
 template <>
@@ -1956,7 +2015,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallComm
 #endif
     int stackArgCount = PrepareCommonStubStackArguments(callCommonStub, callCommonStub->GetArgCount());
     __ CallCommonStub(callCommonStub->GetCommonStubID());
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    if (callCommonStub->GetExceptionHandlingMode() == ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT) {
+        EmitExceptionLazyDeoptSafepoint(assembler_, safepointBuilder_, callCommonStub);
+    } else {
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
     __ FreeCallArgSlots(stackArgCount);
 }
 
@@ -2243,7 +2306,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<ThrowVertex>(ThrowVertex *throws)
         DeconstructPhisInSuccessor(catchBlock, catchPredId);
         __ Jump(catchBlock->GetLabel());
     } else {
-        __ ReturnWithPendingException();
+        EmitReturnWithPendingException();
     }
 }
 
@@ -2352,6 +2415,10 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
     }
 
     if (vertex->GetProperties().CanThrow() || vertex->GetProperties().IsAnyCall()) {
+        if (ExceptionHandlingModeOf(vertex) == ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT) {
+            ASSERT(CatchBlockOf(vertex) == nullptr);
+            return;
+        }
         if (BB *catchBlock = CatchBlockOf(vertex)) {
             Label noException;
             __ BranchIfNoPendingException(&noException);
@@ -2359,7 +2426,7 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
             __ Jump(catchBlock->GetLabel());
             __ Bind(&noException);
         } else {
-            __ ReturnIfPendingException();
+            EmitReturnIfPendingException();
         }
     }
 }
@@ -2385,7 +2452,7 @@ void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
             break;
     }
     if (!vertex->Is<ThrowVertex>()) {
-        __ ReturnIfPendingException();
+        EmitReturnIfPendingException();
     }
 }
 

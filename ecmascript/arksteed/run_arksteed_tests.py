@@ -442,6 +442,8 @@ class RunContext:
     check_live_range_flag: bool = False
     hotness_threshold: int = 1
     enable_heap_verify: bool = False
+    disable_lazy_deopt: bool = False
+    trace_lazy_deopt: bool = False
 
 
 def run_command_real_time(
@@ -619,6 +621,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Enable heap verification in ark_js_vm (passes --enable-heap-verify=true)",
+    )
+    parser.add_argument(
+        "--trace-lazy-deopt",
+        action="store_true",
+        default=False,
+        help="Trace lazy deoptimization (passes --compiler-enable-lazy-deopt-trace=true)",
+    )
+    parser.add_argument(
+        "--disable-lazy-deopt",
+        action="store_true",
+        default=False,
+        help="Disable JIT lazy deoptimization (enabled by default)",
     )
     parser.add_argument(
         "--external-repo",
@@ -1217,7 +1231,7 @@ def check_live_range(output: str) -> Tuple[bool, int, int, List[str]]:
     graphs. Split by compiler section so vN uses are compared only within the
     graph that defines them.
     """
-    sections = re.split(r"(?=^\[compiler\] Starts compiling )", output, flags=re.MULTILINE)
+    sections = re.split(r"(?=^\[compiler\] ArkSteedCompilerTask: Starts compiling )", output, flags=re.MULTILINE)
     total_errors = 0
     total_ok_count = 0
     all_errors: List[str] = []
@@ -1283,7 +1297,7 @@ def run_ark_vm(
         print(f"Error: ark_js_vm does not exist: {tools.ark_js_vm}", file=sys.stderr)
         return None, "", "", False
 
-    cmd = [str(tools.ark_js_vm)] + BASE_ARGS + extra_args
+    cmd = [str(tools.ark_js_vm)] + BASE_ARGS
     if tools.stub_file is not None:
         cmd.append(f"--stub-file={tools.stub_file}")
     if tools.icu_data_path is not None:
@@ -1302,6 +1316,11 @@ def run_ark_vm(
     cmd.append("--open-ark-tools=true")
     if ctx.enable_heap_verify:
         cmd.append("--enable-heap-verify=true")
+    cmd.append(f"--compiler-enable-jit-lazy-deopt={str(not ctx.disable_lazy_deopt).lower()}")
+    if ctx.trace_lazy_deopt:
+        cmd.append("--compiler-enable-lazy-deopt-trace=true")
+    # extra_args (from extra_options.txt) come last so they override script defaults
+    cmd.extend(extra_args)
     cmd.extend([f"--entry-point={entry_point}", str(abc_path)])
     cmd_str = " ".join(cmd)
 
@@ -1415,10 +1434,12 @@ def execute_test_case(
     else:
         entry_point = entry_point or test.ts_stem
 
+    extra_args = read_extra_options(test.extra_options_file)
+
     return run_ark_vm(
         test.abc_path,
         entry_point,
-        read_extra_options(test.extra_options_file),
+        extra_args,
         tools,
         ctx,
     )
@@ -2492,6 +2513,8 @@ def main() -> None:
         check_live_range_flag=check_live_range_flag,
         hotness_threshold=args.hotness_threshold,
         enable_heap_verify=args.enable_heap_verify,
+        disable_lazy_deopt=args.disable_lazy_deopt,
+        trace_lazy_deopt=args.trace_lazy_deopt,
     )
 
     all_failed = 0

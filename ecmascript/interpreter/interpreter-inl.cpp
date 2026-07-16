@@ -4004,6 +4004,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(CALLRUNTIME_ISFALSE_PREF_IMM8);
     }
     NOPRINT_HANDLE_OPCODE(EXCEPTION) {
+        if (thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+            PrepareForExceptionLazyDeopt(thread->GetGlueAddr());
+        }
         FrameHandler frameHandler(thread);
         uint32_t pcOffset = panda_file::INVALID_OFFSET;
         for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {

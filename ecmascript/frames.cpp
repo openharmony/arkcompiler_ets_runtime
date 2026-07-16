@@ -455,6 +455,7 @@ void FrameIterator::Advance()
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
+                needCheckLazyDeoptFrame = true;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -547,6 +548,10 @@ uintptr_t *FrameIterator::GetReturnAddrAddress() const
         }
         case FrameType::ASM_INTERPRETER_BRIDGE_FRAME : {
             auto frame = GetFrame<AsmInterpretedBridgeFrame>();
+            return const_cast<uintptr_t *>(frame->GetReturnAddrAddress());
+        }
+        case FrameType::STEED_FUNCTION_FRAME: {
+            auto frame = GetFrame<SteedFunctionFrame>();
             return const_cast<uintptr_t *>(frame->GetReturnAddrAddress());
         }
         default:

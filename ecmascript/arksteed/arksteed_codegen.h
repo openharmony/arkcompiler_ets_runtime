@@ -71,6 +71,8 @@ private:
     void FreeArkSteedCallFrame(CallVertex *call);
     void EmitCallArkSteed(CallVertex *call, ArkSteedRegister target, ArkSteedRegister scratch, Label *exit);
     void EmitCallGeneric(CallVertex *call, ArkSteedRegister scratch);
+    void EmitReturnWithPendingException();
+    void EmitReturnIfPendingException();
     int PrepareTrampolineArguments(CallVertex *call, ArkSteedRegister scratch);
 
     template <class VertexT>

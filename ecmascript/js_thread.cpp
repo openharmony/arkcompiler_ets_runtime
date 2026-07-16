@@ -24,6 +24,7 @@
 #include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/runtime.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/ic/mega_ic_cache.h"
@@ -337,6 +338,11 @@ void JSThread::SetException(JSTaggedValue exception)
 {
     glueData_.lastException_ = exception;
     glueData_.exception_ = exception;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    if (vm_->GetJSOptions().IsEnableJitLazyDeopt()) {
+        PrepareForExceptionLazyDeopt(GetGlueAddr());
+    }
+#endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
     if (vm_->GetJSOptions().EnableExceptionBacktrace()) {
         LOG_ECMA(INFO) << "SetException:" << exception.GetRawData();

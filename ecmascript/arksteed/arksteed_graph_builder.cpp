@@ -567,7 +567,13 @@ void GraphBuilder::InitializeStartBlock(SharedBCFrameState frameState)
 
     if (GetOptions()->GetCompilerArkSteedPrintMethodName()) {
         ValueVertex *jsFunc = frameState.Get(VRegOfParam(numLocal_, CALL_TARGET_PARAM_INDEX));
-        NewVertex<CallRuntimeVertex>(compileInfoFacts_[0], blocks_[0], {jsFunc}, RTSTUB_ID(PrintMethodName));
+        DeoptMetadata deoptData{
+            .deoptVRegs = ChunkVector<VRegIDType>(chunk_),
+            .firstDeoptInputIndex = 1,
+            .bytecodeOffset = 0
+        };
+        NewVertex<CallRuntimeVertex>(
+            compileInfoFacts_[0], blocks_[0], {jsFunc}, std::move(deoptData), RTSTUB_ID(PrintMethodName));
     }
 
     FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
@@ -635,6 +641,8 @@ void GraphBuilder::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t
     InitFrameStateForCatchBlockHeader(frameState, rpoIndex);
 
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(bcBlock->jumpBlock != nullptr && !bcBlock->jumpBlock->IsSynthetic());
+
     // Catch block header is always synthetic. Only an unconditional jump.
     ASSERT(bcBlock->IsJump());
     FinishBlockWithJump(blocks_[rpoIndex], ActivateNonCatchBlock(bcBlock->jumpBlock->rpoIndex));
@@ -2219,13 +2227,33 @@ struct GraphBuilder::BytecodeVisitor {
 
     // -------- Category #8: Function Calls --------
 
+    template <class InputRange>
+    CallVertex *BuildCallVertex(const InputRange &callInputs, uint32_t actualArgc)
+    {
+        std::vector<ValueVertex *> inputs(std::begin(callInputs), std::end(callInputs));
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = static_cast<uint32_t>(inputs.size());
+        if (blockInfo->catchBlock != nullptr &&
+            blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED &&
+            self->IsExceptionLazyDeoptEnabled()) {
+            AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        }
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
+        return self->NewVertex<CallVertex>(
+            compileInfoFacts_, currentBlock, inputs, std::move(deoptData), actualArgc);
+    }
+
     void LowerCallArg0()
     {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, undefined}, CALL_ARG0);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, undefined}, CALL_ARG0);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2236,8 +2264,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, undefined, a0Value}, CALL_ARG1);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, undefined, a0Value}, CALL_ARG1);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2249,8 +2277,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2263,8 +2291,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2275,8 +2303,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, thisObj}, CALL_ARG0);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, thisObj}, CALL_ARG0);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2288,8 +2316,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, thisObj, a0Value}, CALL_ARG1);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, thisObj, a0Value}, CALL_ARG1);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2302,8 +2330,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2317,8 +2345,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, {func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2335,7 +2363,7 @@ struct GraphBuilder::BytecodeVisitor {
         for (uint32_t idx = 0; idx < inputSize; idx++) {
             args.push_back(LoadRegister(bcInfo, static_cast<int>(idx)));
         }
-        CallVertex *call = self->NewVertex<CallVertex>(compileInfoFacts_, currentBlock, args, inputSize);
+        CallVertex *call = BuildCallVertex(args, inputSize);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -2354,7 +2382,7 @@ struct GraphBuilder::BytecodeVisitor {
         for (uint32_t idx = 0; idx < argc; idx++) {
             args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));
         }
-        CallVertex *call = self->NewVertex<CallVertex>(compileInfoFacts_, currentBlock, args, argc);
+        CallVertex *call = BuildCallVertex(args, argc);
         UpdateCatchBlockData(call);
         frameState.SetAcc(call);
     }
@@ -3540,9 +3568,12 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {value};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        ValueVertex *i32 = self->NewVertex<CheckedTaggedIntToI32Vertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex));
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
+        ValueVertex *i32 = self->NewVertex<CheckedTaggedIntToI32Vertex>(currentBlock, inputs, std::move(deoptData));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::INT32, i32);
         return i32;
@@ -3556,9 +3587,12 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {value};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        ValueVertex *checked = self->NewVertex<CheckedTaggedStringVertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex));
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
+        ValueVertex *checked = self->NewVertex<CheckedTaggedStringVertex>(currentBlock, inputs, std::move(deoptData));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::STRING);
         compileInfoFacts_->EnsureType(checked, NodeInfo::NodeType::STRING);
         return checked;
@@ -3569,8 +3603,12 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {value};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        self->NewVertex<DeoptIfNotNumberVertex>(currentBlock, inputs, std::move(deoptVRegs),
-                                                self->preproc_->GetBytecodeOffset(currentBcIndex));
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = DeoptIfNotNumberVertex::FIRST_DEOPT_INDEX,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
+        self->NewVertex<DeoptIfNotNumberVertex>(currentBlock, inputs, std::move(deoptData));
     }
 
     ValueVertex *BuildNumberToString(ValueVertex *value)
@@ -3643,27 +3681,22 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
         switch (kind) {
             case BinaryOpKind::ADD:
-                return self->NewVertex<I32AddWithOverflowVertex>(
-                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return self->NewVertex<I32AddWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
             case BinaryOpKind::SUB:
-                return self->NewVertex<I32SubWithOverflowVertex>(
-                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return self->NewVertex<I32SubWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
             case BinaryOpKind::MUL:
-                return self->NewVertex<I32MulWithOverflowVertex>(
-                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return self->NewVertex<I32MulWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
             case BinaryOpKind::DIV:
-                return self->NewVertex<I32DivWithOverflowVertex>(
-                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return self->NewVertex<I32DivWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
             case BinaryOpKind::MOD:
-                return self->NewVertex<CheckedI32ModVertex>(
-                    currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                return self->NewVertex<CheckedI32ModVertex>(currentBlock, inputs, std::move(deoptData));
             default:
                 return nullptr;
         }
@@ -3736,9 +3769,13 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {leftI32};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
         ValueVertex *rawResult = self->NewVertex<I32DivByConstWithCheckVertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex), divisor, magic.magic, magic.shift);
+            currentBlock, inputs, std::move(deoptData), divisor, magic.magic, magic.shift);
         return BuildTaggedI32Result(rawResult);
     }
 
@@ -3748,9 +3785,13 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
         self->NewVertex<DeoptIfInt32ConditionVertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex), condition, deoptType);
+            currentBlock, inputs, std::move(deoptData), condition, deoptType);
     }
 
     ValueVertex *BuildTaggedIntConstant(int32_t value)
@@ -3984,9 +4025,12 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {value};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex));
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
+        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(currentBlock, inputs, std::move(deoptData));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::NUMBER);
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
         return f64;
@@ -3994,15 +4038,16 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildF64BinOpValue(BinaryOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
     {
+        auto inputs = std::initializer_list<ValueVertex *>{leftF64, rightF64};
         switch (kind) {
             case BinaryOpKind::ADD:
-                return self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, inputs);
             case BinaryOpKind::SUB:
-                return self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, inputs);
             case BinaryOpKind::MUL:
-                return self->NewVertex<F64MulVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64MulVertex>(compileInfoFacts_, currentBlock, inputs);
             case BinaryOpKind::DIV:
-                return self->NewVertex<F64DivVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64});
+                return self->NewVertex<F64DivVertex>(compileInfoFacts_, currentBlock, inputs);
             default:
                 return nullptr;
         }
@@ -4087,9 +4132,13 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {rawResult};
         ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
         uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
         ValueVertex *tagged = self->NewVertex<CheckedNonNegativeI32ToTaggedIntVertex>(
-            currentBlock, inputs, firstDeoptInputIndex, std::move(deoptVRegs),
-            self->preproc_->GetBytecodeOffset(currentBcIndex));
+            currentBlock, inputs, std::move(deoptData));
         compileInfoFacts_->EnsureType(tagged, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(tagged, AlternativeNodes::Kind::INT32, rawResult);
         return tagged;
@@ -4694,25 +4743,37 @@ struct GraphBuilder::BytecodeVisitor {
             case CommonStubID::Inc: {
                 ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
                 std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
+                DeoptMetadata deoptData{
+                    .deoptVRegs = std::move(deoptVRegs),
+                    .firstDeoptInputIndex = I32IncWithOverflowVertex::FIRST_DEOPT_INDEX,
+                    .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+                };
                 ValueVertex *rawResult = self->NewVertex<I32IncWithOverflowVertex>(
-                    currentBlock, inputs, I32IncWithOverflowVertex::FIRST_DEOPT_INDEX, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                    currentBlock, inputs, std::move(deoptData));
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Dec: {
                 ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
                 std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
+                DeoptMetadata deoptData{
+                    .deoptVRegs = std::move(deoptVRegs),
+                    .firstDeoptInputIndex = I32DecWithOverflowVertex::FIRST_DEOPT_INDEX,
+                    .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+                };
                 ValueVertex *rawResult = self->NewVertex<I32DecWithOverflowVertex>(
-                    currentBlock, inputs, I32DecWithOverflowVertex::FIRST_DEOPT_INDEX, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                    currentBlock, inputs, std::move(deoptData));
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Neg: {
                 ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
                 std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
+                DeoptMetadata deoptData{
+                    .deoptVRegs = std::move(deoptVRegs),
+                    .firstDeoptInputIndex = I32NegWithOverflowVertex::FIRST_DEOPT_INDEX,
+                    .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+                };
                 ValueVertex *rawResult = self->NewVertex<I32NegWithOverflowVertex>(
-                    currentBlock, inputs, I32NegWithOverflowVertex::FIRST_DEOPT_INDEX, std::move(deoptVRegs),
-                    self->preproc_->GetBytecodeOffset(currentBcIndex));
+                    currentBlock, inputs, std::move(deoptData));
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Not: {
@@ -4946,8 +5007,12 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> checkInputs {object};
         ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
         BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
-        self->NewVertex<DeoptIfHClassMismatchVertex>(
-            currentBlock, checkInputs, hclass, std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = DeoptIfHClassMismatchVertex::RECEIVER_INDEX + 1,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
+        };
+        self->NewVertex<DeoptIfHClassMismatchVertex>(currentBlock, checkInputs, hclass, std::move(deoptData));
         compileInfoFacts_->RecordHClass(object, hclass, kungfu::StableHClassDependency::IsValid(hclass));
         return true;
     }
@@ -5132,8 +5197,19 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    void UpdateCatchBlockData(ThrowableMixin *mixin)
+    template <class VertexT>
+    void UpdateCatchBlockData(VertexT *vertex)
     {
+        ThrowableMixin *mixin = vertex;
+        if (blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED &&
+            self->IsExceptionLazyDeoptEnabled()) {
+            ASSERT(blockInfo->catchBlock != nullptr);
+            if (vertex->template Is<CallVertex>() || vertex->template Is<CallCommonStubVertex>() ||
+                vertex->template Is<CallRuntimeVertex>()) {
+                mixin->SetExceptionHandlingMode(ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT);
+                return;  // Catch block will not be activated
+            }
+        }
         if (reinterpret_cast<uintptr_t>(lazyCatchBlock) == NO_CATCH_BLOCK_TAG) {
             return;
         }
@@ -5145,14 +5221,37 @@ struct GraphBuilder::BytecodeVisitor {
         lazyCatchBlockInputs->AddCompileInfoFacts(*compileInfoFacts_);
         mixin->SetCaughtBy(lazyCatchBlock);
         mixin->SetCatchPredecessorIndex(catchPredIndex);
+        mixin->SetExceptionHandlingMode(ThrowableMixin::ExceptionHandlingMode::COMPILED_CATCH);
+    }
+
+    template <class InputRange>
+    uint32_t BuildThrowableCallInputs(
+        const InputRange &callInputs, std::vector<ValueVertex *> *inputs, ChunkVector<VRegIDType> *deoptVRegs)
+    {
+        inputs->assign(std::begin(callInputs), std::end(callInputs));
+        uint32_t firstDeoptInputIndex = static_cast<uint32_t>(inputs->size());
+        if (blockInfo->catchBlock != nullptr &&
+            blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED &&
+            self->IsExceptionLazyDeoptEnabled()) {
+            AppendCurrentFrameStateForDeopt(inputs, deoptVRegs);
+        }
+        return firstDeoptInputIndex;
     }
 
     ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
                                 SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
-        ValidateCommonStubCallArgs({inputs.begin(), inputs.end()}, id);
+        std::vector<ValueVertex *> allInputs;
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = BuildThrowableCallInputs(inputs, &allInputs, &deoptVRegs);
+        ValidateCommonStubCallArgs({allInputs.data(), firstDeoptInputIndex}, id);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
         auto *vertex = self->NewVertex<CallCommonStubVertex>(
-            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
+            compileInfoFacts_, currentBlock, allInputs, std::move(deoptData), id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
@@ -5168,8 +5267,17 @@ struct GraphBuilder::BytecodeVisitor {
         allArgs.push_back(LoadParam(CALL_TARGET_PARAM_INDEX));
         allArgs.push_back(self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0)));
 
-        ValidateCommonStubCallArgs({allArgs.data(), allArgs.size()}, id);
-        auto *vertex = self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, allArgs, id);
+        std::vector<ValueVertex *> allInputs;
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = BuildThrowableCallInputs(allArgs, &allInputs, &deoptVRegs);
+        ValidateCommonStubCallArgs({allInputs.data(), firstDeoptInputIndex}, id);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(
+            compileInfoFacts_, currentBlock, allInputs, std::move(deoptData), id);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
@@ -5178,8 +5286,16 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id,
                              SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
+        std::vector<ValueVertex *> allInputs;
+        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
+        uint32_t firstDeoptInputIndex = BuildThrowableCallInputs(inputs, &allInputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = firstDeoptInputIndex,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
+        };
         auto *vertex = self->NewVertex<CallRuntimeVertex>(
-            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
+            compileInfoFacts_, currentBlock, allInputs, std::move(deoptData), id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }

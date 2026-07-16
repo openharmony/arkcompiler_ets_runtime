@@ -152,6 +152,7 @@ public:
     static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,
                                                         FrameType *prevFrameTypeAddress, uintptr_t prevFrameCallSiteSp);
     static void PrepareForLazyDeopt(JSThread *thread);
+    static bool PrepareForExceptionLazyDeopt(JSThread *thread, JSTaggedType *startFrame = nullptr);
     void ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint8_t* &resumePc,
                           AsmInterpretedFrame *statePtr);
     bool NeedOverwriteAcc(const uint8_t *pc) const;

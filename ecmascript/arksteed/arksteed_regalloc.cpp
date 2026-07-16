@@ -25,6 +25,43 @@
 namespace panda::ecmascript::arksteed {
 
 namespace {
+template <class VertexT>
+const DeoptimizableMixin *CastToDeoptimizableMixin(const Vertex *vertex)
+{
+    if constexpr (std::is_base_of_v<DeoptimizableMixin, VertexT>) {
+        return vertex->Cast<VertexT>();
+    }
+    return nullptr;
+}
+
+const DeoptimizableMixin *GetDeoptimizableMixin(const Vertex *vertex)
+{
+    switch (vertex->GetOpcode()) {
+#define GET_DEOPTIMIZABLE_MIXIN(type)                                             \
+        case VertexOpcode::type:                                                  \
+            return CastToDeoptimizableMixin<type##Vertex>(vertex);
+        ALL_VERTEX_LIST(GET_DEOPTIMIZABLE_MIXIN)
+#undef GET_DEOPTIMIZABLE_MIXIN
+        default:
+            UNREACHABLE();
+    }
+}
+
+void VerifyDeoptInputLocations(const Vertex *vertex)
+{
+    if (!vertex->GetProperties().CanDeopt()) {
+        return;
+    }
+    const DeoptimizableMixin *deopt = GetDeoptimizableMixin(vertex);
+    ASSERT(deopt != nullptr);
+    for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
+        const InputLocation *location = vertex->GetInputLocation(deopt->DeoptInputIndex(index));
+        ASSERT(location->IsStackSlot() || location->IsConstant());
+    }
+}
+}  // namespace
+
+namespace {
 
 bool SameAsInput(ValueVertex *vertex, const Input &input)
 {
@@ -269,15 +306,7 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
     } else if (vertex->GetProperties().IsASMBarrierCall()) {
         SpillAndClearASMBarrierClobbers();
     }
-
-    if (vertex->GetProperties().CanEagerDeopt()) {
-        // to do: AllocateEagerDeopt
-    }
-
-    if (vertex->GetProperties().CanLazyDeopt()) {
-        // to do: AllocateLazyDeopt
-    }
-
+    VerifyDeoptInputLocations(vertex);
     // Make sure to save snapshot after allocate eager deopt registers.
     if (vertex->GetProperties().NeedsRegisterSnapshot()) {
         // to do: SaveRegisterSnapshot
