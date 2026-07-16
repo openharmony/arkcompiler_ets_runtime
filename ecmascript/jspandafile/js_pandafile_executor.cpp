@@ -284,7 +284,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
 #endif
     }
-    AbcBufferCacheScope bufferScope(thread, normalName, buffer, size, jsPandaFile.get(), fileMapper);
+    AbcBufferCacheScope bufferScope(thread, normalName, buffer, size, needUpdate, fileMapper);
     auto vm = thread->GetEcmaVM();
 
     CString entry = entryPoint.data();
@@ -349,7 +349,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-    AbcBufferCacheScope bufferScope(thread, name, buffer, size, jsPandaFile.get(), fileMapper);
+    AbcBufferCacheScope bufferScope(thread, name, buffer, size, needUpdate, fileMapper);
     if (!vm->IsNormalizedOhmUrlPack() && !jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {

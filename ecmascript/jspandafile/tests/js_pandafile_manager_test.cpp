@@ -414,46 +414,6 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPandaFileByBufferFiles)
     EXPECT_TRUE(jsPandaFile != nullptr);
 }
 
-HWTEST_F_L0(JSPandaFileManagerTest, ReleaseSecureMem)
-{
-    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
-
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    const char *fileName = "__JSPandaFileManagerTest3.abc";
-    const char *data = R"(
-        .function void foo() {}
-    )";
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
-    uint8_t *fileMapper = new uint8_t[1];
-    *fileMapper = 1;
-    uint8_t *secondFileMapper = new uint8_t[1];
-    uint8_t *buffer = new uint8_t[1];
-    pf->SetFileMapper(fileMapper);
-    {
-        // first fileMapper doesn't need to release
-        AbcBufferCacheScope bufferScope(
-            thread, CString(fileName), buffer, 3, pf.get(), reinterpret_cast<void *>(fileMapper)); // 3: random number
-    }
-    EXPECT_EQ(*fileMapper, 1);
-    {
-        // second secondFileMapper need to release
-        AbcBufferCacheScope bufferScope(
-            thread, CString(fileName), buffer, 3, pf.get(), reinterpret_cast<void *>(secondFileMapper));
-    }
-    EXPECT_EQ(*secondFileMapper, 10);
-    // when pandafile released, release corresponding fileMapper.
-    EXPECT_EQ(*fileMapper, 1);
-    pf.reset();
-    EXPECT_EQ(*fileMapper, 10);
-
-    delete[] buffer;
-    delete[] fileMapper;
-    delete[] secondFileMapper;
-}
-
 HWTEST_F_L0(JSPandaFileManagerTest, LoadInsecureJSPandaFile_1)
 {
     CString fileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
@@ -698,6 +658,330 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenPandafileCheckReportWithNullPtr)
 
     // Clean up
     pfManager->RemoveJSPandaFile(pf.get());
+}
+
+/**
+ * @tc.name: AbcBufferInfoDefaultFields
+ * @tc.desc: Test AbcBufferInfo default constructor initializes needUpdate_ and fileMapper_ correctly
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferInfoDefaultFields)
+{
+    // Test default constructor: needUpdate_ should be false, fileMapper_ should be nullptr
+    AbcBufferInfo defaultInfo;
+    EXPECT_EQ(defaultInfo.buffer_, nullptr);
+    EXPECT_EQ(defaultInfo.size_, 0U);
+    EXPECT_EQ(defaultInfo.bufferType_, AbcBufferType::NORMAL_BUFFER);
+    EXPECT_FALSE(defaultInfo.needUpdate_);
+    EXPECT_EQ(defaultInfo.fileMapper_, nullptr);
+
+    // Test parameterized constructor: needUpdate_ and fileMapper_ should be set correctly
+    uint8_t buffer[4] = {1, 2, 3, 4}; // 4: random size
+    void *mockMapper = reinterpret_cast<void *>(buffer);
+    AbcBufferInfo paramInfo(buffer, sizeof(buffer), AbcBufferType::SECURE_BUFFER, true, mockMapper);
+    EXPECT_EQ(paramInfo.buffer_, buffer);
+    EXPECT_EQ(paramInfo.size_, sizeof(buffer));
+    EXPECT_EQ(paramInfo.bufferType_, AbcBufferType::SECURE_BUFFER);
+    EXPECT_TRUE(paramInfo.needUpdate_);
+    EXPECT_EQ(paramInfo.fileMapper_, mockMapper);
+}
+
+/**
+ * @tc.name: AddAbcBufferToCacheWithNeedUpdateAndFileMapper
+ * @tc.desc: Test AddAbcBufferToCache preserves needUpdate and fileMapper in cache
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AddAbcBufferToCacheWithNeedUpdateAndFileMapper)
+{
+    AbcBufferCache *abcBufferCache = thread->GetEcmaVM()->GetAbcBufferCache();
+    CString fileName = "__TestAddAbcBufferWithParams.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+
+    // Test: AddAbcBufferToCache with needUpdate=true and fileMapper
+    uint8_t mockMapper = 0;
+    void *fileMapper = &mockMapper;
+    abcBufferCache->AddAbcBufferToCache(fileName, data, sizeof(data),
+        AbcBufferType::SECURE_BUFFER, true, fileMapper);
+
+    AbcBufferInfo bufferInfo = abcBufferCache->FindJSPandaFileInAbcBufferCache(fileName);
+    EXPECT_TRUE(bufferInfo.buffer_ != nullptr);
+    EXPECT_EQ(bufferInfo.bufferType_, AbcBufferType::SECURE_BUFFER);
+    EXPECT_TRUE(bufferInfo.needUpdate_);
+    EXPECT_EQ(bufferInfo.fileMapper_, fileMapper);
+
+    // Test: AddAbcBufferToCache with default needUpdate=false and fileMapper=nullptr
+    CString fileName2 = "__TestAddAbcBufferDefault.abc";
+    abcBufferCache->AddAbcBufferToCache(fileName2, data, sizeof(data), AbcBufferType::NORMAL_BUFFER);
+
+    AbcBufferInfo bufferInfo2 = abcBufferCache->FindJSPandaFileInAbcBufferCache(fileName2);
+    EXPECT_TRUE(bufferInfo2.buffer_ != nullptr);
+    EXPECT_EQ(bufferInfo2.bufferType_, AbcBufferType::NORMAL_BUFFER);
+    EXPECT_FALSE(bufferInfo2.needUpdate_);
+    EXPECT_EQ(bufferInfo2.fileMapper_, nullptr);
+
+    abcBufferCache->DeleteAbcBufferFromCache(fileName);
+    abcBufferCache->DeleteAbcBufferFromCache(fileName2);
+}
+
+/**
+ * @tc.name: AbcBufferCacheScopeDestructorFindJSPandaFile
+ * @tc.desc: Test AbcBufferCacheScope destructor uses FindJSPandaFile instead of held pointer
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeDestructorFindJSPandaFile)
+{
+    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__TestCacheScopeDestructor.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    uint8_t *fileMapper = new uint8_t[1];
+    *fileMapper = 1;
+    uint8_t *buffer = new uint8_t[1];
+    pf->SetFileMapper(fileMapper);
+    pfManager->AddJSPandaFile(pf);
+
+    {
+        // AbcBufferCacheScope destructor should find jsPandaFile via FindJSPandaFile
+        // and correctly check fileMapper match
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(fileMapper)); // 3: random number
+        // When scope ends, destructor calls FindJSPandaFile(fileName)
+        // fileMapper_ == fileMapper and pf->GetFileMapper() == fileMapper, so no release
+    }
+    // fileMapper should not be released since it matches the pandafile's mapper
+    EXPECT_EQ(*fileMapper, 1);
+
+    pfManager->RemoveJSPandaFile(pf.get());
+    delete[] buffer;
+    delete[] fileMapper;
+}
+
+/**
+ * @tc.name: AbcBufferCacheScopeDestructorWithNullPandaFile
+ * @tc.desc: Test AbcBufferCacheScope destructor safely returns when FindJSPandaFile returns nullptr
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeDestructorWithNullPandaFile)
+{
+    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
+
+    const char *fileName = "__TestNullPandaFileScope.abc";
+    uint8_t *buffer = new uint8_t[1];
+    uint8_t *secondFileMapper = new uint8_t[1];
+    *secondFileMapper = 5; // 5: random number
+
+    // Ensure no JSPandaFile is registered for this filename
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> existingPf = pfManager->FindJSPandaFile(fileName);
+    EXPECT_TRUE(existingPf == nullptr);
+
+    {
+        // AbcBufferCacheScope destructor should handle null jsPandaFile safely
+        // FindJSPandaFile returns nullptr -> early return, no crash
+        AbcBufferCacheScope bufferScope(thread, CString(fileName), buffer, 3,
+            false, reinterpret_cast<void *>(secondFileMapper)); // 3: random number
+    }
+    // secondFileMapper should not be released since jsPandaFile is nullptr
+    EXPECT_EQ(*secondFileMapper, 5); // 5: original value unchanged
+
+    delete[] buffer;
+    delete[] secondFileMapper;
+}
+
+/**
+ * @tc.name: AbcBufferCacheScopeSecureMemReleaseAfterPandaFileRemoved
+ * @tc.desc: Test secure memory release when JSPandaFile is removed (SharedGC scenario)
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeSecureMemReleaseAfterPandaFileRemoved)
+{
+    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__TestSecureMemReleaseRemoved.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    uint8_t *fileMapper = new uint8_t[1];
+    *fileMapper = 1;
+    uint8_t *secondFileMapper = new uint8_t[1];
+    uint8_t *buffer = new uint8_t[1];
+    pf->SetFileMapper(fileMapper);
+    pfManager->AddJSPandaFile(pf);
+
+    {
+        // first: same fileMapper, no release needed
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(fileMapper)); // 3: random number
+    }
+    EXPECT_EQ(*fileMapper, 1);
+
+    {
+        // second: different fileMapper, needs release
+        // But pandafile still exists -> fileMapper_ != pf->GetFileMapper() -> release secondFileMapper
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(secondFileMapper));
+    }
+    EXPECT_EQ(*secondFileMapper, 10); // 10: released by FakeReleaseSecureMemCallback
+
+    // Simulate SharedGC: remove JSPandaFile from manager
+    pfManager->RemoveJSPandaFile(pf.get());
+    pf.reset(); // now sole owner gone, ~JSPandaFile() calls CallReleaseSecureMemFunc(fileMapper_) -> *fileMapper = 10
+
+    {
+        // After SharedGC removed the pandafile, FindJSPandaFile returns nullptr
+        // Destructor should early return safely, no crash from dangling pointer
+        uint8_t *thirdFileMapper = new uint8_t[1];
+        *thirdFileMapper = 7; // 7: random number
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(thirdFileMapper));
+        // thirdFileMapper is not released because jsPandaFile is nullptr -> early return
+        EXPECT_EQ(*thirdFileMapper, 7); // 7: unchanged, not released
+        delete[] thirdFileMapper;
+    }
+
+    delete[] buffer;
+    delete[] fileMapper;
+    delete[] secondFileMapper;
+}
+
+/**
+ * @tc.name: AbcBufferCacheScopeWithNeedUpdate
+ * @tc.desc: Test AbcBufferCacheScope constructor with needUpdate=true stores parameter in cache
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeWithNeedUpdate)
+{
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__TestCacheScopeNeedUpdate.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    uint8_t *buffer = new uint8_t[1];
+    pfManager->AddJSPandaFile(pf);
+
+    AbcBufferCache *abcBufferCache = thread->GetEcmaVM()->GetAbcBufferCache();
+
+    {
+        // needUpdate=true should be stored in buffer cache
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, true, nullptr); // 3: random number, needUpdate=true
+
+        AbcBufferInfo cachedInfo = abcBufferCache->FindJSPandaFileInAbcBufferCache(CString(fileName));
+        EXPECT_TRUE(cachedInfo.needUpdate_);
+        EXPECT_EQ(cachedInfo.fileMapper_, nullptr);
+        EXPECT_EQ(cachedInfo.bufferType_, AbcBufferType::SECURE_BUFFER);
+    }
+    // After scope ends, cache entry should be deleted
+    AbcBufferInfo afterInfo = abcBufferCache->FindJSPandaFileInAbcBufferCache(CString(fileName));
+    EXPECT_EQ(afterInfo.buffer_, nullptr);
+
+    pfManager->RemoveJSPandaFile(pf.get());
+    delete[] buffer;
+}
+
+/**
+ * @tc.name: AbcBufferCacheScopeDestructorFindNewPandaFileAfterSharedGC
+ * @tc.desc: Test that after SharedGC, AbcBufferCacheScope destructor finds the NEW (current) JSPandaFile
+ *           via FindJSPandaFile, not the old one. This is the core fix of issue#13418:
+ *           the old code held a raw pointer to the OLD JSPandaFile, which could have a different
+ *           fileMapper than the scope's fileMapper_, causing incorrect release of active memory.
+ *           The new code uses FindJSPandaFile which returns the NEW JSPandaFile whose fileMapper
+ *           matches scope's fileMapper_ -> no release, avoiding the dangling release bug.
+ * @tc.type: FUNC
+ * @tc.require: issue#13418
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeDestructorFindNewPandaFileAfterSharedGC)
+{
+    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__TestNewPandaFileAfterGC.abc";
+
+    // Step 1: Create OLD JSPandaFile and register it
+    const char *oldData = R"(
+        .function void oldFoo() {}
+    )";
+    Parser oldParser;
+    auto oldRes = oldParser.Parse(oldData);
+    std::unique_ptr<const File> oldPfPtr = pandasm::AsmEmitter::Emit(oldRes.Value());
+    std::shared_ptr<JSPandaFile> oldPf = pfManager->NewJSPandaFile(oldPfPtr.release(), CString(fileName));
+    uint8_t *oldFileMapper = new uint8_t[1];
+    *oldFileMapper = 1;
+    uint8_t *buffer = new uint8_t[1];
+    oldPf->SetFileMapper(oldFileMapper);
+    pfManager->AddJSPandaFile(oldPf);
+
+    // Step 2: Simulate SharedGC — obsolete OLD, remove from loadedJSPandaFiles_
+    pfManager->RemoveJSPandaFile(oldPf.get());
+
+    // Step 3: Load NEW JSPandaFile for the same filename
+    const char *newData = R"(
+        .function void newFoo() {}
+    )";
+    Parser newParser;
+    auto newRes = newParser.Parse(newData);
+    std::unique_ptr<const File> newPfPtr = pandasm::AsmEmitter::Emit(newRes.Value());
+    std::shared_ptr<JSPandaFile> newPf = pfManager->NewJSPandaFile(newPfPtr.release(), CString(fileName));
+    uint8_t *newFileMapper = new uint8_t[1];
+    *newFileMapper = 2; // 2: distinct from oldFileMapper=1
+    newPf->SetFileMapper(newFileMapper);
+    pfManager->AddJSPandaFile(newPf);
+
+    // Step 4: Verify FindJSPandaFile returns NEW (not OLD)
+    std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
+    EXPECT_EQ(foundPf.get(), newPf.get());
+
+    // Step 5: Core test — scope's fileMapper_ == newFileMapper
+    // FindJSPandaFile finds NEW, NEW->GetFileMapper() == newFileMapper == scope's fileMapper_
+    // -> no release -> this is the exact scenario the PR fixes (old code would find OLD, mismatch, and release)
+    {
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(newFileMapper)); // 3: random number
+    }
+    // newFileMapper should NOT be released since it matches NEW pandafile's mapper
+    EXPECT_EQ(*newFileMapper, 2);
+
+    // Step 6: scope's fileMapper_ != NEW's fileMapper -> should release scope's fileMapper
+    {
+        uint8_t *otherMapper = new uint8_t[1];
+        *otherMapper = 5; // 5: random number
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(otherMapper));
+        // FindJSPandaFile finds NEW, NEW->GetFileMapper() != otherMapper -> release otherMapper
+    }
+
+    // Cleanup
+    pfManager->RemoveJSPandaFile(newPf.get());
+    newPf.reset(); // ~JSPandaFile() -> CallReleaseSecureMemFunc(newFileMapper_) -> *newFileMapper = 10
+    oldPf.reset(); // ~JSPandaFile() -> CallReleaseSecureMemFunc(oldFileMapper_) -> *oldFileMapper = 10
+
+    delete[] buffer;
+    delete[] newFileMapper;
+    delete[] oldFileMapper;
 }
 
 }  // namespace panda::test
