@@ -113,7 +113,8 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
     } else if (localHeap_->IsMarking()) {
 #endif
         // Temporary adjust semi space capacity
-        if (localHeap_->IsConcurrentFullMark() || localHeap_->InSensitiveStatus()) {
+        if (localHeap_->IsConcurrentFullMark() || localHeap_->InSensitiveStatus() ||
+            localHeap_->IsProcessingLocalToSharedRSet()) {
             size_t prev = overShootSize_;
             size_t maxOverShootSize = localHeap_->CalculateLinearSpaceOverShoot();
             size_t stepSize = localHeap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
