@@ -17,6 +17,7 @@
 
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/base/array_helper.h"
+#include "ecmascript/base/sort_helper.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -584,33 +585,37 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSAPIArrayList>::Cast(self)->GetElements(thread));
-    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    uint32_t length = JSHandle<JSAPIArrayList>::Cast(self)->GetLength(thread).GetArrayLength();
-    for (uint32_t i = 1; i < length; i++) {
-        uint32_t beginIndex = 0;
-        uint32_t endIndex = i;
-        presentValue.Update(elements->Get(thread, i));
-        while (beginIndex < endIndex) {
-            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(elements->Get(thread, middleIndex));
-            double compareResult = base::ArrayHelper::SortCompare(thread, callbackFnHandle,
-                                                                  middleValue, presentValue);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (compareResult > 0) {
-                endIndex = middleIndex;
-            } else {
-                beginIndex = middleIndex + 1;
-            }
+    JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(self);
+    uint32_t length = arrayList->GetLength(thread).GetArrayLength();
+    if (length < 2) { // 2: No need to sort
+        return JSTaggedValue::Undefined();
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. Copy elements to a temporary array for safe sorting
+    JSHandle<TaggedArray> srcElements(thread, arrayList->GetElements(thread));
+    JSHandle<TaggedArray> tempArray = factory->NewAndCopyTaggedArray(srcElements, length, length);
+    // 2. Sort the temporary array (callback modifications to the container won't affect this)
+    base::TimSort::Sort(thread, tempArray, callbackFnHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 3. Write sorted results back to the container.
+    //    Re-read the backing store after the callback — the comparator may have
+    //    modified the container (e.g. trimToCurrentLength), shrinking the
+    //    TaggedArray.  If so, allocating a fresh array prevents OOB writes.
+    JSHandle<TaggedArray> dstElements(thread, arrayList->GetElements(thread));
+    if (dstElements->GetLength() < length) {
+        // Backing store was shrunk during the sort callback; allocate a new
+        // array holding the sorted snapshot and replace the container's elements.
+        JSHandle<TaggedArray> sortedArray = factory->NewAndCopyTaggedArray(tempArray, length, length);
+        arrayList->SetElements(thread, sortedArray);
+        arrayList->SetLength(thread, JSTaggedValue(static_cast<int>(length)));
+    } else {
+        for (uint32_t k = 0; k < length; k++) {
+            dstElements->Set(thread, k, tempArray->Get(thread, k));
         }
-        if (endIndex >= 0 && endIndex < i) {
-            for (uint32_t j = i; j > endIndex; j--) {
-                previousValue.Update(elements->Get(thread, j - 1));
-                elements->Set(thread, j, previousValue.GetTaggedValue());
-            }
-            elements->Set(thread, endIndex, presentValue.GetTaggedValue());
+        // Restore logical length in case the comparator removed elements
+        // without shrinking the backing store.
+        if (arrayList->GetLength(thread).GetArrayLength() < length) {
+            arrayList->SetLength(thread, JSTaggedValue(static_cast<int>(length)));
         }
     }
     return JSTaggedValue::Undefined();
