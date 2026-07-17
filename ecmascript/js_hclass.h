@@ -18,6 +18,7 @@
 
 #include "ecmascript/cross_vm/js_hclass_hybrid.h"
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/js_tagged_value.h"
@@ -452,6 +453,10 @@ public:
                                                     const ElementsKind kind, bool isPrototype);
 
     static void TransitionElementsToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
+#if ENABLE_V70_OPTIMIZATION
+    // Elements-only transition: does not normalize named properties.
+    static void TransitionElementsToDictionaryOnly(const JSThread *thread, const JSHandle<JSObject> &obj);
+#endif
     static void OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, const JSHandle<JSObject> &obj,
                                          const std::vector<int> &indexArray = {}, bool isDictionary = false);

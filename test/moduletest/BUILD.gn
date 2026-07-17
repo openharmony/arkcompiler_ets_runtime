@@ -305,7 +305,6 @@ group("ark_js_assert_moduletest") {
     "mapget",
     "nanhash",
     "notfoundic_dictmode",
-    "obj_dictionarymode",
     "object_assign",
     "proxy2",
     "regressdefineproperty",
@@ -381,6 +380,12 @@ group("ark_js_assert_moduletest") {
 
   if (enable_latest_optimization) {
     assert_test_list += ["jsonstringifier_optimized"]
+  }
+
+  if (enable_v70_optimization) {
+    assert_test_list += ["obj_dictionarymode"]
+  } else {
+    assert_test_list += ["obj_dictionarymode_legacy"]
   }
 
   deps = []
@@ -484,7 +489,6 @@ group("ark_asm_assert_test") {
     "mapget",
     "nanhash",
     "notfoundic_dictmode",
-    "obj_dictionarymode",
     "object_assign",
     "setconstructor",
     "setobjectwithproto",
@@ -535,6 +539,12 @@ group("ark_asm_assert_test") {
 
   if (enable_latest_optimization) {
     assert_test_list += ["jsonstringifier_optimized"]
+  }
+
+  if (enable_v70_optimization) {
+    assert_test_list += ["obj_dictionarymode"]
+  } else {
+    assert_test_list += ["obj_dictionarymode_legacy"]
   }
 
   deps = []

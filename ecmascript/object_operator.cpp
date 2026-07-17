@@ -975,9 +975,30 @@ void ObjectOperator::DeleteElementInHolder() const
         if (obj.GetTaggedValue().IsJSCOWArray(thread_)) {
             JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(obj));
         }
+#if ENABLE_V70_OPTIMIZATION
+        uint32_t capacity = ElementAccessor::GetElementsLength(thread_, obj);
+        // Shared non-JSSArray must keep the old ElementsToDictionary TypeError path; do not Trim.
+        if (!obj->IsJSArray() && !obj->IsJSShared() && capacity > 0 && index_ == capacity - 1) {
+            JSObject::DeleteElementsAtEnd(thread_, obj, index_);
+            return;
+        }
+        ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);
+        // JSSArray already returned above. Other shared objects match pre-V70 (hole + TypeError).
+        // Must not wait for NormalizeElements; throttle or capacity gates would skip the throw.
+        if (obj->IsJSShared()) {
+            JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
+            RETURN_IF_ABRUPT_COMPLETION(thread_);
+            return;
+        }
+        if (JSObject::ShouldNormalizeElementsOnDeletion(thread_, JSHandle<JSObject>(holder_), index_)) {
+            JSObject::NormalizeElements(thread_, JSHandle<JSObject>(holder_));
+            RETURN_IF_ABRUPT_COMPLETION(thread_);
+        }
+#else
         ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);
         JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
         RETURN_IF_ABRUPT_COMPLETION(thread_);
+#endif
     } else {
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements(thread_).GetTaggedObject());
         JSHandle<NumberDictionary> dictHandle(thread_, elements);
