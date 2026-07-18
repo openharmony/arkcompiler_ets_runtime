@@ -764,6 +764,10 @@ HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeDestructorFindJSPandaFile
     EXPECT_EQ(*fileMapper, 1);
 
     pfManager->RemoveJSPandaFile(pf.get());
+    // Must reset pf before delete[] fileMapper to avoid use-after-free:
+    // ~JSPandaFile() calls CallReleaseSecureMemFunc(fileMapper_) which writes to fileMapper
+    // If fileMapper is already freed, writing to it corrupts glibc tcache metadata
+    pf.reset();
     delete[] buffer;
     delete[] fileMapper;
 }
@@ -796,7 +800,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeDestructorWithNullPandaFi
     }
     // secondFileMapper should not be released since jsPandaFile is nullptr
     EXPECT_EQ(*secondFileMapper, 5); // 5: original value unchanged
-
+    existingPf.reset();
     delete[] buffer;
     delete[] secondFileMapper;
 }
@@ -966,16 +970,23 @@ HWTEST_F_L0(JSPandaFileManagerTest, AbcBufferCacheScopeDestructorFindNewPandaFil
     EXPECT_EQ(*newFileMapper, 2);
 
     // Step 6: scope's fileMapper_ != NEW's fileMapper -> should release scope's fileMapper
+    // otherMapper must be declared outside the block so delete[] happens AFTER bufferScope destructor
+    uint8_t *otherMapper = new uint8_t[1];
+    *otherMapper = 5; // 5: random number
     {
-        uint8_t *otherMapper = new uint8_t[1];
-        *otherMapper = 5; // 5: random number
         AbcBufferCacheScope bufferScope(
             thread, CString(fileName), buffer, 3, false, reinterpret_cast<void *>(otherMapper));
         // FindJSPandaFile finds NEW, NEW->GetFileMapper() != otherMapper -> release otherMapper
+        // bufferScope destructor runs at block exit, calls CallReleaseSecureMemFunc(otherMapper)
     }
+    // After scope exits: bufferScope destructor has called CallReleaseSecureMemFunc(otherMapper)
+    // FakeReleaseSecureMemCallback only writes a byte, doesn't free; must delete[] manually
+    // delete[] must happen AFTER destructor to avoid use-after-free on already-freed pointer
+    delete[] otherMapper;
 
     // Cleanup
     pfManager->RemoveJSPandaFile(newPf.get());
+    foundPf.reset(); // Must reset before delete[] to avoid use-after-free: foundPf holds ref to newPf
     newPf.reset(); // ~JSPandaFile() -> CallReleaseSecureMemFunc(newFileMapper_) -> *newFileMapper = 10
     oldPf.reset(); // ~JSPandaFile() -> CallReleaseSecureMemFunc(oldFileMapper_) -> *oldFileMapper = 10
 

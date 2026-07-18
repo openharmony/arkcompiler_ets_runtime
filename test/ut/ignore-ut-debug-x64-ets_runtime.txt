@@ -1,8 +1,5 @@
 # x64: Unit Tests Debug Runtime
 
-#26090
-obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest
-
 #34822 
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_IdleGCTrigger_Test
 
