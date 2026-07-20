@@ -164,9 +164,10 @@ bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)
     ASSERT(markWord.IsForwardingAddress());
     TaggedObject *dst = markWord.ToForwardingAddress();
     if (isWeak) {
-        dst = JSTaggedValue(dst).CreateAndGetWeakRef().GetRawTaggedObject();
+        slot.CASUpdateWeak(value.GetRawHeapObject(), dst);
+    } else {
+        slot.CASUpdate(value.GetRawHeapObject(), dst);
     }
-    slot.CASUpdate(value.GetRawHeapObject(), dst);
     return true;
 }
 

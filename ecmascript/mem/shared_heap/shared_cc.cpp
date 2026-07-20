@@ -715,18 +715,12 @@ void SharedCCUpdateVisitor::HandleSlot(ObjectSlot slot)
 
     TaggedObject *object = value.GetHeapObject();
     MarkWord markWord(object, RELAXED_LOAD);
-
-    if (markWord.IsForwardingAddress()) {
-        TaggedObject *dst = markWord.ToForwardingAddress();
-        if (value.IsWeakForHeapObject()) {
-            JSTaggedValue dstValue(dst);
-            dstValue.CreateWeakRef();
-            slot.CASUpdate(rawObject, dstValue.GetRawHeapObject());
-        } else {
-            slot.CASUpdate(rawObject, dst);
-        }
+    ASSERT(markWord.IsForwardingAddress());
+    TaggedObject *dst = markWord.ToForwardingAddress();
+    if (value.IsWeakForHeapObject()) {
+        slot.CASUpdateWeak(rawObject, dst);
     } else {
-        slot.CASUpdate(rawObject, reinterpret_cast<TaggedObject *>(JSTaggedValue::VALUE_UNDEFINED));
+        slot.CASUpdate(rawObject, dst);
     }
 }
 

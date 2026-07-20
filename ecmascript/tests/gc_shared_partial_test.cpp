@@ -481,4 +481,30 @@ HWTEST_F_L0(SharedPartialGCTest, CheckSwitchRBStubTest)
     thread->CheckSwitchRBStub();
     EXPECT_TRUE(thread->HasSwitchedToStwStub());
 }
+
+HWTEST_F_L0(SharedPartialGCTest, SharedCCWeakRefUpdateTest)
+{
+    constexpr size_t ARRAY_LEN = 10;
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    heap->GetHeapPrepare(thread);
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
+    std::shared_ptr<SharedTestSpace> space = std::make_shared<SharedTestSpace>(sHeap, thread);
+    JSHandle<TaggedArray> sOld1 = AllocateSharedArray(space, ARRAY_LEN);
+    JSHandle<TaggedArray> sOld2 = AllocateSharedArray(space, ARRAY_LEN);
+    InitializeBaseObjects(space);
+    space->Merge();
+    auto weakRef = sOld2.GetTaggedValue();
+    weakRef.CreateWeakRef();
+    sOld1->Set(thread, 0, weakRef);
+    EXPECT_TRUE(JSTaggedValue(sOld1->Get(thread, 0)).IsWeak());
+    sHeap->CollectGarbage<TriggerGCType::SHARED_CC, GCReason::OTHER>(thread);
+    JSTaggedValue afterGC = sOld1->Get(thread, 0);
+    EXPECT_TRUE(afterGC.IsWeak());
+}
 } // namespace panda::test

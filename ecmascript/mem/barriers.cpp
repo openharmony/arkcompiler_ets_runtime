@@ -294,12 +294,11 @@ void Barriers::CheckValueForCMS(const JSThread *thread, JSTaggedValue value)
 }
 
 #ifndef USE_CMC_GC
-JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
+JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress, JSTaggedValue value)
 {
     ASSERT(!thread->IsJitThread());
     ASSERT(thread->NeedReadBarrier());
     ObjectSlot slot(slotAddress);
-    JSTaggedValue value = slot.GetTaggedValue();
     auto object = value.GetHeapObject();
     if (UNLIKELY(object == nullptr)) {
         return slot.GetTaggedType();
@@ -318,10 +317,11 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
                 toObject = thread->GetLocalCCEvacuator()->Copy(object, markWord);
             }
         }
+        TaggedObject *rawObject = value.GetRawHeapObject();
         if (value.IsWeak()) {
-            slot.UpdateWeak(ToUintPtr(toObject));
+            slot.CASUpdateWeak(rawObject, toObject);
         } else {
-            slot.Update(toObject);
+            slot.CASUpdate(rawObject, toObject);
         }
         return slot.GetTaggedType();
     }

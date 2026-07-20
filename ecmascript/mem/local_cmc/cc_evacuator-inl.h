@@ -115,10 +115,7 @@ void CCUpdateVisitor<needUpdateLocalToShare>::HandleSlot(ObjectSlot slot, Region
         ASSERT(markWord.IsForwardingAddress());
         TaggedObject *dst = markWord.ToForwardingAddress();
         if (value.IsWeakForHeapObject()) {
-            JSTaggedValue dstValue = JSTaggedValue(dst);
-            dstValue.CreateWeakRef();
-            dst = dstValue.GetRawHeapObject();
-            slot.CASUpdate(rawObject, dst);
+            slot.CASUpdateWeak(rawObject, dst);
         } else {
             slot.CASUpdate(rawObject, dst);
         }

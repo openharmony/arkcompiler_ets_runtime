@@ -3789,10 +3789,10 @@ void RuntimeStubs::CheckObjectForCMS(uintptr_t argGlue, uintptr_t object, size_t
     }
 }
 
-JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
+JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr, uintptr_t argValue)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    return Barriers::ReadBarrierForObject(thread, addr);
+    return Barriers::ReadBarrierForObject(thread, addr, JSTaggedValue(static_cast<JSTaggedType>(argValue)));
 }
 
 void RuntimeStubs::CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget)
