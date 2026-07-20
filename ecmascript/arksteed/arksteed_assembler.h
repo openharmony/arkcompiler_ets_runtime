@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #elif defined(PANDA_TARGET_ARM64)
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/mem/chunk_containers.h"
 #endif
 
 namespace panda::ecmascript::arksteed {
@@ -217,6 +218,10 @@ public:
     void JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target);
     void JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target);
     void Bind(Label *label);
+#if defined(PANDA_TARGET_ARM64)
+    void CheckVeneerPool(bool precedingCodeCanFallThrough);
+    void FinalizeVeneers();
+#endif
     inline void Branch(Condition condition, Label *ifTrue, bool fallthroughWhenTrue, Label *ifFalse,
                        bool fallthroughWhenFalse);
 
@@ -315,9 +320,28 @@ private:
     aarch64::MemoryOperand MaterializeAddress(const aarch64::MemoryOperand &operand);
     void LoadRegisterWithOperand(const aarch64::Register &dst, const aarch64::MemoryOperand &src);
     void StoreRegisterWithOperand(const aarch64::Register &src, const aarch64::MemoryOperand &dst);
+    static constexpr uint32_t VENEER_INSTRUCTION_SIZE = sizeof(uint32_t);  // One ARM64 instruction is 4 bytes.
+    static constexpr uint32_t VENEER_DISTANCE_MARGIN = 4U * 1024U;  // Check 4 KiB before the encoding limit.
+    static bool IsVeneerBranchOrCall(uint32_t instruction);
+    static bool IsVeneerConditionOrCompareBranch(uint32_t instruction);
+    static bool IsVeneerTestBranch(uint32_t instruction);
+    bool IsVeneerBranchInRange(uint32_t instruction, int64_t displacement) const;
+    uint32_t GetVeneerBranchDeadline(uint32_t branchPc, uint32_t instruction) const;
+    void UpdateVeneerPoolCheck();
+    void RecordVeneerBranch(uint32_t branchPc, Label *target);
+    void PatchVeneerBranchTarget(uint32_t branchPc, uint32_t targetPc);
+    void BindVeneerLabel(Label *label);
+    void TestAndBranchIfZero(ArkSteedRegister value, int32_t bit, Label *target);
+    void TestAndBranchIfNotZero(ArkSteedRegister value, int32_t bit, Label *target);
 #endif
 
     PlatformAssembler assembler_;
+#if defined(PANDA_TARGET_ARM64)
+    Chunk *chunk_;
+    ChunkMap<Label *, ChunkVector<uint32_t>> veneerBranches_;
+    uint32_t nextVeneerPoolCheck_ {UINT32_MAX};  // UINT32_MAX means that no pool check is pending.
+    bool emittingVeneerPool_ {false};
+#endif
     bool enableComments_ = false;
     bool hasFrame_ = false;
     uint32_t taggedStackSlots_ = 0;

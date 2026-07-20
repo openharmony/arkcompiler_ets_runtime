@@ -623,23 +623,11 @@ Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(const EagerDeoptimizableMix
 void ArkSteedCodeGenerator::BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex,
                                                      kungfu::DeoptType type)
 {
-#if defined(PANDA_TARGET_AMD64)
     __ JumpIf(condition, RecordEagerDeoptTarget(vertex, type));
-#else
-    Label deopt;
-    Label done;
-    __ JumpIf(condition, &deopt);
-    __ Jump(&done);
-    __ Bind(&deopt);
-    EmitEagerDeoptExit(vertex, type);
-    __ Bind(&done);
-#endif
 }
 
 void ArkSteedCodeGenerator::EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
-    // Keep the conditional branch target close to the failing check. This avoids using a long conditional branch
-    // on AArch64; the local target only performs an unconditional jump to the tail deopt exit.
     __ Jump(RecordEagerDeoptTarget(vertex, type));
 }
 
@@ -676,6 +664,7 @@ void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
     __ SaveArkSteedDeoptSnapshot(usedDeoptSnapshotGeneralRegisters_, usedDeoptSnapshotFloatingRegisters_);
     __ PrepareArkSteedDeoptHandlerCall();
     __ Return();
+    __ CheckVeneerPool(false);
 #endif
 
     for (size_t index = 0; index < eagerDeoptTargetsById_.size(); ++index) {
@@ -695,6 +684,9 @@ void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
         }
         // Keep the deopt return PC inside this MachineCode text even when this is the last emitted exit.
         __ Nop();
+#if defined(PANDA_TARGET_ARM64)
+        __ CheckVeneerPool(true);
+#endif
     }
 }
 
@@ -2414,6 +2406,9 @@ void ArkSteedCodeGenerator::Generate()
     }
 
     __ Prologue(graph_);
+#if defined(PANDA_TARGET_ARM64)
+    __ CheckVeneerPool(true);
+#endif
 
     for (uint32_t i = 0, numBlocks = graph_->NumBlocks(); i < numBlocks; ++i) {
         BB *curBlock = (*graph_)[i];
@@ -2425,10 +2420,16 @@ void ArkSteedCodeGenerator::Generate()
         if (curBlock->HasPhi()) {
             for (PhiVertex *phi : curBlock->GetPhis()) {
                 ProcessNonControlVertex(phi);
+#if defined(PANDA_TARGET_ARM64)
+                __ CheckVeneerPool(true);
+#endif
             }
         }
         for (NonControlVertex *vertex : curBlock->GetVertices()) {
             ProcessNonControlVertex(vertex);
+#if defined(PANDA_TARGET_ARM64)
+            __ CheckVeneerPool(true);
+#endif
         }
         ControlVertex *controlVertex = curBlock->GetControlVertex();
         // Precondition: All critical edges have been split before.
@@ -2439,9 +2440,15 @@ void ArkSteedCodeGenerator::Generate()
         }
 
         ProcessControlVertex(controlVertex);
+#if defined(PANDA_TARGET_ARM64)
+        __ CheckVeneerPool(true);
+#endif
     }
     EmitDeferredCode();
     EmitQueuedEagerDeoptExits();
+#if defined(PANDA_TARGET_ARM64)
+    __ FinalizeVeneers();
+#endif
 }
 
 void ArkSteedCodeGenerator::EmitDeferredCode()

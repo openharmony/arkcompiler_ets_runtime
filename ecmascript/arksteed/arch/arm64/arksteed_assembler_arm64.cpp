@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <sstream>
 
 #include "ecmascript/arksteed/arch/arm64/arksteed_assembler_arm64-inl.h"
@@ -588,14 +589,277 @@ void ArkSteedAssembler::CompareField(ArkSteedRegister base, int32_t offset, ArkS
 // Control Flow
 // =============================================================================
 
+bool ArkSteedAssembler::IsVeneerBranchOrCall(uint32_t instruction)
+{
+    return (instruction & aarch64::BranchOpCode::BranchFMask) == aarch64::BranchOpCode::Branch;
+}
+
+bool ArkSteedAssembler::IsVeneerConditionOrCompareBranch(uint32_t instruction)
+{
+    return (instruction & aarch64::BranchOpCode::BranchCondFMask) == aarch64::BranchOpCode::BranchCond ||
+           (instruction & aarch64::BranchOpCode::BranchCompareFMask) == aarch64::BranchOpCode::CBZ;
+}
+
+bool ArkSteedAssembler::IsVeneerTestBranch(uint32_t instruction)
+{
+    return (instruction & aarch64::BranchOpCode::BranchTestFMask) == aarch64::BranchOpCode::TBZ;
+}
+
+bool ArkSteedAssembler::IsVeneerBranchInRange(uint32_t instruction, int64_t displacement) const
+{
+    if ((displacement & (VENEER_INSTRUCTION_SIZE - 1U)) != 0) {
+        return false;
+    }
+    if (IsVeneerBranchOrCall(instruction)) {
+        constexpr int64_t minDisplacement = -(1LL << 27U);  // imm26 scaled by 4: -128 MiB.
+        constexpr int64_t maxDisplacement = 1LL << 27U;  // imm26 scaled by 4: +128 MiB, exclusive.
+        return displacement >= minDisplacement && displacement < maxDisplacement;
+    }
+    if (IsVeneerConditionOrCompareBranch(instruction)) {
+        constexpr int64_t minDisplacement = -(1LL << 20U);  // imm19 scaled by 4: -1 MiB.
+        constexpr int64_t maxDisplacement = 1LL << 20U;  // imm19 scaled by 4: +1 MiB, exclusive.
+        return displacement >= minDisplacement && displacement < maxDisplacement;
+    }
+    if (IsVeneerTestBranch(instruction)) {
+        constexpr int64_t minDisplacement = -(1LL << 15U);  // imm14 scaled by 4: -32 KiB.
+        constexpr int64_t maxDisplacement = 1LL << 15U;  // imm14 scaled by 4: +32 KiB, exclusive.
+        return displacement >= minDisplacement && displacement < maxDisplacement;
+    }
+    LOG_COMPILER(FATAL) << "Unsupported ARM64 veneer branch instruction: " << std::hex << instruction;
+    UNREACHABLE();
+}
+
+uint32_t ArkSteedAssembler::GetVeneerBranchDeadline(uint32_t branchPc, uint32_t instruction) const
+{
+    uint64_t maxForwardDisplacement;
+    if (IsVeneerBranchOrCall(instruction)) {
+        maxForwardDisplacement = 1ULL << 27U;  // B/BL byte reach from signed imm26.
+    } else if (IsVeneerConditionOrCompareBranch(instruction)) {
+        maxForwardDisplacement = 1ULL << 20U;  // B.cond/CBZ/CBNZ byte reach from signed imm19.
+    } else if (IsVeneerTestBranch(instruction)) {
+        maxForwardDisplacement = 1ULL << 15U;  // TBZ/TBNZ byte reach from signed imm14.
+    } else {
+        LOG_COMPILER(FATAL) << "Unsupported ARM64 veneer branch instruction: " << std::hex << instruction;
+        UNREACHABLE();
+    }
+
+    uint64_t poolEntryCount = static_cast<uint64_t>(veneerBranches_.size()) + 1U;  // 1: optional guard branch.
+    uint64_t poolReserve = poolEntryCount * VENEER_INSTRUCTION_SIZE;
+    uint64_t reservedDisplacement = VENEER_DISTANCE_MARGIN + poolReserve;
+    if (maxForwardDisplacement <= reservedDisplacement) {
+        return branchPc;
+    }
+    uint64_t deadline = static_cast<uint64_t>(branchPc) + maxForwardDisplacement - reservedDisplacement;
+    return static_cast<uint32_t>(std::min(deadline, static_cast<uint64_t>(UINT32_MAX)));
+}
+
+void ArkSteedAssembler::UpdateVeneerPoolCheck()
+{
+    nextVeneerPoolCheck_ = UINT32_MAX;  // No deadline until an unresolved branch supplies one.
+    for (const auto &[_, branches] : veneerBranches_) {
+        for (uint32_t branchPc : branches) {
+            uint32_t deadline = GetVeneerBranchDeadline(branchPc, assembler_.GetU32(branchPc));
+            nextVeneerPoolCheck_ = std::min(nextVeneerPoolCheck_, deadline);
+        }
+    }
+}
+
+void ArkSteedAssembler::RecordVeneerBranch(uint32_t branchPc, Label *target)
+{
+    auto [iter, inserted] = veneerBranches_.try_emplace(target, chunk_);
+    iter->second.push_back(branchPc);
+
+    if (inserted && nextVeneerPoolCheck_ != UINT32_MAX) {
+        uint32_t additionalReserve = VENEER_INSTRUCTION_SIZE;
+        nextVeneerPoolCheck_ = nextVeneerPoolCheck_ > additionalReserve
+            ? nextVeneerPoolCheck_ - additionalReserve
+            : 0;  // 0: force a full check at the next safe codegen boundary.
+    }
+    uint32_t deadline = GetVeneerBranchDeadline(branchPc, assembler_.GetU32(branchPc));
+    nextVeneerPoolCheck_ = std::min(nextVeneerPoolCheck_, deadline);
+}
+
+void ArkSteedAssembler::PatchVeneerBranchTarget(uint32_t branchPc, uint32_t targetPc)
+{
+    uint32_t instruction = assembler_.GetU32(branchPc);
+    int64_t displacement = static_cast<int64_t>(targetPc) - static_cast<int64_t>(branchPc);
+    if (!IsVeneerBranchInRange(instruction, displacement)) {
+        LOG_COMPILER(FATAL) << "ARM64 veneer branch is out of range: branchPc=" << branchPc
+                            << ", targetPc=" << targetPc;
+    }
+
+    uint32_t encodedDisplacement = static_cast<uint32_t>(displacement / VENEER_INSTRUCTION_SIZE);
+    if (IsVeneerBranchOrCall(instruction)) {
+        instruction &= ~aarch64::BRANCH_Imm26_MASK;
+        instruction |= (encodedDisplacement << aarch64::BRANCH_Imm26_LOWBITS) & aarch64::BRANCH_Imm26_MASK;
+    } else if (IsVeneerConditionOrCompareBranch(instruction)) {
+        instruction &= ~aarch64::BRANCH_Imm19_MASK;
+        instruction |= (encodedDisplacement << aarch64::BRANCH_Imm19_LOWBITS) & aarch64::BRANCH_Imm19_MASK;
+    } else if (IsVeneerTestBranch(instruction)) {
+        instruction &= ~aarch64::BRANCH_Imm14_MASK;
+        instruction |= (encodedDisplacement << aarch64::BRANCH_Imm14_LOWBITS) & aarch64::BRANCH_Imm14_MASK;
+    } else {
+        UNREACHABLE();
+    }
+    assembler_.PutI32(branchPc, static_cast<int32_t>(instruction));
+}
+
+void ArkSteedAssembler::BindVeneerLabel(Label *label)
+{
+    ASSERT(!label->IsBound());
+    ASSERT(!label->IsLinked());
+    uint32_t targetPc = GetPcOffset();
+    auto iter = veneerBranches_.find(label);
+    if (iter != veneerBranches_.end()) {
+        for (uint32_t branchPc : iter->second) {
+            PatchVeneerBranchTarget(branchPc, targetPc);
+        }
+        veneerBranches_.erase(iter);
+    }
+    label->BindTo(static_cast<int32_t>(targetPc));
+}
+
+void ArkSteedAssembler::CheckVeneerPool(bool precedingCodeCanFallThrough)
+{
+    ASSERT(!emittingVeneerPool_);
+    if (veneerBranches_.empty()) {
+        nextVeneerPoolCheck_ = UINT32_MAX;  // No unresolved branch needs another pool check.
+        return;
+    }
+
+    uint32_t currentPc = GetPcOffset();
+    if (currentPc < nextVeneerPoolCheck_) {
+        return;
+    }
+
+    uint64_t poolEntryCount = static_cast<uint64_t>(veneerBranches_.size()) + 1U;  // 1: optional guard branch.
+    uint64_t poolReserve = poolEntryCount * VENEER_INSTRUCTION_SIZE;
+    uint64_t prospectivePoolEnd = static_cast<uint64_t>(currentPc) + VENEER_DISTANCE_MARGIN + poolReserve;
+    ChunkVector<std::pair<uint32_t, Label *>> candidates(chunk_);
+    for (const auto &[target, branches] : veneerBranches_) {
+        uint32_t firstDeadline = UINT32_MAX;  // Sentinel until this target's first branch is examined.
+        bool needsVeneer = false;
+        for (uint32_t branchPc : branches) {
+            uint32_t instruction = assembler_.GetU32(branchPc);
+            firstDeadline = std::min(firstDeadline, GetVeneerBranchDeadline(branchPc, instruction));
+            int64_t displacement = static_cast<int64_t>(prospectivePoolEnd) - static_cast<int64_t>(branchPc);
+            needsVeneer = needsVeneer || !IsVeneerBranchInRange(instruction, displacement);
+        }
+        if (needsVeneer) {
+            candidates.emplace_back(firstDeadline, target);
+        }
+    }
+
+    if (candidates.empty()) {
+        UpdateVeneerPoolCheck();
+        return;
+    }
+    std::sort(candidates.begin(), candidates.end(), [](const auto &left, const auto &right) {
+        return left.first < right.first;
+    });
+
+    emittingVeneerPool_ = true;
+    uint32_t guardPc = UINT32_MAX;  // Sentinel used when fallthrough does not require a guard.
+    if (precedingCodeCanFallThrough) {
+        guardPc = GetPcOffset();
+        assembler_.B(0);  // 0: placeholder branch displacement.
+    }
+
+    for (const auto &[_, target] : candidates) {
+        auto iter = veneerBranches_.find(target);
+        ASSERT(iter != veneerBranches_.end());
+        uint32_t veneerPc = GetPcOffset();
+        assembler_.B(0);  // 0: placeholder branch displacement.
+        for (uint32_t branchPc : iter->second) {
+            PatchVeneerBranchTarget(branchPc, veneerPc);
+        }
+        iter->second.clear();
+        iter->second.push_back(veneerPc);
+    }
+
+    if (precedingCodeCanFallThrough) {
+        PatchVeneerBranchTarget(guardPc, GetPcOffset());
+    }
+    emittingVeneerPool_ = false;
+    UpdateVeneerPoolCheck();
+}
+
+void ArkSteedAssembler::FinalizeVeneers()
+{
+    if (!veneerBranches_.empty()) {
+        LOG_COMPILER(FATAL) << "Unbound labels remain after ARM64 veneer finalization";
+    }
+}
+
 void ArkSteedAssembler::Jump(Label *target)
 {
-    assembler_.B(target);
+    uint32_t branchPc = GetPcOffset();
+    assembler_.B(0);  // 0: placeholder branch displacement.
+    if (target->IsBound()) {
+        PatchVeneerBranchTarget(branchPc, target->GetPos());
+        return;
+    }
+    RecordVeneerBranch(branchPc, target);
 }
 
 void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 {
-    assembler_.B(ToPhysicalCondition(condition), target);
+    if (target->IsBound()) {
+        int64_t displacement = static_cast<int64_t>(target->GetPos()) - static_cast<int64_t>(GetPcOffset());
+        if (!IsVeneerBranchInRange(aarch64::BranchOpCode::BranchCond, displacement)) {
+            assembler_.B(ToPhysicalCondition(NegateCondition(condition)), 2);  // 2: skip the following B.
+            Jump(target);
+            return;
+        }
+    }
+
+    uint32_t branchPc = GetPcOffset();
+    assembler_.B(ToPhysicalCondition(condition), 0);  // 0: placeholder branch displacement.
+    if (target->IsBound()) {
+        PatchVeneerBranchTarget(branchPc, target->GetPos());
+        return;
+    }
+    RecordVeneerBranch(branchPc, target);
+}
+
+void ArkSteedAssembler::TestAndBranchIfZero(ArkSteedRegister value, int32_t bit, Label *target)
+{
+    if (target->IsBound()) {
+        int64_t displacement = static_cast<int64_t>(target->GetPos()) - static_cast<int64_t>(GetPcOffset());
+        if (!IsVeneerBranchInRange(aarch64::BranchOpCode::TBZ, displacement)) {
+            assembler_.Tbnz(value, bit, 2);  // 2: skip the following B.
+            Jump(target);
+            return;
+        }
+    }
+
+    uint32_t branchPc = GetPcOffset();
+    assembler_.Tbz(value, bit, 0);  // 0: placeholder branch displacement.
+    if (target->IsBound()) {
+        PatchVeneerBranchTarget(branchPc, target->GetPos());
+        return;
+    }
+    RecordVeneerBranch(branchPc, target);
+}
+
+void ArkSteedAssembler::TestAndBranchIfNotZero(ArkSteedRegister value, int32_t bit, Label *target)
+{
+    if (target->IsBound()) {
+        int64_t displacement = static_cast<int64_t>(target->GetPos()) - static_cast<int64_t>(GetPcOffset());
+        if (!IsVeneerBranchInRange(aarch64::BranchOpCode::TBNZ, displacement)) {
+            assembler_.Tbz(value, bit, 2);  // 2: skip the following B.
+            Jump(target);
+            return;
+        }
+    }
+
+    uint32_t branchPc = GetPcOffset();
+    assembler_.Tbnz(value, bit, 0);  // 0: placeholder branch displacement.
+    if (target->IsBound()) {
+        PatchVeneerBranchTarget(branchPc, target->GetPos());
+        return;
+    }
+    RecordVeneerBranch(branchPc, target);
 }
 
 void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target)
@@ -632,8 +896,8 @@ void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *t
     LoadField(hclass, jsFunc, TaggedObject::HCLASS_OFFSET);
     And(hclass, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
     LoadField(bitfield, hclass, JSHClass::BIT_FIELD_OFFSET);
-    assembler_.Tbz(bitfield, JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &notClassConstructor);
-    assembler_.Tbnz(bitfield, JSHClass::ConstructorBit::START_BIT, target);
+    TestAndBranchIfZero(bitfield, JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &notClassConstructor);
+    TestAndBranchIfNotZero(bitfield, JSHClass::ConstructorBit::START_BIT, target);
     Bind(&notClassConstructor);
 }
 
@@ -642,7 +906,7 @@ void ArkSteedAssembler::JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label
     TemporaryRegisterScope scope(this);
     ArkSteedRegister bitfield = scope.Acquire();
     LoadField(bitfield, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
-    assembler_.Tbz(bitfield, JSFunctionBase::IsCompiledCodeBit::START_BIT, target);
+    TestAndBranchIfZero(bitfield, JSFunctionBase::IsCompiledCodeBit::START_BIT, target);
 }
 
 void ArkSteedAssembler::BranchIfNoPendingException(Label* target)
@@ -686,7 +950,7 @@ void ArkSteedAssembler::LoadAndClearPendingException(ArkSteedRegister dst, ArkSt
 
 void ArkSteedAssembler::Bind(Label *label)
 {
-    assembler_.Bind(label);
+    BindVeneerLabel(label);
 }
 
 // =============================================================================
@@ -700,7 +964,13 @@ void ArkSteedAssembler::Call(ArkSteedRegister target)
 
 void ArkSteedAssembler::Call(Label *target)
 {
-    assembler_.Bl(target);
+    uint32_t branchPc = GetPcOffset();
+    assembler_.Bl(0);  // 0: placeholder branch displacement.
+    if (target->IsBound()) {
+        PatchVeneerBranchTarget(branchPc, target->GetPos());
+        return;
+    }
+    RecordVeneerBranch(branchPc, target);
 }
 
 void ArkSteedAssembler::Nop()
