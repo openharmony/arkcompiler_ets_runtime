@@ -683,20 +683,60 @@ DECLARE_ASM_HANDLER(HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8)
 
 DECLARE_ASM_HANDLER(HandleThrowIfsupernotcorrectcallPrefImm16)
 {
+    auto env = GetEnvironment();
     GateRef imm = ReadInst16_1(pc);
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
-        { Int16ToTaggedInt(imm), acc }); // acc is thisValue
-    CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16));
+    GateRef isUndefinedOrHole = LogicOrBuilder(env).Or(TaggedIsUndefined(acc)).Or(TaggedIsHole(acc)).Done();
+    Label callSuperBeforeThisCheck(env);
+    Label forbiddenSuperRebindThisCheck(env);
+    Label checkForbiddenSuperRebindThis(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    BRANCH_LIKELY(Equal(imm, Int16(0)),
+        &callSuperBeforeThisCheck, &checkForbiddenSuperRebindThis);
+    Bind(&callSuperBeforeThisCheck);
+    BRANCH_UNLIKELY(isUndefinedOrHole, &slowPath, &fastPath);
+    Bind(&checkForbiddenSuperRebindThis);
+    BRANCH_LIKELY(Equal(imm, Int16(1)), &forbiddenSuperRebindThisCheck, &fastPath);
+    Bind(&forbiddenSuperRebindThisCheck);
+    BRANCH_LIKELY(isUndefinedOrHole, &fastPath, &slowPath);
+    Bind(&fastPath);
+    DISPATCH(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16);
+    Bind(&slowPath);
+    {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
+            { Int16ToTaggedInt(imm), acc }); // acc is thisValue
+        CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleThrowIfsupernotcorrectcallPrefImm8)
 {
+    auto env = GetEnvironment();
     GateRef imm = ReadInst8_1(pc);
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
-                                            { Int8ToTaggedInt(imm), acc }); // acc is thisValue
-    CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8));
+    GateRef isUndefinedOrHole = LogicOrBuilder(env).Or(TaggedIsUndefined(acc)).Or(TaggedIsHole(acc)).Done();
+    Label callSuperBeforeThisCheck(env);
+    Label forbiddenSuperRebindThisCheck(env);
+    Label checkForbiddenSuperRebindThis(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    BRANCH_LIKELY(Int8Equal(imm, Int8(0)),
+        &callSuperBeforeThisCheck, &checkForbiddenSuperRebindThis);
+    Bind(&callSuperBeforeThisCheck);
+    BRANCH_UNLIKELY(isUndefinedOrHole, &slowPath, &fastPath);
+    Bind(&checkForbiddenSuperRebindThis);
+    BRANCH_LIKELY(Int8Equal(imm, Int8(1)), &forbiddenSuperRebindThisCheck, &fastPath);
+    Bind(&forbiddenSuperRebindThisCheck);
+    BRANCH_LIKELY(isUndefinedOrHole, &fastPath, &slowPath);
+    Bind(&fastPath);
+    DISPATCH(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8);
+    Bind(&slowPath);
+    {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
+            { Int8ToTaggedInt(imm), acc }); // acc is thisValue
+        CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8));
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleAsyncfunctionresolveV8)
@@ -6782,19 +6822,92 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeSuperCallForwardAllArgsV8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
 
     auto env = GetEnvironment();
-    GateRef thisFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
+    Label ctorIsHeapObject(env);
+    Label ctorIsJSFunction(env);
+    Label ctorIsConstructor(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    Label ctorIsBase(env);
+    Label ctorNotBase(env);
+    Label argsInRange(env);
+    Label threadCheck(env);
+    Label checkResult(env);
+    Label isException(env);
+    Label dispatch(env);
 
-    IR_IF (TaggedIsException(*res)) {
-        IR_IF (HasPendingException(glue)) {
-            DISPATCH_LAST();
+    GateRef frame = GetFrame(sp);
+    GateRef thisFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+    GateRef newTarget = GetNewTarget(glue, sp);
+    GateRef superCtor = GetPrototype(glue, thisFunc);
+
+    BRANCH(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
+    Bind(&ctorIsHeapObject);
+    BRANCH(IsJSFunction(glue, superCtor), &ctorIsJSFunction, &slowPath);
+    Bind(&ctorIsJSFunction);
+    BRANCH(IsConstructor(glue, superCtor), &ctorIsConstructor, &slowPath);
+    Bind(&ctorIsConstructor);
+    BRANCH(TaggedIsUndefined(newTarget), &slowPath, &fastPath);
+    Bind(&fastPath);
+    {
+        GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(glue, sp, Int32(0));
+        GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32))); // 32: high bits
+        GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
+        // SUPER_CALL_WITH_ARGV keeps the native runtime fallback ABI, whose indices are uint16_t.
+        GateRef argsFitSuperCallAbi = LogicAndBuilder(env)
+            .And(Int32UnsignedLessThanOrEqual(startIdx, Int32(0xFFFF)))
+            .And(Int32UnsignedLessThanOrEqual(numArgs, Int32(0xFFFF)))
+            .Done();
+        BRANCH(argsFitSuperCallAbi, &argsInRange, &slowPath);
+        Bind(&argsInRange);
+        BRANCH(IsBase(glue, superCtor), &ctorIsBase, &ctorNotBase);
+        Bind(&ctorIsBase);
+        {
+            NewObjectStubBuilder objBuilder(this);
+            thisObj = objBuilder.FastSuperAllocateThis(glue, superCtor, newTarget);
+            BRANCH(HasPendingException(glue), &isException, &ctorNotBase);
         }
+        Bind(&ctorNotBase);
+        GateRef argv = PtrAdd(sp, PtrMul(ZExtInt32ToPtr(startIdx), IntPtr(JSTaggedValue::TaggedTypeSize())));
+        // Negative jump size requests constructor-result normalization when the callee returns.
+        constexpr int64_t SUPER_CALL_FORWARD_ALL_ARGS_BYTECODE_SIZE = -3;
+        GateRef jumpSize = IntPtr(SUPER_CALL_FORWARD_ALL_ARGS_BYTECODE_SIZE);
+        METHOD_ENTRY_ENV_DEFINED(superCtor);
+        JSCallArgs callArgs(JSCallMode::SUPER_CALL_WITH_ARGV);
+        callArgs.superCallArgs = {
+            thisFunc, IntToTaggedInt(startIdx), ZExtInt32ToPtr(numArgs), argv, *thisObj, newTarget
+        };
+        CallStubBuilder callBuilder(this, glue, superCtor, numArgs, jumpSize, nullptr, hotnessCounter, callArgs,
+            callback);
+        res = callBuilder.JSCallDispatch();
+        Jump(&threadCheck);
     }
-    varAcc = *res;
-    DISPATCH_WITH_ACC(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
+    Bind(&slowPath);
+    {
+        GateRef currentEnv = GetEnvFromFrame(glue, frame);
+        res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
+        Jump(&checkResult);
+    }
+
+    Bind(&checkResult);
+    {
+        BRANCH(TaggedIsException(*res), &threadCheck, &dispatch);
+    }
+    Bind(&threadCheck);
+    {
+        BRANCH(HasPendingException(glue), &isException, &dispatch);
+    }
+    Bind(&isException);
+    {
+        DISPATCH_LAST();
+    }
+    Bind(&dispatch);
+    {
+        varAcc = *res;
+        DISPATCH_WITH_ACC(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
+    }
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendablelocalmodulevarImm8)

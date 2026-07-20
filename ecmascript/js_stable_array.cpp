@@ -1139,8 +1139,12 @@ JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             bool boolResult = callResult.ToBoolean();
             if (boolResult) {
-                toIndexHandle.Update(JSTaggedValue(toIndex));
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
+                if (LIKELY(newArrayHandle->IsExtensible())) {
+                    JSArray::TryFastCreateDataProperty(thread, newArrayHandle, toIndex, kValue);
+                } else {
+                    toIndexHandle.Update(JSTaggedValue(toIndex));
+                    JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
+                }
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 toIndex++;
             }
@@ -1188,7 +1192,11 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
             JSTaggedValue mapResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             mapResultHandle.Update(mapResult);
-            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle);
+            if (LIKELY(newArrayHandle->IsExtensible())) {
+                JSArray::TryFastCreateDataProperty(thread, newArrayHandle, k, mapResultHandle);
+            } else {
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle);
+            }
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (ElementAccessor::GetElementsLength(thread, thisObjHandle) < len) {
                 len = ElementAccessor::GetElementsLength(thread, thisObjHandle);

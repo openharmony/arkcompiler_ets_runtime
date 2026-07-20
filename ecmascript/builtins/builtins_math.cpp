@@ -20,11 +20,33 @@ namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
 using RandomGenerator = base::RandomGenerator;
 
+static inline JSTaggedValue AbsInternal(double value)
+{
+    return BuiltinsMath::GetTaggedDouble(std::fabs(value));
+}
+
+static inline JSTaggedValue AbsInternal(int value)
+{
+    if (value == INT_MIN) {
+        return BuiltinsMath::GetTaggedDouble(-static_cast<int64_t>(INT_MIN));
+    }
+    return BuiltinsMath::GetTaggedInt(std::abs(value));
+}
+
 // 20.2.2.1
 JSTaggedValue BuiltinsMath::Abs(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Abs);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsDouble()) {
+        return AbsInternal(arg0.GetDouble());
+    }
+    if (arg0.IsInt()) {
+        return AbsInternal(arg0.GetInt());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
@@ -33,14 +55,10 @@ JSTaggedValue BuiltinsMath::Abs(EcmaRuntimeCallInfo *argv)
     if (numberValue.IsDouble()) {
         // if number_value is double,NaN,Undefine, deal in this case
         // if number_value is a String ,which can change to double. e.g."100",deal in this case
-        return GetTaggedDouble(std::fabs(numberValue.GetDouble()));
+        return AbsInternal(numberValue.GetDouble());
     }
     // if number_value is int,boolean,null, deal in this case
-    int value = numberValue.GetInt();
-    if (value == INT_MIN) {
-        return GetTaggedDouble(-static_cast<int64_t>(INT_MIN));
-    }
-    return GetTaggedInt(std::abs(value));
+    return AbsInternal(numberValue.GetInt());
 }
 
 // 20.2.2.2
@@ -204,28 +222,34 @@ JSTaggedValue BuiltinsMath::Cbrt(EcmaRuntimeCallInfo *argv)
     return GetTaggedDouble(result);
 }
 
+static inline JSTaggedValue CeilInternal(double value)
+{
+    if (!std::isfinite(value)) {
+        if (!std::isnan(std::abs(value))) {
+            return BuiltinsMath::GetTaggedDouble(value);
+        }
+        return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+    }
+    return BuiltinsMath::GetTaggedDouble(std::ceil(value));
+}
+
 // 20.2.2.10
 JSTaggedValue BuiltinsMath::Ceil(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Ceil);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsNumber()) {
+        return CeilInternal(arg0.GetNumber());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double value = numberValue.GetNumber();
-    double result = base::NAN_VALUE;
-    // If value is NaN or -NaN, +infinite, -infinite,return value
-    if (!std::isfinite(value)) {
-        // if value is -NaN , return NaN, else return value
-        if (!std::isnan(std::abs(value))) {
-            result = value;
-        }
-    } else {
-        result = std::ceil(value);
-    }
-    return GetTaggedDouble(result);
+    return CeilInternal(numberValue.GetNumber());
 }
 
 // 20.2.2.11
@@ -249,23 +273,32 @@ JSTaggedValue BuiltinsMath::Clz32(EcmaRuntimeCallInfo *argv)
     return GetTaggedInt(__builtin_clz(result));
 }
 
+static inline JSTaggedValue CosInternal(double value)
+{
+    //  If value is NaN or -NaN, +infinite, -infinite, result is NaN
+    if (std::isfinite(value)) {
+        return BuiltinsMath::GetTaggedDouble(std::cos(value));
+    }
+    return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+}
+
 // 20.2.2.12
 JSTaggedValue BuiltinsMath::Cos(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Cos);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsNumber()) {
+        return CosInternal(arg0.GetNumber());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double value = numberValue.GetNumber();
-    double result = base::NAN_VALUE;
-    //  If value is NaN or -NaN, +infinite, -infinite, result is NaN
-    if (std::isfinite(std::abs(value))) {
-        result = std::cos(value);
-    }
-    return GetTaggedDouble(result);
+    return CosInternal(numberValue.GetNumber());
 }
 
 // 20.2.2.13
@@ -325,31 +358,40 @@ JSTaggedValue BuiltinsMath::Expm1(EcmaRuntimeCallInfo *argv)
     return GetTaggedDouble(result);
 }
 
+static inline JSTaggedValue FloorInternal(double value)
+{
+    // If value is NaN or -NaN, +infinite, -infinite, +0, -0, return value
+    if (!std::isfinite(value) || value == 0) {
+        // If value is -NaN, return NaN, else return value
+        if (!std::isnan(std::abs(value))) {
+            return BuiltinsMath::GetTaggedDouble(value);
+        }
+        return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+    }
+    // If x is greater than 0 but less than 1, the result is +0
+    if (value > 0 && value < 1) {
+        return BuiltinsMath::GetTaggedDouble(0.0);
+    }
+    return BuiltinsMath::GetTaggedDouble(std::floor(value));
+}
+
 // 20.2.2.16
 JSTaggedValue BuiltinsMath::Floor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Floor);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsNumber()) {
+        return FloorInternal(arg0.GetNumber());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double value = numberValue.GetNumber();
-    double result = base::NAN_VALUE;
-    // If value is NaN or -NaN, +infinite, -infinite, +0, -0, return value
-    if (!std::isfinite(value) || value == 0) {
-        // If value is -NaN, return NaN, else return value
-        if (!std::isnan(std::abs(value))) {
-            result = value;
-        }
-    } else if (value > 0 && value < 1) {
-        // If x is greater than 0 but less than 1, the result is +0
-        result = 0;
-    } else {
-        result = std::floor(value);
-    }
-    return GetTaggedDouble(result);
+    return FloorInternal(numberValue.GetNumber());
 }
 
 // 20.2.2.17
@@ -635,8 +677,35 @@ JSTaggedValue BuiltinsMath::Random(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Math, Random);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return GetTaggedDouble(RandomGenerator::NextDouble());
+}
+
+static inline JSTaggedValue RoundInternal(double value)
+{
+    const double diff = 0.5;
+    double absValue = std::abs(value);
+    // If value is NaN or -NaN, +infinite, or -infinite, return value
+    if (!std::isfinite(absValue) || absValue == 0) {
+        // If value is NaN or -NaN, the result is default NaN, else is value
+        if (!std::isnan(absValue)) {
+            return BuiltinsMath::GetTaggedDouble(value);
+        }
+        return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+    }
+    // If x is less than 0 but greater than or equal to -0.5, the result is -0
+    if (value < 0 && value >= -diff) {
+        return BuiltinsMath::GetTaggedDouble(-0.0);
+    }
+    // If x is greater than 0 but less than 0.5, the result is +0
+    if (value > 0 && value < diff) {
+        return BuiltinsMath::GetTaggedInt(0);
+    }
+    // For huge integers
+    double result = std::ceil(value);
+    if (result - value > diff) {
+        result -= 1;
+    }
+    return BuiltinsMath::GetTaggedDouble(result);
 }
 
 // 20.2.2.28
@@ -644,37 +713,18 @@ JSTaggedValue BuiltinsMath::Round(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Round);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsNumber()) {
+        return RoundInternal(arg0.GetNumber());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double value = numberValue.GetNumber();
-    auto result = base::NAN_VALUE;
-    const double diff = 0.5;
-    double absValue = std::abs(value);
-    if (!std::isfinite(absValue) || absValue == 0) {
-        // If value is NaN, +infinite, or -infinite, VRegisterTag is DOUBLE
-        if (!std::isnan(absValue)) {
-            // If value is NaN or -NaN, the result is default NaN, else is value
-            result = value;
-        }
-        return GetTaggedDouble(result);
-    }
-    // If x is less than 0 but greater than or equal to -0.5, the result is -0
-    if (value < 0 && value >= -diff) {
-        return GetTaggedDouble(-0.0);
-    }
-    // If x is greater than 0 but less than 0.5, the result is +0
-    if (value > 0 && value < diff) {
-        return GetTaggedInt(0);
-    }
-    // For huge integers
-    result = std::ceil(value);
-    if (result - value > diff) {
-        result -= 1;
-    }
-    return GetTaggedDouble(result);
+    return RoundInternal(numberValue.GetNumber());
 }
 
 // 20.2.2.29
@@ -700,23 +750,32 @@ JSTaggedValue BuiltinsMath::Sign(EcmaRuntimeCallInfo *argv)
     return GetTaggedInt(1);
 }
 
+static inline JSTaggedValue SinInternal(double value)
+{
+    // If value is NaN or -NaN, the result is NaN
+    if (std::isfinite(value)) {
+        return BuiltinsMath::GetTaggedDouble(std::sin(value));
+    }
+    return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+}
+
 // 20.2.2.30
 JSTaggedValue BuiltinsMath::Sin(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Sin);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsNumber()) {
+        return SinInternal(arg0.GetNumber());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double value = numberValue.GetNumber();
-    double result = base::NAN_VALUE;
-    // If value is NaN or -NaN, the result is NaN
-    if (std::isfinite(std::abs(value))) {
-        result = std::sin(value);
-    }
-    return GetTaggedDouble(result);
+    return SinInternal(numberValue.GetNumber());
 }
 
 // 20.2.2.31
@@ -738,27 +797,36 @@ JSTaggedValue BuiltinsMath::Sinh(EcmaRuntimeCallInfo *argv)
     return GetTaggedDouble(result);
 }
 
+static inline JSTaggedValue SqrtInternal(double value)
+{
+    // If value is negative, include -NaN and -Infinity but not -0.0, the result is NaN
+    if (std::signbit(value) && value != 0) {
+        return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+    }
+    // If value is NaN, the result is NaN
+    if (std::isnan(value)) {
+        return BuiltinsMath::GetTaggedDouble(base::NAN_VALUE);
+    }
+    return BuiltinsMath::GetTaggedDouble(std::sqrt(value));
+}
+
 // 20.2.2.32
 JSTaggedValue BuiltinsMath::Sqrt(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Math, Sqrt);
+    // Fast path: skip handle scope and ToNumber for numeric arguments
+    JSTaggedValue arg0 = GetCallArg(argv, 0).GetTaggedValue();
+    if (arg0.IsNumber()) {
+        return SqrtInternal(arg0.GetNumber());
+    }
+    // Slow path: original code with handle scope, ToNumber, etc.
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double value = numberValue.GetNumber();
-    double result = base::NAN_VALUE;
-    // If value is negative, include -NaN and -Infinity but not -0.0, the result is NaN
-    if (std::signbit(value) && value != 0) {
-        return GetTaggedDouble(result);
-    }
-    // If value is NaN, the result is NaN
-    if (!std::isnan(value)) {
-        result = std::sqrt(value);
-    }
-    return GetTaggedDouble(result);
+    return SqrtInternal(numberValue.GetNumber());
 }
 
 // 20.2.2.33
