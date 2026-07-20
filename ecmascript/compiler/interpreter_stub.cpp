@@ -91,7 +91,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define DECLARE_ASM_HANDLER_STW_COPY(name)                                                     \
     DECLARE_ASM_HANDLER_BASE(name##StwCopy, true, REGISTER_NULL_CALL_BACK, SlotIDFormat::IMM8)
 
-// TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
+// TYPE:{OFFSET, ACC_VARACC, JUMP}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
 
 // Dispatch(glue, sp, pc, constpool, profileTypeInfo, acc, offset)
@@ -105,9 +105,6 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 // Dispatch(glue, sp, pc, constpool, *varProfileTypeInfo, acc, offset)
 #define DISPATCH_JUMP(offset)                                                                  \
     DISPATCH_BASE(*varProfileTypeInfo, acc, offset)
-
-#define DISPATCH_SSD(offset)                                                                   \
-    Dispatch(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc, offset)
 
 #define DISPATCH_BASE(...)                                                                     \
     Dispatch(glue, sp, pc, constpool, __VA_ARGS__)
@@ -5888,40 +5885,6 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
             *varProfileTypeInfo, *varAcc});
     }
     Return();
-}
-
-DECLARE_ASM_HANDLER(SingleStepDebugging)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
-    DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
-    DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
-    DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
-    GateRef frame = GetFrame(*varSp);
-    SetPcToFrame(glue, frame, *varPc);
-    GateRef currentSp = *varSp;
-    varSp = TaggedCastToIntPtr(CallRuntime(glue,
-                                           RTSTUB_ID(JumpToCInterpreter),
-                                           { constpool, profileTypeInfo, acc }));
-    GateRef frameAfter = GetFrame(*varSp);
-    varPc = GetPcFromFrame(frameAfter);
-    IR_IF (IntPtrEqual(*varPc, IntPtr(0))) {
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { Undefined(), *varSp, currentSp });
-        Return();
-    } IR_ELSE {
-        varAcc = GetAccFromFrame(glue, frameAfter);
-        GateRef function = GetFunctionFromFrame(glue, frameAfter);
-        GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
-        varConstpool = GetConstpoolFromMethod(glue, method);
-    }
-    IR_IF (TaggedIsException(*varAcc)) {
-        DispatchLast(glue, *varSp, *varPc, *varConstpool, *varProfileTypeInfo, *varAcc);
-    } IR_ELSE {
-        DISPATCH_BAK(SSD, IntPtr(0));
-    }
 }
 
 DECLARE_ASM_HANDLER(BCDebuggerEntry)

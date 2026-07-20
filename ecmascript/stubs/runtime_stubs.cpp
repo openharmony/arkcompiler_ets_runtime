@@ -2632,26 +2632,6 @@ DEF_RUNTIME_STUBS(Mod2)
     return RuntimeMod2(thread, left, right).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(JumpToCInterpreter)
-{
-#ifndef EXCLUDE_C_INTERPRETER
-    RUNTIME_STUBS_HEADER(JumpToCInterpreter);
-    JSTaggedValue constpool = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue profileTypeInfo = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue acc = GetArg(argv, argc, 2);  // 2: means the second parameter
-
-    auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    const uint8_t *currentPc = reinterpret_cast<const uint8_t*>(GET_ASM_FRAME(sp)->pc);
-
-    uint8_t opcode = currentPc[0];
-    asmDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc);
-    sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    return JSTaggedValue(reinterpret_cast<uint64_t>(sp)).GetRawData();
-#else
-    return JSTaggedValue::Hole().GetRawData();
-#endif
-}
-
 DEF_RUNTIME_STUBS(NotifyBytecodePcChanged)
 {
     RUNTIME_STUBS_HEADER(NotifyBytecodePcChanged);

@@ -93,8 +93,6 @@ enum ArkTSMode {
 
 // asm interpreter control parsed option
 struct AsmInterParsedOption {
-    int handleStart {-1};
-    int handleEnd {-1};
     bool enableAsm {false};
 };
 
@@ -125,7 +123,6 @@ enum CommandValues {
     OPTION_MAX_UNMOVABLE_SPACE,
     OPTION_ENABLE_ASM_INTERPRETER,
     OPTION_ENABLE_BUILTINS_LAZY,
-    OPTION_ASM_OPCODE_DISABLE_RANGE,
     OPTION_SERIALIZER_BUFFER_SIZE_LIMIT,
     OPTION_HEAP_SIZE_LIMIT,
     OPTION_ENABLE_IC,
@@ -855,11 +852,6 @@ public:
     bool GetEnableBuiltinsLazy() const
     {
         return enableBuiltinsLazy_;
-    }
-
-    void SetAsmOpcodeDisableRange(std::string value)
-    {
-        asmOpcodeDisableRange_ = std::move(value);
     }
 
     void SetDisableCodeSign(bool value)
@@ -2687,7 +2679,6 @@ private:
     uint32_t maxNonmovableSpaceCapacity_ {4_MB};
     bool enableAsmInterpreter_ {true};
     bool enableBuiltinsLazy_ {true};
-    std::string asmOpcodeDisableRange_ {""};
     AsmInterParsedOption asmInterParsedOption_;
     uint64_t serializerBufferSizeLimit_ {2_GB};
     bool enableIC_ {true};

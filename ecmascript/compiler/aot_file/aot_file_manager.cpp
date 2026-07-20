@@ -443,8 +443,7 @@ kungfu::ArkStackMapParser *AOTFileManager::GetStackMapParser() const
 
 #if ENABLE_MEMORY_OPTIMIZATION
 void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
-                                                        const StubFileInfo &stubInfo,
-                                                        const AsmInterParsedOption &asmInterOpt)
+                                                        const StubFileInfo &stubInfo)
 {
 #if defined(STUB_FUNCTION_REORDERING)
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
@@ -454,29 +453,15 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     };
     // We cannot index using the static enum value when stub functions are
     // reordered. So we get actual runtime index from `StubIndexMapping`".
-    uint64_t defaultBCStubAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::SingleStepDebugging));
     uint64_t defaultBCDebuggerAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerEntry));
     uint64_t defaultBCDebuggerExceptionAddr =
         stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerExceptionEntry));
 #else
     auto getIdx = [](int csign) { return csign; };
-    uint64_t defaultBCStubAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::SingleStepDebugging));
     uint64_t defaultBCDebuggerAddr = stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerEntry));
     uint64_t defaultBCDebuggerExceptionAddr =
         stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::BCDebuggerExceptionEntry));
 #endif
-    ASSERT(stubInfo.GetRawEntries()[getIdx(BytecodeStubCSigns::SingleStepDebugging)].kind_ ==
-           kungfu::CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
-
-    if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
-        for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
-            thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubAddr);
-        }
-#define DISABLE_SINGLE_STEP_DEBUGGING(name) \
-    thread->SetBCStubEntry(BytecodeStubCSigns::ID_##name, stubInfo.GetCodeAddr(getIdx(BytecodeStubCSigns::ID_##name)));
-        INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(DISABLE_SINGLE_STEP_DEBUGGING)
-#undef DISABLE_SINGLE_STEP_DEBUGGING
-    }
     for (size_t i = 0; i < BCStubEntries::EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
         if (i == BytecodeStubCSigns::ID_ExceptionHandler) {
             thread->SetBCDebugStubEntry(i, defaultBCDebuggerExceptionAddr);
@@ -487,8 +472,7 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
 }
 #else
 void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
-                                                        const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
-                                                        const AsmInterParsedOption &asmInterOpt)
+                                                        const std::vector<AOTFileInfo::FuncEntryDes> &stubs)
 {
 #if defined(STUB_FUNCTION_REORDERING)
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
@@ -498,25 +482,13 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     };
     // We cannot index using the static enum value when stub functions are
     // reordered. So we get actual runtime index from `StubIndexMapping`".
-    auto defaultBCStubDes = stubs[getIdx(BytecodeStubCSigns::SingleStepDebugging)];
     auto defaultBCDebuggerStubDes = stubs[getIdx(BytecodeStubCSigns::BCDebuggerEntry)];
     auto defaultBCDebuggerExceptionStubDes = stubs[getIdx(BytecodeStubCSigns::BCDebuggerExceptionEntry)];
 #else
     auto getIdx = [](int csign) { return csign; };
-    auto defaultBCStubDes = stubs[BytecodeStubCSigns::SingleStepDebugging];
     auto defaultBCDebuggerStubDes = stubs[BytecodeStubCSigns::BCDebuggerEntry];
     auto defaultBCDebuggerExceptionStubDes = stubs[BytecodeStubCSigns::BCDebuggerExceptionEntry];
 #endif
-    ASSERT(defaultBCStubDes.kind_ == kungfu::CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
-    if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
-        for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
-            thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubDes.codeAddr_);
-        }
-#define DISABLE_SINGLE_STEP_DEBUGGING(name) \
-    thread->SetBCStubEntry(BytecodeStubCSigns::ID_##name, stubs[getIdx(BytecodeStubCSigns::ID_##name)].codeAddr_);
-        INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(DISABLE_SINGLE_STEP_DEBUGGING)
-#undef DISABLE_SINGLE_STEP_DEBUGGING
-    }
     for (size_t i = 0; i < BCStubEntries::EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
         if (i == BytecodeStubCSigns::ID_ExceptionHandler) {
             thread->SetBCDebugStubEntry(i, defaultBCDebuggerExceptionStubDes.codeAddr_);
@@ -621,8 +593,7 @@ void AOTFileManager::InitializeStubEntries(const StubFileInfo &stubInfo)
         thread->SwitchStwCopyCommonStubs(true);
         thread->SwitchStwCopyBuiltinsStubs(true);
     }
-    AsmInterParsedOption asmInterOpt = vm_->GetJSOptions().GetAsmInterParsedOption();
-    AdjustBCStubAndDebuggerStubEntries(thread, stubInfo, asmInterOpt);
+    AdjustBCStubAndDebuggerStubEntries(thread, stubInfo);
 }
 #else
 void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes> &stubs)
@@ -675,8 +646,7 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         thread->SwitchStwCopyCommonStubs(true);
         thread->SwitchStwCopyBuiltinsStubs(true);
     }
-    AsmInterParsedOption asmInterOpt = vm_->GetJSOptions().GetAsmInterParsedOption();
-    AdjustBCStubAndDebuggerStubEntries(thread, stubs, asmInterOpt);
+    AdjustBCStubAndDebuggerStubEntries(thread, stubs);
 }
 #endif
 

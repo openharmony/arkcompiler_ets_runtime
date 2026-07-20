@@ -50,7 +50,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--ark-properties:                     Set ark properties\n"
     "--ark-bundle-name:                    Set ark bundle name\n"
     "--asm-interpreter:                    Enable asm interpreter. Default: 'true'\n"
-    "--asm-opcode-disable-range:           Opcode range when asm interpreter is enabled.\n"
     "--builtins-lazy:                      Load some builtins function later.This option is only valid in workervm.\n"
     "--compiler-log:                       Log Option For aot compiler and stub compiler,\n"
     "                                      'none': no log,\n"
@@ -254,7 +253,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"ark-properties", required_argument, nullptr, OPTION_ARK_PROPERTIES},
         {"ark-bundleName", required_argument, nullptr, OPTION_ARK_BUNDLENAME},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
-        {"asm-opcode-disable-range", required_argument, nullptr, OPTION_ASM_OPCODE_DISABLE_RANGE},
         {"builtins-lazy", required_argument, nullptr, OPTION_ENABLE_BUILTINS_LAZY},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
@@ -496,9 +494,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
-                break;
-            case OPTION_ASM_OPCODE_DISABLE_RANGE:
-                SetAsmOpcodeDisableRange(optarg);
                 break;
             case OPTION_ENABLE_BUILTINS_LAZY:
                 ret = ParseBoolParam(&argBool);
@@ -1876,34 +1871,6 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
 void JSRuntimeOptions::ParseAsmInterOption()
 {
     asmInterParsedOption_.enableAsm = enableAsmInterpreter_;
-    std::string strAsmOpcodeDisableRange = asmOpcodeDisableRange_;
-    if (strAsmOpcodeDisableRange.empty()) {
-        return;
-    }
-
-    // asm interpreter handle disable range
-    size_t pos = strAsmOpcodeDisableRange.find(",");
-    if (pos != std::string::npos) {
-        std::string strStart = strAsmOpcodeDisableRange.substr(0, pos);
-        std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
-        int64_t inputStart;
-        int64_t inputEnd;
-        if (!StringToInt64(strStart, inputStart)) {
-            inputStart = 0;
-            LOG_ECMA_IF(!strStart.empty(), INFO) << "when get start, strStart is " << strStart;
-        }
-        if (!StringToInt64(strEnd, inputEnd)) {
-            inputEnd = kungfu::BYTECODE_STUB_END_ID;
-            LOG_ECMA_IF(!strEnd.empty(), INFO) << "when get end, strEnd is " << strEnd;
-        }
-        int start = static_cast<int>(inputStart);
-        int end = static_cast<int>(inputEnd);
-        if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && end >= 0 &&
-            end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && start <= end) {
-            asmInterParsedOption_.handleStart = start;
-            asmInterParsedOption_.handleEnd = end;
-        }
-    }
 }
 
 JSRuntimeOptions::JSRuntimeOptions()
