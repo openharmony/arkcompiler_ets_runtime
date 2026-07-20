@@ -780,7 +780,9 @@ HWTEST_F_L0(GCTest, OvershootSizeTest2)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto newSpace = heap->GetNewSpace();
+    auto oldSpace = heap->GetOldSpace();
     newSpace->SetInitialCapacity(newSpace->GetCommittedSize());
+    oldSpace->SetInitialCapacity(oldSpace->GetCommittedSize());
     newSpace->SetOverShootSize(0);
     thread->SetMarkStatus(MarkStatus::READY_TO_MARK);
     thread->SetProcessingLocalToSharedRset(true);
@@ -808,7 +810,9 @@ HWTEST_F_L0(GCTest, OvershootSizeTest4)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto newSpace = heap->GetNewSpace();
+    auto oldSpace = heap->GetOldSpace();
     newSpace->SetInitialCapacity(newSpace->GetCommittedSize());
+    oldSpace->SetInitialCapacity(oldSpace->GetCommittedSize());
     newSpace->SetOverShootSize(0);
     thread->SetMarkStatus(MarkStatus::MARKING);
     thread->SetProcessingLocalToSharedRset(true);
