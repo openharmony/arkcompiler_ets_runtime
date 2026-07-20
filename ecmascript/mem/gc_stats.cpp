@@ -1053,14 +1053,22 @@ void SharedGCStats::SharedGCFinishTrace()
 
 void SharedGCStats::PrintSharedGCOverview()
 {
+    // SharedCC: default position shows total STW pause (STW2+STW3); total duration is the extra line.
+    float mainDuration = scopeDuration_[Scope::ScopeId::TotalGC];
+    if (gcType_ == GCType::SHARED_CC) {
+        mainDuration = scopeDuration_[Scope::ScopeId::ReMark] + scopeDuration_[Scope::ScopeId::SuspendAll];
+    }
     LOG_GC(INFO) << " [ " << GetGCTypeName() << " ] "
                  << sizeToMB(recordData_[(uint8_t)RecordData::START_OBJ_SIZE]) << " ("
                  << sizeToMB(recordData_[(uint8_t)RecordData::START_COMMIT_SIZE]) << ") -> "
                  << sizeToMB(recordData_[(uint8_t)RecordData::END_OBJ_SIZE]) << " ("
                  << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
-                 << scopeDuration_[Scope::ScopeId::TotalGC]
+                 << mainDuration
                  << "ms, GCReason: " << GCReasonToString()
                  << ", MarkReason: " << MarkReasonToString();
+    if (gcType_ == GCType::SHARED_CC) {
+        LOG_GC(INFO) << "TotalTime: " << scopeDuration_[Scope::ScopeId::TotalGC] << "ms";
+    }
     LOG_GC(INFO) << "IsInBackground: " << Runtime::GetInstance()->IsInBackground() << "; "
                  << "SensitiveStatus: " << static_cast<int>(sHeap_->GetSensitiveStatus()) << "; "
                  << "StartupStatus: " << std::to_string(static_cast<int>(sHeap_->GetStartupStatus())) << "; "

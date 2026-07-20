@@ -21,6 +21,7 @@
 
 #include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/tlab_allocator.h"
@@ -140,6 +141,11 @@ private:
     SharedHeap *sHeap_{nullptr};
     DaemonThread *dThread_{nullptr};
     SharedConcurrentMarker *marker_{nullptr};
+
+    // Start time for TotalGC; finalized explicitly in FinalizeAndReclaim (see TRACE_GC note in gc_stats.h).
+    ClockScope totalGcTimer_;
+    // Start time for STW3 (FinalizeAndReclaim); finalized explicitly in FinalizeAndReclaim.
+    ClockScope stw3Timer_;
 
     bool ccRunning_{false};
     std::vector<std::unique_ptr<SharedTlabAllocator>> tlabAllocators_;
