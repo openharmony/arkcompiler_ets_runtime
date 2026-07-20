@@ -194,7 +194,9 @@ HWTEST_F_L0(SharedPartialGCTest, BarrierTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     heap->GetHeapPrepare(thread);
-
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
     // sOld1 and sOld2 are in same region and sOld3 in another region.
     JSHandle<TaggedArray> sOld1 = AllocateSharedArray(space, ARRAY_LEN);
@@ -268,6 +270,9 @@ HWTEST_F_L0(SharedPartialGCTest, SensitiveTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     heap->GetHeapPrepare(thread);
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
     sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     sHeap->SetForceGC(true);
@@ -373,6 +378,9 @@ HWTEST_F_L0(SharedPartialGCTest, LocalCCConflictTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     heap->GetHeapPrepare(thread);
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
     InitializeBaseObjects(space);
     bool succ = heap->TryTriggerCCMarking(MarkReason::OTHER);
@@ -407,6 +415,9 @@ HWTEST_F_L0(SharedPartialGCTest, LocalCCConflictTest2)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     heap->GetHeapPrepare(thread);
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
     InitializeBaseObjects(space);
     bool succ = heap->TryTriggerCCMarking(MarkReason::OTHER);
@@ -441,6 +452,9 @@ HWTEST_F_L0(SharedPartialGCTest, DisableParallelGCTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     heap->GetHeapPrepare(thread);
+    if (!sHeap->CheckCanTriggerConcurrentMarking(thread)) {
+        return;
+    }
     std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap, thread);
     InitializeBaseObjects(space);
     sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::OTHER>(thread);

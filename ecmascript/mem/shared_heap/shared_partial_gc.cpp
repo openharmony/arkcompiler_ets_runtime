@@ -133,7 +133,6 @@ void SharedPartialGC::Evacuate()
 {
     if (sHeap_->HasCSetRegions()) {
         sHeap_->GetSharedGCEvacuator()->Evacuate();
-        concurrentUpdateTaskFinished_ = false;
     }
 }
 
@@ -236,6 +235,7 @@ TaggedObject* SharedPartialGC::UpdateWeakRootVisitor(TaggedObject *object)
 
 void SharedPartialGC::PreProcessLocalThread()
 {
+    concurrentUpdateTaskFinished_ = false;
     Runtime::GetInstance()->IterateAllThreadList([](JSThread *thread) {
         if (!thread->ReadyForGCIterating()) {
             if (thread->IsJitThread()) {
