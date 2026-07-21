@@ -109,6 +109,7 @@ module_test_list = [
   "inline_property_literal",
   "instanceofic",
   "intl",
+  "mathfastpath",
   "memleakobjectcreate",
   "merge",
   "module",
@@ -151,6 +152,7 @@ module_test_list = [
   "regressparseInt",
   "regressmathmaxmin",
 
+  "stablearraymapfilter",
   "string",
   "stringlocalecompare",
   "stringrepeat",
@@ -175,6 +177,7 @@ module_test_list = [
   "sendablearray",
   "sendableobj",
   "sharedobjectstorebarrier_treestring",
+  "supercallforwardallargs",
 
   "weakmap",
   "weakmap_complex_scenarios",
