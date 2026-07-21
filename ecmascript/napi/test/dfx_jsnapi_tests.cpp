@@ -21,6 +21,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -968,7 +969,7 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_1)
     std::string namespaceName = "TestNamespace2";
     std::string className = "TestClass1";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
@@ -983,7 +984,7 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_2)
     std::string namespaceName = "TestNamespace2";
     std::string className = "TestClass1";
     std::string funcName = "testFunction1";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
@@ -998,7 +999,7 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_3)
     std::string namespaceName = "TestNamespace2";
     std::string className = "TestClass2";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
@@ -1013,7 +1014,7 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_4)
     std::string namespaceName = "";
     std::string className = "TestClass2";
     std::string funcName = "testFunction1";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
@@ -1028,7 +1029,7 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_5)
     std::string namespaceName = "TestNamespace2";
     std::string className = "";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
@@ -1043,10 +1044,10 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_6)
     std::string namespaceName = "TestNamespace1";
     std::string className = "";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    EXPECT_TRUE(functionFound->IsJSFunction(vm_));
+    JSFunction *function = JSFunction::Cast(JSNApiHelper::ToJSHandle(functionFound)->GetTaggedObject());
     Method *method = Method::Cast(function->GetMethod(thread_));
     EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
 }
@@ -1061,10 +1062,10 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_7)
     std::string namespaceName = "TestNamespace2";
     std::string className = "TestClass1";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    EXPECT_TRUE(functionFound->IsJSFunction(vm_));
+    JSFunction *function = JSFunction::Cast(JSNApiHelper::ToJSHandle(functionFound)->GetTaggedObject());
     Method *method = Method::Cast(function->GetMethod(thread_));
     EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
 }
@@ -1079,10 +1080,10 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_8)
     std::string namespaceName = "";
     std::string className = "TestClass2";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    EXPECT_TRUE(functionFound->IsJSFunction(vm_));
+    JSFunction *function = JSFunction::Cast(JSNApiHelper::ToJSHandle(functionFound)->GetTaggedObject());
     Method *method = Method::Cast(function->GetMethod(thread_));
     EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
 }
@@ -1097,10 +1098,10 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_9)
     std::string namespaceName = "";
     std::string className = "";
     std::string funcName = "testFunction";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+    Local<JSValueRef> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
         namespaceName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    EXPECT_TRUE(functionFound->IsJSFunction(vm_));
+    JSFunction *function = JSFunction::Cast(JSNApiHelper::ToJSHandle(functionFound)->GetTaggedObject());
     Method *method = Method::Cast(function->GetMethod(thread_));
     EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
 }
@@ -1136,12 +1137,14 @@ HWTEST_F_L0(DFXJSNApiTests, ReplaceFunctionForHook_1) {
     backupFunction->SetLexicalEnv(thread_, lexicalEnv3.GetTaggedValue());
     EXPECT_FALSE(targetFunction->GetLexicalEnv(thread_) == hookFunction->GetLexicalEnv(thread_));
     EXPECT_FALSE(targetFunction->GetCodeEntryOrNativePointer() == hookFunction->GetCodeEntryOrNativePointer());
-    JSHandle<JSTaggedValue> target = JSHandle<JSTaggedValue>(targetFunction);
-    JSHandle<JSTaggedValue> hook = JSHandle<JSTaggedValue>(hookFunction);
-    JSHandle<JSTaggedValue> backup = JSHandle<JSTaggedValue>(backupFunction);
+    Local<JSValueRef> target = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(targetFunction));
+    Local<JSValueRef> hook = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(hookFunction));
+    Local<JSValueRef> backup = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(backupFunction));
     DFXJSNApi::ReplaceFunctionForHook(vm_, target, hook, backup);
-    JSHandle<JSFunction> targetFunc = JSHandle<JSFunction>::Cast(target);
-    JSHandle<JSFunction> hookFunc = JSHandle<JSFunction>::Cast(hook);
+    JSHandle<JSTaggedValue> targetVal = JSNApiHelper::ToJSHandle(target);
+    JSHandle<JSTaggedValue> hookVal = JSNApiHelper::ToJSHandle(hook);
+    JSHandle<JSFunction> targetFunc = JSHandle<JSFunction>::Cast(targetVal);
+    JSHandle<JSFunction> hookFunc = JSHandle<JSFunction>::Cast(hookVal);
     EXPECT_TRUE(targetFunc->GetLexicalEnv(thread_) == targetFunc->GetLexicalEnv(thread_));
     EXPECT_TRUE(hookFunc->GetCodeEntryOrNativePointer() == hookFunc->GetCodeEntryOrNativePointer());
 }

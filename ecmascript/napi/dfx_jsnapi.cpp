@@ -1469,25 +1469,30 @@ void DFXJSNApi::SetProcDumpInSharedOOM(bool enable)
     LOG_ECMA(INFO) << "SetProcDumpInSharedOOM " << enable;
 }
 
-JSHandle<JSTaggedValue> DFXJSNApi::FindFunctionForHook(const EcmaVM *vm, const std::string &recordName,
-                                                       const std::string &namespaceName, const std::string &className,
-                                                       const std::string &funcName)
+Local<JSValueRef> DFXJSNApi::FindFunctionForHook(const EcmaVM *vm, const std::string &recordName,
+                                                 const std::string &namespaceName, const std::string &className,
+                                                 const std::string &funcName)
 {
     JSThread *thread = vm->GetJSThread();
-    return SourceTextModule::FindFuncInModuleForHook(thread, recordName, namespaceName, className, funcName);
+    JSHandle<JSTaggedValue> func =
+        SourceTextModule::FindFuncInModuleForHook(thread, recordName, namespaceName, className, funcName);
+    return JSNApiHelper::ToLocal<JSValueRef>(func);
 }
 
-void DFXJSNApi::ReplaceFunctionForHook(const EcmaVM *vm, JSHandle<JSTaggedValue> &target,
-                                       JSHandle<JSTaggedValue> &hook, JSHandle<JSTaggedValue> &backup)
+void DFXJSNApi::ReplaceFunctionForHook(const EcmaVM *vm, Local<JSValueRef> target,
+                                       Local<JSValueRef> hook, Local<JSValueRef> backup)
 {
-    if (!target->IsJSFunction() || !hook->IsJSFunction() || !backup->IsJSFunction()) {
+    JSHandle<JSTaggedValue> targetVal = JSNApiHelper::ToJSHandle(target);
+    JSHandle<JSTaggedValue> hookVal = JSNApiHelper::ToJSHandle(hook);
+    JSHandle<JSTaggedValue> backupVal = JSNApiHelper::ToJSHandle(backup);
+    if (!targetVal->IsJSFunction() || !hookVal->IsJSFunction() || !backupVal->IsJSFunction()) {
         return;
     }
 
     JSThread *thread = vm->GetJSThread();
-    JSHandle<JSFunction> targetFunc = JSHandle<JSFunction>::Cast(target);
-    JSHandle<JSFunction> hookFunc = JSHandle<JSFunction>::Cast(hook);
-    JSHandle<JSFunction> backupFunc = JSHandle<JSFunction>::Cast(backup);
+    JSHandle<JSFunction> targetFunc = JSHandle<JSFunction>::Cast(targetVal);
+    JSHandle<JSFunction> hookFunc = JSHandle<JSFunction>::Cast(hookVal);
+    JSHandle<JSFunction> backupFunc = JSHandle<JSFunction>::Cast(backupVal);
 
     JSFunction::ReplaceFunctionForHook(thread, backupFunc, targetFunc);
     JSFunction::ReplaceFunctionForHook(thread, targetFunc, hookFunc);
