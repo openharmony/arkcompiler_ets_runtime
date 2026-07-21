@@ -40,11 +40,6 @@ public:
         cpu_profiler.interval_ = intervalTest;
     }
 
-    bool StartCpuProfilerForInfoTest()
-    {
-        return cpu_profiler.StartCpuProfilerForInfo();
-    }
-
     bool StopCpuProfilerForInfoTest(std::unique_ptr<ProfileInfo> &profileInfo)
     {
         return cpu_profiler.StopCpuProfilerForInfo(profileInfo);
@@ -143,7 +138,6 @@ HWTEST_F_L0(CpuProfilerTest, TestStopCpuProfilerForFile)
     EXPECT_TRUE(ret);
 
     cpuProfilerFriend.SetIsProfiling(true);
-    cpuProfilerFriend.StartCpuProfilerForInfoTest();
     ret = cpuProfilerFriend.StopCpuProfilerForFileTest();
     EXPECT_FALSE(ret);
 }
@@ -179,9 +173,10 @@ HWTEST_F_L0(CpuProfilerTest, TestStopCpuProfilerForInfo)
     ret = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
     EXPECT_TRUE(ret);
 
-    cpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ret = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+    ret = DFXJSNApi::StartCpuProfilerForInfo(instance, interval);
     EXPECT_TRUE(ret);
+    profileInfo = DFXJSNApi::StopCpuProfilerForInfo(instance);
+    EXPECT_NE(profileInfo, nullptr);
     
     cpuProfilerFriend.SetIsProfiling(true);
     cpuProfilerFriend.SetOutToFile(true);
@@ -242,9 +237,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessStaticFrame_NullP
     int interval = 500;
     CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
 
-    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ASSERT_TRUE(started);
-
     int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
 
     cpuProfilerFriend.ProcessStaticFrameTest(nullptr);
@@ -252,9 +244,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessStaticFrame_NullP
     int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
 
     EXPECT_EQ(frameCountBefore, frameCountAfter);
-
-    std::unique_ptr<ProfileInfo> profileInfo;
-    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
 }
 
 /**
@@ -268,9 +257,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessDynamicFrame_Null
     int interval = 500;
     CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
 
-    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ASSERT_TRUE(started);
-
     int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
 
     cpuProfilerFriend.ProcessDynamicFrameTest(nullptr, thread);
@@ -278,9 +264,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessDynamicFrame_Null
     int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
 
     EXPECT_EQ(frameCountBefore, frameCountAfter);
-
-    std::unique_ptr<ProfileInfo> profileInfo;
-    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
 }
 
 /**
@@ -294,9 +277,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_NullT
     int interval = 500;
     CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
 
-    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ASSERT_TRUE(started);
-
     int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
 
     cpuProfilerFriend.ProcessHybridStackTest(nullptr);
@@ -304,9 +284,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_NullT
     int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
 
     EXPECT_EQ(frameCountBefore, frameCountAfter);
-
-    std::unique_ptr<ProfileInfo> profileInfo;
-    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
 }
 
 /**
@@ -320,9 +297,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_Norma
     int interval = 500;
     CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
 
-    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ASSERT_TRUE(started);
-
     int frameCountBefore = cpuProfilerFriend.GetFrameStackLengthTest();
 
     cpuProfilerFriend.ProcessHybridStackTest(thread);
@@ -330,9 +304,6 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_Norma
     int frameCountAfter = cpuProfilerFriend.GetFrameStackLengthTest();
 
     EXPECT_GE(frameCountAfter, frameCountBefore);
-
-    std::unique_ptr<ProfileInfo> profileInfo;
-    cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
 }
 
 /**
@@ -344,14 +315,10 @@ HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProcessHybridStack_Norma
 HWTEST_F_L0(CpuProfilerTest, CpuProfilerHybridStackTest_ProfileInfoValidity)
 {
     int interval = 500;
-    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
-
-    bool started = cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    bool started = DFXJSNApi::StartCpuProfilerForInfo(instance, interval);
     ASSERT_TRUE(started);
 
-    std::unique_ptr<ProfileInfo> profileInfo;
-    bool stopped = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
-    ASSERT_TRUE(stopped);
+    std::unique_ptr<ProfileInfo> profileInfo = DFXJSNApi::StopCpuProfilerForInfo(instance);
     ASSERT_NE(profileInfo, nullptr);
 
     EXPECT_GE(profileInfo->nodeCount, 0);
