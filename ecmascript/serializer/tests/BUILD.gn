@@ -108,6 +108,29 @@ host_unittest_action("SerializerContainerTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("FlatBufferSerializeTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "flat_buffer_serialize_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+    sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
   deps = [
@@ -115,6 +138,7 @@ group("unittest") {
     ":InterOpSerializerTest",
     ":CMCSerializerTest",
     ":SerializerContainerTest",
+    ":FlatBufferSerializeTest",
   ]
 }
 
@@ -125,6 +149,7 @@ group("host_unittest") {
     ":InterOpSerializerTest",
     ":CMCSerializerTest",
     ":SerializerContainerTest",
+    ":FlatBufferSerializeTest",
   ]
 
   if (is_mac) {
@@ -133,6 +158,7 @@ group("host_unittest") {
       ":InterOpSerializerTest",
       ":CMCSerializerTest",
       ":SerializerContainerTest",
+      ":FlatBufferSerializeTest",
     ]
   }
 }

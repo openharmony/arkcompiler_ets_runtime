@@ -50,6 +50,8 @@
 #endif
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/serializer/base_deserializer.h"
+#include "ecmascript/serializer/file_deserializer.h"
+#include "ecmascript/serializer/file_serializer.h"
 #include "ecmascript/serializer/inter_op_value_deserializer.h"
 #include "ecmascript/serializer/inter_op_value_serializer.h"
 #include "ecmascript/serializer/value_serializer.h"
@@ -6665,6 +6667,71 @@ void JSNApi::DeleteSerializationData(void *data)
     ecmascript::SerializeData *value = reinterpret_cast<ecmascript::SerializeData *>(data);
     delete value;
     value = nullptr;
+}
+
+uint8_t* JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
+                                Local<JSValueRef> cloneList, bool defaultTransfer,
+                                bool defaultCloneShared, bool needSerializeStack, size_t &outSize)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    ecmascript::ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
+    JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
+    JSHandle<JSTaggedValue> arkCloneList = JSNApiHelper::ToJSHandle(cloneList);
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    // FileSerializer::SerializeSharedObj always returns false, so shared objects
+    // get serialized by value instead of by reference. This guarantees a deep
+    // copy: the resulting flat buffer can be persisted and reconstructed in a
+    // different process without depending on the source process's shared-heap
+    // state or SnapshotEnv.
+    ecmascript::FileSerializer serializer(thread, defaultTransfer, defaultCloneShared, needSerializeStack);
+    std::unique_ptr<ecmascript::SerializeData> data;
+    if (serializer.WriteValue(thread, arkValue, arkTransfer, arkCloneList)) {
+        data = serializer.Release();
+    }
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, true);
+    }
+    if (data == nullptr) {
+        outSize = 0;
+        return nullptr;
+    }
+    return ecmascript::SerializeData::Pack(data, outSize);
+}
+
+Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, uint8_t *recorder, void *hint)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope scope(thread);
+    EscapeLocalScope escapeScope(vm);
+    if (recorder == nullptr) {
+        LOG_ECMA(ERROR) << "DeserializeValue flat buffer: recorder is null";
+        return JSValueRef::Undefined(vm);
+    }
+    std::unique_ptr<ecmascript::SerializeData> data =
+        ecmascript::SerializeData::Unpack(thread, recorder);
+    if (data == nullptr) {
+        return JSValueRef::Undefined(vm);
+    }
+    ecmascript::FileDeserializer deserializer(thread, data.get());
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
+    }
+    return escapeScope.Escape(JSNApiHelper::ToLocal<JSValueRef>(result));
 }
 
 void HostPromiseRejectionTracker(const EcmaVM *vm,

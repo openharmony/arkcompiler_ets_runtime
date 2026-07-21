@@ -1978,6 +1978,15 @@ public:
                                          Local<JSValueRef> cloneList, std::string &error,
                                          const SerializeOptions& options);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
+    // Serialize & Deserialize (in-memory flat buffer, for cross-process deep copy).
+    // SerializeValue returns a malloc'd uint8_t* buffer (caller must free) containing
+    // a self-contained flat representation; outSize receives the buffer size in bytes.
+    // DeserializeValue reconstructs the value from such a flat buffer in the current
+    // (possibly different) process, deep-copying every referenced object.
+    static uint8_t* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                   Local<JSValueRef> cloneList, bool defaultTransfer,
+                                   bool defaultCloneShared, bool needSerializeStack, size_t &outSize);
+    static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, uint8_t *recorder, void *hint);
     // InterOp Serialize & Deserialize.
     static void* InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
         Local<JSValueRef> cloneList, bool defaultTransfer = false, bool defaultCloneShared = true);
