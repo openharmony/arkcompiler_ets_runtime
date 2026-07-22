@@ -193,7 +193,8 @@ HWTEST_F_L0(LocalCCTest, ReadBarrierTest)
     constexpr uintptr_t TEST_OFFSET1 = sizeof(JSTaggedType);
     constexpr uintptr_t TEST_OFFSET2 = sizeof(JSTaggedType) * 2; // 2 : the third data offset
     uintptr_t slotAddress = ToUintPtr(data) + TEST_OFFSET0;
-    JSTaggedType slotObj = Barriers::ReadBarrierForObject(thread, slotAddress);
+    JSTaggedValue slotValue0 = ObjectSlot(slotAddress).GetTaggedValue();
+    JSTaggedType slotObj = Barriers::ReadBarrierForObject(thread, slotAddress, slotValue0);
     EXPECT_NE(slotObj, JSTaggedValue::Undefined().GetRawData());
     uintptr_t slotAddress1 = ToUintPtr(data) + TEST_OFFSET1;
     JSTaggedValue slotValue1 = ObjectSlot(slotAddress1).GetTaggedValue();
@@ -211,7 +212,8 @@ HWTEST_F_L0(LocalCCTest, ReadBarrierTest)
     EXPECT_TRUE(JSTaggedValue(hclass & TaggedObject::GC_STATE_MASK).IsJSHClass());
     JSTaggedType nullValue(0);
     uintptr_t nullSlot = ToUintPtr(&nullValue);
-    JSTaggedType nullObject = ReadBarrierImpl(thread, nullSlot);
+    JSTaggedValue nullSlotValue = ObjectSlot(nullSlot).GetTaggedValue();
+    JSTaggedType nullObject = ReadBarrierImpl(thread, nullSlot, nullSlotValue);
     EXPECT_EQ(nullObject, static_cast<JSTaggedType>(0));
 }
 

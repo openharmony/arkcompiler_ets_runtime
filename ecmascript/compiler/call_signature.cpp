@@ -2814,13 +2814,14 @@ DEF_CALL_SIGNATURE(StLexVar)
 
 DEF_CALL_SIGNATURE(ReadBarrier)
 {
-    // 2 : 2 input parameters
-    CallSignature index("ReadBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    // 3 : 3 input parameters
+    CallSignature index("ReadBarrier", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER()
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY()
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

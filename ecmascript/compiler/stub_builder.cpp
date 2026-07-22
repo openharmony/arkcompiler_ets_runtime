@@ -2774,7 +2774,7 @@ GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
         }
         Bind(&notForwarded);
         {
-            result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });
+            result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr, value });
             Jump(&exit);
         }
     }

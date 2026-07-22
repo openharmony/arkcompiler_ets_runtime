@@ -21,7 +21,7 @@
 #include "ecmascript/mem/barriers.h"
 
 namespace panda::ecmascript {
-PUBLIC_API JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress);
+PUBLIC_API JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress, JSTaggedValue value);
 PUBLIC_API JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value, const JSThread *thread);
 static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset,
                                            const JSTaggedValue &value)
@@ -31,7 +31,7 @@ static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *o
     // does not participate in concurrent copying, therefore ReadBarrierImpl is not required. Moreover,
     // ReadBarrier should only be called by js thread and loading hclass value should use specific getter.
     if (value.IsHeapObject()) {
-        return ReadBarrierImpl(thread, ToUintPtr(obj) + offset);
+        return ReadBarrierImpl(thread, ToUintPtr(obj) + offset, value);
     }
     return value.GetRawData();
 }
@@ -39,7 +39,7 @@ static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *o
 static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, uintptr_t slotAddress, const JSTaggedValue &value)
 {
     if (value.IsHeapObject()) {
-        return ReadBarrierImpl(thread, slotAddress);
+        return ReadBarrierImpl(thread, slotAddress, value);
     }
     return value.GetRawData();
 }
@@ -48,14 +48,15 @@ static ARK_INLINE JSTaggedType AtomicReadBarrier(const JSThread *thread, const v
                                                  const JSTaggedValue &value)
 {
     if (value.IsHeapObject()) {
-        return ReadBarrierImpl(thread, ToUintPtr(obj) + offset);
+        return ReadBarrierImpl(thread, ToUintPtr(obj) + offset, value);
     }
     return value.GetRawData();
 }
 
-inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress)
+inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress,
+                                                               JSTaggedValue value)
 {
-    return ReadBarrierImpl(thread, slotAddress);
+    return ReadBarrierImpl(thread, slotAddress, value);
 }
 
 inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForStringTableSlot(JSTaggedType value, const JSThread *thread)

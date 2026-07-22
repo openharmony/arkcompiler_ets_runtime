@@ -63,6 +63,15 @@ public:
             &oldObject, toRef, std::memory_order_relaxed, std::memory_order_relaxed);
     }
 
+    void CASUpdateWeak(TaggedObject *oldObject, TaggedObject *toRef)
+    {
+        TaggedObject *dst = JSTaggedValue::Cast(toRef).CreateAndGetWeakRef().GetRawHeapObject();
+        std::atomic_compare_exchange_strong_explicit(
+            reinterpret_cast<volatile std::atomic<TaggedObject*> *>(slotAddress_),
+            &oldObject, dst,
+            std::memory_order_relaxed, std::memory_order_relaxed);
+    }
+
     void Clear()
     {
         *reinterpret_cast<JSTaggedType *>(slotAddress_) = JSTaggedValue::VALUE_UNDEFINED;
