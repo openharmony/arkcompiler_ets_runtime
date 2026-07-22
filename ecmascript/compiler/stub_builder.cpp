@@ -1526,8 +1526,8 @@ GateRef StubBuilder::CallGetterHelper(
             DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Exception());
             JSCallArgs callArgs(JSCallMode::CALL_GETTER);
             callArgs.callGetterArgs = { receiver };
-            CallStubBuilder callBuilder(this, glue, getter, Int32(0), 0, &tmpResult, Circuit::NullGate(), callArgs,
-                callback, true, hir);
+            CallStubBuilder callBuilder(this, glue, getter, Int32(0), 0, &tmpResult, callArgs,
+                                        callback, true, hir);
             if (env->IsBaselineBuiltin()) {
                 callBuilder.JSCallDispatchForBaseline(&callExit);
                 Bind(&callExit);
@@ -1592,8 +1592,7 @@ GateRef StubBuilder::CallSetterHelper(
             DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Exception());
             JSCallArgs callArgs(JSCallMode::CALL_SETTER);
             callArgs.callSetterArgs = { receiver, value };
-            CallStubBuilder callBuilder(this, glue, setter, Int32(1), 0, &tmpResult, Circuit::NullGate(), callArgs,
-                callback);
+            CallStubBuilder callBuilder(this, glue, setter, Int32(1), 0, &tmpResult, callArgs, callback);
             if (env->IsBaselineBuiltin()) {
                 callBuilder.JSCallDispatchForBaseline(&callExit);
                 Bind(&callExit);
@@ -3547,7 +3546,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                         Label update(env);
                         Label setObject(env);
                         Label setPrototype(env);
-                        GateRef oldHandler = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+                        GateRef oldHandler = GetICSlot(glue, profileTypeInfo, slotId);
                         BRANCH(Equal(oldHandler, Hole()), &handerInfoNotJSArray, &update);
                         Bind(&update);
                         {
@@ -3555,7 +3554,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                             BRANCH(Equal(*isOnPrototype, False()), &setObject, &setPrototype);
                             Bind(&setObject);
                             {
-                                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, handler);
+                                SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, handler);
                                 Jump(&handerInfoNotJSArray);
                             }
                             Bind(&setPrototype);
@@ -6777,14 +6776,12 @@ void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef targe
         callArgs.callSetterArgs = { target, object };
         if (env->IsBaselineBuiltin()) {
             DEFVARIABLE(callRes, VariableType::JS_ANY(), Undefined());
-            CallStubBuilder callBuilder(this, glue, instof, Int32(1), 0, &callRes, Circuit::NullGate(), callArgs,
-                callback);
+            CallStubBuilder callBuilder(this, glue, instof, Int32(1), 0, &callRes, callArgs, callback);
             callBuilder.JSCallDispatchForBaseline(&callExit);
             Bind(&callExit);
             result->WriteVariable(FastToBoolean(glue, *callRes));
         } else {
-            CallStubBuilder callBuilder(this, glue, instof, Int32(1), 0, nullptr, Circuit::NullGate(), callArgs,
-                callback);
+            CallStubBuilder callBuilder(this, glue, instof, Int32(1), 0, nullptr, callArgs, callback);
             GateRef retValue = callBuilder.JSCallDispatch();
             result->WriteVariable(FastToBoolean(glue, retValue));
         }
@@ -10741,8 +10738,8 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     {
         JSCallArgs callArgs(JSCallMode::CALL_GETTER);
         callArgs.callGetterArgs = { obj };
-        CallStubBuilder callBuilder(this, glue, *result, Int32(0), 0, &result, Circuit::NullGate(), callArgs,
-            ProfileOperation());
+        CallStubBuilder callBuilder(this, glue, *result, Int32(0), 0, &result, callArgs,
+                                    ProfileOperation());
         if (env->IsBaselineBuiltin()) {
             callBuilder.JSCallDispatchForBaseline(&callExit);
             Bind(&callExit);
@@ -12465,12 +12462,12 @@ void StubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef func
     BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
     Bind(&profileTypeInfoNotUndefined);
     {
-        GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+        GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
         BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
         Bind(&slotValueUpdate);
         {
             GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
             SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
             Jump(&profileTypeInfoEnd);
         }
@@ -13756,7 +13753,7 @@ void StubBuilder::UpdateProfileTypeInfoAsMega(GateRef glue, GateRef profileTypeI
     Label pgoOff(env);
     BRANCH(TaggedIsUndefined(profileTypeInfo), &pgoOff, &pgoOn);
     Bind(&pgoOn);
-    SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, Hole(), MemoryAttribute::NoBarrier());
+    SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, Hole(), MemoryAttribute::NoBarrier());
     Jump(&pgoOff);
     Bind(&pgoOff);
     env->SubCfgExit();
@@ -13897,8 +13894,8 @@ GateRef StubBuilder::ToPrimitive(GateRef glue, GateRef value, PreferredPrimitive
             DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Undefined());
             JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2_WITH_RETURN);
             callArgs.callThisArg2WithReturnArgs = {value, typeValue, Undefined()};
-            CallStubBuilder callBuilder(this, glue, exoticToprim, Int32(2), 0, &tmpResult, Circuit::NullGate(),
-                                        callArgs, ProfileOperation(), true, hir);
+            CallStubBuilder callBuilder(this, glue, exoticToprim, Int32(2), 0, &tmpResult, callArgs,
+                                        ProfileOperation(), true, hir);
             Label callExit(env);
             if (env->IsBaselineBuiltin()) {
                 callBuilder.JSCallDispatchForBaseline(&callExit);
@@ -14043,8 +14040,8 @@ GateRef StubBuilder::OrdinaryToPrimitive(GateRef glue, GateRef value, PreferredP
             DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Undefined());
             JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2_WITH_RETURN);
             callArgs.callThisArg2WithReturnArgs = { value, Undefined(), Undefined() };
-            CallStubBuilder callBuilder(this, glue, entryfunc, Int32(2), 0, &tmpResult, Circuit::NullGate(),
-                                        callArgs, ProfileOperation(), true, hir);
+            CallStubBuilder callBuilder(this, glue, entryfunc, Int32(2), 0, &tmpResult, callArgs,
+                                        ProfileOperation(), true, hir);
             Label callExit(env);
             if (env->IsBaselineBuiltin()) {
                 callBuilder.JSCallDispatchForBaseline(&callExit);

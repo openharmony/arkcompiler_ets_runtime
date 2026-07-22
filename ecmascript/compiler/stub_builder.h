@@ -685,6 +685,10 @@ public:
     GateRef GetValueFromTaggedArray(GateRef glue, GateRef elements, GateRef index);
     GateRef GetDataPtrInTaggedArray(GateRef array);
     GateRef GetDataPtrInTaggedArray(GateRef array, GateRef index);
+    GateRef GetICLength(GateRef profileTypeInfo);
+    GateRef GetICSlot(GateRef glue, GateRef profileTypeInfo, GateRef index);
+    void SetICSlot(VariableType valType, GateRef glue, GateRef profileTypeInfo, GateRef index, GateRef val,
+                   MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef GetUnsharedConstpoolIndex(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef glue, GateRef array, GateRef index);
@@ -1161,7 +1165,6 @@ public:
     GateRef GetHandlerFromJSProxy(GateRef glue, GateRef proxy);
     GateRef GetTargetFromJSProxy(GateRef glue, GateRef proxy);
     inline void SetHotnessCounter(GateRef glue, GateRef method, GateRef value);
-    inline void SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef hotnessCounter, JSCallMode mode);
     inline void SavePcIfNeeded(GateRef glue);
     inline void SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize);
     inline GateRef ComputeTaggedArraySize(GateRef length);

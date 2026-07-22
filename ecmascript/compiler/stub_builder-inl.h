@@ -418,19 +418,6 @@ void StubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
     Store(VariableType::INT16(), glue, method, IntPtr(Method::LITERAL_INFO_OFFSET), newValue);
 }
 
-void StubBuilder::SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef hotnessCounter, JSCallMode mode)
-{
-    if ((env_->IsAsmInterp() || env_->IsBaselineBuiltin())
-         && kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
-        ASSERT(hotnessCounter != Circuit::NullGate());
-        GateRef frame = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env_->IsArch32Bit())));
-        GateRef function = LoadPrimitive(VariableType::JS_POINTER(), frame,
-            IntPtr(AsmInterpretedFrame::GetFunctionOffset(env_->IsArch32Bit())));
-        GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        SetHotnessCounter(glue, method, hotnessCounter);
-    }
-}
-
 // memory
 inline GateRef StubBuilder::Load(VariableType type, GateRef glue, GateRef base, GateRef offset,
                                  [[maybe_unused]] MemoryAttribute mAttr)
@@ -2730,6 +2717,26 @@ inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array,
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), glue, array, dataOffset);
+}
+
+inline GateRef StubBuilder::GetICLength(GateRef profileTypeInfo)
+{
+    return LoadPrimitive(VariableType::INT32(), profileTypeInfo, IntPtr(ProfileTypeInfo::LENGTH_OFFSET));
+}
+
+inline GateRef StubBuilder::GetICSlot(GateRef glue, GateRef profileTypeInfo, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(ProfileTypeInfo::SIZE));
+    return Load(VariableType::JS_ANY(), glue, profileTypeInfo, dataOffset);
+}
+
+inline void StubBuilder::SetICSlot(VariableType valType, GateRef glue, GateRef profileTypeInfo,
+                                   GateRef index, GateRef val, MemoryAttribute mAttr)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(ProfileTypeInfo::SIZE));
+    Store(valType, glue, profileTypeInfo, dataOffset, val, mAttr);
 }
 
 inline GateRef StubBuilder::GetDataPtrInTaggedArray(GateRef array)

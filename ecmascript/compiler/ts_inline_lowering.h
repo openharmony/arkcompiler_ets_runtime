@@ -133,11 +133,11 @@ private:
 
     double GetCallFrequency(const JSThread* thread, uint32_t idx, const ProfileTypeInfo *profileTypeInfo) const
     {
-        uint32_t callerCallCnt = profileTypeInfo->GetInvocationCnt();
+        uint32_t callerCallCnt = profileTypeInfo->GetInvocationCount();
         if (callerCallCnt == 0) {  // 0: means caller is called many times and overflowed int32 or not returned yet
             return 0.0;
         }
-        JSTaggedValue slot = profileTypeInfo->GetIcSlot(thread, idx);
+        JSTaggedValue slot = profileTypeInfo->GetICSlot(thread, idx);
         if (slot.IsWeak()) {
             return 1.0;
         }

@@ -818,8 +818,8 @@ TestFrequencyThresholds();
 
 print("Phase 8: Dynamic frequency pattern tests");
 TestDynamicFrequencyPatterns();
-ArkTools.jitCompileAsync(TestDynamicFrequencyPatterns);
-print(ArkTools.waitJitCompileFinish(TestDynamicFrequencyPatterns));
+ArkTools.jitCompileAsync(DynamicFrequencyOrchestrator);
+print(ArkTools.waitJitCompileFinish(DynamicFrequencyOrchestrator));
 TestDynamicFrequencyPatterns();
 
 print("Phase 9: Size frequency pattern tests");

@@ -133,8 +133,8 @@ void ICStubBuilder::TryPrimitiveLoadIC(Variable* cachedHandler, Label *tryICHand
     BRANCH(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
     Bind(&profileNotUndefined);
     {
-        GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
-        GateRef secondValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+        GateRef firstValue = GetICSlot(glue_, profileTypeInfo_, slotId_);
+        GateRef secondValue = GetICSlot(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
         cachedHandler->WriteVariable(secondValue);
         Label isHeapObject(env);
         BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
@@ -176,7 +176,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
         {
             Label notHeapObject(env);
             Label tryPoly(env);
-            GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
+            GateRef firstValue = GetICSlot(glue_, profileTypeInfo_, slotId_);
 #if ENABLE_V70_OPTIMIZATION
             Label icHit(env);
             Label icMiss(env);
@@ -185,7 +185,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             Bind(&icHit);
             {
                 GateRef secondValue =
-                    GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
+                    GetICSlot(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
                 cachedHandler->WriteVariable(secondValue);
                 Jump(tryICHandler);
             }
@@ -208,7 +208,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             Bind(&isHeapObject);
             {
                 GateRef secondValue =
-                    GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
+                    GetICSlot(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
                 cachedHandler->WriteVariable(secondValue);
                 GateRef hclass = LoadHClass(glue_, receiver_);
                 BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
@@ -251,10 +251,8 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
             Label notHeapObject(env);
             Label tryPoly(env);
             Label tryWithElementPoly(env);
-            GateRef firstValue = GetValueFromTaggedArray(
-                glue_, profileTypeInfo_, slotId_);
-            GateRef secondValue = GetValueFromTaggedArray(
-                glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+            GateRef firstValue = GetICSlot(glue_, profileTypeInfo_, slotId_);
+            GateRef secondValue = GetICSlot(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
             cachedHandler->WriteVariable(secondValue);
 #if ENABLE_V70_OPTIMIZATION
             Label icMiss(env);
@@ -512,7 +510,7 @@ void ICStubBuilder::TryLoadGlobalICByName(Variable* result, Label* tryFastPath, 
     BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
     Bind(&tryIC);
     {
-        GateRef handler = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
+        GateRef handler = GetICSlot(glue_, profileTypeInfo_, slotId_);
         Label isHeapObject(env);
         BRANCH(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
         Bind(&isHeapObject);
@@ -533,7 +531,7 @@ void ICStubBuilder::TryStoreGlobalICByName(Variable* result, Label* tryFastPath,
     BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
     Bind(&tryIC);
     {
-        GateRef handler = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
+        GateRef handler = GetICSlot(glue_, profileTypeInfo_, slotId_);
         Label isHeapObject(env);
         BRANCH(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
         Bind(&isHeapObject);

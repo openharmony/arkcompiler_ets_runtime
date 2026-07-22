@@ -761,7 +761,6 @@ public:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::CONSTANT_POOL:
-            case JSType::PROFILE_TYPE_INFO:
             case JSType::IC_INFO:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
@@ -1857,11 +1856,15 @@ public:
         return GetObjectType() == JSType::EXTRA_PROFILE_TYPE_INFO;
     }
 
-    // ICInfo is the base for both bare IC containers (IC_INFO) and ProfileTypeInfo (PROFILE_TYPE_INFO).
+    // ICInfo is for bare IC containers (IC_INFO) only, not ProfileTypeInfo.
     inline bool IsICInfo() const
     {
-        JSType jsType = GetObjectType();
-        return jsType == JSType::IC_INFO || jsType == JSType::PROFILE_TYPE_INFO;
+        return GetObjectType() == JSType::IC_INFO;
+    }
+
+    inline bool IsProfileTypeInfo() const
+    {
+        return GetObjectType() == JSType::PROFILE_TYPE_INFO;
     }
 
     inline bool IsProfileTypeInfoCell() const

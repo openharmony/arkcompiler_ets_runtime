@@ -165,7 +165,7 @@ public:
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
     inline GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info);
-    
+
     inline void SetCurrentSpFrame(GateRef glue, GateRef sp);
     inline void SetLastLeaveFrame(GateRef glue, GateRef sp);
     inline void SetPcToFrame(GateRef glue, GateRef frame, GateRef value);
@@ -181,17 +181,13 @@ public:
                                                     GateRef profileTypeInfo, GateRef slotId);
 
     inline void CheckException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-		               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
-			       GateRef res, GateRef offset);
+		               GateRef profileTypeInfo, GateRef acc, GateRef res, GateRef offset);
     inline void CheckPendingException(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
-			              GateRef res, GateRef offset);
+		                      GateRef profileTypeInfo, GateRef acc, GateRef res, GateRef offset);
     inline void CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-		                       GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
-			               GateRef res, Label *jump);
+		                       GateRef profileTypeInfo, GateRef acc, GateRef res, Label *jump);
     inline void CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-		                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,
-			              GateRef res, GateRef offset);
+		                      GateRef profileTypeInfo, GateRef acc, GateRef res, GateRef offset);
 
     inline GateRef CheckStackOverflow(GateRef glue, GateRef sp);
     inline GateRef PushArg(GateRef glue, GateRef sp, GateRef value);
@@ -199,15 +195,15 @@ public:
     inline GateRef PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex);
     inline GateRef GetStartIdxAndNumArgs(GateRef glue, GateRef sp, GateRef restIdx);
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                         GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);
+                         GateRef profileTypeInfo, GateRef acc, GateRef format);
     inline void DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                               GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef index);
+                               GateRef profileTypeInfo, GateRef acc, GateRef index);
     inline void DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                             GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
+                             GateRef profileTypeInfo, GateRef acc);
     inline void DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                 GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
+                                 GateRef profileTypeInfo, GateRef acc);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                     GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
+                                     GateRef profileTypeInfo, GateRef acc);
 
     template <bool needPrint>
     void DebugPrintInstruction();
@@ -243,7 +239,7 @@ public:
                                                                                                 \
     protected:                                                                                  \
         void GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,       \
-                                 GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,  \
+                                 GateRef profileTypeInfo, GateRef acc,                          \
                                  ProfileOperation callback);                                    \
     };
     INTERPRETER_BC_STUB_LIST(DECLARE_HANDLE_STUB_CLASS)

@@ -17,51 +17,59 @@
 #define ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 
 #include "ecmascript/ic/ic_info.h"
-#include "ecmascript/js_function.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/pgo_profiler/pgo_extra_profiler.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 
 /**
- *              ProfileTypeInfo
- *      +--------------------------------+             --- TaggedArray Length
- *      |           ic slot              |              ^
- *      |            .....               |              |
- *      +--------------------------------+              |    --- Reserved Length
- *      |        extra info map          | 64 bits      |     ^   = 5 * 64bits
- *      +--------------------------------+              |     |
- *      |            jit osr             | 64 bits      |     |
- *      +--------------------------------+              |     |
- *      |           bit field            | 32 bits      |     |
- *      +--------------------------------+              |     |
- *      |     jit hotness threshold      | 16 bits      |     |
- *      +--------------------------------+              |     |
- *      |            jit cnt             | 16 bits      |     |
- *      +--------------------------------+              |     |
- *      |     osr hotness threshold      | 16 bits      |     |
- *      +--------------------------------+              |     |
- *      |            osr cnt             | 16 bits      |     |
- *      +--------------------------------+              |     |
- *      | baselinejit hotness threshold  | 16 bits      |     |
- *      +--------------------------------+              |     |
- *      |          jit call cnt          | 16 bits      |     |
- *      +--------------------------------+              |     |
- *      |         invocation cnt         | 32 bits      |     |
- *      +--------------------------------+              |     |
- *      |           NOT IN USE           | 32 bits      v     v
- *      +--------------------------------+             ---   ---
+ *              ProfileTypeInfo  (each row = 64 bits / 8 bytes)
+ *
+ *      +0x00 | TaggedStateWord
+ *      +0x08 | length(32)    |  invocation(32)
+ *      +0x10 | period(32)    | jit_hot(16)  | jit_cnt(16)
+ *      +0x18 | osr_hot(16)   | osr_cnt(16)  | baseline(16) | call(16)
+ *      +0x20 | Reserved (64)
+ *      +0x28 | extra_info_map (JSTaggedValue)
+ *      +0x30 | jit_osr (JSTaggedValue)
+ *      +0x38 | ic_slot[0..length-1] (JSTaggedValue, variable)
  */
-class ProfileTypeInfo : public ICInfo {
+class ProfileTypeInfo : public TaggedObject {
 public:
     static const uint32_t MAX_FUNC_CACHE_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
-    static constexpr size_t BIT_FIELD_INDEX = 3;
-    static constexpr size_t JIT_OSR_INDEX = 4;
-    static constexpr size_t EXTRA_INFO_MAP_INDEX = 5;
-    static constexpr size_t RESERVED_LENGTH = EXTRA_INFO_MAP_INDEX;
+
+    static constexpr size_t LENGTH_OFFSET = TaggedObjectSize();
+
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, INVOCATION_COUNT_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(InvocationCount, int32_t, INVOCATION_COUNT_OFFSET, PERIOD_INDEX_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(PeriodIndex, uint32_t, PERIOD_INDEX_OFFSET, JIT_HOTNESS_THRESHOLD_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(JitHotnessThreshold, uint16_t,
+                              JIT_HOTNESS_THRESHOLD_OFFSET, JIT_HOTNESS_CNT_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(JitHotnessCnt, uint16_t,
+                              JIT_HOTNESS_CNT_OFFSET, OSR_HOTNESS_THRESHOLD_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(OsrHotnessThreshold, uint16_t,
+                              OSR_HOTNESS_THRESHOLD_OFFSET, OSR_HOTNESS_CNT_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(OsrHotnessCnt, uint16_t,
+                              OSR_HOTNESS_CNT_OFFSET, BASELINE_JIT_HOTNESS_THRESHOLD_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(BaselineJitHotnessThreshold, uint16_t,
+                              BASELINE_JIT_HOTNESS_THRESHOLD_OFFSET, JIT_CALL_CNT_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(JitCallCnt, uint16_t,
+                              JIT_CALL_CNT_OFFSET, RESERVED_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Reserved, uint64_t,
+                              RESERVED_OFFSET, EXTRA_INFO_MAP_OFFSET)
+
+    ACCESSORS(ExtraInfoMap, EXTRA_INFO_MAP_OFFSET, JIT_OSR_OFFSET)
+    ACCESSORS(JitOsr, JIT_OSR_OFFSET, SIZE)
+
+    static constexpr size_t DATA_OFFSET = SIZE;
+    static constexpr uint32_t HEADER_TAGGED_SLOTS =
+        (SIZE - EXTRA_INFO_MAP_OFFSET) / JSTaggedValue::TaggedTypeSize();
+
     static constexpr size_t INITIAL_PERIOD_INDEX = 0;
     static constexpr size_t PRE_DUMP_PERIOD_INDEX = 1;
     static constexpr size_t DUMP_PERIOD_INDEX = 2;
@@ -71,33 +79,21 @@ public:
     static constexpr size_t INITIAL_JIT_CALL_THRESHOLD = 0;
     static constexpr size_t INITIAL_JIT_CALL_CNT = 0;
     static constexpr uint16_t JIT_DISABLE_FLAG = 0xFFFF;
-    static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 4;  // 4 : 4 byte offset from bitfield
-    static constexpr size_t JIT_CNT_OFFSET_FROM_THRESHOLD = 2;  // 2 : 2 byte offset from jit hotness threshold
-    static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
-    static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
-    static constexpr size_t BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 12; // 12: bytes offset from bitfield
-    static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_BITFIELD = 14;  // 14 : 14 byte offset from bitfield
-    static constexpr size_t INVOCATION_CNT_OFFSET_FROM_BITFIELD = 16;  // 16 : 16 byte offset from bitfield
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
-        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        ASSERT(JSTaggedValue(object).IsProfileTypeInfo());
         return static_cast<ProfileTypeInfo *>(object);
     }
 
     static size_t ComputeSize(uint32_t icSlotSize)
     {
-        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), AdjustSlotSize(icSlotSize) + RESERVED_LENGTH);
+        return SIZE + JSTaggedValue::TaggedTypeSize() * AdjustSlotSize(icSlotSize);
     }
 
-    inline uint32_t GetIcSlotLength() const
+    JSTaggedType *GetData() const
     {
-        return GetLength() - RESERVED_LENGTH;
-    }
-
-    inline uint32_t GetIcSlotToOsrLength() const
-    {
-        return GetLength() - BIT_FIELD_INDEX;
+        return reinterpret_cast<JSTaggedType *>(ToUintPtr(this) + DATA_OFFSET);
     }
 
     static inline uint32_t AdjustSlotSize(uint32_t icSlotSize)
@@ -108,6 +104,37 @@ public:
             ++icSlotSize;
         }
         return icSlotSize;
+    }
+
+    inline uint32_t GetICSlotLength() const
+    {
+        return GetLength();
+    }
+
+    inline JSTaggedValue GetICSlot(const JSThread *thread, uint32_t idx) const
+    {
+        ASSERT(idx < GetICSlotLength());
+        size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+        return JSTaggedValue(Barriers::GetTaggedValue(thread,
+            reinterpret_cast<JSTaggedType *>(ToUintPtr(this)), DATA_OFFSET + offset));
+    }
+
+    inline void SetICSlot(const JSThread *thread, uint32_t idx, const JSTaggedValue &value)
+    {
+        ASSERT(idx < GetICSlotLength());
+        size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+        if (value.IsHeapObject()) {
+            Barriers::SetObject<true>(thread, this, DATA_OFFSET + offset, value.GetRawData());
+        } else {
+            Barriers::SetPrimitive<JSTaggedType>(
+                reinterpret_cast<JSTaggedType *>(ToUintPtr(this)), DATA_OFFSET + offset, value.GetRawData());
+        }
+    }
+
+    template<typename T>
+    inline void SetICSlot(const JSThread *thread, uint32_t idx, const JSHandle<T> &value)
+    {
+        SetICSlot(thread, idx, value.GetTaggedValue());
     }
 
     inline void SetPrimitiveOfSlot(JSTaggedValue initValue, uint32_t icSlotSize)
@@ -130,32 +157,25 @@ public:
         SetBaselineJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
-        SetJitCallThreshold(INITIAL_JIT_CALL_THRESHOLD);
-        SetInvocationCnt(0);
+        SetJitCallCnt(INITIAL_JIT_CALL_CNT);
+        SetInvocationCount(0);
     }
 
     inline void InitializeExtraInfoMap()
     {
-        // the last-1 of the cache is used to save extra info map
-        Barriers::SetPrimitive<JSTaggedType>(
-            GetData(), GetIcSlotLength() * JSTaggedValue::TaggedTypeSize(),
-            JSTaggedValue::Undefined().GetRawData());
+        SetExtraInfoMap<SKIP_BARRIER>(nullptr, JSTaggedValue::Undefined());
     }
 
     inline void InitializeJitOsr()
     {
-        // the last of the cache is used to save osr jit tagged array
-        Barriers::SetPrimitive<JSTaggedType>(
-            GetData(), (GetIcSlotLength() + 1) * JSTaggedValue::TaggedTypeSize(),
-            JSTaggedValue::Undefined().GetRawData());
+        SetJitOsr<SKIP_BARRIER>(nullptr, JSTaggedValue::Undefined());
     }
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t icSlotSize, uint32_t extraLength = 0)
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t icSlotSize)
     {
         ASSERT(initValue.IsSpecial());
         icSlotSize = AdjustSlotSize(icSlotSize);
-        SetLength(icSlotSize + RESERVED_LENGTH);
-        SetExtraLength(extraLength);
+        SetLength(icSlotSize);
         SetPrimitiveOfSlot(initValue, icSlotSize);
         InitializeExtraInfoMap();
         InitializeJitOsr();
@@ -192,91 +212,7 @@ public:
         return GetPeriodIndex() == BIG_METHOD_PERIOD_INDEX;
     }
 
-    JSTaggedValue GetExtraInfoMap(const JSThread *thread) const
-    {
-        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, TaggedArray::DATA_OFFSET +
-                                                                    GetExtraInfoMapOffset()));
-    }
-
-    void SetExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> extraInfoMap)
-    {
-        Barriers::SetObject<true>(thread, reinterpret_cast<void*>(this),
-                                  TaggedArray::DATA_OFFSET + GetExtraInfoMapOffset(),
-                                  extraInfoMap.GetTaggedValue().GetRawData());
-    }
-
-    uint16_t GetJitHotnessThreshold() const
-    {
-        return Barriers::GetPrimitive<uint16_t>(GetData(), GetJitHotnessThresholdBitfieldOffset());
-    }
-
-    void SetJitHotnessThreshold(uint16_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitHotnessThresholdBitfieldOffset(), count);
-    }
-
-    uint16_t GetOsrHotnessThreshold() const
-    {
-        return Barriers::GetPrimitive<uint16_t>(GetData(), GetOsrHotnessThresholdBitfieldOffset());
-    }
-
-    void SetOsrHotnessThreshold(uint16_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetOsrHotnessThresholdBitfieldOffset(), count);
-    }
-
-    uint16_t GetBaselineJitHotnessThreshold() const
-    {
-        return Barriers::GetPrimitive<uint16_t>(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset());
-    }
-
-    void SetBaselineJitHotnessThreshold(uint16_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset(), count);
-    }
-
-    void SetJitCallThreshold(uint16_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
-    }
-
-    void SetInvocationCnt(uint32_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetInvocationCntBitfieldOffset(), count);
-    }
-
-    uint16_t GetJitHotnessCnt() const
-    {
-        return Barriers::GetPrimitive<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
-    }
-
-    void SetJitHotnessCnt(uint16_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitHotnessCntBitfieldOffset(), count);
-    }
-
-    void SetOsrHotnessCnt(uint16_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
-    }
-
-    uint32_t GetInvocationCnt() const
-    {
-        return Barriers::GetPrimitive<uint32_t>(GetData(), GetInvocationCntBitfieldOffset());
-    }
-
-    inline JSTaggedValue GetIcSlot(const JSThread* thread, uint32_t idx) const
-    {
-        ASSERT(idx < GetIcSlotLength());
-        return TaggedArray::Get(thread, idx);
-    }
-
-    inline void SetIcSlot(const JSThread* thread, uint32_t idx, const JSTaggedValue& value)
-    {
-        ASSERT(idx < GetIcSlotLength());
-        TaggedArray::Set(thread, idx, value);
-    }
-
+    // ExtraInfoMap helpers
     static JSHandle<NumberDictionary> CreateOrGetExtraInfoMap(const JSThread *thread,
                                                               JSHandle<ProfileTypeInfo> profileTypeInfo)
     {
@@ -306,69 +242,72 @@ public:
         profileTypeInfo->SetExtraInfoMap(thread, dict);
     }
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetIcSlotToOsrLength(), GetIcSlotToOsrLength());
+    DECL_VISIT_ARRAY(EXTRA_INFO_MAP_OFFSET, GetLength() + HEADER_TAGGED_SLOTS, GetLength() + HEADER_TAGGED_SLOTS)
 
     DECL_DUMP()
+};
+
+// ProfileTypeInfoNexus: IC state machine for ProfileTypeInfo (mirrors IcAccessor for ICInfo).
+// Uses ProfileTypeInfo's native GetICSlot/SetICSlot instead of TaggedArray-based ICInfo.
+class ProfileTypeInfoNexus {
+public:
+    static constexpr size_t CACHE_MAX_LEN = 8;
+    static constexpr size_t MONO_CASE_NUM = 2;
+    static constexpr size_t POLY_CASE_NUM = 4;
+
+    enum ICState { UNINIT, MONO, POLY, IC_MEGA, MEGA };
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    enum MegaState { NONE, NOTFOUND_MEGA, DICT_MEGA };
+#endif
+
+    ProfileTypeInfoNexus() = default;
+    ProfileTypeInfoNexus(JSThread *thread, JSHandle<ProfileTypeInfo> pti, uint32_t slotId, ICKind kind);
+    ~ProfileTypeInfoNexus() = default;
+
+    ICState GetMegaState() const;
+    ICState GetICState() const;
+    static std::string ICStateToString(ICState state);
+
+    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
+                              JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
+                              MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
+    void AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
+    void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
+                           JSHandle<JSTaggedValue> handler) const;
+    void AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const;
+    void AddGlobalRecordHandler(JSHandle<JSTaggedValue> handler) const;
+
+    void SetAsMega() const;
+    void SetAsMegaIfUndefined() const;
+    void SetAsMegaForTraceSlowMode(ObjectOperator &op) const;
+    void SetAsMegaForTrace(JSTaggedValue value) const;
+
+    JSTaggedValue GetWeakRef(JSTaggedValue value) const
+    {
+        return JSTaggedValue(value.CreateAndGetWeakRef());
+    }
+    JSTaggedValue GetRefFromWeak(const JSTaggedValue &value) const
+    {
+        return JSTaggedValue(value.GetWeakReferent());
+    }
+
+    ICKind GetKind() const { return kind_; }
+    uint32_t GetSlotId() const { return slotId_; }
 
 private:
-    uint32_t GetPeriodIndex() const
-    {
-        return Barriers::GetPrimitive<uint32_t>(GetData(), GetBitfieldOffset());
-    }
+    void AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
+                           uint32_t index, JSTaggedValue profileData,
+                           JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
+                           MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
 
-    void SetPeriodIndex(uint32_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetBitfieldOffset(), count);
-    }
+    inline void SetMultiIcSlotLocked(uint32_t firstIdx, const JSTaggedValue &firstValue,
+                                     uint32_t secondIdx, const JSTaggedValue &secondValue) const;
 
-    inline size_t GetBitfieldOffset() const
-    {
-        return JSTaggedValue::TaggedTypeSize() * (GetLength() - BIT_FIELD_INDEX);
-    }
-
-    inline size_t GetExtraInfoMapOffset() const
-    {
-        return JSTaggedValue::TaggedTypeSize() * (GetLength() - EXTRA_INFO_MAP_INDEX);
-    }
-
-    // jit hotness(16bits) + count(16bits)
-    inline size_t GetJitHotnessThresholdBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
-    }
-
-    inline size_t GetJitHotnessCntBitfieldOffset() const
-    {
-        return GetJitHotnessThresholdBitfieldOffset() + JIT_CNT_OFFSET_FROM_THRESHOLD;
-    }
-
-    // osr hotness(16bits) + count(16bits)
-    inline size_t GetOsrHotnessThresholdBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
-    }
-
-    // baselinejit hotness(16bits)
-    inline size_t GetBaselineJitHotnessThresholdBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
-    }
-
-    inline size_t GetOsrHotnessCntBitfieldOffset() const
-    {
-        return GetOsrHotnessThresholdBitfieldOffset() + OSR_CNT_OFFSET_FROM_OSR_THRESHOLD;
-    }
-
-    // jit call count(16bits)
-    inline size_t GetJitCallCntBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_BITFIELD;
-    }
-
-    inline size_t GetInvocationCntBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + INVOCATION_CNT_OFFSET_FROM_BITFIELD;
-    }
+    JSThread *thread_;
+    JSHandle<ProfileTypeInfo> pti_;
+    uint32_t slotId_;
+    ICKind kind_;
+    bool enableICMega_;
 };
 
 }  // namespace panda::ecmascript

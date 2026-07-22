@@ -103,7 +103,7 @@ public:
         }
         auto profileTypeInfo = env_->GetProfileTypeInfo();
         JSTaggedValue profileTypeInfoValue = GetRawHandleValue(profileTypeInfo);
-        if (profileTypeInfoValue.IsUndefined() || !profileTypeInfoValue.IsTaggedArray()) {
+        if (!profileTypeInfoValue.IsProfileTypeInfo()) {
             return false;
         }
 

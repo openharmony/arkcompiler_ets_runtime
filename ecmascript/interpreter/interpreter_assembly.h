@@ -27,7 +27,7 @@
 
 namespace panda::ecmascript {
 using DispatchEntryPoint =
-    void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue, int16_t);
+    void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue);
 using EcmaOpcode = BytecodeInstruction::Opcode;
 class ConstantPool;
 class ECMAObject;
@@ -63,7 +63,7 @@ public:
 #define DEF_HANDLER(name)                                                    \
     static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
                      JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
-                     JSTaggedValue acc, int16_t hotnessCounter);
+                     JSTaggedValue acc);
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
     ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_HANDLER)
 #undef DEF_HANDLER

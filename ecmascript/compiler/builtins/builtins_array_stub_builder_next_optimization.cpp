@@ -1305,8 +1305,8 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
                 Label checkStable(env);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                    Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                            0, nullptr, callArgs);
                 GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH_UNLIKELY(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
@@ -1363,7 +1363,7 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
                     JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                     callArgs.callThisArg3WithReturnArgs = { argHandle, kValue, key, thisValue };
                     CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                        nullptr, Circuit::NullGate(), callArgs);
+                                                nullptr, callArgs);
                     GateRef retValue = callBuilder.JSCallDispatch();
                     BRANCH_UNLIKELY(TaggedIsException(retValue), &hasException, &notHasException);
                     Bind(&hasException);
@@ -1504,8 +1504,8 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
                 GateRef key = Int64ToTaggedInt(*i);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = {argHandle, *kValue, key, thisValue};
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                                            Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                            0, nullptr, callArgs);
                 GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH_UNLIKELY(HasPendingException(glue), &hasException, &noException);
                 Bind(&hasException);
@@ -1567,8 +1567,8 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
                 GateRef key = Int64ToTaggedInt(*i);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = {argHandle, *kValue, key, thisValue};
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                                            Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                            0, nullptr, callArgs);
                 GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH_UNLIKELY(HasPendingException(glue), &hasException1, &notHasException1);
                 Bind(&hasException1);

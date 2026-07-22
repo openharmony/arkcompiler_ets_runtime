@@ -19,6 +19,7 @@
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/ic_runtime_stub-inl.h"
+#include "ecmascript/ic/napi_ic_runtime.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -29,11 +30,6 @@ IcAccessorLockScope::IcAccessorLockScope(JSThread *thread)
     if (thread->GetEcmaVM()->IsEnableFastJit() || thread->GetEcmaVM()->IsEnableBaselineJit()) {
         lockHolder_.emplace(thread->GetIcAccessorLock());
     }
-}
-
-IcAccessor::IcAccessor(JSThread* thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
-    : IcAccessor(thread, JSHandle<ICInfo>(profileTypeInfo), slotId, kind)
-{
 }
 
 IcAccessor::IcAccessor(JSThread* thread, JSHandle<ICInfo> icInfo, uint32_t slotId, ICKind kind)
@@ -55,7 +51,7 @@ void ICInfo::SetMultiIcSlotLocked(JSThread *thread, uint32_t firstIdx, const JST
 void IcAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
-    auto profileData = icInfo_->GetIcSlot(thread_, slotId_);
+    auto profileData = icInfo_->GetICSlot(thread_, slotId_);
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
@@ -76,7 +72,7 @@ void IcAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTa
                                    uint32_t index, JSTaggedValue profileData,
                                    JSHandle<JSTaggedValue> keyForMegaIC, MegaICCache::MegaICKind kind) const
 {
-    ASSERT(icInfo_->GetIcSlot(thread_, index + 1).IsHole());
+    ASSERT(icInfo_->GetICSlot(thread_, index + 1).IsHole());
     JSHandle<TaggedArray> arr(thread_, profileData);
     const uint32_t step = 2;
     uint32_t newLen = arr->GetLength() + step;
@@ -136,10 +132,10 @@ void IcAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<J
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     auto index = slotId_;
     if (IsNamedGlobalIC(GetKind())) {
-        icInfo_->SetIcSlot(thread_, index, handler.GetTaggedValue());
+        icInfo_->SetICSlot(thread_, index, handler.GetTaggedValue());
         return;
     }
-    auto profileData = icInfo_->GetIcSlot(thread_, slotId_);
+    auto profileData = icInfo_->GetICSlot(thread_, slotId_);
     ASSERT(!profileData.IsHole());
     if (profileData.IsUndefined()) {
         icInfo_->SetMultiIcSlotLocked(thread_, index, GetWeakRef(hclass.GetTaggedValue()),
@@ -154,8 +150,8 @@ void IcAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<J
     auto factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(POLY_CASE_NUM);
     uint32_t arrIndex = 0;
-    newArr->Set(thread_, arrIndex++, icInfo_->GetIcSlot(thread_, index));
-    newArr->Set(thread_, arrIndex++, icInfo_->GetIcSlot(thread_, index + 1));
+    newArr->Set(thread_, arrIndex++, icInfo_->GetICSlot(thread_, index));
+    newArr->Set(thread_, arrIndex++, icInfo_->GetICSlot(thread_, index + 1));
     newArr->Set(thread_, arrIndex++, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, arrIndex, handler.GetTaggedValue());
 
@@ -170,7 +166,7 @@ void IcAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTagge
         AddGlobalHandlerKey(key, handler);
         return;
     }
-    auto profileData = icInfo_->GetIcSlot(thread_, slotId_);
+    auto profileData = icInfo_->GetICSlot(thread_, slotId_);
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
@@ -187,7 +183,7 @@ void IcAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTagge
         icInfo_->SetMultiIcSlotLocked(thread_, index, JSTaggedValue::Hole(), index + 1, JSTaggedValue::Hole());
         return;
     }
-    JSTaggedValue patchValue = icInfo_->GetIcSlot(thread_, index + 1);
+    JSTaggedValue patchValue = icInfo_->GetICSlot(thread_, index + 1);
     ASSERT(patchValue.IsTaggedArray());
     JSHandle<TaggedArray> arr(thread_, patchValue);
     const uint32_t step = 2;
@@ -206,7 +202,7 @@ void IcAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTagge
             newArr->Set(thread_, i + step, arr->Get(thread_, i));
             newArr->Set(thread_, i + step + 1, arr->Get(thread_, i + 1));
         }
-        icInfo_->SetIcSlot(thread_, index + 1, newArr.GetTaggedValue());
+        icInfo_->SetICSlot(thread_, index + 1, newArr.GetTaggedValue());
         return;
     }
     // MONO
@@ -218,7 +214,7 @@ void IcAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTagge
     newArr->Set(thread_, arrIndex++, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, arrIndex++, handler.GetTaggedValue());
 
-    icInfo_->SetIcSlot(thread_, index + 1, newArr.GetTaggedValue());
+    icInfo_->SetICSlot(thread_, index + 1, newArr.GetTaggedValue());
 }
 
 void IcAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const
@@ -226,20 +222,20 @@ void IcAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTag
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     auto index = slotId_;
     const uint8_t step = 2;  // key and value pair
-    JSTaggedValue indexVal = icInfo_->GetIcSlot(thread_, index);
+    JSTaggedValue indexVal = icInfo_->GetICSlot(thread_, index);
     if (indexVal.IsUndefined()) {
         auto factory = thread_->GetEcmaVM()->GetFactory();
         JSHandle<TaggedArray> newArr = factory->NewTaggedArray(step);
         newArr->Set(thread_, 0, GetWeakRef(key.GetTaggedValue()));
         newArr->Set(thread_, 1, handler.GetTaggedValue());
-        icInfo_->SetIcSlot(thread_, index, newArr.GetTaggedValue());
+        icInfo_->SetICSlot(thread_, index, newArr.GetTaggedValue());
         return;
     }
     ASSERT(indexVal.IsTaggedArray());
     JSHandle<TaggedArray> arr(thread_, indexVal);
     uint32_t newLen = arr->GetLength() + step;
     if (newLen > CACHE_MAX_LEN) {
-        icInfo_->SetIcSlot(thread_, index, JSTaggedValue::Hole());
+        icInfo_->SetICSlot(thread_, index, JSTaggedValue::Hole());
         return;
     }
     auto factory = thread_->GetEcmaVM()->GetFactory();
@@ -251,13 +247,13 @@ void IcAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTag
         newArr->Set(thread_, i + step, arr->Get(thread_, i));
         newArr->Set(thread_, i + step + 1, arr->Get(thread_, i + 1));
     }
-    icInfo_->SetIcSlot(thread_, index, newArr.GetTaggedValue());
+    icInfo_->SetICSlot(thread_, index, newArr.GetTaggedValue());
 }
 
 void IcAccessor::AddGlobalRecordHandler(JSHandle<JSTaggedValue> handler) const
 {
     uint32_t index = slotId_;
-    icInfo_->SetIcSlot(thread_, index, handler.GetTaggedValue());
+    icInfo_->SetICSlot(thread_, index, handler.GetTaggedValue());
 }
 
 void IcAccessor::SetAsMegaForTraceSlowMode([[maybe_unused]] ObjectOperator& op) const
@@ -278,7 +274,7 @@ void IcAccessor::SetAsMegaForTraceSlowMode([[maybe_unused]] ObjectOperator& op) 
 void IcAccessor::SetAsMega() const
 {
     if (IsGlobalIC(kind_)) {
-        icInfo_->SetIcSlot(thread_, slotId_, JSTaggedValue::Hole());
+        icInfo_->SetICSlot(thread_, slotId_, JSTaggedValue::Hole());
     } else {
         icInfo_->SetMultiIcSlotLocked(thread_, slotId_,
             JSTaggedValue::Hole(), slotId_ + 1, JSTaggedValue::Hole());
@@ -287,7 +283,7 @@ void IcAccessor::SetAsMega() const
 
 void IcAccessor::SetAsMegaIfUndefined() const
 {
-    if (icInfo_->GetIcSlot(thread_, slotId_).IsUndefined()) {
+    if (icInfo_->GetICSlot(thread_, slotId_).IsUndefined()) {
         SetAsMega();
     }
 }
@@ -295,7 +291,7 @@ void IcAccessor::SetAsMegaIfUndefined() const
 void IcAccessor::SetAsMegaForTrace(JSTaggedValue value) const
 {
     if (IsGlobalIC(kind_)) {
-        icInfo_->SetIcSlot(thread_, slotId_, JSTaggedValue::Hole());
+        icInfo_->SetICSlot(thread_, slotId_, JSTaggedValue::Hole());
     } else {
         icInfo_->SetMultiIcSlotLocked(thread_, slotId_,
             JSTaggedValue::Hole(), slotId_ + 1, value);
@@ -367,7 +363,7 @@ IcAccessor::ICState IcAccessor::GetMegaState() const
 
 IcAccessor::ICState IcAccessor::GetICState() const
 {
-    auto profileData = icInfo_->GetIcSlot(thread_, slotId_);
+    auto profileData = icInfo_->GetICSlot(thread_, slotId_);
     if (profileData.IsUndefined()) {
         return ICState::UNINIT;
     }
@@ -393,7 +389,7 @@ IcAccessor::ICState IcAccessor::GetICState() const
                 TaggedArray *array = TaggedArray::Cast(profileData.GetTaggedObject());
                 return array->GetLength() == MONO_CASE_NUM ? ICState::MONO : ICState::POLY; // 2 : test case
             }
-            profileData = icInfo_->GetIcSlot(thread_, slotId_ + 1);
+            profileData = icInfo_->GetICSlot(thread_, slotId_ + 1);
             TaggedArray *array = TaggedArray::Cast(profileData.GetTaggedObject());
             return array->GetLength() == MONO_CASE_NUM ? ICState::MONO : ICState::POLY; // 2 : test case
         }
@@ -419,8 +415,8 @@ IcAccessor::ICState IcAccessor::GetICState() const
 JSTaggedValue NapiICInfo::TryLoadKeyIC(JSThread *thread, JSHandle<NapiICInfo> icInfo,
                                        JSTaggedValue obj, JSTaggedValue key)
 {
-    JSTaggedValue slot0 = icInfo->GetIcSlot(thread, 0);
-    JSTaggedValue slot1 = icInfo->GetIcSlot(thread, 1);
+    JSTaggedValue slot0 = icInfo->GetICSlot(thread, 0);
+    JSTaggedValue slot1 = icInfo->GetICSlot(thread, 1);
     if (IsKeyIC(slot0)) {
         return ICRuntimeStub::TryLoadICByValue(thread, obj, key, slot0, slot1);
     }
@@ -438,8 +434,8 @@ JSTaggedValue NapiICInfo::TryLoadICOrMiss(JSThread *thread, JSHandle<NapiICInfo>
     }
 
     // Intern string might trigger GC, reload ic slots
-    JSTaggedValue slot0 = icInfo->GetIcSlot(thread, 0);
-    JSTaggedValue slot1 = icInfo->GetIcSlot(thread, 1);
+    JSTaggedValue slot0 = icInfo->GetICSlot(thread, 0);
+    JSTaggedValue slot1 = icInfo->GetICSlot(thread, 1);
 
     // Skip IC probe for UNINIT state (slot0 == Undefined) — go directly to miss handler.
     // TryLoadICByValue uses pointer equality (firstValue == key); if both are Undefined
@@ -454,11 +450,11 @@ JSTaggedValue NapiICInfo::TryLoadICOrMiss(JSThread *thread, JSHandle<NapiICInfo>
         // No lock needed: NAPI ICInfo is not attached to any JSFunction's ProfileTypeInfo,
         // so the JIT compiler thread never reads these slots.
         if (IsKeyIC(slot0) && slot0 != key.GetTaggedValue()) {
-            icInfo->SetIcSlot(thread, 0, JSTaggedValue::Undefined());
-            icInfo->SetIcSlot(thread, 1, JSTaggedValue::Undefined());
+            icInfo->SetICSlot(thread, 0, JSTaggedValue::Undefined());
+            icInfo->SetICSlot(thread, 1, JSTaggedValue::Undefined());
             icInfo->ClearICKind(thread);
         }
-        LoadICRuntime icRT(thread, JSHandle<ICInfo>(icInfo), 0, ICKind::LoadIC);
+        NapiLoadICRuntime icRT(thread, JSHandle<ICInfo>(icInfo), 0, ICKind::LoadIC);
         res = icRT.LoadValueMiss(obj, key);
         if (!res.IsHole()) {
             icInfo->MarkAsGetIC(thread);
@@ -482,8 +478,8 @@ JSTaggedValue NapiICInfo::TryStoreICOrMiss(JSThread *thread, JSHandle<NapiICInfo
     }
 
     // Intern string might trigger GC, read after intern
-    JSTaggedValue slot0 = icInfo->GetIcSlot(thread, 0);
-    JSTaggedValue slot1 = icInfo->GetIcSlot(thread, 1);
+    JSTaggedValue slot0 = icInfo->GetICSlot(thread, 0);
+    JSTaggedValue slot1 = icInfo->GetICSlot(thread, 1);
 
     // Skip IC probe for UNINIT state — see TryLoadICOrMiss comment for rationale.
     JSTaggedValue res = JSTaggedValue::Hole();
@@ -498,11 +494,11 @@ JSTaggedValue NapiICInfo::TryStoreICOrMiss(JSThread *thread, JSHandle<NapiICInfo
         // No lock needed: NAPI ICInfo is not attached to any JSFunction's ProfileTypeInfo,
         // so the JIT compiler thread never reads these slots.
         if (IsKeyIC(slot0) && slot0 != key.GetTaggedValue()) {
-            icInfo->SetIcSlot(thread, 0, JSTaggedValue::Undefined());
-            icInfo->SetIcSlot(thread, 1, JSTaggedValue::Undefined());
+            icInfo->SetICSlot(thread, 0, JSTaggedValue::Undefined());
+            icInfo->SetICSlot(thread, 1, JSTaggedValue::Undefined());
             icInfo->ClearICKind(thread);
         }
-        StoreICRuntime icRT(thread, JSHandle<ICInfo>(icInfo), 0, ICKind::StoreIC);
+        NapiStoreICRuntime icRT(thread, JSHandle<ICInfo>(icInfo), 0, ICKind::StoreIC);
         res = icRT.StoreMiss(obj, key, value);
         if (!res.IsHole()) {
             icInfo->MarkAsSetIC(thread);

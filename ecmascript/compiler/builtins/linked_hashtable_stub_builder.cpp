@@ -465,7 +465,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
         callArgs.callThisArg3WithReturnArgs = { thisArg, value, key, thisValue };
         CallStubBuilder callBuilder(this, glue_, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-            Circuit::NullGate(), callArgs, ProfileOperation(), false);
+                                    callArgs, ProfileOperation(), false);
         GateRef retValue = callBuilder.JSCallDispatch();
         IR_IF (HasPendingException(glue_)) {
             res = retValue;

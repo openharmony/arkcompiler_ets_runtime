@@ -112,8 +112,8 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
                 }
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { *thisArg, *kValue, *key, *thisObj };
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                    Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                            0, nullptr, callArgs);
                 GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
@@ -235,8 +235,8 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
                 key = ContainerGetKey(glue, *thisObj, *index, type);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { *thisArg, *value, *key, *thisObj };
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                    Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                            0, nullptr, callArgs);
                 GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
@@ -362,7 +362,7 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
                     JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                     callArgs.callThisArg3WithReturnArgs = { *thisArg, *value, *key, *thisObj };
                     CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                        nullptr, Circuit::NullGate(), callArgs);
+                                                nullptr, callArgs);
                     GateRef retValue = callBuilder.JSCallDispatch();
                     BRANCH(HasPendingException(glue), &hasExceptionLinked, &notHasExceptionLinked);
                     Bind(&hasExceptionLinked);
@@ -495,8 +495,8 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
                 key = IntToTaggedInt(*index);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { *thisArg, *value, *key, *thisObj };
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                    Circuit::NullGate(), callArgs);
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                                            0, nullptr, callArgs);
                 GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);

@@ -1612,12 +1612,12 @@ void CircuitBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef f
     BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
     Bind(&profileTypeInfoNotUndefined);
     {
-        GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+        GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
         BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
         Bind(&slotValueUpdate);
         {
             GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
             SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
             Jump(&profileTypeInfoEnd);
         }
@@ -1809,4 +1809,19 @@ GateRef CircuitBuilder::FloatArrayElementConvert(GateRef value, bool isFloat32)
     env_->SubCfgExit();
     return ret;
 }
+
+GateRef CircuitBuilder::GetICSlot(GateRef glue, GateRef profileTypeInfo, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(ProfileTypeInfo::SIZE));
+    return Load(VariableType::JS_ANY(), glue, profileTypeInfo, dataOffset);
+}
+
+void CircuitBuilder::SetICSlot(VariableType valType, GateRef glue, GateRef profileTypeInfo, GateRef index, GateRef val)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(ProfileTypeInfo::SIZE));
+    Store(valType, glue, profileTypeInfo, dataOffset, val);
+}
+
 }  // namespace panda::ecmascript::kungfu

@@ -15,6 +15,7 @@
 
 #include "ecmascript/arksteed/arksteed_graph_builder_new.h"
 #include "ecmascript/arksteed/arksteed_framestate.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/lexical_env.h"
 
 #define REGISTER_VERTEX_TO_LABELLER(vertex)                             \

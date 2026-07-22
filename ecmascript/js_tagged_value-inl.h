@@ -322,6 +322,11 @@ inline bool JSTaggedValue::IsExtraProfileTypeInfo() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsExtraProfileTypeInfo();
 }
 
+inline bool JSTaggedValue::IsProfileTypeInfo() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfo();
+}
+
 inline bool JSTaggedValue::IsProfileTypeInfoCell() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfoCell();

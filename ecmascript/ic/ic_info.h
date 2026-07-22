@@ -75,17 +75,17 @@ public:
         return JSHandle<ICInfo>();
     }
 
-    inline JSTaggedValue GetIcSlot(const JSThread *thread, uint32_t idx) const
+    inline JSTaggedValue GetICSlot(const JSThread *thread, uint32_t idx) const
     {
         return Get(thread, idx);
     }
 
-    inline void SetIcSlot(const JSThread *thread, uint32_t idx, const JSTaggedValue &value)
+    inline void SetICSlot(const JSThread *thread, uint32_t idx, const JSTaggedValue &value)
     {
         Set(thread, idx, value);
     }
 
-    inline uint32_t GetIcSlotLength() const
+    inline uint32_t GetICSlotLength() const
     {
         return GetLength();
     }
@@ -119,12 +119,12 @@ public:
 
     bool CanLoadIC(const JSThread *thread) const
     {
-        return !GetIcSlot(thread, 0).IsHole() && !IsSetIC();
+        return !GetICSlot(thread, 0).IsHole() && !IsSetIC();
     }
 
     bool CanStoreIC(const JSThread *thread) const
     {
-        return !GetIcSlot(thread, 0).IsHole() && !IsGetIC();
+        return !GetICSlot(thread, 0).IsHole() && !IsGetIC();
     }
 
     // Scope-free Key IC probe. No allocation, no handles created.
@@ -268,7 +268,6 @@ public:
     };
 #endif
 
-    IcAccessor(JSThread* thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind);
     IcAccessor(JSThread* thread, JSHandle<ICInfo> icInfo, uint32_t slotId, ICKind kind);
     ~IcAccessor() = default;
     ICState GetMegaState() const;

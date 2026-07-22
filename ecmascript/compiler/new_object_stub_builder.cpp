@@ -1445,13 +1445,13 @@ void NewObjectStubBuilder::NewJSFunctionForJit(GateRef glue, GateRef jsFunc, Gat
         SetHomeObjectToFunction(glue, result->ReadVariable(), GetHomeObjectFromFunction(glue, jsFunc));
 #if ECMASCRIPT_ENABLE_IC
         GateRef profileTypeInfo = GetProfileTypeInfo(glue, jsFunc);
-        GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+        GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
 
         BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
         Bind(&slotValueUpdate);
         {
             GateRef newProfileTypeInfoCell = NewProfileTypeInfoCell(glue, Undefined());
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
             SetRawProfileTypeInfoToFunction(glue, result->ReadVariable(), newProfileTypeInfoCell);
             Jump(&profileTypeInfoEnd);
         }
@@ -2481,7 +2481,7 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceI
             ret = NewTrackInfo(glue, hclass, jsFunc, RegionSpaceFlag::IN_YOUNG_SPACE, arrayLength);
         }
 
-        SetValueToTaggedArray(VariableType::JS_POINTER(), glue, profileTypeInfo, slotId, *ret);
+        SetICSlot(VariableType::JS_POINTER(), glue, profileTypeInfo, slotId, *ret);
         callback.TryPreDump();
         Jump(&exit);
     }
@@ -2597,7 +2597,7 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, Tra
     Label profileNotUndefined(env);
     BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &profileNotUndefined);
     Bind(&profileNotUndefined);
-    GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+    GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
     BRANCH(TaggedIsHole(slotValue), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
@@ -2641,7 +2641,7 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index,
     Label profileNotUndefined(env);
     BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &profileNotUndefined);
     Bind(&profileNotUndefined);
-    GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+    GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
     BRANCH(TaggedIsHole(slotValue), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
