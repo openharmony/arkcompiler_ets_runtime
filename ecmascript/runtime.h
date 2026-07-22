@@ -595,7 +595,7 @@ private:
     bool inBackground_ {false};
     bool isMainProcess_ {false};
     TaskPoolShrinkCallback taskpoolShrinkCallback_ {nullptr};
-    bool enableEvacuateNonMovableSpace_ {false};
+    bool enableEvacuateNonMovableSpace_ {true};
 
     static bool isFork_;
 

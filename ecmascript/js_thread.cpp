@@ -555,6 +555,37 @@ size_t JSThread::GetGlobalHandleCount()
     return count;
 }
 
+void JSThread::IterateBuiltinHClassEntries(RootVisitor &visitor)
+{
+    auto visit = [&visitor] (JSHClass *&cls) {
+        if (cls == nullptr) {
+            return;
+        }
+        JSTaggedValue value(cls);
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&value)));
+        cls = JSHClass::Cast(value.GetTaggedObject());
+    };
+    for (size_t i = 0; i < BuiltinHClassEntries::N_ENTRIES; ++i) {
+        auto &entry = glueData_.builtinHClassEntries_.entries[i];
+        visit(entry.builtinHClass);
+        visit(entry.instanceHClass);
+        visit(entry.prototypeHClass);
+        visit(entry.prototypeOfPrototypeHClass);
+        visit(entry.extraHClass);
+    }
+}
+
+void JSThread::IterateCtorHClassEntries(RootVisitor &visitor)
+{
+    CMap<JSHClass *, GlobalIndex> ctorHclassEntries;
+    for (auto it : ctorHclassEntries_) {
+        JSTaggedValue value(it.first);
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&value)));
+        ctorHclassEntries.emplace(JSHClass::Cast(value.GetHeapObject()), it.second);
+    }
+    std::swap(ctorHclassEntries_, ctorHclassEntries);
+}
+
 void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
 {
     if (!glueData_.lastException_.IsHole()) {
@@ -575,22 +606,8 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
     visitor.VisitRangeRoot(Root::ROOT_VM,
         ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
     if (visitType == GlobalVisitType::ALL_GLOBAL_VISIT) {
-        auto visit = [&visitor] (JSHClass *&cls) {
-            if (cls == nullptr) {
-                return;
-            }
-            JSTaggedValue value(cls);
-            visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&value)));
-            cls = JSHClass::Cast(value.GetTaggedObject());
-        };
-        for (size_t i = 0; i < BuiltinHClassEntries::N_ENTRIES; ++i) {
-            auto &entry = glueData_.builtinHClassEntries_.entries[i];
-            visit(entry.builtinHClass);
-            visit(entry.instanceHClass);
-            visit(entry.prototypeHClass);
-            visit(entry.prototypeOfPrototypeHClass);
-            visit(entry.extraHClass);
-        }
+        IterateBuiltinHClassEntries(visitor);
+        IterateCtorHClassEntries(visitor);
     }
 
     // visit stack roots

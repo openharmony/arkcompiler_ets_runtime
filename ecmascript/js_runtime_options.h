@@ -2846,7 +2846,7 @@ private:
     bool disableModuleSnapshot_ { false };
     bool enableGCTimeoutCheck_ {true};
     ArkTSMode arkTSMode_ {ArkTSMode::DYNAMIC};
-    bool enableEvacuateNonMovableSpace_ {false};
+    bool enableEvacuateNonMovableSpace_ {true};
 };
 } // namespace panda::ecmascript
 

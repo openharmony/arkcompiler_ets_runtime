@@ -399,6 +399,8 @@ public:
         glueData_.isTracing_ = isTracing;
     }
 
+    void IterateBuiltinHClassEntries(RootVisitor &visitor);
+    void IterateCtorHClassEntries(RootVisitor &visitor);
     void Iterate(RootVisitor &visitor, GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT);
 
     void IterateJitCodeMap(const JitCodeMapVisitor &updater);

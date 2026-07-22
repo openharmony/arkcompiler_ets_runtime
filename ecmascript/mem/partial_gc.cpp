@@ -67,7 +67,7 @@ void PartialGC::RunPhases()
     ProcessSharedGCRSetWorkList();
     if (!Runtime::GetInstance()->IsEnableEvacuateNonMovableSpace()) {
         if (heap_->GetEvacuateNonMovableSpace()) {
-            LOG_GC(ERROR) << "enable evacuate nonmovable space incorrectly";
+            LOG_GC(ERROR) << "enable evacuate nonmovable space incorrectly.";
             heap_->SetEvacuateNonMovableSpace(false);
             heap_->GetNonMovableSpace()->RevertCSet();
         }
