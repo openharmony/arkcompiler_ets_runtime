@@ -193,6 +193,8 @@ libark_jsoptimizer_sources = [
   "verifier.cpp",
 ]
 
+arksteed_jit_sources = []
+
 if (enable_branch_elimination) {
   libark_jsoptimizer_sources += [
     "branch_elimination.cpp",
@@ -212,9 +214,17 @@ if (enable_branch_profile) {
 }
 
 if (ets_runtime_enable_ark_steed) {
+  # These trampolines are part of the generated stub ABI and must remain in
+  # ark_stub_compiler.
   libark_jsoptimizer_sources += [
     "trampoline/aarch64/arksteed_call.cpp",
     "trampoline/x64/arksteed_call.cpp",
+  ]
+
+  # ArkSteed's JIT implementation is only needed by the full optimizer. Keep
+  # it out of libark_jsoptimizer_set so changes here do not relink
+  # ark_stub_compiler or regenerate stub.an.
+  arksteed_jit_sources += [
     "${ARK_STEED_ROOT}/arksteed_access_info_factory.cpp",
     "${ARK_STEED_ROOT}/arksteed_assembler.cpp",
     "${ARK_STEED_ROOT}/arksteed_bytecode_analysis.cpp",
@@ -240,14 +250,13 @@ if (ets_runtime_enable_ark_steed) {
   ]
 
   # Platform-specific ArkSteed assembler implementations
-  if (current_cpu == "amd64" || current_cpu == "x64" || current_cpu == "x86_64") {
-    libark_jsoptimizer_sources += [
-      "${ARK_STEED_ROOT}/arch/x64/arksteed_assembler_x64.cpp",
-    ]
+  if (current_cpu == "amd64" || current_cpu == "x64" ||
+      current_cpu == "x86_64") {
+    arksteed_jit_sources +=
+        [ "${ARK_STEED_ROOT}/arch/x64/arksteed_assembler_x64.cpp" ]
   } else if (current_cpu == "arm64") {
-    libark_jsoptimizer_sources += [
-      "${ARK_STEED_ROOT}/arch/arm64/arksteed_assembler_arm64.cpp",
-    ]
+    arksteed_jit_sources +=
+        [ "${ARK_STEED_ROOT}/arch/arm64/arksteed_assembler_arm64.cpp" ]
   }
 }
 
@@ -339,7 +348,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     branch_protector_ret = "pac_ret"
   }
   cflags_cc = [ "-fvisibility=hidden" ]
-  sources = libark_jsoptimizer_sources
+  sources = libark_jsoptimizer_sources + arksteed_jit_sources
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
   } else if (is_mingw) {
