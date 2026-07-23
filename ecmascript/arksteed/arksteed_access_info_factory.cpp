@@ -15,6 +15,9 @@
 
 #include "ecmascript/arksteed/arksteed_access_info_factory.h"
 
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_object-inl.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::arksteed {
@@ -27,7 +30,12 @@ constexpr size_t NAMED_STORE_RECEIVER_INPUT = 2;
 
 struct ParsedStoreHandler {
     uint64_t handlerInfo {0};
+    ArkSteedHClassRef transitionHClass {};
+    ArkSteedHClassRef holderHClass {};
+    ArkSteedObjectRef holder {};
     ArkSteedProtoCellRef protoCell {};
+    bool holderIsReceiver {true};
+    bool hasTransitionHClass {false};
     bool hasProtoCell {false};
 };
 
@@ -61,8 +69,87 @@ void SetFieldLocation(uint64_t handlerInfo, PropertyAccessInfo *info)
                                                                    AccessFieldStorage::PROPERTIES_ARRAY;
     uint32_t baseOffset = info->fieldStorage == AccessFieldStorage::IN_OBJECT ? 0 : TaggedArray::DATA_OFFSET;
     info->fieldOffset = static_cast<int32_t>(baseOffset + info->fieldIndex * JSTaggedValue::TaggedTypeSize());
-    info->fieldRepresentation = AccessFieldRepresentation::TAGGED;
+    Representation representation = HandlerBase::RepresentationBit::Get(handlerInfo);
+    if (representation == Representation::TAGGED) {
+        info->fieldRepresentation = AccessFieldRepresentation::TAGGED;
+    } else if (representation == Representation::INT) {
+        info->fieldRepresentation = AccessFieldRepresentation::INT32;
+    } else if (representation == Representation::DOUBLE) {
+        info->fieldRepresentation = AccessFieldRepresentation::DOUBLE;
+    }
     info->fieldType = AccessFieldType::ANY;
+}
+
+bool SetFieldRepresentation(Representation representation, PropertyAccessInfo *info)
+{
+    if (representation == Representation::TAGGED) {
+        info->fieldRepresentation = AccessFieldRepresentation::TAGGED;
+    } else if (representation == Representation::INT) {
+        info->fieldRepresentation = AccessFieldRepresentation::INT32;
+    } else if (representation == Representation::DOUBLE) {
+        info->fieldRepresentation = AccessFieldRepresentation::DOUBLE;
+    } else {
+        return false;
+    }
+    info->fieldType = AccessFieldType::ANY;
+    return true;
+}
+
+bool TrySetStoreFieldLocationFromHClass(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
+                                        const NamedAccessCaseFeedback &caseFeedback,
+                                        const ParsedStoreHandler &parsed, ArkSteedNameRef name,
+                                        PropertyAccessInfo *info)
+{
+    JSTaggedValue nameValue;
+    if (!broker->TryResolveRef(name, &nameValue)) {
+        return false;
+    }
+
+    JSTaggedValue expectedHClass;
+    if (!broker->TryResolveRef(caseFeedback.expectedHClass, &expectedHClass) || !expectedHClass.IsJSHClass()) {
+        return false;
+    }
+    auto *receiverHClass = JSHClass::Cast(expectedHClass.GetTaggedObject());
+
+    JSHClass *fieldHClass = nullptr;
+    if (parsed.hasTransitionHClass) {
+        JSTaggedValue transitionHClass;
+        if (!broker->TryResolveRef(parsed.transitionHClass, &transitionHClass) || !transitionHClass.IsJSHClass()) {
+            return false;
+        }
+        fieldHClass = JSHClass::Cast(transitionHClass.GetTaggedObject());
+    } else if (parsed.holderIsReceiver) {
+        fieldHClass = receiverHClass;
+    } else {
+        JSTaggedValue holderHClass;
+        if (!broker->TryResolveRef(parsed.holderHClass, &holderHClass) || !holderHClass.IsJSHClass()) {
+            return false;
+        }
+        fieldHClass = JSHClass::Cast(holderHClass.GetTaggedObject());
+    }
+
+    PropertyLookupResult lookup = JSHClass::LookupPropertyInPGOHClass(compilerThread, fieldHClass, nameValue);
+    if (!lookup.IsFound() || !lookup.IsLocal() || lookup.IsAccessor() || !lookup.IsWritable() ||
+        !SetFieldRepresentation(lookup.GetRepresentation(), info)) {
+        return false;
+    }
+
+    info->fieldHClass = broker->MakeHClassRef(JSTaggedValue(fieldHClass));
+    info->hasFieldHClass = info->fieldHClass.IsSafeForCompile();
+    if (!info->hasFieldHClass) {
+        return false;
+    }
+    info->fieldOwnerHClass = info->fieldHClass;
+    info->fieldIndex = lookup.GetOffset();
+    if (lookup.IsInlinedProps()) {
+        info->fieldStorage = AccessFieldStorage::IN_OBJECT;
+        info->fieldOffset = static_cast<int32_t>(lookup.GetOffset());
+    } else {
+        info->fieldStorage = AccessFieldStorage::PROPERTIES_ARRAY;
+        info->fieldOffset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+            lookup.GetOffset() * JSTaggedValue::TaggedTypeSize());
+    }
+    return true;
 }
 
 bool TryReadPrototypeStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
@@ -81,9 +168,65 @@ bool TryReadPrototypeStoreHandler(const ArkSteedHeapBroker *broker, JSThread *co
         return false;
     }
     result->handlerInfo = handlerInfoValue.GetLargeUInt();
+    JSTaggedValue holderValue = prototypeHandler->GetHolder(compilerThread);
+    if (!holderValue.IsUndefined()) {
+        if (!holderValue.IsHeapObject()) {
+            return false;
+        }
+        result->holder = broker->MakeObjectRef(holderValue);
+        result->holderHClass = broker->MakeHClassRef(JSTaggedValue(holderValue.GetTaggedObject()->GetClass()));
+        result->holderIsReceiver = false;
+    }
     result->protoCell = broker->MakeProtoCellRef(protoCellValue);
     result->hasProtoCell = true;
-    return result->protoCell.IsSafeForCompile();
+    bool hasValidHolder = result->holderIsReceiver ||
+        (result->holder.IsSafeForCompile() && result->holderHClass.IsSafeForCompile());
+    return hasValidHolder && result->protoCell.IsSafeForCompile();
+}
+
+bool TryReadTransitionStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
+                                   JSTaggedValue cachedHandler, ParsedStoreHandler *result)
+{
+    if (cachedHandler.IsWeak() || !cachedHandler.IsTransitionHandler()) {
+        return false;
+    }
+    auto *transitionHandler = TransitionHandler::Cast(cachedHandler.GetTaggedObject());
+    JSTaggedValue handlerInfoValue = transitionHandler->GetHandlerInfo(compilerThread);
+    if (!handlerInfoValue.IsInt()) {
+        return false;
+    }
+    JSTaggedValue transitionHClassValue = transitionHandler->GetTransitionHClass(compilerThread);
+    result->handlerInfo = handlerInfoValue.GetLargeUInt();
+    result->transitionHClass = broker->MakeHClassRef(transitionHClassValue);
+    result->hasTransitionHClass = true;
+    JSTaggedValue transitionHClass;
+    return broker->TryResolveRef(result->transitionHClass, &transitionHClass) && transitionHClass.IsJSHClass();
+}
+
+bool TryReadTransWithProtoStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
+                                       JSTaggedValue cachedHandler, ParsedStoreHandler *result)
+{
+    if (cachedHandler.IsWeak() || !cachedHandler.IsTransWithProtoHandler()) {
+        return false;
+    }
+    auto *transWithProtoHandler = TransWithProtoHandler::Cast(cachedHandler.GetTaggedObject());
+    JSTaggedValue protoCellValue = transWithProtoHandler->GetProtoCell(compilerThread);
+    if (!protoCellValue.IsProtoChangeMarker()) {
+        return false;
+    }
+    JSTaggedValue handlerInfoValue = transWithProtoHandler->GetHandlerInfo(compilerThread);
+    if (!handlerInfoValue.IsInt()) {
+        return false;
+    }
+    JSTaggedValue transitionHClassValue = transWithProtoHandler->GetTransitionHClass(compilerThread);
+    result->handlerInfo = handlerInfoValue.GetLargeUInt();
+    result->transitionHClass = broker->MakeHClassRef(transitionHClassValue);
+    result->protoCell = broker->MakeProtoCellRef(protoCellValue);
+    result->hasTransitionHClass = true;
+    result->hasProtoCell = true;
+    JSTaggedValue transitionHClass;
+    return broker->TryResolveRef(result->transitionHClass, &transitionHClass) && transitionHClass.IsJSHClass() &&
+        result->protoCell.IsSafeForCompile();
 }
 
 bool TryReadStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
@@ -95,6 +238,12 @@ bool TryReadStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThr
     }
     if (cachedHandler.IsInt()) {
         result->handlerInfo = cachedHandler.GetLargeUInt();
+        return true;
+    }
+    if (TryReadTransitionStoreHandler(broker, compilerThread, cachedHandler, result)) {
+        return true;
+    }
+    if (TryReadTransWithProtoStoreHandler(broker, compilerThread, cachedHandler, result)) {
         return true;
     }
     return TryReadPrototypeStoreHandler(broker, compilerThread, cachedHandler, result);
@@ -155,35 +304,97 @@ void FillNamedAccessInfo(const NamedAccessCaseFeedback &caseFeedback, uint64_t h
     info->guards.hasProtoCellGuard = hasProtoCell;
     info->dependencies.hclassDependency = AccessDependencyKind::HCLASS;
     if (hasProtoCell) {
-        info->dependencies.protoCellDependency = AccessDependencyKind::PROTOTYPE_CELL;
+        info->dependencies.protoChainDependency = AccessDependencyKind::PROTOTYPE_CHAIN;
     }
 }
 }  // namespace
 
 bool ArkSteedAccessInfoFactory::TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback,
+                                                            ArkSteedNameRef name,
                                                             NamedStoreAccessInfo *info) const
 {
     *info = {};
     if (!caseFeedback.expectedHClass.IsSafeForCompile() || !caseFeedback.handler.IsSafeForCompile()) {
+        LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store unsafe feedback hclass="
+                            << caseFeedback.expectedHClass.IsSafeForCompile()
+                            << " handler=" << caseFeedback.handler.IsSafeForCompile();
         return false;
     }
 
     ParsedStoreHandler parsed;
     if (!TryReadStoreHandler(broker_, compilerThread_, caseFeedback.handler, &parsed)) {
+        JSTaggedValue handlerValue;
+        bool resolved = broker_->TryResolveRef(caseFeedback.handler, &handlerValue);
+        LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store cannot read handler raw=0x" << std::hex
+                            << (resolved ? handlerValue.GetRawData() : 0U) << std::dec;
         return false;
     }
 
-    if (!HandlerBase::IsNonSharedStoreField(parsed.handlerInfo) ||
-        HandlerBase::RepresentationBit::Get(parsed.handlerInfo) != Representation::TAGGED) {
+    bool isSharedStore = HandlerBase::IsStoreShared(parsed.handlerInfo);
+
+    uint64_t fieldHandlerInfo = parsed.handlerInfo;
+    if (isSharedStore) {
+        HandlerBase::ClearSharedStoreKind(fieldHandlerInfo);
+    }
+    bool isField = HandlerBase::IsNonSharedStoreField(fieldHandlerInfo);
+    Representation representation = HandlerBase::RepresentationBit::Get(fieldHandlerInfo);
+    bool hasSupportedFieldRep = representation == Representation::TAGGED || representation == Representation::INT ||
+        representation == Representation::DOUBLE;
+    bool isAccessor = HandlerBase::IsAccessor(parsed.handlerInfo) && !isSharedStore;
+    if (isSharedStore && (!isField || HandlerBase::IsAccessor(parsed.handlerInfo) ||
+        representation != Representation::TAGGED)) {
+        LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store unsupported shared handler handler=0x" << std::hex
+                            << parsed.handlerInfo << std::dec << " isField=" << isField
+                            << " accessor=" << HandlerBase::IsAccessor(parsed.handlerInfo)
+                            << " rep=" << static_cast<int>(representation);
+        return false;
+    }
+    if (isSharedStore && (parsed.hasProtoCell || !parsed.holderIsReceiver)) {
+        LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store unsupported shared proto/holder handler=0x" << std::hex
+                            << parsed.handlerInfo << std::dec << " hasProtoCell=" << parsed.hasProtoCell
+                            << " holderIsReceiver=" << parsed.holderIsReceiver;
+        return false;
+    }
+    if (!(isField && hasSupportedFieldRep) && !isAccessor && !isSharedStore) {
+        LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store unsupported handler handler=0x" << std::hex
+                            << parsed.handlerInfo << std::dec << " isField=" << isField
+                            << " rep=" << static_cast<int>(representation)
+                            << " isAccessor=" << isAccessor << " isShared=" << isSharedStore;
         return false;
     }
 
     info->mode = AccessMode::NAMED_STORE;
-    info->kind = parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD;
-    info->holderIsReceiver = true;
-    info->guards.holderIsReceiver = true;
+    info->kind = isAccessor ? AccessKind::ACCESSOR :
+        (parsed.hasTransitionHClass ? AccessKind::TRANSITION :
+         (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD));
+    info->holder = parsed.holder;
+    info->holderHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
+    info->holderIsReceiver = parsed.holderIsReceiver;
+    info->guards.holder = parsed.holder;
+    info->guards.hasHolder = !parsed.holderIsReceiver && parsed.holder.IsSafeForCompile();
+    info->guards.holderIsReceiver = parsed.holderIsReceiver;
     FillNamedAccessInfo(caseFeedback, parsed.handlerInfo, parsed.protoCell, parsed.hasProtoCell, info);
-    SetFieldLocation(parsed.handlerInfo, info);
+    if (parsed.hasTransitionHClass) {
+        info->dependencies.hclassDependency = AccessDependencyKind::NONE;
+        info->dependencies.protoChainDependency = AccessDependencyKind::PROTOTYPE_CHAIN;
+        info->dependencies.notPrototypeDependency = AccessDependencyKind::NOT_PROTOTYPE;
+    }
+    info->transitionHClass = parsed.transitionHClass;
+    info->hasTransitionHClass = parsed.hasTransitionHClass;
+    info->isSharedStore = isSharedStore;
+    if (isField && !TrySetStoreFieldLocationFromHClass(broker_, compilerThread_, caseFeedback, parsed, name, info)) {
+        LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store field no longer matches guarded hclass";
+        return false;
+    }
+    if (isAccessor) {
+        SetFieldLocation(fieldHandlerInfo, info);
+        info->fieldHClass = info->holderHClass;
+        info->hasFieldHClass = info->fieldHClass.IsSafeForCompile();
+        if (!info->hasFieldHClass) {
+            return false;
+        }
+        info->fieldOwnerHClass = info->fieldHClass;
+    }
     return true;
 }
 
@@ -217,6 +428,7 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     info->mode = AccessMode::NAMED_LOAD;
     info->kind = HandlerBase::IsNonExist(parsed.handlerInfo) ? AccessKind::NON_EXIST :
         (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD);
+    info->holderHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
     info->fieldOwnerHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
     info->fieldHClass = info->fieldOwnerHClass;
     info->hasFieldHClass = info->fieldOwnerHClass.IsSafeForCompile();
@@ -254,7 +466,7 @@ bool ArkSteedAccessInfoFactory::ComputeNamedStoreAccessInfo(const NamedAccessFee
 
     for (uint32_t i = 0; i < feedback.caseCount && access->caseCount < MAX_NAMED_IC_POLY_CASES; ++i) {
         NamedStoreAccessInfo info;
-        if (!TryMakeNamedStoreAccessInfo(feedback.cases[i], &info)) {
+        if (!TryMakeNamedStoreAccessInfo(feedback.cases[i], feedback.name, &info)) {
             *access = {};
             return false;
         }
@@ -267,7 +479,7 @@ bool ArkSteedAccessInfoFactory::ComputeNamedStoreAccessInfo(const NamedAccessFee
         *access = {};
         return false;
     }
-    if (!RegisterDependencies(*access)) {
+    if (!RegisterDependencies(access)) {
         *access = {};
         return false;
     }
@@ -312,14 +524,14 @@ bool ArkSteedAccessInfoFactory::ComputeNamedLoadAccessInfo(const NamedAccessFeed
         *access = {};
         return false;
     }
-    if (!RegisterDependencies(*access)) {
+    if (!RegisterDependencies(access)) {
         *access = {};
         return false;
     }
     return true;
 }
 
-bool ArkSteedAccessInfoFactory::RegisterDependencies(const PropertyAccessSet &access) const
+bool ArkSteedAccessInfoFactory::RegisterDependencies(PropertyAccessSet *access) const
 {
     return dependencyRecorder_.Install(access);
 }

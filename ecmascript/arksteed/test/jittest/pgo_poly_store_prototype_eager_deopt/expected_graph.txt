@@ -1,0 +1,9 @@
+LoadHClassAddress [Int64]
+BranchIfInt64Compare
+DeoptIfPrototypeChanged
+FindPrototypeHolder
+BranchIfObjectType
+CallRuntime [RTStub_CallInternalSetter]
+Call [Tagged]
+NOT: CallCommonStub [COStub_SetPropertyByName]
+NOT: CallRuntime [RTStub_ArkSteedCallSetter]

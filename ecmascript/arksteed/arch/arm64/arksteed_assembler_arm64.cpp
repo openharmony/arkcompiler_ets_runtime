@@ -144,6 +144,17 @@ void ArkSteedAssembler::StoreInt32Field(ArkSteedRegister src, ArkSteedRegister b
     assembler_.Str(src.W(), operand);
 }
 
+void ArkSteedAssembler::StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
+    assembler_.Stlr(src.W(), operand);
+}
+
+void ArkSteedAssembler::StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset)
+{
+    StoreFloat64(aarch64::MemoryOperand(base, offset, aarch64::AddrMode::OFFSET), src);
+}
+
 void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
 {
     // 2: argc is stored at fp + 2 * FRAME_SLOT_SIZE
@@ -207,6 +218,11 @@ void ArkSteedAssembler::CallArkSteedDeoptimizationEntry()
     Move(target, static_cast<uint64_t>(address));
     Push(aarch64::lr);
     Call(target);
+}
+
+void ArkSteedAssembler::ConvertInt32ToDouble(ArkSteedDoubleRegister dst, ArkSteedRegister src)
+{
+    assembler_.Scvtf(dst, src.W());
 }
 
 // =============================================================================

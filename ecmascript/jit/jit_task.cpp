@@ -20,6 +20,7 @@
 #include "ecmascript/base/config.h"
 #include "common_components/heap/heap_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/platform/file.h"
@@ -459,6 +460,7 @@ void JitTask::CloneProfileTypeInfo()
         JSHandle<ProfileTypeInfo> profileTypeInfo(hostThread_,
             ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject()));
         newProfileTypeInfo = factory->NewProfileTypeInfo(slotSize);
+        ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
         for (uint32_t i = 0; i < slotSize; i++) {
             JSTaggedValue value = profileTypeInfo->GetICSlot(hostThread_, i);
             newProfileTypeInfo->SetICSlot(hostThread_, i, value);

@@ -1,0 +1,3 @@
+DeoptIfHClassMismatch
+StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]
+CallCommonStub [COStub_Instanceof]

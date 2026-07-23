@@ -21,6 +21,7 @@
 #include <cstring>
 #include <limits>
 
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/arksteed/arksteed_compile_info_facts.h"
 #include "ecmascript/arksteed/arksteed_constant_folding.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
@@ -31,6 +32,7 @@
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_function.h"
@@ -958,6 +960,7 @@ struct GraphBuilder::BytecodeVisitor {
         PropertyLookupResult plr;
         uint32_t holderDepth {0};
         bool isConst {false};
+        bool canAssumeStableHClasses {false};
         bool hasStableProtoChain {false};
     };
 
@@ -1142,7 +1145,7 @@ struct GraphBuilder::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             case kungfu::EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-                LowerStObjByName(bcInfo);
+                LowerStObjByName(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
             case kungfu::EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
@@ -1948,12 +1951,20 @@ struct GraphBuilder::BytecodeVisitor {
         CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName);
     }
 
-    void LowerStObjByName(const BytecodeInfo *bcInfo)
+    void LowerStObjByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 2);  // 2: receiver register index
         uint16_t constDataId = GetConstDataId(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        if (TryBuildStoreNamedProperty(bcInfo, receiver, constDataId, value)) {
+        auto serializingScope =
+            self->pgoContext_.CreateSerializingScope("GraphBuilder::BytecodeVisitor::LowerStObjByName");
+        NamedStoreAccessSet access;
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        if (factory.TryBuildNamedStoreAccessInfo(0, &access) &&
+            TryLowerNamedStoreAccessSet(bcIndex, access, receiver, value)) {
+            return;
+        }
+        if (TryBuildStoreNamedProperty(bcIndex, receiver, constDataId, value)) {
             return;
         }
         ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
@@ -3532,6 +3543,20 @@ struct GraphBuilder::BytecodeVisitor {
         return self->taggedActualArgc_;
     }
 
+    std::optional<JSTaggedValue> TryGetConstantHeapObject(ValueVertex *node) const
+    {
+        if (node == nullptr || !node->IsTagged()) {
+            return std::nullopt;
+        }
+
+        auto *constant = node->TryCast<TaggedConstantVertex>();
+        if (constant == nullptr) {
+            return std::nullopt;
+        }
+        JSTaggedValue value(constant->GetValue());
+        return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
+    }
+
     // LDA_STR "" is currently represented by GetStringFromConstPool.
     // When heap constants are added, recognize empty string heap constants here too.
     bool IsEmptyStringConstant(ValueVertex *value) const
@@ -3708,14 +3733,8 @@ struct GraphBuilder::BytecodeVisitor {
         if (!plr.has_value()) {
             return std::nullopt;
         }
-        bool hasStableProtoChain = false;
-        if (holderDepth > 0) {
-            auto *thread = self->compilerThread_;
-            auto *deps = self->preproc_->GetEnv()->GetDependencies();
-            if (deps != nullptr && deps->DependOnStableProtoChain(thread, *receiverHClass, holderHClass)) {
-                hasStableProtoChain = true;
-            }
-        }
+        bool hasStableProtoChain = holderDepth > 0 &&
+            accessInfo.dependencies.canAssumeStableProtoChain;
         NamedLoadAccessInfo result {
             .receiverHClass = receiverHClass.value(),
             .holderHClass = holderHClass,
@@ -3724,6 +3743,7 @@ struct GraphBuilder::BytecodeVisitor {
             .plr = plr.value(),
             .holderDepth = holderDepth,
             .isConst = false,
+            .canAssumeStableHClasses = accessInfo.dependencies.canAssumeStableHClass,
             .hasStableProtoChain = hasStableProtoChain,
         };
         return result;
@@ -3768,6 +3788,10 @@ struct GraphBuilder::BytecodeVisitor {
                 for (JSHClass *hclass : accessInfo->lookupStartObjectHClasses) {
                     AppendHClassIfMissing(&existing.lookupStartObjectHClasses, hclass);
                 }
+                existing.canAssumeStableHClasses =
+                    existing.canAssumeStableHClasses && accessInfo->canAssumeStableHClasses;
+                existing.hasStableProtoChain =
+                    existing.hasStableProtoChain && accessInfo->hasStableProtoChain;
                 merged = true;
                 break;
             }
@@ -5326,16 +5350,32 @@ struct GraphBuilder::BytecodeVisitor {
         return nullptr;
     }
 
-    bool BuildCheckHClass(uint32_t bcIndex, ValueVertex *object, JSHClass *hclass)
+    bool BuildCheckHClass(uint32_t bcIndex, ValueVertex *object, JSHClass *hclass,
+                          bool installStableDependency = true, bool hasExternalStableDependency = false)
     {
         if (compileInfoFacts_->TryGetHClass(object) == hclass) {
             return true;
         }
-        if (kungfu::StableHClassDependency::IsValid(hclass)) {
+        bool isSharedHClass = JSTaggedValue(hclass).IsInSharedHeap();
+        bool hasStableDependency = false;
+        bool shouldInstallStableDependency = installStableDependency && self->IsLazyDeoptEnabled() &&
+            kungfu::StableHClassDependency::IsValid(hclass) && !isSharedHClass;
+        if (shouldInstallStableDependency) {
             auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
             if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
                 return false;
             }
+            hasStableDependency = true;
+        }
+        bool canAssumeStableHClass = isSharedHClass ||
+            (self->IsLazyDeoptEnabled() && (hasStableDependency || hasExternalStableDependency));
+        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(object)) {
+            if (constant->IsHole() || !constant->IsHeapObject() ||
+                constant->GetTaggedObject()->GetClass() != hclass) {
+                return false;
+            }
+            compileInfoFacts_->RecordHClass(object, hclass, canAssumeStableHClass);
+            return true;
         }
 
         std::vector<ValueVertex *> checkInputs {object};
@@ -5343,7 +5383,7 @@ struct GraphBuilder::BytecodeVisitor {
         self->NewVertex<DeoptIfHClassMismatchVertex>(
             currentBlock, checkInputs, self->chunk_, hclass, self->preproc_->GetBytecodeOffset(bcIndex))
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
-        compileInfoFacts_->RecordHClass(object, hclass, kungfu::StableHClassDependency::IsValid(hclass));
+        compileInfoFacts_->RecordHClass(object, hclass, canAssumeStableHClass);
         return true;
     }
 
@@ -5364,22 +5404,19 @@ struct GraphBuilder::BytecodeVisitor {
         });
     }
 
-    bool BuildCheckHClasses(
-        uint32_t bcIndex, ValueVertex *object, const std::vector<JSHClass *> &hclasses, bool mapsAreKnownFresh)
+    bool BuildCheckHClasses(uint32_t bcIndex, ValueVertex *object, const std::vector<JSHClass *> &hclasses,
+                            bool mapsAreKnownFresh, bool canAssumeStableHClasses)
     {
         if (hclasses.empty()) {
             return false;
         }
         if (hclasses.size() == 1) {
-            return BuildCheckHClass(bcIndex, object, hclasses.front());
+            return BuildCheckHClass(bcIndex, object, hclasses.front(), false, canAssumeStableHClasses);
         }
 
         std::optional<std::vector<JSHClass *>> knownHClasses = compileInfoFacts_->TryGetPossibleHClasses(object);
-        bool allStable = std::all_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
-            return hclass != nullptr && kungfu::StableHClassDependency::IsValid(hclass);
-        });
         if (mapsAreKnownFresh && knownHClasses.has_value() && ContainsSameHClasses(knownHClasses.value(), hclasses)) {
-            compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
+            compileInfoFacts_->RecordPossibleHClasses(object, hclasses, canAssumeStableHClasses);
             return true;
         }
         if (knownHClasses.has_value() && !knownHClasses->empty() && IsHClassSubset(knownHClasses.value(), hclasses)) {
@@ -5395,7 +5432,7 @@ struct GraphBuilder::BytecodeVisitor {
         auto *check = self->NewVertex<DeoptIfHClassNotInVertex>(
             currentBlock, {object}, self->chunk_, hclasses, self->preproc_->GetBytecodeOffset(bcIndex));
         check->Cast<DeoptIfHClassNotInVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
-        compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
+        compileInfoFacts_->RecordPossibleHClasses(object, hclasses, canAssumeStableHClasses);
         return true;
     }
 
@@ -5520,6 +5557,621 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
+    bool TryResolveHeapRef(const ArkSteedHeapRef &ref, JSTaggedValue *value) const
+    {
+        auto *broker = self->pgoContext_.GetBroker();
+        return broker != nullptr && broker->TryResolveRef(ref, value);
+    }
+
+    bool TryResolveHClassRef(const ArkSteedHClassRef &ref, JSHClass **hclass) const
+    {
+        if (hclass == nullptr) {
+            return false;
+        }
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!TryResolveHeapRef(ref, &value) || !value.IsJSHClass()) {
+            return false;
+        }
+        *hclass = JSHClass::Cast(value.GetTaggedObject());
+        return true;
+    }
+
+    ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
+    {
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!TryResolveHeapRef(ref, &value) || !value.IsHeapObject()) {
+            return nullptr;
+        }
+        // TODO(ArkSteed): Replace raw tagged heap constants with heap-constant table support.
+        return self->graph_->GetTaggedConstant(value.GetRawData());
+    }
+
+    JSHClass *TryGetKnownHClass(ValueVertex *receiver) const
+    {
+        if (std::optional<JSTaggedValue> constant = TryGetConstantHeapObject(receiver)) {
+            if (constant->IsHeapObject()) {
+                return constant->GetTaggedObject()->GetClass();
+            }
+        }
+        return compileInfoFacts_->TryGetHClass(receiver);
+    }
+
+    bool RequireKnownHClass(uint32_t bcIndex, const NamedStoreAccessInfo &access,
+                            ValueVertex *receiver, JSHClass *receiverHClass)
+    {
+        return receiverHClass != nullptr &&
+            BuildCheckHClass(bcIndex, receiver, receiverHClass, false,
+                             access.dependencies.canAssumeStableHClass);
+    }
+
+    bool TryLowerNamedStoreShared(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                  ValueVertex *value)
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (access.mode != AccessMode::NAMED_STORE || !access.isSharedStore || !access.holderIsReceiver ||
+            !TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
+            return false;
+        }
+        if (!RequireKnownHClass(bcIndex, access, receiver, receiverHClass)) {
+            return false;
+        }
+
+        ValueVertex *storeTarget = receiver;
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
+            return false;
+        }
+
+        auto *prepareField = self->NewVertex<PrepareSharedStoreFieldVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value}, access.handlerInfo);
+        UpdateCatchBlockData(prepareField);
+        LoadLazyDeoptMetadataForThrowableCall(bcIndex, prepareField);
+        self->NewVertex<StoreSharedFieldWithBarrierVertex>(
+            compileInfoFacts_, currentBlock, {glue, storeTarget, prepareField}, access.fieldOffset);
+        return true;
+    }
+
+    bool TryLowerNamedStoreAccessor(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                    ValueVertex *value)
+    {
+        if (access.mode != AccessMode::NAMED_STORE || access.kind != AccessKind::ACCESSOR) {
+            return false;
+        }
+
+        ValueVertex *holder = receiver;
+        if (!access.holderIsReceiver) {
+            holder = BuildPrototypeHolder(bcIndex, access, receiver);
+            if (holder == nullptr) {
+                return false;
+            }
+        }
+
+        ValueVertex *accessorHolder = holder;
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            accessorHolder = self->NewVertex<LoadTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {holder}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
+            return false;
+        }
+        ValueVertex *accessor = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {accessorHolder}, access.fieldOffset);
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        BB *internalAccessorBlock = self->NewBlock();
+        BB *loadSetterBlock = self->NewBlock();
+        BB *undefinedSetterBlock = self->NewBlock();
+        BB *callSetterBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        internalAccessorBlock->SetDeferred(true);
+        undefinedSetterBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfObjectTypeVertex>(
+            currentBlock, {accessor}, internalAccessorBlock, loadSetterBlock, JSType::INTERNAL_ACCESSOR);
+
+        currentBlock = internalAccessorBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        auto *internalCall = RuntimeCall({receiver, accessor, value}, RTSTUB_ID(CallInternalSetter));
+        LoadLazyDeoptMetadataForThrowableCall(bcIndex, internalCall);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = loadSetterBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        ValueVertex *setter = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {accessor}, static_cast<int32_t>(AccessorData::SETTER_OFFSET));
+        CompileInfoFacts *setterFacts = compileInfoFacts_;
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
+            currentBlock, {setter, self->undefinedValue_}, undefinedSetterBlock, callSetterBlock);
+
+        currentBlock = undefinedSetterBlock;
+        compileInfoFacts_ = setterFacts->Clone();
+        auto *throwCall = RuntimeCall({}, RTSTUB_ID(ThrowSetterIsUndefinedException));
+        LoadLazyDeoptMetadataForThrowableCall(bcIndex, throwCall);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = callSetterBlock;
+        compileInfoFacts_ = setterFacts->Clone();
+        CallVertex *call = BuildCallVertex(
+            std::initializer_list<ValueVertex *> {setter, self->undefinedValue_, receiver, value}, 1);
+        LoadLazyDeoptMetadataForThrowableCall(bcIndex, call);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        compileInfoFacts_->OnSideEffect();
+        return true;
+    }
+
+    bool BuildNamedStoreEagerGuards(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                    bool checkNotPrototype = false)
+    {
+        bool needsStableProtoChain =
+            access.hasProtoCell || !access.holderIsReceiver || access.kind == AccessKind::TRANSITION;
+        bool needsProtoMarker = needsStableProtoChain &&
+            !access.dependencies.canAssumeStableProtoChain;
+        checkNotPrototype = checkNotPrototype && !access.dependencies.canAssumeNotPrototype;
+        if (!needsProtoMarker && !checkNotPrototype) {
+            return true;
+        }
+        ChunkVector<ValueVertex *> guardInputs(self->chunk_);
+        guardInputs.emplace_back(receiver);
+        auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(
+            currentBlock, guardInputs, self->chunk_, needsProtoMarker, checkNotPrototype,
+            self->preproc_->GetBytecodeOffset(bcIndex));
+        guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        return true;
+    }
+
+    ValueVertex *BuildPrototypeHolder(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver)
+    {
+        JSHClass *holderHClass = nullptr;
+        if (!access.HasHolderHClass() || !TryResolveHClassRef(access.holderHClass, &holderHClass)) {
+            return nullptr;
+        }
+        ChunkVector<ValueVertex *> holderInputs(self->chunk_);
+        holderInputs.emplace_back(receiver);
+        auto *holder = self->NewVertex<FindPrototypeHolderVertex>(
+            compileInfoFacts_, currentBlock, holderInputs, self->chunk_, holderHClass,
+            self->preproc_->GetBytecodeOffset(bcIndex));
+        holder->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        return holder;
+    }
+
+    ValueVertex *BuildCheckedNamedStoreValue(AccessFieldRepresentation representation, ValueVertex *value)
+    {
+        switch (representation) {
+            case AccessFieldRepresentation::TAGGED:
+                return value;
+            case AccessFieldRepresentation::INT32:
+                return BuildCheckedTaggedIntToI32(value);
+            case AccessFieldRepresentation::DOUBLE:
+                return BuildCheckedNumberToF64(value);
+            default:
+                return nullptr;
+        }
+    }
+
+    void BuildPreparedNamedStoreField(ValueVertex *storeTarget, int32_t offset, ValueVertex *value,
+                                      AccessFieldRepresentation representation)
+    {
+        switch (representation) {
+            case AccessFieldRepresentation::TAGGED:
+                BuildStoreTaggedField(storeTarget, offset, value);
+                return;
+            case AccessFieldRepresentation::INT32:
+                self->NewVertex<StoreInt32FieldVertex>(compileInfoFacts_, currentBlock,
+                                                       {storeTarget, value}, offset);
+                return;
+            case AccessFieldRepresentation::DOUBLE:
+                self->NewVertex<StoreDoubleFieldVertex>(compileInfoFacts_, currentBlock,
+                                                        {storeTarget, value}, offset);
+                return;
+            default:
+                UNREACHABLE();
+        }
+    }
+
+    bool TryLowerNamedStoreTransition(uint32_t bcIndex, const NamedStoreAccessInfo &access,
+                                      ValueVertex *receiver, ValueVertex *value)
+    {
+        JSHClass *receiverHClass = nullptr;
+        JSHClass *transitionHClass = nullptr;
+        bool supportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+            access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+            access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+        if (access.mode != AccessMode::NAMED_STORE || access.kind != AccessKind::TRANSITION ||
+            !access.holderIsReceiver || !supportedRepresentation ||
+            !TryResolveHClassRef(access.expectedHClass, &receiverHClass) ||
+            !TryResolveHClassRef(access.transitionHClass, &transitionHClass)) {
+            return false;
+        }
+        if (access.fieldStorage != AccessFieldStorage::IN_OBJECT &&
+            access.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) {
+            return false;
+        }
+        if (receiverHClass->IsPrototype()) {
+            return false;
+        }
+        if (!RequireKnownHClass(bcIndex, access, receiver, receiverHClass)) {
+            return false;
+        }
+
+        if (!BuildNamedStoreEagerGuards(bcIndex, access, receiver, true)) {
+            return false;
+        }
+        ValueVertex *preparedValue = BuildCheckedNamedStoreValue(access.fieldRepresentation, value);
+        if (preparedValue == nullptr) {
+            return false;
+        }
+
+        // TODO(ArkSteed): Use heap-constant table support for transition HClass constants.
+        ValueVertex *transitionHClassValue =
+            self->graph_->GetTaggedConstant(JSTaggedValue(transitionHClass).GetRawData());
+        self->NewVertex<TransitionHClassWithBarrierVertex>(
+            compileInfoFacts_, currentBlock, {glue, receiver, transitionHClassValue});
+
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            auto *properties = self->NewVertex<EnsurePropertiesCapacityVertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {glue, receiver},
+                static_cast<int32_t>(access.fieldIndex));
+            UpdateCatchBlockData(properties);
+            LoadLazyDeoptMetadataForThrowableCall(bcIndex, properties);
+            BuildPreparedNamedStoreField(properties, access.fieldOffset, preparedValue,
+                                         access.fieldRepresentation);
+        } else {
+            BuildPreparedNamedStoreField(receiver, access.fieldOffset, preparedValue,
+                                         access.fieldRepresentation);
+        }
+        compileInfoFacts_->RecordHClass(receiver, transitionHClass, false);
+        return true;
+    }
+
+    bool TryLowerNamedStoreField(uint32_t bcIndex, const NamedStoreAccessInfo &access,
+                                 ValueVertex *receiver, ValueVertex *value)
+    {
+        if (access.kind == AccessKind::TRANSITION) {
+            return TryLowerNamedStoreTransition(bcIndex, access, receiver, value);
+        }
+        if (access.isSharedStore) {
+            return TryLowerNamedStoreShared(bcIndex, access, receiver, value);
+        }
+        if (access.mode != AccessMode::NAMED_STORE) {
+            return false;
+        }
+
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveHClassRef(access.expectedHClass, &receiverHClass) ||
+            !RequireKnownHClass(bcIndex, access, receiver, receiverHClass)) {
+            return false;
+        }
+        if (!BuildNamedStoreEagerGuards(bcIndex, access, receiver)) {
+            return false;
+        }
+        if (access.kind == AccessKind::ACCESSOR) {
+            return TryLowerNamedStoreAccessor(bcIndex, access, receiver, value);
+        }
+        if (!access.IsDataField()) {
+            return false;
+        }
+
+        ValueVertex *storeTarget = receiver;
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
+            return false;
+        }
+
+        if (access.fieldRepresentation != AccessFieldRepresentation::TAGGED) {
+            if (access.fieldRepresentation != AccessFieldRepresentation::INT32 &&
+                access.fieldRepresentation != AccessFieldRepresentation::DOUBLE) {
+                return false;
+            }
+            ChunkVector<ValueVertex *> storeInputs(self->chunk_);
+            storeInputs.emplace_back(storeTarget);
+            storeInputs.emplace_back(value);
+            EagerDeoptimizableMixin *store = nullptr;
+            if (access.fieldRepresentation == AccessFieldRepresentation::INT32) {
+                store = self->NewVertex<StoreInt32FieldWithRepVertex>(
+                    compileInfoFacts_, currentBlock, storeInputs, self->chunk_, access.fieldOffset,
+                    self->preproc_->GetBytecodeOffset(bcIndex));
+            } else {
+                store = self->NewVertex<StoreDoubleFieldWithRepVertex>(
+                    compileInfoFacts_, currentBlock, storeInputs, self->chunk_, access.fieldOffset,
+                    self->preproc_->GetBytecodeOffset(bcIndex));
+            }
+            store->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+            return true;
+        }
+
+        BuildStoreTaggedField(storeTarget, access.fieldOffset, value);
+        return true;
+    }
+
+    static bool IsLocalTaggedStoreField(const NamedStoreAccessInfo &access)
+    {
+        return access.mode == AccessMode::NAMED_STORE && !access.isSharedStore && !access.hasProtoCell &&
+            access.IsDataField() && access.holderIsReceiver &&
+            access.fieldRepresentation == AccessFieldRepresentation::TAGGED &&
+            (access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
+             access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) &&
+            access.expectedHClass.IsSafeForCompile();
+    }
+
+    static bool IsLocalPolyNamedStoreCase(const NamedStoreAccessInfo &access)
+    {
+        if (access.mode != AccessMode::NAMED_STORE || access.isSharedStore ||
+            !access.expectedHClass.IsSafeForCompile()) {
+            return false;
+        }
+        if (!access.holderIsReceiver && !access.hasProtoCell) {
+            return false;
+        }
+        if (access.fieldStorage != AccessFieldStorage::IN_OBJECT &&
+            access.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) {
+            return false;
+        }
+        if (access.kind == AccessKind::TRANSITION) {
+            bool supportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+                access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+            return access.holderIsReceiver && supportedRepresentation && access.transitionHClass.IsSafeForCompile();
+        }
+        if (access.kind == AccessKind::ACCESSOR) {
+            return access.holderIsReceiver || (access.hasFieldHClass && access.fieldHClass.IsSafeForCompile());
+        }
+        if (!access.IsDataField()) {
+            return false;
+        }
+        return access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+            access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+            access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+    }
+
+    static bool HasSameStoreFieldLocation(const NamedStoreAccessInfo &left, const NamedStoreAccessInfo &right)
+    {
+        return left.fieldStorage == right.fieldStorage && left.fieldOffset == right.fieldOffset;
+    }
+
+    bool BuildCheckHClassSet(uint32_t bcIndex, ValueVertex *receiver,
+                             const std::vector<JSHClass *> &expectedHClasses,
+                             bool canAssumeStableHClasses)
+    {
+        return BuildCheckHClasses(
+            bcIndex, receiver, expectedHClasses, false, canAssumeStableHClasses);
+    }
+
+    void RecordPossibleHClasses(ValueVertex *receiver, const std::vector<JSHClass *> &expectedHClasses)
+    {
+        compileInfoFacts_->RecordPossibleHClasses(receiver, expectedHClasses, false);
+    }
+
+    bool TryLowerEquivalentNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access,
+                                            ValueVertex *receiver, ValueVertex *value)
+    {
+        if (access.caseCount < 2 || !IsLocalTaggedStoreField(access.cases[0])) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        expectedHClasses.reserve(access.caseCount);
+        JSHClass *firstHClass = nullptr;
+        if (!TryResolveHClassRef(access.cases[0].expectedHClass, &firstHClass)) {
+            return false;
+        }
+        expectedHClasses.push_back(firstHClass);
+        for (uint32_t i = 1; i < access.caseCount; ++i) {
+            if (!IsLocalTaggedStoreField(access.cases[i]) ||
+                !HasSameStoreFieldLocation(access.cases[0], access.cases[i])) {
+                return false;
+            }
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(access.cases[i].expectedHClass, &expectedHClass)) {
+                return false;
+            }
+            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) !=
+                expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(expectedHClass);
+        }
+
+        bool canAssumeStableHClasses = std::all_of(
+            access.cases.begin(), access.cases.begin() + access.caseCount,
+            [](const NamedStoreAccessInfo &storeCase) {
+                return storeCase.dependencies.canAssumeStableHClass;
+            });
+        if (!BuildCheckHClassSet(bcIndex, receiver, expectedHClasses, canAssumeStableHClasses)) {
+            return false;
+        }
+        ValueVertex *storeTarget = receiver;
+        if (access.cases[0].fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        }
+        BuildStoreTaggedField(storeTarget, access.cases[0].fieldOffset, value);
+        return true;
+    }
+
+    bool TryLowerPolyNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access,
+                                      ValueVertex *receiver, ValueVertex *value)
+    {
+        if (access.caseCount < 2) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        std::vector<StoreTaggedFieldByHClassCase> storeCases;
+        expectedHClasses.reserve(access.caseCount);
+        storeCases.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            const NamedStoreAccessInfo &storeCaseInfo = access.cases[i];
+            if (!IsLocalTaggedStoreField(storeCaseInfo)) {
+                return false;
+            }
+
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(storeCaseInfo.expectedHClass, &expectedHClass)) {
+                return false;
+            }
+            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) !=
+                expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(expectedHClass);
+            storeCases.push_back(StoreTaggedFieldByHClassCase {
+                expectedHClass,
+                storeCaseInfo.fieldOffset,
+                storeCaseInfo.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY,
+            });
+        }
+
+        ChunkVector<ValueVertex *> storeInputs(self->chunk_);
+        storeInputs.emplace_back(glue);
+        storeInputs.emplace_back(receiver);
+        storeInputs.emplace_back(value);
+        auto *store = self->NewVertex<StoreTaggedFieldByHClassVertex>(
+            compileInfoFacts_, currentBlock, storeInputs, self->chunk_, storeCases,
+            ClassifyDirectWriteBarrierValueKind(value), self->preproc_->GetBytecodeOffset(bcIndex));
+        store->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        RecordPossibleHClasses(receiver, expectedHClasses);
+        return true;
+    }
+
+    bool TryLowerMixedPolyNamedStores(uint32_t bcIndex, const NamedStoreAccessSet &access,
+                                      ValueVertex *receiver, ValueVertex *value)
+    {
+        if (access.caseCount < 2) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        expectedHClasses.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            const NamedStoreAccessInfo &storeCase = access.cases[i];
+            if (!IsLocalPolyNamedStoreCase(storeCase)) {
+                return false;
+            }
+
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(storeCase.expectedHClass, &expectedHClass) ||
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) !=
+                    expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(expectedHClass);
+
+            if (storeCase.kind == AccessKind::TRANSITION) {
+                JSHClass *transitionHClass = nullptr;
+                if (expectedHClass->IsPrototype() ||
+                    !TryResolveHClassRef(storeCase.transitionHClass, &transitionHClass)) {
+                    return false;
+                }
+            }
+        }
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        std::vector<BB *> checkBlocks;
+        std::vector<BB *> caseBlocks;
+        checkBlocks.reserve(access.caseCount);
+        caseBlocks.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            checkBlocks.push_back(self->NewBlock());
+            caseBlocks.push_back(self->NewBlock());
+        }
+        BB *primitiveDeoptBlock = self->NewBlock();
+        BB *hclassMissDeoptBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        primitiveDeoptBlock->SetDeferred(true);
+        hclassMissDeoptBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
+            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
+
+        ValueVertex *actualHClass = nullptr;
+        // TODO(ArkSteed): Replace raw HClass addresses with heap-constant table support.
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            currentBlock = checkBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            if (actualHClass == nullptr) {
+                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
+            }
+            ValueVertex *expectedHClass = self->graph_->GetInt64Constant(
+                reinterpret_cast<uint64_t>(expectedHClasses[i]) & TaggedStateWord::ADDRESS_MASK);
+            BB *nextBlock = i + 1 < access.caseCount ? checkBlocks[i + 1] : hclassMissDeoptBlock;
+            self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
+                currentBlock, {actualHClass, expectedHClass}, caseBlocks[i], nextBlock, IntConditionKind::EQUAL);
+
+            currentBlock = caseBlocks[i];
+            compileInfoFacts_ = entryFacts->Clone();
+            compileInfoFacts_->RecordHClass(receiver, expectedHClasses[i], false);
+            bool lowered = TryLowerNamedStoreField(bcIndex, access.cases[i], receiver, value);
+            ASSERT(lowered);
+            if (!lowered) {
+                UNREACHABLE();
+            }
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+        }
+
+        auto buildDeoptBlock = [&](BB *deoptBlock) {
+            currentBlock = deoptBlock;
+            compileInfoFacts_ = entryFacts->Clone();
+            auto *deopt = self->FinishBlockWith<DeoptVertex>(
+                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        };
+        buildDeoptBlock(primitiveDeoptBlock);
+        buildDeoptBlock(hclassMissDeoptBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        compileInfoFacts_->OnSideEffect();
+        return true;
+    }
+
+    bool TryLowerNamedStoreAccessSet(uint32_t bcIndex, const NamedStoreAccessSet &access,
+                                     ValueVertex *receiver, ValueVertex *value)
+    {
+        if (access.caseCount == 0) {
+            return false;
+        }
+        if (access.caseCount == 1) {
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(access.cases[0].expectedHClass, &expectedHClass) ||
+                !BuildCheckHClass(bcIndex, receiver, expectedHClass, false,
+                                  access.cases[0].dependencies.canAssumeStableHClass)) {
+                return false;
+            }
+            return TryLowerNamedStoreField(bcIndex, access.cases[0], receiver, value);
+        }
+
+        JSHClass *knownHClass = TryGetKnownHClass(receiver);
+        if (knownHClass != nullptr) {
+            const NamedStoreAccessInfo *matched = nullptr;
+            for (uint32_t i = 0; i < access.caseCount; ++i) {
+                JSHClass *caseHClass = nullptr;
+                if (!TryResolveHClassRef(access.cases[i].expectedHClass, &caseHClass)) {
+                    return false;
+                }
+                if (caseHClass != knownHClass) {
+                    continue;
+                }
+                if (matched != nullptr) {
+                    return false;
+                }
+                matched = &access.cases[i];
+            }
+            return matched != nullptr && TryLowerNamedStoreField(bcIndex, *matched, receiver, value);
+        }
+
+        return TryLowerEquivalentNamedStoreFields(bcIndex, access, receiver, value) ||
+            TryLowerPolyNamedStoreFields(bcIndex, access, receiver, value) ||
+            TryLowerMixedPolyNamedStores(bcIndex, access, receiver, value);
+    }
+
     ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, uint16_t constDataId,
                                       const NamedLoadAccessInfo &accessInfo)
     {
@@ -5555,16 +6207,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         // Internal case blocks share CompileInfoFacts. Do not let a load from one sibling case
         // enter the property cache or available-expression table and leak into another case.
-        ValueVertex *loadSource = object;
-        if (accessInfo.holderDepth != 0) {
-            EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
-            loadSource = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
-                currentBlock, {object}, self->chunk_, accessInfo.holderHClass,
-                accessInfo.expectedPrototypeHClasses, accessInfo.holderDepth,
-                self->preproc_->GetBytecodeOffset(bcIndex));
-            loadSource->Cast<LoadPrototypeHolderByHClassVertex>()->SetEagerDeoptFrameState(
-                std::move(deoptFrameState));
-        }
+        ValueVertex *loadSource = BuildPropertyLoadSource(bcIndex, object, accessInfo);
         return BuildLoadFieldWithoutCse(loadSource, accessInfo.plr);
     }
 
@@ -5629,7 +6272,9 @@ struct GraphBuilder::BytecodeVisitor {
         bool hasHClassOfString = std::any_of(maps.begin(), maps.end(), [](JSHClass *hclass) {
             return hclass != nullptr && hclass->IsString();
         });
-        if (hasHClassOfString || !BuildCheckHClasses(bcIndex, receiver, maps, mapsAreKnownFresh)) {
+        if (hasHClassOfString ||
+            !BuildCheckHClasses(bcIndex, receiver, maps, mapsAreKnownFresh,
+                                accessInfo.canAssumeStableHClasses)) {
             return false;
         }
         ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, constDataId, accessInfo);
@@ -5659,8 +6304,8 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    bool TryBuildStoreNamedProperty(const BytecodeInfo *bcInfo, ValueVertex *receiver,
-                                    uint16_t constDataId, ValueVertex *value)
+    bool TryBuildStoreNamedProperty(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,
+                                    ValueVertex *value)
     {
         JSHClass *hclass = compileInfoFacts_->TryGetHClass(receiver);
         if (hclass == nullptr) {
@@ -5679,13 +6324,19 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
         auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
-        if (dependencies == nullptr || !dependencies->DependOnNotPrototype(hclass)) {
+        if (self->IsLazyDeoptEnabled() && kungfu::StableHClassDependency::IsValid(hclass) &&
+            (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass))) {
             return false;
         }
-        if (kungfu::StableHClassDependency::IsValid(hclass)) {
-            if (!dependencies->DependOnStableHClass(hclass)) {
-                return false;
-            }
+        bool hasNotPrototypeDependency = self->IsLazyDeoptEnabled() && dependencies != nullptr &&
+            dependencies->DependOnNotPrototype(hclass);
+        if (!hasNotPrototypeDependency) {
+            ChunkVector<ValueVertex *> guardInputs(self->chunk_);
+            guardInputs.emplace_back(receiver);
+            auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(
+                currentBlock, guardInputs, self->chunk_, false, true,
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         }
         BuildStoreField(receiver, value, plr);
         return true;

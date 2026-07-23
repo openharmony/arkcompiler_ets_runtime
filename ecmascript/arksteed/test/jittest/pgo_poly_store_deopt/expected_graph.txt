@@ -1,0 +1,3 @@
+DeoptIfHClassNotIn [DeoptIfHClassNotIn]
+DeoptIfHClassNotInVertex
+StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

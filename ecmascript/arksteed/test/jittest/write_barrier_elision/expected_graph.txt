@@ -1,5 +1,4 @@
 DeoptIfHClassMismatch
-DeoptIfHClassMismatchVertex
 Loop Header
-StoreTaggedField [Tagged]
+StoreTaggedField(
 NOT: StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

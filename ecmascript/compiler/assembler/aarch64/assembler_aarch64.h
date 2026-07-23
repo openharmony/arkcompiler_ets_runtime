@@ -215,6 +215,7 @@ public:
     void Ldrh(const Register &rt, const MemoryOperand &operand);
     void Ldrb(const Register &rt, const MemoryOperand &operand);
     void Str(const Register &rt, const MemoryOperand &operand);
+    void Stlr(const Register &rt, const MemoryOperand &operand);
     void Str(const VRegister &vt, const MemoryOperand &operand);  // Store SIMD&FP to memory
     void Ldur(const Register &rt, const MemoryOperand &operand);
     void Stur(const Register &rt, const MemoryOperand &operand);

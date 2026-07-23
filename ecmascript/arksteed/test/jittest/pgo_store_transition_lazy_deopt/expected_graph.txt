@@ -1,0 +1,3 @@
+Call [Tagged]
+NOT: DeoptIfPrototypeChanged
+TransitionHClassWithBarrier [TransitionHClassWithBarrier]

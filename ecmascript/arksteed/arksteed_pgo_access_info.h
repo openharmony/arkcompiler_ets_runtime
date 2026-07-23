@@ -55,7 +55,8 @@ enum class AccessKind : uint8_t {
 enum class AccessDependencyKind : uint8_t {
     NONE,
     HCLASS,
-    PROTOTYPE_CELL,
+    PROTOTYPE_CHAIN,
+    NOT_PROTOTYPE,
 };
 
 enum class AccessFeedbackSlotKind : uint8_t {
@@ -95,7 +96,11 @@ struct AccessFeedbackSource {
 
 struct AccessDependencyInfo {
     AccessDependencyKind hclassDependency {AccessDependencyKind::NONE};
-    AccessDependencyKind protoCellDependency {AccessDependencyKind::NONE};
+    AccessDependencyKind protoChainDependency {AccessDependencyKind::NONE};
+    AccessDependencyKind notPrototypeDependency {AccessDependencyKind::NONE};
+    bool canAssumeStableHClass {false};
+    bool canAssumeStableProtoChain {false};
+    bool canAssumeNotPrototype {false};
 };
 
 struct AccessGuardInfo {
@@ -127,6 +132,7 @@ struct PropertyAccessInfo {
     ArkSteedNameRef name {};
     ArkSteedObjectRef constant {};
     ArkSteedHClassRef transitionHClass {};
+    ArkSteedHClassRef holderHClass {};
     ArkSteedHClassRef fieldOwnerHClass {};
     ArkSteedHClassRef fieldHClass {};
     uint32_t holderDepth {0};
@@ -135,6 +141,7 @@ struct PropertyAccessInfo {
     bool hasNotFoundProtoCellGuard {false};
     bool hasTransitionHClass {false};
     bool hasFieldHClass {false};
+    bool isSharedStore {false};
 
     bool IsInvalid() const
     {
@@ -203,7 +210,7 @@ struct PropertyAccessInfo {
 
     bool HasHolderHClass() const
     {
-        return !holderIsReceiver && fieldOwnerHClass.IsSafeForCompile();
+        return !holderIsReceiver && holderHClass.IsSafeForCompile();
     }
 
     bool HasTransitionHClass() const

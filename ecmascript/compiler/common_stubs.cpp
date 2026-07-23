@@ -874,6 +874,43 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     Return(builder.StoreObjByName(glue, receiver, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
 
+void EnsurePropertiesCapacityStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef oldProperties = GetPropertiesArray(glue, receiver);
+    GateRef oldCapacity = GetLengthOfTaggedArray(oldProperties);
+
+    Label capacityIsZero(env);
+    Label capacityIsNotZero(env);
+    Label done(env);
+    DEFVARIABLE(properties, VariableType::JS_ANY(), oldProperties);
+
+    BRANCH(Int32Equal(oldCapacity, Int32(0)), &capacityIsZero, &capacityIsNotZero);
+    Bind(&capacityIsZero);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        properties = newBuilder.NewTaggedArray(glue, Int32(JSObject::MIN_PROPERTIES_LENGTH));
+        Jump(&done);
+    }
+    Bind(&capacityIsNotZero);
+    {
+        GateRef hclass = LoadHClass(glue, receiver);
+        GateRef inlinedProperties = GetInlinedPropertiesFromHClass(hclass);
+        GateRef maxNonInlinedFastPropsCapacity =
+            Int32Sub(Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY), inlinedProperties);
+        GateRef newCapacity =
+            ComputeNonInlinedFastPropsCapacity(glue, oldCapacity, maxNonInlinedFastPropsCapacity);
+        NewObjectStubBuilder newBuilder(this);
+        properties = newBuilder.CopyArray(glue, oldProperties, oldCapacity, newCapacity);
+        Jump(&done);
+    }
+    Bind(&done);
+    SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, *properties);
+    Return(*properties);
+}
+
 void GetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

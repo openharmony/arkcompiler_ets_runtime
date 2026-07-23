@@ -27,9 +27,15 @@
 #include "ecmascript/arksteed/arksteed_write_barrier.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/message_string.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::arksteed {
 #define __ assembler_->
@@ -403,6 +409,37 @@ bool TryGetIntPtrConstant(const ValueVertex *vertex, intptr_t *value)
     return true;
 }
 
+void LoadObjectType(ArkSteedAssembler *assembler, ArkSteedRegister dst, ArkSteedRegister value)
+{
+    assembler->LoadField(dst, value, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+    assembler->And(dst, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    assembler->LoadField(dst, dst, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+    assembler->And(dst, static_cast<int64_t>(0xFF));
+}
+
+void LoadHClassBitField(ArkSteedAssembler *assembler, ArkSteedRegister dst, ArkSteedRegister value)
+{
+    assembler->LoadField(dst, value, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+    assembler->And(dst, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    assembler->LoadField(dst, dst, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+}
+
+template <typename T>
+struct GetRegister;
+template <>
+struct GetRegister<ArkSteedRegister> {
+    static ArkSteedRegister Get(AllocatedState target)
+    {
+        return target.GetRegister();
+    }
+};
+template <>
+struct GetRegister<ArkSteedDoubleRegister> {
+    static ArkSteedDoubleRegister Get(AllocatedState target)
+    {
+        return target.GetDoubleRegister();
+    }
+};
 bool IsGapMoveVertex(Vertex *vertex)
 {
     return vertex->Is<GapMoveVertex>() || vertex->Is<ConstantGapMoveVertex>();
@@ -1114,6 +1151,73 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(Deop
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfPrototypeChangedVertex>(
+    DeoptIfPrototypeChangedVertex *checkPrototype)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << checkPrototype->GetId()
+                        << ": DeoptIfPrototypeChangedVertex";
+#endif
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister current = scope.Acquire();
+    ArkSteedRegister scratch = scope.Acquire();
+    ArkSteedRegister receiver = GetInputRegister(checkPrototype, DeoptIfPrototypeChangedVertex::RECEIVER_INDEX);
+    Label protoMarkerDeopt;
+    Label prototypeHClassDeopt;
+    Label pass;
+
+    auto loadHClassAddress = [this, scratch](ArkSteedRegister dst, ArkSteedRegister object) {
+        __ LoadField(dst, object, TaggedObject::HCLASS_OFFSET);
+        __ Move(scratch, TaggedStateWord::ADDRESS_MASK);
+        __ And(dst, scratch);
+    };
+
+    if (checkPrototype->ShouldCheckNotPrototype()) {
+        loadHClassAddress(current, receiver);
+        __ LoadInt32Field(current, current, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+        constexpr int32_t isPrototypeMask = 1U << JSHClass::IsPrototypeBit::START_BIT;
+        __ And(current, isPrototypeMask);
+        __ Compare(current, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &prototypeHClassDeopt);
+    }
+
+    if (checkPrototype->ShouldCheckProtoChangeMarker()) {
+        loadHClassAddress(current, receiver);
+        __ LoadField(current, current, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
+        __ Move(scratch, current);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &protoMarkerDeopt);
+
+        loadHClassAddress(current, current);
+        __ LoadField(current, current, static_cast<int32_t>(JSHClass::PROTO_CHANGE_MARKER_OFFSET));
+        __ Move(scratch, current);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &protoMarkerDeopt);
+
+        __ LoadInt32Field(current, current, static_cast<int32_t>(ProtoChangeMarker::BIT_FIELD_OFFSET));
+        constexpr int32_t invalidatingChangeMask =
+            (1U << (ProtoChangeMarker::HAS_CHANGED_BITS - 1U)) |
+            (1U << ProtoChangeMarker::AccessorHasChangedBits::START_BIT);
+        __ And(current, invalidatingChangeMask);
+        __ Compare(current, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &protoMarkerDeopt);
+    }
+    __ Jump(&pass);
+
+    if (checkPrototype->ShouldCheckProtoChangeMarker()) {
+        __ Bind(&protoMarkerDeopt);
+        EmitEagerDeoptExit(checkPrototype, kungfu::DeoptType::PROTOTYPECHANGED2);
+    }
+    if (checkPrototype->ShouldCheckNotPrototype()) {
+        __ Bind(&prototypeHClassDeopt);
+        EmitEagerDeoptExit(checkPrototype, kungfu::DeoptType::PROTOTYPECHANGED3);
+    }
+    __ Bind(&pass);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(DeoptIfInt32ConditionVertex *check)
 {
     auto left = GetInputRegister(check, DeoptIfInt32ConditionVertex::LEFT_INDEX);
@@ -1318,6 +1422,67 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ConvertHoleToUndefinedVertex>(
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadHClassAddressVertex>(LoadHClassAddressVertex *loadHClass)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << loadHClass->GetId() << ": LoadHClassAddressVertex";
+#endif
+    auto dst = GetResultRegister(loadHClass);
+    auto object = GetInputRegister(loadHClass, LoadHClassAddressVertex::OBJECT_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister mask = scope.Acquire();
+    ASSERT(dst != mask);
+    __ LoadField(dst, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+    __ Move(mask, TaggedStateWord::ADDRESS_MASK);
+    __ And(dst, mask);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<FindPrototypeHolderVertex>(
+    FindPrototypeHolderVertex *findHolder)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << findHolder->GetId() << ": FindPrototypeHolderVertex";
+#endif
+    auto holder = GetResultRegister(findHolder);
+    auto receiver = GetInputRegister(findHolder, FindPrototypeHolderVertex::RECEIVER_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister currentHClass = scope.Acquire();
+    ArkSteedRegister scratch = scope.Acquire();
+    ASSERT(holder != currentHClass && holder != scratch && currentHClass != scratch);
+
+    auto loadHClassAddress = [this, scratch](ArkSteedRegister dst, ArkSteedRegister object) {
+        __ LoadField(dst, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+        __ Move(scratch, TaggedStateWord::ADDRESS_MASK);
+        __ And(dst, scratch);
+    };
+
+    Label loop;
+    Label found;
+    Label deopt;
+    loadHClassAddress(currentHClass, receiver);
+    __ LoadField(holder, currentHClass, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
+    __ Bind(&loop);
+    __ Move(scratch, holder);
+    __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    __ Compare(scratch, 0);
+    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+
+    loadHClassAddress(currentHClass, holder);
+    // TODO: HClass immediates should use ArkSteed heap constant/relocation support when available.
+    __ Move(scratch, reinterpret_cast<uint64_t>(findHolder->GetExpectedHolderHClass()) &
+                         TaggedStateWord::ADDRESS_MASK);
+    __ Compare(currentHClass, scratch);
+    __ JumpIf(Condition::COND_EQUAL, &found);
+    __ LoadField(holder, currentHClass, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
+    __ Jump(&loop);
+
+    __ Bind(&deopt);
+    EmitEagerDeoptExit(findHolder, kungfu::DeoptType::INCONSISTENTHCLASS4);
+    __ Bind(&found);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedToAddressVertex>(StoreTaggedToAddressVertex *storeField)
 {
     auto obj = GetInputRegister(storeField, StoreTaggedToAddressVertex::OBJECT_INDEX);
@@ -1389,6 +1554,378 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreSharedFieldWithBarrierVer
                                 storeField->GetRegallocInfo()->GetDeferredRegisterSnapshot())
         .StoreTaggedField(glue, object, value, storeField->GetOffset(), ArkSteedWriteBarrierKind::SHARED_BARRIER,
                           objectRegionScratch, valueRegionScratch, storeField->GetValueKind());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TransitionHClassWithBarrierVertex>(
+    TransitionHClassWithBarrierVertex *transition)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << transition->GetId()
+                        << ": TransitionHClassWithBarrierVertex";
+#endif
+    auto glue = GetInputRegister(transition, TransitionHClassWithBarrierVertex::GLUE_INDEX);
+    auto object = GetInputRegister(transition, TransitionHClassWithBarrierVertex::OBJECT_INDEX);
+    auto hclass = GetInputRegister(transition, TransitionHClassWithBarrierVertex::HCLASS_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister objectRegionScratch = scope.Acquire();
+    ArkSteedRegister hclassRegionScratch = scope.Acquire();
+    ASSERT(objectRegionScratch != hclassRegionScratch);
+    ArkSteedWriteBarrierEmitter(assembler_, graph_->GetChunk(), &deferredCode_,
+                                transition->GetRegallocInfo()->GetDeferredRegisterSnapshot())
+        .TransitionHClass(glue, object, hclass, objectRegionScratch, hclassRegionScratch);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>(
+    PrepareSharedStoreFieldVertex *prepareField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << prepareField->GetId()
+                        << ": PrepareSharedStoreFieldVertex";
+#endif
+    uint64_t handlerInfo = prepareField->GetHandlerInfo();
+    ASSERT(HandlerBase::IsStoreShared(handlerInfo));
+    ASSERT(!HandlerBase::IsAccessor(handlerInfo));
+    uint32_t fieldType = static_cast<uint32_t>(HandlerBase::GetFieldType(handlerInfo));
+    auto value = GetInputRegister(prepareField, PrepareSharedStoreFieldVertex::VALUE_INDEX);
+    auto result = GetResultRegister(prepareField);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister scratch = scope.Acquire();
+    Label done;
+    Label publishTreeString;
+    Label typeMismatch;
+
+    __ Move(result, value);
+    __ LoadTaggedValue(scratch, JSTaggedValue::Undefined().GetRawData());
+    __ Compare(value, scratch);
+    __ JumpIf(Condition::COND_EQUAL, &done);
+
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::NUMBER)) != 0) {
+        Label checkNext;
+        __ Move(scratch, value);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
+        __ Compare(scratch, static_cast<int32_t>(JSTaggedValue::TAG_OBJECT));
+        __ JumpIf(Condition::COND_EQUAL, &checkNext);
+        __ Jump(&done);
+        __ Bind(&checkNext);
+    }
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::BOOLEAN)) != 0) {
+        Label checkNext;
+        __ Move(scratch, value);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, static_cast<int32_t>(JSTaggedValue::TAG_BOOLEAN_MASK));
+        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        __ Jump(&done);
+        __ Bind(&checkNext);
+    }
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::NULL_TYPE)) != 0) {
+        __ LoadTaggedValue(scratch, JSTaggedValue::Null().GetRawData());
+        __ Compare(value, scratch);
+        __ JumpIf(Condition::COND_EQUAL, &done);
+    }
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::UNDEFINED)) != 0) {
+        __ LoadTaggedValue(scratch, JSTaggedValue::Undefined().GetRawData());
+        __ Compare(value, scratch);
+        __ JumpIf(Condition::COND_EQUAL, &done);
+    }
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::STRING)) != 0) {
+        Label checkNext;
+        __ LoadTaggedValue(scratch, JSTaggedValue::Null().GetRawData());
+        __ Compare(value, scratch);
+        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ Move(scratch, value);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        LoadObjectType(assembler_, scratch, value);
+        __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
+        __ JumpIf(Condition::COND_LESS_THAN, &checkNext);
+        __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
+        __ JumpIf(Condition::COND_GREATER_THAN, &checkNext);
+        __ Compare(scratch, static_cast<int32_t>(JSType::TREE_STRING));
+        __ JumpIf(Condition::COND_EQUAL, &publishTreeString);
+        __ Jump(&done);
+        __ Bind(&checkNext);
+    }
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::BIG_INT)) != 0) {
+        Label checkNext;
+        __ Move(scratch, value);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        LoadObjectType(assembler_, scratch, value);
+        __ Compare(scratch, static_cast<int32_t>(JSType::BIGINT));
+        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ Bind(&checkNext);
+    }
+    if ((fieldType & static_cast<uint32_t>(SharedFieldType::SENDABLE)) != 0) {
+        Label checkNext;
+        __ LoadTaggedValue(scratch, JSTaggedValue::Null().GetRawData());
+        __ Compare(value, scratch);
+        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ Move(scratch, value);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        LoadHClassBitField(assembler_, scratch, value);
+        __ And(scratch, static_cast<int64_t>(1U << JSHClass::IsJSSharedBit::START_BIT));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+        __ Bind(&checkNext);
+    }
+    if (fieldType == static_cast<uint32_t>(SharedFieldType::NONE) ||
+        (fieldType & static_cast<uint32_t>(SharedFieldType::GENERIC)) != 0) {
+        Label checkShared;
+        __ Move(scratch, value);
+        __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+        __ Jump(&checkShared);
+        __ Bind(&checkShared);
+        LoadHClassBitField(assembler_, scratch, value);
+        __ And(scratch, static_cast<int64_t>(1U << JSHClass::IsJSSharedBit::START_BIT));
+        __ Compare(scratch, 0);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+    }
+
+    __ Jump(&typeMismatch);
+
+    __ Bind(&publishTreeString);
+    int stackArgCount = PrepareRuntimeStubStackArguments(
+        prepareField, 1, RTSTUB_ID(SlowSharedObjectStoreBarrier));
+    __ CallRuntime(RTSTUB_ID(SlowSharedObjectStoreBarrier));
+    if (HasLazyDeoptSafepoint(prepareField)) {
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, prepareField);
+    } else {
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
+    __ FreeCallArgSlots(stackArgCount);
+    __ Jump(&done);
+
+    __ Bind(&typeMismatch);
+    constexpr int32_t runtimeArgCount = 1;
+    constexpr int32_t runtimeStackArgCount = runtimeArgCount + CALL_ARG2;
+    constexpr int32_t reservedSlotCount = (runtimeStackArgCount + 1) & ~1;
+    __ ReserveCallArgSlots(reservedSlotCount);
+    __ Move(scratch, static_cast<int64_t>(RTSTUB_ID(ThrowTypeError)));
+    __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG0), scratch);
+    __ Move(scratch, static_cast<int64_t>(runtimeArgCount));
+    __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG1), scratch);
+    __ LoadTaggedValue(
+        scratch, JSTaggedValue(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty)).GetRawData());
+    __ MoveRepr(MachineRepresentation::Tagged, __ GetCallArgSlot(CALL_ARG2), scratch);
+    __ CallRuntime(RTSTUB_ID(ThrowTypeError));
+    if (HasLazyDeoptSafepoint(prepareField)) {
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, prepareField);
+    } else {
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
+    __ FreeCallArgSlots(reservedSlotCount);
+    __ Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreInt32FieldVertex>(StoreInt32FieldVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreInt32FieldVertex";
+#endif
+    auto storeTarget = GetInputRegister(storeField, StoreInt32FieldVertex::STORE_TARGET_INDEX);
+    auto value = GetInputRegister(storeField, StoreInt32FieldVertex::VALUE_INDEX);
+    __ StoreInt32Field(value, storeTarget, storeField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreDoubleFieldVertex>(StoreDoubleFieldVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId() << ": StoreDoubleFieldVertex";
+#endif
+    auto storeTarget = GetInputRegister(storeField, StoreDoubleFieldVertex::STORE_TARGET_INDEX);
+    auto value = GetInputDoubleRegister(storeField, StoreDoubleFieldVertex::VALUE_INDEX);
+    __ StoreFloat64Field(value, storeTarget, storeField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreInt32FieldWithRepVertex>(
+    StoreInt32FieldWithRepVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId()
+                        << ": StoreInt32FieldWithRepVertex";
+#endif
+    auto storeTarget = GetInputRegister(storeField, StoreInt32FieldWithRepVertex::STORE_TARGET_INDEX);
+    auto value = GetInputRegister(storeField, StoreInt32FieldWithRepVertex::VALUE_INDEX);
+
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister tag = scope.Acquire();
+    ArkSteedRegister expectedTag = scope.Acquire();
+    ASSERT(tag != expectedTag);
+    __ Move(tag, value);
+    __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_MARK));
+    __ And(tag, expectedTag);
+    __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_INT));
+    __ Compare(tag, expectedTag);
+
+    Label deopt;
+    Label done;
+    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    __ StoreInt32Field(value, storeTarget, storeField->GetOffset());
+    __ Jump(&done);
+
+    __ Bind(&deopt);
+    EmitEagerDeoptExit(storeField, kungfu::DeoptType::NOTINT1);
+    __ Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreDoubleFieldWithRepVertex>(
+    StoreDoubleFieldWithRepVertex *storeField)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeField->GetId()
+                        << ": StoreDoubleFieldWithRepVertex";
+#endif
+    auto storeTarget = GetInputRegister(storeField, StoreDoubleFieldWithRepVertex::STORE_TARGET_INDEX);
+    auto value = GetInputRegister(storeField, StoreDoubleFieldWithRepVertex::VALUE_INDEX);
+
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister tag = scope.Acquire();
+    ArkSteedRegister expectedTag = scope.Acquire();
+    ASSERT(tag != expectedTag);
+    __ Move(tag, value);
+    __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_MARK));
+    __ And(tag, expectedTag);
+
+    Label deopt;
+    Label intValue;
+    Label done;
+    __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_INT));
+    __ Compare(tag, expectedTag);
+    __ JumpIf(Condition::COND_EQUAL, &intValue);
+    __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_OBJECT));
+    __ Compare(tag, expectedTag);
+    __ JumpIf(Condition::COND_EQUAL, &deopt);
+
+    __ Move(tag, value);
+    __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
+    __ Sub(tag, expectedTag);
+    __ StoreField(tag, storeTarget, storeField->GetOffset());
+    __ Jump(&done);
+
+    __ Bind(&intValue);
+    {
+        ArkSteedDoubleRegister doubleValue = scope.AcquireDoubleScratch();
+        __ ConvertInt32ToDouble(doubleValue, value);
+        __ StoreFloat64Field(doubleValue, storeTarget, storeField->GetOffset());
+    }
+    __ Jump(&done);
+
+    __ Bind(&deopt);
+    EmitEagerDeoptExit(storeField, kungfu::DeoptType::NOTNUMBER1);
+    __ Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<EnsurePropertiesCapacityVertex>(
+    EnsurePropertiesCapacityVertex *ensureCapacity)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << ensureCapacity->GetId()
+                        << ": EnsurePropertiesCapacityVertex";
+#endif
+    auto object = GetInputRegister(ensureCapacity, EnsurePropertiesCapacityVertex::OBJECT_INDEX);
+    auto result = GetResultRegister(ensureCapacity);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister properties = scope.Acquire();
+    ArkSteedRegister length = scope.Acquire();
+    ASSERT(properties != object);
+    ASSERT(length != object);
+    ASSERT(properties != length);
+    Label grow;
+    Label done;
+
+    __ LoadField(properties, object, JSObject::PROPERTIES_OFFSET);
+    __ LoadField(length, properties, TaggedArray::LENGTH_OFFSET);
+    __ And(length, static_cast<int64_t>(0xFFFFFFFF));
+    __ Compare(length, ensureCapacity->GetFieldIndex());
+    __ JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &grow);
+    __ Move(result, properties);
+    __ Jump(&done);
+
+    __ Bind(&grow);
+    int stackArgCount = PrepareCommonStubStackArguments(ensureCapacity, ensureCapacity->GetArgCount());
+    __ CallCommonStub(kungfu::CommonStubCSigns::EnsurePropertiesCapacity);
+    if (HasLazyDeoptSafepoint(ensureCapacity)) {
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, ensureCapacity);
+    } else {
+        safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    }
+    __ FreeCallArgSlots(stackArgCount);
+    __ Bind(&done);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldByHClassVertex>(
+    StoreTaggedFieldByHClassVertex *storeByHClass)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << storeByHClass->GetId()
+                        << ": StoreTaggedFieldByHClassVertex";
+#endif
+    auto object = GetInputRegister(storeByHClass, StoreTaggedFieldByHClassVertex::OBJECT_INDEX);
+    auto value = GetInputRegister(storeByHClass, StoreTaggedFieldByHClassVertex::VALUE_INDEX);
+    auto glue = GetInputRegister(storeByHClass, StoreTaggedFieldByHClassVertex::GLUE_INDEX);
+    ASSERT(!storeByHClass->GetCases().empty());
+    std::vector<Label> caseLabels(storeByHClass->GetCases().size());
+    Label deopt;
+    Label done;
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister actualHClass = scope.Acquire();
+    ArkSteedRegister expectedHClass = scope.Acquire();
+    ArkSteedRegister valueRegionScratch = scope.Acquire();
+    ASSERT(actualHClass != expectedHClass);
+    ASSERT(actualHClass != valueRegionScratch);
+    ASSERT(expectedHClass != valueRegionScratch);
+
+    __ Move(actualHClass, object);
+    __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    __ And(actualHClass, expectedHClass);
+    __ Compare(actualHClass, 0);
+    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+
+    __ LoadField(actualHClass, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    __ And(actualHClass, expectedHClass);
+    // TODO: HClass immediates should use ArkSteed heap constant/relocation support when available.
+    for (size_t i = 0; i < storeByHClass->GetCases().size(); ++i) {
+        __ Move(expectedHClass, reinterpret_cast<uint64_t>(storeByHClass->GetCases()[i].expectedHClass) &
+                                TaggedStateWord::ADDRESS_MASK);
+        __ Compare(actualHClass, expectedHClass);
+        __ JumpIf(Condition::COND_EQUAL, &caseLabels[i]);
+    }
+    __ Jump(&deopt);
+
+    __ Bind(&deopt);
+    EmitEagerDeoptExit(storeByHClass, kungfu::DeoptType::KEYMISSMATCH);
+
+    for (size_t i = 0; i < storeByHClass->GetCases().size(); ++i) {
+        const auto &storeCase = storeByHClass->GetCases()[i];
+        __ Bind(&caseLabels[i]);
+        ArkSteedRegister storeTarget = object;
+        if (storeCase.propertiesArray) {
+            __ LoadField(actualHClass, object, JSObject::PROPERTIES_OFFSET);
+            storeTarget = actualHClass;
+        }
+        ArkSteedWriteBarrierEmitter(assembler_, graph_->GetChunk(), &deferredCode_,
+                                    storeByHClass->GetRegallocInfo()->GetDeferredRegisterSnapshot())
+            .StoreTaggedField(glue, storeTarget, value, storeCase.fieldOffset,
+                              ArkSteedWriteBarrierKind::GENERIC_BARRIER, expectedHClass,
+                              valueRegionScratch, storeByHClass->GetValueKind());
+        __ Jump(&done);
+    }
+    __ Bind(&done);
 }
 
 template <>
@@ -2424,6 +2961,27 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfReferenceEqualVertex>(Bra
                        trueBranchIsFallthrough,
                        ifFalse->GetLabel(),
                        falseBranchIsFallthrough);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfObjectTypeVertex>(BranchIfObjectTypeVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+
+    ArkSteedRegister value = GetInputRegister(jumpIf, BranchIfObjectTypeVertex::VALUE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister objectType = scope.Acquire();
+    __ LoadField(objectType, value, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+    __ And(objectType, static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+    __ LoadField(objectType, objectType, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+    static_assert(JSHClass::ObjectTypeBits::START_BIT == 0);
+    __ And(objectType, static_cast<int32_t>((1U << JSHClass::ObjectTypeBits::SIZE) - 1));
+    __ Compare(objectType, static_cast<int32_t>(jumpIf->GetExpectedType()));
+    __ Branch(Condition::COND_EQUAL, ifTrue->GetLabel(), trueBranchIsFallthrough,
+              ifFalse->GetLabel(), falseBranchIsFallthrough);
 }
 
 template <>

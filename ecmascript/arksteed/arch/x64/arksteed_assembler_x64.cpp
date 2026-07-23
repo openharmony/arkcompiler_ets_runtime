@@ -120,6 +120,16 @@ void ArkSteedAssembler::StoreInt32Field(ArkSteedRegister src, ArkSteedRegister b
     assembler_.Movl(src, operand);
 }
 
+void ArkSteedAssembler::StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    StoreInt32Field(src, base, offset);
+}
+
+void ArkSteedAssembler::StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset)
+{
+    StoreFloat64(x64::Operand(base, offset), src);
+}
+
 void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
 {
     // 2: argc is stored at fp + 2 * FRAME_SLOT_SIZE
@@ -168,6 +178,11 @@ void ArkSteedAssembler::CallArkSteedDeoptimizationEntry()
     Address address = entryThread_->GetRTInterface(RTSTUB_ID(ArkSteedDeoptimizationEntry));
     Move(target, static_cast<uint64_t>(address));
     Call(target);
+}
+
+void ArkSteedAssembler::ConvertInt32ToDouble(ArkSteedDoubleRegister dst, ArkSteedRegister src)
+{
+    assembler_.Cvtsi2sd32(src, dst);
 }
 
 // =============================================================================

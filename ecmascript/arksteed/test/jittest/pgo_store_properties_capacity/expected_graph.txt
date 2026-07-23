@@ -1,0 +1,4 @@
+NOT: DeoptIfPrototypeChanged
+TransitionHClassWithBarrier [TransitionHClassWithBarrier]
+EnsurePropertiesCapacity [EnsurePropertiesCapacity]
+StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

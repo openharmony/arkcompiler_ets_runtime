@@ -382,5 +382,22 @@ void ArkSteedWriteBarrierEmitter::StoreTaggedField(ArkSteedRegister glue, ArkSte
     __ Bind(&done);
 }
 
+void ArkSteedWriteBarrierEmitter::TransitionHClass(ArkSteedRegister glue, ArkSteedRegister object,
+                                                   ArkSteedRegister hclass,
+                                                   ArkSteedRegister objectRegionScratch,
+                                                   ArkSteedRegister hclassRegionScratch)
+{
+    static_assert(TaggedObject::HCLASS_OFFSET == 0);
+    constexpr int32_t offset = static_cast<int32_t>(TaggedObject::HCLASS_OFFSET);
+#ifndef ARK_USE_SATB_BARRIER
+    __ StoreInt32FieldRelease(hclass, object, offset);
+    EmitPostStoreWriteBarrier(glue, object, hclass, offset, ArkSteedWriteBarrierKind::GENERIC_BARRIER,
+                              objectRegionScratch, hclassRegionScratch);
+#else
+    CallBarrierRuntime(RTSTUB_ID(ASMFastWriteBarrier), glue, object, offset, hclass, true);
+    __ StoreInt32FieldRelease(hclass, object, offset);
+#endif
+}
+
 #undef __
 }  // namespace panda::ecmascript::arksteed

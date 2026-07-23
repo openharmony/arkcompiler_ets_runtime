@@ -133,12 +133,15 @@ public:
     void LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset);
     void LoadActualArgc(ArkSteedRegister dst);
 
     void LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp);
     void StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src);
     void StoreFloat64Constant(MemoryOperand dstOp, double immediate, ArkSteedRegister scratchGPR,
                               ArkSteedDoubleRegister scratchFPR);
+    void ConvertInt32ToDouble(ArkSteedDoubleRegister dst, ArkSteedRegister src);
 
     // =========================================================================
     // Arithmetic Operations

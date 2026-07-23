@@ -370,7 +370,8 @@ void GraphPrinter::ProcessVertex(ControlVertex *vertex, const ArkSteedState &sta
         case VertexOpcode::BranchIfTrue:
         case VertexOpcode::BranchIfInt32Compare:
         case VertexOpcode::BranchIfFloat64Compare:
-        case VertexOpcode::BranchIfReferenceEqual: {
+        case VertexOpcode::BranchIfReferenceEqual:
+        case VertexOpcode::BranchIfObjectType: {
             BB *ifTrue = nullptr;
             BB *ifFalse = nullptr;
             if (BranchControlVertex *branch = vertex->TryCast<BranchControlVertex>()) {
@@ -407,14 +408,39 @@ std::string GraphPrinter::FormatVertexStubInfo(Vertex *vertex) const
     } else if (vertex->Is<CallCommonStubVertex>()) {
         CallCommonStubVertex *callStub = vertex->Cast<CallCommonStubVertex>();
         line += " [" + kungfu::CommonStubCSigns::GetName(callStub->GetCommonStubID()) + "]";
+    } else if (vertex->Is<DeoptIfHClassNotInVertex>()) {
+        line += " [DeoptIfHClassNotIn]";
+    } else if (vertex->Is<EnsurePropertiesCapacityVertex>()) {
+        line += " [EnsurePropertiesCapacity]";
+    } else if (vertex->Is<StoreInt32FieldVertex>()) {
+        line += " [StoreInt32Field]";
+    } else if (vertex->Is<StoreDoubleFieldVertex>()) {
+        line += " [StoreDoubleField]";
+    } else if (vertex->Is<StoreInt32FieldWithRepVertex>()) {
+        line += " [StoreInt32FieldWithRep]";
+    } else if (vertex->Is<StoreDoubleFieldWithRepVertex>()) {
+        line += " [StoreDoubleFieldWithRep]";
+    } else if (vertex->Is<CheckedTaggedIntToI32Vertex>()) {
+        line += " [CheckedTaggedIntToI32]";
+    } else if (vertex->Is<CheckedNumberToF64Vertex>()) {
+        line += " [CheckedNumberToF64]";
     } else if (vertex->Is<StoreTaggedFieldWithBarrierVertex>()) {
         auto *store = vertex->Cast<StoreTaggedFieldWithBarrierVertex>();
         line += " [StoreTaggedFieldWithBarrier]";
         line += " value_kind=";
         line += WriteBarrierValueKindName(store->GetValueKind());
+    } else if (vertex->Is<PrepareSharedStoreFieldVertex>()) {
+        line += " [PrepareSharedStoreField]";
     } else if (vertex->Is<StoreSharedFieldWithBarrierVertex>()) {
         auto *store = vertex->Cast<StoreSharedFieldWithBarrierVertex>();
         line += " [StoreSharedFieldWithBarrier]";
+        line += " value_kind=";
+        line += WriteBarrierValueKindName(store->GetValueKind());
+    } else if (vertex->Is<TransitionHClassWithBarrierVertex>()) {
+        line += " [TransitionHClassWithBarrier]";
+    } else if (vertex->Is<StoreTaggedFieldByHClassVertex>()) {
+        auto *store = vertex->Cast<StoreTaggedFieldByHClassVertex>();
+        line += " [StoreTaggedFieldByHClass]";
         line += " value_kind=";
         line += WriteBarrierValueKindName(store->GetValueKind());
     } else if (vertex->Is<ValueVertex>()) {
@@ -525,7 +551,8 @@ std::string GraphPrinter::FormatControlVertexTargets(ControlVertex *vertex) cons
         case VertexOpcode::BranchIfTrue:
         case VertexOpcode::BranchIfInt32Compare:
         case VertexOpcode::BranchIfFloat64Compare:
-        case VertexOpcode::BranchIfReferenceEqual: {
+        case VertexOpcode::BranchIfReferenceEqual:
+        case VertexOpcode::BranchIfObjectType: {
             BB *ifTrue = nullptr;
             BB *ifFalse = nullptr;
             if (BranchControlVertex *branch = vertex->TryCast<BranchControlVertex>()) {

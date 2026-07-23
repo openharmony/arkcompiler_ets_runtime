@@ -318,6 +318,11 @@ DEF_CALL_SIGNATURE(SetPropertyByName)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(EnsurePropertiesCapacity)
+{
+    TWO_ARGS_CALL_SIGNATURE(EnsurePropertiesCapacity, VariableType::JS_ANY());
+}
+
 DEF_CALL_SIGNATURE(DeprecatedSetPropertyByName)
 {
     constexpr size_t paramCount = 5;

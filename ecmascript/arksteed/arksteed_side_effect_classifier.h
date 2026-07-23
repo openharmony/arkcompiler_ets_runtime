@@ -54,6 +54,63 @@ public:
         return descriptor;
     }
 
+    static SideEffectDescriptor Classify(EnsurePropertiesCapacityVertex *vertex)
+    {
+        (void)vertex;
+        return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
+    }
+
+    static SideEffectDescriptor Classify(StoreInt32FieldVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreInt32FieldVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreDoubleFieldVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreDoubleFieldVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreInt32FieldWithRepVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreInt32FieldWithRepVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreDoubleFieldWithRepVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreDoubleFieldWithRepVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(TransitionHClassWithBarrierVertex *vertex)
+    {
+        (void)vertex;
+        return SideEffectDescriptor {SideEffectKind::MAP_TRANSITION};
+    }
+
+    static SideEffectDescriptor Classify(StoreTaggedFieldByHClassVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreTaggedFieldByHClassVertex::OBJECT_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
     static SideEffectDescriptor Classify(StoreEnvSlotVertex *vertex)
     {
         SideEffectDescriptor descriptor;

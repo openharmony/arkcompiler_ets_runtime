@@ -1,0 +1,3 @@
+DeoptIfPrototypeChanged
+TransitionHClassWithBarrier [TransitionHClassWithBarrier]
+StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

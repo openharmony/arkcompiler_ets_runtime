@@ -1872,6 +1872,19 @@ void AssemblerX64::Cvtsi2sd(Register src, XMMRegister dst)
     EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
 }
 
+void AssemblerX64::Cvtsi2sd32(Register src, XMMRegister dst)
+{
+    // cvtsi2sd xmm_dst, r32_src
+    // Encoding: F2 [REX] 0F 2A /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x2A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
 void AssemblerX64::Addsd(XMMRegister src, XMMRegister dst)
 {
     // addsd xmm_dst, xmm_src

@@ -46,9 +46,10 @@ public:
 private:
     bool ComputeNamedStoreAccessInfo(const NamedAccessFeedback &feedback, NamedStoreAccessSet *access) const;
     bool ComputeNamedLoadAccessInfo(const NamedAccessFeedback &feedback, NamedLoadAccessSet *access) const;
-    bool TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback, NamedStoreAccessInfo *info) const;
+    bool TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback, ArkSteedNameRef name,
+                                     NamedStoreAccessInfo *info) const;
     bool TryMakeNamedLoadAccessInfo(const NamedAccessCaseFeedback &caseFeedback, NamedLoadAccessInfo *info) const;
-    bool RegisterDependencies(const PropertyAccessSet &access) const;
+    bool RegisterDependencies(PropertyAccessSet *access) const;
 
     JSThread *compilerThread_ {nullptr};
     panda::ecmascript::kungfu::BytecodeInfo bytecodeInfo_;

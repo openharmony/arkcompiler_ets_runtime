@@ -26,26 +26,12 @@
 namespace panda::ecmascript::arksteed {
 
 namespace {
-const LazyDeoptimizableMixin *GetLazyDeoptimizableMixin(const Vertex *vertex)
-{
-    switch (vertex->GetOpcode()) {
-        case VertexOpcode::CallRuntime:
-            return vertex->Cast<CallRuntimeVertex>();
-        case VertexOpcode::Call:
-            return vertex->Cast<CallVertex>();
-        case VertexOpcode::CallCommonStub:
-            return vertex->Cast<CallCommonStubVertex>();
-        default:
-            return nullptr;
-    }
-}
-
 void VerifyLazyDeoptInputLocations(const Vertex *vertex)
 {
     if (!vertex->GetProperties().CanLazyDeopt()) {
         return;
     }
-    const LazyDeoptimizableMixin *deopt = GetLazyDeoptimizableMixin(vertex);
+    const LazyDeoptimizableMixin *deopt = LazyDeoptMixinOf(vertex);
     ASSERT(deopt != nullptr);
     for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
         const InputLocation *location = deopt->GetDeoptLocation(index);

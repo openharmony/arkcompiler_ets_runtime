@@ -37,6 +37,8 @@ public:
                           ArkSteedWriteBarrierKind barrierKind, ArkSteedRegister objectRegionScratch,
                           ArkSteedRegister valueRegionScratch,
                           ArkSteedWriteBarrierValueKind valueKind = ArkSteedWriteBarrierValueKind::Unknown);
+    void TransitionHClass(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister hclass,
+                          ArkSteedRegister objectRegionScratch, ArkSteedRegister hclassRegionScratch);
 
 private:
     void EmitFastWriteBarrier(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value,

@@ -88,6 +88,7 @@ public:
     void Movq(XMMRegister dst, Register src);  // Move from GP register to XMM register
     void Movq(Register dst, XMMRegister src);  // Move from XMM register to GP register
     void Cvtsi2sd(Register src, XMMRegister dst);
+    void Cvtsi2sd32(Register src, XMMRegister dst);
     void Addsd(XMMRegister src, XMMRegister dst);
     void Subsd(XMMRegister src, XMMRegister dst);
     void Mulsd(XMMRegister src, XMMRegister dst);

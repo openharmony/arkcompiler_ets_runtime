@@ -1,4 +1,2 @@
 DeoptIfHClassMismatch
-DeoptIfHClassMismatchVertex
 StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]
-StoreTaggedFieldWithBarrierVertex

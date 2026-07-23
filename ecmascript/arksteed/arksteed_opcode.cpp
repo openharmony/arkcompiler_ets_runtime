@@ -248,6 +248,19 @@ void DeoptIfHClassNotInVertex::Dump(std::ostream &output) const
     output << "], pc=" << GetBytecodeOffset();
 }
 
+void DeoptIfPrototypeChangedVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);  // 2: traversed heap object and mask/check value
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
+
+void DeoptIfPrototypeChangedVertex::Dump(std::ostream &output) const
+{
+    output << "  DeoptIfPrototypeChanged: proto_marker=" << checkProtoChangeMarker_
+           << ", not_prototype=" << checkNotPrototype_ << ", pc=" << GetBytecodeOffset();
+}
+
 void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
@@ -272,7 +285,12 @@ void DeoptIfNotNumberVertex::Dump(std::ostream &output) const
 }
 
 void DeoptVertex::SetValueLocationConstraints()
-{}
+{
+    for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
+        UseSlot(Arg(i));
+    }
+    UseEagerDeoptFrameSlots(this);
+}
 
 void DeoptVertex::Dump(std::ostream &output) const
 {
@@ -393,6 +411,33 @@ void ConvertHoleToUndefinedVertex::Dump(std::ostream &output) const
     output << "  ConvertHoleToUndefined";
 }
 
+void LoadHClassAddressVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(OBJECT_INDEX));
+    SetTemporariesNeeded(1);
+}
+
+void LoadHClassAddressVertex::Dump(std::ostream &output) const
+{
+    output << "  LoadHClassAddress";
+}
+
+void FindPrototypeHolderVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    SetTemporariesNeeded(2);  // 2: current HClass and mask/expected HClass
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
+
+void FindPrototypeHolderVertex::Dump(std::ostream &output) const
+{
+    output << "  FindPrototypeHolder: expected_hclass=0x" << std::hex
+           << reinterpret_cast<uintptr_t>(expectedHolderHClass_) << std::dec
+           << ", pc=" << GetBytecodeOffset();
+}
+
 void StoreTaggedToAddressVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(OBJECT_INDEX));
@@ -472,6 +517,107 @@ void StoreSharedFieldWithBarrierVertex::SetValueLocationConstraints()
 void StoreSharedFieldWithBarrierVertex::Dump(std::ostream &output) const
 {
     output << "  StoreSharedFieldWithBarrier";
+}
+
+void TransitionHClassWithBarrierVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);  // 2: object and HClass region scratch registers
+    UseRegister(Arg(GLUE_INDEX));
+    UseRegister(Arg(OBJECT_INDEX));
+    UseRegister(Arg(HCLASS_INDEX));
+}
+
+void TransitionHClassWithBarrierVertex::Dump(std::ostream &output) const
+{
+    output << "  TransitionHClassWithBarrier";
+}
+
+void PrepareSharedStoreFieldVertex::SetValueLocationConstraints()
+{
+    DefineAsFixed(this, 0);
+    SetTemporariesNeeded(1);
+    SetStubValueLocationConstraints(this, GetArgCount());
+    UseLazyDeoptFrameSlots(this);
+}
+
+void PrepareSharedStoreFieldVertex::Dump(std::ostream &output) const
+{
+    output << "  PrepareSharedStoreField handler_info=0x" << std::hex << GetHandlerInfo() << std::dec;
+}
+
+void EnsurePropertiesCapacityVertex::SetValueLocationConstraints()
+{
+    DefineAsFixed(this, 0);
+    SetTemporariesNeeded(2);  // 2: properties and length
+    SetStubValueLocationConstraints(this, GetArgCount());
+    UseLazyDeoptFrameSlots(this);
+}
+
+void EnsurePropertiesCapacityVertex::Dump(std::ostream &output) const
+{
+    output << "  EnsurePropertiesCapacity fieldIndex=" << fieldIndex_;
+}
+
+void StoreInt32FieldVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(STORE_TARGET_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void StoreInt32FieldVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreInt32Field offset=" << offset_;
+}
+
+void StoreDoubleFieldVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(STORE_TARGET_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+}
+
+void StoreDoubleFieldVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreDoubleField offset=" << offset_;
+}
+
+void StoreInt32FieldWithRepVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);  // 2: tag and expected tag
+    UseRegister(Arg(STORE_TARGET_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
+
+void StoreInt32FieldWithRepVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreInt32FieldWithRep offset=" << offset_;
+}
+
+void StoreDoubleFieldWithRepVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(2);  // 2: tag and expected tag
+    UseRegister(Arg(STORE_TARGET_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
+
+void StoreDoubleFieldWithRepVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreDoubleFieldWithRep offset=" << offset_;
+}
+
+void StoreTaggedFieldByHClassVertex::SetValueLocationConstraints()
+{
+    SetTemporariesNeeded(3);  // 3: HClass dispatch and write-barrier scratch registers
+    UseRegister(Arg(GLUE_INDEX));
+    UseRegister(Arg(OBJECT_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
+
+void StoreTaggedFieldByHClassVertex::Dump(std::ostream &output) const
+{
+    output << "  StoreTaggedFieldByHClass count=" << cases_.size() << ", pc=" << GetBytecodeOffset();
 }
 
 void StoreEnvSlotVertex::SetValueLocationConstraints()
@@ -1034,6 +1180,17 @@ void BranchIfReferenceEqualVertex::SetValueLocationConstraints()
 void BranchIfReferenceEqualVertex::Dump(std::ostream &output) const
 {
     output << "  BranchIfReferenceEqual";
+}
+
+void BranchIfObjectTypeVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(1);
+}
+
+void BranchIfObjectTypeVertex::Dump(std::ostream &output) const
+{
+    output << "  BranchIfObjectType: expected=" << static_cast<uint32_t>(expectedType_);
 }
 
 void ReturnVertex::SetValueLocationConstraints()

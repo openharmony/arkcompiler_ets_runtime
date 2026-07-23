@@ -55,6 +55,10 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(LoadPrototypeFromObject)  \
     V(LoadPrototypeHolderByHClass) \
     V(ConvertHoleToUndefined)   \
+    V(LoadHClassAddress)        \
+    V(FindPrototypeHolder)      \
+    V(PrepareSharedStoreField)  \
+    V(EnsurePropertiesCapacity) \
     V(LoadException)            \
     V(TaggedIntToI32)           \
     V(CheckedTaggedIntToI32)    \
@@ -102,6 +106,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 #define NON_VALUE_VERTEX_LIST(V)    \
     V(DeoptIfHClassMismatch)        \
     V(DeoptIfHClassNotIn)           \
+    V(DeoptIfPrototypeChanged)      \
     V(DeoptIfInt32Condition)        \
     V(DeoptIfNotNumber)             \
     V(StoreTaggedToAddress)         \
@@ -109,8 +114,14 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(StoreI64ToAddress)            \
     V(StoreF64ToAddress)            \
     V(StoreTaggedField)             \
+    V(StoreInt32Field)              \
+    V(StoreDoubleField)             \
+    V(StoreInt32FieldWithRep)       \
+    V(StoreDoubleFieldWithRep)      \
     V(StoreTaggedFieldWithBarrier)  \
     V(StoreSharedFieldWithBarrier)  \
+    V(TransitionHClassWithBarrier)  \
+    V(StoreTaggedFieldByHClass)     \
     V(StoreEnvSlot)                 \
     V(SetValueWithBarrier)          \
     V(GapMove)                      \
@@ -124,6 +135,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(BranchIfInt64Compare)           \
     V(BranchIfFloat64Compare)         \
     V(BranchIfReferenceEqual)         \
+    V(BranchIfObjectType)             \
     V(BranchIfTaggedHeapObject)
 
 #define CONDITION_CONTROL_VERTEX_LIST(V) BRANCH_CONTROL_VERTEX_LIST(V)

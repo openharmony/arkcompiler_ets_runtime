@@ -1,0 +1,4 @@
+NOT: DeoptIfPrototypeChanged
+FindPrototypeHolder
+Call [Tagged]
+NOT: CallCommonStub [COStub_SetPropertyByName]

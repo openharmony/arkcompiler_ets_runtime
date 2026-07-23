@@ -346,6 +346,17 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
     EmitU32(instructionCode);
 }
 
+void AssemblerAarch64::Stlr(const Register &rt, const MemoryOperand &operand)
+{
+    ASSERT(rt.IsW());
+    ASSERT(operand.IsImmediateOffset());
+    ASSERT(operand.GetAddrMode() == AddrMode::OFFSET);
+    ASSERT(operand.GetImmediate().Value() == 0);
+    uint32_t instructionCode = LoadStoreOpCode::STLR |
+        Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(instructionCode);
+}
+
 void AssemblerAarch64::Ldur(const Register &rt, const MemoryOperand &operand)
 {
     bool regX = !rt.IsW();

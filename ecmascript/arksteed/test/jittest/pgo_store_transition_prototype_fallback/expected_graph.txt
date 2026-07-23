@@ -1,0 +1,2 @@
+CallCommonStub [COStub_SetPropertyByName]
+NOT: TransitionHClassWithBarrier [TransitionHClassWithBarrier]

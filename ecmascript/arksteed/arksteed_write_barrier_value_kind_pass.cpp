@@ -229,6 +229,15 @@ NonControlVertex *WriteBarrierValueKindPass::TryRewriteStore(NonControlVertex *v
         return store;
     }
 
+    if (auto *store = vertex->TryCast<StoreTaggedFieldByHClassVertex>()) {
+        ArkSteedWriteBarrierValueKind valueKind =
+            ClassifyValue(store->GetInput(StoreTaggedFieldByHClassVertex::VALUE_INDEX));
+        if (valueKind != ArkSteedWriteBarrierValueKind::Unknown) {
+            store->SetValueKind(valueKind);
+        }
+        return store;
+    }
+
     return vertex;
 }
 

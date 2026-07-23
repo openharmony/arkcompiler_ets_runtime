@@ -469,6 +469,7 @@ private:
     V(ToBooleanTrue)                            \
     V(ToBooleanFalse)                           \
     V(SetPropertyByName)                        \
+    V(EnsurePropertiesCapacity)                 \
     V(DeprecatedSetPropertyByName)              \
     V(SetPropertyByNameWithOwn)                 \
     V(SetPropertyByValue)                       \

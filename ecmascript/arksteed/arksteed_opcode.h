@@ -875,6 +875,18 @@ public:
     void Dump(std::ostream &output) const;
 };
 
+class LoadHClassAddressVertex : public FixedInputVertexMixin<1, ValueVertex, LoadHClassAddressVertex> {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::IntPtr() | VertexProperties::CanReadProp();
+    static constexpr auto INPUT_TYPES = detail::InputTypes<1>(ValueRepresentation::TAGGED);
+    static constexpr size_t OBJECT_INDEX = 0;
+
+    explicit LoadHClassAddressVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
 class LoadPrototypeHolderByHClassVertex : public VertexMixin<ValueVertex, LoadPrototypeHolderByHClassVertex>,
                                           public EagerDeoptimizableMixin {
 public:
@@ -944,6 +956,38 @@ public:
 
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
+};
+
+class FindPrototypeHolderVertex : public VertexMixin<ValueVertex, FindPrototypeHolderVertex>,
+                                  public EagerDeoptimizableMixin {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() |
+        VertexProperties::EagerDeopt() | VertexProperties::CanReadProp();
+    static constexpr int RECEIVER_INDEX = 0;
+    FindPrototypeHolderVertex(uint64_t bitfield, Chunk *chunk, JSHClass *expectedHolderHClass,
+                              uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          expectedHolderHClass_(expectedHolderHClass)
+    {}
+
+    JSHClass *GetExpectedHolderHClass() const
+    {
+        return expectedHolderHClass_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(expectedHolderHClass_ != nullptr);
+        ASSERT(GetInputCount() == RECEIVER_INDEX + 1);
+        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    JSHClass *expectedHolderHClass_ {nullptr};
 };
 
 enum class ArkSteedWriteBarrierKind : uint8_t {
@@ -1073,6 +1117,271 @@ public:
 
 private:
     int32_t offset_;
+    ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
+};
+
+class TransitionHClassWithBarrierVertex
+    : public FixedInputVertexMixin<3, NonControlVertex, TransitionHClassWithBarrierVertex> {
+public:
+    static constexpr int GLUE_INDEX = 0;
+    static constexpr int OBJECT_INDEX = 1;
+    static constexpr int HCLASS_INDEX = 2;
+    static constexpr auto INPUT_TYPES = detail::InputTypes<3>(ValueRepresentation::INT_PTR,
+                                                              ValueRepresentation::TAGGED,
+                                                              ValueRepresentation::TAGGED);
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() |
+        VertexProperties::DeferredCall();
+
+    explicit TransitionHClassWithBarrierVertex(uint64_t bitfield) : FixedInputVertexMixin(bitfield) {}
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+};
+
+class PrepareSharedStoreFieldVertex
+    : public VertexMixin<ValueVertex, PrepareSharedStoreFieldVertex>,
+      public ThrowableMixin,
+      public LazyDeoptimizableMixin {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::JsCall();
+
+    PrepareSharedStoreFieldVertex(uint64_t bitfield, uint64_t handlerInfo)
+        : VertexMixin(bitfield), handlerInfo_(handlerInfo)
+    {
+    }
+
+    size_t GetArgCount() const
+    {
+        return GetInputCount();
+    }
+
+    uint64_t GetHandlerInfo() const
+    {
+        return handlerInfo_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == VALUE_INDEX + 1);
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    uint64_t handlerInfo_;
+};
+
+class EnsurePropertiesCapacityVertex : public VertexMixin<ValueVertex, EnsurePropertiesCapacityVertex>,
+                                       public ThrowableMixin,
+                                       public LazyDeoptimizableMixin {
+public:
+    static constexpr int GLUE_INDEX = 0;
+    static constexpr int OBJECT_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::TaggedValue() | VertexProperties::CanWriteProp() |
+        VertexProperties::JsCall();
+
+    EnsurePropertiesCapacityVertex(uint64_t bitfield, int32_t fieldIndex)
+        : VertexMixin(bitfield), fieldIndex_(fieldIndex)
+    {
+    }
+
+    int32_t GetFieldIndex() const
+    {
+        return fieldIndex_;
+    }
+
+    size_t GetArgCount() const
+    {
+        return GetInputCount();
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == OBJECT_INDEX + 1);
+        ASSERT(GetInput(GLUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT_PTR);
+        ASSERT(GetInput(OBJECT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    int32_t fieldIndex_ {0};
+};
+
+class StoreInt32FieldVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreInt32FieldVertex> {
+public:
+    static constexpr int STORE_TARGET_INDEX = 0;
+    static constexpr int VALUE_INDEX = 1;
+    static constexpr auto INPUT_TYPES = detail::InputTypes<2>(ValueRepresentation::TAGGED,
+                                                              ValueRepresentation::INT32);
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp();
+
+    explicit StoreInt32FieldVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_ {0};
+};
+
+class StoreDoubleFieldVertex : public FixedInputVertexMixin<2, NonControlVertex, StoreDoubleFieldVertex> {
+public:
+    static constexpr int STORE_TARGET_INDEX = 0;
+    static constexpr int VALUE_INDEX = 1;
+    static constexpr auto INPUT_TYPES = detail::InputTypes<2>(ValueRepresentation::TAGGED,
+                                                              ValueRepresentation::FLOAT64);
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp();
+
+    explicit StoreDoubleFieldVertex(uint64_t bitfield, int32_t offset)
+        : FixedInputVertexMixin(bitfield), offset_(offset)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    int32_t offset_ {0};
+};
+
+class StoreInt32FieldWithRepVertex
+    : public VertexMixin<NonControlVertex, StoreInt32FieldWithRepVertex>, public EagerDeoptimizableMixin {
+public:
+    static constexpr uint32_t STORE_TARGET_INDEX = 0;
+    static constexpr uint32_t VALUE_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::EagerDeopt();
+
+    StoreInt32FieldWithRepVertex(uint64_t bitfield, Chunk *chunk, int32_t offset, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          offset_(offset)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == VALUE_INDEX + 1);
+        ASSERT(GetInput(STORE_TARGET_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    int32_t offset_ {0};
+};
+
+class StoreDoubleFieldWithRepVertex
+    : public VertexMixin<NonControlVertex, StoreDoubleFieldWithRepVertex>, public EagerDeoptimizableMixin {
+public:
+    static constexpr uint32_t STORE_TARGET_INDEX = 0;
+    static constexpr uint32_t VALUE_INDEX = 1;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::EagerDeopt();
+
+    StoreDoubleFieldWithRepVertex(uint64_t bitfield, Chunk *chunk, int32_t offset, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          offset_(offset)
+    {
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == VALUE_INDEX + 1);
+        ASSERT(GetInput(STORE_TARGET_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    int32_t offset_ {0};
+};
+
+struct StoreTaggedFieldByHClassCase {
+    JSHClass *expectedHClass {nullptr};
+    int32_t fieldOffset {0};
+    bool propertiesArray {false};
+};
+
+class StoreTaggedFieldByHClassVertex
+    : public VertexMixin<NonControlVertex, StoreTaggedFieldByHClassVertex>, public EagerDeoptimizableMixin {
+public:
+    static constexpr int GLUE_INDEX = 0;
+    static constexpr int OBJECT_INDEX = 1;
+    static constexpr int VALUE_INDEX = 2;
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() |
+        VertexProperties::CanReadProp() | VertexProperties::DeferredCall() | VertexProperties::EagerDeopt();
+
+    StoreTaggedFieldByHClassVertex(uint64_t bitfield, Chunk *chunk,
+                                   const std::vector<StoreTaggedFieldByHClassCase> &cases,
+                                   ArkSteedWriteBarrierValueKind valueKind, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          cases_(chunk),
+          valueKind_(valueKind)
+    {
+        cases_.assign(cases.begin(), cases.end());
+    }
+
+    const ChunkVector<StoreTaggedFieldByHClassCase> &GetCases() const
+    {
+        return cases_;
+    }
+
+    ArkSteedWriteBarrierValueKind GetValueKind() const
+    {
+        return valueKind_;
+    }
+
+    void SetValueKind(ArkSteedWriteBarrierValueKind valueKind)
+    {
+        valueKind_ = valueKind;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+    void VerifyInputs() const
+    {
+        ASSERT(!cases_.empty());
+        ASSERT(GetInputCount() == VALUE_INDEX + 1);
+        ASSERT(GetInput(GLUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT_PTR);
+        ASSERT(GetInput(OBJECT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    ChunkVector<StoreTaggedFieldByHClassCase> cases_;
     ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
 };
 
@@ -1927,6 +2236,43 @@ private:
     std::vector<JSHClass *> expectedHClasses_;
 };
 
+class DeoptIfPrototypeChangedVertex : public VertexMixin<NonControlVertex, DeoptIfPrototypeChangedVertex>,
+                                      public EagerDeoptimizableMixin {
+public:
+    static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt() | VertexProperties::CanReadProp();
+    static constexpr size_t RECEIVER_INDEX = 0;
+    DeoptIfPrototypeChangedVertex(uint64_t bitfield, Chunk *chunk, bool checkProtoChangeMarker,
+                                  bool checkNotPrototype, uint32_t bytecodeOffset)
+        : VertexMixin(bitfield),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          checkProtoChangeMarker_(checkProtoChangeMarker),
+          checkNotPrototype_(checkNotPrototype)
+    {}
+
+    bool ShouldCheckProtoChangeMarker() const
+    {
+        return checkProtoChangeMarker_;
+    }
+
+    bool ShouldCheckNotPrototype() const
+    {
+        return checkNotPrototype_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(checkProtoChangeMarker_ || checkNotPrototype_);
+        ASSERT(GetInputCount() == RECEIVER_INDEX + 1);
+    }
+
+private:
+    bool checkProtoChangeMarker_ {false};
+    bool checkNotPrototype_ {false};
+};
+
 class DeoptIfInt32ConditionVertex : public VertexMixin<NonControlVertex, DeoptIfInt32ConditionVertex>,
                                     public EagerDeoptimizableMixin {
 public:
@@ -2255,6 +2601,28 @@ public:
     void Dump(std::ostream &output) const;
 };
 
+class BranchIfObjectTypeVertex : public BranchControlVertexT<1, BranchIfObjectTypeVertex> {
+public:
+    static constexpr int VALUE_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::Pure();
+
+    BranchIfObjectTypeVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse, JSType expectedType)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse), expectedType_(expectedType)
+    {}
+
+    JSType GetExpectedType() const
+    {
+        return expectedType_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+private:
+    JSType expectedType_;
+};
+
 /**
  * BranchIfTaggedHeapObject vertex - branch based on whether a tagged value is a heap object.
  * Jumps to ifTrue if the value is a tagged heap object (tag bits == 0),
@@ -2530,6 +2898,12 @@ inline BB *CatchBlockOf(Vertex *vertex)
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
         return derived->GetCatchBlock();
     }
+    if (auto *derived = vertex->TryCast<PrepareSharedStoreFieldVertex>()) {
+        return derived->GetCatchBlock();
+    }
+    if (auto *derived = vertex->TryCast<EnsurePropertiesCapacityVertex>()) {
+        return derived->GetCatchBlock();
+    }
     if (auto *derived = vertex->TryCast<ThrowVertex>()) {
         return derived->GetCatchBlock();
     }
@@ -2547,13 +2921,19 @@ inline uint32_t CatchPredecessorIndexOf(Vertex *vertex)
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
         return derived->GetCatchPredecessorIndex();
     }
+    if (auto *derived = vertex->TryCast<PrepareSharedStoreFieldVertex>()) {
+        return derived->GetCatchPredecessorIndex();
+    }
+    if (auto *derived = vertex->TryCast<EnsurePropertiesCapacityVertex>()) {
+        return derived->GetCatchPredecessorIndex();
+    }
     if (auto *derived = vertex->TryCast<ThrowVertex>()) {
         return derived->GetCatchPredecessorIndex();
     }
     return static_cast<uint32_t>(-1);
 }
 
-inline LazyDeoptimizableMixin *LazyDeoptMixinOf(Vertex *vertex)
+inline const LazyDeoptimizableMixin *LazyDeoptMixinOf(const Vertex *vertex)
 {
     if (auto *derived = vertex->TryCast<CallVertex>()) {
         return derived;
@@ -2564,7 +2944,18 @@ inline LazyDeoptimizableMixin *LazyDeoptMixinOf(Vertex *vertex)
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
         return derived;
     }
+    if (auto *derived = vertex->TryCast<PrepareSharedStoreFieldVertex>()) {
+        return derived;
+    }
+    if (auto *derived = vertex->TryCast<EnsurePropertiesCapacityVertex>()) {
+        return derived;
+    }
     return nullptr;
+}
+
+inline LazyDeoptimizableMixin *LazyDeoptMixinOf(Vertex *vertex)
+{
+    return const_cast<LazyDeoptimizableMixin *>(LazyDeoptMixinOf(static_cast<const Vertex *>(vertex)));
 }
 
 inline ThrowableMixin *ThrowableMixinOf(Vertex *vertex)
@@ -2576,6 +2967,12 @@ inline ThrowableMixin *ThrowableMixinOf(Vertex *vertex)
         return derived;
     }
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
+        return derived;
+    }
+    if (auto *derived = vertex->TryCast<PrepareSharedStoreFieldVertex>()) {
+        return derived;
+    }
+    if (auto *derived = vertex->TryCast<EnsurePropertiesCapacityVertex>()) {
         return derived;
     }
     return nullptr;
@@ -2593,6 +2990,12 @@ inline bool HasExceptionLazyDeoptMetadata(Vertex *vertex)
         return hasExceptionLazyDeopt(derived);
     }
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
+        return hasExceptionLazyDeopt(derived);
+    }
+    if (auto *derived = vertex->TryCast<PrepareSharedStoreFieldVertex>()) {
+        return hasExceptionLazyDeopt(derived);
+    }
+    if (auto *derived = vertex->TryCast<EnsurePropertiesCapacityVertex>()) {
         return hasExceptionLazyDeopt(derived);
     }
     return false;
