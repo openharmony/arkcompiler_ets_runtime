@@ -1392,7 +1392,6 @@ bool JSStackTrace::InitializeMethodInfo(uintptr_t mapBase)
     pandafile =
         JSPandaFileManager::GetInstance()->FindJSPandaFileByMapBase(mapBase);
     if (pandafile == nullptr) {
-        LOG_ECMA(ERROR) << "Find pandafile failed, mapBase: " << std::hex << mapBase;
         return false;
     }
     auto methodInfos = ReadAllMethodInfos(pandafile);
@@ -1470,13 +1469,17 @@ bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t mapBase,
         LOG_ECMA(ERROR) << "singleton is null, need create first.";
         return false;
     }
-    bool result = trace->GetJsFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
+    if (trace->GetJsFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction)) {
+        return true;
+    }
 #if defined(ENABLE_STATIC_BACKTRACE)
-    if (!result) {
-        result = trace->GetArkStaticFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
+    if (trace->GetArkStaticFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction)) {
+        return true;
     }
 #endif
-    return result;
+    LOG_ECMA(ERROR) << "ArkParseJsFrameInfoLocal failed, mapBase=0x"
+                    << std::hex << mapBase << " byteCodePc=0x" << byteCodePc;
+    return false;
 }
 
 void ArkDestroyLocal()
