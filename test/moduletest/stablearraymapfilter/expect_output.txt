@@ -1,0 +1,30 @@
+# Copyright (c) 2021 uawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+map-basic: OK 2,4,6
+filter-basic: OK 2,4
+map-nonextensible-species: THROW TypeError :: Cannot add property "0" in prevent extensions
+filter-nonextensible-species: THROW TypeError :: Cannot add property "0" in prevent extensions
+map-frozen-species: THROW TypeError :: Cannot add property "0" in prevent extensions
+map-species-nonwritable-index: THROW TypeError :: failed to create data property
+map-species-accessor-index: OK |6
+map-species-proxy: OK def:0,def:1|1,2
+map-holes: OK 2,,6|false
+map-mutating-callback-shrink: OK 5|10,20,,,
+filter-mutating-callback-grow: OK 1,2,3
+map-callback-throws: OK caught RangeError
+map-subclass: OK true|2,3
+map-bigarray: OK 0|19998|10000
+filter-all-rejected: OK 0
+map-preserves-minus0: OK true
+SUITE_END

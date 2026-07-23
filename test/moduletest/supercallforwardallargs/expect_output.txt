@@ -1,0 +1,45 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+default-derived-basic: OK 7|true|true
+base-returns-primitive: OK 23|true
+base-returns-object: OK 10|false|true
+proto-swapped-function-base: OK 43
+base-throws: THROW RangeError :: base boom
+forward-0-args: OK 0
+forward-3-args: OK 3|6
+forward-many-args: OK 10000|10000
+derived-of-derived-default: OK 11
+proxy-base: OK 13
+bound-function-base: THROW TypeError :: parent class have no valid prototype
+this-before-super-caught: OK ReferenceError:undefinedsub-class must call super before use 'this'|true
+this-before-super-uncaught: THROW ReferenceError :: undefinedsub-class must call super before use 'this'
+double-super: THROW ReferenceError :: undefinedsuper() forbidden re-bind 'this'
+derived-returns-primitive: THROW TypeError :: Derived constructor must return object or undefined
+derived-returns-object: OK 3
+derived-returns-object-no-super: OK 4
+explicit-super-no-args: OK true
+arg-eval-order: OK a1;a2;base:1,2
+null-proto-derived: THROW TypeError :: Super constructor is not a constructor
+non-ctor-base-arrow: THROW TypeError :: Super constructor is not a constructor
+newtarget-through-super: OK nt-derived
+species-noise-irrelevant: OK 3
+reflect-construct-forward: OK 1|true
+native-base-throws-symbol: THROW TypeError :: SymbolConstructor: NewTarget is not undefined
+native-base-number: OK true|true|42
+native-base-array: OK 3|true|1,2,3
+native-base-date: OK true|0
+nonctor-native-base-bigint: THROW TypeError :: BigInt is not a constructor
+native-base-error: OK true|true|boom
+native-base-regexp-badflags: THROW SyntaxError :: invalid regular expression flags
+SUITE_END
