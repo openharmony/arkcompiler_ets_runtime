@@ -1436,6 +1436,33 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTaggedStringVertex>(Branc
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfHClassInVertex>(BranchIfHClassInVertex *jumpIf)
+{
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << jumpIf->GetId()
+                        << ": BranchIfHClassInVertex to BB #" << jumpIf->IfTrue()->GetId()
+                        << " if true; to BB #" << jumpIf->IfFalse()->GetId() << " if false.";
+#endif
+    auto receiver = GetInputRegister(jumpIf, BranchIfHClassInVertex::RECEIVER_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister actualHClass = scope.Acquire();
+    ArkSteedRegister expectedHClass = scope.Acquire();
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+
+    __ JumpIfNotTaggedHeapObject(receiver, ifFalse->GetLabel());
+    __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
+    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    __ And(actualHClass, expectedHClass);
+    for (JSHClass *hclass : jumpIf->GetExpectedHClasses()) {
+        __ Move(expectedHClass, reinterpret_cast<uint64_t>(hclass) & TaggedStateWord::ADDRESS_MASK);
+        __ Compare(actualHClass, expectedHClass);
+        __ JumpIf(Condition::COND_EQUAL, ifTrue->GetLabel());
+    }
+    __ Jump(ifFalse->GetLabel());
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<I32ConditionCheckVertex>(I32ConditionCheckVertex *check)
 {
     auto dst = GetResultRegister(check);

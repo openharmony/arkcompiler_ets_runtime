@@ -18,29 +18,27 @@ function LoadScore(obj)
     return obj.score;
 }
 
-let first = {
-    head: 1,
-    score: 7,
+let firstHolder = {
+    firstTag: 1,
+    score: 23,
 };
+let first = Object.create(firstHolder);
+first.receiverTag = 1;
 
-let second = {
+let secondHolder = {
     head: 1,
-    mid: 2,
-    score: 11,
+    middle: 2,
+    score: 37,
 };
-
-let third = {
-    head: 1,
-    mid: 2,
-    tail: 3,
-    score: 13,
-};
+let secondMiddle = Object.create(secondHolder);
+secondMiddle.middleTag = 1;
+let second = Object.create(secondMiddle);
+second.receiverTag = 2;
 
 let sum = 0;
 for (let i = 0; i < 20; i++) {
     sum += LoadScore(first);
     sum += LoadScore(second);
-    sum += LoadScore(third);
 }
 
 ArkTools.jitCompileAsync(LoadScore);
@@ -48,4 +46,3 @@ print(ArkTools.waitJitCompileFinish(LoadScore));
 print(sum);
 print(LoadScore(first));
 print(LoadScore(second));
-print(LoadScore(third));

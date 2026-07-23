@@ -120,6 +120,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 #define BRANCH_CONTROL_VERTEX_LIST(V) \
     V(BranchIfTrue)                   \
     V(BranchIfTaggedString)           \
+    V(BranchIfHClassIn)               \
     V(BranchIfInt32Compare)           \
     V(BranchIfInt64Compare)           \
     V(BranchIfFloat64Compare)         \

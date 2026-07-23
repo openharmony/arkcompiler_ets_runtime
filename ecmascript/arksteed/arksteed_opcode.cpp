@@ -963,6 +963,25 @@ void BranchIfTaggedStringVertex::Dump(std::ostream &output) const
     output << "  BranchIfTaggedString";
 }
 
+void BranchIfHClassInVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(RECEIVER_INDEX));
+    // 3: actual hclass, expected hclass, and the tagged-heap-object guard scratch.
+    SetTemporariesNeeded(3);
+}
+
+void BranchIfHClassInVertex::Dump(std::ostream &output) const
+{
+    output << "  BranchIfHClassIn: expected=[";
+    for (size_t i = 0; i < expectedHClasses_.size(); ++i) {
+        if (i != 0) {
+            output << ", ";
+        }
+        output << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses_[i]) << std::dec;
+    }
+    output << "]";
+}
+
 void BranchIfInt32CompareVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));

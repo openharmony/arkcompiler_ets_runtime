@@ -3372,13 +3372,6 @@ struct GraphBuilder::BytecodeVisitor {
     NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const PropertyAccessSet &accessSet,
                                                            uint16_t constDataId) const
     {
-        if (accessSet.caseCount > 1) {
-            for (uint32_t i = 0; i < accessSet.caseCount && i < accessSet.cases.size(); ++i) {
-                if (!accessSet.cases[i].holderIsReceiver) {
-                    return std::nullopt;
-                }
-            }
-        }
         std::vector<NamedLoadAccessInfo> result;
         for (uint32_t i = 0; i < accessSet.caseCount && i < accessSet.cases.size(); ++i) {
             NamedLoadAccessInfoOpt accessInfo = TryConvertNamedLoadAccessInfo(accessSet.cases[i], constDataId);
@@ -5004,9 +4997,42 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> checkInputs {object};
         ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
         BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = DeoptIfHClassNotInVertex::RECEIVER_INDEX + 1,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
+        };
         self->NewVertex<DeoptIfHClassNotInVertex>(
-            currentBlock, checkInputs, hclasses, std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
+            currentBlock, checkInputs, hclasses, std::move(deoptData));
         compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
+        return true;
+    }
+
+    bool BuildEagerCheckHClassesWithoutDependencies(
+        uint32_t bcIndex, ValueVertex *object, const std::vector<JSHClass *> &hclasses)
+    {
+        if (hclasses.empty() || std::any_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
+            return hclass == nullptr;
+        })) {
+            return false;
+        }
+
+        std::vector<ValueVertex *> checkInputs {object};
+        ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
+        BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+        DeoptMetadata deoptData{
+            .deoptVRegs = std::move(deoptVRegs),
+            .firstDeoptInputIndex = DeoptIfHClassMismatchVertex::RECEIVER_INDEX + 1,
+            .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
+        };
+        if (hclasses.size() == 1) {
+            self->NewVertex<DeoptIfHClassMismatchVertex>(
+                currentBlock, checkInputs, hclasses.front(), std::move(deoptData));
+        } else {
+            self->NewVertex<DeoptIfHClassNotInVertex>(
+                currentBlock, checkInputs, hclasses, std::move(deoptData));
+        }
+        compileInfoFacts_->RecordPossibleHClasses(object, hclasses, false);
         return true;
     }
 
@@ -5031,6 +5057,19 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *result =
             self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
         return convertHoleToUndefined(result);
+    }
+
+    ValueVertex *BuildLoadFieldWithoutCse(ValueVertex *object, PropertyLookupResult plr)
+    {
+        if (plr.IsInlinedProps()) {
+            int32_t offset = static_cast<int32_t>(plr.GetOffset());
+            return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {object}, offset);
+        }
+        ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                              plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {properties}, offset);
     }
 
     void BuildStoreTaggedField(ValueVertex *object, int32_t offset, ValueVertex *value)
@@ -5074,10 +5113,15 @@ struct GraphBuilder::BytecodeVisitor {
             std::vector<ValueVertex *> checkInputs {object};
             ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
             BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+            DeoptMetadata deoptData{
+                .deoptVRegs = std::move(deoptVRegs),
+                .firstDeoptInputIndex = LoadPrototypeHolderByHClassVertex::RECEIVER_INDEX + 1,
+                .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
+            };
             loadSource = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
                 compileInfoFacts_, currentBlock, checkInputs, accessInfo.holderHClass,
                 accessInfo.expectedPrototypeHClasses, accessInfo.holderDepth,
-                std::move(deoptVRegs), self->preproc_->GetBytecodeOffset(bcIndex));
+                std::move(deoptData));
         }
         ValueVertex *result = BuildLoadField(loadSource, accessInfo.plr);
         if (accessInfo.isConst) {
@@ -5088,18 +5132,86 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
+    ValueVertex *BuildPolymorphicPropertyLoad(uint32_t bcIndex, ValueVertex *object,
+                                               const NamedLoadAccessInfo &accessInfo)
+    {
+        // Internal case blocks share CompileInfoFacts. Do not let a load from one sibling case
+        // enter the property cache or available-expression table and leak into another case.
+        ValueVertex *loadSource = object;
+        if (accessInfo.holderDepth != 0) {
+            std::vector<ValueVertex *> checkInputs {object};
+            ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
+            BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
+            DeoptMetadata deoptData{
+                .deoptVRegs = std::move(deoptVRegs),
+                .firstDeoptInputIndex = LoadPrototypeHolderByHClassVertex::RECEIVER_INDEX + 1,
+                .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
+            };
+            loadSource = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
+                currentBlock, checkInputs, accessInfo.holderHClass,
+                accessInfo.expectedPrototypeHClasses, accessInfo.holderDepth,
+                std::move(deoptData));
+        }
+        return BuildLoadFieldWithoutCse(loadSource, accessInfo.plr);
+    }
+
+    bool TryBuildPolymorphicNamedAccess(uint32_t bcIndex, ValueVertex *receiver,
+                                        const std::vector<NamedLoadAccessInfo> &accessInfos)
+    {
+        ASSERT(accessInfos.size() > 1);
+        std::vector<JSHClass *> allExpectedHClasses;
+        for (const NamedLoadAccessInfo &accessInfo : accessInfos) {
+            if (accessInfo.lookupStartObjectHClasses.empty()) {
+                return false;
+            }
+            for (JSHClass *hclass : accessInfo.lookupStartObjectHClasses) {
+                if (hclass == nullptr || hclass->IsString() ||
+                    std::find(allExpectedHClasses.begin(), allExpectedHClasses.end(), hclass) !=
+                        allExpectedHClasses.end()) {
+                    return false;
+                }
+                allExpectedHClasses.push_back(hclass);
+            }
+        }
+        if (!BuildEagerCheckHClassesWithoutDependencies(bcIndex, receiver, allExpectedHClasses)) {
+            return false;
+        }
+
+        BB *doneBlock = self->NewBlock();
+        std::vector<ValueVertex *> results;
+        results.reserve(accessInfos.size());
+        for (size_t i = 0; i + 1 < accessInfos.size(); ++i) {
+            BB *caseBlock = self->NewBlock();
+            BB *nextCaseBlock = self->NewBlock();
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(
+                currentBlock, {receiver}, caseBlock, nextCaseBlock,
+                accessInfos[i].lookupStartObjectHClasses);
+
+            currentBlock = caseBlock;
+            results.push_back(BuildPolymorphicPropertyLoad(bcIndex, receiver, accessInfos[i]));
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+            currentBlock = nextCaseBlock;
+        }
+
+        // The eager union check above guarantees that a receiver reaching here belongs to the
+        // final access-info group, so the last case needs no additional HClass branch.
+        results.push_back(BuildPolymorphicPropertyLoad(bcIndex, receiver, accessInfos.back()));
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+        currentBlock = doneBlock;
+        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, results, self->AccIndex()));
+        return true;
+    }
+
     bool TryBuildNamedAccess(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,
                              const std::vector<NamedLoadAccessInfo> &accessInfos, bool mapsAreKnownFresh)
     {
         if (accessInfos.empty()) {
             return false;
         }
-        const NamedLoadAccessInfo &accessInfo = accessInfos.front();
-        for (const NamedLoadAccessInfo &candidate : accessInfos) {
-            if (!HasSameLoadFieldAccess(accessInfo, candidate)) {
-                return false;
-            }
+        if (accessInfos.size() > 1) {
+            return TryBuildPolymorphicNamedAccess(bcIndex, receiver, accessInfos);
         }
+        const NamedLoadAccessInfo &accessInfo = accessInfos.front();
         const std::vector<JSHClass *> &maps = accessInfo.lookupStartObjectHClasses;
         bool hasHClassOfString = std::any_of(maps.begin(), maps.end(), [](JSHClass *hclass) {
             return hclass != nullptr && hclass->IsString();

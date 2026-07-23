@@ -18,34 +18,26 @@ function LoadScore(obj)
     return obj.score;
 }
 
-let first = {
-    head: 1,
-    score: 7,
+let own = {
+    score: 17,
+    ownTag: 1,
 };
 
-let second = {
-    head: 1,
-    mid: 2,
-    score: 11,
+let prototype = {
+    prototypeTag: 1,
+    score: 31,
 };
-
-let third = {
-    head: 1,
-    mid: 2,
-    tail: 3,
-    score: 13,
-};
+let inherited = Object.create(prototype);
+inherited.receiverTag = 1;
 
 let sum = 0;
 for (let i = 0; i < 20; i++) {
-    sum += LoadScore(first);
-    sum += LoadScore(second);
-    sum += LoadScore(third);
+    sum += LoadScore(own);
+    sum += LoadScore(inherited);
 }
 
 ArkTools.jitCompileAsync(LoadScore);
 print(ArkTools.waitJitCompileFinish(LoadScore));
 print(sum);
-print(LoadScore(first));
-print(LoadScore(second));
-print(LoadScore(third));
+print(LoadScore(own));
+print(LoadScore(inherited));

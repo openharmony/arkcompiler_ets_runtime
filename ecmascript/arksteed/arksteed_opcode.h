@@ -741,10 +741,9 @@ public:
                                                JSHClass *holderHClass,
                                                std::vector<JSHClass *> expectedPrototypeHClasses,
                                                uint32_t holderDepth,
-                                               ChunkVector<VRegIDType> deoptVRegs,
-                                               uint32_t bytecodeOffset)
+                                               DeoptMetadata deoptMeta)
         : VertexMixin(bitfield),
-          DeoptimizableMixin(RECEIVER_INDEX + 1, std::move(deoptVRegs), bytecodeOffset),
+          DeoptimizableMixin(std::move(deoptMeta)),
           holderHClass_(holderHClass),
           expectedPrototypeHClasses_(std::move(expectedPrototypeHClasses)),
           holderDepth_(holderDepth)
@@ -1764,10 +1763,9 @@ public:
 
     explicit DeoptIfHClassNotInVertex(uint64_t bitfield,
                                       std::vector<JSHClass *> expectedHClasses,
-                                      ChunkVector<VRegIDType> deoptVRegs,
-                                      uint32_t bytecodeOffset)
+                                      DeoptMetadata deoptMeta)
         : VertexMixin(bitfield),
-          DeoptimizableMixin(RECEIVER_INDEX + 1, std::move(deoptVRegs), bytecodeOffset),
+          DeoptimizableMixin(std::move(deoptMeta)),
           expectedHClasses_(std::move(expectedHClasses))
     {}
 
@@ -2005,6 +2003,37 @@ public:
 
     void SetValueLocationConstraints();
     void Dump(std::ostream &output) const;
+};
+
+class BranchIfHClassInVertex : public BranchControlVertexT<1, BranchIfHClassInVertex> {
+public:
+    static constexpr int RECEIVER_INDEX = 0;
+    static constexpr detail::InputTypes<1> INPUT_TYPES {ValueRepresentation::TAGGED};
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanReadProp();
+
+    BranchIfHClassInVertex(uint64_t bitfield, BB *ifTrue, BB *ifFalse,
+                           std::vector<JSHClass *> expectedHClasses)
+        : BranchControlVertexT(bitfield, ifTrue, ifFalse), expectedHClasses_(std::move(expectedHClasses))
+    {}
+
+    const std::vector<JSHClass *> &GetExpectedHClasses() const
+    {
+        return expectedHClasses_;
+    }
+
+    void SetValueLocationConstraints();
+    void Dump(std::ostream &output) const;
+
+    void VerifyInputs() const
+    {
+        ASSERT(!expectedHClasses_.empty());
+        ASSERT(std::all_of(expectedHClasses_.begin(), expectedHClasses_.end(), [](JSHClass *hclass) {
+            return hclass != nullptr;
+        }));
+    }
+
+private:
+    std::vector<JSHClass *> expectedHClasses_;
 };
 
 class BranchIfInt32CompareVertex : public BranchControlVertexT<2, BranchIfInt32CompareVertex> {
