@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_ARKSTEED_SAFEPOINT_TABLE_H
 #define ECMASCRIPT_ARKSTEED_SAFEPOINT_TABLE_H
 
-#include <unordered_map>
 #include <vector>
 
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
@@ -38,7 +37,7 @@ enum class ExceptionHandlerKind : uint16_t {
 //     uint32_t numEntries
 //     uint32_t numTaggedSlots      (function-level, same for all safepoints)
 //     uint32_t numUntaggedSlots
-//     uint32_t extensionOffset     (relative to table start; 0 if absent)
+//     uint32_t reserved            (must be zero)
 //   Entry[] (16 bytes each, sorted by pcOffset ascending):
 //     uint32_t pcOffset            (return address offset from code start)
 //     uint16_t extraSpillSlotsAndFlags
@@ -48,13 +47,6 @@ enum class ExceptionHandlerKind : uint16_t {
 //     uint32_t deoptOffset         (relative to the table start; 0 if absent)
 //     uint16_t deoptNum            (encoded pairs: <id, value>)
 //     uint16_t taggedDeoptSnapshotGeneralRegistersHigh
-//   Optional extension header (16 bytes):
-//     uint32_t magic
-//     uint16_t version
-//     uint16_t flags
-//     uint32_t deoptTranslationOffset
-//     uint32_t deoptTranslationSize
-//
 // GC scanning:
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
 //   2. Per eager-deopt safepoint: tagged general-register values saved in the deopt snapshot
@@ -65,7 +57,7 @@ struct ArkSteedSafepointHeader {
     uint32_t numEntries;
     uint32_t numTaggedSlots;
     uint32_t numUntaggedSlots;
-    uint32_t extensionOffset;
+    uint32_t reserved;
 };
 
 struct ArkSteedSafepointEntry {
@@ -107,25 +99,10 @@ struct ArkSteedSafepointEntry {
     }
 };
 
-struct ArkSteedSafepointExtensionHeader {
-    uint32_t magic;
-    uint16_t version;
-    uint16_t flags;
-    uint32_t deoptTranslationOffset;
-    uint32_t deoptTranslationSize;
-};
 #pragma pack()
 
 static_assert(sizeof(ArkSteedSafepointHeader) == 16, "Header must be 16 bytes");  // 16: header size in bytes
 static_assert(sizeof(ArkSteedSafepointEntry) == 16, "Entry must be 16 bytes");  // 16: entry size in bytes
-static_assert(sizeof(ArkSteedSafepointExtensionHeader) == 16, "Extension header must be 16 bytes");
-
-constexpr uint32_t ARKSTEED_SAFEPOINT_EXTENSION_MAGIC = 0x44545341U;  // "ASTD" in little-endian byte order
-constexpr uint16_t ARKSTEED_SAFEPOINT_EXTENSION_VERSION = 1;
-constexpr uint16_t ARKSTEED_SAFEPOINT_EXTENSION_HAS_DEOPT_TRANSLATIONS = 1U << 0U;
-constexpr uint16_t ARKSTEED_SAFEPOINT_EXTENSION_KNOWN_FLAGS =
-    ARKSTEED_SAFEPOINT_EXTENSION_HAS_DEOPT_TRANSLATIONS;
-
 // ============================================================================
 // Builder — used during compilation to collect safepoint entries
 // ============================================================================
@@ -168,8 +145,6 @@ public:
     Safepoint DefineSafepoint(uint32_t pcOffset);
     void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts,
                               ExceptionHandlerKind exceptionHandlerKind = ExceptionHandlerKind::NONE);
-    ArkSteedDeoptId DefineArkSteedDeoptTranslation(uint32_t bytecodeOffset, kungfu::DeoptType type,
-                                                   std::vector<ArkSteedDeoptTranslationInput> inputs);
     void SetFrameSlots(uint32_t tagged, uint32_t untagged);
 
     size_t GetTableSize() const;
@@ -193,8 +168,6 @@ private:
     // removes the shared heap entirely and ties the side table's lifetime to the
     // builder, so corruption can no longer cross compile boundaries.
     std::vector<std::vector<kungfu::ARKDeopt>> deoptSideTable_;
-    std::vector<ArkSteedDeoptTranslation> deoptTranslations_;
-    std::unordered_multimap<uint64_t, ArkSteedDeoptId> deoptTranslationIndex_;
 };
 
 // ============================================================================
@@ -221,7 +194,6 @@ public:
     const ArkSteedSafepointEntry *FindEntry(uint32_t pcOffset) const;
     void GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const;
     ExceptionHandlerKind GetExceptionHandlerKind(uint32_t pcOffset) const;
-    bool GetArkSteedDeoptTranslation(ArkSteedDeoptId deoptId, ArkSteedDeoptTranslation *translation) const;
 
     bool IsValid() const
     {
@@ -229,8 +201,6 @@ public:
     }
 
 private:
-    bool IsRangeValid(size_t offset, size_t length) const;
-
     const ArkSteedSafepointHeader *header_ = nullptr;
     const ArkSteedSafepointEntry *entries_ = nullptr;
     const uint8_t *data_ = nullptr;

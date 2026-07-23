@@ -32,6 +32,12 @@
 
 namespace panda::ecmascript::arksteed {
 #if defined(PANDA_TARGET_ARM64)
+constexpr aarch64::Register EAGER_DEOPT_ENTRY_TARGET_REGISTER = kScratchRegister;
+constexpr aarch64::Register EAGER_DEOPT_ENTRY_GLUE_REGISTER = kScratchRegister2;
+
+static_assert(!GetAllocatableGeneralRegisters().Has(EAGER_DEOPT_ENTRY_TARGET_REGISTER));
+static_assert(!GetAllocatableGeneralRegisters().Has(EAGER_DEOPT_ENTRY_GLUE_REGISTER));
+
 // =============================================================================
 // Register Move Operations
 // =============================================================================
@@ -186,33 +192,27 @@ void ArkSteedAssembler::StoreFloat64Constant(MemoryOperand dstOp, double immedia
     MoveRepr(MachineRepresentation::Word64, dstOp, scratchGPR);
 }
 
-void ArkSteedAssembler::SaveArkSteedDeoptSnapshot(ArkSteedRegList generalRegisters,
-                                                  ArkDoubleRegList floatingRegisters)
+void ArkSteedAssembler::CallArkSteedEagerDeoptEntry()
 {
-    assembler_.Sub(aarch64::sp, aarch64::sp, aarch64::Operand(aarch64::Immediate(ARKSTEED_DEOPT_SNAPSHOT_SIZE)));
-    for (ArkSteedRegister reg : generalRegisters) {
-        int32_t offset = GetArkSteedDeoptGeneralSnapshotOffset(reg.Code());
-        ASSERT(offset >= 0);
-        assembler_.Str(reg, aarch64::MemoryOperand(aarch64::sp, offset, aarch64::AddrMode::OFFSET));
-    }
-    for (ArkSteedDoubleRegister reg : floatingRegisters) {
-        int32_t offset = GetArkSteedDeoptFloatingSnapshotOffset(reg.Code());
-        ASSERT(offset >= 0);
-        assembler_.Str(reg, aarch64::MemoryOperand(aarch64::sp, offset, aarch64::AddrMode::OFFSET));
-    }
-}
-
-void ArkSteedAssembler::PrepareArkSteedDeoptHandlerCall()
-{
+    ASSERT(temporaryRegisterScope_ == nullptr);
     ASSERT(entryThread_ != nullptr);
-    Address address = entryThread_->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
-    Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
-    Move(aarch64::x1, ARKSTEED_DEOPT_DISPATCH_MARKER);
-    Move(aarch64::x2, JSTaggedValue(0).GetRawData());
-    Move(aarch64::x3, static_cast<uint64_t>(address));
+    Address address = entryThread_->GetRTInterface(RTSTUB_ID(ArkSteedEagerDeoptEntry));
+    Move(EAGER_DEOPT_ENTRY_GLUE_REGISTER, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+    Move(EAGER_DEOPT_ENTRY_TARGET_REGISTER, static_cast<uint64_t>(address));
+    Call(EAGER_DEOPT_ENTRY_TARGET_REGISTER);
 }
 
-void ArkSteedAssembler::CallPreparedArkSteedDeoptHandler(ArkSteedDeoptId deoptId)
+void ArkSteedAssembler::JumpToArkSteedEagerDeoptEntry()
+{
+    ASSERT(temporaryRegisterScope_ == nullptr);
+    ASSERT(entryThread_ != nullptr);
+    Address address = entryThread_->GetRTInterface(RTSTUB_ID(ArkSteedEagerDeoptEntry));
+    Move(EAGER_DEOPT_ENTRY_GLUE_REGISTER, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+    Move(EAGER_DEOPT_ENTRY_TARGET_REGISTER, static_cast<uint64_t>(address));
+    assembler_.Br(EAGER_DEOPT_ENTRY_TARGET_REGISTER);
+}
+
+void ArkSteedAssembler::CallPreparedArkSteedDeoptHandler(DeoptId deoptId)
 {
     ASSERT(deoptId.value <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     if (deoptId.value != 0) {

@@ -16,6 +16,9 @@
 #ifndef ECMASCRIPT_ARKSTEED_TASK_H
 #define ECMASCRIPT_ARKSTEED_TASK_H
 
+#include <cstdint>
+#include <vector>
+
 #include "ecmascript/common.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/mem/clock_scope.h"
@@ -30,6 +33,7 @@ public:
 
     void Compile();
     void InstallCode() override;
+    void SetDeoptTranslationData(std::vector<uint8_t> data);
 
     class AsyncTask : public common::Task {
     public:
@@ -40,6 +44,9 @@ public:
     private:
         std::shared_ptr<ArkSteedTask> task_;
     };
+
+private:
+    std::vector<uint8_t> deoptTranslationData_;
 };
 
 class ArkSteedCompileTimeScope : public ClockScope {

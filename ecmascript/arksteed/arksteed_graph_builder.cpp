@@ -3465,12 +3465,12 @@ struct GraphBuilder::BytecodeVisitor {
         auto getDeoptValueKind = [](ValueVertex *value) {
             switch (value->GetValueRepresentation()) {
                 case ValueRepresentation::TAGGED:
-                    return ArkSteedDeoptValueKind::TAGGED;
+                    return DeoptTranslationKind::TAGGED;
                 case ValueRepresentation::INT32:
-                    return ArkSteedDeoptValueKind::INT32_TO_TAGGED;
+                    return DeoptTranslationKind::INT32_TO_TAGGED;
                 case ValueRepresentation::FLOAT64:
                 case ValueRepresentation::HOLEY_FLOAT64:
-                    return ArkSteedDeoptValueKind::FLOAT64_TO_TAGGED_DOUBLE;
+                    return DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE;
                 case ValueRepresentation::UINT32:
                 case ValueRepresentation::INT64:
                 case ValueRepresentation::NONE:
@@ -3484,11 +3484,11 @@ struct GraphBuilder::BytecodeVisitor {
         };
         auto addRaw = [&](int32_t id, ValueVertex *value) {
             ASSERT(value != nullptr);
-            frameStateValues->emplace_back(id, value, ArkSteedDeoptValueKind::RAW_INT32);
+            frameStateValues->emplace_back(id, value, DeoptTranslationKind::RAW_INT32);
         };
         auto addInt32ToTagged = [&](int32_t id, ValueVertex *value) {
             ASSERT(value != nullptr);
-            frameStateValues->emplace_back(id, value, ArkSteedDeoptValueKind::INT32_TO_TAGGED);
+            frameStateValues->emplace_back(id, value, DeoptTranslationKind::INT32_TO_TAGGED);
         };
 
         add(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX), LoadParam(CALL_TARGET_PARAM_INDEX));

@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/jit/jit_task.h"
+
+#include <limits>
+
 #include "ecmascript/base/config.h"
 #include "common_components/heap/heap_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -181,12 +184,32 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
     }
 
     if (codeDesc.codeType == MachineCodeType::ARKSTEED_CODE) {
-        // ArkSteed payload: [code] [stackmap] [heapConstants]
+        // ArkSteed payload: [code] [stackmap] [heapConstants] [translation info] [translation]
+        size_t translationPayloadSize = 0;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        CHECK(codeDesc.arkSteedTranslationSize <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.arkSteedTranslationSize <=
+              std::numeric_limits<size_t>::max() - (MachineCode::DATA_ALIGN - 1U));
+        size_t translationSizeAlign = AlignUp(codeDesc.arkSteedTranslationSize, MachineCode::DATA_ALIGN);
+        CHECK(MachineCode::ARKSTEED_TRANSLATION_INFO_SIZE <=
+              std::numeric_limits<size_t>::max() - translationSizeAlign);
+        translationPayloadSize = MachineCode::ARKSTEED_TRANSLATION_INFO_SIZE + translationSizeAlign;
+#endif
+        CHECK(codeDesc.codeSizeAlign <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.stackMapSizeAlign <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.heapConstantTableSizeAlign <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.stackMapSizeAlign <=
+              std::numeric_limits<size_t>::max() - codeDesc.heapConstantTableSizeAlign);
+        size_t nonTextSize = codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
+        CHECK(nonTextSize <= std::numeric_limits<size_t>::max() - translationPayloadSize);
+        nonTextSize += translationPayloadSize;
+        CHECK(codeDesc.codeSizeAlign <= std::numeric_limits<size_t>::max() - nonTextSize);
+        size_t payLoadSize = codeDesc.codeSizeAlign + nonTextSize;
+        CHECK(payLoadSize <= std::numeric_limits<uint32_t>::max());
         if (Jit::GetInstance()->IsEnableJitFort()) {
-            size_t payLoadSize = codeDesc.codeSizeAlign + codeDesc.stackMapSizeAlign +
-                                 codeDesc.heapConstantTableSizeAlign;
-            size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
-                static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            constexpr size_t objectAlignment = static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT);
+            CHECK(payLoadSize <= std::numeric_limits<size_t>::max() - MachineCode::SIZE - (objectAlignment - 1U));
+            size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE, objectAlignment);
             codeDesc.instructionsSize = codeDesc.codeSizeAlign;
             LOG_JIT(DEBUG) << "InstallCode:: ArkSteed MachineCode Object size to allocate: "
                 << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
@@ -195,10 +218,10 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
                 return payLoadSize;
             } else {
                 // regular sized: instructions in separate JitFort space
-                return payLoadSize - codeDesc.codeSizeAlign;
+                return nonTextSize;
             }
         } else {
-            return codeDesc.codeSizeAlign + codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
+            return payLoadSize;
         }
     }
 

@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/method.h"
 
@@ -210,6 +211,66 @@ void ArkSteedCall::ArkSteedCallEntry(ExtendedAssembler *assembler)
 
     __ Mov(x2, x20);
     OptimizedCall::PopJSFunctionEntryFrame(assembler, x2);
+    __ Ret();
+}
+
+// Entry state for ArkSteedEagerDeoptEntry:
+//   x17       = glue
+//   lr        = function-local continuation
+//
+// Snapshot layout after reserving 448 bytes:
+//   [sp +   0, sp + 128) = x0-x15
+//   [sp + 128, sp + 208) = x19-x28; x16-x18 are reserved
+//   [sp + 208, sp + 448) = d0-d29
+//
+// State returned to the function-local continuation:
+//   x0        = glue
+//   x1        = -1, selects ArkSteed translation materialization in DeoptHandler
+//   x2        = zero-valued maybe-accumulator placeholder required by DeoptHandlerAsm
+//   x3        = DeoptHandlerAsm address loaded from the eight-byte runtime-stub table
+//   sp        = snapshot start
+//   lr        = function-local continuation
+void ArkSteedCall::ArkSteedEagerDeoptEntry(ExtendedAssembler *assembler)
+{
+    constexpr int64_t eagerDeoptDispatchMarker = -1;  // ArkSteed dispatch marker
+    constexpr int64_t eagerDeoptSnapshotSize = 448;  // 56 eight-byte value slots
+    constexpr uint32_t eagerDeoptFirstGeneralRangeEnd = 16;  // x0-x15
+    constexpr uint32_t eagerDeoptSecondGeneralRangeBegin = 19;  // x19
+    constexpr uint32_t eagerDeoptSecondGeneralRangeEnd = 29;  // One past x28
+    constexpr uint32_t eagerDeoptSecondGeneralRangeGap = 3;  // Reserved x16-x18
+    constexpr int64_t eagerDeoptFloatingSnapshotOffset = 26 * FRAME_SLOT_SIZE;  // 26 general-register slots
+    constexpr uint32_t eagerDeoptFloatingRegisterCount = 30;  // d0-d29
+    constexpr int64_t runtimeStubEntrySizeLog2 = 3;  // Eight-byte runtime-stub entries
+
+    __ BindAssemblerStub(RTSTUB_ID(ArkSteedEagerDeoptEntry));
+    __ Sub(sp, sp, Operand(Immediate(eagerDeoptSnapshotSize)));
+
+    auto storeGeneralPair = [assembler](uint32_t firstCode, uint32_t firstSlot) {
+        Register first = Register::FromCode(static_cast<int8_t>(firstCode));
+        Register second = Register::FromCode(static_cast<int8_t>(firstCode + 1U));
+        __ Stp(first, second, MemoryOperand(sp, firstSlot * FRAME_SLOT_SIZE));
+    };
+    for (uint32_t firstCode = 0; firstCode < eagerDeoptFirstGeneralRangeEnd; firstCode += 2U) {
+        storeGeneralPair(firstCode, firstCode);
+    }
+    for (uint32_t firstCode = eagerDeoptSecondGeneralRangeBegin;
+         firstCode < eagerDeoptSecondGeneralRangeEnd; firstCode += 2U) {
+        storeGeneralPair(firstCode, firstCode - eagerDeoptSecondGeneralRangeGap);
+    }
+
+    for (uint32_t firstCode = 0; firstCode < eagerDeoptFloatingRegisterCount; firstCode += 2U) {
+        VRegister first = VRegister::FromCode(static_cast<int8_t>(firstCode));
+        VRegister second = VRegister::FromCode(static_cast<int8_t>(firstCode + 1U));
+        __ Stp(first, second,
+               MemoryOperand(sp, eagerDeoptFloatingSnapshotOffset + firstCode * FRAME_SLOT_SIZE));
+    }
+
+    __ Mov(x0, x17);
+    __ Mov(x1, Immediate(eagerDeoptDispatchMarker));
+    __ Mov(x2, Immediate(JSTaggedValue(0).GetRawData()));
+    __ Mov(x16, Immediate(RTSTUB_ID(DeoptHandlerAsm)));
+    __ Add(x16, x17, Operand(x16, LSL, runtimeStubEntrySizeLog2));
+    __ Ldr(x3, MemoryOperand(x16, JSThread::GlueData::GetRTStubEntriesOffset(false)));
     __ Ret();
 }
 

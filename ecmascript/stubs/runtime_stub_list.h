@@ -110,6 +110,7 @@ namespace panda::ecmascript {
 
 #define ARKSTEED_TRAMPOLINE_LIST(V)                      \
     V(ArkSteedCallEntry)                                 \
+    V(ArkSteedEagerDeoptEntry)                           \
     V(SteedCallAndPushArgv)                              \
     V(SteedCallWithArgVAndPushArgv)
 

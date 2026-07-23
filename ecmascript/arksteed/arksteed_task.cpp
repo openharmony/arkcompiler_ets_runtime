@@ -15,6 +15,8 @@
 
 #include "ecmascript/arksteed/arksteed_task.h"
 
+#include <utility>
+
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/jit_dfx.h"
@@ -35,6 +37,15 @@ ArkSteedTask::~ArkSteedTask()
     auto &codeDesc = GetMachineCodeDesc();
     delete[] reinterpret_cast<uint8_t *>(codeDesc.stackMapOrOffsetTableAddr);
     delete[] reinterpret_cast<uint8_t *>(codeDesc.codeCommentsAddr);
+}
+
+void ArkSteedTask::SetDeoptTranslationData(std::vector<uint8_t> data)
+{
+    deoptTranslationData_ = std::move(data);
+    auto &codeDesc = GetMachineCodeDesc();
+    codeDesc.arkSteedTranslationAddr =
+        deoptTranslationData_.empty() ? 0 : reinterpret_cast<uintptr_t>(deoptTranslationData_.data());
+    codeDesc.arkSteedTranslationSize = deoptTranslationData_.size();
 }
 
 void ArkSteedTask::Compile()

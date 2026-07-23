@@ -1619,6 +1619,19 @@ DEF_CALL_SIGNATURE(ArkSteedCallEntry)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(ArkSteedEagerDeoptEntry)
+{
+    // This entry has a custom register-preserving ABI; the signature only registers its assembler stub identity.
+    CallSignature eagerDeoptEntry("ArkSteedEagerDeoptEntry", 0, 0,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = eagerDeoptEntry;
+    std::array<VariableType, 0> params = {};
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(SteedCallAndPushArgv)
 {
     /* 6 : 6 input parameters */

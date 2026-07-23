@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/method.h"
 
@@ -270,6 +271,59 @@ void ArkSteedCall::ArkSteedCallEntry(ExtendedAssembler *assembler)
     __ Movq(r12, rdx);
     OptimizedCall::PopJSFunctionEntryFrame(assembler, rdx);
     __ Ret();
+}
+
+// Entry state for ArkSteedEagerDeoptEntry:
+//   r13       = glue
+//   [rsp]     = function-local continuation
+//
+// Snapshot layout after reserving 208 bytes:
+//   [rsp +   0, rsp +  80) = rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r11, r12
+//   [rsp +  80, rsp + 200) = xmm0-xmm14
+//   [rsp + 200, rsp + 208) = alignment padding
+//
+// State passed to the function-local continuation:
+//   rdi       = glue
+//   rsi       = -1, selects ArkSteed translation materialization in DeoptHandler
+//   rdx       = zero-valued maybe-accumulator placeholder required by DeoptHandlerAsm
+//   r10       = function-local continuation
+//   r11       = DeoptHandlerAsm address
+//   rsp       = snapshot start
+void ArkSteedCall::ArkSteedEagerDeoptEntry(ExtendedAssembler *assembler)
+{
+    constexpr int32_t eagerDeoptDispatchMarker = -1;  // ArkSteed dispatch marker
+    constexpr int32_t eagerDeoptSnapshotSize = 208;  // 25 value slots plus one alignment slot
+    constexpr int32_t eagerDeoptFloatingSnapshotOffset = 10 * FRAME_SLOT_SIZE;  // 10 general-register slots
+    constexpr int32_t eagerDeoptFloatingRegisterCount = 15;  // xmm0-xmm14
+
+    __ BindAssemblerStub(RTSTUB_ID(ArkSteedEagerDeoptEntry));
+
+    Register continuation = r10;
+    Register glue = r13;
+    __ Popq(continuation);
+    __ Subq(Immediate(eagerDeoptSnapshotSize), rsp);
+
+    __ Movq(rax, Operand(rsp, 0 * FRAME_SLOT_SIZE));
+    __ Movq(rbx, Operand(rsp, 1 * FRAME_SLOT_SIZE));
+    __ Movq(rcx, Operand(rsp, 2 * FRAME_SLOT_SIZE));
+    __ Movq(rdx, Operand(rsp, 3 * FRAME_SLOT_SIZE));
+    __ Movq(rsi, Operand(rsp, 4 * FRAME_SLOT_SIZE));
+    __ Movq(rdi, Operand(rsp, 5 * FRAME_SLOT_SIZE));
+    __ Movq(r8, Operand(rsp, 6 * FRAME_SLOT_SIZE));
+    __ Movq(r9, Operand(rsp, 7 * FRAME_SLOT_SIZE));
+    __ Movq(r11, Operand(rsp, 8 * FRAME_SLOT_SIZE));
+    __ Movq(r12, Operand(rsp, 9 * FRAME_SLOT_SIZE));
+    for (int32_t code = 0; code < eagerDeoptFloatingRegisterCount; ++code) {
+        __ Movsd(Operand(rsp, eagerDeoptFloatingSnapshotOffset + code * FRAME_SLOT_SIZE),
+                 XMMRegister::FromCode(static_cast<int8_t>(code)));
+    }
+
+    __ Movq(glue, rdi);
+    __ Movq(Immediate(eagerDeoptDispatchMarker), rsi);
+    __ Movabs(JSTaggedValue(0).GetRawData(), rdx);
+    __ Movq(Immediate(RTSTUB_ID(DeoptHandlerAsm)), r11);
+    __ Movq(Operand(glue, r11, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r11);
+    __ Jmp(continuation);
 }
 
 // Entry state for SteedCallAndPushArgv (CCallConv variadic stub):

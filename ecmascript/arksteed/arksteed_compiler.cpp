@@ -18,6 +18,7 @@
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_graph_builder.h"
 #include "ecmascript/arksteed/arksteed_codegen.h"
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
@@ -106,6 +107,10 @@ ArkSteedCompilerTask::~ArkSteedCompilerTask()
     if (safepointTableBuilder_ != nullptr) {
         delete safepointTableBuilder_;
         safepointTableBuilder_ = nullptr;
+    }
+    if (translationBuilder_ != nullptr) {
+        delete translationBuilder_;
+        translationBuilder_ = nullptr;
     }
 }
 
@@ -251,7 +256,8 @@ bool ArkSteedCompilerTask::Compile()
     EnableCodeSign();
 #endif
     safepointTableBuilder_ = new ArkSteedSafepointTableBuilder();
-    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_);
+    translationBuilder_ = new DeoptTranslationBuilder();
+    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_);
     codegen.Generate();
     if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintCode()) {
         LogAsm(assembler_);
@@ -292,6 +298,10 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
         codeDesc.stackMapOrOffsetTableAddr = 0;
         codeDesc.stackMapOrOffsetTableSize = 0;
     }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    arkSteedTask_->SetDeoptTranslationData(translationBuilder_->Encode());
+#endif
 
     // Heap constant table (empty for now, to be filled from JitCompilationEnv)
     codeDesc.heapConstantTableAddr = 0;

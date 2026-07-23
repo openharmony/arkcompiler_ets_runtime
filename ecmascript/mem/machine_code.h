@@ -50,6 +50,10 @@ struct MachineCodeDesc {
     size_t stackMapOrOffsetTableSize {0};
     uintptr_t heapConstantTableAddr {0};
     size_t heapConstantTableSize {0};
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    uintptr_t arkSteedTranslationAddr {0};
+    size_t arkSteedTranslationSize {0};
+#endif
     uintptr_t codeCommentsAddr { 0 };
     size_t codeCommentsSize { 0 };
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
@@ -223,6 +227,9 @@ public:
     static constexpr size_t PAYLOAD_OFFSET = SIZE;
     static constexpr uint32_t DATA_ALIGN = 8;
     static constexpr uint32_t TEXT_ALIGN = 16;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    static constexpr size_t ARKSTEED_TRANSLATION_INFO_SIZE = sizeof(uint32_t) * 2U;
+#endif
     static constexpr int32_t INVALID_OSR_OFFSET = -1;
     static constexpr uint32_t OSR_EXECUTE_CNT_OFFSET = OSRMASK_OFFSET + 2;
     static constexpr uint16_t OSR_DEOPT_FLAG = 0x80;
@@ -255,6 +262,9 @@ public:
     uintptr_t GetText() const;
     uint8_t *GetStackMapOrOffsetTableAddress() const;
     uint8_t *GetHeapConstantTableAddress() const;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    bool GetArkSteedTranslationData(const uint8_t **data, size_t *size) const;
+#endif
 
     size_t GetTextSize() const
     {
@@ -316,6 +326,9 @@ public:
     }
 private:
     bool SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    bool SetArkSteedTranslationData(const MachineCodeDesc &desc);
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MACHINE_CODE_H

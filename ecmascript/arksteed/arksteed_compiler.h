@@ -27,6 +27,7 @@ namespace panda::ecmascript::arksteed {
 
 class ArkSteedAssembler;
 class ArkSteedSafepointTableBuilder;
+class DeoptTranslationBuilder;
 class Graph;
 
 extern "C" {
@@ -104,6 +105,7 @@ private:
     ArkSteedAssembler *assembler_ = nullptr;
     Graph *graph_ = nullptr;
     ArkSteedSafepointTableBuilder *safepointTableBuilder_ = nullptr;
+    DeoptTranslationBuilder *translationBuilder_ = nullptr;
 
     // FuncEntryDes - allocated from chunk, written in FillCodeDesc
     FuncEntryDes *funcEntryDes_ = nullptr;

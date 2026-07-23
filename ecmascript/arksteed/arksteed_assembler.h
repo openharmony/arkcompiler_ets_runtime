@@ -45,11 +45,18 @@ class TemporaryRegisterScope;
 #if defined(PANDA_TARGET_AMD64)
 constexpr x64::Register X64_SCRATCH_REGISTER = x64::r10;
 constexpr x64::DoubleRegister X64_SCRATCH_DOUBLE_REGISTER = x64::xmm15;
+static_assert(!GetAllocatableGeneralRegisters().Has(X64_SCRATCH_REGISTER));
+static_assert(!GetAllocatableDoubleRegisters().Has(X64_SCRATCH_DOUBLE_REGISTER));
 #elif defined(PANDA_TARGET_ARM64)
 constexpr aarch64::Register kScratchRegister = aarch64::x16;
 constexpr aarch64::Register kScratchRegister2 = aarch64::x17;
 constexpr aarch64::DoubleRegister kScratchDoubleRegister = aarch64::d30;
 constexpr aarch64::DoubleRegister kScratchDoubleRegister2 = aarch64::d31;
+// x16 carries the shared-entry address, x17 carries the current glue and lr carries the JIT continuation PC.
+static_assert(!GetAllocatableGeneralRegisters().Has(kScratchRegister));
+static_assert(!GetAllocatableGeneralRegisters().Has(kScratchRegister2));
+static_assert(!GetAllocatableDoubleRegisters().Has(kScratchDoubleRegister));
+static_assert(!GetAllocatableDoubleRegisters().Has(kScratchDoubleRegister2));
 #endif
 
 // =============================================================================
@@ -247,9 +254,14 @@ public:
     // =========================================================================
 
     void CallDeoptHandler(kungfu::DeoptType deoptType);
-    void PrepareArkSteedDeoptHandlerCall();
-    void CallPreparedArkSteedDeoptHandler(ArkSteedDeoptId deoptId);
-    void SaveArkSteedDeoptSnapshot(ArkSteedRegList generalRegisters, ArkDoubleRegList floatingRegisters);
+    // Calls the shared entry without changing an allocatable register. On return, SP addresses the complete deopt
+    // snapshot and the existing DeoptHandlerAsm common arguments are prepared. The target must then add its DeoptId
+    // and issue CallPreparedArkSteedDeoptHandler so the handler return PC remains local to the current MachineCode.
+    void CallArkSteedEagerDeoptEntry();
+    // Tail-branches to the shared entry from a function-local thunk. The target's call to the thunk supplies the
+    // continuation consumed by the shared entry, so this must not create another return address.
+    void JumpToArkSteedEagerDeoptEntry();
+    void CallPreparedArkSteedDeoptHandler(DeoptId deoptId);
     void Nop();
 
     // =========================================================================

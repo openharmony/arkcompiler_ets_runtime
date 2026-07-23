@@ -28,15 +28,18 @@
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedSafepointTableBuilder;
+class DeoptTranslationBuilder;
 class GapMoveResolver;
 
 class ArkSteedCodeGenerator {
 public:
     ArkSteedCodeGenerator(ArkSteedAssembler *assembler, Graph *graph,
-                          ArkSteedSafepointTableBuilder *safepointBuilder = nullptr)
+                          ArkSteedSafepointTableBuilder *safepointBuilder = nullptr,
+                          DeoptTranslationBuilder *translationBuilder = nullptr)
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
+          translationBuilder_(translationBuilder),
           eagerDeoptTargetsById_(graph->GetChunk()),
           eagerDeoptTargetsByVertex_(graph->GetChunk(), 0),
           blockColorAssignment_(graph->GetChunk()),
@@ -72,10 +75,10 @@ private:
 
     struct EagerDeoptTarget {
         Label label;
-        ArkSteedDeoptId deoptId;
+        DeoptId deoptId;
         uint32_t taggedDeoptSnapshotGeneralRegisters;
 
-        EagerDeoptTarget(ArkSteedDeoptId translationId, uint32_t taggedGeneralRegisters)
+        EagerDeoptTarget(DeoptId translationId, uint32_t taggedGeneralRegisters)
             : deoptId(translationId), taggedDeoptSnapshotGeneralRegisters(taggedGeneralRegisters)
         {}
     };
@@ -164,10 +167,9 @@ private:
     ArkSteedAssembler *assembler_;
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
+    DeoptTranslationBuilder *translationBuilder_;
     ChunkVector<EagerDeoptTarget *> eagerDeoptTargetsById_;
     ChunkUnorderedMap<const EagerDeoptimizableMixin *, EagerDeoptTarget *> eagerDeoptTargetsByVertex_;
-    ArkSteedRegList usedDeoptSnapshotGeneralRegisters_;
-    ArkDoubleRegList usedDeoptSnapshotFloatingRegisters_;
     const char *currentBlockColor_ = "";
     BB *currentLayoutNextBlock_ = nullptr;
 

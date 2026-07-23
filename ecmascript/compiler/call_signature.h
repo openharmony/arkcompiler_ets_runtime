@@ -534,6 +534,7 @@ private:
     V(SuperCallAndCheckToBaseline)              \
     V(CallThisRangeAndCheckToBaseline)          \
     V(ArkSteedCallEntry)                        \
+    V(ArkSteedEagerDeoptEntry)                  \
     V(SteedCallAndPushArgv)                     \
     V(SteedCallWithArgVAndPushArgv)             \
     V(GeneratorReEnterAsmInterp)                \

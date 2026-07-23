@@ -369,10 +369,10 @@ public:
     struct EagerDeoptFrameValue {
         VRegIDType vreg;
         ValueVertex *value;
-        ArkSteedDeoptValueKind valueKind;
+        DeoptTranslationKind valueKind;
         InputLocation sourceLocation;
 
-        EagerDeoptFrameValue(VRegIDType vregId, ValueVertex *frameValue, ArkSteedDeoptValueKind kind)
+        EagerDeoptFrameValue(VRegIDType vregId, ValueVertex *frameValue, DeoptTranslationKind kind)
             : vreg(vregId), value(frameValue), valueKind(kind)
         {}
     };
@@ -406,7 +406,7 @@ public:
         return eagerDeoptFrameState_[index].value;
     }
 
-    ArkSteedDeoptValueKind GetDeoptValueKind(uint32_t index) const
+    DeoptTranslationKind GetDeoptValueKind(uint32_t index) const
     {
         ASSERT(index < GetDeoptFrameValueCount());
         return eagerDeoptFrameState_[index].valueKind;

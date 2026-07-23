@@ -21,6 +21,7 @@
 #include <sstream>
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/arksteed/arksteed_write_barrier.h"
@@ -592,18 +593,16 @@ void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind cond
 Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
     ASSERT(safepointBuilder_ != nullptr);
+    ASSERT(translationBuilder_ != nullptr);
     auto vertexTarget = eagerDeoptTargetsByVertex_.find(vertex);
     if (vertexTarget != eagerDeoptTargetsByVertex_.end()) {
         return &vertexTarget->second->label;
     }
 
     uint32_t bytecodeOffset = vertex->GetBytecodeOffset();
-    auto translationInputs = BuildArkSteedDeoptTranslationInputs(assembler_, vertex);
+    auto translationInputs = BuildDeoptTranslationInputs(assembler_, vertex);
     uint32_t taggedDeoptSnapshotGeneralRegisters = GetTaggedDeoptSnapshotGeneralRegisters(translationInputs);
-    CollectUsedDeoptSnapshotRegisters(translationInputs, &usedDeoptSnapshotGeneralRegisters_,
-                                      &usedDeoptSnapshotFloatingRegisters_);
-    ArkSteedDeoptId deoptId =
-        safepointBuilder_->DefineArkSteedDeoptTranslation(bytecodeOffset, type, std::move(translationInputs));
+    DeoptId deoptId = translationBuilder_->AddTranslation(bytecodeOffset, type, std::move(translationInputs));
 
     EagerDeoptTarget *target = nullptr;
     if (deoptId.value < eagerDeoptTargetsById_.size()) {
@@ -637,41 +636,22 @@ void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
         return;
     }
 
-#ifndef NDEBUG
-    for (const EagerDeoptTarget *target : eagerDeoptTargetsById_) {
-        for (uint32_t registerCode = 0; registerCode < ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT;
-             ++registerCode) {
-            if ((target->taggedDeoptSnapshotGeneralRegisters & (1U << registerCode)) != 0) {
-                ASSERT(usedDeoptSnapshotGeneralRegisters_.Has(ArkSteedRegister::FromCode(registerCode)));
-            }
-        }
+    const bool useDeoptEntryThunk = eagerDeoptTargetsById_.size() > 1U;
+    Label deoptEntryThunk;
+    if (useDeoptEntryThunk) {
+        __ Bind(&deoptEntryThunk);
+        __ JumpToArkSteedEagerDeoptEntry();
     }
-#endif
-
-    Label snapshotSaver;
-    __ Bind(&snapshotSaver);
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Deopt snapshot used GP registers: " << usedDeoptSnapshotGeneralRegisters_.Dump();
-    LOG_COMPILER(DEBUG) << "Deopt snapshot used FP registers: " << usedDeoptSnapshotFloatingRegisters_.Dump();
-#endif
-#if defined(PANDA_TARGET_AMD64)
-    ASSERT(!usedDeoptSnapshotGeneralRegisters_.Has(X64_SCRATCH_REGISTER));
-    __ Pop(X64_SCRATCH_REGISTER);
-    __ SaveArkSteedDeoptSnapshot(usedDeoptSnapshotGeneralRegisters_, usedDeoptSnapshotFloatingRegisters_);
-    __ PrepareArkSteedDeoptHandlerCall();
-    __ Jump(X64_SCRATCH_REGISTER);
-#elif defined(PANDA_TARGET_ARM64)
-    __ SaveArkSteedDeoptSnapshot(usedDeoptSnapshotGeneralRegisters_, usedDeoptSnapshotFloatingRegisters_);
-    __ PrepareArkSteedDeoptHandlerCall();
-    __ Return();
-    __ CheckVeneerPool(false);
-#endif
 
     for (size_t index = 0; index < eagerDeoptTargetsById_.size(); ++index) {
         EagerDeoptTarget *target = eagerDeoptTargetsById_[index];
         ASSERT(target->deoptId.value == static_cast<uint32_t>(index));
         __ Bind(&target->label);
-        __ Call(&snapshotSaver);
+        if (useDeoptEntryThunk) {
+            __ Call(&deoptEntryThunk);
+        } else {
+            __ CallArkSteedEagerDeoptEntry();
+        }
         __ CallPreparedArkSteedDeoptHandler(target->deoptId);
         auto safepoint = safepointBuilder_->DefineSafepoint(__ GetPcOffset());
         safepoint.SetNumExtraSpillSlots(ARKSTEED_DEOPT_SNAPSHOT_SIZE / sizeof(uintptr_t));

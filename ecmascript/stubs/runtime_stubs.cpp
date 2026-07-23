@@ -3997,7 +3997,7 @@ DEF_RUNTIME_STUBS(DeoptHandler)
             LOG_FULL(FATAL) << "invalid ArkSteed deopt id";
             UNREACHABLE();
         }
-        arksteed::ArkSteedDeoptId deoptId {static_cast<uint32_t>(deoptIdValue.GetInt())};
+        arksteed::DeoptId deoptId {static_cast<uint32_t>(deoptIdValue.GetInt())};
         JSTaggedType arkSteedResult = JSTaggedValue::Undefined().GetRawData();
         if (!arksteed::HandleArkSteedDeopt(thread, deoptId, &arkSteedResult)) {
             LOG_FULL(FATAL) << "failed to materialize ArkSteed deopt translation " << deoptId.value;

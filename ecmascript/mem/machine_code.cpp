@@ -14,6 +14,10 @@
  */
 
 #include "ecmascript/mem/machine_code.h"
+
+#include <cstring>
+#include <limits>
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/jit/jit.h"
@@ -291,6 +295,12 @@ bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
         }
     }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    if (!SetArkSteedTranslationData(desc)) {
+        return false;
+    }
+#endif
+
     // Set frame info from FuncEntryDes at funcEntryDesAddr
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(desc.funcEntryDesAddr);
     SetFuncAddr(reinterpret_cast<uintptr_t>(textStart));
@@ -313,6 +323,44 @@ bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
     }
     return true;
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+bool MachineCode::SetArkSteedTranslationData(const MachineCodeDesc &desc)
+{
+    ASSERT(desc.arkSteedTranslationSize <= std::numeric_limits<uint32_t>::max());
+    ASSERT((desc.arkSteedTranslationSize == 0) == (desc.arkSteedTranslationAddr == 0));
+
+    uint32_t translationSize = static_cast<uint32_t>(desc.arkSteedTranslationSize);
+    size_t translationSizeAlign = AlignUp(translationSize, DATA_ALIGN);
+    uint8_t *infoAddress = GetHeapConstantTableAddress() + GetHeapConstantTableSize();
+    uint8_t *translationAddress = infoAddress + ARKSTEED_TRANSLATION_INFO_SIZE;
+
+    uint32_t translationOffset = 0;
+    if (translationSize > 0) {
+        uintptr_t offset = reinterpret_cast<uintptr_t>(translationAddress) - reinterpret_cast<uintptr_t>(this);
+        ASSERT(offset <= std::numeric_limits<uint32_t>::max());
+        translationOffset = static_cast<uint32_t>(offset);
+
+        if (memcpy_s(translationAddress, translationSizeAlign,
+                     reinterpret_cast<const void *>(desc.arkSteedTranslationAddr), translationSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy fail in copy ArkSteed deopt translation";
+            return false;
+        }
+        size_t paddingSize = translationSizeAlign - translationSize;
+        if (paddingSize > 0 &&
+            memset_s(translationAddress + translationSize, paddingSize, 0, paddingSize) != EOK) {
+            LOG_JIT(ERROR) << "memset fail in padding ArkSteed deopt translation";
+            return false;
+        }
+    }
+
+    ASSERT(IsAligned(reinterpret_cast<uintptr_t>(infoAddress), alignof(uint32_t)));
+    auto *translationInfo = reinterpret_cast<uint32_t *>(infoAddress);
+    translationInfo[0] = translationOffset;
+    translationInfo[1] = translationSize;
+    return true;
+}
+#endif
 
 bool MachineCode::IsInText(const uintptr_t pc) const
 {
@@ -364,6 +412,54 @@ uint8_t *MachineCode::GetHeapConstantTableAddress() const
 {
     return reinterpret_cast<uint8_t*>(GetStackMapOrOffsetTableAddress() + GetStackMapOrOffsetTableSize());
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+bool MachineCode::GetArkSteedTranslationData(const uint8_t **data, size_t *size) const
+{
+    if (data == nullptr || size == nullptr) {
+        return false;
+    }
+    *data = nullptr;
+    *size = 0;
+
+    uintptr_t objectStart = reinterpret_cast<uintptr_t>(this);
+    size_t objectSize = SIZE + GetPayLoadSizeInBytes();
+    if (objectSize < SIZE || objectStart > std::numeric_limits<uintptr_t>::max() - objectSize) {
+        return false;
+    }
+    uintptr_t objectEnd = objectStart + objectSize;
+    uintptr_t infoAddress = reinterpret_cast<uintptr_t>(GetHeapConstantTableAddress());
+    if (infoAddress > std::numeric_limits<uintptr_t>::max() - GetHeapConstantTableSize()) {
+        return false;
+    }
+    infoAddress += GetHeapConstantTableSize();
+    if (infoAddress < objectStart || infoAddress > objectEnd ||
+        ARKSTEED_TRANSLATION_INFO_SIZE > objectEnd - infoAddress) {
+        return false;
+    }
+
+    uint32_t translationOffset = 0;
+    uint32_t translationSize = 0;
+    std::memcpy(&translationOffset, reinterpret_cast<const void *>(infoAddress), sizeof(translationOffset));
+    std::memcpy(&translationSize, reinterpret_cast<const void *>(infoAddress + sizeof(translationOffset)),
+                sizeof(translationSize));
+    if (translationOffset == 0 || translationSize == 0) {
+        return false;
+    }
+    uintptr_t infoEnd = infoAddress + ARKSTEED_TRANSLATION_INFO_SIZE;
+    if (translationOffset > objectSize || translationSize > objectSize - translationOffset) {
+        return false;
+    }
+    uintptr_t translationAddress = objectStart + translationOffset;
+    if (translationAddress != infoEnd || translationAddress + translationSize > objectEnd) {
+        return false;
+    }
+
+    *data = reinterpret_cast<const uint8_t *>(translationAddress);
+    *size = translationSize;
+    return true;
+}
+#endif
 
 void MachineCode::ProcessMarkObject()
 {
