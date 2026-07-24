@@ -892,15 +892,6 @@ int32_t AotCompilerImpl::ChownAotFilesToBundle()
             return ERR_AOT_COMPILER_CHOWN_FAILED;
         }
     }
-    // chown the on-disk .an file: skip for STATIC_AOT / DYNAMIC_AOT to keep compiler_service ownership
-    auto parserType = argsHandler_->GetParserType();
-    if (parserType != AotParserType::STATIC_AOT && parserType != AotParserType::DYNAMIC_AOT) {
-        if (chown(anFilePath.c_str(), bundleUid, bundleGid) != 0) {
-            LOG_SA(ERROR) << "chown .an to bundle failed: " << anFilePath
-                << " uid=" << bundleUid << " gid=" << bundleGid << " errno=" << errno;
-            return ERR_AOT_COMPILER_CHOWN_FAILED;
-        }
-    }
     if (argsHandler_->IsDynamicAOT()) {
         std::string aiFilePath = GetAiFilePath(anFilePath);
         if (chown(aiFilePath.c_str(), bundleUid, bundleGid) != 0) {
