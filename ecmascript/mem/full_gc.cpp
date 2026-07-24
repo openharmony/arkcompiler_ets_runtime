@@ -274,6 +274,7 @@ void FullGC::UpdateWeakRoots()
         }
         return nullptr;
     };
+    heap_->GetEcmaVM()->GetJSThread()->IterateWeakRoots(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);

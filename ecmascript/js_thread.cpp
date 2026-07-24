@@ -555,15 +555,15 @@ size_t JSThread::GetGlobalHandleCount()
     return count;
 }
 
-void JSThread::IterateBuiltinHClassEntries(RootVisitor &visitor)
+void JSThread::IterateBuiltinHClassEntries(const WeakRootVisitor &visitor)
 {
     auto visit = [&visitor] (JSHClass *&cls) {
         if (cls == nullptr) {
             return;
         }
-        JSTaggedValue value(cls);
-        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&value)));
-        cls = JSHClass::Cast(value.GetTaggedObject());
+        TaggedObject *obj = cls;
+        TaggedObject *fwd = visitor(obj);
+        cls = reinterpret_cast<JSHClass *>(fwd);
     };
     for (size_t i = 0; i < BuiltinHClassEntries::N_ENTRIES; ++i) {
         auto &entry = glueData_.builtinHClassEntries_.entries[i];
@@ -575,13 +575,15 @@ void JSThread::IterateBuiltinHClassEntries(RootVisitor &visitor)
     }
 }
 
-void JSThread::IterateCtorHClassEntries(RootVisitor &visitor)
+void JSThread::IterateCtorHClassEntries(const WeakRootVisitor &visitor)
 {
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries;
     for (auto it : ctorHclassEntries_) {
-        JSTaggedValue value(it.first);
-        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&value)));
-        ctorHclassEntries.emplace(JSHClass::Cast(value.GetHeapObject()), it.second);
+        TaggedObject *obj = it.first;
+        TaggedObject *fwd = visitor(obj);
+        if (fwd != nullptr) {
+            ctorHclassEntries.emplace(JSHClass::Cast(fwd), it.second);
+        }
     }
     std::swap(ctorHclassEntries_, ctorHclassEntries);
 }
@@ -605,10 +607,6 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
     }
     visitor.VisitRangeRoot(Root::ROOT_VM,
         ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
-    if (visitType == GlobalVisitType::ALL_GLOBAL_VISIT) {
-        IterateBuiltinHClassEntries(visitor);
-        IterateCtorHClassEntries(visitor);
-    }
 
     // visit stack roots
     FrameHandler frameHandler(this);
@@ -799,6 +797,12 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKi
     } else {
         globalDebugStorage_->IterateWeakUsageGlobal(callBack);
     }
+}
+
+void JSThread::IterateWeakRoots(const WeakRootVisitor &visitor)
+{
+    IterateBuiltinHClassEntries(visitor);
+    IterateCtorHClassEntries(visitor);
 }
 
 void JSThread::UpdateJitCodeMapReference(const WeakRootVisitor &visitor)

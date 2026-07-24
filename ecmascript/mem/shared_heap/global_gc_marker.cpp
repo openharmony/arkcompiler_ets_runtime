@@ -40,6 +40,7 @@ void GlobalGCMarker::MarkRoots(Heap *heap, GlobalGCWorkNodeHolder *holder) const
         }
         return header;
     };
+    vm->GetJSThread()->IterateWeakRoots(markWeak);
     vm->GetJSThread()->IterateWeakEcmaGlobalStorage(markWeak);
     vm->ProcessReferences(markWeak);
     vm->ProcessSnapShotEnv(markWeak);

@@ -303,6 +303,7 @@ void SharedCC::ProcessWeakReference()
     Runtime::GetInstance()->ProcessSharedDelete(weakVisitor);
 
     Runtime::GetInstance()->GCIterateThreadList([weakVisitor](JSThread *thread) {
+        thread->IterateWeakRoots(weakVisitor);
         thread->IterateWeakEcmaGlobalStorage(weakVisitor, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(weakVisitor);
         thread->ClearVMCachedConstantPool();

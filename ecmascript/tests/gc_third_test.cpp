@@ -968,4 +968,17 @@ HWTEST_F_L0(GCTest, MemMapAllocatorAllocateFromMemPoolTest)
     ASSERT_TRUE(mem.GetSize() == testSize);
     delete allocator;
 }
+
+HWTEST_F_L0(GCTest, GlobalEnvTest)
+{
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    ObjectFactory *factory = heap->GetEcmaVM()->GetFactory();
+    {
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        JSHandle<GlobalEnv> env = factory->NewGlobalEnv();
+        heap->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+        ASSERT_TRUE(env.GetTaggedValue().IsJSGlobalEnv());
+    }
+    heap->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+}
 } // namespace panda::test
