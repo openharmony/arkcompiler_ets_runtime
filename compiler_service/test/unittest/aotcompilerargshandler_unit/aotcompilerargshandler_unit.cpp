@@ -192,8 +192,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
     int32_t bundleUid;
     int32_t bundleGid;
     argsHandler->GetBundleId(bundleUid, bundleGid);
-    EXPECT_EQ(bundleUid, OID_SYSTEM);
-    EXPECT_EQ(bundleGid, OID_SYSTEM);
+    EXPECT_EQ(bundleUid, static_cast<int32_t>(getuid()));
+    EXPECT_EQ(bundleGid, static_cast<int32_t>(getgid()));
     std::vector<const char*> argv = argsHandler->GetAotArgs();
     EXPECT_STREQ(argv[0], "/system/bin/ark_aot");
     for (const auto& arg : argv) {

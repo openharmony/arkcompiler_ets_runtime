@@ -776,10 +776,10 @@ int32_t StaticFrameworkAOTArgsParser::Parse(AotCompilerArgs &args, std::vector<s
     argVector.clear();
     argVector.emplace_back(STATIC_AOT_EXE);
 
-    // Override fields for framework compilation
+    // Keep framework AOT compilation under compiler_service ownership.
     args.appIdentifier = ArgsIdx::OWNERID_SHARED_TAG;
-    args.bundleUid = OID_SYSTEM;
-    args.bundleGid = OID_SYSTEM;
+    args.bundleUid = static_cast<int32_t>(getuid());
+    args.bundleGid = static_cast<int32_t>(getgid());
 
     for (auto &defaultArg : staticFrameworkAOTDefaultArgs) {
         argVector.emplace_back(defaultArg);

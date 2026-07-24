@@ -1463,6 +1463,25 @@ HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_081, TestSize.Level0)
 }
 
 /**
+* @tc.name: AotCompilerImplTest_082
+* @tc.desc: ChownAotFilesToBundle: framework static AOT does not chown .an files
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplFDTest, AotCompilerImplTest_082, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/nonexistent_test.an";
+    args.bundleUid = OID_SYSTEM;
+    args.bundleGid = OID_SYSTEM;
+    aotImplMock.SetAOTArgsHandler(std::make_unique<AOTArgsHandler>(args));
+
+    auto ret = aotImplMock.ChownAotFilesToBundleMock();
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
 * @tc.name: AotCompilerImplTest_083
 * @tc.desc: CompilationCleanupGuard: files do not exist — no crash on cleanup
 * @tc.type: Func
