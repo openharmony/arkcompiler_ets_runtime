@@ -31,6 +31,8 @@ namespace common {
 
 #define ENABLE_MEMORY_OPTIMIZATION 1
 
+#define ENABLE_MODULE_MEMORY_OPTIMIZATION 1
+
 #define ECMASCRIPT_ENABLE_TRACE_STRING_TABLE 0
 
 }  // namespace common

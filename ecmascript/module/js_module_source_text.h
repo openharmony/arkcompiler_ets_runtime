@@ -23,6 +23,10 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/sendable_env.h"
 
+namespace panda::test {
+class EcmaModuleTest;
+}
+
 namespace panda::ecmascript {
 using ResolvedMultiMap = CUnorderedMultiMap<CString *, JSHandle<JSTaggedValue>>;
 struct StateVisit;
@@ -516,12 +520,14 @@ private:
                                                          const JSHandle<SourceTextModule> module,
                                                          const int index);
 
-    static void ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module);
+    static void ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module);
+
+    static void ClearTopLevelCapabilityIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     static void EvaluateJsonModule(JSThread *thread, JSHandle<SourceTextModule> module,
                                    const JSPandaFile *jsPandaFile, CString recordName);
 
-    friend class EcmaModuleTest;
+    friend class panda::test::EcmaModuleTest;
     friend class SharedModuleManager;
 };
 
