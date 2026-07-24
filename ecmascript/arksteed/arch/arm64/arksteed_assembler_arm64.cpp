@@ -16,6 +16,9 @@
 #include <sstream>
 
 #include "ecmascript/arksteed/arch/arm64/arksteed_assembler_arm64-inl.h"
+
+#include <limits>
+
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/base/bit_helper.h"
@@ -182,6 +185,49 @@ void ArkSteedAssembler::StoreFloat64Constant(MemoryOperand dstOp, double immedia
     MoveRepr(MachineRepresentation::Word64, dstOp, scratchGPR);
 }
 
+void ArkSteedAssembler::SaveArkSteedDeoptSnapshot(ArkSteedRegList generalRegisters,
+                                                  ArkDoubleRegList floatingRegisters)
+{
+    assembler_.Sub(aarch64::sp, aarch64::sp, aarch64::Operand(aarch64::Immediate(ARKSTEED_DEOPT_SNAPSHOT_SIZE)));
+    for (ArkSteedRegister reg : generalRegisters) {
+        int32_t offset = GetArkSteedDeoptGeneralSnapshotOffset(reg.Code());
+        ASSERT(offset >= 0);
+        assembler_.Str(reg, aarch64::MemoryOperand(aarch64::sp, offset, aarch64::AddrMode::OFFSET));
+    }
+    for (ArkSteedDoubleRegister reg : floatingRegisters) {
+        int32_t offset = GetArkSteedDeoptFloatingSnapshotOffset(reg.Code());
+        ASSERT(offset >= 0);
+        assembler_.Str(reg, aarch64::MemoryOperand(aarch64::sp, offset, aarch64::AddrMode::OFFSET));
+    }
+}
+
+void ArkSteedAssembler::PrepareArkSteedDeoptHandlerCall()
+{
+    ASSERT(entryThread_ != nullptr);
+    Address address = entryThread_->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+    Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+    Move(aarch64::x1, ARKSTEED_DEOPT_DISPATCH_MARKER);
+    Move(aarch64::x2, JSTaggedValue(0).GetRawData());
+    Move(aarch64::x3, static_cast<uint64_t>(address));
+}
+
+void ArkSteedAssembler::CallPreparedArkSteedDeoptHandler(ArkSteedDeoptId deoptId)
+{
+    ASSERT(deoptId.value <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+    if (deoptId.value != 0) {
+        constexpr uint32_t maxAddImmediate = (1U << 12U) - 1U;
+        if (deoptId.value <= maxAddImmediate) {
+            Add(aarch64::x2, static_cast<int32_t>(deoptId.value));
+        } else {
+            TemporaryRegisterScope scope(this);
+            ArkSteedRegister scratch = scope.AcquireScratch();
+            Move(scratch, static_cast<uint64_t>(deoptId.value));
+            Add(aarch64::x2, scratch);
+        }
+    }
+    Call(aarch64::x3);
+}
+
 // =============================================================================
 // Arithmetic Operations
 // =============================================================================
@@ -223,14 +269,14 @@ void ArkSteedAssembler::SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedReg
     assembler_.Add(dst, aarch64::xzr, aarch64::Operand(src.W(), aarch64::Extend::SXTW));
 }
 
-void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister src)
+void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right)
 {
-    assembler_.Adds(dst.W(), dst.W(), aarch64::Operand(src.W()));
+    assembler_.Adds(dst.W(), left.W(), aarch64::Operand(right.W()));
 }
 
-void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister src)
+void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right)
 {
-    assembler_.Subs(dst.W(), dst.W(), aarch64::Operand(src.W()));
+    assembler_.Subs(dst.W(), left.W(), aarch64::Operand(right.W()));
 }
 
 void ArkSteedAssembler::Int32Mul(ArkSteedRegister dst, ArkSteedRegister src)
@@ -394,19 +440,19 @@ void ArkSteedAssembler::MoveBitMask32(ArkSteedRegister dst, ArkSteedRegister bit
     assembler_.Lsl(dst.W(), dst.W(), bitIndex.W());
 }
 
-void ArkSteedAssembler::Int32Neg(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32Neg(ArkSteedRegister dst, ArkSteedRegister src)
 {
-    assembler_.Subs(dst.W(), aarch64::wzr, aarch64::Operand(dst.W()));
+    assembler_.Subs(dst.W(), aarch64::wzr, aarch64::Operand(src.W()));
 }
 
-void ArkSteedAssembler::Int32Inc(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32Inc(ArkSteedRegister dst, ArkSteedRegister src)
 {
-    assembler_.Adds(dst.W(), dst.W(), aarch64::Operand(aarch64::Immediate(1)));
+    assembler_.Adds(dst.W(), src.W(), aarch64::Operand(aarch64::Immediate(1)));
 }
 
-void ArkSteedAssembler::Int32Dec(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32Dec(ArkSteedRegister dst, ArkSteedRegister src)
 {
-    assembler_.Subs(dst.W(), dst.W(), aarch64::Operand(aarch64::Immediate(1)));
+    assembler_.Subs(dst.W(), src.W(), aarch64::Operand(aarch64::Immediate(1)));
 }
 
 void ArkSteedAssembler::Int32BNot(ArkSteedRegister dst)
@@ -655,6 +701,11 @@ void ArkSteedAssembler::Call(ArkSteedRegister target)
 void ArkSteedAssembler::Call(Label *target)
 {
     assembler_.Bl(target);
+}
+
+void ArkSteedAssembler::Nop()
+{
+    assembler_.EmitU32(aarch64::Nop);
 }
 
 void ArkSteedAssembler::Return()

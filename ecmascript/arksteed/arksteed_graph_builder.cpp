@@ -500,7 +500,9 @@ void GraphBuilder::InitializeStartBlock(SharedBCFrameState frameState)
 
     blocks_[0] = BB::New(chunk_);
     // caller argument area (in fp-slot words): +2 argc, +3 call-target, +4 new-target, +5 this, +6... user args.
+    const int32_t ACTUAL_ARGC_FP_SLOT_INDEX = 2;
     const int32_t CALL_TARGET_FP_SLOT_INDEX = 3;
+    initialActualArgc_ = NewVertex<InitialValueVertex>(blocks_[0], {}, ACTUAL_ARGC_FP_SLOT_INDEX);
     for (uint32_t i = 0, n = numParams_; i < n; i++) {
         int32_t slotIndex = static_cast<int32_t>(i + CALL_TARGET_FP_SLOT_INDEX);
         auto *v = NewVertex<InitialValueVertex>(blocks_[0], {}, slotIndex);
@@ -3408,10 +3410,12 @@ struct GraphBuilder::BytecodeVisitor {
                 case ValueRepresentation::TAGGED:
                     return value;
                 case ValueRepresentation::INT32:
-                    return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
+                    return self->NewVertex<I32ToTaggedIntVertex>(
+                        compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value});
                 case ValueRepresentation::FLOAT64:
                 case ValueRepresentation::HOLEY_FLOAT64:
-                    return self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
+                    return self->NewVertex<F64ToTaggedDoubleVertex>(
+                        compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value});
                 case ValueRepresentation::UINT32:
                 case ValueRepresentation::INT64:
                 case ValueRepresentation::NONE:
@@ -3451,6 +3455,66 @@ struct GraphBuilder::BytecodeVisitor {
         uint32_t firstDeoptInputIndex = static_cast<uint32_t>(inputs->size());
         BuildCurrentFrameStateForDeopt(currentBcIndex, inputs, vregIds);
         return firstDeoptInputIndex;
+    }
+
+    using EagerDeoptFrameState = EagerDeoptimizableMixin::EagerDeoptFrameState;
+
+    void BuildCurrentFrameStateForDeopt(uint32_t bcIndex, EagerDeoptFrameState *frameStateValues)
+    {
+        ASSERT(frameStateValues != nullptr);
+        auto getDeoptValueKind = [](ValueVertex *value) {
+            switch (value->GetValueRepresentation()) {
+                case ValueRepresentation::TAGGED:
+                    return ArkSteedDeoptValueKind::TAGGED;
+                case ValueRepresentation::INT32:
+                    return ArkSteedDeoptValueKind::INT32_TO_TAGGED;
+                case ValueRepresentation::FLOAT64:
+                case ValueRepresentation::HOLEY_FLOAT64:
+                    return ArkSteedDeoptValueKind::FLOAT64_TO_TAGGED_DOUBLE;
+                case ValueRepresentation::UINT32:
+                case ValueRepresentation::INT64:
+                case ValueRepresentation::NONE:
+                    break;
+            }
+            UNREACHABLE();
+        };
+        auto add = [&](int32_t id, ValueVertex *value) {
+            ValueVertex *frameValue = value == nullptr ? self->undefinedValue_ : value;
+            frameStateValues->emplace_back(id, frameValue, getDeoptValueKind(frameValue));
+        };
+        auto addRaw = [&](int32_t id, ValueVertex *value) {
+            ASSERT(value != nullptr);
+            frameStateValues->emplace_back(id, value, ArkSteedDeoptValueKind::RAW_INT32);
+        };
+        auto addInt32ToTagged = [&](int32_t id, ValueVertex *value) {
+            ASSERT(value != nullptr);
+            frameStateValues->emplace_back(id, value, ArkSteedDeoptValueKind::INT32_TO_TAGGED);
+        };
+
+        add(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX), LoadParam(CALL_TARGET_PARAM_INDEX));
+        add(static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX), LoadParam(NEW_TARGET_PARAM_INDEX));
+        add(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX), LoadParam(THIS_OBJECT_PARAM_INDEX));
+        ValueVertex *lexicalEnv = frameState.GetLexicalEnv();
+        add(static_cast<int32_t>(SpecVregIndex::ENV_INDEX),
+            lexicalEnv == self->initialLexicalEnv_ ? self->undefinedValue_ : lexicalEnv);
+        add(static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        addInt32ToTagged(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), self->initialActualArgc_);
+        addRaw(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
+               self->graph_->GetInt32Constant(static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex))));
+
+        for (VRegIDType index = 0; index < self->numLocal_; index++) {
+            add(static_cast<int32_t>(VRegOfLocal(index)), frameState.Get(VRegOfLocal(index)));
+        }
+        for (VRegIDType index = 0; index < self->numParams_; index++) {
+            add(static_cast<int32_t>(VRegOfParam(self->numLocal_, index)), LoadParam(index));
+        }
+    }
+
+    EagerDeoptFrameState BuildCurrentEagerDeoptFrameState(uint32_t bcIndex)
+    {
+        EagerDeoptFrameState frameStateValues {self->chunk_};
+        BuildCurrentFrameStateForDeopt(bcIndex, &frameStateValues);
+        return frameStateValues;
     }
 
     std::optional<int32_t> TryGetInt32Value(ValueVertex *value) const
@@ -3508,14 +3572,10 @@ struct GraphBuilder::BytecodeVisitor {
             return alternative;
         }
         std::vector<ValueVertex *> inputs {value};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        ValueVertex *i32 = self->NewVertex<CheckedTaggedIntToI32Vertex>(currentBlock, inputs, std::move(deoptData));
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *i32 = self->NewVertex<CheckedTaggedIntToI32Vertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        i32->Cast<CheckedTaggedIntToI32Vertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::INT32, i32);
         return i32;
@@ -3527,14 +3587,10 @@ struct GraphBuilder::BytecodeVisitor {
             return value;
         }
         std::vector<ValueVertex *> inputs {value};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        ValueVertex *checked = self->NewVertex<CheckedTaggedStringVertex>(currentBlock, inputs, std::move(deoptData));
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *checked = self->NewVertex<CheckedTaggedStringVertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        checked->Cast<CheckedTaggedStringVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::STRING);
         compileInfoFacts_->EnsureType(checked, NodeInfo::NodeType::STRING);
         return checked;
@@ -3543,14 +3599,10 @@ struct GraphBuilder::BytecodeVisitor {
     void BuildDeoptIfNotNumber(ValueVertex *value)
     {
         std::vector<ValueVertex *> inputs {value};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = DeoptIfNotNumberVertex::FIRST_DEOPT_INDEX,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        self->NewVertex<DeoptIfNotNumberVertex>(currentBlock, inputs, std::move(deoptData));
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfNotNumberVertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
     ValueVertex *BuildNumberToString(ValueVertex *value)
@@ -3621,24 +3673,38 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildI32BinOpWithOverflow(BinaryOpKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
         switch (kind) {
-            case BinaryOpKind::ADD:
-                return self->NewVertex<I32AddWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
-            case BinaryOpKind::SUB:
-                return self->NewVertex<I32SubWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
-            case BinaryOpKind::MUL:
-                return self->NewVertex<I32MulWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
-            case BinaryOpKind::DIV:
-                return self->NewVertex<I32DivWithOverflowVertex>(currentBlock, inputs, std::move(deoptData));
-            case BinaryOpKind::MOD:
-                return self->NewVertex<CheckedI32ModVertex>(currentBlock, inputs, std::move(deoptData));
+            case BinaryOpKind::ADD: {
+                ValueVertex *result = self->NewVertex<I32AddWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32AddWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::SUB: {
+                ValueVertex *result = self->NewVertex<I32SubWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32SubWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::MUL: {
+                ValueVertex *result = self->NewVertex<I32MulWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32MulWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::DIV: {
+                ValueVertex *result = self->NewVertex<I32DivWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32DivWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::MOD: {
+                ValueVertex *result = self->NewVertex<CheckedI32ModVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<CheckedI32ModVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
             default:
                 return nullptr;
         }
@@ -3709,15 +3775,11 @@ struct GraphBuilder::BytecodeVisitor {
         SignedDivisorMagic magic = ComputeSignedDivisorMagic(divisor);
         ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
         std::vector<ValueVertex *> inputs {leftI32};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
         ValueVertex *rawResult = self->NewVertex<I32DivByConstWithCheckVertex>(
-            currentBlock, inputs, std::move(deoptData), divisor, magic.magic, magic.shift);
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex),
+            divisor, magic.magic, magic.shift);
+        rawResult->Cast<I32DivByConstWithCheckVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         return BuildTaggedI32Result(rawResult);
     }
 
@@ -3725,15 +3787,11 @@ struct GraphBuilder::BytecodeVisitor {
                                     kungfu::DeoptType deoptType)
     {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
         self->NewVertex<DeoptIfInt32ConditionVertex>(
-            currentBlock, inputs, std::move(deoptData), condition, deoptType);
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
+            deoptType)
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
     ValueVertex *BuildTaggedIntConstant(int32_t value)
@@ -3965,14 +4023,10 @@ struct GraphBuilder::BytecodeVisitor {
             return f64;
         }
         std::vector<ValueVertex *> inputs {value};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(currentBlock, inputs, std::move(deoptData));
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        f64->Cast<CheckedNumberToF64Vertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::NUMBER);
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
         return f64;
@@ -4072,15 +4126,10 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildCheckedNonNegativeI32ToTaggedInt(ValueVertex *rawResult)
     {
         std::vector<ValueVertex *> inputs {rawResult};
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
         ValueVertex *tagged = self->NewVertex<CheckedNonNegativeI32ToTaggedIntVertex>(
-            currentBlock, inputs, std::move(deoptData));
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        tagged->Cast<CheckedNonNegativeI32ToTaggedIntVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->EnsureType(tagged, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(tagged, AlternativeNodes::Kind::INT32, rawResult);
         return tagged;
@@ -4679,47 +4728,28 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildIntUnaryOp(CommonStubID stubId, ValueVertex *value, bool valueKnownInt)
     {
         ValueVertex *valueI32 = valueKnownInt ? BuildTaggedIntToI32(value) : BuildCheckedTaggedIntToI32(value);
-        auto buildUnaryInputs = [this, valueI32](ChunkVector<VRegIDType> *deoptVRegs) {
-            std::vector<ValueVertex *> inputs {valueI32};
-            AppendCurrentFrameStateForDeopt(&inputs, deoptVRegs);
-            return inputs;
-        };
+        std::vector<ValueVertex *> inputs {valueI32};
 
         switch (stubId) {
             case CommonStubID::Inc: {
-                ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-                std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
-                DeoptMetadata deoptData{
-                    .deoptVRegs = std::move(deoptVRegs),
-                    .firstDeoptInputIndex = I32IncWithOverflowVertex::FIRST_DEOPT_INDEX,
-                    .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-                };
+                EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
                 ValueVertex *rawResult = self->NewVertex<I32IncWithOverflowVertex>(
-                    currentBlock, inputs, std::move(deoptData));
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                rawResult->Cast<I32IncWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Dec: {
-                ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-                std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
-                DeoptMetadata deoptData{
-                    .deoptVRegs = std::move(deoptVRegs),
-                    .firstDeoptInputIndex = I32DecWithOverflowVertex::FIRST_DEOPT_INDEX,
-                    .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-                };
+                EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
                 ValueVertex *rawResult = self->NewVertex<I32DecWithOverflowVertex>(
-                    currentBlock, inputs, std::move(deoptData));
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                rawResult->Cast<I32DecWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Neg: {
-                ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-                std::vector<ValueVertex *> inputs = buildUnaryInputs(&deoptVRegs);
-                DeoptMetadata deoptData{
-                    .deoptVRegs = std::move(deoptVRegs),
-                    .firstDeoptInputIndex = I32NegWithOverflowVertex::FIRST_DEOPT_INDEX,
-                    .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-                };
+                EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
                 ValueVertex *rawResult = self->NewVertex<I32NegWithOverflowVertex>(
-                    currentBlock, inputs, std::move(deoptData));
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                rawResult->Cast<I32NegWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Not: {
@@ -4942,14 +4972,10 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         std::vector<ValueVertex *> checkInputs {object};
-        ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
-        BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = DeoptIfHClassMismatchVertex::RECEIVER_INDEX + 1,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
-        };
-        self->NewVertex<DeoptIfHClassMismatchVertex>(currentBlock, checkInputs, hclass, std::move(deoptData));
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        self->NewVertex<DeoptIfHClassMismatchVertex>(
+            currentBlock, checkInputs, self->chunk_, hclass, self->preproc_->GetBytecodeOffset(bcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->RecordHClass(object, hclass, kungfu::StableHClassDependency::IsValid(hclass));
         return true;
     }
@@ -4998,16 +5024,10 @@ struct GraphBuilder::BytecodeVisitor {
         })) {
             return false;
         }
-        std::vector<ValueVertex *> checkInputs {object};
-        ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
-        BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = DeoptIfHClassNotInVertex::RECEIVER_INDEX + 1,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
-        };
-        self->NewVertex<DeoptIfHClassNotInVertex>(
-            currentBlock, checkInputs, hclasses, std::move(deoptData));
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        auto *check = self->NewVertex<DeoptIfHClassNotInVertex>(
+            currentBlock, {object}, self->chunk_, hclasses, self->preproc_->GetBytecodeOffset(bcIndex));
+        check->Cast<DeoptIfHClassNotInVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->RecordPossibleHClasses(object, hclasses, allStable);
         return true;
     }
@@ -5021,20 +5041,19 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
 
-        std::vector<ValueVertex *> checkInputs {object};
-        ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
-        BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = DeoptIfHClassMismatchVertex::RECEIVER_INDEX + 1,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
-        };
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
         if (hclasses.size() == 1) {
-            self->NewVertex<DeoptIfHClassMismatchVertex>(
-                currentBlock, checkInputs, hclasses.front(), std::move(deoptData));
+            auto *check = self->NewVertex<DeoptIfHClassMismatchVertex>(
+                currentBlock, {object}, self->chunk_, hclasses.front(),
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            check->Cast<DeoptIfHClassMismatchVertex>()->SetEagerDeoptFrameState(
+                std::move(deoptFrameState));
         } else {
-            self->NewVertex<DeoptIfHClassNotInVertex>(
-                currentBlock, checkInputs, hclasses, std::move(deoptData));
+            auto *check = self->NewVertex<DeoptIfHClassNotInVertex>(
+                currentBlock, {object}, self->chunk_, hclasses,
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            check->Cast<DeoptIfHClassNotInVertex>()->SetEagerDeoptFrameState(
+                std::move(deoptFrameState));
         }
         compileInfoFacts_->RecordPossibleHClasses(object, hclasses, false);
         return true;
@@ -5114,18 +5133,12 @@ struct GraphBuilder::BytecodeVisitor {
 
         ValueVertex *loadSource = object;
         if (accessInfo.holderDepth != 0) {
-            std::vector<ValueVertex *> checkInputs {object};
-            ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
-            BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
-            DeoptMetadata deoptData{
-                .deoptVRegs = std::move(deoptVRegs),
-                .firstDeoptInputIndex = LoadPrototypeHolderByHClassVertex::RECEIVER_INDEX + 1,
-                .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
-            };
+            EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
             loadSource = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
-                compileInfoFacts_, currentBlock, checkInputs, accessInfo.holderHClass,
+                compileInfoFacts_, currentBlock, {object}, self->chunk_, accessInfo.holderHClass,
                 accessInfo.expectedPrototypeHClasses, accessInfo.holderDepth,
-                std::move(deoptData));
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            loadSource->Cast<LoadPrototypeHolderByHClassVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         }
         ValueVertex *result = BuildLoadField(loadSource, accessInfo.plr);
         if (accessInfo.isConst) {
@@ -5143,18 +5156,13 @@ struct GraphBuilder::BytecodeVisitor {
         // enter the property cache or available-expression table and leak into another case.
         ValueVertex *loadSource = object;
         if (accessInfo.holderDepth != 0) {
-            std::vector<ValueVertex *> checkInputs {object};
-            ChunkVector<VRegIDType> deoptVRegs(self->chunk_);
-            BuildCurrentFrameStateForDeopt(bcIndex, &checkInputs, &deoptVRegs);
-            DeoptMetadata deoptData{
-                .deoptVRegs = std::move(deoptVRegs),
-                .firstDeoptInputIndex = LoadPrototypeHolderByHClassVertex::RECEIVER_INDEX + 1,
-                .bytecodeOffset = self->preproc_->GetBytecodeOffset(bcIndex),
-            };
+            EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
             loadSource = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
-                currentBlock, checkInputs, accessInfo.holderHClass,
+                currentBlock, {object}, self->chunk_, accessInfo.holderHClass,
                 accessInfo.expectedPrototypeHClasses, accessInfo.holderDepth,
-                std::move(deoptData));
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            loadSource->Cast<LoadPrototypeHolderByHClassVertex>()->SetEagerDeoptFrameState(
+                std::move(deoptFrameState));
         }
         return BuildLoadFieldWithoutCse(loadSource, accessInfo.plr);
     }

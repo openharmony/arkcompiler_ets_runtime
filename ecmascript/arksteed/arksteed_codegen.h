@@ -37,7 +37,7 @@ public:
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
-          eagerDeoptTargets_(graph->GetChunk()),
+          eagerDeoptTargetsById_(graph->GetChunk()),
           eagerDeoptTargetsByVertex_(graph->GetChunk(), 0),
           blockColorAssignment_(graph->GetChunk()),
           deferredCode_(graph->GetChunk())
@@ -72,39 +72,17 @@ private:
 
     struct EagerDeoptTarget {
         Label label;
-        uint32_t bytecodeOffset;
-        kungfu::DeoptType type;
-        std::vector<kungfu::ARKDeopt> deopts;
+        ArkSteedDeoptId deoptId;
+        uint32_t taggedDeoptSnapshotGeneralRegisters;
 
-        EagerDeoptTarget(uint32_t bcOffset, kungfu::DeoptType deoptType, std::vector<kungfu::ARKDeopt> deoptInfo)
-            : bytecodeOffset(bcOffset), type(deoptType), deopts(std::move(deoptInfo))
+        EagerDeoptTarget(ArkSteedDeoptId translationId, uint32_t taggedGeneralRegisters)
+            : deoptId(translationId), taggedDeoptSnapshotGeneralRegisters(taggedGeneralRegisters)
         {}
     };
 
-    Label *RecordEagerDeoptTargetImpl(const Vertex *vertex, const DeoptimizableMixin *frameState,
-                                      kungfu::DeoptType type);
-    void BranchToEagerDeoptTargetImpl(Condition condition, const Vertex *vertex,
-                                      const DeoptimizableMixin *frameState, kungfu::DeoptType type);
-    void EmitEagerDeoptExitImpl(const Vertex *vertex, const DeoptimizableMixin *frameState,
-                                kungfu::DeoptType type);
-    template <class VertexT>
-    Label *RecordEagerDeoptTarget(VertexT *vertex, kungfu::DeoptType type)
-    {
-        return RecordEagerDeoptTargetImpl(static_cast<const Vertex *>(vertex),
-                                          static_cast<const DeoptimizableMixin *>(vertex), type);
-    }
-    template <class VertexT>
-    void BranchToEagerDeoptTarget(Condition condition, VertexT *vertex, kungfu::DeoptType type)
-    {
-        BranchToEagerDeoptTargetImpl(condition, static_cast<const Vertex *>(vertex),
-                                     static_cast<const DeoptimizableMixin *>(vertex), type);
-    }
-    template <class VertexT>
-    void EmitEagerDeoptExit(VertexT *vertex, kungfu::DeoptType type)
-    {
-        EmitEagerDeoptExitImpl(static_cast<const Vertex *>(vertex),
-                               static_cast<const DeoptimizableMixin *>(vertex), type);
-    }
+    Label *RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
+    void BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
+    void EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
     void EmitQueuedEagerDeoptExits();
 
     int PrepareCommonStubStackArguments(const Vertex *callVertex, int argCount);
@@ -186,8 +164,10 @@ private:
     ArkSteedAssembler *assembler_;
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
-    ChunkVector<EagerDeoptTarget *> eagerDeoptTargets_;
-    ChunkUnorderedMap<const DeoptimizableMixin *, EagerDeoptTarget *> eagerDeoptTargetsByVertex_;
+    ChunkVector<EagerDeoptTarget *> eagerDeoptTargetsById_;
+    ChunkUnorderedMap<const EagerDeoptimizableMixin *, EagerDeoptTarget *> eagerDeoptTargetsByVertex_;
+    ArkSteedRegList usedDeoptSnapshotGeneralRegisters_;
+    ArkDoubleRegList usedDeoptSnapshotFloatingRegisters_;
     const char *currentBlockColor_ = "";
     BB *currentLayoutNextBlock_ = nullptr;
 

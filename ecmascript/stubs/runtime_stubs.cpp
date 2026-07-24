@@ -52,6 +52,9 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#endif
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -3986,7 +3989,24 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     RUNTIME_STUBS_HEADER(DeoptHandler);
     // deoptType must be tagged because maybe gc will happen, if not, gc will accidentally scan it as heap object.
     ASSERT(GetArg(argv, argc, 0).IsInt());
-    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
+    int32_t dispatch = GetArg(argv, argc, 0).GetInt();
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    if (dispatch == arksteed::ARKSTEED_DEOPT_DISPATCH_MARKER) {
+        JSTaggedValue deoptIdValue = GetArg(argv, argc, 1);
+        if (!deoptIdValue.IsInt() || deoptIdValue.GetInt() < 0) {
+            LOG_FULL(FATAL) << "invalid ArkSteed deopt id";
+            UNREACHABLE();
+        }
+        arksteed::ArkSteedDeoptId deoptId {static_cast<uint32_t>(deoptIdValue.GetInt())};
+        JSTaggedType arkSteedResult = JSTaggedValue::Undefined().GetRawData();
+        if (!arksteed::HandleArkSteedDeopt(thread, deoptId, &arkSteedResult)) {
+            LOG_FULL(FATAL) << "failed to materialize ArkSteed deopt translation " << deoptId.value;
+            UNREACHABLE();
+        }
+        return arkSteedResult;
+    }
+#endif
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(dispatch);
     JSHandle<JSTaggedValue> maybeAcc = GetHArg<JSTaggedValue>(argv, argc, 1);
     size_t depth = Deoptimizier::GetInlineDepth(thread, static_cast<uint32_t>(type));
     Deoptimizier deopt(thread, depth, type);

@@ -204,9 +204,6 @@ void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
     UseRegister(Arg(RECEIVER_INDEX));
-    for (uint32_t i = RECEIVER_INDEX + 1, n = GetInputCount(); i < n; i++) {
-        UseSlot(Arg(i));
-    }
 }
 
 void DeoptIfHClassMismatchVertex::Dump(std::ostream &output) const
@@ -220,7 +217,6 @@ void DeoptIfHClassNotInVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
     UseRegister(Arg(RECEIVER_INDEX));
-    UseDeoptFrameSlots(this, this);
 }
 
 void DeoptIfHClassNotInVertex::Dump(std::ostream &output) const
@@ -239,7 +235,6 @@ void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
-    UseDeoptFrameSlots(this, this);
 }
 
 void DeoptIfInt32ConditionVertex::Dump(std::ostream &output) const
@@ -251,7 +246,6 @@ void DeoptIfInt32ConditionVertex::Dump(std::ostream &output) const
 void DeoptIfNotNumberVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
-    UseDeoptFrameSlots(this, this);
     SetTemporariesNeeded(1);
 }
 
@@ -261,11 +255,7 @@ void DeoptIfNotNumberVertex::Dump(std::ostream &output) const
 }
 
 void DeoptVertex::SetValueLocationConstraints()
-{
-    for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
-        UseSlot(Arg(i));
-    }
-}
+{}
 
 void DeoptVertex::Dump(std::ostream &output) const
 {
@@ -355,7 +345,6 @@ void LoadPrototypeHolderByHClassVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(RECEIVER_INDEX));
-    UseDeoptFrameSlots(this, this);
     SetTemporariesNeeded(2);  // 2: current hclass and expected hclass
 }
 
@@ -506,7 +495,6 @@ void CheckedTaggedIntToI32Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-    UseDeoptFrameSlots(this, this);
     SetTemporariesNeeded(1);
 }
 
@@ -518,7 +506,6 @@ void CheckedTaggedIntToI32Vertex::Dump(std::ostream &output) const
 void CheckedTaggedStringVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(INPUT_INDEX));
-    UseDeoptFrameSlots(this, this);
     DefineSameAsFirst(this);
     SetTemporariesNeeded(2);
 }
@@ -590,8 +577,7 @@ void StringEqualVertex::Dump(std::ostream &output) const
 template <class VertexT>
 void VerifyI32BinaryDeoptInputs(const VertexT *vertex)
 {
-    ASSERT(vertex->FirstDeoptInputIndex() == VertexT::FIRST_DEOPT_INDEX);
-    ASSERT(vertex->GetInputCount() == vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount());
+    ASSERT(vertex->GetInputCount() == VertexT::INPUT_COUNT);
     ASSERT(vertex->GetInput(VertexT::LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     ASSERT(vertex->GetInput(VertexT::RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
 }
@@ -606,23 +592,29 @@ void I32SubWithOverflowVertex::VerifyI32BinOpInputs() const
     VerifyI32BinaryDeoptInputs(this);
 }
 
-#define DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Name, DumpName)          \
-    void I32##Name##WithOverflowVertex::SetValueLocationConstraints() \
-    {                                                                   \
-        UseRegister(Arg(LEFT_INDEX));                                   \
-        UseRegister(Arg(RIGHT_INDEX));                                  \
-        UseDeoptFrameSlots(this, this);                                \
-        DefineSameAsFirst(this);                                        \
-    }                                                                   \
-                                                                        \
+#if defined(PANDA_TARGET_AMD64)
+#define DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT() DefineSameAsFirst(this)
+#else
+#define DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT() DefineAsRegister(this)
+#endif
+
+#define DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Name, DumpName)           \
+    void I32##Name##WithOverflowVertex::SetValueLocationConstraints()  \
+    {                                                                  \
+        UseRegister(Arg(LEFT_INDEX));                                  \
+        UseRegister(Arg(RIGHT_INDEX));                                 \
+        DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT();                   \
+    }                                                                  \
+                                                                       \
     void I32##Name##WithOverflowVertex::Dump(std::ostream &output) const \
-    {                                                                   \
-        output << "  I32" DumpName "WithOverflow";                      \
+    {                                                                  \
+        output << "  I32" DumpName "WithOverflow";                     \
     }
 
 DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Add, "Add")
 DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Sub, "Sub")
 #undef DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS
+#undef DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT
 
 void I32MulWithOverflowVertex::VerifyI32BinOpInputs() const
 {
@@ -638,8 +630,11 @@ void I32MulWithOverflowVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
-    UseDeoptFrameSlots(this, this);
+#if defined(PANDA_TARGET_AMD64)
     DefineSameAsFirst(this);
+#else
+    DefineAsRegister(this);
+#endif
     SetTemporariesNeeded(1);
 }
 
@@ -661,7 +656,6 @@ void I32DivWithOverflowVertex::SetValueLocationConstraints()
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
 #endif
-    UseDeoptFrameSlots(this, this);
 }
 
 void I32DivWithOverflowVertex::Dump(std::ostream &output) const
@@ -683,7 +677,6 @@ void I32DivByConstWithCheckVertex::SetValueLocationConstraints()
     UseRegister(Arg(INPUT_INDEX));
     SetTemporariesNeeded(2);
 #endif
-    UseDeoptFrameSlots(this, this);
 }
 
 void I32DivByConstWithCheckVertex::Dump(std::ostream &output) const
@@ -760,7 +753,6 @@ void CheckedI32ModVertex::SetValueLocationConstraints()
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
 #endif
-    UseDeoptFrameSlots(this, this);
 }
 
 void CheckedI32ModVertex::Dump(std::ostream &output) const
@@ -794,7 +786,6 @@ void CheckedNonNegativeI32ToTaggedIntVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-    UseDeoptFrameSlots(this, this);
 }
 
 void CheckedNonNegativeI32ToTaggedIntVertex::Dump(std::ostream &output) const
@@ -816,8 +807,7 @@ void I32BNotVertex::Dump(std::ostream &output) const
 template <class VertexT>
 void VerifyI32UnaryDeoptInputs(const VertexT *vertex)
 {
-    ASSERT(vertex->FirstDeoptInputIndex() == VertexT::FIRST_DEOPT_INDEX);
-    ASSERT(vertex->GetInputCount() == vertex->FirstDeoptInputIndex() + vertex->DeoptInputCount());
+    ASSERT(vertex->GetInputCount() == VertexT::INPUT_COUNT);
     ASSERT(vertex->GetInput(VertexT::VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
 }
 
@@ -836,12 +826,17 @@ void I32DecWithOverflowVertex::VerifyI32UnaryOpInputs() const
     VerifyI32UnaryDeoptInputs(this);
 }
 
+#if defined(PANDA_TARGET_AMD64)
+#define DEFINE_I32_UNARY_WITH_OVERFLOW_RESULT_CONSTRAINT() DefineSameAsFirst(this)
+#else
+#define DEFINE_I32_UNARY_WITH_OVERFLOW_RESULT_CONSTRAINT() DefineAsRegister(this)
+#endif
+
 #define DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Name)     \
     void I32##Name##WithOverflowVertex::SetValueLocationConstraints() \
     {                                                         \
         UseRegister(Arg(VALUE_INDEX));                       \
-        UseDeoptFrameSlots(this, this);                      \
-        DefineSameAsFirst(this);                             \
+        DEFINE_I32_UNARY_WITH_OVERFLOW_RESULT_CONSTRAINT();  \
     }                                                         \
                                                               \
     void I32##Name##WithOverflowVertex::Dump(std::ostream &output) const \
@@ -853,6 +848,7 @@ DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Neg)
 DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Inc)
 DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Dec)
 #undef DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS
+#undef DEFINE_I32_UNARY_WITH_OVERFLOW_RESULT_CONSTRAINT
 
 void I32ToF64Vertex::SetValueLocationConstraints()
 {
@@ -869,7 +865,6 @@ void CheckedNumberToF64Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-    UseDeoptFrameSlots(this, this);
     SetTemporariesNeeded(2);
 }
 

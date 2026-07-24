@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_H
 #define ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_H
 
+#include <cstdint>
+
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
@@ -367,6 +369,8 @@ private:
     void AssignArbitraryRegisterInput(Vertex *resultVertex, const Input &input);
     void AssignAnyInput(const Input &input);
     void AssignInputs(Vertex *vertex);
+    void AssignEagerDeoptFrameSourceLocations(Vertex *vertex);
+    void AssignDeoptFrameSourceLocation(ValueVertex *value, InputLocation *sourceLocation);
 
     void AssignFixedTemporaries(Vertex *vertex);
     template <typename RegisterT>

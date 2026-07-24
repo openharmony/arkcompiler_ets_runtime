@@ -130,7 +130,6 @@ private:
 // - For unconditional jumps (Jump/JumpLoop): target block can have Phi vertices
 // =============================================================================
 
-// to do: handle deoptimization
 class LivenessProcessor {
 public:
     void PreProcessGraph(Graph *graph)
@@ -223,11 +222,24 @@ private:
         }
     }
 
+    template <typename T>
+    void MarkEagerDeoptUses(T *vertex)
+    {
+        if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, T> && T::PROPERTIES.CanEagerDeopt()) {
+            LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+            for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
+                MarkUse(vertex->GetDeoptFrameValue(index), vertex->GetId(), vertex->GetDeoptSourceLocation(index),
+                        loopUsedVertices);
+            }
+        }
+    }
+
 public:
     template <typename T>
     void MarkInputUses(T *vertex, const ArkSteedState &state)
     {
         MarkDirectInputUses(vertex, state);
+        MarkEagerDeoptUses(vertex);
         if constexpr (std::is_base_of_v<ThrowableMixin, T>) {
             MarkCatchPhiInputUses(vertex, state);
         }

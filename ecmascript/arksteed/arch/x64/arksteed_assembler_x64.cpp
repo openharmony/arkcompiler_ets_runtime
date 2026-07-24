@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/arksteed/arch/x64/arksteed_assembler_x64-inl.h"
+
+#include <limits>
+
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/base/bit_helper.h"
@@ -147,6 +150,41 @@ void ArkSteedAssembler::StoreFloat64Constant(MemoryOperand dstOp, double immedia
     assembler_.Movq(scratchGPR, dstOp);
 }
 
+void ArkSteedAssembler::SaveArkSteedDeoptSnapshot(ArkSteedRegList generalRegisters,
+                                                  ArkDoubleRegList floatingRegisters)
+{
+    assembler_.Subq(x64::Immediate(ARKSTEED_DEOPT_SNAPSHOT_SIZE), x64::rsp);
+    for (ArkSteedRegister reg : generalRegisters) {
+        int32_t offset = GetArkSteedDeoptGeneralSnapshotOffset(reg.Code());
+        ASSERT(offset >= 0);
+        assembler_.Movq(reg, x64::Operand(x64::rsp, offset));
+    }
+    for (ArkSteedDoubleRegister reg : floatingRegisters) {
+        int32_t offset = GetArkSteedDeoptFloatingSnapshotOffset(reg.Code());
+        ASSERT(offset >= 0);
+        assembler_.Movsd(x64::Operand(x64::rsp, offset), reg);
+    }
+}
+
+void ArkSteedAssembler::PrepareArkSteedDeoptHandlerCall()
+{
+    ASSERT(entryThread_ != nullptr);
+    Address address = entryThread_->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+    Move(x64::rdi, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
+    Move(x64::rsi, ARKSTEED_DEOPT_DISPATCH_MARKER);
+    Move(x64::rdx, JSTaggedValue(0).GetRawData());
+    Move(x64::r11, static_cast<uint64_t>(address));
+}
+
+void ArkSteedAssembler::CallPreparedArkSteedDeoptHandler(ArkSteedDeoptId deoptId)
+{
+    ASSERT(deoptId.value <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+    if (deoptId.value != 0) {
+        Add(x64::rdx, static_cast<int32_t>(deoptId.value));
+    }
+    Call(x64::r11);
+}
+
 // =============================================================================
 // Arithmetic Operations
 // =============================================================================
@@ -184,14 +222,16 @@ void ArkSteedAssembler::SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedReg
     assembler_.Movsxd(src, dst);
 }
 
-void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister src)
+void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right)
 {
-    assembler_.Addl(src, dst);
+    ASSERT(dst == left);
+    assembler_.Addl(right, dst);
 }
 
-void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister src)
+void ArkSteedAssembler::Int32Sub(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right)
 {
-    assembler_.Subl(src, dst);
+    ASSERT(dst == left);
+    assembler_.Subl(right, dst);
 }
 
 void ArkSteedAssembler::Int32Mul(ArkSteedRegister dst, ArkSteedRegister src)
@@ -302,18 +342,21 @@ void ArkSteedAssembler::Word64And(ArkSteedRegister dst, ArkSteedRegister src)
 // Bitwise Operations
 // =============================================================================
 
-void ArkSteedAssembler::Int32Neg(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32Neg(ArkSteedRegister dst, ArkSteedRegister src)
 {
+    ASSERT(dst == src);
     assembler_.Negl(dst);
 }
 
-void ArkSteedAssembler::Int32Inc(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32Inc(ArkSteedRegister dst, ArkSteedRegister src)
 {
+    ASSERT(dst == src);
     assembler_.Incl(dst);
 }
 
-void ArkSteedAssembler::Int32Dec(ArkSteedRegister dst)
+void ArkSteedAssembler::Int32Dec(ArkSteedRegister dst, ArkSteedRegister src)
 {
+    ASSERT(dst == src);
     assembler_.Decl(dst);
 }
 
@@ -489,6 +532,11 @@ void ArkSteedAssembler::Jump(Label *target)
     assembler_.Jmp(target);
 }
 
+void ArkSteedAssembler::Jump(ArkSteedRegister target)
+{
+    assembler_.Jmp(target);
+}
+
 void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 {
     switch (condition) {
@@ -650,6 +698,11 @@ void ArkSteedAssembler::Call(ArkSteedRegister target)
 void ArkSteedAssembler::Call(Label *target)
 {
     assembler_.Callq(target);
+}
+
+void ArkSteedAssembler::Nop()
+{
+    assembler_.EmitU8(0x90);
 }
 
 void ArkSteedAssembler::Return()

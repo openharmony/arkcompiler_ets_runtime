@@ -16,6 +16,9 @@
 #ifndef ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
 #define ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
 
+#include <utility>
+#include <vector>
+
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
@@ -26,6 +29,8 @@
 
 namespace panda::ecmascript {
 class JSThread;
+class FrameIterator;
+struct SteedFunctionFrame;
 enum class SpecVregIndex: int {
     INLINE_DEPTH = -1,  // INLINE_DEPTH wont be decoded, and put it here to
                         // avoiding confilict with the decoding of inlined frame args below
@@ -136,8 +141,10 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
+    void CollectSteedDeoptContext(FrameIterator &it, SteedFunctionFrame *frame, JSTaggedType *asmBridgeSp);
     void DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
+    void CollectMaterializedVregs(const std::vector<std::pair<VRegId, JSTaggedType>> &deoptValues, size_t shift);
     bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
     JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
     void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);

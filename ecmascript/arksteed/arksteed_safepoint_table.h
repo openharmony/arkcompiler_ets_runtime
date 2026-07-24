@@ -16,8 +16,11 @@
 #ifndef ECMASCRIPT_ARKSTEED_SAFEPOINT_TABLE_H
 #define ECMASCRIPT_ARKSTEED_SAFEPOINT_TABLE_H
 
+#include <unordered_map>
 #include <vector>
 
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#include "ecmascript/common.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript::arksteed {
@@ -35,18 +38,26 @@ enum class ExceptionHandlerKind : uint16_t {
 //     uint32_t numEntries
 //     uint32_t numTaggedSlots      (function-level, same for all safepoints)
 //     uint32_t numUntaggedSlots
-//     uint32_t reserved
+//     uint32_t extensionOffset     (relative to table start; 0 if absent)
 //   Entry[] (16 bytes each, sorted by pcOffset ascending):
 //     uint32_t pcOffset            (return address offset from code start)
-//     uint16_t numExtraSpillSlots  (extra pushed slots at this safepoint)
-//     uint16_t taggedRegisterIndexes (bitmap: which pushed regs are tagged)
+//     uint16_t extraSpillSlotsAndFlags
+//                              (low 13 bits: pushed stack slots; bits 13-14: exception handler kind;
+//                               high bit: deopt snapshot present)
+//     uint16_t taggedDeoptSnapshotGeneralRegistersLow
 //     uint32_t deoptOffset         (relative to the table start; 0 if absent)
 //     uint16_t deoptNum            (encoded pairs: <id, value>)
-//     uint16_t exceptionHandlerKind
+//     uint16_t taggedDeoptSnapshotGeneralRegistersHigh
+//   Optional extension header (16 bytes):
+//     uint32_t magic
+//     uint16_t version
+//     uint16_t flags
+//     uint32_t deoptTranslationOffset
+//     uint32_t deoptTranslationSize
 //
 // GC scanning:
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
-//   2. Per-safepoint: extra pushed registers marked as tagged in bitmap
+//   2. Per eager-deopt safepoint: tagged general-register values saved in the deopt snapshot
 //   3. Per-safepoint: outgoing stack arguments are roots until the call returns
 
 #pragma pack(1)
@@ -54,21 +65,66 @@ struct ArkSteedSafepointHeader {
     uint32_t numEntries;
     uint32_t numTaggedSlots;
     uint32_t numUntaggedSlots;
-    uint32_t reserved;
+    uint32_t extensionOffset;
 };
 
 struct ArkSteedSafepointEntry {
+    static constexpr uint16_t DEOPT_SNAPSHOT_FLAG = 1U << 15U;
+    static constexpr uint16_t EXCEPTION_HANDLER_KIND_SHIFT = 13U;
+    static constexpr uint16_t EXCEPTION_HANDLER_KIND_MASK = 0x6000U;
+    static constexpr uint16_t EXTRA_SPILL_SLOTS_MASK = 0x1FFFU;
+    static constexpr uint16_t ENTRY_FLAGS_MASK = DEOPT_SNAPSHOT_FLAG | EXCEPTION_HANDLER_KIND_MASK;
+
     uint32_t pcOffset;
-    uint16_t numExtraSpillSlots;
-    uint16_t taggedRegisterIndexes;
+    uint16_t extraSpillSlotsAndFlags;
+    uint16_t taggedDeoptSnapshotGeneralRegistersLow;
     uint32_t deoptOffset;
     uint16_t deoptNum;
-    uint16_t exceptionHandlerKind;
+    uint16_t taggedDeoptSnapshotGeneralRegistersHigh;
+
+    uint16_t GetNumExtraSpillSlots() const
+    {
+        return extraSpillSlotsAndFlags & EXTRA_SPILL_SLOTS_MASK;
+    }
+
+    bool HasDeoptSnapshot() const
+    {
+        return (extraSpillSlotsAndFlags & DEOPT_SNAPSHOT_FLAG) != 0;
+    }
+
+    ExceptionHandlerKind GetExceptionHandlerKind() const
+    {
+        uint16_t kind = static_cast<uint16_t>(
+            (extraSpillSlotsAndFlags & EXCEPTION_HANDLER_KIND_MASK) >> EXCEPTION_HANDLER_KIND_SHIFT);
+        ASSERT(kind <= static_cast<uint16_t>(ExceptionHandlerKind::LAZY_DEOPT));
+        return static_cast<ExceptionHandlerKind>(kind);
+    }
+
+    uint32_t GetTaggedDeoptSnapshotGeneralRegisters() const
+    {
+        return static_cast<uint32_t>(taggedDeoptSnapshotGeneralRegistersLow) |
+               (static_cast<uint32_t>(taggedDeoptSnapshotGeneralRegistersHigh) << 16U);
+    }
+};
+
+struct ArkSteedSafepointExtensionHeader {
+    uint32_t magic;
+    uint16_t version;
+    uint16_t flags;
+    uint32_t deoptTranslationOffset;
+    uint32_t deoptTranslationSize;
 };
 #pragma pack()
 
 static_assert(sizeof(ArkSteedSafepointHeader) == 16, "Header must be 16 bytes");  // 16: header size in bytes
 static_assert(sizeof(ArkSteedSafepointEntry) == 16, "Entry must be 16 bytes");  // 16: entry size in bytes
+static_assert(sizeof(ArkSteedSafepointExtensionHeader) == 16, "Extension header must be 16 bytes");
+
+constexpr uint32_t ARKSTEED_SAFEPOINT_EXTENSION_MAGIC = 0x44545341U;  // "ASTD" in little-endian byte order
+constexpr uint16_t ARKSTEED_SAFEPOINT_EXTENSION_VERSION = 1;
+constexpr uint16_t ARKSTEED_SAFEPOINT_EXTENSION_HAS_DEOPT_TRANSLATIONS = 1U << 0U;
+constexpr uint16_t ARKSTEED_SAFEPOINT_EXTENSION_KNOWN_FLAGS =
+    ARKSTEED_SAFEPOINT_EXTENSION_HAS_DEOPT_TRANSLATIONS;
 
 // ============================================================================
 // Builder — used during compilation to collect safepoint entries
@@ -80,14 +136,27 @@ public:
 
     class Safepoint {
     public:
-        void DefineTaggedRegister(int pushedRegIndex)
+        void DefineTaggedDeoptSnapshotGeneralRegister(uint32_t registerCode)
         {
-            entry_->taggedRegisterIndexes |= static_cast<uint16_t>(1u << pushedRegIndex);
+            ASSERT(GetArkSteedDeoptGeneralSnapshotOffset(registerCode) >= 0);
+            if (registerCode < 16U) {
+                entry_->taggedDeoptSnapshotGeneralRegistersLow |= static_cast<uint16_t>(1U << registerCode);
+                return;
+            }
+            entry_->taggedDeoptSnapshotGeneralRegistersHigh |= static_cast<uint16_t>(1U << (registerCode - 16U));
         }
 
-        void SetNumExtraSpillSlots(int count)
+        void SetNumExtraSpillSlots(uint32_t count)
         {
-            entry_->numExtraSpillSlots = static_cast<uint16_t>(count);
+            ASSERT(count <= ArkSteedSafepointEntry::EXTRA_SPILL_SLOTS_MASK);
+            entry_->extraSpillSlotsAndFlags =
+                static_cast<uint16_t>((entry_->extraSpillSlotsAndFlags & ArkSteedSafepointEntry::ENTRY_FLAGS_MASK) |
+                                      count);
+        }
+
+        void MarkDeoptSnapshot()
+        {
+            entry_->extraSpillSlotsAndFlags |= ArkSteedSafepointEntry::DEOPT_SNAPSHOT_FLAG;
         }
 
     private:
@@ -99,6 +168,8 @@ public:
     Safepoint DefineSafepoint(uint32_t pcOffset);
     void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts,
                               ExceptionHandlerKind exceptionHandlerKind = ExceptionHandlerKind::NONE);
+    ArkSteedDeoptId DefineArkSteedDeoptTranslation(uint32_t bytecodeOffset, kungfu::DeoptType type,
+                                                   std::vector<ArkSteedDeoptTranslationInput> inputs);
     void SetFrameSlots(uint32_t tagged, uint32_t untagged);
 
     size_t GetTableSize() const;
@@ -122,6 +193,8 @@ private:
     // removes the shared heap entirely and ties the side table's lifetime to the
     // builder, so corruption can no longer cross compile boundaries.
     std::vector<std::vector<kungfu::ARKDeopt>> deoptSideTable_;
+    std::vector<ArkSteedDeoptTranslation> deoptTranslations_;
+    std::unordered_multimap<uint64_t, ArkSteedDeoptId> deoptTranslationIndex_;
 };
 
 // ============================================================================
@@ -148,6 +221,7 @@ public:
     const ArkSteedSafepointEntry *FindEntry(uint32_t pcOffset) const;
     void GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const;
     ExceptionHandlerKind GetExceptionHandlerKind(uint32_t pcOffset) const;
+    bool GetArkSteedDeoptTranslation(ArkSteedDeoptId deoptId, ArkSteedDeoptTranslation *translation) const;
 
     bool IsValid() const
     {
@@ -155,6 +229,8 @@ public:
     }
 
 private:
+    bool IsRangeValid(size_t offset, size_t length) const;
+
     const ArkSteedSafepointHeader *header_ = nullptr;
     const ArkSteedSafepointEntry *entries_ = nullptr;
     const uint8_t *data_ = nullptr;

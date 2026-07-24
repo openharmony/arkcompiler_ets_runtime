@@ -167,6 +167,24 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
     }
 }
 
+void Deoptimizier::CollectMaterializedVregs(const std::vector<std::pair<VRegId, JSTaggedType>> &deoptValues,
+                                            size_t shift)
+{
+    deoptVregs_.clear();
+    for (const auto &[id, value] : deoptValues) {
+        if (static_cast<OffsetType>(id) == static_cast<OffsetType>(SpecVregIndex::INLINE_DEPTH)) {
+            continue;
+        }
+        size_t curDepth = DecodeDeoptDepth(id, shift);
+        OffsetType vregId = static_cast<OffsetType>(DecodeVregIndex(id, shift));
+        if (vregId != static_cast<OffsetType>(SpecVregIndex::PC_OFFSET_INDEX)) {
+            deoptVregs_.insert({{curDepth, vregId}, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(value))});
+        } else {
+            pc_.insert({curDepth, static_cast<size_t>(value)});
+        }
+    }
+}
+
 // when AOT trigger deopt, frame layout as the following
 // * OptimizedJSFunctionFrame layout description as the following:
 //               +--------------------------+ ---------------
@@ -312,6 +330,18 @@ void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
     stackContext_.returnAddr_ = frame->GetReturnAddr();
     stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
     stackContext_.isFrameLazyDeopt_ = it.IsLazyDeoptFrameType();
+}
+
+void Deoptimizier::CollectSteedDeoptContext(FrameIterator &it, SteedFunctionFrame *frame,
+                                            JSTaggedType *asmBridgeSp)
+{
+    auto sp = reinterpret_cast<uintptr_t *>(asmBridgeSp);
+    static constexpr size_t TYPE_GLUE_SLOT = 2;  // 2: skip type & glue
+    sp -= TYPE_GLUE_SLOT;
+    calleeRegAddr_ = sp - numCalleeRegs_;
+    AssistCollectDeoptBundleVec(it, frame);
+    JSTaggedValue jsFunction = it.GetFunction();
+    isRecursiveCall_ = IsRecursiveCall(it, jsFunction);
 }
 
 void Deoptimizier::DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress)

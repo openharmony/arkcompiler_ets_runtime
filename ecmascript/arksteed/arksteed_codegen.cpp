@@ -407,6 +407,20 @@ bool IsGapMoveVertex(Vertex *vertex)
     return vertex->Is<GapMoveVertex>() || vertex->Is<ConstantGapMoveVertex>();
 }
 
+#ifndef NDEBUG
+bool EagerDeoptUsesRegister(const EagerDeoptimizableMixin *vertex, ArkSteedRegister reg)
+{
+    for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
+        const InstructionOperand &operand = vertex->GetDeoptSourceLocation(index)->GetOperand();
+        ASSERT(operand.IsConstant() || operand.IsAllocated());
+        if (operand.IsRegister() && AllocatedState::Cast(operand).GetRegister() == reg) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 kungfu::ARKDeopt MakeConstantDeopt(int32_t id, int64_t value)
 {
     kungfu::ARKDeopt deopt;
@@ -449,8 +463,8 @@ int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
 void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *vertex, int inputIndex,
                       int32_t vregId, ArkSteedAssembler *assembler)
 {
-    const InputLocation *loc = vertex->GetInputLocation(inputIndex);
-    const InstructionOperand &operand = loc->GetOperand();
+    const InputLocation *location = vertex->GetInputLocation(inputIndex);
+    const InstructionOperand &operand = location->GetOperand();
     if (operand.IsConstant()) {
         deopts->emplace_back(MakeConstantDeopt(vregId, GetConstantForDeopt(vertex->GetInput(inputIndex), vregId)));
         return;
@@ -468,20 +482,8 @@ void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *verte
     deopts->emplace_back(deoptValue);
 }
 
-std::vector<kungfu::ARKDeopt> BuildUseSlotDeopts(ArkSteedAssembler *assembler, const Vertex *vertex,
-                                                 const DeoptimizableMixin *frameState)
-{
-    std::vector<kungfu::ARKDeopt> deopts;
-    deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    for (uint32_t index = 0; index < frameState->DeoptInputCount(); ++index) {
-        AppendDeoptInput(&deopts, vertex, frameState->DeoptInputIndex(index), frameState->GetDeoptVReg(index),
-                         assembler);
-    }
-    return deopts;
-}
-
 template <class CallVertexT>
-void EmitExceptionLazyDeoptSafepoint(ArkSteedAssembler *assembler_,
+void EmitExceptionLazyDeoptSafepoint(ArkSteedAssembler *assembler,
                                      ArkSteedSafepointTableBuilder *safepointBuilder,
                                      const CallVertexT *call)
 {
@@ -492,22 +494,10 @@ void EmitExceptionLazyDeoptSafepoint(ArkSteedAssembler *assembler_,
     std::vector<kungfu::ARKDeopt> deopts;
     deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
     for (uint32_t index = 0; index < call->DeoptInputCount(); ++index) {
-        AppendDeoptInput(&deopts, call, call->DeoptInputIndex(index), call->GetDeoptVReg(index), assembler_);
+        AppendDeoptInput(&deopts, call, call->DeoptInputIndex(index), call->GetDeoptVReg(index), assembler);
     }
-    safepointBuilder->DefineDeoptSafepoint(__ GetPcOffset(), std::move(deopts), ExceptionHandlerKind::LAZY_DEOPT);
-}
-
-bool DeoptPayloadEquals(const std::vector<kungfu::ARKDeopt> &lhs, const std::vector<kungfu::ARKDeopt> &rhs)
-{
-    if (lhs.size() != rhs.size()) {
-        return false;
-    }
-    for (size_t index = 0; index < lhs.size(); ++index) {
-        if (lhs[index].id != rhs[index].id || lhs[index].kind != rhs[index].kind || lhs[index].value != rhs[index].value) {
-            return false;
-        }
-    }
-    return true;
+    safepointBuilder->DefineDeoptSafepoint(
+        assembler->GetPcOffset(), std::move(deopts), ExceptionHandlerKind::LAZY_DEOPT);
 }
 
 Condition ConditionFromIntCondition(IntConditionKind condition)
@@ -599,65 +589,112 @@ void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind cond
 }
 }  // namespace
 
-Label *ArkSteedCodeGenerator::RecordEagerDeoptTargetImpl(const Vertex *vertex,
-                                                         const DeoptimizableMixin *frameState,
-                                                         kungfu::DeoptType type)
+Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
     ASSERT(safepointBuilder_ != nullptr);
-    auto vertexTarget = eagerDeoptTargetsByVertex_.find(frameState);
+    auto vertexTarget = eagerDeoptTargetsByVertex_.find(vertex);
     if (vertexTarget != eagerDeoptTargetsByVertex_.end()) {
         return &vertexTarget->second->label;
     }
 
-    uint32_t bytecodeOffset = frameState->GetBytecodeOffset();
-    auto deopts = BuildUseSlotDeopts(assembler_, vertex, frameState);
+    uint32_t bytecodeOffset = vertex->GetBytecodeOffset();
+    auto translationInputs = BuildArkSteedDeoptTranslationInputs(assembler_, vertex);
+    uint32_t taggedDeoptSnapshotGeneralRegisters = GetTaggedDeoptSnapshotGeneralRegisters(translationInputs);
+    CollectUsedDeoptSnapshotRegisters(translationInputs, &usedDeoptSnapshotGeneralRegisters_,
+                                      &usedDeoptSnapshotFloatingRegisters_);
+    ArkSteedDeoptId deoptId =
+        safepointBuilder_->DefineArkSteedDeoptTranslation(bytecodeOffset, type, std::move(translationInputs));
+
     EagerDeoptTarget *target = nullptr;
-    for (EagerDeoptTarget *existingTarget : eagerDeoptTargets_) {
-        if (existingTarget->bytecodeOffset == bytecodeOffset &&
-            DeoptPayloadEquals(existingTarget->deopts, deopts)) {
-            target = existingTarget;
-            break;
-        }
+    if (deoptId.value < eagerDeoptTargetsById_.size()) {
+        target = eagerDeoptTargetsById_[deoptId.value];
+        ASSERT(target != nullptr);
+        ASSERT(target->deoptId == deoptId);
+        ASSERT(target->taggedDeoptSnapshotGeneralRegisters == taggedDeoptSnapshotGeneralRegisters);
+    } else {
+        ASSERT(deoptId.value == eagerDeoptTargetsById_.size());
+        target = graph_->GetChunk()->New<EagerDeoptTarget>(deoptId, taggedDeoptSnapshotGeneralRegisters);
+        eagerDeoptTargetsById_.push_back(target);
     }
-    if (target == nullptr) {
-        target = graph_->GetChunk()->New<EagerDeoptTarget>(bytecodeOffset, type, std::move(deopts));
-        eagerDeoptTargets_.push_back(target);
-    }
-    eagerDeoptTargetsByVertex_.emplace(frameState, target);
+    eagerDeoptTargetsByVertex_.emplace(vertex, target);
     return &target->label;
 }
 
-void ArkSteedCodeGenerator::BranchToEagerDeoptTargetImpl(Condition condition, const Vertex *vertex,
-                                                         const DeoptimizableMixin *frameState,
-                                                         kungfu::DeoptType type)
+void ArkSteedCodeGenerator::BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex,
+                                                     kungfu::DeoptType type)
 {
 #if defined(PANDA_TARGET_AMD64)
-    __ JumpIf(condition, RecordEagerDeoptTargetImpl(vertex, frameState, type));
+    __ JumpIf(condition, RecordEagerDeoptTarget(vertex, type));
 #else
     Label deopt;
     Label done;
     __ JumpIf(condition, &deopt);
     __ Jump(&done);
     __ Bind(&deopt);
-    EmitEagerDeoptExitImpl(vertex, frameState, type);
+    EmitEagerDeoptExit(vertex, type);
     __ Bind(&done);
 #endif
 }
 
-void ArkSteedCodeGenerator::EmitEagerDeoptExitImpl(const Vertex *vertex, const DeoptimizableMixin *frameState,
-                                                   kungfu::DeoptType type)
+void ArkSteedCodeGenerator::EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
     // Keep the conditional branch target close to the failing check. This avoids using a long conditional branch
     // on AArch64; the local target only performs an unconditional jump to the tail deopt exit.
-    __ Jump(RecordEagerDeoptTargetImpl(vertex, frameState, type));
+    __ Jump(RecordEagerDeoptTarget(vertex, type));
 }
 
 void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
 {
-    for (EagerDeoptTarget *target : eagerDeoptTargets_) {
+    if (eagerDeoptTargetsById_.empty()) {
+        return;
+    }
+
+#ifndef NDEBUG
+    for (const EagerDeoptTarget *target : eagerDeoptTargetsById_) {
+        for (uint32_t registerCode = 0; registerCode < ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT;
+             ++registerCode) {
+            if ((target->taggedDeoptSnapshotGeneralRegisters & (1U << registerCode)) != 0) {
+                ASSERT(usedDeoptSnapshotGeneralRegisters_.Has(ArkSteedRegister::FromCode(registerCode)));
+            }
+        }
+    }
+#endif
+
+    Label snapshotSaver;
+    __ Bind(&snapshotSaver);
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "Deopt snapshot used GP registers: " << usedDeoptSnapshotGeneralRegisters_.Dump();
+    LOG_COMPILER(DEBUG) << "Deopt snapshot used FP registers: " << usedDeoptSnapshotFloatingRegisters_.Dump();
+#endif
+#if defined(PANDA_TARGET_AMD64)
+    ASSERT(!usedDeoptSnapshotGeneralRegisters_.Has(X64_SCRATCH_REGISTER));
+    __ Pop(X64_SCRATCH_REGISTER);
+    __ SaveArkSteedDeoptSnapshot(usedDeoptSnapshotGeneralRegisters_, usedDeoptSnapshotFloatingRegisters_);
+    __ PrepareArkSteedDeoptHandlerCall();
+    __ Jump(X64_SCRATCH_REGISTER);
+#elif defined(PANDA_TARGET_ARM64)
+    __ SaveArkSteedDeoptSnapshot(usedDeoptSnapshotGeneralRegisters_, usedDeoptSnapshotFloatingRegisters_);
+    __ PrepareArkSteedDeoptHandlerCall();
+    __ Return();
+#endif
+
+    for (size_t index = 0; index < eagerDeoptTargetsById_.size(); ++index) {
+        EagerDeoptTarget *target = eagerDeoptTargetsById_[index];
+        ASSERT(target->deoptId.value == static_cast<uint32_t>(index));
         __ Bind(&target->label);
-        __ CallDeoptHandler(target->type);
-        safepointBuilder_->DefineDeoptSafepoint(__ GetPcOffset(), std::move(target->deopts));
+        __ Call(&snapshotSaver);
+        __ CallPreparedArkSteedDeoptHandler(target->deoptId);
+        auto safepoint = safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+        safepoint.SetNumExtraSpillSlots(ARKSTEED_DEOPT_SNAPSHOT_SIZE / sizeof(uintptr_t));
+        safepoint.MarkDeoptSnapshot();
+        for (uint32_t registerCode = 0; registerCode < ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT;
+             ++registerCode) {
+            if ((target->taggedDeoptSnapshotGeneralRegisters & (1U << registerCode)) != 0) {
+                safepoint.DefineTaggedDeoptSnapshotGeneralRegister(registerCode);
+            }
+        }
+        // Keep the deopt return PC inside this MachineCode text even when this is the last emitted exit.
+        __ Nop();
     }
 }
 
@@ -1581,16 +1618,17 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
     __ Bind(&done);
 }
 
-#define DEFINE_I32_WITH_OVERFLOW_CODEGEN(Name, Op)                                                           \
-    template <>                                                                                               \
-    void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##WithOverflowVertex>(                         \
-        I32##Name##WithOverflowVertex *op)                                                                    \
-    {                                                                                                         \
-        auto dst = GetResultRegister(op);                                                                       \
-        auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                        \
-        ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::LEFT_INDEX));                       \
-        __ Op(dst, right);                                                                             \
-        BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);     \
+#define DEFINE_I32_WITH_OVERFLOW_CODEGEN(Name, Op)                                                      \
+    template <>                                                                                         \
+    void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##WithOverflowVertex>(                   \
+        I32##Name##WithOverflowVertex *op)                                                              \
+    {                                                                                                   \
+        auto dst = GetResultRegister(op);                                                               \
+        auto left = GetInputRegister(op, I32##Name##WithOverflowVertex::LEFT_INDEX);                   \
+        auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                  \
+        __ Op(dst, left, right);                                                                        \
+        ASSERT(!EagerDeoptUsesRegister(op, dst));                                                       \
+        BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);      \
     }
 
 DEFINE_I32_WITH_OVERFLOW_CODEGEN(Add, Int32Add)
@@ -1603,7 +1641,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     auto dst = GetResultRegister(op);
     auto left = GetInputRegister(op, I32MulWithOverflowVertex::LEFT_INDEX);
     auto right = GetInputRegister(op, I32MulWithOverflowVertex::RIGHT_INDEX);
+#if defined(PANDA_TARGET_AMD64)
     ASSERT(dst == left);
+#endif
 
     Label success;
 #if defined(PANDA_TARGET_ARM64)
@@ -1617,13 +1657,15 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
 #if defined(PANDA_TARGET_ARM64)
     ArkSteedRegister product = scope.AcquireScratch();
     ArkSteedRegister truncatedProduct = scope.AcquireScratch();
-    __ Int32MulWide(product, dst, right);
+    __ Int32MulWide(product, left, right);
     __ SignExtendInt32ToInt64(truncatedProduct, product);
     __ Compare(product, truncatedProduct);
     __ JumpIf(Condition::COND_NOT_EQUAL, &overflow);
     __ SignExtendInt32ToInt64(dst, product);
+    ASSERT(!EagerDeoptUsesRegister(op, dst));
 #else
     __ Int32Mul(dst, right);
+    ASSERT(!EagerDeoptUsesRegister(op, dst));
     BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);
 #endif
     __ CompareInt32(dst, 0);
@@ -1754,9 +1796,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
     __ Move(work, op->GetMagic());
     __ Int32MulHigh(work, mulDividend, work);
     if (op->GetDivisor() > 0 && op->GetMagic() < 0) {
-        __ Int32Add(work, original);
+        __ Int32Add(work, work, original);
     } else if (op->GetDivisor() < 0 && op->GetMagic() > 0) {
-        __ Int32Sub(work, original);
+        __ Int32Sub(work, work, original);
     }
     if (op->GetShift() != 0) {
         __ Int32ShiftRightArithmetic(work, op->GetShift());
@@ -1765,7 +1807,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
     __ Move(dst, work);
     __ Move(work, dst);
     __ Int32ShiftRightLogical(work, 31);
-    __ Int32Add(dst, work);
+    __ Int32Add(dst, dst, work);
 
 #if defined(PANDA_TARGET_AMD64)
     __ Move(work, dst);
@@ -2022,12 +2064,13 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         I32##Name##WithOverflowVertex *op)                                                            \
     {                                                                                                 \
         auto dst = GetResultRegister(op);                                                             \
-        ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX));              \
+        auto input = GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX);                \
         if constexpr (NeedZeroCheck) {                                                                \
-            __ CompareInt32(dst, 0);                                                                  \
+            __ CompareInt32(input, 0);                                                                \
             BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, DeoptType);                           \
         }                                                                                             \
-        __ AsmOp(dst);                                                                                \
+        __ AsmOp(dst, input);                                                                         \
+        ASSERT(!EagerDeoptUsesRegister(op, dst));                                                     \
         BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, DeoptType);                            \
     }
 #else
@@ -2037,14 +2080,15 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         I32##Name##WithOverflowVertex *op)                                                            \
     {                                                                                                 \
         auto dst = GetResultRegister(op);                                                             \
-        ASSERT(dst == GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX));              \
+        auto input = GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX);                \
         Label deopt;                                                                                  \
         Label done;                                                                                   \
         if constexpr (NeedZeroCheck) {                                                                \
-            __ CompareInt32(dst, 0);                                                                  \
+            __ CompareInt32(input, 0);                                                                \
             __ JumpIf(Condition::COND_EQUAL, &deopt);                                                 \
         }                                                                                             \
-        __ AsmOp(dst);                                                                                \
+        __ AsmOp(dst, input);                                                                         \
+        ASSERT(!EagerDeoptUsesRegister(op, dst));                                                     \
         __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                                  \
         __ Jump(&done);                                                                               \
         __ Bind(&deopt);                                                                              \

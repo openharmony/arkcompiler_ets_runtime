@@ -18,6 +18,7 @@
 
 #include "ecmascript/arksteed/arksteed_comment.h"
 #include "ecmascript/arksteed/arksteed_condition_code.h"
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
@@ -141,8 +142,8 @@ public:
     void Sub(ArkSteedRegister dst, ArkSteedRegister src);
     void Sub(ArkSteedRegister dst, int32_t immediate);
     void SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src);
-    void Int32Add(ArkSteedRegister dst, ArkSteedRegister src);
-    void Int32Sub(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Add(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32Sub(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
     void Int32Mul(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32MulWide(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
     void Int32MulHigh(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
@@ -174,9 +175,9 @@ public:
     void ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
     void ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift);
     void MoveBitMask32(ArkSteedRegister dst, ArkSteedRegister bitIndex);
-    void Int32Neg(ArkSteedRegister dst);
-    void Int32Inc(ArkSteedRegister dst);
-    void Int32Dec(ArkSteedRegister dst);
+    void Int32Neg(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Inc(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Dec(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32BNot(ArkSteedRegister dst);
     void Int32And(ArkSteedRegister dst, ArkSteedRegister src);
     void Int32And(ArkSteedRegister dst, int32_t immediate);
@@ -207,6 +208,9 @@ public:
     // =========================================================================
 
     void Jump(Label *target);
+#if defined(PANDA_TARGET_AMD64)
+    void Jump(ArkSteedRegister target);
+#endif
     void JumpIf(Condition condition, Label *target);
     void JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target);
     void JumpIfNotJSFunction(ArkSteedRegister value, Label *target);
@@ -238,6 +242,10 @@ public:
     // =========================================================================
 
     void CallDeoptHandler(kungfu::DeoptType deoptType);
+    void PrepareArkSteedDeoptHandlerCall();
+    void CallPreparedArkSteedDeoptHandler(ArkSteedDeoptId deoptId);
+    void SaveArkSteedDeoptSnapshot(ArkSteedRegList generalRegisters, ArkDoubleRegList floatingRegisters);
+    void Nop();
 
     // =========================================================================
     // Stack Operations

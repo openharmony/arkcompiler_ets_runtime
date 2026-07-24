@@ -127,6 +127,7 @@ private:
     // Constants frequently used
     ValueVertex *glue_ = nullptr;
     ValueVertex *undefinedValue_ = nullptr;
+    InitialValueVertex *initialActualArgc_ = nullptr;
     InitialValueVertex *initialLexicalEnv_ = nullptr;
     LoadTaggedFieldVertex *lazyGlobalEnv_ = nullptr;
 

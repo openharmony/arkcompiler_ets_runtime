@@ -16,6 +16,7 @@
 #include "ecmascript/arksteed/arksteed_regalloc.h"
 
 #include <algorithm>
+#include <type_traits>
 
 #include "ecmascript/arksteed/arksteed_compiler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
@@ -25,34 +26,26 @@
 namespace panda::ecmascript::arksteed {
 
 namespace {
-template <class VertexT>
-const DeoptimizableMixin *CastToDeoptimizableMixin(const Vertex *vertex)
-{
-    if constexpr (std::is_base_of_v<DeoptimizableMixin, VertexT>) {
-        return vertex->Cast<VertexT>();
-    }
-    return nullptr;
-}
-
-const DeoptimizableMixin *GetDeoptimizableMixin(const Vertex *vertex)
+const DeoptimizableMixin *GetLazyDeoptimizableMixin(const Vertex *vertex)
 {
     switch (vertex->GetOpcode()) {
-#define GET_DEOPTIMIZABLE_MIXIN(type)                                             \
-        case VertexOpcode::type:                                                  \
-            return CastToDeoptimizableMixin<type##Vertex>(vertex);
-        ALL_VERTEX_LIST(GET_DEOPTIMIZABLE_MIXIN)
-#undef GET_DEOPTIMIZABLE_MIXIN
+        case VertexOpcode::CallRuntime:
+            return vertex->Cast<CallRuntimeVertex>();
+        case VertexOpcode::Call:
+            return vertex->Cast<CallVertex>();
+        case VertexOpcode::CallCommonStub:
+            return vertex->Cast<CallCommonStubVertex>();
         default:
-            UNREACHABLE();
+            return nullptr;
     }
 }
 
-void VerifyDeoptInputLocations(const Vertex *vertex)
+void VerifyLazyDeoptInputLocations(const Vertex *vertex)
 {
-    if (!vertex->GetProperties().CanDeopt()) {
+    if (!vertex->GetProperties().CanLazyDeopt()) {
         return;
     }
-    const DeoptimizableMixin *deopt = GetDeoptimizableMixin(vertex);
+    const DeoptimizableMixin *deopt = GetLazyDeoptimizableMixin(vertex);
     ASSERT(deopt != nullptr);
     for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
         const InputLocation *location = vertex->GetInputLocation(deopt->DeoptInputIndex(index));
@@ -62,6 +55,18 @@ void VerifyDeoptInputLocations(const Vertex *vertex)
 }  // namespace
 
 namespace {
+
+template <typename VertexT, typename Function>
+void ForEachEagerDeoptFrameValue(VertexT *vertex, Function &&function)
+{
+    if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, VertexT> && VertexT::PROPERTIES.CanEagerDeopt()) {
+        for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
+            function(vertex->GetDeoptFrameValue(index), vertex->GetDeoptSourceLocation(index));
+        }
+    } else {
+        UNREACHABLE();
+    }
+}
 
 bool SameAsInput(ValueVertex *vertex, const Input &input)
 {
@@ -277,7 +282,6 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
     } else if (vertex->GetProperties().IsASMBarrierCall()) {
         SpillAndClearASMBarrierClobbers();
     }
-    VerifyDeoptInputLocations(vertex);
     // Save after inputs and temporaries have their physical locations.
     if (vertex->GetProperties().NeedsRegisterSnapshot()) {
         SaveDeferredRegisterSnapshot(vertex);
@@ -286,6 +290,14 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
     // Allocate vertex output.
     if (vertex->Is<ValueVertex>()) {
         AllocateVertexResult(static_cast<ValueVertex *>(vertex));
+    }
+
+    if (vertex->GetProperties().CanEagerDeopt()) {
+        AssignEagerDeoptFrameSourceLocations(vertex);
+    }
+
+    if (vertex->GetProperties().CanLazyDeopt()) {
+        VerifyLazyDeoptInputLocations(vertex);
     }
 
     if (vertex->Is<ValueVertex>()) {
@@ -516,6 +528,7 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
             }
 
             ASSERT(location.IsRegister());
+            ASSERT(vertexInfo->HasValidLiveRange());
             if (vertexInfo->IsLoadable()) {
                 input.GetLocation()->GetOperand() = vertexInfo->GetSpillSlot();
                 UpdateUse(vertex, input.GetLocation());
@@ -526,7 +539,6 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
             }
             AllocatedState spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
             input.GetLocation()->SetAllocated(spillSlot);
-            AddMoveBeforeCurrentVertex(vertex, location, spillSlot);
             UpdateUse(vertex, input.GetLocation());
             vertexInfo->ClearHint();
             return;
@@ -647,6 +659,38 @@ void ArkSteedRegisterAllocator::AssignAnyInput(const Input &input)
         }
     }
     UpdateUse(vertex, input.GetLocation());
+}
+
+void ArkSteedRegisterAllocator::AssignDeoptFrameSourceLocation(
+    ValueVertex *value, InputLocation *sourceLocation)
+{
+    auto *vertexInfo = value->GetRegallocInfo();
+    if (!vertexInfo->HasRegisterResult() && !vertexInfo->IsLoadable()) {
+        Spill(value);
+    }
+    sourceLocation->InjectLocation(vertexInfo->GetAllocation());
+    UpdateUse(value, sourceLocation);
+}
+
+void ArkSteedRegisterAllocator::AssignEagerDeoptFrameSourceLocations(Vertex *vertex)
+{
+    ASSERT(vertex->GetProperties().CanEagerDeopt());
+    auto assignLocation = [this](ValueVertex *value, InputLocation *sourceLocation) {
+        AssignDeoptFrameSourceLocation(value, sourceLocation);
+    };
+    switch (vertex->GetOpcode()) {
+#define ASSIGN_DEOPT_FRAME_SOURCE_LOCATIONS_CASE(Name)                       \
+        case VertexOpcode::Name: {                                           \
+            ForEachEagerDeoptFrameValue(                                     \
+                vertex->Cast<Name##Vertex>(), assignLocation);               \
+            return;                                                          \
+        }
+        ALL_VERTEX_LIST(ASSIGN_DEOPT_FRAME_SOURCE_LOCATIONS_CASE)
+#undef ASSIGN_DEOPT_FRAME_SOURCE_LOCATIONS_CASE
+        case VertexOpcode::INVALID:
+            break;
+    }
+    UNREACHABLE();
 }
 
 void ArkSteedRegisterAllocator::AssignFixedTemporaries(Vertex *vertex)
@@ -1017,7 +1061,7 @@ RegisterT ArkSteedRegisterAllocator::FindReusableBlockedInputRegister(RegisterSn
                                                                       RegisterT hintReg)
 {
     RegisterT fallback = RegisterT::Invalid();
-    for (int i = 0; i < currentVertex_->GetInputCount(); i++) {
+    for (uint32_t i = 0; i < currentVertex_->GetInputCount(); i++) {
         RegisterT reg = GetAllocatedRegister<RegisterT>(currentVertex_->GetInputLocation(i)->GetOperand());
         if (!reg.IsValid()) {
             continue;
@@ -1081,7 +1125,7 @@ void ArkSteedRegisterAllocator::EnsureFreeRegisterAtEnd(RegisterSnapshot<Registe
 
     reg = hintReg;
     if (!reg.IsValid() || registers.Free().Has(reg)) {
-        reg = PickRegisterToFree<RegisterT>(registers.Empty());
+        reg = PickRegisterToFree<RegisterT>(RegListBase<RegisterT>());
     }
     ASSERT(reg.IsValid());
     DropRegisterValueAtEnd(registers, reg);
