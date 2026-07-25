@@ -50,8 +50,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "CompositeBaseClass";
         case JSType::TAGGED_ARRAY:
             return "TaggedArray";
-        case JSType::FUNC_SLOT:
-            return "FuncSlot";
         case JSType::LEXICAL_ENV:
             return "LexicalEnv";
         case JSType::WEAK_LINKED_HASH_MAP:
@@ -531,18 +529,6 @@ static void DumpCOWMutantTaggedArray(const JSThread *thread, const COWMutantTagg
     }
 }
 
-static void DumpFuncSlot(const JSThread *thread, const FuncSlot *arr, std::ostream &os)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    os << " <FuncSlot>\n";
-    for (uint32_t i = 0; i < FuncSlot::FUNC_SLOT_SIZE; i++) {
-        JSTaggedValue val(arr->Get(thread, i));
-        os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
-        os << std::left << std::setw(DUMP_TYPE_OFFSET) << "[JSTaggedType] : " << val.GetRawData();
-        os << "\n";
-    }
-}
-
 static void DumpConstantPoolClass(const JSThread *thread, const ConstantPool *pool, std::ostream &os)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -720,9 +706,6 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             break;
         case JSType::COW_MUTANT_TAGGED_ARRAY:
             DumpCOWMutantTaggedArray(thread, COWMutantTaggedArray::Cast(obj), os);
-            break;
-        case JSType::FUNC_SLOT:
-            DumpFuncSlot(thread, FuncSlot::Cast(obj), os);
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(thread, ConstantPool::Cast(obj), os);
@@ -2839,10 +2822,6 @@ void COWMutantTaggedArray::Dump(const JSThread *thread, std::ostream &os) const
 {
     DumpCOWMutantTaggedArray(thread, this, os);
 }
-void FuncSlot::Dump(const JSThread *thread, std::ostream &os) const
-{
-    DumpFuncSlot(thread, this, os);
-}
 
 // NOLINTNEXTLINE(readability-function-size)
 void GlobalEnv::Dump(const JSThread *thread, std::ostream &os) const
@@ -4119,17 +4098,6 @@ static void DumpCOWMutantTaggedArrayClass(const JSThread *thread, const COWMutan
     }
 }
 
-static void DumpFuncSlotClass(const JSThread *thread, const FuncSlot *arr, std::vector<Reference> &vec)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    vec.reserve(vec.size() + FuncSlot::FUNC_SLOT_SIZE);
-    for (uint32_t i = 0; i < FuncSlot::FUNC_SLOT_SIZE; i++) {
-        JSTaggedValue val(arr->Get(thread, i));
-        CString str = ToCString(i);
-        vec.emplace_back(str, val);
-    }
-}
-
 static void DumpElementClass(const JSThread *thread, const TaggedArray *arr, std::vector<Reference> &vec)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -4185,9 +4153,6 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
             break;
         case JSType::COW_MUTANT_TAGGED_ARRAY:
             DumpCOWMutantTaggedArrayClass(thread, COWMutantTaggedArray::Cast(obj), vec);
-            break;
-        case JSType::FUNC_SLOT:
-            DumpFuncSlotClass(thread, FuncSlot::Cast(obj), vec);
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(thread, ConstantPool::Cast(obj), vec);
@@ -5250,11 +5215,6 @@ void MutantTaggedArray::DumpForSnapshot(const JSThread *thread, std::vector<Refe
 void COWMutantTaggedArray::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
     DumpCOWMutantTaggedArrayClass(thread, this, vec);
-}
-
-void FuncSlot::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
-{
-    DumpFuncSlotClass(thread, this, vec);
 }
 
 void JSBoundFunction::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const

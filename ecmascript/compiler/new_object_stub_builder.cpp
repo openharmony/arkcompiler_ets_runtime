@@ -790,25 +790,6 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     }
 }
 
-void NewObjectStubBuilder::NewFuncSlotChecked(Variable *result, Label *exit)
-{
-    auto env = GetEnvironment();
-    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(Int32(FuncSlot::FUNC_SLOT_SIZE)));
-    // Be careful. NO GC is allowed when initization is not complete.
-    Label noException(env);
-    auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::FUNC_SLOT_CLASS_INDEX);
-    AllocateInYoung(result, exit, &noException, hclass);
-    Bind(&noException);
-    {
-        StoreBuiltinHClass(glue_, result->ReadVariable(), hclass, RegionSpaceFlag::IN_YOUNG_SPACE);
-        Label afterInitialize(env);
-        InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), Hole(), Int32(0), Int32(FuncSlot::FUNC_SLOT_SIZE));
-        Bind(&afterInitialize);
-        Jump(exit);
-    }
-}
-
 void NewObjectStubBuilder::NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit)
 {
     auto env = GetEnvironment();
@@ -905,26 +886,6 @@ GateRef NewObjectStubBuilder::NewSTaggedArray(GateRef glue, GateRef len)
             Jump(&exit);
         }
     }
-
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef NewObjectStubBuilder::NewFuncSlot(GateRef glue)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label isEmpty(env);
-    Label notEmpty(env);
-
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    SetGlue(glue);
-
-    NewFuncSlotChecked(&result, &exit);
 
     Bind(&exit);
     auto ret = *result;

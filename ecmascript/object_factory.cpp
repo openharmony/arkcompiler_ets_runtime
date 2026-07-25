@@ -3225,18 +3225,6 @@ JSHandle<COWMutantTaggedArray> ObjectFactory::NewCOWMutantTaggedArray(uint32_t l
     return cowMutantTaggedArray;
 }
 
-JSHandle<FuncSlot> ObjectFactory::NewFuncSlot(JSTaggedValue initVal)
-{
-    NewObjectHook();
-
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), FuncSlot::FUNC_SLOT_SIZE);
-    auto header = heap_->AllocateNonMovableOrHugeObject(
-        JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledFuncSlotClass()), size);
-    JSHandle<FuncSlot> funcSlot(thread_, header);
-    funcSlot->InitializeWithSpecialValue(initVal, FuncSlot::FUNC_SLOT_SIZE);
-    return funcSlot;
-}
-
 JSHandle<MutantTaggedArray> ObjectFactory::NewMutantTaggedArray(uint32_t length, JSTaggedType initVal)
 {
     NewObjectHook();

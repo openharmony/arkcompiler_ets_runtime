@@ -410,11 +410,6 @@ bool JSTaggedValue::IsICInfo() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsICInfo();
 }
 
-bool JSTaggedValue::IsFuncSlot() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsFuncSlot();
-}
-
 bool JSTaggedValue::IsJSProxy() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSProxy();

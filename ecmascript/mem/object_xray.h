@@ -21,7 +21,6 @@
 #include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/func_slot.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_info.h"
@@ -172,9 +171,6 @@ public:
                 return;
             case JSType::JS_FUNCTION:
                 JSFunction::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                return;
-            case JSType::FUNC_SLOT:
-                FuncSlot::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 return;
             case JSType::TAGGED_ARRAY:
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
@@ -534,9 +530,6 @@ public:
 #else
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
 #endif
-                break;
-            case JSType::FUNC_SLOT:
-                FuncSlot::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::MUTANT_TAGGED_ARRAY:
                 if constexpr (visitType == VisitType::ALL_VISIT) {

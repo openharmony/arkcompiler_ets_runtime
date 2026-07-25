@@ -224,93 +224,41 @@ void ProfilerStubBuilder::ProfileCall(
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
 
-    Label exit(env);
-    Label slowPath(env);
-    Label fastPath(env);
-    Label targetIsFunction(env);
-
     StartTraceCallDetail(glue, profileTypeInfo, IntToTaggedInt(GetSlotID(slotInfo)));
-    BRANCH(IsJSFunction(glue, target), &targetIsFunction, &exit);
-    Bind(&targetIsFunction);
-    {
+    IR_IF (IsJSFunction(glue, target)) {
         GateRef targetProfileInfo = GetProfileTypeInfo(glue, target);
-        Label targetIsNotHot(env);
-        Label targetIsHot(env);
-        Label currentIsHot(env);
-
-        BRANCH(IsProfileTypeInfoHotAndValid(targetProfileInfo), &targetIsHot, &targetIsNotHot);
-        Bind(&targetIsNotHot);
-        {
+        IR_IF (BoolNot(IsProfileTypeInfoHotAndValid(targetProfileInfo))) {
             CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { target });
-            Jump(&targetIsHot);
         }
-        Bind(&targetIsHot);
-        {
-            BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &currentIsHot, &exit);
-        }
-        Bind(&currentIsHot);
-        {
-            Label icSlotValid(env);
-            Label isHeapObject(env);
-            Label uninitialized(env);
-            Label updateSlot(env);
-            Label incrementCallCnt(env);
-
+        IR_IF (IsProfileTypeInfoHotAndValid(profileTypeInfo)) {
             GateRef slotId = GetSlotID(slotInfo);
+            GateRef slotIdNext = Int32Add(slotId, Int32(1));
             GateRef length = GetICLength(profileTypeInfo);
-            BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
-            Bind(&icSlotValid);
-            GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
-            BRANCH(TaggedIsHeapObject(slotValue), &isHeapObject, &uninitialized);
-            Bind(&isHeapObject);
-            {
-                Label change(env);
-                Label resetSlot(env);
-                GateRef slotFunc = GetValueFromTaggedArray(glue, slotValue, Int32(FuncSlot::FUNCTION_INDEX));
-                BRANCH(Int64Equal(slotFunc, target), &incrementCallCnt, &change);
-                Bind(&incrementCallCnt);
-                {
-                    GateRef callCnt = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue,
-                                                                           Int32(FuncSlot::CALL_CNT_INDEX)));
-                    GateRef newCallCnt = Int32Add(callCnt, Int32(1));
-                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(FuncSlot::CALL_CNT_INDEX),
-                                          IntToTaggedInt(newCallCnt));
-                    Jump(&exit);
+            IR_IF (Int32LessThan(slotIdNext, length)) {
+                GateRef slotValue = GetICSlot(glue, profileTypeInfo, slotId);
+                IR_IF (TaggedIsHeapObject(slotValue)) {
+                    IR_IF (Int64Equal(slotValue, target)) {
+                        GateRef callCnt = TaggedGetInt(GetICSlot(glue, profileTypeInfo, slotIdNext));
+                        GateRef newCallCnt = Int32Add(callCnt, Int32(1));
+                        SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotIdNext,
+                                  IntToTaggedInt(newCallCnt));
+                    } IR_ELSE {
+                        GateRef nonType = TaggedInt(PGO_BUILTINS_STUB_ID(NONE));
+                        SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
+                        TryPreDumpInner(glue, func, profileTypeInfo);
+                    }
+                } IR_ELSE {
+                    // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
+                    // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
+                    IR_IF (TaggedIsUndefined(slotValue)) {
+                        SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, target);
+                        SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotIdNext, IntToTaggedInt(Int32(1)));
+                        TryPreDumpInner(glue, func, profileTypeInfo);
+                    }
                 }
-                Bind(&change);
-                {
-                    BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotFunc), Int64(0)), &exit, &resetSlot);
-                }
-                Bind(&resetSlot);
-                {
-                    // NOTICE-PGO: lx about poly
-                    GateRef nonType = TaggedInt(PGO_BUILTINS_STUB_ID(NONE));
-                    SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
-                    TryPreDumpInner(glue, func, profileTypeInfo);
-                    Jump(&exit);
-                }
-            }
-            Bind(&uninitialized);
-            {
-                // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
-                // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
-                BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
-            }
-            Bind(&updateSlot);
-            {
-                NewObjectStubBuilder newBuilder(env);
-                GateRef targetSlot = newBuilder.NewFuncSlot(glue);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, targetSlot, Int32(FuncSlot::FUNCTION_INDEX),
-                                      target);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, targetSlot, Int32(FuncSlot::CALL_CNT_INDEX),
-                                      TaggedInt(1));
-                SetICSlot(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, targetSlot);
-                TryPreDumpInner(glue, func, profileTypeInfo);
-                Jump(&exit);
             }
         }
     }
-    Bind(&exit);
     EndTraceCall(glue);
     env->SubCfgExit();
 }

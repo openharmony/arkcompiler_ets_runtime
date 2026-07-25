@@ -1,9 +1,0 @@
-{
-    "name": "FUNC_SLOT",
-    "node_name": "ArkInternalFuncSlot",
-    "offsets": [],
-    "end_offset": 0,
-    "parents": [
-        "TAGGED_ARRAY"
-    ]
-}

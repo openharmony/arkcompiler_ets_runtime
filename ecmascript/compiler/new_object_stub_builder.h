@@ -76,7 +76,6 @@ public:
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
     GateRef NewSTaggedArray(GateRef glue, GateRef len);
-    GateRef NewFuncSlot(GateRef glue);
     GateRef NewTaggedArrayInOld(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArrayInOld(GateRef glue, GateRef len);
@@ -142,7 +141,6 @@ public:
                                   GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit,
                                  RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
-    void NewFuncSlotChecked(Variable *result, Label *exit);
     void NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);

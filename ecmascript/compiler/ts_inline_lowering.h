@@ -141,11 +141,10 @@ private:
         if (slot.IsWeak()) {
             return 1.0;
         }
-        if (!slot.IsFuncSlot()) {
+        if (!slot.IsJSFunction()) {
             return 0.0;
         }
-        auto funcSlot = FuncSlot::Cast(slot);
-        JSTaggedValue callCnt = funcSlot->GetCallCnt(thread);
+        JSTaggedValue callCnt = profileTypeInfo->GetICSlot(thread, idx + 1);
         double callSiteCallCnt = static_cast<double>(callCnt.GetInt());  // 32: skip methodId
         return callSiteCallCnt / callerCallCnt;
     }

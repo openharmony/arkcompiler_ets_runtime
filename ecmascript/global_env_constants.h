@@ -42,7 +42,6 @@ class ObjectFactory;
     V(JSTaggedValue, TreeStringClass, TREE_STRING_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, CachedExternalStringClass, CACHED_EXTERNAL_STRING_CLASS_INDEX, ecma_roots_class)                 \
     V(JSTaggedValue, TaggedArrayClass, TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                                    \
-    V(JSTaggedValue, FuncSlotClass, FUNC_SLOT_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, ProfileTypeInfoClass, PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)                           \
@@ -109,7 +108,6 @@ class ObjectFactory;
 
 #define SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(V)                                                                    \
     V(JSTaggedValue, SharedTaggedArrayClass, SHARED_TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                       \
-    V(JSTaggedValue, SharedFuncSlotClass, SHARED_FUNC_SLOT_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, SharedConstantPoolClass, SHARED_CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                     \
     /* ProfileTypeInfo only in local now */                                                                           \
     V(JSTaggedValue, SharedDictionaryClass, SHARED_DICTIONARY_CLASS_INDEX, ecma_roots_class)                          \
