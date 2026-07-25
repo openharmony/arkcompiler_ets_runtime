@@ -256,7 +256,7 @@ public:
         JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
         CString baseFileName = "modules.abc";
         CString recordName = "a";
-        module->SetEcmaModuleFilenameString(baseFileName);
+        module->SetEcmaModuleFilenameString(thread, baseFileName);
         module->SetEcmaModuleRecordNameString(recordName);
         module->SetTypes(ModuleTypes::ECMA_MODULE);
         module->SetStatus(ModuleStatus::INSTANTIATED);
@@ -264,17 +264,17 @@ public:
         module->SetRequestedModules(thread, requestedModules.GetTaggedValue());
         JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
         CString recordName1 = "b";
-        module1->SetEcmaModuleFilenameString(baseFileName);
+        module1->SetEcmaModuleFilenameString(thread, baseFileName);
         module1->SetEcmaModuleRecordNameString(recordName1);
         requestedModules->Set(thread, index0, module1);
         JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
         CString recordName2 = "c";
-        module2->SetEcmaModuleFilenameString(baseFileName);
+        module2->SetEcmaModuleFilenameString(thread, baseFileName);
         module2->SetEcmaModuleRecordNameString(recordName2);
         module2->SetStatus(ModuleStatus::EVALUATED);
         JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
         CString recordName3 = "d";
-        module3->SetEcmaModuleFilenameString(baseFileName);
+        module3->SetEcmaModuleFilenameString(thread, baseFileName);
         module3->SetEcmaModuleRecordNameString(recordName3);
         module3->SetStatus(ModuleStatus::EVALUATED);
         module3->SetTypes(ModuleTypes::JSON_MODULE);
@@ -423,7 +423,7 @@ public:
         JSHandle<SourceTextModule> etsModule = factory->NewSourceTextModule();
         CString baseFileName = "modules.abc";
         CString recordName = "etsModule";
-        etsModule->SetEcmaModuleFilenameString(baseFileName);
+        etsModule->SetEcmaModuleFilenameString(thread, baseFileName);
         etsModule->SetEcmaModuleRecordNameString(recordName);
         etsModule->SetTypes(ModuleTypes::ECMA_MODULE);
         etsModule->SetStatus(ModuleStatus::INSTANTIATED);
@@ -431,7 +431,7 @@ public:
         etsModule->SetRequestedModules(thread, requestedModules.GetTaggedValue());
         JSHandle<SourceTextModule> nativeModule = factory->NewSourceTextModule();
         CString nativeModuleRecordName = "nativeModule";
-        nativeModule->SetEcmaModuleFilenameString(baseFileName);
+        nativeModule->SetEcmaModuleFilenameString(thread, baseFileName);
         nativeModule->SetEcmaModuleRecordNameString(nativeModuleRecordName);
         nativeModule->SetTypes(ModuleTypes::APP_MODULE);
         nativeModule->SetStatus(ModuleStatus::INSTANTIATED);
@@ -766,7 +766,7 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeSlicedString)
 
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     CString recordName = "SlicedString";
-    module->SetEcmaModuleFilenameString(recordName);
+    module->SetEcmaModuleFilenameString(thread, recordName);
     module->SetEcmaModuleRecordNameString(recordName);
     thread->GetModuleManager()->AddResolveImportedModule(recordName, module.GetTaggedValue());
     // create subString
@@ -860,7 +860,7 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithUndefinedEnvironment)
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
     CString recordName = "undefinedEnvModule";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
@@ -885,14 +885,14 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithNonUpdatedBinding)
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
     CString recordName = "nonUpdatedModule";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
     JSHandle<SourceTextModule> bindingModule = factory->NewSourceTextModule();
     CString bindingRecordName = "bindingNonUpdated";
-    bindingModule->SetEcmaModuleFilenameString(baseFileName);
+    bindingModule->SetEcmaModuleFilenameString(thread, baseFileName);
     bindingModule->SetEcmaModuleRecordNameString(bindingRecordName);
 
     // Create environment with index bindings where IsUpdatedFromResolvedBinding is false
@@ -932,14 +932,14 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithUpdatedRecordIndexBindi
 
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     CString recordName = "recordIndexModule";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
     JSHandle<SourceTextModule> nativeModule = factory->NewSourceTextModule();
     CString nativeRecordName = "nativeRecordIndex";
-    nativeModule->SetEcmaModuleFilenameString(baseFileName);
+    nativeModule->SetEcmaModuleFilenameString(thread, baseFileName);
     nativeModule->SetEcmaModuleRecordNameString(nativeRecordName);
     nativeModule->SetTypes(ModuleTypes::APP_MODULE);
     nativeModule->SetStatus(ModuleStatus::INSTANTIATED);
@@ -989,14 +989,14 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingMixedEnvEntries)
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
     CString recordName = "mixedEnvModule";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
 
     JSHandle<SourceTextModule> nativeModule = factory->NewSourceTextModule();
     CString nativeRecordName = "nativeMixed";
-    nativeModule->SetEcmaModuleFilenameString(baseFileName);
+    nativeModule->SetEcmaModuleFilenameString(thread, baseFileName);
     nativeModule->SetEcmaModuleRecordNameString(nativeRecordName);
     nativeModule->SetTypes(ModuleTypes::APP_MODULE);
     nativeModule->SetStatus(ModuleStatus::INSTANTIATED);
@@ -1060,7 +1060,7 @@ HWTEST_F_L0(ModuleSnapshotTest, GetModuleSerializeArrayTest)
     JSHandle<SourceTextModule> module1 = factory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
     CString recordName1 = "serArrayMod1";
-    module1->SetEcmaModuleFilenameString(baseFileName);
+    module1->SetEcmaModuleFilenameString(thread, baseFileName);
     module1->SetEcmaModuleRecordNameString(recordName1);
     module1->SetTypes(ModuleTypes::ECMA_MODULE);
     module1->SetStatus(ModuleStatus::INSTANTIATED);
@@ -1068,7 +1068,7 @@ HWTEST_F_L0(ModuleSnapshotTest, GetModuleSerializeArrayTest)
 
     JSHandle<SourceTextModule> module2 = factory->NewSourceTextModule();
     CString recordName2 = "serArrayMod2";
-    module2->SetEcmaModuleFilenameString(baseFileName);
+    module2->SetEcmaModuleFilenameString(thread, baseFileName);
     module2->SetEcmaModuleRecordNameString(recordName2);
     module2->SetTypes(ModuleTypes::ECMA_MODULE);
     module2->SetStatus(ModuleStatus::INSTANTIATED);
@@ -1227,14 +1227,14 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithMultipleModules)
     // Module 1: has environment with updated binding
     JSHandle<SourceTextModule> module1 = factory->NewSourceTextModule();
     CString recordName1 = "multiMod1";
-    module1->SetEcmaModuleFilenameString(baseFileName);
+    module1->SetEcmaModuleFilenameString(thread, baseFileName);
     module1->SetEcmaModuleRecordNameString(recordName1);
     module1->SetTypes(ModuleTypes::ECMA_MODULE);
     module1->SetStatus(ModuleStatus::INSTANTIATED);
 
     JSHandle<SourceTextModule> nativeModule = factory->NewSourceTextModule();
     CString nativeRecordName = "nativeMulti";
-    nativeModule->SetEcmaModuleFilenameString(baseFileName);
+    nativeModule->SetEcmaModuleFilenameString(thread, baseFileName);
     nativeModule->SetEcmaModuleRecordNameString(nativeRecordName);
     nativeModule->SetTypes(ModuleTypes::APP_MODULE);
     nativeModule->SetStatus(ModuleStatus::INSTANTIATED);
@@ -1262,7 +1262,7 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithMultipleModules)
     // Module 2: has undefined environment
     JSHandle<SourceTextModule> module2 = factory->NewSourceTextModule();
     CString recordName2 = "multiMod2";
-    module2->SetEcmaModuleFilenameString(baseFileName);
+    module2->SetEcmaModuleFilenameString(thread, baseFileName);
     module2->SetEcmaModuleRecordNameString(recordName2);
     module2->SetTypes(ModuleTypes::ECMA_MODULE);
     module2->SetStatus(ModuleStatus::INSTANTIATED);
@@ -1295,7 +1295,7 @@ HWTEST_F_L0(ModuleSnapshotTest, DeserializeDataWithSharedModule)
     JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
     CString baseFileName = "modules.abc";
     CString recordName = "sharedDeserializeMod";
-    sharedModule->SetEcmaModuleFilenameString(baseFileName);
+    sharedModule->SetEcmaSharedModuleFilenameString(baseFileName);
     sharedModule->SetEcmaModuleRecordNameString(recordName);
     sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
     sharedModule->SetTypes(ModuleTypes::ECMA_MODULE);
@@ -1318,6 +1318,56 @@ HWTEST_F_L0(ModuleSnapshotTest, DeserializeDataWithSharedModule)
     EXPECT_EQ(deserializedModule->GetEcmaModuleRecordNameString(), recordName);
 }
 
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+/**
+ * @tc.name: DeserializeSharedModuleFilenameUsesSharedStorage
+ * @tc.desc: Test that a deserialized shared module filename is stored in shared filename storage
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleSnapshotTest, DeserializeSharedModuleFilenameUsesSharedStorage)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    SharedModuleManager *sharedModuleManager = SharedModuleManager::GetInstance();
+
+    JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
+    CString baseFileName = "shared_filename_storage.abc";
+    CString recordName = "sharedFilenameStorageMod";
+    sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
+    sharedModule->SetEcmaSharedModuleFilenameString(baseFileName);
+    sharedModule->SetEcmaModuleRecordNameString(recordName);
+    sharedModule->SetTypes(ModuleTypes::ECMA_MODULE);
+    sharedModule->SetStatus(ModuleStatus::INSTANTIATED);
+
+    TryInsertInSModuleManager(thread, recordName, sharedModule);
+    moduleManager->AddResolveImportedModule(recordName, sharedModule.GetTaggedValue());
+
+    CString path = GetSnapshotPath();
+    CString version = TEST_ROM_VERSION.data();
+    ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+
+    sharedModule->DestroyEcmaSharedModuleFilenameString();
+    moduleManager->ClearResolvedModules();
+    sharedModuleManager->Destroy();
+    size_t localStorageSize = moduleManager->GetModuleFilenameStorageSizeForTest();
+    size_t sharedStorageSize = sharedModuleManager->GetModuleFilenameStorageSizeForTest();
+
+    ASSERT_TRUE(ModuleSnapshot::DeserializeData(vm, path, version));
+
+    JSHandle<SourceTextModule> deserializedModule = moduleManager->GetImportedModule(recordName);
+    ASSERT_TRUE(SourceTextModule::IsSharedModule(deserializedModule));
+    ASSERT_NE(deserializedModule->GetEcmaModuleFilename(), 0U);
+    EXPECT_EQ(deserializedModule->GetEcmaModuleFilenameString(), baseFileName);
+    EXPECT_EQ(moduleManager->GetModuleFilenameStorageSizeForTest(), localStorageSize);
+    EXPECT_EQ(sharedModuleManager->GetModuleFilenameStorageSizeForTest(), sharedStorageSize + 1);
+
+    deserializedModule->DestroyEcmaSharedModuleFilenameString();
+    EXPECT_EQ(moduleManager->GetModuleFilenameStorageSizeForTest(), localStorageSize);
+    EXPECT_EQ(sharedModuleManager->GetModuleFilenameStorageSizeForTest(), sharedStorageSize);
+}
+#endif
+
 /**
  * @tc.name: GetModuleSerializeArrayWithSharedModules
  * @tc.desc: Test GetModuleSerializeArray includes shared modules (line 86-91)
@@ -1331,7 +1381,7 @@ HWTEST_F_L0(ModuleSnapshotTest, GetModuleSerializeArrayWithSharedModules)
     JSHandle<SourceTextModule> normalModule = factory->NewSourceTextModule();
     CString baseFileName = "modules.abc";
     CString normalRecordName = "serArrayNormal";
-    normalModule->SetEcmaModuleFilenameString(baseFileName);
+    normalModule->SetEcmaModuleFilenameString(thread, baseFileName);
     normalModule->SetEcmaModuleRecordNameString(normalRecordName);
     normalModule->SetTypes(ModuleTypes::ECMA_MODULE);
     normalModule->SetStatus(ModuleStatus::INSTANTIATED);
@@ -1339,7 +1389,7 @@ HWTEST_F_L0(ModuleSnapshotTest, GetModuleSerializeArrayWithSharedModules)
 
     JSHandle<SourceTextModule> sharedModule = factory->NewSSourceTextModule();
     CString sharedRecordName = "serArrayShared";
-    sharedModule->SetEcmaModuleFilenameString(baseFileName);
+    sharedModule->SetEcmaSharedModuleFilenameString(baseFileName);
     sharedModule->SetEcmaModuleRecordNameString(sharedRecordName);
     sharedModule->SetSharedType(SharedTypes::SHARED_MODULE);
     sharedModule->SetTypes(ModuleTypes::ECMA_MODULE);

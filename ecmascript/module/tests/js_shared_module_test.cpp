@@ -110,7 +110,7 @@ HWTEST_F_L0(JSSharedModuleTest, SendableClassModule_CloneRecordNameBinding_NonSh
     CString moduleName = "nonSharedTestModule";
     CString moduleFileName = "nonSharedTestModule.js";
     nonSharedModule->SetEcmaModuleRecordNameString(moduleName);
-    nonSharedModule->SetEcmaModuleFilenameString(moduleFileName);
+    nonSharedModule->SetEcmaModuleFilenameString(thread, moduleFileName);
 
     // Create a binding name
     JSHandle<JSTaggedValue> bindingName(factory->NewFromASCII("nonSharedExport"));
@@ -255,7 +255,7 @@ HWTEST_F_L0(JSSharedModuleTest, CloneModuleEnvironment_NonSharedIndexBinding)
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<SourceTextModule> nonSharedModule = factory->NewSourceTextModule();
     nonSharedModule->SetEcmaModuleRecordNameString("nonSharedIdxMod");
-    nonSharedModule->SetEcmaModuleFilenameString("nonSharedIdxMod.js");
+    nonSharedModule->SetEcmaModuleFilenameString(thread, "nonSharedIdxMod.js");
     JSHandle<ResolvedIndexBinding> binding = factory->NewResolvedIndexBindingRecord(nonSharedModule, 3);
     JSHandle<TaggedArray> env = factory->NewTaggedArray(1);
     env->Set(thread, 0, binding.GetTaggedValue());

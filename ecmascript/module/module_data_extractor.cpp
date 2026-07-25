@@ -47,7 +47,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     bool hasTLA = recordInfo->hasTopLevelAwait;
     moduleRecord->SetHasTLA(hasTLA);
 
-    moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
+    moduleRecord->SetEcmaModuleFilenameString(thread, moduleFilename);
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
@@ -107,7 +107,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
-    moduleRecord->SetEcmaModuleFilenameString(descriptor);
+    moduleRecord->SetEcmaModuleFilenameString(thread, descriptor);
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
@@ -131,7 +131,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
 
-    moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
+    moduleRecord->SetEcmaModuleFilenameString(thread, moduleFilename);
     moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::JSON_MODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
@@ -147,7 +147,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
 
     // set moduleRecordName as non-undefined to distinguish between merge and non-merge mode
     moduleRecord->SetEcmaModuleRecordNameString(moduleRequestName);
-    moduleRecord->SetEcmaModuleFilenameString(baseFileName);
+    moduleRecord->SetEcmaModuleFilenameString(thread, baseFileName);
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);

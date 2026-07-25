@@ -239,7 +239,11 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         }
     } else if (object->GetClass()->IsSourceTextModule()) {
         SourceTextModule* module = reinterpret_cast<SourceTextModule *>(object);
-        module->SetEcmaModuleFilenameStringForDeserialize(moduleFileName);
+        if (module->GetSharedType() > SharedTypes::UNSENDABLE_MODULE) {
+            module->SetEcmaSharedModuleFilenameStringForDeserialize(moduleFileName);
+        } else {
+            module->SetEcmaModuleFilenameStringForDeserialize(thread_, moduleFileName);
+        }
         module->SetEcmaModuleRecordNameStringForDeserialize(moduleRecordName);
         module->SetLazyImportArrayForDeserialize(lazyArray);
         if (module->GetStatus() > ModuleStatus::INSTANTIATED) {

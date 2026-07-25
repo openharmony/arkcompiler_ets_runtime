@@ -1175,7 +1175,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsModuleNamespaceObject)
     SourceTextModule::AddLocalExportEntry(thread_, module, localExportEntry2, 1, 2);
     JSHandle<TaggedArray> localExportEntries(thread_, module->GetLocalExportEntries(thread_));
     CString baseFileName = "a.abc";
-    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleFilenameString(thread_, baseFileName);
     ModuleManager *moduleManager = thread_->GetModuleManager();
     moduleManager->AddResolveImportedModule(baseFileName, module.GetTaggedValue());
     JSHandle<ModuleNamespace> np =

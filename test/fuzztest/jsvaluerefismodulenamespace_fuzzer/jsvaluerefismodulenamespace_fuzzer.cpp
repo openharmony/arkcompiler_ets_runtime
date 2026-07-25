@@ -52,7 +52,7 @@ void IsModuleNamespaceObjectFuzztest(const uint8_t *data, size_t size)
         SourceTextModule::AddLocalExportEntry(vm->GetJSThread(), module, localExportEntry2, 1, ERROR_TYPE_LEN);
         JSHandle<TaggedArray> localExportEntries(vm->GetJSThread(), module->GetLocalExportEntries(vm->GetJSThread()));
         CString baseFileName = "a.abc";
-        module->SetEcmaModuleFilenameString(baseFileName);
+        module->SetEcmaModuleFilenameString(vm->GetJSThread(), baseFileName);
         ModuleManager *moduleManager = vm->GetJSThread()->GetModuleManager();
         moduleManager->AddResolveImportedModule(baseFileName, module.GetTaggedValue());
         JSHandle<ModuleNamespace> np = ModuleNamespace::ModuleNamespaceCreate(vm->GetJSThread(),

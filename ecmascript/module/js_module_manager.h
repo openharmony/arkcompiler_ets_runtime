@@ -105,26 +105,26 @@ public:
     void NativeObjDestroy()
     {
 #if ENABLE_LATEST_OPTIMIZATION
-        resolvedModules_.ForEach([](const CString& key, GCRoot& root) {
+        resolvedModules_.ForEach([this](const CString& key, GCRoot& root) {
             ASSERT(!key.empty());
-            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(this);
         });
         resolvedSendableModules_.ForEach([](const CString& key, GCRoot& root) {
             ASSERT(!key.empty());
-            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+            SourceTextModule::Cast(root.Read())->DestroySharedModuleCNativeFields();
         });
 #else
-        resolvedModules_.ForEach([](auto it) {
+        resolvedModules_.ForEach([this](auto it) {
             CString key = it->first;
             ASSERT(!key.empty());
             GCRoot &root = it->second;
-            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(this);
         });
         resolvedSendableModules_.ForEach([](auto it) {
             CString key = it->first;
             ASSERT(!key.empty());
             GCRoot &root = it->second;
-            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+            SourceTextModule::Cast(root.Read())->DestroySharedModuleCNativeFields();
         });
 #endif
     }
@@ -199,6 +199,17 @@ public:
     {
         moduleImportData_.insert(headLength, entry);
     }
+
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    const CString *AcquireModuleFilename(const CString &moduleFilename);
+
+    void ReleaseModuleFilename(const CString *moduleFilename);
+
+    size_t GetModuleFilenameStorageSizeForTest()
+    {
+        return moduleFilenameStorage_.size();
+    }
+#endif
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -224,6 +235,11 @@ private:
     CUnorderedSet<CString, CStringHash> moduleImportSet_;
     // for module deregister. <recordName <unsharedConstPoolIndex, value index>>.
     CUnorderedMap<CString, CUnorderedMap<uint32_t, std::vector<uint32_t>>> classLiteralConstPoolMap_;
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    // SourceTextModules share immutable filenames. References remain valid across rehash and are released when the
+    // last module using a filename is destroyed.
+    CUnorderedMap<CString, size_t, CStringHash> moduleFilenameStorage_;
+#endif
 
     friend class EcmaVM;
     friend class PatchLoader;

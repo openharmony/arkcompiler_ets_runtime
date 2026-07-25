@@ -733,7 +733,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleDumpForSnapshotWithFileName)
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
 
     CString testFileName = "test_module_filename.abc";
-    module->SetEcmaModuleFilenameString(testFileName);
+    module->SetEcmaModuleFilenameString(thread_, testFileName);
 
     std::vector<Reference> snapshotVector;
     module->DumpForSnapshot(thread_, snapshotVector);
