@@ -5213,7 +5213,6 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetEnableAsmInterpreter(false);
 #endif
     runtimeOptions.SetEnableBuiltinsLazy(option.GetEnableBuiltinsLazy());
-    runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
 #ifdef ANDROID_PLATFORM
     // stub.an
     if (!option.GetStubFile().empty()) {

@@ -222,9 +222,10 @@ public:
         enableBuiltinsLazy_ = value;
     }
 
+    // Kept for source compatibility. Opcode-range disabling is no longer supported.
     void SetAsmOpcodeDisableRange(const std::string &value)
     {
-        asmOpcodeDisableRange_ = value;
+        (void)value;
     }
 
     void SetIsWorker()
@@ -412,11 +413,6 @@ private:
         return enableBuiltinsLazy_;
     }
 
-    std::string GetAsmOpcodeDisableRange() const
-    {
-        return asmOpcodeDisableRange_;
-    }
-
     std::string GetBundleName() const
     {
         return bundleName_;
@@ -478,7 +474,6 @@ private:
     bool enableBuiltinsLazy_ {true};
     bool isWorker_ {false};
     bool isRestrictedWorker_ {false};
-    std::string asmOpcodeDisableRange_ {""};
     std::string bundleName_ {};
     bool enableAOT_ {false};
     std::string anDir_ {};

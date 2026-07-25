@@ -29,7 +29,6 @@ std::unordered_set<std::string> aotArgsList {
     "ark-properties",
     "ark-bundleName",
     "asm-interpreter",
-    "asm-opcode-disable-range",
     "builtins-lazy",
     "compiler-log",
     "compiler-log-methods",

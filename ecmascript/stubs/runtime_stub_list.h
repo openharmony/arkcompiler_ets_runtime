@@ -489,7 +489,6 @@ namespace panda::ecmascript {
     V(DumpJSCallFunctionInfo)                                  \
     V(ForceGC)                                                 \
     V(NoticeThroughChainAndRefreshUser)                        \
-    V(JumpToCInterpreter)                                      \
     V(UpFrame)                                                 \
     V(Neg)                                                     \
     V(Not)                                                     \

@@ -228,13 +228,11 @@ private:
 #if ENABLE_MEMORY_OPTIMIZATION
     void InitializeStubEntries(const StubFileInfo &stubInfo);
     static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
-                                                   const StubFileInfo &stubInfo,
-                                                   const AsmInterParsedOption &asmInterOpt);
+                                                   const StubFileInfo &stubInfo);
 #else
     void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
     static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
-                                                   const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
-                                                   const AsmInterParsedOption &asmInterOpt);
+                                                   const std::vector<AOTFileInfo::FuncEntryDes> &stubs);
 #endif
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};

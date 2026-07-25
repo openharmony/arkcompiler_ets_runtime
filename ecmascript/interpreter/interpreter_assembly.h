@@ -26,13 +26,10 @@
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
-using DispatchEntryPoint =
-    void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue);
 using EcmaOpcode = BytecodeInstruction::Opcode;
 class ConstantPool;
 class ECMAObject;
 class GeneratorContext;
-struct CallParams;
 
 class InterpreterAssembly {
 public:
@@ -40,54 +37,21 @@ public:
     static void InitStackFrame(JSThread *thread);
     static JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
-    static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
     static inline void MethodEntry(JSThread *thread, Method *method, JSTaggedValue env);
 
-    static inline JSTaggedValue UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp);
-    static inline void InterpreterFrameCopyArgs(JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs,
-                                                uint32_t numDeclaredArgs, bool haveExtraArgs = true);
     static JSTaggedValue GetFunction(JSTaggedType *sp);
     static JSTaggedValue GetNewTarget(JSThread *thread, JSTaggedType *sp);
     static JSTaggedValue GetThis(JSTaggedType *sp);
     static JSTaggedValue GetConstantPool(JSThread *thread, JSTaggedType *sp);
-    static JSTaggedValue GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp);
+    static JSTaggedValue GetUnsharedConstpool(JSThread *thread, JSTaggedType *sp);
     static JSTaggedValue GetModule(JSThread *thread, JSTaggedType *sp);
     static JSTaggedValue GetProfileTypeInfo(JSThread *thread, JSTaggedType *sp);
     static uint32_t GetNumArgs(JSThread *thread, JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
-
-    static bool AssemblyIsFastNewFrameEnter(JSThread *thread, JSFunction *ctor, JSHandle<Method> method);
     static PUBLIC_API int64_t GetCallSize(EcmaOpcode opcode);
 
-#ifndef EXCLUDE_C_INTERPRETER
-#define DEF_HANDLER(name)                                                    \
-    static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
-                     JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
-                     JSTaggedValue acc);
-    ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
-    ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_HANDLER)
-#undef DEF_HANDLER
-#endif
 private:
     static void InitStackFrameForSP(JSTaggedType *prevSp);
 };
-
-#ifndef EXCLUDE_C_INTERPRETER
-#define DEF_HANDLER(name) InterpreterAssembly::name,
-static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispatchTable {
-    ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
-};
-static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_DEPRECATED_STUBS> deprecatedDispatchTable {
-    ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
-};
-static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_WIDE_STUBS> wideDispatchTable {
-    ASM_INTERPRETER_WIDE_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
-};
-static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_THROW_STUBS> throwDispatchTable {
-    ASM_INTERPRETER_THROW_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
-};
-#undef DEF_HANDLER
-#endif
-
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_ASSEMBLY_64BIT_H
