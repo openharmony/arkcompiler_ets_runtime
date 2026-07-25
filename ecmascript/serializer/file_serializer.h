@@ -31,6 +31,12 @@ public:
         : ValueSerializer(thread), valueFilter_(filter)
     {
     }
+    explicit FileSerializer(JSThread* thread, bool defaultTransfer, bool defaultCloneShared,
+                            bool needSerializeStack, ValueFilter filter = nullptr)
+        : ValueSerializer(thread, defaultTransfer, defaultCloneShared, needSerializeStack),
+          valueFilter_(filter)
+    {
+    }
     ~FileSerializer() override = default;
     static Policy SourceTextModuleFilter(TaggedObject* object);
 
