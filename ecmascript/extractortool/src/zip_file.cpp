@@ -489,12 +489,14 @@ bool ZipFile::InitZStream(z_stream &zstream) const
 
     BytePtr bufOut = new (std::nothrow) Byte[UNZIP_BUF_OUT_LEN];
     if (bufOut == nullptr) {
+        inflateEnd(&zstream);
         return false;
     }
 
     BytePtr bufIn = new (std::nothrow) Byte[UNZIP_BUF_IN_LEN];
     if (bufIn == nullptr) {
         delete[] bufOut;
+        inflateEnd(&zstream);
         return false;
     }
     zstream.next_out = bufOut;
