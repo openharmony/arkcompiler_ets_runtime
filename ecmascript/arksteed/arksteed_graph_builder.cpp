@@ -4655,10 +4655,14 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_->EnsureType(constant, NodeTypeFromJSTaggedValue(value));
             return constant;
         }
-        if (ValueVertex *provenInt = TryBuildProvenIntBinOp(kind, left, right)) {
-            return provenInt;
-        }
         OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        bool observedNonInt32Result =
+            SupportsF64BinOp(kind) && feedback.hint == ArkSteedOperationHint::NUMBER;
+        if (!observedNonInt32Result) {
+            if (ValueVertex *provenInt = TryBuildProvenIntBinOp(kind, left, right)) {
+                return provenInt;
+            }
+        }
         if (kind == BinaryOpKind::ADD) {
             if (ValueVertex *stringAdd = TryBuildStringAdd(left, right, feedback)) {
                 return stringAdd;
