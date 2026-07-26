@@ -16,8 +16,6 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include <cstdio>
-#include <iomanip>
-#include <sstream>
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/base/config.h"
@@ -49,6 +47,7 @@
 #endif
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
+#include "handleNodeIdMap.pb.h"
 #include "uv.h"
 #endif
 
@@ -806,24 +805,19 @@ bool DFXJSNApi::GetHandleNodeIdMap([[maybe_unused]] const EcmaVM *vm)
         return false;
     }
 
-    constexpr int kEstimatedLineBytes = 40;
-    constexpr int kHeaderBytes = 20;
-    constexpr int kHexAddrWidth = 16;
+    ecmascript::dfx::HandleNodeIdMap chunk;
 
-    std::string content;
-    content.reserve(result.size() * kEstimatedLineBytes + kHeaderBytes);
-    content.append("address\tnode_id\n");
-    for (const auto& [handleAddr, nodeId] : result) {
-        std::ostringstream line;
-        line << std::setfill('0') << std::setw(kHexAddrWidth) << std::hex
-             << static_cast<uint64_t>(handleAddr)
-             << '\t' << std::dec << nodeId << '\n';
-        content.append(line.str());
-    }
-
-    if (!stream.WriteBinBlock(content.data(), static_cast<int32_t>(content.size()))) {
-        LOG_ECMA(ERROR) << "GetHandleNodeIdMap: write failed";
-        return false;
+    // Concatenated protobuf messages merge into one logical message. Stream one
+    // entry per message to avoid building a second in-memory copy of the map.
+    for (const auto &[handleAddr, nodeId] : result) {
+        chunk.Clear();
+        auto *entry = chunk.add_entries();
+        entry->set_handle_address(static_cast<uint64_t>(handleAddr));
+        entry->set_node_id(nodeId);
+        if (!chunk.SerializeToFileDescriptor(fd)) {
+            LOG_ECMA(ERROR) << "GetHandleNodeIdMap: write protobuf entry failed";
+            return false;
+        }
     }
     return true;
 #else
