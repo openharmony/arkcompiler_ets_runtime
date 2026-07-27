@@ -59,9 +59,7 @@
 #include "ecmascript/platform/asm_stack.h"
 #include "ecmascript/base/config.h"
 
-#if !ENABLE_V70_OPTIMIZATION
 #undef ENABLE_LINXKIT
-#endif
 #ifdef ENABLE_LINXKIT
 #include "ecmascript/platform/arm64/linxkit_atomic.h"
 #endif
