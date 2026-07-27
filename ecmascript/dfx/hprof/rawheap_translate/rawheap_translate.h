@@ -57,6 +57,7 @@ public:
 
 protected:
     Node *CreateNode();
+    Node *CreateNodeAt(size_t pos);
     void InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type);
     StringId InsertAndGetStringId(const std::string &str);
     void SetVersion(const std::string &version);
@@ -67,7 +68,11 @@ protected:
     void CreateMetadataNode(Node *metadataNode);
     void AddMetadataPropertyNode(Node *metadataNode, const std::string &value, const std::string &propertyName);
 
+    void DoAddGlobalHandleObjectNodes(const std::unordered_map<uint64_t, uint64_t> &globalRefEntries);
+
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
+
+    std::unordered_map<StringId, uint64_t> refAddrStrIdMap_ {};  // strId -> refAddr (virtual nodes)
 
 private:
     StringHashMap *strTable_ {nullptr};
@@ -156,6 +161,11 @@ private:
 
     static constexpr uint64_t DOUBLE_ENCODE_OFFSET = 1ULL << 48; // Offset for double encoding
 
+    static constexpr uint64_t GLOBAL_HANDLE_OBJECT_OFFSET = 6; // V2 Global Handle Object offset
+    bool ReadGlobalRefEntries(FileReader &file);
+    void AddGlobalHandleObjectNodes();
+    bool BuildGlobalRefEdge(Node *node, StringId objectStrId);
+
     MetaParser *metaParser_ {nullptr};
     std::vector<char *> mem_ {};
     std::vector<uint32_t> sections_ {};
@@ -164,6 +174,9 @@ private:
     std::vector<uint64_t> globalHandleRoots_;
     std::vector<uint64_t> vmRoots_;
     std::vector<uint64_t> frameRoots_;
+    std::unordered_map<uint64_t, uint64_t> globalRefEntries_;  // refAddr -> heapObjAddr
+    bool globalRefTrackingEnabled_ {false};
+    Node *globalHandleObject_ {nullptr};
     friend class panda::test::HeapDumpTestHelper;
     friend class panda::test::RawHeapTranslateV1TestHelper;
 };
@@ -196,6 +209,9 @@ private:
     void AddSyntheticRootNode(std::vector<uint32_t> &roots);
     Node* FindNode(uint32_t addr);
     void AddHandleRootEdges(const std::vector<uint32_t> &handleRoots);
+    bool ReadGlobalRefEntries(FileReader &file);
+    void AddGlobalHandleObjectNodes();
+    bool BuildGlobalRefEdge(Node *node, StringId objectStrId);
 
     void FillNodes();
     void BuildEdges(Node *node);
@@ -218,11 +234,15 @@ private:
     Node *vmRoot_ {nullptr};
     Node *frameRoot_ {nullptr};
     Node *metadataNode_ {nullptr};
+    Node *globalHandleObject_ {nullptr};
 
     std::vector<uint32_t> localHandleRoots_;
     std::vector<uint32_t> globalHandleRoots_;
     std::vector<uint32_t> vmRoots_;
     std::vector<uint32_t> frameRoots_;
+    std::unordered_map<uint64_t, uint64_t> globalRefEntries_;  // refAddr -> heapObjAddr
+    bool globalRefTrackingEnabled_ {false};
+    static constexpr uint64_t GLOBAL_HANDLE_OBJECT_OFFSET = 6; // V2 Global Handle Object offset
     friend class panda::test::HeapDumpTestHelper;
     friend class panda::test::RawHeapTranslateV2TestHelper;
 };

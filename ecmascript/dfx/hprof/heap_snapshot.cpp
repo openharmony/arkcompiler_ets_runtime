@@ -613,7 +613,7 @@ void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTagge
             break;
         case Root::ROOT_GLOBAL_HANDLE:
             snapshot_.globalHandleRoots_.emplace(node);
-            if (panda::JSNApi::IsTrackGlobalRefEnabled()) {
+            if (JSNApi::IsTrackGlobalRefEnabled()) {
                 snapshot_.globalHandleAddrMap_[slot.SlotAddress()] = slot.GetTaggedType();
             }
             break;
@@ -1153,7 +1153,7 @@ void HeapSnapshot::FillEdges(bool isSimplify)
 
 void HeapSnapshot::FillGlobalEdges()
 {
-    if (!panda::JSNApi::IsTrackGlobalRefEnabled()) {
+    if (!JSNApi::IsTrackGlobalRefEnabled()) {
         LOG_ECMA(INFO) << "FillGlobalEdges track global ref not enabled";
         return;
     }
@@ -1333,7 +1333,7 @@ void HeapSnapshot::AddSyntheticRoot()
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, frameSyntheticRoot, rootEdges);
 
     HprofNode *globalObjRoot = nullptr;
-    if (panda::JSNApi::IsTrackGlobalRefEnabled()) {
+    if (JSNApi::IsTrackGlobalRefEnabled()) {
         globalObjRoot = CreateSpecificSyntheticRoot(globalObjectRoots_, "GlobalHandleObject", GLOBAL_HANDLE_OBJECT_POS);
         CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, globalObjRoot, rootEdges);
     }

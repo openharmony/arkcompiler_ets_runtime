@@ -26,6 +26,10 @@
 
 
 namespace panda::ecmascript {
+struct GlobalRefMappingEntry {
+    uintptr_t refAddr {0};
+    JSTaggedType heapObjAddr {0};
+};
 class ObjectMarker : public HeapMarker, public RootVisitor, public BaseObjectVisitor<ObjectMarker> {
 public:
     ObjectMarker(const EcmaVM *vm, const DumpSnapShotOption *option) : vm_(vm), option_(option) {}
@@ -173,6 +177,9 @@ protected:
         version_ = version;
     }
 
+    void WriteGlobalRefGroup();
+    virtual void WriteGlobalRefHeapObjAddr(JSTaggedType addr) = 0;
+
     const EcmaVM *vm_ {nullptr};
 
 private:
@@ -219,6 +226,7 @@ private:
 
     void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
     void DumpNonCMGCObject(JSTaggedType addr, size_t size, const CUnorderedSet<JSTaggedType> &nativePointerAddrs);
+    void WriteGlobalRefHeapObjAddr(JSTaggedType addr) override;
 
     constexpr static const char *const RAWHEAP_VERSION = "1.0.0";
 
@@ -247,6 +255,7 @@ private:
     void UpdateStringTable(JSTaggedType addr, StringId strId) override;
 
     void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
+    void WriteGlobalRefHeapObjAddr(JSTaggedType addr) override;
 
     uint32_t GenerateRegionId(JSTaggedType addr);
     uint32_t GenerateSyntheticAddr(JSTaggedType addr);
