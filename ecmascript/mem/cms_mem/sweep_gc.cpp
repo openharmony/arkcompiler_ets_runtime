@@ -188,6 +188,7 @@ void SweepGC::ClearDeadReferences()
         }
         return nullptr;
     };
+    heap_->GetEcmaVM()->GetJSThread()->IterateWeakRoots(gcClearDeadWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcClearDeadWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcClearDeadWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcClearDeadWeak);

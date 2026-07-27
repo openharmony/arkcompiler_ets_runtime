@@ -583,6 +583,9 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateWeakReferenceOpt", "");
     WeakRootVisitor gcUpdateWeak = GetUpdateWeakReferenceOptVisitor<gcType, cmsGC>();
 
+    if constexpr (gcType == TriggerGCType::OLD_GC) {
+        heap_->GetEcmaVM()->GetJSThread()->IterateWeakRoots(gcUpdateWeak);
+    }
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);

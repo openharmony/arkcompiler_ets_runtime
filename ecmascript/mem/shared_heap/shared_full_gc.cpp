@@ -115,6 +115,7 @@ void SharedFullGC::Sweep()
     Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
+        thread->IterateWeakRoots(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();

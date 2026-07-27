@@ -399,8 +399,6 @@ public:
         glueData_.isTracing_ = isTracing;
     }
 
-    void IterateBuiltinHClassEntries(RootVisitor &visitor);
-    void IterateCtorHClassEntries(RootVisitor &visitor);
     void Iterate(RootVisitor &visitor, GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT);
 
     void IterateJitCodeMap(const JitCodeMapVisitor &updater);
@@ -612,6 +610,8 @@ public:
     void IterateWeakEcmaGlobalStorage(WeakVisitor &visitor);
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
+
+    void IterateWeakRoots(const WeakRootVisitor &visitor);
 
     void UpdateJitCodeMapReference(const WeakRootVisitor &visitor);
 
@@ -2413,6 +2413,10 @@ private:
     {
         glueData_.globalConst_ = globalConst;
     }
+
+    void IterateBuiltinHClassEntries(const WeakRootVisitor &visitor);
+
+    void IterateCtorHClassEntries(const WeakRootVisitor &visitor);
 
     void PUBLIC_API TransferFromRunningToSuspended(ThreadState newState);
 

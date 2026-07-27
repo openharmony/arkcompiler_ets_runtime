@@ -353,11 +353,11 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
     }
     JSHandle<JSObject> objHandle(thread, receiver);
     ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
-    JSHClass::RestoreElementsKindToGeneric(newHClass);
+    JSHClass::RestoreElementsKindToGeneric(*newHClassHandle);
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, oldHClassHandle, newHClassHandle);
 #endif
-    objHandle->SynchronizedTransitionClass(thread, newHClass);
+    objHandle->SynchronizedTransitionClass(thread, *newHClassHandle);
     JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
 
     ASSERT(HandlerBase::IsField(handlerInfo));
