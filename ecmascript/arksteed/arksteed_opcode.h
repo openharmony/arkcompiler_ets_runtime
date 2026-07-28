@@ -855,7 +855,7 @@ public:
                                                               ValueRepresentation::TAGGED,
                                                               ValueRepresentation::TAGGED);
     static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() |
-        VertexProperties::ASMBarrierCall();
+        VertexProperties::DeferredCall();
 
     explicit StoreTaggedFieldWithBarrierVertex(uint64_t bitfield, int32_t offset,
                                                ArkSteedWriteBarrierValueKind valueKind =
@@ -896,7 +896,7 @@ public:
     static constexpr auto INPUT_TYPES = detail::InputTypes<3>(ValueRepresentation::INT_PTR,
                                                               ValueRepresentation::TAGGED,
                                                               ValueRepresentation::TAGGED);
-    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::Call();
+    static constexpr VertexProperties PROPERTIES = VertexProperties::CanWriteProp() | VertexProperties::DeferredCall();
 
     explicit StoreSharedFieldWithBarrierVertex(uint64_t bitfield, int32_t offset,
                                                ArkSteedWriteBarrierValueKind valueKind =

@@ -381,6 +381,7 @@ private:
     void SpillAndClearRegisters();
     void SpillAndClearASMBarrierClobbers();
     void SpillCatchPhiInputsOfIndex(BB *catchBlock, uint32_t index);
+    void SaveDeferredRegisterSnapshot(Vertex *vertex);
 
     // SpillAndClearRegisters as inline template, calls ClearRegisters with spill=true
     template <typename RegisterT>

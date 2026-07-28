@@ -444,11 +444,10 @@ void StoreTaggedFieldVertex::Dump(std::ostream &output) const
 
 void StoreTaggedFieldWithBarrierVertex::SetValueLocationConstraints()
 {
-    SetTemporariesNeeded(2);
-    RequireSpecificTemporary(this, ArkSteedAssembler::GetParameterRegister(2));
-    UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
-    UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
-    UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
+    SetTemporariesNeeded(2);  // 2: object and value region scratch registers
+    UseRegister(Arg(GLUE_INDEX));
+    UseRegister(Arg(OBJECT_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
 }
 
 void StoreTaggedFieldWithBarrierVertex::Dump(std::ostream &output) const
@@ -458,11 +457,10 @@ void StoreTaggedFieldWithBarrierVertex::Dump(std::ostream &output) const
 
 void StoreSharedFieldWithBarrierVertex::SetValueLocationConstraints()
 {
-    SetTemporariesNeeded(2);
-    RequireSpecificTemporary(this, ArkSteedAssembler::GetParameterRegister(2));
-    UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
-    UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
-    UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
+    SetTemporariesNeeded(2);  // 2: object and value region scratch registers
+    UseRegister(Arg(GLUE_INDEX));
+    UseRegister(Arg(OBJECT_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
 }
 
 void StoreSharedFieldWithBarrierVertex::Dump(std::ostream &output) const

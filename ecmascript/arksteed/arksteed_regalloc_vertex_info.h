@@ -105,6 +105,16 @@ public:
         return !generalTemporaries_.IsEmpty() || !doubleTemporaries_.IsEmpty();
     }
 
+    void SetDeferredRegisterSnapshot(const DeferredRegisterSnapshot &snapshot)
+    {
+        deferredRegisterSnapshot_ = snapshot;
+    }
+
+    const DeferredRegisterSnapshot &GetDeferredRegisterSnapshot() const
+    {
+        return deferredRegisterSnapshot_;
+    }
+
     // Template methods for temporaries
     template <typename RegisterT>
     RegListBase<RegisterT> &GetTemporaries()
@@ -142,6 +152,7 @@ protected:
     ArkDoubleRegList requiredSpecificFPRs_;
     ArkSteedRegList generalTemporaries_;
     ArkDoubleRegList doubleTemporaries_;
+    DeferredRegisterSnapshot deferredRegisterSnapshot_;
     InputLocation *inputLocations_ = nullptr;
     int inputCount_ = 0;
 };

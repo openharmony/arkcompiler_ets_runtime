@@ -1216,15 +1216,13 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldWithBarrierVer
     auto object = GetInputRegister(storeField, StoreTaggedFieldWithBarrierVertex::OBJECT_INDEX);
     auto value = GetInputRegister(storeField, StoreTaggedFieldWithBarrierVertex::VALUE_INDEX);
     TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister primaryScratch = scope.Acquire();
-    ArkSteedRegister offsetScratch = scope.AcquireSpecific(ArkSteedAssembler::GetParameterRegister(2));
-    ArkSteedRegister secondaryScratch = scope.Acquire();
-    ASSERT(primaryScratch != offsetScratch);
-    ASSERT(secondaryScratch != offsetScratch);
-    ASSERT(primaryScratch != secondaryScratch);
-    ArkSteedWriteBarrierEmitter(assembler_)
+    ArkSteedRegister objectRegionScratch = scope.Acquire();
+    ArkSteedRegister valueRegionScratch = scope.Acquire();
+    ASSERT(objectRegionScratch != valueRegionScratch);
+    ArkSteedWriteBarrierEmitter(assembler_, graph_->GetChunk(), &deferredCode_,
+                                storeField->GetRegallocInfo()->GetDeferredRegisterSnapshot())
         .StoreTaggedField(glue, object, value, storeField->GetOffset(), ArkSteedWriteBarrierKind::GENERIC_BARRIER,
-                          primaryScratch, offsetScratch, secondaryScratch, storeField->GetValueKind());
+                          objectRegionScratch, valueRegionScratch, storeField->GetValueKind());
 }
 
 template <>
@@ -1235,15 +1233,13 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreSharedFieldWithBarrierVer
     auto object = GetInputRegister(storeField, StoreSharedFieldWithBarrierVertex::OBJECT_INDEX);
     auto value = GetInputRegister(storeField, StoreSharedFieldWithBarrierVertex::VALUE_INDEX);
     TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister primaryScratch = scope.Acquire();
-    ArkSteedRegister offsetScratch = scope.AcquireSpecific(ArkSteedAssembler::GetParameterRegister(2));
-    ArkSteedRegister secondaryScratch = scope.Acquire();
-    ASSERT(primaryScratch != offsetScratch);
-    ASSERT(secondaryScratch != offsetScratch);
-    ASSERT(primaryScratch != secondaryScratch);
-    ArkSteedWriteBarrierEmitter(assembler_)
+    ArkSteedRegister objectRegionScratch = scope.Acquire();
+    ArkSteedRegister valueRegionScratch = scope.Acquire();
+    ASSERT(objectRegionScratch != valueRegionScratch);
+    ArkSteedWriteBarrierEmitter(assembler_, graph_->GetChunk(), &deferredCode_,
+                                storeField->GetRegallocInfo()->GetDeferredRegisterSnapshot())
         .StoreTaggedField(glue, object, value, storeField->GetOffset(), ArkSteedWriteBarrierKind::SHARED_BARRIER,
-                          primaryScratch, offsetScratch, secondaryScratch, storeField->GetValueKind());
+                          objectRegionScratch, valueRegionScratch, storeField->GetValueKind());
 }
 
 template <>
@@ -2295,6 +2291,17 @@ void ArkSteedCodeGenerator::Generate()
         }
 
         ProcessControlVertex(controlVertex);
+    }
+    EmitDeferredCode();
+}
+
+void ArkSteedCodeGenerator::EmitDeferredCode()
+{
+    for (size_t i = 0; i < deferredCode_.size(); ++i) {
+        ArkSteedDeferredCode *deferred = deferredCode_[i];
+        __ RecordComment("Deferred block");
+        __ Bind(deferred->GetEntryLabel());
+        deferred->Generate(assembler_);
     }
 }
 

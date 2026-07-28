@@ -1,0 +1,4 @@
+CheckedNumberToF64 [CheckedNumberToF64]
+StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier] value_kind=unknown
+StoreTaggedFieldWithBarrierVertex
+F64Add [F64Add]

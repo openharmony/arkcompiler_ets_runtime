@@ -41,6 +41,11 @@ using ArkSteedRegList = RegListBase<x64::Register>;
 using ArkDoubleRegList = RegListBase<x64::XMMRegister>;
 #endif
 
+struct DeferredRegisterSnapshot {
+    ArkSteedRegList liveRegisters;
+    ArkDoubleRegList liveDoubleRegisters;
+};
+
 // Machine representation types
 enum class MachineRepresentation : uint8_t {
     None = 0,
@@ -716,6 +721,52 @@ constexpr ArkDoubleRegList GetAllocatableDoubleRegisters()
                             x64::xmm13,
                             x64::xmm14};
 #endif
+}
+
+constexpr ArkSteedRegList GetNGCRuntimeCallerSavedGeneralRegisters()
+{
+#if defined(PANDA_TARGET_ARM64)
+    // AAPCS64: x0-x18 are caller-saved. ArkSteed only allocates x0-x15 from that range.
+    return ArkSteedRegList{aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3,
+                           aarch64::x4,  aarch64::x5,  aarch64::x6,  aarch64::x7,
+                           aarch64::x8,  aarch64::x9,  aarch64::x10, aarch64::x11,
+                           aarch64::x12, aarch64::x13, aarch64::x14, aarch64::x15};
+#elif defined(PANDA_TARGET_AMD64)
+    // System V AMD64: rbx and r12 are the only allocatable callee-saved GPRs.
+    return ArkSteedRegList{x64::rax, x64::rcx, x64::rdx, x64::rsi,
+                           x64::rdi, x64::r8,  x64::r9,  x64::r11};
+#endif
+}
+
+constexpr ArkDoubleRegList GetNGCRuntimeCallerSavedDoubleRegisters()
+{
+#if defined(PANDA_TARGET_ARM64)
+    // AAPCS64 preserves the low 64 bits of v8-v15, which is sufficient for ArkSteed double values.
+    return ArkDoubleRegList{
+        aarch64::d0,  aarch64::d1,  aarch64::d2,  aarch64::d3,
+        aarch64::d4,  aarch64::d5,  aarch64::d6,  aarch64::d7,
+        aarch64::d16, aarch64::d17, aarch64::d18, aarch64::d19,
+        aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23,
+        aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27,
+        aarch64::d28, aarch64::d29};
+#elif defined(PANDA_TARGET_AMD64)
+    // System V AMD64 treats every allocatable XMM register as caller-saved.
+    return GetAllocatableDoubleRegisters();
+#endif
+}
+
+constexpr ArkSteedRegList GetASMFastWriteBarrierClobberedGeneralRegisters()
+{
+#if defined(PANDA_TARGET_ARM64)
+    return ArkSteedRegList{aarch64::x15};
+#elif defined(PANDA_TARGET_AMD64)
+    return ArkSteedRegList{x64::r11};
+#endif
+}
+
+constexpr ArkDoubleRegList GetASMFastWriteBarrierClobberedDoubleRegisters()
+{
+    return GetNGCRuntimeCallerSavedDoubleRegisters();
 }
 
 template <typename RegisterT>

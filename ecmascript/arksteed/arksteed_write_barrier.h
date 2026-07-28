@@ -17,39 +17,47 @@
 #define ECMASCRIPT_ARKSTEED_WRITE_BARRIER_H
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_deferred_code.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedWriteBarrierEmitter {
 public:
-    explicit ArkSteedWriteBarrierEmitter(ArkSteedAssembler *assembler)
-        : assembler_(assembler)
+    ArkSteedWriteBarrierEmitter(ArkSteedAssembler *assembler, Chunk *chunk,
+                                ArkSteedDeferredCodeList *deferredCode,
+                                const DeferredRegisterSnapshot &registerSnapshot)
+        : assembler_(assembler),
+          chunk_(chunk),
+          deferredCode_(deferredCode),
+          registerSnapshot_(registerSnapshot)
     {}
 
     void StoreTaggedField(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value, int32_t offset,
-                          ArkSteedWriteBarrierKind barrierKind, ArkSteedRegister primaryScratch,
-                          ArkSteedRegister offsetScratch, ArkSteedRegister secondaryScratch,
+                          ArkSteedWriteBarrierKind barrierKind, ArkSteedRegister objectRegionScratch,
+                          ArkSteedRegister valueRegionScratch,
                           ArkSteedWriteBarrierValueKind valueKind = ArkSteedWriteBarrierValueKind::Unknown);
 
 private:
     void EmitFastWriteBarrier(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value,
-                              int32_t offset, ArkSteedRegister offsetScratch);
+                              int32_t offset);
     void EmitWriteBarrier(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value, int32_t offset,
-                          ArkSteedWriteBarrierKind barrierKind, ArkSteedRegister primaryScratch,
-                          ArkSteedRegister offsetScratch, ArkSteedRegister secondaryScratch);
+                          ArkSteedWriteBarrierKind barrierKind, ArkSteedRegister objectRegionScratch,
+                          ArkSteedRegister valueRegionScratch);
     void EmitLocalToShareRSet(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value, int32_t offset,
                               ArkSteedRegister objectRegionScratch, ArkSteedRegister bitsetWordAddrScratch,
-                              ArkSteedRegister bitScratch, Label *next);
+                              Label *next);
     void EmitPostStoreWriteBarrier(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value,
                                    int32_t offset, ArkSteedWriteBarrierKind barrierKind,
-                                   ArkSteedRegister primaryScratch, ArkSteedRegister offsetScratch,
-                                   ArkSteedRegister secondaryScratch);
+                                   ArkSteedRegister objectRegionScratch, ArkSteedRegister valueRegionScratch);
     void CallBarrierRuntime(kungfu::RuntimeStubCSigns::ID runtimeId, ArkSteedRegister glue,
                             ArkSteedRegister object, int32_t offset, ArkSteedRegister value,
-                            ArkSteedRegister offsetScratch, bool preserveInputs);
+                            bool preserveInputs);
 
     ArkSteedAssembler *assembler_ {nullptr};
+    Chunk *chunk_ {nullptr};
+    ArkSteedDeferredCodeList *deferredCode_ {nullptr};
+    DeferredRegisterSnapshot registerSnapshot_;
 };
 
 }  // namespace panda::ecmascript::arksteed

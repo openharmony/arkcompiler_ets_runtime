@@ -278,9 +278,9 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
         SpillAndClearASMBarrierClobbers();
     }
     VerifyDeoptInputLocations(vertex);
-    // Make sure to save snapshot after allocate eager deopt registers.
+    // Save after inputs and temporaries have their physical locations.
     if (vertex->GetProperties().NeedsRegisterSnapshot()) {
-        // to do: SaveRegisterSnapshot
+        SaveDeferredRegisterSnapshot(vertex);
     }
 
     // Allocate vertex output.
@@ -846,6 +846,14 @@ void ArkSteedRegisterAllocator::SpillAndClearASMBarrierClobbers()
                          aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27,
                          aarch64::d28, aarch64::d29});
 #endif
+}
+
+void ArkSteedRegisterAllocator::SaveDeferredRegisterSnapshot(Vertex *vertex)
+{
+    DeferredRegisterSnapshot snapshot;
+    snapshot.liveRegisters = generalRegisters_.Used();
+    snapshot.liveDoubleRegisters = doubleRegisters_.Used();
+    vertex->GetRegallocInfo()->SetDeferredRegisterSnapshot(snapshot);
 }
 
 void ArkSteedRegisterAllocator::SpillCatchPhiInputsOfIndex(BB *catchBlock, uint32_t index)

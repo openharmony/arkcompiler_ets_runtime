@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_CODEGEN_H
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_deferred_code.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
@@ -33,7 +34,8 @@ public:
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
-          blockColorAssignment_(graph->GetChunk())
+          blockColorAssignment_(graph->GetChunk()),
+          deferredCode_(graph->GetChunk())
     {}
 
     void Generate();
@@ -97,6 +99,7 @@ private:
     void AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex);
     void RecordGapMoveComment(const InstructionOperand &src, const InstructionOperand &dest, PhiVertex *phi);
     void RecordSpillComment();
+    void EmitDeferredCode();
 
     int ComputeDeferredBlocks();
     void ReorderDeferredBlocks(int deferredCount);
@@ -146,6 +149,7 @@ private:
 
     // Block color assignment for CFG coloring (only computed when comments enabled)
     ChunkVector<int> blockColorAssignment_;
+    ArkSteedDeferredCodeList deferredCode_;
     bool blockColorsComputed_ = false;
 };
 
