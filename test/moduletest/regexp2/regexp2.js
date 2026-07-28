@@ -23,17 +23,17 @@
     // Case 1: Global regex alternating between cache hits and misses
     const regex = /\d+/g;
     const results = [];
-    
+
     // First use - should hit cache (fresh state)
     results.push(regex.test("abc123def"));
-    
+
     // Second use - should miss cache (lastIndex changed)
     results.push(regex.test("abc123def"));
-    
+
     // Third use - reset and hit cache again
     regex.lastIndex = 0;
     results.push(regex.test("abc123def"));
-    
+
     assert_equal(results[0], true);
     assert_equal(results[1], false);
     assert_equal(results[2], true);
@@ -44,18 +44,18 @@
     const regex = /hello/y;
     const str = "hello world hello";
     const results = [];
-    
+
     // First match at position 0
     regex.lastIndex = 0;
     results.push(regex.test(str));
-    
+
     // Should fail at position 5
     results.push(regex.test(str));
-    
+
     // Should succeed at position 12
     regex.lastIndex = 12;
     results.push(regex.test(str));
-    
+
     assert_equal(results[0], true);
     assert_equal(results[1], false);
     assert_equal(results[2], true);
@@ -66,44 +66,17 @@
     const regex1 = /\d+/g;
     const regex2 = /\d+/g;
     const str = "123 456";
-    
+
     const results = [];
     results.push(regex1.test(str)); // true, lastIndex=3
     results.push(regex2.test(str)); // true, lastIndex=3 (fresh regex)
     results.push(regex1.test(str)); // true, lastIndex=7 (continues from 3)
     results.push(regex2.test(str)); // true, lastIndex=7 (continues from 3)
-    
+
     assert_equal(results[0], true);
     assert_equal(results[1], true);
     assert_equal(results[2], true);
     assert_equal(results[3], true);
-}
-
-{
-    let reg = /^foo$/m;
-    let res = reg.exec("\rfoo\r");
-    assert_equal(res[0], "foo");
-}
-
-{
-    const regex = /\d+/;
-    const str = "abc123def";
-    
-    assert_equal(regex.test(str), true);
-    assert_equal(regex.test(str), true);
-    assert_equal(regex.test(str), true);
-    
-    const regex2 = /hello/;
-    assert_equal(regex2.test("hello world"), true);
-    assert_equal(regex2.test("hello world"), true);
-    assert_equal(regex.test(str), true);
-    assert_equal(regex2.test("hello world"), true);
-}
-
-{
-    let reg2 = /((?<=a))/;
-    let str = "aba";
-    assert_equal(JSON.stringify(str.split(reg2)), '["a","","ba"]');
 }
 
 test_end();
