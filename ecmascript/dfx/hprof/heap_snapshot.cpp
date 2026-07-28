@@ -281,7 +281,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry, bool needProxySuffi
     switch (type) {
         case JSType::TAGGED_ARRAY:
         case JSType::JS_SHARED_TYPED_ARRAY:
-        case JSType::FUNC_SLOT:
         case JSType::LEXICAL_ENV:
         case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
@@ -311,7 +310,6 @@ CString HeapSnapshot::GetNodeName(JSType type, bool isVmMode)
     static const std::unordered_map<JSType, std::string> baseNodeNameMap_ = {
         {JSType::TAGGED_ARRAY, "ArkInternalArray"},
         {JSType::JS_SHARED_TYPED_ARRAY, "ArkInternalArray"},
-        {JSType::FUNC_SLOT, "ArkInternalFuncSlot"},
         {JSType::LEXICAL_ENV, "LexicalEnv"},
         {JSType::WEAK_LINKED_HASH_MAP, "WeakLinkedHashMap"},
         {JSType::SFUNCTION_ENV, "SFunctionEnv"},

@@ -542,7 +542,6 @@ public:
     bool IsWeakLinkedHashMap() const;
     bool IsSFunctionEnv() const;
     bool PUBLIC_API IsTaggedArray() const;
-    bool PUBLIC_API IsFuncSlot() const;
     bool IsDictionary() const;
     bool IsByteArray() const;
     bool IsConstantPool() const;

@@ -350,10 +350,6 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
     ProfileType::Kind kind;
     int calleeMethodId = 0;
     ApEntityId calleeAbcId = 0;
-    if (slotValue.IsFuncSlot()) {
-        auto funcSlot = FuncSlot::Cast(slotValue);
-        slotValue = funcSlot->GetFunction(mainThread_);
-    }
     if (slotValue.IsInt()) {
         calleeMethodId = slotValue.GetInt();
         if (calleeMethodId == 0) {
@@ -395,10 +391,6 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
     JSTaggedValue slotValue = profileTypeInfo_->GetICSlot(mainThread_, slotId);
     int ctorMethodId = 0;
     JSHClass* hclass = nullptr;
-    if (slotValue.IsFuncSlot()) {
-        auto funcSlot = FuncSlot::Cast(slotValue);
-        slotValue = funcSlot->GetFunction(mainThread_);
-    }
     if (slotValue.IsInt()) {
         ctorMethodId = slotValue.GetInt();
         // JIT cannot optimize this scenario because it doesn't know the hclass
