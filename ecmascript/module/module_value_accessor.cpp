@@ -214,14 +214,14 @@ JSTaggedValue ModuleValueAccessor::GetModuleNamespace(JSThread *thread, int32_t 
 JSTaggedValue ModuleValueAccessor::GetNativeOrCjsModuleValue(JSThread *thread, JSHandle<SourceTextModule> module,
     int32_t index)
 {
-    JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, module.GetTaggedValue());
+    JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, module);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return SourceTextModule::GetValueFromExportObject(thread, exports, index);
 }
 JSTaggedValue ModuleValueAccessor::GetNativeOrCjsModuleValue(JSThread *thread, JSHandle<SourceTextModule> module,
     JSTaggedValue bindingName)
 {
-    JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, module.GetTaggedValue());
+    JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, module);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     if (UNLIKELY(JSTaggedValue::SameValue(thread,
         bindingName, thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue()))) {
@@ -430,7 +430,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValu
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, false);
     return UpdateBindingAndGetModuleValue(info.thread, info.module, resolvedModule, info.index,
-        binding->GetBindingName(info.thread));
+        JSHandle<JSTaggedValue>(info.thread, binding->GetBindingName(info.thread)));
 }
 
 template JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding<true>(const GetModuleValueFromBindingInfo &);
@@ -498,27 +498,26 @@ template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding<fals
     const GetModuleValueFromBindingInfo &);
 
 JSTaggedValue ModuleValueAccessor::UpdateBindingAndGetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module,
-    JSHandle<SourceTextModule> requiredModule, int32_t index, JSTaggedValue bindingName)
+                                                                  JSHandle<SourceTextModule> requiredModule,
+                                                                  int32_t index, JSHandle<JSTaggedValue> bindingName)
 {
     // Get esm environment
     JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment(thread));
     ASSERT(!moduleEnvironment->IsUndefined());
     JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
     // rebinding here
-    JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, requiredModule.GetTaggedValue());
+    JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, requiredModule);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    JSHandle<JSTaggedValue> exportName(thread, bindingName);
     JSHandle<JSTaggedValue> resolution =
-        SourceTextModule::ResolveExportObject(thread, requiredModule, exports, exportName);
+        SourceTextModule::ResolveExportObject(thread, requiredModule, exports, bindingName);
     // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
     if (resolution->IsNull() || resolution->IsString()) {
-        CString requestMod = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(
-            requiredModule.GetTaggedValue()));
-        CString recordStr = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(
-            module.GetTaggedValue()));
+        CString requestMod =
+            ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(requiredModule.GetTaggedValue()));
+        CString recordStr = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(module.GetTaggedValue()));
         CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
-            ModulePathHelper::Utf8ConvertToString(thread, bindingName) +
-            "' which imported by '" + recordStr + "'";
+                      ModulePathHelper::Utf8ConvertToString(thread, bindingName.GetTaggedValue()) +
+                      "' which imported by '" + recordStr + "'";
         THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(
             thread, ErrorType::SYNTAX_ERROR, msg.c_str(), JSTaggedValue::Exception());
     }
@@ -552,15 +551,14 @@ void ModuleValueAccessor::EvaluateModuleIfNeeded(JSThread* thread, JSHandle<Sour
 template void ModuleValueAccessor::EvaluateModuleIfNeeded<true>(JSThread *, JSHandle<SourceTextModule>);
 template void ModuleValueAccessor::EvaluateModuleIfNeeded<false>(JSThread *, JSHandle<SourceTextModule>);
 
-JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule)
+JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thread, JSHandle<SourceTextModule> module)
 {
-    JSHandle<SourceTextModule> module(thread, resolvedModule);
     // if cjsModule is not JSObject, means cjs uses default exports.
     ModuleTypes moduleType = module->GetTypes();
     if (SourceTextModule::IsNativeModule(moduleType)) {
         JSHandle<JSTaggedValue> exports(thread, module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
-            CString moduleName = SourceTextModule::GetModuleName(resolvedModule);
+            CString moduleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
             ModuleMessageHelper::PrintNativeModuleLoadFailure(thread, moduleName);
         }
         return exports;

@@ -166,7 +166,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetBindingNameByIndex(JSThread *thread
         return globalConstants->GetHandledDefaultString();
     }
 
-    JSHandle<JSTaggedValue> exports = ModuleValueAccessor::GetNativeOrCjsExports(thread, module.GetTaggedValue());
+    JSHandle<JSTaggedValue> exports = ModuleValueAccessor::GetNativeOrCjsExports(thread, module);
     if (exports->IsJSObject()) {
         JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
         TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties(thread).GetTaggedObject());

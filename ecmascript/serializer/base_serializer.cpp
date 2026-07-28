@@ -459,21 +459,23 @@ void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject* root, 
         seqHole = 0;
     };
     for (auto slot = start; slot < end; slot++) {
-        if (!slot.GetTaggedValue().IsHeapObject()) {
+        JSTaggedValue val = JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress()));
+        if (!val.IsHeapObject()) {
             const auto toEnd = (end.SlotAddress() - slot.SlotAddress()) / JSTaggedValue::TaggedTypeSize();
             if (toEnd == SHARED_CONSTPOOL_ID_OFFSET) {
                 writeHoles();
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+                SerializeJSTaggedValue(val);
                 continue;
             }
             seqHole++;
             continue;
         }
-        auto val = slot.GetTaggedObject();
-        switch (val->GetClass()->GetObjectType()) {
+        // ConstantPool solts not have any weakref
+        auto obj = val.GetTaggedObject();
+        switch (obj->GetClass()->GetObjectType()) {
             case JSType::LINE_STRING:
                 writeHoles();
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+                SerializeJSTaggedValue(val);
                 break;
             default:
                 seqHole++;
