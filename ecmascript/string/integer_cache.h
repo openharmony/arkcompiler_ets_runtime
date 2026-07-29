@@ -46,7 +46,7 @@ public:
         if (string->IsLineString() && string->IsUtf8() &&
             string->GetLength() <= MAX_INTEGER_CACHE_SIZE && string->GetLength() > 0) {
             IntegerCache* cache = Extract(string);
-            cache->isInteger_ = 0;
+            cache->flags_ = 0;
         }
     }
 
@@ -60,25 +60,34 @@ public:
 
     bool IsInteger() const
     {
-        return isInteger_ != 0;
+        return flags_ & IS_INTEGER;
     }
 
-    uint16_t GetInteger() const
+    int GetInteger() const
     {
         DCHECK_CC(IsInteger());
-        return integer_;
+        int num = integer_;
+        return (flags_ & IS_NEGATIVE) ? -num : num;
     }
 
-    void SetInteger(uint16_t value)
+    void SetInteger(uint16_t value, bool neg)
     {
         integer_ = value;
-        isInteger_ = 1;
+        if (neg) {
+            flags_ |= IS_NEGATIVE;
+        } else {
+            flags_ &= ~IS_NEGATIVE;
+        }
+        flags_ |= IS_INTEGER;
     }
 
 private:
     [[maybe_unused]] std::array<uint8_t, MAX_INTEGER_CACHE_SIZE> payload_;
-    uint16_t isInteger_ = 0;
+    uint16_t flags_ = 0;
     uint16_t integer_ = 0;
+
+    static constexpr uint16_t IS_INTEGER = 0x1 << 0;
+    static constexpr uint16_t IS_NEGATIVE = 0x1 << 1;
 };
 }
 #endif //ECMASCRIPT_STRING_INTEGER_CACHE_H

@@ -838,24 +838,18 @@ uint64_t NumberHelper::DoubleToUInt64(double d)
     return static_cast<uint64_t>(d);
 }
 
-bool NumberHelper::IsDigitalString(const uint8_t *start, const uint8_t *end)
+bool NumberHelper::TryConvertStringToInt(const uint8_t *start, const uint8_t *end, int &num)
 {
+    num = 0;
     int len = end - start;
     for (int i = 0; i < len; i++) {
-        if (*(start + i) < '0' || *(start + i) > '9') {
+        uint8_t digit = *(start + i);
+        if (digit < '0' || digit > '9') {
             return false;
         }
+        num = 10 * num + (digit - '0'); // 10 : 10 represents the base of the decimal system
     }
     return true;
-}
-
-int NumberHelper::StringToInt(const uint8_t *start, const uint8_t *end)
-{
-    int num = *start - '0';
-    for (int i = 1; i < (end - start); i++) {
-        num = 10 * num + (*(start + i) - '0'); // 10 : 10 represents the base of the decimal system
-    }
-    return num;
 }
 
 // only for string is ordinary string and using UTF8 encoding
@@ -870,24 +864,20 @@ std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *
     if (pos == (end - start)) {
         return {true, JSTaggedNumber(NAN_VALUE)};
     }
+    int num = 0;
     if (*(start + pos) > '9') {
         // valid number's codes not longer than '9', except 'I' and non-breaking space.
         if (*(start + pos) != 'I' && *(start + pos) != 0xA0) {
             return {true, JSTaggedNumber(NAN_VALUE)};
         }
-    } else if ((end - (start + pos)) <= MAX_ELEMENT_INDEX_LEN && IsDigitalString((start + pos), end)) {
-        int num = StringToInt((start + pos), end);
-        if LIKELY(!minus) {
-            if (cache != nullptr) {
-                cache->SetInteger(num);
-            }
-            return {true, JSTaggedNumber(num)};
-        }
-        if (num == 0) {
+    } else if ((end - (start + pos)) <= MAX_ELEMENT_INDEX_LEN && TryConvertStringToInt((start + pos), end, num)) {
+        if UNLIKELY(num == 0 && minus) {
             return {true, JSTaggedNumber(SignedZero(Sign::NEG))};
         }
-        num = -num;
-        return {true, JSTaggedNumber(num)};
+        if (cache != nullptr) {
+            cache->SetInteger(num, minus);
+        }
+        return {true, JSTaggedNumber(minus ? -num : num)};
     }
 
     return {false, JSTaggedNumber(NAN_VALUE)};
