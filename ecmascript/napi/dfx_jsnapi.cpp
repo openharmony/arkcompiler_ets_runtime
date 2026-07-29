@@ -290,6 +290,10 @@ bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
         LOG_ECMA(ERROR) << "PerformHybridHeapDump: HybridHeapProfiler not available";
         return false;
     }
+    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+        LOG_ECMA(ERROR) << "PerformHybridHeapDump: hybrid binary dump is not supported yet";
+        return false;
+    }
     return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), nullptr,
                                 const_cast<DumpSnapShotOption &>(dumpOption));
 #endif
@@ -304,6 +308,10 @@ bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
     auto *hybridProfiler = HybridHeapProfiler::GetInstance();
     if (hybridProfiler == nullptr) {
         LOG_ECMA(ERROR) << "PerformHybridHeapDump: HybridHeapProfiler not available";
+        return false;
+    }
+    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+        LOG_ECMA(ERROR) << "PerformHybridHeapDump: hybrid binary dump with external stream is not supported yet";
         return false;
     }
     return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), stream,
