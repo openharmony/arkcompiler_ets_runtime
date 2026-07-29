@@ -28,6 +28,7 @@ Usage:
   Default: debug
 
 Options:
+  --platform PLATFORM           Build/run platform: host default or arm64 via QEMU
   --skip-build                  Skip build step
   --keep-going N                Continue on error (N=allow N errors, 0=ignore all)
   --verbose                     Verbose output
@@ -125,7 +126,27 @@ class BuildConfig:
 
     @property
     def es2abc(self) -> Path:
+        if self.platform == "arm64":
+            return ARKSTEED_ROOT / (
+                f"{self._out_prefix}/clang_x64/arkcompiler/ets_frontend/es2abc"
+            )
         return ARKSTEED_ROOT / f"{self._out_prefix}/arkcompiler/ets_frontend/es2abc"
+
+    @property
+    def qemu_ld_prefix(self) -> Optional[Path]:
+        if self.platform != "arm64":
+            return None
+        return ARKSTEED_ROOT / f"{self._out_prefix}/common/common/libc"
+
+    @property
+    def command_prefix(self) -> List[str]:
+        if self.platform != "arm64":
+            return []
+        qemu = shutil.which("qemu-aarch64-static") or shutil.which("qemu-aarch64")
+        if qemu is None:
+            return []
+        assert self.qemu_ld_prefix is not None
+        return [qemu, "-L", str(self.qemu_ld_prefix)]
 
     @property
     def ark_disasm(self) -> Path:
@@ -145,6 +166,13 @@ class BuildConfig:
             ARKSTEED_ROOT / f"{self._out_prefix}/thirdparty/zlib",
             ARKSTEED_ROOT / f"{self._out_prefix}/thirdparty/bounds_checking_function",
         ]
+        if self.platform == "arm64":
+            paths.extend([
+                ARKSTEED_ROOT / f"{self._out_prefix}/arkcompiler/runtime_core",
+                ARKSTEED_ROOT / f"{self._out_prefix}/arkcompiler/toolchain",
+                ARKSTEED_ROOT / f"{self._out_prefix}/thirdparty/libuv",
+            ])
+            return paths
         if IS_MACOS:
             paths.extend([
                 ARKSTEED_ROOT / f"{self._out_prefix}/thirdparty/libuv",
@@ -434,6 +462,7 @@ class RunContext:
     → _run_all_tests → execute_test_case.
     """
     mode: str
+    platform: str = HOST_PLATFORM
     verbose: bool = False
     log_level: Optional[str] = None
     log_components: Optional[str] = None
@@ -519,6 +548,12 @@ def parse_args() -> argparse.Namespace:
         default="debug",
         nargs="?",
         help="Build mode: debug or release",
+    )
+    parser.add_argument(
+        "--platform",
+        choices=(HOST_PLATFORM, "arm64"),
+        default=HOST_PLATFORM,
+        help=f"Build/run platform (default: {HOST_PLATFORM}; arm64 uses qemu-user)",
     )
     parser.add_argument("--skip-build", action="store_true", help="Skip build step")
     parser.add_argument(
@@ -657,15 +692,18 @@ def parse_args() -> argparse.Namespace:
 
 def build_ark(
     mode: str,
+    target_platform: str = HOST_PLATFORM,
     verbose: bool = False,
     skip_stub: bool = False,
     keep_going: Optional[int] = None,
 ) -> bool:
     """Execute python ark.py {platform}.{mode} under ARKSTEED_ROOT"""
-    target = f"{HOST_PLATFORM}.{mode}"
+    target = f"{target_platform}.{mode}"
     print(f"Building ArkSteed ({target})...")
     cmd = ["python3", "ark.py", target]
     gn_args = [ARKSTEED_GN_ARG]
+    if target_platform == "arm64":
+        gn_args.append("run_with_qemu=true")
     if skip_stub:
         gn_args.append("skip_gen_stub=true")
     cmd.append(f"--gn-args={' '.join(gn_args)}")
@@ -682,6 +720,18 @@ def build_ark(
                     f"Build failed, return code: {result.returncode}", file=sys.stderr
                 )
             return False
+        if target_platform == "arm64":
+            host_es2abc = f"clang_x64/arkcompiler/ets_frontend/es2abc"
+            ninja = ARKSTEED_ROOT / "prebuilts/build-tools/linux-x86/bin/ninja"
+            result = run_command_real_time(
+                [str(ninja), "-C", f"out/{target}", host_es2abc],
+                cwd=ARKSTEED_ROOT,
+                timeout=None,
+                verbose=verbose,
+            )
+            if result.returncode != 0:
+                print("Host es2abc build failed", file=sys.stderr)
+                return False
         print("Build successful")
         return True
     except subprocess.TimeoutExpired:
@@ -692,9 +742,9 @@ def build_ark(
         return False
 
 
-def check_arksteed_gn_args(mode: str) -> bool:
+def check_arksteed_gn_args(mode: str, target_platform: str = HOST_PLATFORM) -> bool:
     """Validate that the selected build directory was generated with ArkSteed enabled."""
-    config = BuildConfig(mode)
+    config = BuildConfig(mode, target_platform)
     args_gn = ARKSTEED_ROOT / config._out_prefix / "args.gn"
     if not args_gn.exists():
         print(f"Error: args.gn does not exist: {args_gn}", file=sys.stderr)
@@ -707,7 +757,7 @@ def check_arksteed_gn_args(mode: str) -> bool:
     print(
         "Error: ArkSteed GN option is not enabled in "
         f"{args_gn}. Please rebuild without --skip-build, or run:\n"
-        f"  python3 ark.py {HOST_PLATFORM}.{mode} --gn-args={ARKSTEED_GN_ARG}",
+        f"  python3 ark.py {target_platform}.{mode} --gn-args={ARKSTEED_GN_ARG}",
         file=sys.stderr,
     )
     return False
@@ -1139,9 +1189,13 @@ def dump_ts_abc(
     if not tools.ark_disasm.exists():
         print(f"Error: ark_disasm does not exist: {tools.ark_disasm}", file=sys.stderr)
         return False
-    cmd = [str(tools.ark_disasm), str(abc_path), str(output_path)]
+    if tools.platform == "arm64" and not tools.command_prefix:
+        print("Error: qemu-aarch64 is required for ARM64 execution", file=sys.stderr)
+        return False
+    cmd = tools.command_prefix + [str(tools.ark_disasm), str(abc_path), str(output_path)]
     try:
-        result = run_command_real_time(cmd, verbose=verbose, timeout=30)
+        timeout = 300 if tools.platform == "arm64" else 30
+        result = run_command_real_time(cmd, verbose=verbose, timeout=timeout)
         if result.returncode != 0:
             if verbose:
                 print(
@@ -1297,7 +1351,10 @@ def run_ark_vm(
         print(f"Error: ark_js_vm does not exist: {tools.ark_js_vm}", file=sys.stderr)
         return None, "", "", False
 
-    cmd = [str(tools.ark_js_vm)] + BASE_ARGS
+    if tools.platform == "arm64" and not tools.command_prefix:
+        print("Error: qemu-aarch64 is required for ARM64 execution", file=sys.stderr)
+        return None, "", "", False
+    cmd = tools.command_prefix + [str(tools.ark_js_vm)] + BASE_ARGS
     if tools.stub_file is not None:
         cmd.append(f"--stub-file={tools.stub_file}")
     if tools.icu_data_path is not None:
@@ -1327,6 +1384,8 @@ def run_ark_vm(
     env = os.environ.copy()
     ld_library_path = ":".join(str(p) for p in tools.lib_paths)
     env[LIB_PATH_ENV_VAR] = ld_library_path
+    if tools.qemu_ld_prefix is not None:
+        env["QEMU_LD_PREFIX"] = str(tools.qemu_ld_prefix)
     if ctx.verbose:
         print(f"{LIB_PATH_ENV_VAR}: {ld_library_path}")
 
@@ -1654,7 +1713,7 @@ def run_test_case(
       compile - compile + disassemble only
       jit     - compile + execute with ArkSteed JIT + full comparison
     """
-    tools = BuildConfig(ctx.mode)
+    tools = BuildConfig(ctx.mode, ctx.platform)
 
     ok, msg = compile_test_case(test, tools, ctx.verbose)
     if not ok:
@@ -2182,6 +2241,7 @@ def _report_results(
     log_file: Path,
     timestamp: str,
     mode: str,
+    target_platform: str,
     test_cases: List[TestCase],
     results: List[TestResult],
     passed: int,
@@ -2202,7 +2262,7 @@ def _report_results(
     with open(log_file, "w") as log:
         log.write(f"ArkSteed test log - {timestamp}\n")
         log.write(f"Report: {report_name}\n")
-        log.write(f"Platform: {HOST_PLATFORM}\n")
+        log.write(f"Platform: {target_platform}\n")
         log.write(f"Mode: {mode}\n")
         log.write(f"Total test cases: {len(test_cases)}\n")
         log.write(f"Passed: {passed}, Failed: {failed}\n")
@@ -2427,6 +2487,7 @@ def main() -> None:
     args = parse_args()
 
     mode = args.mode
+    target_platform = args.platform
     verbose = args.verbose
     keep_going = args.keep_going
 
@@ -2438,10 +2499,14 @@ def main() -> None:
 
     if not args.skip_build:
         if not build_ark(
-            mode, verbose, skip_stub=args.skip_stub, keep_going=args.keep_going
+            mode,
+            target_platform,
+            verbose,
+            skip_stub=args.skip_stub,
+            keep_going=args.keep_going,
         ):
             sys.exit(1)
-    if not check_arksteed_gn_args(mode):
+    if not check_arksteed_gn_args(mode, target_platform):
         sys.exit(1)
 
     _, timestamp = _setup_logging()
@@ -2505,6 +2570,7 @@ def main() -> None:
 
     ctx = RunContext(
         mode=mode,
+        platform=target_platform,
         verbose=verbose,
         log_level=args.log_level,
         log_components=args.log_components,
@@ -2535,6 +2601,7 @@ def main() -> None:
             stage_log_file,
             timestamp,
             mode,
+            target_platform,
             test_cases,
             results,
             passed,
