@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
+#include "ecmascript/arksteed/arksteed_deopt_abi.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
@@ -22,6 +24,8 @@
 
 namespace panda::ecmascript::aarch64 {
 #define __ assembler->
+
+namespace eager_deopt_abi = arksteed::aarch64_eager_deopt_abi;
 
 constexpr uint32_t CALL_ARG0 = 0;
 constexpr uint32_t CALL_ARG1 = CALL_ARG0 + 1;
@@ -214,64 +218,92 @@ void ArkSteedCall::ArkSteedCallEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-// Entry state for ArkSteedEagerDeoptEntry:
-//   x17       = glue
-//   lr        = function-local continuation
-//
-// Snapshot layout after reserving 448 bytes:
-//   [sp +   0, sp + 128) = x0-x15
-//   [sp + 128, sp + 208) = x19-x28; x16-x18 are reserved
-//   [sp + 208, sp + 448) = d0-d29
-//
-// State returned to the function-local continuation:
-//   x0        = glue
-//   x1        = -1, selects ArkSteed translation materialization in DeoptHandler
-//   x2        = zero-valued maybe-accumulator placeholder required by DeoptHandlerAsm
-//   x3        = DeoptHandlerAsm address loaded from the eight-byte runtime-stub table
-//   sp        = snapshot start
-//   lr        = function-local continuation
-void ArkSteedCall::ArkSteedEagerDeoptEntry(ExtendedAssembler *assembler)
+void ArkSteedCall::ArkSteedDeoptimizationEntry(ExtendedAssembler *assembler)
 {
-    constexpr int64_t eagerDeoptDispatchMarker = -1;  // ArkSteed dispatch marker
-    constexpr int64_t eagerDeoptSnapshotSize = 448;  // 56 eight-byte value slots
-    constexpr uint32_t eagerDeoptFirstGeneralRangeEnd = 16;  // x0-x15
-    constexpr uint32_t eagerDeoptSecondGeneralRangeBegin = 19;  // x19
-    constexpr uint32_t eagerDeoptSecondGeneralRangeEnd = 29;  // One past x28
-    constexpr uint32_t eagerDeoptSecondGeneralRangeGap = 3;  // Reserved x16-x18
-    constexpr int64_t eagerDeoptFloatingSnapshotOffset = 26 * FRAME_SLOT_SIZE;  // 26 general-register slots
-    constexpr uint32_t eagerDeoptFloatingRegisterCount = 30;  // d0-d29
-    constexpr int64_t runtimeStubEntrySizeLog2 = 3;  // Eight-byte runtime-stub entries
+    __ BindAssemblerStub(RTSTUB_ID(ArkSteedDeoptimizationEntry));
 
-    __ BindAssemblerStub(RTSTUB_ID(ArkSteedEagerDeoptEntry));
-    __ Sub(sp, sp, Operand(Immediate(eagerDeoptSnapshotSize)));
+    constexpr int64_t snapshotSize =
+        static_cast<int64_t>(eager_deopt_abi::SNAPSHOT_SIZE);
+    constexpr int64_t entryFrameSize =
+        static_cast<int64_t>(eager_deopt_abi::ENTRY_FRAME_SIZE);
+    constexpr int64_t continuationPcOffset = snapshotSize;
+    constexpr int64_t glueSlotOffset = snapshotSize + FRAME_SLOT_SIZE;
+    constexpr int64_t fixedReturnPcOffset = entryFrameSize + FRAME_SLOT_SIZE;
+    constexpr int64_t runtimeStubEntrySizeLog2 = 3;  // Eight-byte runtime-stub entries.
 
-    auto storeGeneralPair = [assembler](uint32_t firstCode, uint32_t firstSlot) {
-        Register first = Register::FromCode(static_cast<int8_t>(firstCode));
-        Register second = Register::FromCode(static_cast<int8_t>(firstCode + 1U));
-        __ Stp(first, second, MemoryOperand(sp, firstSlot * FRAME_SLOT_SIZE));
-    };
-    for (uint32_t firstCode = 0; firstCode < eagerDeoptFirstGeneralRangeEnd; firstCode += 2U) {
-        storeGeneralPair(firstCode, firstCode);
+    static_assert(eager_deopt_abi::RETURN_PC_SOURCE ==
+                  arksteed::ArkSteedEagerDeoptReturnPcSource::LINK_REGISTER);
+    static_assert(eager_deopt_abi::FIXED_EXIT_LINK_SIZE == 0U);
+    static_assert(eager_deopt_abi::VENEER_FRAME_SIZE == DOUBLE_SLOT_SIZE);
+    static_assert(entryFrameSize == snapshotSize + DOUBLE_SLOT_SIZE);
+    static_assert(entryFrameSize % arksteed::ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT == 0U);
+
+    // The function-local veneer saves the fixed-exit LR in its 16-byte frame.
+    // LR now holds the overflow continuation after the veneer calls this entry.
+    Register glue = x17;
+    Register scratch = x16;
+    Label stackOverflow;
+    Label invalidContext;
+    // AAPCS64 requires sp to remain 16-byte aligned. Neither bl nor blr changes
+    // sp, and the 464-byte entry frame preserves that alignment.
+    __ Sub(sp, sp, Operand(Immediate(entryFrameSize)));
+    for (uint32_t slot = 0; slot < eager_deopt_abi::GENERAL_REGISTER_CODES.size(); slot += 2U) {
+        Register first =
+            Register::FromCode(static_cast<int8_t>(eager_deopt_abi::GENERAL_REGISTER_CODES[slot]));
+        Register second =
+            Register::FromCode(static_cast<int8_t>(eager_deopt_abi::GENERAL_REGISTER_CODES[slot + 1U]));
+        __ Stp(first, second, MemoryOperand(sp, slot * FRAME_SLOT_SIZE));
     }
-    for (uint32_t firstCode = eagerDeoptSecondGeneralRangeBegin;
-         firstCode < eagerDeoptSecondGeneralRangeEnd; firstCode += 2U) {
-        storeGeneralPair(firstCode, firstCode - eagerDeoptSecondGeneralRangeGap);
+    for (uint32_t code = 0; code < eager_deopt_abi::FLOATING_REGISTER_COUNT; ++code) {
+        VRegister reg = VRegister::Create(static_cast<int8_t>(code), D_REG_SIZE);
+        __ Str(reg, MemoryOperand(sp, eager_deopt_abi::FLOATING_SNAPSHOT_OFFSET +
+                                     code * FRAME_SLOT_SIZE));
     }
+    // Preserve the veneer continuation across the native call, alongside glue.
+    __ Stp(x30, glue, MemoryOperand(sp, continuationPcOffset));
 
-    for (uint32_t firstCode = 0; firstCode < eagerDeoptFloatingRegisterCount; firstCode += 2U) {
-        VRegister first = VRegister::FromCode(static_cast<int8_t>(firstCode));
-        VRegister second = VRegister::FromCode(static_cast<int8_t>(firstCode + 1U));
-        __ Stp(first, second,
-               MemoryOperand(sp, eagerDeoptFloatingSnapshotOffset + firstCode * FRAME_SLOT_SIZE));
-    }
+    // AAPCS64: ArkSteedDeoptimize(glue, returnPc, inputFp, snapshot).
+    // fp still names the optimized ArkSteed input frame at this point.
+    __ Mov(x0, glue);
+    __ Ldr(x1, MemoryOperand(sp, fixedReturnPcOffset));
+    __ Mov(x2, fp);
+    __ Mov(x3, sp);
+    __ Mov(scratch, Immediate(RTSTUB_ID(ArkSteedDeoptimize)));
+    __ Add(scratch, x0, Operand(scratch, LSL, runtimeStubEntrySizeLog2));
+    __ Ldr(scratch, MemoryOperand(scratch, JSThread::GlueData::GetRTStubEntriesOffset(false)));
+    __ Blr(scratch);
 
-    __ Mov(x0, x17);
-    __ Mov(x1, Immediate(eagerDeoptDispatchMarker));
-    __ Mov(x2, Immediate(JSTaggedValue(0).GetRawData()));
-    __ Mov(x16, Immediate(RTSTUB_ID(DeoptHandlerAsm)));
-    __ Add(x16, x17, Operand(x16, LSL, runtimeStubEntrySizeLog2));
-    __ Ldr(x3, MemoryOperand(x16, JSThread::GlueData::GetRTStubEntriesOffset(false)));
+    __ Cmp(x0, Immediate(static_cast<uintptr_t>(arksteed::ArkSteedEagerDeoptResult::STACK_OVERFLOW)));
+    __ B(Condition::EQ, &stackOverflow);
+    __ Cmp(x0, Immediate(static_cast<uintptr_t>(arksteed::ArkSteedEagerDeoptResult::INVALID)));
+    __ B(Condition::EQ, &invalidContext);
+
+    Register context = x2;
+    Register callFrameTop = x16;
+    __ Mov(context, x0);
+    __ Ldr(x0, MemoryOperand(sp, glueSlotOffset));
+    __ Ldr(fp, MemoryOperand(context, AsmStackContext::GetCallerFpOffset(false)));
+    __ Ldr(callFrameTop, MemoryOperand(context, AsmStackContext::GetCallFrameTopOffset(false)));
+    __ Mov(sp, callFrameTop);
+    __ Ldr(x30, MemoryOperand(context, AsmStackContext::GetReturnAddressOffset(false)));
+
+    // The bridge saves the source return address before the local bl replaces lr.
+    Label enterDeoptimizedFrame;
+    OptimizedCall::DeoptPushAsmInterpBridgeFrame(assembler, context);
+    __ Bl(&enterDeoptimizedFrame);
+    PopAsmInterpBridgeFrame(assembler);
     __ Ret();
+    __ Bind(&enterDeoptimizedFrame);
+    OptimizedCall::DeoptEnterAsmInterpOrBaseline(assembler);
+    __ Brk(0);
+
+    __ Bind(&stackOverflow);
+    __ Ldr(x30, MemoryOperand(sp, continuationPcOffset));
+    __ Add(sp, sp, Operand(Immediate(entryFrameSize)));
+    __ Ret();
+
+    __ Bind(&invalidContext);
+    __ Brk(0);
 }
 
 // Entry state for SteedCallAndPushArgv (CCallConv variadic stub):

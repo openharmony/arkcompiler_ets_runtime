@@ -32,12 +32,6 @@
 
 namespace panda::ecmascript::arksteed {
 #if defined(PANDA_TARGET_ARM64)
-constexpr aarch64::Register EAGER_DEOPT_ENTRY_TARGET_REGISTER = kScratchRegister;
-constexpr aarch64::Register EAGER_DEOPT_ENTRY_GLUE_REGISTER = kScratchRegister2;
-
-static_assert(!GetAllocatableGeneralRegisters().Has(EAGER_DEOPT_ENTRY_TARGET_REGISTER));
-static_assert(!GetAllocatableGeneralRegisters().Has(EAGER_DEOPT_ENTRY_GLUE_REGISTER));
-
 // =============================================================================
 // Register Move Operations
 // =============================================================================
@@ -192,41 +186,27 @@ void ArkSteedAssembler::StoreFloat64Constant(MemoryOperand dstOp, double immedia
     MoveRepr(MachineRepresentation::Word64, dstOp, scratchGPR);
 }
 
-void ArkSteedAssembler::CallArkSteedEagerDeoptEntry()
+void ArkSteedAssembler::NormalizeEagerDeoptOverflowLink()
+{
+    static_assert(ARKSTEED_EAGER_DEOPT_FIXED_EXIT_LINK_SIZE == 0U);
+    static_assert(ARKSTEED_EAGER_DEOPT_VENEER_FRAME_SIZE == 2U * FRAME_SLOT_SIZE);
+    assembler_.Add(aarch64::sp, aarch64::sp,
+                   aarch64::Operand(aarch64::Immediate(ARKSTEED_EAGER_DEOPT_VENEER_FRAME_SIZE)));
+}
+
+void ArkSteedAssembler::CallArkSteedDeoptimizationEntry()
 {
     ASSERT(temporaryRegisterScope_ == nullptr);
     ASSERT(entryThread_ != nullptr);
-    Address address = entryThread_->GetRTInterface(RTSTUB_ID(ArkSteedEagerDeoptEntry));
-    Move(EAGER_DEOPT_ENTRY_GLUE_REGISTER, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
-    Move(EAGER_DEOPT_ENTRY_TARGET_REGISTER, static_cast<uint64_t>(address));
-    Call(EAGER_DEOPT_ENTRY_TARGET_REGISTER);
-}
 
-void ArkSteedAssembler::JumpToArkSteedEagerDeoptEntry()
-{
-    ASSERT(temporaryRegisterScope_ == nullptr);
-    ASSERT(entryThread_ != nullptr);
-    Address address = entryThread_->GetRTInterface(RTSTUB_ID(ArkSteedEagerDeoptEntry));
-    Move(EAGER_DEOPT_ENTRY_GLUE_REGISTER, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
-    Move(EAGER_DEOPT_ENTRY_TARGET_REGISTER, static_cast<uint64_t>(address));
-    assembler_.Br(EAGER_DEOPT_ENTRY_TARGET_REGISTER);
-}
+    ArkSteedRegister glue = ARKSTEED_EAGER_DEOPT_ENTRY_GLUE_REGISTER;
+    ArkSteedRegister target = ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER;
+    Move(glue, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
 
-void ArkSteedAssembler::CallPreparedArkSteedDeoptHandler(DeoptId deoptId)
-{
-    ASSERT(deoptId.value <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
-    if (deoptId.value != 0) {
-        constexpr uint32_t maxAddImmediate = (1U << 12U) - 1U;
-        if (deoptId.value <= maxAddImmediate) {
-            Add(aarch64::x2, static_cast<int32_t>(deoptId.value));
-        } else {
-            TemporaryRegisterScope scope(this);
-            ArkSteedRegister scratch = scope.AcquireScratch();
-            Move(scratch, static_cast<uint64_t>(deoptId.value));
-            Add(aarch64::x2, scratch);
-        }
-    }
-    Call(aarch64::x3);
+    Address address = entryThread_->GetRTInterface(RTSTUB_ID(ArkSteedDeoptimizationEntry));
+    Move(target, static_cast<uint64_t>(address));
+    Push(aarch64::lr);
+    Call(target);
 }
 
 // =============================================================================
@@ -267,7 +247,10 @@ void ArkSteedAssembler::Sub(ArkSteedRegister dst, int32_t immediate)
 
 void ArkSteedAssembler::SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src)
 {
-    assembler_.Add(dst, aarch64::xzr, aarch64::Operand(src.W(), aarch64::Extend::SXTW));
+    // ADD (extended register) interprets register code 31 in Rn as SP, not
+    // XZR. SBFM Xd, Xn, #0, #31 is the architectural SXTW alias and does not
+    // accidentally add the current stack pointer to the Int32 payload.
+    assembler_.Sbfm(dst, src, 0, 31);  // 0, 31: SXTW bit range.
 }
 
 void ArkSteedAssembler::Int32Add(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right)
@@ -517,7 +500,9 @@ void ArkSteedAssembler::Int32Xor(ArkSteedRegister dst, int32_t immediate)
 
 void ArkSteedAssembler::Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift)
 {
-    assembler_.Lsl(dst.W(), dst.W(), shift);
+    ASSERT(shift < 32U);
+    constexpr uint32_t REGISTER_BITS = 32U;
+    assembler_.Ubfm(dst.W(), dst.W(), (REGISTER_BITS - shift) % REGISTER_BITS, REGISTER_BITS - shift - 1U);
 }
 
 void ArkSteedAssembler::Int32ShiftLeftByRegister(ArkSteedRegister dst, ArkSteedRegister shift)
@@ -719,7 +704,7 @@ void ArkSteedAssembler::BindVeneerLabel(Label *label)
     label->BindTo(static_cast<int32_t>(targetPc));
 }
 
-void ArkSteedAssembler::CheckVeneerPool(bool precedingCodeCanFallThrough)
+void ArkSteedAssembler::CheckVeneerPool(bool precedingCodeCanFallThrough, size_t protectedCodeSize)
 {
     ASSERT(!emittingVeneerPool_);
     if (veneerBranches_.empty()) {
@@ -728,13 +713,16 @@ void ArkSteedAssembler::CheckVeneerPool(bool precedingCodeCanFallThrough)
     }
 
     uint32_t currentPc = GetPcOffset();
-    if (currentPc < nextVeneerPoolCheck_) {
+    uint64_t protectedCodeEnd = static_cast<uint64_t>(currentPc) + protectedCodeSize;
+    if (protectedCodeEnd < nextVeneerPoolCheck_) {
         return;
     }
 
     uint64_t poolEntryCount = static_cast<uint64_t>(veneerBranches_.size()) + 1U;  // 1: optional guard branch.
     uint64_t poolReserve = poolEntryCount * VENEER_INSTRUCTION_SIZE;
-    uint64_t prospectivePoolEnd = static_cast<uint64_t>(currentPc) + VENEER_DISTANCE_MARGIN + poolReserve;
+    // No pool check may occur inside protectedCodeSize. Test unresolved
+    // branches against the far side of that range and emit their veneers now.
+    uint64_t prospectivePoolEnd = protectedCodeEnd + VENEER_DISTANCE_MARGIN + poolReserve;
     ChunkVector<std::pair<uint32_t, Label *>> candidates(chunk_);
     for (const auto &[target, branches] : veneerBranches_) {
         uint32_t firstDeadline = UINT32_MAX;  // Sentinel until this target's first branch is examined.
@@ -971,11 +959,6 @@ void ArkSteedAssembler::Call(Label *target)
         return;
     }
     RecordVeneerBranch(branchPc, target);
-}
-
-void ArkSteedAssembler::Nop()
-{
-    assembler_.EmitU32(aarch64::Nop);
 }
 
 void ArkSteedAssembler::Return()

@@ -43,13 +43,13 @@ class ArkSteedAssembler;
 class TemporaryRegisterScope;
 
 #if defined(PANDA_TARGET_AMD64)
-constexpr x64::Register X64_SCRATCH_REGISTER = x64::r10;
+constexpr x64::Register X64_SCRATCH_REGISTER = ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER;
 constexpr x64::DoubleRegister X64_SCRATCH_DOUBLE_REGISTER = x64::xmm15;
 static_assert(!GetAllocatableGeneralRegisters().Has(X64_SCRATCH_REGISTER));
 static_assert(!GetAllocatableDoubleRegisters().Has(X64_SCRATCH_DOUBLE_REGISTER));
 #elif defined(PANDA_TARGET_ARM64)
-constexpr aarch64::Register kScratchRegister = aarch64::x16;
-constexpr aarch64::Register kScratchRegister2 = aarch64::x17;
+constexpr aarch64::Register kScratchRegister = ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER;
+constexpr aarch64::Register kScratchRegister2 = ARKSTEED_EAGER_DEOPT_ENTRY_GLUE_REGISTER;
 constexpr aarch64::DoubleRegister kScratchDoubleRegister = aarch64::d30;
 constexpr aarch64::DoubleRegister kScratchDoubleRegister2 = aarch64::d31;
 // x16 carries the shared-entry address, x17 carries the current glue and lr carries the JIT continuation PC.
@@ -226,7 +226,7 @@ public:
     void JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target);
     void Bind(Label *label);
 #if defined(PANDA_TARGET_ARM64)
-    void CheckVeneerPool(bool precedingCodeCanFallThrough);
+    void CheckVeneerPool(bool precedingCodeCanFallThrough, size_t protectedCodeSize = 0U);
     void FinalizeVeneers();
 #endif
     inline void Branch(Condition condition, Label *ifTrue, bool fallthroughWhenTrue, Label *ifFalse,
@@ -254,15 +254,10 @@ public:
     // =========================================================================
 
     void CallDeoptHandler(kungfu::DeoptType deoptType);
-    // Calls the shared entry without changing an allocatable register. On return, SP addresses the complete deopt
-    // snapshot and the existing DeoptHandlerAsm common arguments are prepared. The target must then add its DeoptId
-    // and issue CallPreparedArkSteedDeoptHandler so the handler return PC remains local to the current MachineCode.
-    void CallArkSteedEagerDeoptEntry();
-    // Tail-branches to the shared entry from a function-local thunk. The target's call to the thunk supplies the
-    // continuation consumed by the shared entry, so this must not create another return address.
-    void JumpToArkSteedEagerDeoptEntry();
-    void CallPreparedArkSteedDeoptHandler(DeoptId deoptId);
-    void Nop();
+    // Restores the normal ArkSteed cold-block link/alignment state before the GC-capable overflow path.
+    void NormalizeEagerDeoptOverflowLink();
+    // Calls the global no-GC entry while preserving the fixed-exit return PC.
+    void CallArkSteedDeoptimizationEntry();
 
     // =========================================================================
     // Stack Operations

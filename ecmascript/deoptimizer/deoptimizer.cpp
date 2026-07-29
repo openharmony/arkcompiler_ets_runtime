@@ -23,6 +23,7 @@
 #include "ecmascript/base/gc_helper.h"
 
 #ifdef ECMASCRIPT_ENABLE_ARK_STEED
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #endif
 
@@ -55,7 +56,8 @@ JSTaggedType LazyDeoptEntry()
 
 class FrameWriter {
 public:
-    explicit FrameWriter(Deoptimizier *deoptimizier) : thread_(deoptimizier->GetThread())
+    FrameWriter(Deoptimizier *deoptimizier, bool isArkSteedEagerDeopt)
+        : thread_(deoptimizier->GetThread()), isArkSteedEagerDeopt_(isArkSteedEagerDeopt)
     {
         JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
         start_ = top_ = EcmaInterpreter::GetInterpreterFrameEnd(thread_, prevSp);
@@ -73,7 +75,15 @@ public:
 
     bool Reserve(size_t size)
     {
-        return !thread_->DoStackOverflowCheck(top_ - size);
+        const JSTaggedType *candidateSp = top_ - size;
+        if (isArkSteedEagerDeopt_) {
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            return !arksteed::WouldStackOverflow(thread_, candidateSp);
+#else
+            UNREACHABLE();
+#endif
+        }
+        return !thread_->DoStackOverflowCheck(candidateSp);
     }
 
     AsmInterpretedFrame *ReserveAsmInterpretedFrame()
@@ -114,6 +124,7 @@ private:
     JSTaggedType *start_ {nullptr};
     JSTaggedType *top_ {nullptr};
     JSTaggedType *firstFrame_ {nullptr};
+    bool isArkSteedEagerDeopt_ {false};
 };
 
 Deoptimizier::Deoptimizier(JSThread *thread, size_t depth, kungfu::DeoptType type)
@@ -331,16 +342,31 @@ void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
     stackContext_.isFrameLazyDeopt_ = it.IsLazyDeoptFrameType();
 }
 
-void Deoptimizier::CollectSteedDeoptContext(FrameIterator &it, SteedFunctionFrame *frame,
-                                            JSTaggedType *asmBridgeSp)
+bool Deoptimizier::CollectSteedDeoptContextFromRuntime(FrameIterator &it, SteedFunctionFrame *frame,
+                                                       MachineCode *machineCode)
 {
-    auto sp = reinterpret_cast<uintptr_t *>(asmBridgeSp);
-    static constexpr size_t TYPE_GLUE_SLOT = 2;  // 2: skip type & glue
-    sp -= TYPE_GLUE_SLOT;
-    calleeRegAddr_ = sp - numCalleeRegs_;
-    AssistCollectDeoptBundleVec(it, frame);
-    JSTaggedValue jsFunction = it.GetFunction();
-    isRecursiveCall_ = IsRecursiveCall(it, jsFunction);
+    if (frame == nullptr || machineCode == nullptr || machineCode->GetCalleeRegisterNum() != 0 ||
+        machineCode->GetFpDeltaPrevFrameSp() == 0) {
+        return false;
+    }
+
+    context_.calleeRegAndOffset.clear();
+    context_.callsiteFp = reinterpret_cast<uintptr_t>(it.GetSp());
+    context_.callsiteSp = context_.callsiteFp;
+    uintptr_t *preFrameSp =
+        reinterpret_cast<uintptr_t *>(context_.callsiteFp + machineCode->GetFpDeltaPrevFrameSp());
+    frameArgc_ = frame->GetArgc(preFrameSp);
+    frameArgvs_ = frame->GetArgv(preFrameSp);
+    stackContext_.callFrameTop_ = reinterpret_cast<uintptr_t>(preFrameSp);
+    stackContext_.returnAddr_ = frame->GetReturnAddr();
+    stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
+    stackContext_.isFrameLazyDeopt_ = false;
+    calleeRegAddr_ = nullptr;
+
+    JSTaggedValue jsFunction = frame->GetFunction();
+    isRecursiveCall_ =
+        frame->GetPrevFrameFp() == nullptr ? false : IsRecursiveCall(it, jsFunction);
+    return true;
 }
 
 void Deoptimizier::DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress)
@@ -449,7 +475,7 @@ bool Deoptimizier::IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction)
     if (jsFunction.IsUndefined()) {
         return false;
     }
-    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+    for (; !it.Done(); it.Advance<GCVisitedFlag::IGNORED>()) {
         switch (it.GetFrameType()) {
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
@@ -644,9 +670,9 @@ std::string Deoptimizier::DisplayItems(DeoptType type)
 //   |      isFrameLazyDeopt_   |               v
 //   |--------------------------| ---------------
 
-JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc)
+JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc, bool isArkSteedEagerDeopt)
 {
-    FrameWriter frameWriter(this);
+    FrameWriter frameWriter(this, isArkSteedEagerDeopt);
     // Push asm interpreter frame
     for (int32_t curDepth = static_cast<int32_t>(inlineDepth_); curDepth >= 0; curDepth--) {
         auto start = frameWriter.GetTop();

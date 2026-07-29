@@ -3549,6 +3549,24 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     }
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+uintptr_t RuntimeStubs::ArkSteedDeoptimize(uintptr_t argGlue, uintptr_t returnPc,
+                                           uintptr_t inputFp, uintptr_t snapshot)
+{
+    if (argGlue == 0) {
+        LOG_FULL(FATAL) << "ArkSteed eager deopt runtime received a null glue";
+        UNREACHABLE();
+    }
+    JSThread *thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType context = 0;
+    if (!arksteed::HandleArkSteedDeoptNoGC(thread, returnPc, inputFp, snapshot, &context)) {
+        LOG_FULL(FATAL) << "ArkSteed eager deopt metadata or runtime ABI is corrupted";
+        UNREACHABLE();
+    }
+    return static_cast<uintptr_t>(context);
+}
+#endif
+
 double RuntimeStubs::FloatMod(double x, double y)
 {
     return std::fmod(x, y);
@@ -3990,22 +4008,6 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     // deoptType must be tagged because maybe gc will happen, if not, gc will accidentally scan it as heap object.
     ASSERT(GetArg(argv, argc, 0).IsInt());
     int32_t dispatch = GetArg(argv, argc, 0).GetInt();
-#if ECMASCRIPT_ENABLE_ARK_STEED
-    if (dispatch == arksteed::ARKSTEED_DEOPT_DISPATCH_MARKER) {
-        JSTaggedValue deoptIdValue = GetArg(argv, argc, 1);
-        if (!deoptIdValue.IsInt() || deoptIdValue.GetInt() < 0) {
-            LOG_FULL(FATAL) << "invalid ArkSteed deopt id";
-            UNREACHABLE();
-        }
-        arksteed::DeoptId deoptId {static_cast<uint32_t>(deoptIdValue.GetInt())};
-        JSTaggedType arkSteedResult = JSTaggedValue::Undefined().GetRawData();
-        if (!arksteed::HandleArkSteedDeopt(thread, deoptId, &arkSteedResult)) {
-            LOG_FULL(FATAL) << "failed to materialize ArkSteed deopt translation " << deoptId.value;
-            UNREACHABLE();
-        }
-        return arkSteedResult;
-    }
-#endif
     kungfu::DeoptType type = static_cast<kungfu::DeoptType>(dispatch);
     JSHandle<JSTaggedValue> maybeAcc = GetHArg<JSTaggedValue>(argv, argc, 1);
     size_t depth = Deoptimizier::GetInlineDepth(thread, static_cast<uint32_t>(type));
@@ -4016,7 +4018,7 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     size_t shift = Deoptimizier::ComputeShift(depth);
     deopt.CollectVregs(deoptBundle, shift);
     deopt.UpdateAndDumpDeoptInfo(type, true);
-    return deopt.ConstructAsmInterpretFrame(maybeAcc);
+    return deopt.ConstructAsmInterpretFrame(maybeAcc, false);
 }
 
 DEF_RUNTIME_STUBS(AotInlineTrace)

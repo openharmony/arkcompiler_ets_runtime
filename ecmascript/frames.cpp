@@ -17,7 +17,6 @@
 #include <mutex>
 
 #if ECMASCRIPT_ENABLE_ARK_STEED
-#include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #endif
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
@@ -1022,22 +1021,6 @@ void SteedFunctionFrame::IterateSafePointTable(const FrameIterator& it, RootVisi
     uint32_t pcOffset = static_cast<uint32_t>(returnAddr - textStart);
     const auto *entry = safepointTable.FindEntry(pcOffset);
     if (entry == nullptr || entry->pcOffset != pcOffset) {
-        return;
-    }
-    if (entry->HasDeoptSnapshot()) {
-        uint32_t taggedRegisters = entry->GetTaggedDeoptSnapshotGeneralRegisters();
-        uintptr_t snapshot = arksteed::GetArkSteedDeoptSnapshotFromCallsiteSp(it.GetCallSiteSp());
-        for (uint32_t registerCode = 0;
-             registerCode < arksteed::ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT;
-             ++registerCode) {
-            if ((taggedRegisters & (1U << registerCode)) == 0) {
-                continue;
-            }
-            int32_t offset = arksteed::GetArkSteedDeoptGeneralSnapshotOffset(registerCode);
-            ASSERT(offset >= 0);
-            uintptr_t slotAddr = snapshot + static_cast<uintptr_t>(offset);
-            visitor.VisitRoot(Root::ROOT_FRAME, ObjectSlot(slotAddr));
-        }
         return;
     }
     uintptr_t start = it.GetCallSiteSp();

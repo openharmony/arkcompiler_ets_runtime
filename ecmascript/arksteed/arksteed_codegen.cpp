@@ -590,18 +590,14 @@ void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind cond
 }
 }  // namespace
 
-Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
+Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(
+    const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
     ASSERT(safepointBuilder_ != nullptr);
     ASSERT(translationBuilder_ != nullptr);
-    auto vertexTarget = eagerDeoptTargetsByVertex_.find(vertex);
-    if (vertexTarget != eagerDeoptTargetsByVertex_.end()) {
-        return &vertexTarget->second->label;
-    }
 
     uint32_t bytecodeOffset = vertex->GetBytecodeOffset();
     auto translationInputs = BuildDeoptTranslationInputs(assembler_, vertex);
-    uint32_t taggedDeoptSnapshotGeneralRegisters = GetTaggedDeoptSnapshotGeneralRegisters(translationInputs);
     DeoptId deoptId = translationBuilder_->AddTranslation(bytecodeOffset, type, std::move(translationInputs));
 
     EagerDeoptTarget *target = nullptr;
@@ -609,25 +605,43 @@ Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(const EagerDeoptimizableMix
         target = eagerDeoptTargetsById_[deoptId.value];
         ASSERT(target != nullptr);
         ASSERT(target->deoptId == deoptId);
-        ASSERT(target->taggedDeoptSnapshotGeneralRegisters == taggedDeoptSnapshotGeneralRegisters);
     } else {
         ASSERT(deoptId.value == eagerDeoptTargetsById_.size());
-        target = graph_->GetChunk()->New<EagerDeoptTarget>(deoptId, taggedDeoptSnapshotGeneralRegisters);
+        target = graph_->GetChunk()->New<EagerDeoptTarget>(deoptId);
         eagerDeoptTargetsById_.push_back(target);
     }
-    eagerDeoptTargetsByVertex_.emplace(vertex, target);
     return &target->label;
 }
 
-void ArkSteedCodeGenerator::BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex,
-                                                     kungfu::DeoptType type)
+void ArkSteedCodeGenerator::BranchToEagerDeoptTarget(
+    Condition condition, const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
     __ JumpIf(condition, RecordEagerDeoptTarget(vertex, type));
 }
 
-void ArkSteedCodeGenerator::EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
+void ArkSteedCodeGenerator::EmitEagerDeoptExit(
+    const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type)
 {
     __ Jump(RecordEagerDeoptTarget(vertex, type));
+}
+
+void ArkSteedCodeGenerator::EmitEagerDeoptStackOverflow()
+{
+    constexpr auto stubId = kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException;
+    constexpr int stackArgCount = CALL_ARG2;
+    __ ReserveCallArgSlots(stackArgCount);
+    {
+        TemporaryRegisterScope scope(assembler_);
+        ArkSteedRegister scratch = scope.AcquireScratch();
+        __ Move(scratch, static_cast<int64_t>(stubId));
+        __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG0), scratch);
+        __ Move(scratch, 0);
+        __ MoveRepr(MachineRepresentation::Word64, __ GetCallArgSlot(CALL_ARG1), scratch);
+    }
+    __ CallRuntime(stubId);
+    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    __ FreeCallArgSlots(stackArgCount);
+    EmitReturnWithPendingException();
 }
 
 void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
@@ -636,38 +650,40 @@ void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
         return;
     }
 
-    const bool useDeoptEntryThunk = eagerDeoptTargetsById_.size() > 1U;
-    Label deoptEntryThunk;
-    if (useDeoptEntryThunk) {
-        __ Bind(&deoptEntryThunk);
-        __ JumpToArkSteedEagerDeoptEntry();
-    }
+    Label deoptVeneer;
 
+    // Every fixed exit calls this one function-local veneer. Until the global
+    // entry owns the snapshot, the veneer may touch only the two
+    // architecture-reserved eager-deopt registers.
+    __ Bind(&deoptVeneer);
+    __ CallArkSteedDeoptimizationEntry();
+    __ NormalizeEagerDeoptOverflowLink();
+    EmitEagerDeoptStackOverflow();
+
+    constexpr uint32_t exitSize = ARKSTEED_EAGER_DEOPT_EXIT_SIZE;
+    CHECK(eagerDeoptTargetsById_.size() <=
+          static_cast<size_t>(std::numeric_limits<uint32_t>::max() / exitSize));
+    uint32_t exitClusterSize =
+        static_cast<uint32_t>(eagerDeoptTargetsById_.size() * exitSize);
+#if defined(PANDA_TARGET_ARM64)
+    // ArkSteed materializes immediates directly and has no literal pool. Flush
+    // any branch veneers that could otherwise become due before the far side
+    // of the protected fixed-exit range.
+    __ CheckVeneerPool(false, exitClusterSize);
+#endif
+
+    uint32_t exitStartOffset = __ GetPcOffset();
     for (size_t index = 0; index < eagerDeoptTargetsById_.size(); ++index) {
         EagerDeoptTarget *target = eagerDeoptTargetsById_[index];
         ASSERT(target->deoptId.value == static_cast<uint32_t>(index));
         __ Bind(&target->label);
-        if (useDeoptEntryThunk) {
-            __ Call(&deoptEntryThunk);
-        } else {
-            __ CallArkSteedEagerDeoptEntry();
-        }
-        __ CallPreparedArkSteedDeoptHandler(target->deoptId);
-        auto safepoint = safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-        safepoint.SetNumExtraSpillSlots(ARKSTEED_DEOPT_SNAPSHOT_SIZE / sizeof(uintptr_t));
-        safepoint.MarkDeoptSnapshot();
-        for (uint32_t registerCode = 0; registerCode < ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT;
-             ++registerCode) {
-            if ((target->taggedDeoptSnapshotGeneralRegisters & (1U << registerCode)) != 0) {
-                safepoint.DefineTaggedDeoptSnapshotGeneralRegister(registerCode);
-            }
-        }
-        // Keep the deopt return PC inside this MachineCode text even when this is the last emitted exit.
-        __ Nop();
-#if defined(PANDA_TARGET_ARM64)
-        __ CheckVeneerPool(true);
-#endif
+        CHECK(target->label.GetPos() ==
+              exitStartOffset + static_cast<uint32_t>(index) * exitSize);
+        uint32_t before = __ GetPcOffset();
+        __ Call(&deoptVeneer);
+        CHECK(__ GetPcOffset() - before == exitSize);
     }
+    CHECK(__ GetPcOffset() - exitStartOffset == exitClusterSize);
 }
 
 template <class VertexT>
@@ -1878,7 +1894,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
 #endif
     __ CompareInt32(dst, 0);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_EQUAL, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+    BranchToEagerDeoptTarget(
+        Condition::COND_EQUAL, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
 #else
     __ JumpIf(Condition::COND_EQUAL, &negativeZero);
     __ Jump(&done);

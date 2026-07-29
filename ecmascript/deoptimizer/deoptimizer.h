@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/frames.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
@@ -141,12 +142,13 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
-    void CollectSteedDeoptContext(FrameIterator &it, SteedFunctionFrame *frame, JSTaggedType *asmBridgeSp);
+    bool CollectSteedDeoptContextFromRuntime(FrameIterator &it, SteedFunctionFrame *frame,
+                                             MachineCode *machineCode);
     void DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectMaterializedVregs(const std::vector<std::pair<VRegId, JSTaggedType>> &deoptValues, size_t shift);
     bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
-    JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
+    JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc, bool isArkSteedEagerDeopt);
     void UpdateAndDumpDeoptInfo(kungfu::DeoptType type, bool dumpJsStackTrace);
     static PUBLIC_API std::string DisplayItems(kungfu::DeoptType type);
     static PUBLIC_API int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);

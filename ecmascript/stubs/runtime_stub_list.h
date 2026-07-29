@@ -110,7 +110,7 @@ namespace panda::ecmascript {
 
 #define ARKSTEED_TRAMPOLINE_LIST(V)                      \
     V(ArkSteedCallEntry)                                 \
-    V(ArkSteedEagerDeoptEntry)                           \
+    V(ArkSteedDeoptimizationEntry)                       \
     V(SteedCallAndPushArgv)                              \
     V(SteedCallWithArgVAndPushArgv)
 
@@ -156,6 +156,13 @@ namespace panda::ecmascript {
     V(TraceLazyDeoptNum)                        \
     V(TraceLazyDeoptFailNum)
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#define ARKSTEED_DEOPT_NOGC_STUB_LIST(V)        \
+    V(ArkSteedDeoptimize)
+#else
+#define ARKSTEED_DEOPT_NOGC_STUB_LIST(V)
+#endif
+
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(Dump)                                    \
     V(DebugDump)                               \
@@ -171,6 +178,7 @@ namespace panda::ecmascript {
     V(FatalPrintCustom)                        \
     V(FatalPrintIfFalse)                       \
     V(GetActualArgvNoGC)                       \
+    ARKSTEED_DEOPT_NOGC_STUB_LIST(V)           \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
     V(SetBitAtomic)                            \

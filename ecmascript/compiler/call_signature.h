@@ -534,7 +534,7 @@ private:
     V(SuperCallAndCheckToBaseline)              \
     V(CallThisRangeAndCheckToBaseline)          \
     V(ArkSteedCallEntry)                        \
-    V(ArkSteedEagerDeoptEntry)                  \
+    V(ArkSteedDeoptimizationEntry)              \
     V(SteedCallAndPushArgv)                     \
     V(SteedCallWithArgVAndPushArgv)             \
     V(GeneratorReEnterAsmInterp)                \
@@ -592,6 +592,7 @@ private:
     V(FatalPrintCustom)                         \
     V(FatalPrintIfFalse)                            \
     V(GetActualArgvNoGC)                        \
+    V(ArkSteedDeoptimize)                       \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \

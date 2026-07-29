@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 
+#include "ecmascript/arksteed/arksteed_deopt_abi.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
@@ -22,6 +24,8 @@
 
 namespace panda::ecmascript::x64 {
 #define __ assembler->
+
+namespace eager_deopt_abi = arksteed::x64_eager_deopt_abi;
 
 constexpr int64_t CALL_ARG0 = 0;
 constexpr int64_t CALL_ARG1 = CALL_ARG0 + 1;
@@ -273,57 +277,95 @@ void ArkSteedCall::ArkSteedCallEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-// Entry state for ArkSteedEagerDeoptEntry:
+// Global eager-deopt entry used by the fixed five-byte exits installed in C09.
+//
+// Entry state:
 //   r13       = glue
-//   [rsp]     = function-local continuation
+//   rbp       = optimized ArkSteed frame pointer
+//   [rsp]     = function-local overflow continuation
+//   [rsp + 8] = return PC immediately after the fixed call exit
 //
-// Snapshot layout after reserving 208 bytes:
-//   [rsp +   0, rsp +  80) = rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r11, r12
-//   [rsp +  80, rsp + 200) = xmm0-xmm14
-//   [rsp + 200, rsp + 208) = alignment padding
-//
-// State passed to the function-local continuation:
-//   rdi       = glue
-//   rsi       = -1, selects ArkSteed translation materialization in DeoptHandler
-//   rdx       = zero-valued maybe-accumulator placeholder required by DeoptHandlerAsm
-//   r10       = function-local continuation
-//   r11       = DeoptHandlerAsm address
-//   rsp       = snapshot start
-void ArkSteedCall::ArkSteedEagerDeoptEntry(ExtendedAssembler *assembler)
+// The entry first snapshots every allocatable register. Only r10 (the entry
+// target) and r13 (glue) may be used before the snapshot is complete.
+void ArkSteedCall::ArkSteedDeoptimizationEntry(ExtendedAssembler *assembler)
 {
-    constexpr int32_t eagerDeoptDispatchMarker = -1;  // ArkSteed dispatch marker
-    constexpr int32_t eagerDeoptSnapshotSize = 208;  // 25 value slots plus one alignment slot
-    constexpr int32_t eagerDeoptFloatingSnapshotOffset = 10 * FRAME_SLOT_SIZE;  // 10 general-register slots
-    constexpr int32_t eagerDeoptFloatingRegisterCount = 15;  // xmm0-xmm14
+    __ BindAssemblerStub(RTSTUB_ID(ArkSteedDeoptimizationEntry));
 
-    __ BindAssemblerStub(RTSTUB_ID(ArkSteedEagerDeoptEntry));
+    constexpr int32_t snapshotSize =
+        static_cast<int32_t>(eager_deopt_abi::SNAPSHOT_SIZE);
+    constexpr int32_t entryFrameSize =
+        static_cast<int32_t>(eager_deopt_abi::ENTRY_FRAME_SIZE);
+    constexpr int32_t glueSlotOffset = snapshotSize;
+    constexpr int32_t fixedReturnPcOffset = entryFrameSize + FRAME_SLOT_SIZE;
 
-    Register continuation = r10;
+    static_assert(eager_deopt_abi::RETURN_PC_SOURCE ==
+                  arksteed::ArkSteedEagerDeoptReturnPcSource::STACK_LINK);
+    static_assert(eager_deopt_abi::FIXED_EXIT_LINK_SIZE == FRAME_SLOT_SIZE);
+    static_assert(eager_deopt_abi::VENEER_FRAME_SIZE == FRAME_SLOT_SIZE);
+    static_assert(entryFrameSize == snapshotSize + DOUBLE_SLOT_SIZE);
+    static_assert(entryFrameSize % arksteed::ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT == 0U);
+
     Register glue = r13;
-    __ Popq(continuation);
-    __ Subq(Immediate(eagerDeoptSnapshotSize), rsp);
+    Label stackOverflow;
+    Label invalidContext;
 
-    __ Movq(rax, Operand(rsp, 0 * FRAME_SLOT_SIZE));
-    __ Movq(rbx, Operand(rsp, 1 * FRAME_SLOT_SIZE));
-    __ Movq(rcx, Operand(rsp, 2 * FRAME_SLOT_SIZE));
-    __ Movq(rdx, Operand(rsp, 3 * FRAME_SLOT_SIZE));
-    __ Movq(rsi, Operand(rsp, 4 * FRAME_SLOT_SIZE));
-    __ Movq(rdi, Operand(rsp, 5 * FRAME_SLOT_SIZE));
-    __ Movq(r8, Operand(rsp, 6 * FRAME_SLOT_SIZE));
-    __ Movq(r9, Operand(rsp, 7 * FRAME_SLOT_SIZE));
-    __ Movq(r11, Operand(rsp, 8 * FRAME_SLOT_SIZE));
-    __ Movq(r12, Operand(rsp, 9 * FRAME_SLOT_SIZE));
-    for (int32_t code = 0; code < eagerDeoptFloatingRegisterCount; ++code) {
-        __ Movsd(Operand(rsp, eagerDeoptFloatingSnapshotOffset + code * FRAME_SLOT_SIZE),
+    // The fixed exit and veneer calls leave rsp 16-byte aligned. The 224-byte
+    // entry frame preserves that alignment at the direct SysV C-call site.
+    __ Subq(Immediate(entryFrameSize), rsp);
+    for (uint32_t slot = 0; slot < eager_deopt_abi::GENERAL_REGISTER_CODES.size(); ++slot) {
+        Register source =
+            Register::FromCode(static_cast<int8_t>(eager_deopt_abi::GENERAL_REGISTER_CODES[slot]));
+        __ Movq(source, Operand(rsp, static_cast<int32_t>(slot * FRAME_SLOT_SIZE)));
+    }
+    for (int32_t code = 0;
+         code < static_cast<int32_t>(eager_deopt_abi::FLOATING_REGISTER_COUNT); ++code) {
+        __ Movsd(Operand(rsp, eager_deopt_abi::FLOATING_SNAPSHOT_OFFSET + code * FRAME_SLOT_SIZE),
                  XMMRegister::FromCode(static_cast<int8_t>(code)));
     }
+    __ Movq(glue, Operand(rsp, glueSlotOffset));
 
+    // SysV: ArkSteedDeoptimize(glue, returnPc, inputFp, snapshot).
     __ Movq(glue, rdi);
-    __ Movq(Immediate(eagerDeoptDispatchMarker), rsi);
-    __ Movabs(JSTaggedValue(0).GetRawData(), rdx);
-    __ Movq(Immediate(RTSTUB_ID(DeoptHandlerAsm)), r11);
-    __ Movq(Operand(glue, r11, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r11);
-    __ Jmp(continuation);
+    __ Movq(Operand(rsp, fixedReturnPcOffset), rsi);
+    __ Movq(rbp, rdx);
+    __ Movq(rsp, rcx);
+    __ Movq(Immediate(RTSTUB_ID(ArkSteedDeoptimize)), r11);
+    __ Movq(Operand(rdi, r11, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r11);
+    __ Callq(r11);
+
+    __ Cmpq(Immediate(static_cast<int32_t>(arksteed::ArkSteedEagerDeoptResult::STACK_OVERFLOW)), rax);
+    __ Je(&stackOverflow);
+    __ Cmpq(Immediate(static_cast<int32_t>(arksteed::ArkSteedEagerDeoptResult::INVALID)), rax);
+    __ Je(&invalidContext);
+
+    Register context = rsi;
+    Register callFrameTop = r10;
+    Register sourceReturnAddress = r11;
+    __ Movq(rax, context);
+    __ Movq(Operand(rsp, glueSlotOffset), rdi);
+    __ Movq(Operand(context, AsmStackContext::GetCallerFpOffset(false)), rbp);
+    __ Movq(Operand(context, AsmStackContext::GetCallFrameTopOffset(false)), callFrameTop);
+    __ Movq(Operand(context, AsmStackContext::GetReturnAddressOffset(false)), sourceReturnAddress);
+    __ Movq(sourceReturnAddress, Operand(callFrameTop, -FRAME_SLOT_SIZE));
+    __ Movq(callFrameTop, rsp);
+    __ Subq(FRAME_SLOT_SIZE, rsp);
+
+    // Reuse the established interpreter/baseline installation protocol.
+    Label enterDeoptimizedFrame;
+    OptimizedCall::DeoptPushAsmInterpBridgeFrame(assembler, context);
+    __ Callq(&enterDeoptimizedFrame);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&enterDeoptimizedFrame);
+    OptimizedCall::DeoptEnterAsmInterpOrBaseline(assembler);
+    __ Int3();
+
+    __ Bind(&stackOverflow);
+    __ Addq(Immediate(entryFrameSize), rsp);
+    __ Ret();
+
+    __ Bind(&invalidContext);
+    __ Int3();
 }
 
 // Entry state for SteedCallAndPushArgv (CCallConv variadic stub):

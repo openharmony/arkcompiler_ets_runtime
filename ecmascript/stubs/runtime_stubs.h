@@ -122,6 +122,10 @@ public:
     static void CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget);
     static void CopyArgvArray(uintptr_t argGlue, uintptr_t argv, uint64_t argc);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    static uintptr_t ArkSteedDeoptimize(uintptr_t argGlue, uintptr_t returnPc,
+                                        uintptr_t inputFp, uintptr_t snapshot);
+#endif
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,

@@ -24,8 +24,12 @@
 #include "ecmascript/base/hash_combine.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/assert_scope.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript::arksteed {
@@ -36,8 +40,10 @@ constexpr uint8_t LEB128_SIGN_BIT = 0x40U;
 constexpr uint32_t LEB128_PAYLOAD_BITS = 7U;
 constexpr uint32_t LEB128_MAX_SHIFT = 63U;
 constexpr size_t MIN_EXPLICIT_INPUT_SIZE = 3U;  // opcode, vreg and source
+constexpr size_t DEOPT_TRANSLATION_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint8_t);
 constexpr uint8_t FIRST_SHORT_MATCH_OPCODE = static_cast<uint8_t>(DeoptTranslationOpcode::COUNT);
 constexpr uint32_t MAX_SHORT_MATCH_COUNT = UINT8_MAX - FIRST_SHORT_MATCH_OPCODE + 1U;
+constexpr int64_t ARKSTEED_SUPPORTED_INLINE_DEPTH = 0;
 
 enum class DeoptTranslationSpecialKind : uint8_t {
     UNDEFINED = 0,
@@ -50,6 +56,7 @@ enum class DeoptTranslationSpecialKind : uint8_t {
 
 static_assert(FIRST_SHORT_MATCH_OPCODE <= UINT8_MAX);
 static_assert(MAX_SHORT_MATCH_COUNT > 0);
+static_assert(sizeof(kungfu::DeoptType) == sizeof(uint8_t));
 
 void WriteUint32LE(uint32_t value, std::vector<uint8_t> &output)
 {
@@ -208,7 +215,7 @@ bool ReadSLEB128(const uint8_t *&cursor, const uint8_t *end, int64_t &value)
     return false;
 }
 
-uint64_t HashTranslationPayload(const DeoptTranslation &translation)
+uint64_t HashTranslationBody(const DeoptTranslation &translation)
 {
     uint64_t hash = base::HashCombiner::HashCombine(0, translation.bytecodeOffset);
     hash = base::HashCombiner::HashCombine(hash, translation.inputs.size());
@@ -219,6 +226,17 @@ uint64_t HashTranslationPayload(const DeoptTranslation &translation)
         hash = base::HashCombiner::HashCombine(hash, static_cast<uint64_t>(input.source));
     }
     return hash;
+}
+
+uint64_t GetTranslationHeaderKey(uint32_t bodyId, kungfu::DeoptType type)
+{
+    return (static_cast<uint64_t>(bodyId) << 8U) | static_cast<uint8_t>(type);
+}
+
+bool IsValidDeoptType(uint8_t type)
+{
+    return type >= static_cast<uint8_t>(kungfu::DeoptType::LAZYDEOPT) &&
+           type <= static_cast<uint8_t>(kungfu::DeoptType::HOTRELOAD_PATCHMAIN);
 }
 
 bool IsTaggedSpecial(const JSTaggedValue &value)
@@ -422,10 +440,9 @@ void EncodeDeltaInputs(const DeoptTranslation &translation, const DeoptTranslati
     }
 }
 
-struct DecodedTranslationHeader {
-    uint32_t basisIdDistance {0};
+struct DecodedBodyHeader {
+    uint32_t basisBodyIdDistance {0};
     uint32_t bytecodeOffset {0};
-    kungfu::DeoptType type {kungfu::DeoptType::NONE};
     uint32_t inputCount {0};
     const uint8_t *inputStart {nullptr};
 };
@@ -458,21 +475,18 @@ bool ReadInt32SLEB(const uint8_t *&cursor, const uint8_t *end, int32_t *value)
     return true;
 }
 
-bool DecodeTranslationHeader(const uint8_t *begin, const uint8_t *end, DecodedTranslationHeader *header)
+bool DecodeBodyHeader(const uint8_t *begin, const uint8_t *end, DecodedBodyHeader *header)
 {
     if (begin == nullptr || end == nullptr || header == nullptr || begin >= end ||
         *begin != static_cast<uint8_t>(DeoptTranslationOpcode::BEGIN)) {
         return false;
     }
     const uint8_t *cursor = begin + 1;
-    uint32_t rawType = 0;
-    if (!ReadUint32ULEB(cursor, end, &header->basisIdDistance) ||
-        !ReadUint32ULEB(cursor, end, &header->bytecodeOffset) || !ReadUint32ULEB(cursor, end, &rawType) ||
-        !ReadUint32ULEB(cursor, end, &header->inputCount) ||
-        rawType > static_cast<uint32_t>(kungfu::DeoptType::HOTRELOAD_PATCHMAIN)) {
+    if (!ReadUint32ULEB(cursor, end, &header->basisBodyIdDistance) ||
+        !ReadUint32ULEB(cursor, end, &header->bytecodeOffset) ||
+        !ReadUint32ULEB(cursor, end, &header->inputCount)) {
         return false;
     }
-    header->type = static_cast<kungfu::DeoptType>(rawType);
     header->inputStart = cursor;
     return true;
 }
@@ -613,7 +627,7 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
     return DecodeSignedSource(cursor, end, &input->source);
 }
 
-bool DecodeBasisInputs(const DecodedTranslationHeader &header, const uint8_t *end,
+bool DecodeBasisInputs(const DecodedBodyHeader &header, const uint8_t *end,
                        std::vector<DeoptTranslationInput> *inputs)
 {
     if (header.inputStart > end || header.inputCount > inputs->max_size() ||
@@ -629,7 +643,8 @@ bool DecodeBasisInputs(const DecodedTranslationHeader &header, const uint8_t *en
         }
         uint8_t opcode = *cursor++;
         DeoptTranslationInput input {};
-        if (!DecodeExplicitInput(opcode, cursor, end, &input)) {
+        if (!DecodeExplicitInput(opcode, cursor, end, &input) ||
+            (!inputs->empty() && inputs->back().vreg >= input.vreg)) {
             return false;
         }
         inputs->push_back(input);
@@ -647,7 +662,7 @@ bool DecodeMatchCount(uint8_t opcode, const uint8_t *&cursor, const uint8_t *end
            ReadUint32ULEB(cursor, end, count) && *count > 0;
 }
 
-bool ApplyDeltaInputs(const DecodedTranslationHeader &header, const uint8_t *end,
+bool ApplyDeltaInputs(const DecodedBodyHeader &header, const uint8_t *end,
                       std::vector<DeoptTranslationInput> *inputs)
 {
     if (inputs == nullptr || header.inputCount != inputs->size()) {
@@ -681,18 +696,19 @@ bool ApplyDeltaInputs(const DecodedTranslationHeader &header, const uint8_t *end
 DeoptId DeoptTranslationBuilder::AddTranslation(
     uint32_t bytecodeOffset, kungfu::DeoptType type, std::vector<DeoptTranslationInput> inputs)
 {
-    CHECK(translations_.size() < std::numeric_limits<uint32_t>::max());
+    CHECK(headers_.size() < std::numeric_limits<uint32_t>::max());
+    CHECK(bodies_.size() < std::numeric_limits<uint32_t>::max());
     CHECK(inputs.size() <= std::numeric_limits<uint32_t>::max());
-    CHECK(static_cast<uint32_t>(type) <= static_cast<uint32_t>(kungfu::DeoptType::HOTRELOAD_PATCHMAIN));
+    CHECK(IsValidDeoptType(static_cast<uint8_t>(type)));
     for (size_t index = 0; index < inputs.size(); ++index) {
         ValidateTranslationInput(inputs[index]);
         CHECK(index == 0 || inputs[index - 1U].vreg < inputs[index].vreg);
     }
 
-    auto basisIterator = basisTranslationIds_.find(bytecodeOffset);
-    if (basisIterator != basisTranslationIds_.end()) {
-        CHECK(basisIterator->second.value < translations_.size());
-        const auto &basisInputs = translations_[basisIterator->second.value].inputs;
+    auto basisIterator = basisBodyIds_.find(bytecodeOffset);
+    if (basisIterator != basisBodyIds_.end()) {
+        CHECK(basisIterator->second < bodies_.size());
+        const auto &basisInputs = bodies_[basisIterator->second].inputs;
         CHECK(inputs.size() == basisInputs.size());
         for (size_t index = 0; index < inputs.size(); ++index) {
             CHECK(inputs[index].vreg == basisInputs[index].vreg);
@@ -701,69 +717,98 @@ DeoptId DeoptTranslationBuilder::AddTranslation(
 
     DeoptTranslation candidate {
         bytecodeOffset,
-        type,
         std::move(inputs),
     };
-    uint64_t payloadHash = HashTranslationPayload(candidate);
-    auto [begin, end] = translationIndex_.equal_range(payloadHash);
+    uint64_t bodyHash = HashTranslationBody(candidate);
+    uint32_t bodyId = 0;
+    bool foundBody = false;
+    auto [begin, end] = bodyIndex_.equal_range(bodyHash);
     for (auto iterator = begin; iterator != end; ++iterator) {
-        CHECK(iterator->second.value < translations_.size());
-        const auto &translation = translations_[iterator->second.value];
-        if (translation.PayloadEquals(candidate)) {
-            return iterator->second;
+        CHECK(iterator->second < bodies_.size());
+        if (bodies_[iterator->second].BodyEquals(candidate)) {
+            bodyId = iterator->second;
+            foundBody = true;
+            break;
         }
     }
 
-    DeoptId id {static_cast<uint32_t>(translations_.size())};
-    translations_.push_back(std::move(candidate));
-    translationIndex_.emplace(payloadHash, id);
-    basisTranslationIds_.try_emplace(bytecodeOffset, id);
-    return id;
+    if (!foundBody) {
+        bodyId = static_cast<uint32_t>(bodies_.size());
+        bodies_.push_back(std::move(candidate));
+        bodyIndex_.emplace(bodyHash, bodyId);
+        basisBodyIds_.try_emplace(bytecodeOffset, bodyId);
+    }
+
+    uint64_t headerKey = GetTranslationHeaderKey(bodyId, type);
+    auto headerIterator = headerIndex_.find(headerKey);
+    if (headerIterator != headerIndex_.end()) {
+        return headerIterator->second;
+    }
+
+    DeoptId deoptId {static_cast<uint32_t>(headers_.size())};
+    headers_.push_back({bodyId, type});
+    headerIndex_.emplace(headerKey, deoptId);
+    return deoptId;
 }
 
 std::vector<uint8_t> DeoptTranslationBuilder::Encode() const
 {
-    if (translations_.empty()) {
+    if (headers_.empty()) {
+        CHECK(bodies_.empty());
         return {};
     }
 
-    CHECK(translations_.size() <= std::numeric_limits<uint32_t>::max());
+    CHECK(!bodies_.empty());
+    CHECK(bodies_.size() <= headers_.size());
+    CHECK(headers_.size() <= std::numeric_limits<uint32_t>::max());
+    CHECK(bodies_.size() <= std::numeric_limits<uint32_t>::max());
     std::vector<uint32_t> offsets;
     std::vector<uint8_t> stream;
-    offsets.reserve(translations_.size());
-    for (size_t index = 0; index < translations_.size(); ++index) {
-        const auto &translation = translations_[index];
+    offsets.reserve(bodies_.size());
+    for (size_t index = 0; index < bodies_.size(); ++index) {
+        const auto &translation = bodies_[index];
         CHECK(stream.size() <= std::numeric_limits<uint32_t>::max());
         offsets.push_back(static_cast<uint32_t>(stream.size()));
 
-        auto basisIterator = basisTranslationIds_.find(translation.bytecodeOffset);
-        CHECK(basisIterator != basisTranslationIds_.end());
-        DeoptId basisId = basisIterator->second;
-        CHECK(basisId.value <= index);
-        CHECK(basisId.value < offsets.size());
-        uint32_t basisIdDistance = static_cast<uint32_t>(index) - basisId.value;
+        auto basisIterator = basisBodyIds_.find(translation.bytecodeOffset);
+        CHECK(basisIterator != basisBodyIds_.end());
+        uint32_t basisBodyId = basisIterator->second;
+        CHECK(basisBodyId <= index);
+        CHECK(basisBodyId < offsets.size());
+        uint32_t basisBodyIdDistance = static_cast<uint32_t>(index) - basisBodyId;
 
         WriteOpcode(DeoptTranslationOpcode::BEGIN, stream);
-        WriteULEB128(basisIdDistance, stream);
+        WriteULEB128(basisBodyIdDistance, stream);
         WriteULEB128(translation.bytecodeOffset, stream);
-        WriteULEB128(static_cast<uint8_t>(translation.type), stream);
         WriteULEB128(translation.inputs.size(), stream);
-        if (basisIdDistance == 0) {
+        if (basisBodyIdDistance == 0) {
             for (const auto &input : translation.inputs) {
                 EncodeExplicitInput(input, stream);
             }
         } else {
-            EncodeDeltaInputs(translation, translations_[basisId.value], stream);
+            EncodeDeltaInputs(translation, bodies_[basisBodyId], stream);
         }
     }
     CHECK(stream.size() <= std::numeric_limits<uint32_t>::max());
 
-    CHECK(offsets.size() <= (std::numeric_limits<size_t>::max() - sizeof(uint32_t)) / sizeof(uint32_t));
-    size_t headerSize = sizeof(uint32_t) + offsets.size() * sizeof(uint32_t);
-    CHECK(stream.size() <= std::numeric_limits<size_t>::max() - headerSize);
+    size_t fixedSize = sizeof(uint32_t) * 2U;
+    CHECK(headers_.size() <=
+          (std::numeric_limits<size_t>::max() - fixedSize) / DEOPT_TRANSLATION_HEADER_SIZE);
+    fixedSize += headers_.size() * DEOPT_TRANSLATION_HEADER_SIZE;
+    CHECK(offsets.size() <= (std::numeric_limits<size_t>::max() - fixedSize) / sizeof(uint32_t));
+    fixedSize += offsets.size() * sizeof(uint32_t);
+    CHECK(stream.size() <= std::numeric_limits<size_t>::max() - fixedSize);
+
     std::vector<uint8_t> output;
-    output.reserve(headerSize + stream.size());
-    WriteUint32LE(static_cast<uint32_t>(translations_.size()), output);
+    output.reserve(fixedSize + stream.size());
+    WriteUint32LE(static_cast<uint32_t>(headers_.size()), output);
+    WriteUint32LE(static_cast<uint32_t>(bodies_.size()), output);
+    for (const auto &header : headers_) {
+        CHECK(header.bodyId < bodies_.size());
+        CHECK(IsValidDeoptType(static_cast<uint8_t>(header.type)));
+        WriteUint32LE(header.bodyId, output);
+        output.push_back(static_cast<uint8_t>(header.type));
+    }
     for (uint32_t offset : offsets) {
         WriteUint32LE(offset, output);
     }
@@ -773,7 +818,7 @@ std::vector<uint8_t> DeoptTranslationBuilder::Encode() const
 
 DeoptTranslationReader::DeoptTranslationReader(const uint8_t *data, size_t size)
 {
-    if (data == nullptr || size < sizeof(uint32_t)) {
+    if (data == nullptr || size < sizeof(uint32_t) * 2U) {
         return;
     }
     uintptr_t dataAddress = reinterpret_cast<uintptr_t>(data);
@@ -782,99 +827,127 @@ DeoptTranslationReader::DeoptTranslationReader(const uint8_t *data, size_t size)
     }
     const uint8_t *cursor = data;
     const uint8_t *end = reinterpret_cast<const uint8_t *>(dataAddress + size);
-    uint32_t translationCount = 0;
-    if (!ReadUint32LE(cursor, end, translationCount) || translationCount == 0 ||
-        translationCount > static_cast<size_t>(end - cursor) / sizeof(uint32_t)) {
+    uint32_t deoptCount = 0;
+    uint32_t bodyCount = 0;
+    if (!ReadUint32LE(cursor, end, deoptCount) || !ReadUint32LE(cursor, end, bodyCount) ||
+        deoptCount == 0 || bodyCount == 0 || bodyCount > deoptCount ||
+        deoptCount > static_cast<size_t>(end - cursor) / DEOPT_TRANSLATION_HEADER_SIZE) {
         return;
     }
-    size_t tableSize = static_cast<size_t>(translationCount) * sizeof(uint32_t);
-    const uint8_t *streamStart = cursor + tableSize;
+    const uint8_t *headerStart = cursor;
+    size_t headerSize = static_cast<size_t>(deoptCount) * DEOPT_TRANSLATION_HEADER_SIZE;
+    cursor += headerSize;
+    if (bodyCount > static_cast<size_t>(end - cursor) / sizeof(uint32_t)) {
+        return;
+    }
+    const uint8_t *offsetTable = cursor;
+    size_t tableSize = static_cast<size_t>(bodyCount) * sizeof(uint32_t);
+    const uint8_t *streamStart = offsetTable + tableSize;
     size_t streamSize = static_cast<size_t>(end - streamStart);
     if (streamSize == 0 || streamSize > std::numeric_limits<uint32_t>::max()) {
         return;
     }
 
-    uint32_t previousOffset = 0;
-    const uint8_t *offsetCursor = cursor;
-    for (uint32_t index = 0; index < translationCount; ++index) {
-        uint32_t offset = 0;
-        if (!ReadUint32LE(offsetCursor, streamStart, offset) || offset >= streamSize ||
-            (index == 0 && offset != 0) || (index != 0 && offset <= previousOffset) ||
-            streamStart[offset] != static_cast<uint8_t>(DeoptTranslationOpcode::BEGIN)) {
-            return;
-        }
-        previousOffset = offset;
-    }
-
-    translationCount_ = translationCount;
-    offsetTable_ = cursor;
+    deoptCount_ = deoptCount;
+    bodyCount_ = bodyCount;
+    headerStart_ = headerStart;
+    offsetTable_ = offsetTable;
     streamStart_ = streamStart;
     streamEnd_ = end;
 }
 
-bool DeoptTranslationReader::ReadOffset(uint32_t index, uint32_t *offset) const
+bool DeoptTranslationReader::GetHeader(DeoptId deoptId, DeoptTranslationHeader *header) const
 {
-    if (!IsValid() || offset == nullptr || index >= translationCount_) {
+    if (!IsValid() || header == nullptr || deoptId.value >= deoptCount_) {
         return false;
     }
-    const uint8_t *cursor = offsetTable_ + static_cast<size_t>(index) * sizeof(uint32_t);
+    const uint8_t *cursor = headerStart_ + static_cast<size_t>(deoptId.value) * DEOPT_TRANSLATION_HEADER_SIZE;
+    const uint8_t *end = cursor + DEOPT_TRANSLATION_HEADER_SIZE;
+    uint32_t bodyId = 0;
+    if (!ReadUint32LE(cursor, end, bodyId) || cursor >= end) {
+        return false;
+    }
+    uint8_t rawType = *cursor++;
+    if (cursor != end || bodyId >= bodyCount_ || !IsValidDeoptType(rawType)) {
+        return false;
+    }
+    *header = {bodyId, static_cast<kungfu::DeoptType>(rawType)};
+    return true;
+}
+
+bool DeoptTranslationReader::ReadBodyOffset(uint32_t bodyId, uint32_t *offset) const
+{
+    if (!IsValid() || offset == nullptr || bodyId >= bodyCount_) {
+        return false;
+    }
+    const uint8_t *cursor = offsetTable_ + static_cast<size_t>(bodyId) * sizeof(uint32_t);
     return ReadUint32LE(cursor, streamStart_, *offset);
 }
 
-bool DeoptTranslationReader::GetTranslationRange(uint32_t index, const uint8_t **begin, const uint8_t **end) const
+bool DeoptTranslationReader::GetBodyRange(uint32_t bodyId, const uint8_t **begin, const uint8_t **end) const
 {
-    if (begin == nullptr || end == nullptr) {
+    if (!IsValid() || begin == nullptr || end == nullptr || bodyId >= bodyCount_) {
         return false;
     }
     uint32_t startOffset = 0;
-    if (!ReadOffset(index, &startOffset)) {
+    size_t streamSize = static_cast<size_t>(streamEnd_ - streamStart_);
+    if (!ReadBodyOffset(bodyId, &startOffset) || startOffset >= streamSize ||
+        (bodyId == 0 && startOffset != 0) ||
+        streamStart_[startOffset] != static_cast<uint8_t>(DeoptTranslationOpcode::BEGIN)) {
         return false;
     }
+    if (bodyId != 0) {
+        uint32_t previousOffset = 0;
+        if (!ReadBodyOffset(bodyId - 1U, &previousOffset) || previousOffset >= startOffset) {
+            return false;
+        }
+    }
     *begin = streamStart_ + startOffset;
-    if (index + 1U == translationCount_) {
+    if (bodyId + 1U == bodyCount_) {
         *end = streamEnd_;
-        return true;
+        return *begin < *end;
     }
     uint32_t endOffset = 0;
-    if (!ReadOffset(index + 1U, &endOffset)) {
+    if (!ReadBodyOffset(bodyId + 1U, &endOffset) || endOffset >= streamSize ||
+        streamStart_[endOffset] != static_cast<uint8_t>(DeoptTranslationOpcode::BEGIN)) {
         return false;
     }
     *end = streamStart_ + endOffset;
     return *begin < *end;
 }
 
-bool DeoptTranslationReader::GetTranslation(DeoptId deoptId, DeoptTranslation *translation) const
+bool DeoptTranslationReader::GetBody(uint32_t bodyId, DeoptTranslation *translation) const
 {
-    if (!IsValid() || translation == nullptr || deoptId.value >= translationCount_) {
+    if (!IsValid() || translation == nullptr || bodyId >= bodyCount_) {
         return false;
     }
     const uint8_t *begin = nullptr;
     const uint8_t *end = nullptr;
-    if (!GetTranslationRange(deoptId.value, &begin, &end)) {
+    if (!GetBodyRange(bodyId, &begin, &end)) {
         return false;
     }
-    DecodedTranslationHeader header {};
-    if (!DecodeTranslationHeader(begin, end, &header)) {
+    DecodedBodyHeader header {};
+    if (!DecodeBodyHeader(begin, end, &header)) {
         return false;
     }
 
     std::vector<DeoptTranslationInput> inputs;
-    if (header.basisIdDistance == 0) {
+    if (header.basisBodyIdDistance == 0) {
         if (!DecodeBasisInputs(header, end, &inputs)) {
             return false;
         }
     } else {
-        if (header.basisIdDistance > deoptId.value) {
+        if (header.basisBodyIdDistance > bodyId) {
             return false;
         }
-        uint32_t basisIndex = deoptId.value - header.basisIdDistance;
+        uint32_t basisBodyId = bodyId - header.basisBodyIdDistance;
         const uint8_t *basisBegin = nullptr;
         const uint8_t *basisEnd = nullptr;
-        if (!GetTranslationRange(basisIndex, &basisBegin, &basisEnd)) {
+        if (!GetBodyRange(basisBodyId, &basisBegin, &basisEnd)) {
             return false;
         }
-        DecodedTranslationHeader basisHeader {};
-        if (!DecodeTranslationHeader(basisBegin, basisEnd, &basisHeader) || basisHeader.basisIdDistance != 0 ||
+        DecodedBodyHeader basisHeader {};
+        if (!DecodeBodyHeader(basisBegin, basisEnd, &basisHeader) || basisHeader.basisBodyIdDistance != 0 ||
             basisHeader.bytecodeOffset != header.bytecodeOffset || basisHeader.inputCount != header.inputCount ||
             !DecodeBasisInputs(basisHeader, basisEnd, &inputs) || !ApplyDeltaInputs(header, end, &inputs)) {
             return false;
@@ -883,7 +956,6 @@ bool DeoptTranslationReader::GetTranslation(DeoptId deoptId, DeoptTranslation *t
 
     DeoptTranslation decoded {
         header.bytecodeOffset,
-        header.type,
         std::move(inputs),
     };
     *translation = std::move(decoded);
@@ -970,7 +1042,7 @@ std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(ArkSteedAssembler
         static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH),
         DeoptTranslationKind::RAW_INT32,
         DeoptSourceKind::CONSTANT,
-        0,
+        ARKSTEED_SUPPORTED_INLINE_DEPTH,
     });
     for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
         inputs.push_back(BuildDeoptTranslationInput(assembler, vertex, index));
@@ -980,61 +1052,27 @@ std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(ArkSteedAssembler
     return inputs;
 }
 
-uint32_t GetTaggedDeoptSnapshotGeneralRegisters(const std::vector<DeoptTranslationInput> &inputs)
-{
-    uint32_t taggedRegisters = 0;
-    for (const auto &input : inputs) {
-        if (input.valueKind != DeoptTranslationKind::TAGGED || input.sourceKind != DeoptSourceKind::GP_REGISTER) {
-            continue;
-        }
-        ASSERT(input.source >= 0);
-        uint32_t registerCode = static_cast<uint32_t>(input.source);
-        ASSERT(GetArkSteedDeoptGeneralSnapshotOffset(registerCode) >= 0);
-        taggedRegisters |= 1U << registerCode;
-    }
-    return taggedRegisters;
-}
-
 namespace {
 using MaterializedVreg = std::pair<Deoptimizier::VRegId, JSTaggedType>;
 
 struct MaterializedArkSteedDeoptFrame {
     size_t inlineDepth {0};
-    bool hasInlineDepth {false};
-    std::vector<MaterializedVreg> values;
+    std::vector<std::pair<int32_t, JSTaggedType>> values;
 };
 
-bool IsNonSteedOptimizedFrame(FrameType type)
+bool ReadTranslationFromMachineCode(const MachineCode *machineCode, DeoptId deoptId,
+                                    DeoptTranslationHeader *header, DeoptTranslation *translation)
 {
-    return type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME || type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
-           type == FrameType::FASTJIT_FUNCTION_FRAME || type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
-}
-
-bool ReadTranslationFromSteedFrame(const FrameIterator &it, DeoptId deoptId, DeoptTranslation *translation)
-{
-#if ECMASCRIPT_ENABLE_ARK_STEED
-    JSTaggedValue machineCodeValue(*it.GetMachineCodeSlot());
-    if (!machineCodeValue.IsMachineCodeObject()) {
+    if (machineCode == nullptr || header == nullptr || translation == nullptr) {
         return false;
     }
-
-    const MachineCode *machineCode = MachineCode::Cast(machineCodeValue.GetTaggedObject());
     const uint8_t *translationData = nullptr;
     size_t translationSize = 0;
     if (!machineCode->GetArkSteedTranslationData(&translationData, &translationSize)) {
         return false;
     }
     DeoptTranslationReader reader(translationData, translationSize);
-    if (!reader.IsValid()) {
-        return false;
-    }
-    return reader.GetTranslation(deoptId, translation);
-#else
-    (void)it;
-    (void)deoptId;
-    (void)translation;
-    return false;
-#endif
+    return reader.GetHeader(deoptId, header) && reader.GetBody(header->bodyId, translation);
 }
 
 uint64_t ReadDeoptInputRaw(const DeoptTranslationInput &input, uintptr_t callsiteFp, uintptr_t snapshot)
@@ -1086,12 +1124,13 @@ bool MaterializeTranslation(const DeoptTranslation &translation, uintptr_t calls
 {
     ASSERT(frame != nullptr);
     frame->inlineDepth = 0;
-    frame->hasInlineDepth = false;
     frame->values.clear();
     frame->values.reserve(translation.inputs.size());
+    bool hasInlineDepth = false;
     for (const auto &input : translation.inputs) {
         if (input.vreg == static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH)) {
-            if (frame->hasInlineDepth || input.valueKind != DeoptTranslationKind::RAW_INT32) {
+            if (hasInlineDepth || input.valueKind != DeoptTranslationKind::RAW_INT32 ||
+                input.sourceKind != DeoptSourceKind::CONSTANT) {
                 return false;
             }
             JSTaggedType value = MaterializeDeoptInput(input, callsiteFp, snapshot);
@@ -1100,69 +1139,167 @@ bool MaterializeTranslation(const DeoptTranslation &translation, uintptr_t calls
                 return false;
             }
             frame->inlineDepth = static_cast<size_t>(inlineDepth);
-            frame->hasInlineDepth = true;
+            hasInlineDepth = true;
             continue;
         }
         JSTaggedType value = MaterializeDeoptInput(input, callsiteFp, snapshot);
-        frame->values.emplace_back(static_cast<Deoptimizier::VRegId>(input.vreg), value);
+        frame->values.emplace_back(input.vreg, value);
     }
-    return frame->hasInlineDepth;
+    return hasInlineDepth;
 }
-}  // namespace
 
-bool HandleArkSteedDeopt(JSThread *thread, DeoptId deoptId, JSTaggedType *result)
+bool DecodeArkSteedEagerDeoptExit(const MachineCode *machineCode, uintptr_t returnPc, DeoptId *deoptId)
 {
-    if (thread == nullptr || result == nullptr) {
+    if (machineCode == nullptr || deoptId == nullptr || returnPc == 0) {
         return false;
     }
 
-    JSTaggedType *asmBridgeSp = nullptr;
-    JSTaggedType *lastLeave = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
-    FrameIterator it(lastLeave, thread);
-    for (; !it.Done(); it.Advance<GCVisitedFlag::DEOPT>()) {
-        FrameType frameType = it.GetFrameType();
-        if (IsNonSteedOptimizedFrame(frameType)) {
+    uintptr_t textStart = machineCode->GetText();
+    uint32_t textSize = machineCode->GetFuncSize();
+    if (textStart == 0 || textSize == 0 ||
+        textStart > std::numeric_limits<uintptr_t>::max() - textSize) {
+        return false;
+    }
+    uintptr_t textEnd = textStart + textSize;
+    // A return PC designates the byte immediately after a fixed call. Consequently the
+    // last valid return PC is allowed to equal the exact (unaligned) function text end.
+    if (returnPc <= textStart || returnPc > textEnd) {
+        return false;
+    }
+
+    const uint8_t *translationData = nullptr;
+    size_t translationSize = 0;
+    if (!machineCode->GetArkSteedTranslationData(&translationData, &translationSize)) {
+        return false;
+    }
+    DeoptTranslationReader reader(translationData, translationSize);
+    uint32_t exitCount = reader.GetDeoptCount();
+    if (exitCount == 0) {
+        return false;
+    }
+
+    constexpr uint32_t exitSize = ARKSTEED_EAGER_DEOPT_EXIT_SIZE;
+    uint64_t exitClusterSize = static_cast<uint64_t>(exitCount) * exitSize;
+    if (exitClusterSize > textSize) {
+        return false;
+    }
+
+    uint64_t firstReturnOffset = textSize - exitClusterSize + exitSize;
+    uint64_t textOffset = returnPc - textStart;
+    if (textOffset < firstReturnOffset) {
+        return false;
+    }
+    uint64_t distance = textOffset - firstReturnOffset;
+    if (distance % exitSize != 0) {
+        return false;
+    }
+    uint64_t exitIndex = distance / exitSize;
+    if (exitIndex >= exitCount) {
+        return false;
+    }
+    deoptId->value = static_cast<uint32_t>(exitIndex);
+    return true;
+}
+
+bool ResolveArkSteedEagerDeoptExit(JSThread *thread, uintptr_t returnPc,
+                                   MachineCode **machineCode, DeoptId *deoptId)
+{
+    if (thread == nullptr || machineCode == nullptr || deoptId == nullptr || returnPc == 0) {
+        return false;
+    }
+
+    // Ownership is queried with the last byte of the call so that a final exit whose
+    // return PC equals text end is still resolved to the current MachineCode object.
+    MachineCode *owner = thread->GetEcmaVM()->GetHeap()->GetMachineCodeObject(returnPc - 1U);
+    DeoptId resolved {};
+    if (owner == nullptr || !DecodeArkSteedEagerDeoptExit(owner, returnPc, &resolved)) {
+        return false;
+    }
+    *machineCode = owner;
+    *deoptId = resolved;
+    return true;
+}
+}  // namespace
+
+bool WouldStackOverflow(JSThread *thread, const JSTaggedType *sp)
+{
+    ASSERT(thread != nullptr);
+    ASSERT(sp != nullptr);
+    uintptr_t frameBaseAddress = thread->GetGlueAddr() + JSThread::GlueData::GetFrameBaseOffset(false);
+    auto frameBase = *reinterpret_cast<JSTaggedType *const *>(frameBaseAddress);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    return !thread->IsCrossThreadExecutionEnable() && sp <= frameBase + JSThread::RESERVE_STACK_SIZE;
+}
+
+bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp,
+                             uintptr_t snapshot, JSTaggedType *result)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    DISALLOW_HEAP_ALLOC;
+
+    if (thread == nullptr || result == nullptr || inputFp == 0 || snapshot == 0 ||
+        inputFp % alignof(uintptr_t) != 0 ||
+        snapshot % alignof(ArkSteedDeoptSnapshot) != 0) {
+        return false;
+    }
+    // The materialized vreg map uses temporary JSHandles. The old generic
+    // DeoptHandler acquired this scope through RUNTIME_STUBS_HEADER; the
+    // dedicated NoGC entry must bound those handles explicitly so recovered
+    // values do not remain permanent GC roots after the frame is published.
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    MachineCode *machineCode = nullptr;
+    DeoptId deoptId {};
+    if (!ResolveArkSteedEagerDeoptExit(thread, returnPc, &machineCode, &deoptId) ||
+        machineCode->GetCalleeRegisterNum() != 0) {
+        return false;
+    }
+
+    FrameIterator it(reinterpret_cast<JSTaggedType *>(inputFp), thread);
+    if (it.GetFrameType() != FrameType::STEED_FUNCTION_FRAME) {
+        return false;
+    }
+    auto *frame = it.GetFrame<SteedFunctionFrame>();
+    if (!frame->GetFunction().IsJSFunction()) {
+        return false;
+    }
+
+    DeoptTranslationHeader translationHeader {};
+    DeoptTranslation translation {};
+    if (!ReadTranslationFromMachineCode(machineCode, deoptId, &translationHeader, &translation)) {
+        return false;
+    }
+    MaterializedArkSteedDeoptFrame materialized;
+    if (!MaterializeTranslation(translation, inputFp, snapshot, &materialized) ||
+        materialized.inlineDepth != static_cast<size_t>(ARKSTEED_SUPPORTED_INLINE_DEPTH)) {
+        return false;
+    }
+
+    std::vector<MaterializedVreg> values;
+    values.reserve(materialized.values.size());
+    for (const auto &[vreg, value] : materialized.values) {
+        if (vreg < std::numeric_limits<Deoptimizier::VRegId>::min() ||
+            vreg > std::numeric_limits<Deoptimizier::VRegId>::max()) {
             return false;
         }
-        switch (frameType) {
-            case FrameType::ASM_BRIDGE_FRAME:
-                asmBridgeSp = it.GetSp();
-                break;
-            case FrameType::OPTIMIZED_FRAME:
-            case FrameType::LEAVE_FRAME:
-                break;
-            case FrameType::STEED_FUNCTION_FRAME: {
-                if (asmBridgeSp == nullptr) {
-                    return false;
-                }
-                DeoptTranslation translation {};
-                if (!ReadTranslationFromSteedFrame(it, deoptId, &translation)) {
-                    return false;
-                }
-
-                uintptr_t callsiteFp = reinterpret_cast<uintptr_t>(it.GetSp());
-                uintptr_t snapshot = GetArkSteedDeoptSnapshotFromCallsiteSp(it.GetCallSiteSp());
-                MaterializedArkSteedDeoptFrame materialized;
-                if (!MaterializeTranslation(translation, callsiteFp, snapshot, &materialized)) {
-                    return false;
-                }
-
-                it.SetDeoptType(static_cast<uint32_t>(translation.type));
-                Deoptimizier deopt(thread, materialized.inlineDepth, translation.type);
-                auto frame = it.GetFrame<SteedFunctionFrame>();
-                deopt.CollectSteedDeoptContext(it, frame, asmBridgeSp);
-                deopt.CollectMaterializedVregs(materialized.values,
-                                               Deoptimizier::ComputeShift(materialized.inlineDepth));
-                deopt.UpdateAndDumpDeoptInfo(translation.type, false);
-                JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
-                *result = deopt.ConstructAsmInterpretFrame(undefined);
-                return true;
-            }
-            default:
-                return false;
-        }
+        values.emplace_back(static_cast<Deoptimizier::VRegId>(vreg), value);
     }
-    return false;
+
+    kungfu::DeoptType deoptType = translationHeader.type;
+    it.SetDeoptType(static_cast<uint32_t>(deoptType));
+    Deoptimizier deopt(thread, materialized.inlineDepth, deoptType);
+    if (!deopt.CollectSteedDeoptContextFromRuntime(it, frame, machineCode)) {
+        return false;
+    }
+    deopt.CollectMaterializedVregs(values, Deoptimizier::ComputeShift(materialized.inlineDepth));
+    deopt.UpdateAndDumpDeoptInfo(deoptType, false);
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    *result = deopt.ConstructAsmInterpretFrame(undefined, true);
+    if (*result == JSTaggedValue::Exception().GetRawData()) {
+        ASSERT(!thread->HasPendingException());
+        *result = static_cast<JSTaggedType>(ArkSteedEagerDeoptResult::STACK_OVERFLOW);
+    }
+    return true;
 }
 
 }  // namespace panda::ecmascript::arksteed

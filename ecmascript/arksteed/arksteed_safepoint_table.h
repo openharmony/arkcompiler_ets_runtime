@@ -38,19 +38,15 @@ enum class ExceptionHandlerKind : uint16_t {
 //     uint32_t numTaggedSlots      (function-level, same for all safepoints)
 //     uint32_t numUntaggedSlots
 //     uint32_t reserved            (must be zero)
-//   Entry[] (16 bytes each, sorted by pcOffset ascending):
+//   Entry[] (12 bytes each, sorted by pcOffset ascending):
 //     uint32_t pcOffset            (return address offset from code start)
 //     uint16_t extraSpillSlotsAndFlags
-//                              (low 13 bits: pushed stack slots; bits 13-14: exception handler kind;
-//                               high bit: deopt snapshot present)
-//     uint16_t taggedDeoptSnapshotGeneralRegistersLow
+//                              (low 13 bits: pushed stack slots; bits 13-14: exception handler kind)
 //     uint32_t deoptOffset         (relative to the table start; 0 if absent)
 //     uint16_t deoptNum            (encoded pairs: <id, value>)
-//     uint16_t taggedDeoptSnapshotGeneralRegistersHigh
 // GC scanning:
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
-//   2. Per eager-deopt safepoint: tagged general-register values saved in the deopt snapshot
-//   3. Per-safepoint: outgoing stack arguments are roots until the call returns
+//   2. Per-safepoint: outgoing stack arguments are roots until the call returns
 
 #pragma pack(1)
 struct ArkSteedSafepointHeader {
@@ -61,27 +57,19 @@ struct ArkSteedSafepointHeader {
 };
 
 struct ArkSteedSafepointEntry {
-    static constexpr uint16_t DEOPT_SNAPSHOT_FLAG = 1U << 15U;
     static constexpr uint16_t EXCEPTION_HANDLER_KIND_SHIFT = 13U;
     static constexpr uint16_t EXCEPTION_HANDLER_KIND_MASK = 0x6000U;
     static constexpr uint16_t EXTRA_SPILL_SLOTS_MASK = 0x1FFFU;
-    static constexpr uint16_t ENTRY_FLAGS_MASK = DEOPT_SNAPSHOT_FLAG | EXCEPTION_HANDLER_KIND_MASK;
+    static constexpr uint16_t ENTRY_FLAGS_MASK = EXCEPTION_HANDLER_KIND_MASK;
 
     uint32_t pcOffset;
     uint16_t extraSpillSlotsAndFlags;
-    uint16_t taggedDeoptSnapshotGeneralRegistersLow;
     uint32_t deoptOffset;
     uint16_t deoptNum;
-    uint16_t taggedDeoptSnapshotGeneralRegistersHigh;
 
     uint16_t GetNumExtraSpillSlots() const
     {
         return extraSpillSlotsAndFlags & EXTRA_SPILL_SLOTS_MASK;
-    }
-
-    bool HasDeoptSnapshot() const
-    {
-        return (extraSpillSlotsAndFlags & DEOPT_SNAPSHOT_FLAG) != 0;
     }
 
     ExceptionHandlerKind GetExceptionHandlerKind() const
@@ -91,18 +79,12 @@ struct ArkSteedSafepointEntry {
         ASSERT(kind <= static_cast<uint16_t>(ExceptionHandlerKind::LAZY_DEOPT));
         return static_cast<ExceptionHandlerKind>(kind);
     }
-
-    uint32_t GetTaggedDeoptSnapshotGeneralRegisters() const
-    {
-        return static_cast<uint32_t>(taggedDeoptSnapshotGeneralRegistersLow) |
-               (static_cast<uint32_t>(taggedDeoptSnapshotGeneralRegistersHigh) << 16U);
-    }
 };
 
 #pragma pack()
 
 static_assert(sizeof(ArkSteedSafepointHeader) == 16, "Header must be 16 bytes");  // 16: header size in bytes
-static_assert(sizeof(ArkSteedSafepointEntry) == 16, "Entry must be 16 bytes");  // 16: entry size in bytes
+static_assert(sizeof(ArkSteedSafepointEntry) == 12, "Entry must be 12 bytes");  // 12: entry size in bytes
 // ============================================================================
 // Builder — used during compilation to collect safepoint entries
 // ============================================================================
@@ -113,27 +95,12 @@ public:
 
     class Safepoint {
     public:
-        void DefineTaggedDeoptSnapshotGeneralRegister(uint32_t registerCode)
-        {
-            ASSERT(GetArkSteedDeoptGeneralSnapshotOffset(registerCode) >= 0);
-            if (registerCode < 16U) {
-                entry_->taggedDeoptSnapshotGeneralRegistersLow |= static_cast<uint16_t>(1U << registerCode);
-                return;
-            }
-            entry_->taggedDeoptSnapshotGeneralRegistersHigh |= static_cast<uint16_t>(1U << (registerCode - 16U));
-        }
-
         void SetNumExtraSpillSlots(uint32_t count)
         {
             ASSERT(count <= ArkSteedSafepointEntry::EXTRA_SPILL_SLOTS_MASK);
             entry_->extraSpillSlotsAndFlags =
                 static_cast<uint16_t>((entry_->extraSpillSlotsAndFlags & ArkSteedSafepointEntry::ENTRY_FLAGS_MASK) |
                                       count);
-        }
-
-        void MarkDeoptSnapshot()
-        {
-            entry_->extraSpillSlotsAndFlags |= ArkSteedSafepointEntry::DEOPT_SNAPSHOT_FLAG;
         }
 
     private:

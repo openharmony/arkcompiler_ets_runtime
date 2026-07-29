@@ -281,7 +281,7 @@ public:
 class ArkSteedCall : public CommonCall {
 public:
     static void ArkSteedCallEntry(ExtendedAssembler *assembler);
-    static void ArkSteedEagerDeoptEntry(ExtendedAssembler *assembler);
+    static void ArkSteedDeoptimizationEntry(ExtendedAssembler *assembler);
     static void SteedCallAndPushArgv(ExtendedAssembler *assembler);
     static void SteedCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 

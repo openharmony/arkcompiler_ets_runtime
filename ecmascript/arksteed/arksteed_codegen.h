@@ -41,7 +41,6 @@ public:
           safepointBuilder_(safepointBuilder),
           translationBuilder_(translationBuilder),
           eagerDeoptTargetsById_(graph->GetChunk()),
-          eagerDeoptTargetsByVertex_(graph->GetChunk(), 0),
           blockColorAssignment_(graph->GetChunk()),
           deferredCode_(graph->GetChunk())
     {}
@@ -76,17 +75,16 @@ private:
     struct EagerDeoptTarget {
         Label label;
         DeoptId deoptId;
-        uint32_t taggedDeoptSnapshotGeneralRegisters;
 
-        EagerDeoptTarget(DeoptId translationId, uint32_t taggedGeneralRegisters)
-            : deoptId(translationId), taggedDeoptSnapshotGeneralRegisters(taggedGeneralRegisters)
-        {}
+        explicit EagerDeoptTarget(DeoptId translationId) : deoptId(translationId) {}
     };
 
     Label *RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
-    void BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
+    void BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex,
+                                  kungfu::DeoptType type);
     void EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
     void EmitQueuedEagerDeoptExits();
+    void EmitEagerDeoptStackOverflow();
 
     int PrepareCommonStubStackArguments(const Vertex *callVertex, int argCount);
     int PrepareRuntimeStubStackArguments(const Vertex *callVertex, int argCount, int runtimeId);
@@ -169,7 +167,6 @@ private:
     ArkSteedSafepointTableBuilder *safepointBuilder_;
     DeoptTranslationBuilder *translationBuilder_;
     ChunkVector<EagerDeoptTarget *> eagerDeoptTargetsById_;
-    ChunkUnorderedMap<const EagerDeoptimizableMixin *, EagerDeoptTarget *> eagerDeoptTargetsByVertex_;
     const char *currentBlockColor_ = "";
     BB *currentLayoutNextBlock_ = nullptr;
 
