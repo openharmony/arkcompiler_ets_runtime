@@ -335,6 +335,10 @@ template("libark_jsruntime_common_set") {
       ]
     }
     deps = []
+    if (enable_dump_in_faultlog) {
+      deps += [ "$js_root:handle_node_id_map_proto" ]
+      external_deps += [ "protobuf:protobuf_lite_static" ]
+    }
     if (!is_arkui_x) {
       external_deps += [ "runtime_core:arkfile_header_deps" ]
     } else {

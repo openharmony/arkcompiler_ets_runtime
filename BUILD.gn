@@ -24,6 +24,72 @@ if (!ark_standalone_build && is_ohos) {
   import("//build/ohos.gni")
 }
 
+if (enable_dump_in_faultlog) {
+  handle_node_id_map_proto_dir = "$js_root/ecmascript/dfx/hprof/proto"
+  handle_node_id_map_proto =
+      "$handle_node_id_map_proto_dir/handleNodeIdMap.proto"
+  handle_node_id_map_proto_out_dir =
+      "$target_gen_dir/ecmascript/dfx/hprof/proto"
+  handle_node_id_map_proto_header =
+      "$handle_node_id_map_proto_out_dir/handleNodeIdMap.pb.h"
+  handle_node_id_map_proto_source =
+      "$handle_node_id_map_proto_out_dir/handleNodeIdMap.pb.cc"
+  handle_node_id_map_protoc_out_path = "thirdparty/protobuf"
+  handle_node_id_map_protoc_label = "protobuf:protoc(${host_toolchain})"
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    not_needed([ "handle_node_id_map_protoc_out_path" ])
+    handle_node_id_map_protoc = rebase_path(
+            "//binarys/third_party/protobuf/innerapis/protoc/clang_x64/libs/protoc")
+  } else {
+    if (defined(is_host_product) && is_host_product) {
+      handle_node_id_map_host_out_path = ""
+    } else if (default_toolchain == current_toolchain) {
+      handle_node_id_map_host_out_path =
+          "/" + get_label_info(host_toolchain, "name")
+    } else {
+      handle_node_id_map_host_out_path =
+          "/../" + get_label_info(host_toolchain, "name")
+    }
+    handle_node_id_map_protoc =
+        root_out_dir + handle_node_id_map_host_out_path + "/" +
+        handle_node_id_map_protoc_out_path + "/protoc"
+  }
+
+  action("generate_handle_node_id_map_proto") {
+    script = "script/build_proto.sh"
+    sources = [ handle_node_id_map_proto ]
+    outputs = [
+      handle_node_id_map_proto_header,
+      handle_node_id_map_proto_source,
+    ]
+    args = [
+      rebase_path(handle_node_id_map_protoc),
+      "--proto_path",
+      rebase_path(handle_node_id_map_proto_dir),
+      "--cpp_out",
+      rebase_path(handle_node_id_map_proto_out_dir),
+      rebase_path(handle_node_id_map_proto),
+    ]
+    external_deps = [ handle_node_id_map_protoc_label ]
+  }
+
+  config("handle_node_id_map_proto_config") {
+    include_dirs = [ handle_node_id_map_proto_out_dir ]
+  }
+
+  ohos_source_set("handle_node_id_map_proto") {
+    sources = [
+      handle_node_id_map_proto_header,
+      handle_node_id_map_proto_source,
+    ]
+    deps = [ ":generate_handle_node_id_map_proto" ]
+    external_deps = [ "protobuf:protobuf_lite_static" ]
+    public_configs = [ ":handle_node_id_map_proto_config" ]
+    part_name = "ets_runtime"
+    subsystem_name = "arkcompiler"
+  }
+}
+
 group("ark_js_packages") {
   deps = []
 
@@ -1668,11 +1734,18 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   deps = []
+  if (enable_dump_in_faultlog) {
+    deps += [ ":handle_node_id_map_proto" ]
+  }
   external_deps = [
     "libuv:uv",
     "zlib:libz",
     "json:nlohmann_json_static"
   ]
+
+  if (enable_dump_in_faultlog) {
+    external_deps += [ "protobuf:protobuf_lite_static" ]
+  }
 
   if (enable_static_backtrace) {
     external_deps += [ "runtime_core:arkbacktrace" ]
