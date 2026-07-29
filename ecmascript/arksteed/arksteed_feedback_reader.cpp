@@ -257,12 +257,12 @@ bool ArkSteedFeedbackReader::ReadOperationFeedback(OperationFeedback *feedback) 
     }
 
     ProfileTypeInfo *profileTypeArray = nullptr;
-    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) || slotId >= profileTypeArray->GetIcSlotLength()) {
+    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) || slotId >= profileTypeArray->GetICSlotLength()) {
         return false;
     }
 
     feedback->slotId = slotId;
-    JSTaggedValue slotValue = profileTypeArray->Get(compilerThread_, slotId);
+    JSTaggedValue slotValue = profileTypeArray->GetICSlot(compilerThread_, slotId);
     if (!slotValue.IsInt()) {
         return true;
     }
