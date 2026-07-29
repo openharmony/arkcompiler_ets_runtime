@@ -23,6 +23,14 @@
 
 namespace panda::ecmascript::arksteed {
 
+template <typename RegisterT>
+struct RegListRegisterTraits {
+    static constexpr RegisterT FromCode(int code)
+    {
+        return RegisterT::FromCode(code);
+    }
+};
+
 // RegListBase - Bitmask-based register list
 template <typename RegisterT>
 class RegListBase {
@@ -154,14 +162,14 @@ public:
     {
         ASSERT(!IsEmpty());
         int firstCode = __builtin_ctzll(bits_);
-        return RegisterT::FromCode(firstCode);
+        return RegListRegisterTraits<RegisterT>::FromCode(firstCode);
     }
 
     constexpr RegisterT Last() const
     {
         ASSERT(!IsEmpty());
         int lastCode = 8 * sizeof(bits_) - 1 - __builtin_clzll(bits_);  // 8: bits per byte
-        return RegisterT::FromCode(lastCode);
+        return RegListRegisterTraits<RegisterT>::FromCode(lastCode);
     }
 
     constexpr RegisterT PopFirst()

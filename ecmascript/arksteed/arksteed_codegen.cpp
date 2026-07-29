@@ -2248,13 +2248,16 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     ArkSteedRegister savedLeft = scope.Acquire();
     __ Move(savedLeft, left);
 #if defined(PANDA_TARGET_ARM64)
-    ArkSteedRegister product = scope.AcquireScratch();
-    ArkSteedRegister truncatedProduct = scope.AcquireScratch();
-    __ Int32MulWide(product, left, right);
-    __ SignExtendInt32ToInt64(truncatedProduct, product);
-    __ Compare(product, truncatedProduct);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &overflow);
-    __ SignExtendInt32ToInt64(dst, product);
+    {
+        TemporaryRegisterScope scratchScope(assembler_);
+        ArkSteedRegister product = scratchScope.AcquireScratch();
+        ArkSteedRegister truncatedProduct = scratchScope.AcquireScratch();
+        __ Int32MulWide(product, left, right);
+        __ SignExtendInt32ToInt64(truncatedProduct, product);
+        __ Compare(product, truncatedProduct);
+        __ JumpIf(Condition::COND_NOT_EQUAL, &overflow);
+        __ SignExtendInt32ToInt64(dst, product);
+    }
     ASSERT(!EagerDeoptUsesRegister(op, dst));
 #else
     __ Int32Mul(dst, right);

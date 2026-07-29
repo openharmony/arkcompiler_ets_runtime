@@ -54,7 +54,7 @@ RegisterT GetRegisterHint(const InstructionOperand &hint)
     } else {
         static_assert(std::is_same_v<RegisterT, ArkSteedDoubleRegister>);
         if (operand.HasFixedFPRegisterPolicy()) {
-            return ArkSteedDoubleRegister::FromCode(operand.GetFixedRegisterIndex());
+            return RegListRegisterTraits<ArkSteedDoubleRegister>::FromCode(operand.GetFixedRegisterIndex());
         }
     }
     return RegisterT::Invalid();

@@ -326,7 +326,15 @@ private:
     using PlatformAssembler = x64::AssemblerX64;
 #elif defined(PANDA_TARGET_ARM64)
     using PlatformAssembler = aarch64::AssemblerAarch64;
+    enum class AddSubImmediateOp : uint8_t {
+        ADD,
+        SUB,
+        SUBS,
+    };
+
     aarch64::Condition ToPhysicalCondition(Condition condition) const;
+    void EmitAddSubImmediate(ArkSteedRegister dst, ArkSteedRegister src, uint64_t immediate,
+                             AddSubImmediateOp operation);
     aarch64::MemoryOperand MaterializeAddress(const aarch64::MemoryOperand &operand);
     void LoadRegisterWithOperand(const aarch64::Register &dst, const aarch64::MemoryOperand &src);
     void StoreRegisterWithOperand(const aarch64::Register &src, const aarch64::MemoryOperand &dst);

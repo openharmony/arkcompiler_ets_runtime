@@ -31,6 +31,10 @@ constexpr uint32_t CALL_ARG0 = 0;
 constexpr uint32_t CALL_ARG1 = CALL_ARG0 + 1;
 constexpr uint32_t CALL_ARG2 = CALL_ARG1 + 1;
 constexpr uint32_t DIRECT_USER_ARG_COUNT = 2;
+constexpr int64_t STEED_CALL_CALLEE_SAVE_SIZE = 9 * CommonCall::DOUBLE_SLOT_SIZE;
+constexpr int64_t STEED_CALL_LOCAL_SIZE = CommonCall::DOUBLE_SLOT_SIZE;
+constexpr int64_t RESERVED_SLOT_COUNT_OFFSET_FROM_FP =
+    -(CommonCall::DOUBLE_SLOT_SIZE + STEED_CALL_CALLEE_SAVE_SIZE + STEED_CALL_LOCAL_SIZE);
 
 void ArkSteedCall::LoadSteedCallTargetInfo(ExtendedAssembler *assembler, Register jsfunc, Register method,
                                            Register codeAddr, Register expectedNumArgs)
@@ -104,6 +108,9 @@ void ArkSteedCall::PrepareSteedCallFrame(ExtendedAssembler *assembler, Register 
 
     OptimizedCall::PushOptimizedArgsConfigFrame(assembler);
     __ CalleeSave();
+    // Keep one aligned bridge-local area outside the generated callee's
+    // argument frame. The first slot stores the logical outgoing-frame size.
+    __ Sub(sp, sp, Immediate(STEED_CALL_LOCAL_SIZE));
     __ Mov(actualArgc, actualNumArgs);
     __ Sub(actualArgc, actualArgc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     __ Cmp(expectedNumArgs, actualArgc);
@@ -112,6 +119,7 @@ void ArkSteedCall::PrepareSteedCallFrame(ExtendedAssembler *assembler, Register 
     // [argc][call-target][new-target][this][user args...]
     __ Add(slotCount, slotCount, Immediate(NUM_MANDATORY_JSFUNC_ARGS + 1));
     __ Mov(reservedSlots, slotCount);
+    __ Stur(reservedSlots, MemoryOperand(fp, RESERVED_SLOT_COUNT_OFFSET_FROM_FP));
     OptimizedCall::IncreaseStackForArguments(assembler, slotCount, currentSp);
     {
         TempRegister1Scope scope1(assembler);
@@ -127,21 +135,11 @@ void ArkSteedCall::PrepareSteedCallFrame(ExtendedAssembler *assembler, Register 
 static void FreeSteedCallStack(ExtendedAssembler *assembler)
 {
     Register reservedSlots = x22;
-    Register slotCount = x16;
-    Register actualArgc = x15;
 
-    __ Ldr(actualArgc, MemoryOperand(sp, 0));
-    __ Sub(actualArgc, actualArgc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
-    __ Ldr(slotCount, MemoryOperand(sp, CommonCall::FRAME_SLOT_SIZE));
-    __ Ldr(slotCount, MemoryOperand(slotCount, JSFunction::METHOD_OFFSET));
-    __ Ldr(reservedSlots, MemoryOperand(slotCount, Method::CALL_FIELD_OFFSET));
-    __ Lsr(reservedSlots, reservedSlots, Method::NumArgsBits::START_BIT);
-    __ And(reservedSlots, reservedSlots,
-        LogicalImmediate::Create(
-            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, X_REG_SIZE));
-    __ Cmp(reservedSlots, actualArgc);
-    __ CMov(reservedSlots, actualArgc, reservedSlots, Condition::LO);
-    __ Add(reservedSlots, reservedSlots, Immediate(NUM_MANDATORY_JSFUNC_ARGS + 1));
+    // The generated callee may reuse or update its incoming argument area and
+    // may allocate x22, so recover the frame size from the bridge-owned local
+    // slot instead of dereferencing the post-call call-target slot.
+    __ Ldur(reservedSlots, MemoryOperand(fp, RESERVED_SLOT_COUNT_OFFSET_FROM_FP));
     __ Add(reservedSlots, reservedSlots, Immediate(1));
     __ And(reservedSlots, reservedSlots, LogicalImmediate::Create(~1ULL, X_REG_SIZE));
     __ Add(sp, sp, Operand(reservedSlots, UXTW, CommonCall::FRAME_SLOT_SIZE_LOG2));
@@ -151,6 +149,7 @@ static void FreeSteedCallStack(ExtendedAssembler *assembler)
     __ B(Condition::EQ, &aligned);
     __ Add(sp, sp, Immediate(CommonCall::FRAME_SLOT_SIZE));
     __ Bind(&aligned);
+    __ Add(sp, sp, Immediate(STEED_CALL_LOCAL_SIZE));
 }
 
 void ArkSteedCall::RestoreSteedCallFrame(ExtendedAssembler *assembler)
@@ -177,7 +176,10 @@ void ArkSteedCall::EmitSteedCall(ExtendedAssembler *assembler, Register glue, Re
 
     __ Bind(&invokeSteedCode);
     OptimizedCall::PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget, currentSp);
-    __ Str(actualNumArgs, MemoryOperand(currentSp, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    // actualNumArgs is an incoming caller-saved register and argument-copy helpers may reuse it.
+    // Reconstruct the total argc from the user argc preserved by PrepareSteedCallFrame.
+    __ Add(actualArgc, actualArgc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+    __ Str(actualArgc, MemoryOperand(currentSp, -CommonCall::FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Mov(x20, jsfunc);
     __ Ldr(x19, MemoryOperand(x20, JSFunction::LEXICAL_ENV_OFFSET));
     __ Blr(codeAddr);

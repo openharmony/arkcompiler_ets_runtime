@@ -14,6 +14,7 @@
  */
 
 #include <algorithm>
+#include <limits>
 #include <sstream>
 
 #include "ecmascript/arksteed/arch/arm64/arksteed_assembler_arm64-inl.h"
@@ -32,6 +33,42 @@
 
 namespace panda::ecmascript::arksteed {
 #if defined(PANDA_TARGET_ARM64)
+void ArkSteedAssembler::EmitAddSubImmediate(ArkSteedRegister dst, ArkSteedRegister src, uint64_t immediate,
+                                            AddSubImmediateOp operation)
+{
+    ASSERT(dst.IsW() == src.IsW());
+    ASSERT(FitsAddSubImmediate(immediate));
+
+    constexpr uint32_t SF_BIT = 31U;
+    constexpr uint32_t SET_FLAGS_BIT = 29U;
+    constexpr uint32_t SHIFT_BIT = 22U;
+    constexpr uint32_t IMMEDIATE_LOW_BIT = 10U;
+    constexpr uint32_t SOURCE_LOW_BIT = 5U;
+    constexpr uint32_t IMM12_MASK = (1U << 12U) - 1U;
+
+    uint32_t opcode = 0U;
+    switch (operation) {
+        case AddSubImmediateOp::ADD:
+            opcode = aarch64::ADD_Imm;
+            break;
+        case AddSubImmediateOp::SUB:
+            opcode = aarch64::SUB_Imm;
+            break;
+        case AddSubImmediateOp::SUBS:
+            opcode = aarch64::SUB_Imm | (1U << SET_FLAGS_BIT);
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    uint32_t shift = immediate > IMM12_MASK ? 1U : 0U;
+    uint32_t imm12 = static_cast<uint32_t>(shift == 0U ? immediate : immediate >> 12U);
+    uint32_t size = dst.IsW() ? 0U : 1U;
+    uint32_t code = opcode | (size << SF_BIT) | (shift << SHIFT_BIT) | (imm12 << IMMEDIATE_LOW_BIT) |
+                    (static_cast<uint32_t>(src.GetId()) << SOURCE_LOW_BIT) | static_cast<uint32_t>(dst.GetId());
+    assembler_.EmitU32(code);
+}
+
 // =============================================================================
 // Register Move Operations
 // =============================================================================
@@ -237,8 +274,23 @@ void ArkSteedAssembler::Add(ArkSteedRegister dst, ArkSteedRegister src)
 
 void ArkSteedAssembler::Add(ArkSteedRegister dst, int32_t immediate)
 {
-    ArkSteedRegister arm64Dst = dst;
-    assembler_.Add(arm64Dst, arm64Dst, aarch64::Operand(aarch64::Immediate(immediate)));
+    int64_t value = immediate;
+    if (value >= 0 && FitsAddSubImmediate(static_cast<uint64_t>(value))) {
+        EmitAddSubImmediate(dst, dst, static_cast<uint64_t>(value), AddSubImmediateOp::ADD);
+        return;
+    }
+    if (value < 0 && FitsAddSubImmediate(static_cast<uint64_t>(-value))) {
+        EmitAddSubImmediate(dst, dst, static_cast<uint64_t>(-value), AddSubImmediateOp::SUB);
+        return;
+    }
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, value);
+    if (dst.IsSp()) {
+        assembler_.Add(dst, dst, aarch64::Operand(scratch, aarch64::UXTX, 0));
+    } else {
+        assembler_.Add(dst, dst, aarch64::Operand(scratch));
+    }
 }
 
 void ArkSteedAssembler::Add(ArkSteedRegister dst, int64_t immediate)
@@ -257,8 +309,23 @@ void ArkSteedAssembler::Sub(ArkSteedRegister dst, ArkSteedRegister src)
 
 void ArkSteedAssembler::Sub(ArkSteedRegister dst, int32_t immediate)
 {
-    ArkSteedRegister arm64Dst = dst;
-    assembler_.Sub(arm64Dst, arm64Dst, aarch64::Operand(aarch64::Immediate(immediate)));
+    int64_t value = immediate;
+    if (value >= 0 && FitsAddSubImmediate(static_cast<uint64_t>(value))) {
+        EmitAddSubImmediate(dst, dst, static_cast<uint64_t>(value), AddSubImmediateOp::SUB);
+        return;
+    }
+    if (value < 0 && FitsAddSubImmediate(static_cast<uint64_t>(-value))) {
+        EmitAddSubImmediate(dst, dst, static_cast<uint64_t>(-value), AddSubImmediateOp::ADD);
+        return;
+    }
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, value);
+    if (dst.IsSp()) {
+        assembler_.Sub(dst, dst, aarch64::Operand(scratch, aarch64::UXTX, 0));
+    } else {
+        assembler_.Sub(dst, dst, aarch64::Operand(scratch));
+    }
 }
 
 void ArkSteedAssembler::SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src)
@@ -352,7 +419,12 @@ void ArkSteedAssembler::CompareFloat64(ArkSteedDoubleRegister left, ArkSteedDoub
 
 void ArkSteedAssembler::TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src)
 {
-    assembler_.Fcvtzs(dst.W(), src);
+    // JavaScript ToInt32 keeps the low 32 bits after truncation.  Converting
+    // directly to a W register saturates values outside the signed int32
+    // range on AArch64, losing those low bits.  Match the x64 path by first
+    // truncating into 64 bits; subsequent W-register users naturally retain
+    // the required low 32 bits.
+    assembler_.Fcvtzs(dst, src);
 }
 
 // =============================================================================
@@ -562,7 +634,14 @@ void ArkSteedAssembler::CompareInt32(ArkSteedRegister lhs, ArkSteedRegister rhs)
 
 void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int32_t immediate)
 {
-    assembler_.Cmp(lhs, aarch64::Operand(aarch64::Immediate(immediate)));
+    if (immediate >= 0 && FitsAddSubImmediate(static_cast<uint64_t>(immediate))) {
+        EmitAddSubImmediate(aarch64::xzr, lhs, static_cast<uint64_t>(immediate), AddSubImmediateOp::SUBS);
+        return;
+    }
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, static_cast<int64_t>(immediate));
+    assembler_.Cmp(lhs, aarch64::Operand(scratch));
 }
 
 void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int64_t immediate)
@@ -575,7 +654,14 @@ void ArkSteedAssembler::Compare(ArkSteedRegister lhs, int64_t immediate)
 
 void ArkSteedAssembler::CompareInt32(ArkSteedRegister lhs, int32_t immediate)
 {
-    assembler_.Cmp(lhs.W(), aarch64::Operand(aarch64::Immediate(immediate)));
+    if (immediate >= 0 && FitsAddSubImmediate(static_cast<uint64_t>(immediate))) {
+        EmitAddSubImmediate(aarch64::wzr, lhs.W(), static_cast<uint64_t>(immediate), AddSubImmediateOp::SUBS);
+        return;
+    }
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister scratch = scope.AcquireScratch();
+    Move(scratch, static_cast<int64_t>(immediate));
+    assembler_.Cmp(lhs.W(), aarch64::Operand(scratch.W()));
 }
 
 void ArkSteedAssembler::CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs)
@@ -1026,14 +1112,14 @@ void ArkSteedAssembler::Pop(ArkSteedDoubleRegister reg)
 void ArkSteedAssembler::ReserveCallArgSlots(int32_t slotCount)
 {
     if (slotCount > 0) {
-        assembler_.Sub(aarch64::sp, aarch64::sp, aarch64::Operand(aarch64::Immediate(slotCount * FRAME_SLOT_SIZE)));
+        Sub(aarch64::sp, slotCount * FRAME_SLOT_SIZE);
     }
 }
 
 void ArkSteedAssembler::FreeCallArgSlots(int32_t slotCount)
 {
     if (slotCount > 0) {
-        assembler_.Add(aarch64::sp, aarch64::sp, aarch64::Operand(aarch64::Immediate(slotCount * FRAME_SLOT_SIZE)));
+        Add(aarch64::sp, slotCount * FRAME_SLOT_SIZE);
     }
 }
 
@@ -1058,7 +1144,8 @@ void ArkSteedAssembler::RestoreStackPointerToFrameBottom(Graph *graph)
         frameSlots++;
     }
     int32_t offset = -static_cast<int32_t>(frameSlots * FRAME_SLOT_SIZE);
-    assembler_.Add(aarch64::sp, kFramePointerRegister, aarch64::Operand(aarch64::Immediate(offset)));
+    Move(aarch64::sp, kFramePointerRegister);
+    Add(aarch64::sp, offset);
 }
 
 void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc)
@@ -1122,7 +1209,8 @@ void ArkSteedAssembler::Prologue(Graph *graph)
 
     if (untaggedSlots > 0) {
         size_t slotSize = untaggedSlots * sizeof(uint64_t);
-        assembler_.Sub(aarch64::sp, aarch64::sp, aarch64::Operand(aarch64::Immediate(slotSize)));
+        ASSERT(slotSize <= static_cast<size_t>(std::numeric_limits<int32_t>::max()));
+        Sub(aarch64::sp, static_cast<int32_t>(slotSize));
     }
     SetHasFrame(true);
 }

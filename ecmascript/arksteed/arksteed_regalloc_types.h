@@ -34,11 +34,27 @@ using ArkSteedRegister = aarch64::Register;
 using ArkSteedDoubleRegister = aarch64::VRegister;
 using ArkSteedRegList = RegListBase<aarch64::Register>;
 using ArkDoubleRegList = RegListBase<aarch64::VRegister>;
+
+template <>
+struct RegListRegisterTraits<aarch64::VRegister> {
+    static constexpr aarch64::VRegister FromCode(int code)
+    {
+        return aarch64::VRegister::Create(code, aarch64::D_REG_SIZE);
+    }
+};
 #elif defined(PANDA_TARGET_AMD64)
 using ArkSteedRegister = x64::Register;
 using ArkSteedDoubleRegister = x64::XMMRegister;
 using ArkSteedRegList = RegListBase<x64::Register>;
 using ArkDoubleRegList = RegListBase<x64::XMMRegister>;
+
+template <>
+struct RegListRegisterTraits<x64::XMMRegister> {
+    static constexpr x64::XMMRegister FromCode(int code)
+    {
+        return x64::XMMRegister::FromCode(code);
+    }
+};
 #endif
 
 struct DeferredRegisterSnapshot {
@@ -412,7 +428,7 @@ public:
     ArkSteedDoubleRegister GetDoubleRegister() const
     {
         ASSERT(IsDoubleRegister());
-        return ArkSteedDoubleRegister::FromCode(GetRegisterCode());
+        return RegListRegisterTraits<ArkSteedDoubleRegister>::FromCode(GetRegisterCode());
     }
 
     static bool IsSupportedRepresentation(MachineRepresentation rep)

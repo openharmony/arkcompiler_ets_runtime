@@ -53,7 +53,7 @@ inline bool FitsAddSubImmediate(uint64_t imm)
     if (imm <= IMM12_MASK) {
         return true;
     }
-    return ((imm & IMM12_MASK) == 0) && ((imm & ~IMM12_MASK) <= IMM12_MASK);
+    return ((imm & IMM12_MASK) == 0) && ((imm >> 12U) <= IMM12_MASK);
 }
 
 inline bool FitsUnscaledImmediateOffset(const aarch64::MemoryOperand &operand)
@@ -78,10 +78,11 @@ inline aarch64::MemoryOperand ArkSteedAssembler::MaterializeAddress(const aarch6
 
     TemporaryRegisterScope scope(this);
     aarch64::Register scratch = scope.AcquireScratch();
-    if (imm > 0 && FitsAddSubImmediate(static_cast<uint64_t>(imm))) {
-        assembler_.Add(scratch, base, aarch64::Operand(aarch64::Immediate(imm)));
-    } else if (imm < 0 && FitsAddSubImmediate(static_cast<uint64_t>(-imm))) {
-        assembler_.Sub(scratch, base, aarch64::Operand(aarch64::Immediate(-imm)));
+    uint64_t magnitude = imm < 0 ? static_cast<uint64_t>(-(imm + 1)) + 1U : static_cast<uint64_t>(imm);
+    if (imm > 0 && FitsAddSubImmediate(magnitude)) {
+        EmitAddSubImmediate(scratch, base, magnitude, AddSubImmediateOp::ADD);
+    } else if (imm < 0 && FitsAddSubImmediate(magnitude)) {
+        EmitAddSubImmediate(scratch, base, magnitude, AddSubImmediateOp::SUB);
     } else {
         assembler_.Mov(scratch, aarch64::Immediate(imm));
         assembler_.Add(scratch, base, aarch64::Operand(scratch));

@@ -565,7 +565,7 @@ void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
         }
 
         case UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER: {
-            ArkSteedDoubleRegister reg = ArkSteedDoubleRegister::FromCode(unallocated.GetFixedRegisterIndex());
+            ArkSteedDoubleRegister reg = RegListRegisterTraits<ArkSteedDoubleRegister>::FromCode(unallocated.GetFixedRegisterIndex());
             input.GetLocation()->SetAllocated(ForceAllocate(reg, vertex));
             break;
         }
@@ -854,7 +854,7 @@ RegListBase<RegisterT> ArkSteedRegisterAllocator::GetReservedRegisters(Vertex *v
     } else {
         static_assert(std::is_same_v<RegisterT, ArkSteedDoubleRegister>);
         if (operand.HasFixedFPRegisterPolicy()) {
-            reserved.Set(ArkSteedDoubleRegister::FromCode(operand.GetFixedRegisterIndex()));
+            reserved.Set(RegListRegisterTraits<ArkSteedDoubleRegister>::FromCode(operand.GetFixedRegisterIndex()));
         }
     }
 
@@ -1374,7 +1374,7 @@ void ArkSteedRegisterAllocator::AllocateByPolicy(ValueVertex *vertex, Unallocate
         }
 
         case UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER: {
-            ArkSteedDoubleRegister reg = ArkSteedDoubleRegister::FromCode(operand.GetFixedRegisterIndex());
+            ArkSteedDoubleRegister reg = RegListRegisterTraits<ArkSteedDoubleRegister>::FromCode(operand.GetFixedRegisterIndex());
             DropRegisterValueAtEnd(reg, true);
             vertexInfo->SetResultAllocated(ForceAllocate(reg, vertex));
             break;
