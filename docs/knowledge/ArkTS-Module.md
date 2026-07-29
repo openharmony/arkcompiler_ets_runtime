@@ -1,7 +1,7 @@
 # ArkTS模块化知识库
 
 模块化是将ArkTS/TS/JS/so模块（一个文件对应一个模块）通过编译工具或运行时机制将这些模块加载、解析、组合并执行的过程。
-本文只记录模块加载、模块类型差异、加载场景约束、快照恢复的知识。Sendable 函数、模块环境与跨线程取值见 `docs/knowledge/ArkTS-Sendable.md`。
+本文只记录模块加载、模块类型差异、加载场景约束、快照恢复的知识，并沉淀模块领域变更引发的历史坑。Sendable 函数、模块环境与跨线程取值见 `docs/knowledge/ArkTS-Sendable.md`。
 
 ## 设计目的
 
@@ -116,15 +116,23 @@ UNINSTANTIATED → PREINSTANTIATING → INSTANTIATING → INSTANTIATED
 - Instantiate、Evaluate、Debugger、Deregister、re-export、ModuleValueAccessor 取依赖模块时，必须使用 `GetModuleFromCacheOrResolveNewOne`，禁止恢复纯缓存分支。兜底成功后必须通过 `SetRequestedModules` 写回，并在继续使用结果前传播 pending exception
 - 共享模块依赖加载修改后，必须验证主线程完成 Instantiate、子线程直接 Evaluate 的场景，覆盖直接依赖和 re-export 间接依赖的兜底解析与缓存写回
 - `LoadNativeModuleCallFunc` 必须保持与 `FunctionRef::Call` 等价的顶层调用语义；使用 `JSFunction::Call` 时必须保留 `FunctionCallScope` 及配套的异常、调试器和资源清理逻辑，确保 native 模块加载返回前执行 pending jobs
+- 模块相关状态容器必须按去重/查找频率需求选型：高频查找且需要去重的集合必须用 `std::set`/`std::unordered_set`，不要用 `vector`/`CList` 配合 `std::find`。原因：线性容器在重复 push 场景下会残留重复条目，曾导致动态 import 卸载流程清理不彻底引发内存泄漏
+- 模块相关字节码 IR 化后，IR 传递的 index/参数必须与 c++ 解释器实现一致；存在不一致分支时必须有对应用例看护。原因：IR 与 c++ 不一致曾导致模块取值错误漏网至 release
+- lazy import 会修改异步任务执行时序，影响应用现有异步任务执行顺序。原因：曾因 lazy 加载引入导致应用异步任务执行时序发生变化
+- 模块相关 native 资源的内存申请和释放接口必须配套使用，禁止混用不同分配器的申请/释放接口；相关申请/释放函数必须集中在同一文件统一管理，避免不匹配导致内存泄漏。原因：曾因 lazyImportArray 申请/释放接口不匹配导致内存泄漏
 
 ## 修改前检查
 
 1. 修改会影响多条加载方式路径，需要分别测试
-2. 对模块生命周期进行修改时，需要确认模块 deregister 是否正确清理了 resolvedModules_ 和 lazyImportArrays等相关native内容
+2. 修改模块 deregister 流程时，验证 resolvedModules_、lazyImportArrays 等 native 内容被正确清理且无残留条目，避免内存泄漏
 3. 动态 import 需要考虑napi接口同步修改
 4. 共享模块依赖或 re-export 逻辑修改后，验证主线程完成 Instantiate、子线程直接 Evaluate 时，直接依赖与间接依赖均能兜底解析、正确写回，并传播解析异常
 5. 快照相关修改需要在模块序列化/反序列化路径验证，确认多线程操作无问题
 6. 修改 Native 模块调用方式或入参构造时，验证动态加载执行顺序不变，且 Promise pending jobs 在 native 模块加载返回前执行
+7. 修改模块相关字节码 IR 生成逻辑时，验证范围必须覆盖错误码/异常路径，不能只看性能或不崩溃
+8. 引入或修改 lazy 加载逻辑时，验证应用现有异步任务执行时序未发生变化
+9. 修改模块相关状态容器的选型时，验证容器去重/查找频率符合场景需求
+10. 修改模块相关 native 资源的内存管理时，验证申请/释放接口配套使用
 
 ## 代码和测试
 
