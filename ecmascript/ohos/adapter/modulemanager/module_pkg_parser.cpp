@@ -25,6 +25,33 @@ static const std::string IS_SO = "isSO";
 static const std::string DEPENDENCY_ALIAS = "dependencyAlias";
 static const std::string OH_EXPORT = "oh-exports";
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+bool ModulePkgParser::ParseModulePkgJson(const EcmaVM *vm, const std::unordered_map<std::string,
+    std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap,
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> &pkgContextInfoList,
+    CMap<CString, CString> &pkgAliasList,
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap)
+{
+#ifndef CROSS_PLATFORM
+    for (auto it = pkgInfoMap.begin(); it != pkgInfoMap.end(); ++it) {
+        CString moduleName(it->first);
+        const std::unique_ptr<uint8_t[]> &data = it->second.first;
+        size_t dataLen = it->second.second;
+        CMap<CString, CVector<std::pair<CString, CString>>> modulePkgInfo;
+        CUnorderedMap<CString, CUnorderedSet<CString>> moduleOhExportsMap;
+        if (!ParsePkgContextInfoJson(vm, moduleName, data.get(), dataLen, modulePkgInfo, pkgAliasList,
+            moduleOhExportsMap)) {
+            LOG_ECMA(ERROR) << "ModulePkgParser::ParseModulePkgJson parse module context info failed, moduleName is "
+                            << moduleName;
+            return false;
+        }
+        pkgContextInfoList.emplace(moduleName, modulePkgInfo);
+        ohExportsMap.emplace(moduleName, moduleOhExportsMap);
+    }
+#endif
+    return true;
+}
+#else
 bool ModulePkgParser::ParseModulePkgJson(const EcmaVM *vm, const std::unordered_map<std::string,
     std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap,
     CMap<CString, CMap<CString, CVector<CString>>> &pkgContextInfoList,
@@ -50,10 +77,66 @@ bool ModulePkgParser::ParseModulePkgJson(const EcmaVM *vm, const std::unordered_
 #endif
     return true;
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+static constexpr size_t KEY_VALUE_PAIR_STEP = 2;
+
+CVector<std::pair<CString, CString>> ModulePkgParser::BuildPkgContextInfo(const std::vector<std::string> &datas)
+{
+    CVector<std::pair<CString, CString>> pkgContextInfo;
+    for (size_t i = 1; i + 1 < datas.size(); i += KEY_VALUE_PAIR_STEP) {
+        if (datas[i + 1].empty()) {
+            continue; // filter empty value
+        }
+        pkgContextInfo.emplace_back(CString(datas[i].c_str()), CString(datas[i + 1].c_str()));
+    }
+    return pkgContextInfo;
+}
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 #ifndef CROSS_PLATFORM
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 bool ModulePkgParser::ParsePkgContextInfoJson(const EcmaVM *vm, const CString &moduleName, const uint8_t *data,
-    size_t dataLen, CMap<CString, CVector<CString>> &modulePkgInfo, CMap<CString, CString> &pkgAliasList,
+    size_t dataLen, CMap<CString, CVector<std::pair<CString, CString>>> &modulePkgInfo,
+    CMap<CString, CString> &pkgAliasList,
+    CUnorderedMap<CString, CUnorderedSet<CString>> &moduleOhExportsMap)
+{
+    auto jsonObject = nlohmann::json::parse(data, data + dataLen, nullptr, false);
+    if (jsonObject.is_discarded()) {
+        LOG_ECMA(ERROR) << "ModulePkgParser::ParseModulePkgJson parse json failed, moduleName is "
+                        << moduleName;
+        return false;
+    }
+    for (auto jsonIt = jsonObject.begin(); jsonIt != jsonObject.end(); ++jsonIt) {
+        CVector<std::pair<CString, CString>> items;
+        CUnorderedSet<CString> ohExportsSet;
+        nlohmann::json itemObject = jsonIt.value();
+        if (!itemObject.is_object()) {
+            LOG_ECMA(ERROR) << "ModulePkgParser::ParseModulePkgJson item is not object, moduleName is "
+                            << moduleName;
+            return false;
+        }
+        ParsePkgContextInfoItemJson(itemObject, PACKAGE_NAME, items);
+        ParsePkgContextInfoItemJson(itemObject, BUNDLE_NAME, items);
+        ParsePkgContextInfoItemJson(itemObject, MODULE_NAME, items);
+        ParsePkgContextInfoItemJson(itemObject, VERSION, items);
+        ParsePkgContextInfoItemJson(itemObject, ENTRY_PATH, items);
+        ParsePkgContextInfoSoJson(itemObject, items);
+
+        CString packageName(jsonIt.key());
+        ParsePkgContextInfoAliasJson(itemObject, packageName, pkgAliasList);
+        modulePkgInfo.emplace(packageName, items);
+        if (ParsePkgContextInfoOhExports(itemObject, ohExportsSet)) {
+            moduleOhExportsMap.emplace(packageName, ohExportsSet);
+        }
+    }
+    return true;
+}
+#else
+bool ModulePkgParser::ParsePkgContextInfoJson(const EcmaVM *vm, const CString &moduleName, const uint8_t *data,
+    size_t dataLen, CMap<CString, CVector<CString>> &modulePkgInfo,
+    CMap<CString, CString> &pkgAliasList,
     CUnorderedMap<CString, CUnorderedSet<CString>> &moduleOhExportsMap)
 {
     auto jsonObject = nlohmann::json::parse(data, data + dataLen, nullptr, false);
@@ -87,7 +170,22 @@ bool ModulePkgParser::ParsePkgContextInfoJson(const EcmaVM *vm, const CString &m
     }
     return true;
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void ModulePkgParser::ParsePkgContextInfoItemJson(const nlohmann::json &itemObject, const std::string &key,
+    CVector<std::pair<CString, CString>> &items)
+{
+    if (itemObject[key].is_null() || !itemObject[key].is_string()) {
+        return;
+    }
+    CString valueStr(itemObject[key].get<std::string>());
+    if (valueStr.empty()) {
+        return;
+    }
+    items.emplace_back(CString(key), valueStr);
+}
+#else
 void ModulePkgParser::ParsePkgContextInfoItemJson(const nlohmann::json &itemObject, const std::string &key,
     CVector<CString> &items)
 {
@@ -100,7 +198,19 @@ void ModulePkgParser::ParsePkgContextInfoItemJson(const nlohmann::json &itemObje
         items.emplace_back(valueStr);
     }
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void ModulePkgParser::ParsePkgContextInfoSoJson(const nlohmann::json &itemObject,
+    CVector<std::pair<CString, CString>> &items)
+{
+    CString isSoValue("false");
+    if (!itemObject[IS_SO].is_null() && itemObject[IS_SO].is_boolean() && itemObject[IS_SO].get<bool>()) {
+        isSoValue = "true";
+    }
+    items.emplace_back(CString(IS_SO), isSoValue);
+}
+#else
 void ModulePkgParser::ParsePkgContextInfoSoJson(const nlohmann::json &itemObject, CVector<CString> &items)
 {
     items.emplace_back(IS_SO);
@@ -115,6 +225,7 @@ void ModulePkgParser::ParsePkgContextInfoSoJson(const nlohmann::json &itemObject
         }
     }
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 void ModulePkgParser::ParsePkgContextInfoAliasJson(const nlohmann::json &itemObject, const CString &packageName,
     CMap<CString, CString> &pkgAliasList)

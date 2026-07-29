@@ -28,6 +28,9 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/mutator_lock.h"
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+#include "ecmascript/ohos/adapter/modulemanager/pkg_context_store.h"
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #include "ecmascript/platform/dfx_hisys_event.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/serializer/serialize_chunk.h"
@@ -463,6 +466,13 @@ public:
         return entryAbilityName_;
     }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    PkgContextStore &GetPkgContextStore()
+    {
+        return pkgContextStore_;
+    }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -554,6 +564,10 @@ private:
 
     CMap<DFXHiSysEvent::IncompatibleType, uint32_t> incompatibleEventMap_;
     RWLock incompatibleEventLock_;
+
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    PkgContextStore pkgContextStore_;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;

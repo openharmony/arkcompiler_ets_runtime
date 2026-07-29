@@ -181,7 +181,6 @@ bool JSNApi::isForked_ = false;
 static ecmascript::Mutex *mutex = new panda::ecmascript::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
 const static uint32_t API_VERSION_MASK = 100;
-
 // ----------------------------------- ArkCrashHolder --------------------------------------
 constexpr size_t FORMATED_FUNCPTR_LENGTH = 36; // length of dec function pointer
 
@@ -4860,10 +4859,15 @@ void JSNApi::UpdatePkgAliasList(EcmaVM *vm, const std::map<std::string, std::str
         pkgAliasList.emplace(alias, pkgName);
     }
     vm->UpdatePkgAliasList(pkgAliasList);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    // vm demuxes by IsFormThread(): form VM -> per-VM local; non-form VM -> Runtime shared
+    // store, so all non-form workers see this update automatically. No manual worker sync.
+#else
     ecmascript::CMap<uint32_t, EcmaVM *> workerList = vm->GetWorkList();
     for (auto &[workerId, workerVm]: workerList) {
         workerVm->UpdatePkgAliasList(pkgAliasList);
     }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 }
 
 void JSNApi::SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list)
@@ -4882,10 +4886,15 @@ void JSNApi::UpdatePkgNameList(EcmaVM *vm, const std::map<std::string, std::stri
         pkgNameList.emplace(moduleName, pkgName);
     }
     vm->UpdatePkgNameList(pkgNameList);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    // vm demuxes by IsFormThread(): form VM -> per-VM local; non-form VM -> Runtime shared
+    // store, so all non-form workers see this update automatically. No manual worker sync.
+#else
     ecmascript::CMap<uint32_t, EcmaVM *> workerList = vm->GetWorkList();
     for (auto &[workerId, workerVm]: workerList) {
         workerVm->UpdatePkgNameList(pkgNameList);
     }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 }
 
 std::string JSNApi::GetPkgName(EcmaVM *vm, const std::string &moduleName)
@@ -4893,6 +4902,28 @@ std::string JSNApi::GetPkgName(EcmaVM *vm, const std::string &moduleName)
     return vm->GetPkgName(moduleName.c_str()).c_str();
 }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
+    std::vector<std::vector<std::string>>> &list)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<std::pair<ecmascript::CString, ecmascript::CString>>>> pkgContextInfoList;
+    for (auto it = list.begin(); it != list.end(); it++) {
+        const std::vector<std::vector<std::string>> vec = it->second;
+        ecmascript::CMap<ecmascript::CString,
+            ecmascript::CVector<std::pair<ecmascript::CString, ecmascript::CString>>> map;
+        for (size_t i = 0; i < vec.size(); i++) {
+            if (vec[i].empty()) {
+                continue;
+            }
+            ecmascript::CString pkgName = vec[i][0].c_str();
+            map.emplace(pkgName, ecmascript::ohos::ModulePkgParser::BuildPkgContextInfo(vec[i]));
+        }
+        pkgContextInfoList.emplace(it->first.c_str(), map);
+    }
+    vm->SetpkgContextInfoList(pkgContextInfoList);
+}
+#else
 void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
     std::vector<std::vector<std::string>>> &list)
 {
@@ -4913,7 +4944,29 @@ void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
     }
     vm->SetpkgContextInfoList(pkgContextInfoList);
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm,
+    const std::map<std::string, std::vector<std::vector<std::string>>> &list)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<std::pair<ecmascript::CString, ecmascript::CString>>>> pkgContextInfoList;
+    for (auto &[moduleName, pkgContextInfos]: list) {
+        ecmascript::CMap<ecmascript::CString,
+            ecmascript::CVector<std::pair<ecmascript::CString, ecmascript::CString>>> map;
+        for (auto &datas: pkgContextInfos) {
+            if (datas.empty()) {
+                continue;
+            }
+            ecmascript::CString pkgName = datas[0].c_str();
+            map.emplace(pkgName, ecmascript::ohos::ModulePkgParser::BuildPkgContextInfo(datas));
+        }
+        pkgContextInfoList.emplace(moduleName, map);
+    }
+    vm->UpdatePkgContextInfoList(pkgContextInfoList);
+}
+#else
 void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm,
     const std::map<std::string, std::vector<std::vector<std::string>>> &list)
 {
@@ -4941,7 +4994,24 @@ void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm,
         workerVm->UpdatePkgContextInfoList(pkgContextInfoList);
     }
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void JSNApi::SetPkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
+    std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<std::pair<ecmascript::CString, ecmascript::CString>>>> pkgContextInfoList;
+    ecmascript::CMap <ecmascript::CString, ecmascript::CString> pkgAliasList;
+    ecmascript::CUnorderedMap<ecmascript::CString, ecmascript::CUnorderedMap<ecmascript::CString,
+        ecmascript::CUnorderedSet<ecmascript::CString>>> ohExportsList;
+    ecmascript::ohos::ModulePkgParser::ParseModulePkgJson(vm, pkgInfoMap, pkgContextInfoList, pkgAliasList,
+        ohExportsList);
+    vm->SetpkgContextInfoList(pkgContextInfoList);
+    vm->SetPkgAliasList(pkgAliasList);
+    vm->SetOhExportsList(ohExportsList);
+}
+#else
 void JSNApi::SetPkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
     std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap)
 {
@@ -4956,7 +5026,24 @@ void JSNApi::SetPkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::str
     vm->SetPkgAliasList(pkgAliasList);
     vm->SetOhExportsList(ohExportsList);
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
+    std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<std::pair<ecmascript::CString, ecmascript::CString>>>> pkgContextInfoList;
+    ecmascript::CMap <ecmascript::CString, ecmascript::CString> pkgAliasList;
+    ecmascript::CUnorderedMap<ecmascript::CString, ecmascript::CUnorderedMap<ecmascript::CString,
+        ecmascript::CUnorderedSet<ecmascript::CString>>> ohExportsMap;
+    ecmascript::ohos::ModulePkgParser::ParseModulePkgJson(vm, pkgInfoMap, pkgContextInfoList, pkgAliasList,
+        ohExportsMap);
+    vm->UpdatePkgContextInfoList(pkgContextInfoList);
+    vm->UpdatePkgAliasList(pkgAliasList);
+    vm->UpdateOhExportsList(ohExportsMap);
+}
+#else
 void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
     std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap)
 {
@@ -4977,6 +5064,7 @@ void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::
         workerVm->UpdateOhExportsList(ohExportsMap);
     }
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 void JSNApi::SetAbilityName(const std::string &abilityName)
 {
@@ -5129,10 +5217,19 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetModuleName(hostVM->GetModuleName());
     vm->SetAssetPath(hostVM->GetAssetPath());
     vm->SetIsBundlePack(hostVM->IsBundlePack());
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    if (vm->IsFormThread()) {
+        vm->SetPkgNameList(const_cast<EcmaVM *>(hostVM)->GetPkgNameList());
+        vm->SetPkgAliasList(const_cast<EcmaVM *>(hostVM)->GetPkgAliasList());
+        vm->SetpkgContextInfoList(const_cast<EcmaVM *>(hostVM)->GetPkgContextInfoList());
+        vm->SetOhExportsList(const_cast<EcmaVM *>(hostVM)->GetOhExportList());
+    }
+#else
     vm->SetPkgNameList(const_cast<EcmaVM *>(hostVM)->GetPkgNameList());
     vm->SetPkgAliasList(const_cast<EcmaVM *>(hostVM)->GetPkgAliasList());
     vm->SetpkgContextInfoList(const_cast<EcmaVM *>(hostVM)->GetPkgContextInfoList());
     vm->SetOhExportsList(const_cast<EcmaVM *>(hostVM)->GetOhExportList());
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
     ecmascript::ModuleManager *vmModuleManager =
         vm->GetAssociatedJSThread()->GetModuleManager();
@@ -5212,6 +5309,9 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetGcThreadNum(option.GetGcThreadNum());
     runtimeOptions.SetIsWorker(option.GetIsWorker());
     runtimeOptions.SetIsRestrictedWorker(option.GetIsRestrictedWorker());
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    runtimeOptions.SetIsFormThread(option.GetIsFormThread());
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 // Disable the asm-interpreter of ark-engine for ios-platform temporarily.
 #if !defined(PANDA_TARGET_IOS)
     // asmInterpreter

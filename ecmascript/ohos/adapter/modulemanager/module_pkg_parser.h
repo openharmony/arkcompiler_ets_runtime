@@ -17,7 +17,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifndef CROSS_PLATFORM
 #include <nlohmann/json.hpp>
@@ -28,19 +30,42 @@
 namespace panda::ecmascript::ohos {
 class ModulePkgParser {
 public:
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    static CVector<std::pair<CString, CString>> BuildPkgContextInfo(const std::vector<std::string> &datas);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    static bool ParseModulePkgJson(const EcmaVM *vm, const std::unordered_map<std::string,
+        std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap,
+        CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> &pkgContextInfoList,
+        CMap<CString, CString> &pkgAliasList,
+        CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap);
+#else
     static bool ParseModulePkgJson(const EcmaVM *vm, const std::unordered_map<std::string,
         std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap,
         CMap<CString, CMap<CString, CVector<CString>>> &pkgContextInfoList,
         CMap<CString, CString> &pkgAliasList,
         CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 private:
 #ifndef CROSS_PLATFORM
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     static bool ParsePkgContextInfoJson(const EcmaVM *vm, const CString &moduleName, const uint8_t *data,
-        size_t dataLen, CMap<CString, CVector<CString>> &modulePkgInfo, CMap<CString, CString> &pkgAliasList,
+        size_t dataLen, CMap<CString, CVector<std::pair<CString, CString>>> &modulePkgInfo,
+        CMap<CString, CString> &pkgAliasList,
+        CUnorderedMap<CString, CUnorderedSet<CString>> &moduleOhExportsMap);
+    static void ParsePkgContextInfoItemJson(const nlohmann::json &itemObject, const std::string &key,
+        CVector<std::pair<CString, CString>> &items);
+    static void ParsePkgContextInfoSoJson(const nlohmann::json &itemObject,
+        CVector<std::pair<CString, CString>> &items);
+#else
+    static bool ParsePkgContextInfoJson(const EcmaVM *vm, const CString &moduleName, const uint8_t *data,
+        size_t dataLen, CMap<CString, CVector<CString>> &modulePkgInfo,
+        CMap<CString, CString> &pkgAliasList,
         CUnorderedMap<CString, CUnorderedSet<CString>> &moduleOhExportsMap);
     static void ParsePkgContextInfoItemJson(const nlohmann::json &itemObject, const std::string &key,
         CVector<CString> &items);
     static void ParsePkgContextInfoSoJson(const nlohmann::json &itemObject, CVector<CString> &items);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     static void ParsePkgContextInfoAliasJson(const nlohmann::json &itemObject, const CString &packageName,
         CMap<CString, CString> &pkgAliasList);
     static bool ParsePkgContextInfoOhExports(const nlohmann::json &itemObject, CUnorderedSet<CString> &result);

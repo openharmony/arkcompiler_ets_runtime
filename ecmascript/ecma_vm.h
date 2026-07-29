@@ -740,6 +740,16 @@ public:
         return options_.IsRestrictedWorker();
     }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    // The form (card) thread keeps thread-local pkg-context copies; others share the Runtime store.
+    // Set once at thread creation via JSRuntimeOptions (same path as IsWorkerThread), so the
+    // demux in every pkg-context accessor is set before any access and never changes.
+    bool IsFormThread() const
+    {
+        return options_.IsFormThread();
+    }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+
     bool IsBundlePack() const
     {
         return isBundlePack_;
@@ -750,6 +760,26 @@ public:
         isBundlePack_ = value;
     }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    // UnifiedOhmUrlPack means app compiles ohmurl using old format like "@bundle:",
+    // or new unified rules like "@normalize:"
+    // if pkgContextInfoList is empty, means use old ohmurl packing.
+    // Demux: form VM -> per-VM local store; non-form VM -> Runtime shared store.
+    bool IsNormalizedOhmUrlPack();
+
+    void SetPkgNameList(const CMap<CString, CString> &list);
+    void UpdatePkgNameList(const CMap<CString, CString> &list);
+    CMap<CString, CString> GetPkgNameList();
+    CString GetPkgName(const CString &moduleName);
+
+    void UpdatePkgContextInfoList(const CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> &list);
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> GetPkgContextInfoList();
+    CString GetPkgNameWithAlias(const CString &alias);
+
+    void SetPkgAliasList(const CMap<CString, CString> &list);
+    void UpdatePkgAliasList(const CMap<CString, CString> &list);
+    CMap<CString, CString> GetPkgAliasList();
+#else
     // UnifiedOhmUrlPack means app compiles ohmurl using old format like "@bundle:",
     // or new unified rules like "@normalize:"
     // if pkgContextInfoList is empty, means use old ohmurl packing.
@@ -827,6 +857,7 @@ public:
         ReadLockHolder lock(pkgAliasListLock_);
         return pkgAliasList_;
     }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
     void SetMockModuleList(const std::map<std::string, std::string> &list)
     {
@@ -912,11 +943,20 @@ public:
         return hmsModuleList_;
     }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    void SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> &list);
+#else
     void SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 #if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    void GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
+                                       CVector<std::pair<CString, CString>> &resultList);
+#else
     void GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
                                        CVector<CString> &resultList);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
 
     void SetOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap);
@@ -924,11 +964,15 @@ public:
         CUnorderedSet<CString>>> &ohExportsMap);
     bool CheckOhExportsWithOhmurl(const CString &moduleName, const CString &packageName, const CString &ohmurl);
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> GetOhExportList();
+#else
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> GetOhExportList()
     {
         ReadLockHolder lock(ohExportListLock_);
         return ohExportsList_;
     }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -1841,7 +1885,11 @@ private:
     CMap<CString, CString> mockModuleList_;
     std::map<CString, HmsMap> hmsModuleList_;
     CMap<CString, CString> pkgNameList_;
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgContextInfoList_;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList_;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     CMap<CString, CString> pkgAliasList_;
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsList_;
     RWLock pkgContextInfoLock_;

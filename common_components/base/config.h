@@ -35,6 +35,7 @@ namespace common {
 
 #define ECMASCRIPT_ENABLE_TRACE_STRING_TABLE 0
 
+#define ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION 1
 }  // namespace common
 
 #endif  // COMMON_COMPONENTS_BASE_CONFIG_H

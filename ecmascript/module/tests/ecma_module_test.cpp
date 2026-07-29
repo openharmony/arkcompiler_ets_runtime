@@ -1222,6 +1222,78 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     EXPECT_EQ(baseFilename, newBaseFileName);
 }
 
+static void SetupEntryHarPkgContext(EcmaVM *vm, const CString &harVersion,
+                                    const CString &harEntryPath, const CString &harIsSo)
+{
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+    CMap<CString, CVector<std::pair<CString, CString>>> entryList;
+    entryList["entry"] = {
+        {"packageName", "entry"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", ""}, {"entryPath", "src/main/"}, {"isSO", "false"}
+    };
+    entryList["har"] = {
+        {"packageName", "har"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", harVersion}, {"entryPath", harEntryPath}, {"isSO", harIsSo}
+    };
+#else
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["entry"] = {
+        "packageName", "entry", "bundleName", "", "moduleName", "",
+        "version", "", "entryPath", "src/main/", "isSO", "false"
+    };
+    entryList["har"] = {
+        "packageName", "har", "bundleName", "", "moduleName", "",
+        "version", harVersion, "entryPath", harEntryPath, "isSO", harIsSo
+    };
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    pkgList["entry"] = entryList;
+    vm->SetpkgContextInfoList(pkgList);
+}
+
+static void SetupEntryHarOhosPkgContext(EcmaVM *vm)
+{
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+    CMap<CString, CVector<std::pair<CString, CString>>> entryList;
+    entryList["entry"] = {
+        {"packageName", "entry"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", ""}, {"entryPath", "src/main/"}, {"isSO", "false"}
+    };
+    entryList["har"] = {
+        {"packageName", "har"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", "1.2.0"}, {"entryPath", ""}, {"isSO", "false"}
+    };
+    pkgList["entry"] = entryList;
+    CMap<CString, CVector<std::pair<CString, CString>>> ohosTestList;
+    ohosTestList["ohosTest"] = {
+        {"packageName", "ohosTest"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", ""}, {"entryPath", "src/"}, {"isSO", "false"}
+    };
+    pkgList["ohosTest"] = ohosTestList;
+#else
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["entry"] = {
+        "packageName", "entry", "bundleName", "", "moduleName", "",
+        "version", "", "entryPath", "src/main/", "isSO", "false"
+    };
+    entryList["har"] = {
+        "packageName", "har", "bundleName", "", "moduleName", "",
+        "version", "1.2.0", "entryPath", "", "isSO", "false"
+    };
+    pkgList["entry"] = entryList;
+    CMap<CString, CVector<CString>> ohosTestList;
+    ohosTestList["ohosTest"] = {
+        "packageName", "ohosTest", "bundleName", "", "moduleName", "",
+        "version", "", "entryPath", "src/", "isSO", "false"
+    };
+    pkgList["ohosTest"] = ohosTestList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    vm->SetpkgContextInfoList(pkgList);
+}
+
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge_Normalized)
 {
     const CString baseFilename = "merge.abc";
@@ -1248,26 +1320,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge_Normalized)
     EXPECT_EQ(baseFilename1, baseFilename);
 
     // Test cross application
-    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
-    CMap<CString, CVector<CString>> entryList;
-    entryList["entry"] = {
-        "packageName", "entry",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/main/",
-        "isSO", "false"
-    };
-    entryList["har"] = {
-        "packageName", "har",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "1.2.0",
-        "entryPath", "Index.ets",
-        "isSO", "false"
-    };
-    pkgList["entry"] = entryList;
-    instance->SetpkgContextInfoList(pkgList);
+    SetupEntryHarPkgContext(instance, "1.2.0", "Index.ets", "false");
     CString moduleRequestName2 = "@normalized:N&moduleName&bundleNameBB&entryPath&version";
     CString result2 = "bundleNameBB&entryPath&version";
     CString newBaseFileName2 = "/data/storage/el1/bundle/bundleNameBB/moduleName/moduleName/ets/modules.abc";
@@ -1501,6 +1554,26 @@ HWTEST_F_L0(EcmaModuleTest, ParseAbcPathAndOhmUrl)
     EXPECT_EQ(entryPoint, res5);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+    CMap<CString, CVector<std::pair<CString, CString>>> entryList;
+    entryList["entry"] = {
+        {"packageName", "entry"},
+        {"bundleName", ""},
+        {"moduleName", ""},
+        {"version", ""},
+        {"entryPath", "src/main/"},
+        {"isSO", "false"}
+    };
+    entryList["har"] = {
+        {"packageName", "har"},
+        {"bundleName", ""},
+        {"moduleName", ""},
+        {"version", "1.2.0"},
+        {"entryPath", "Index.ets"},
+        {"isSO", "false"}
+    };
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgList;
     CMap<CString, CVector<CString>> entryList;
     entryList["entry"] = {
@@ -1519,6 +1592,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseAbcPathAndOhmUrl)
         "entryPath", "Index.ets",
         "isSO", "false"
     };
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     pkgList["entry"] = entryList;
     instance->SetpkgContextInfoList(pkgList);
 
@@ -1799,6 +1873,18 @@ HWTEST_F_L0(EcmaModuleTest, ConcatNotSoNormalizedOhmurl)
 
 HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl2)
 {
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+    CMap<CString, CVector<std::pair<CString, CString>>> entryList;
+    entryList["hsp"] = {
+        {"packageName", "hsp"},
+        {"bundleName", "com.hsp.application"},
+        {"moduleName", ""},
+        {"version", ""},
+        {"entryPath", ""},
+        {"isSO", "false"}
+    };
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgList;
     CMap<CString, CVector<CString>> entryList;
     entryList["hsp"] = {
@@ -1809,6 +1895,7 @@ HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl2)
         "entryPath", "",
         "isSO", "false"
     };
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     pkgList["entry"] = entryList;
     instance->SetpkgContextInfoList(pkgList);
 
@@ -1921,26 +2008,7 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
 
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized2)
 {
-    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
-    CMap<CString, CVector<CString>> entryList;
-    entryList["entry"] = {
-        "packageName", "entry",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/main/",
-        "isSO", "false"
-    };
-    entryList["har"] = {
-        "packageName", "har",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "1.2.0",
-        "entryPath", "Index.ets",
-        "isSO", "false"
-    };
-    pkgList["entry"] = entryList;
-    instance->SetpkgContextInfoList(pkgList);
+    SetupEntryHarPkgContext(instance, "1.2.0", "Index.ets", "false");
 
     CString requestPath = "har";
     CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
@@ -1989,26 +2057,7 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized3)
 
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized4)
 {
-    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
-    CMap<CString, CVector<CString>> entryList;
-    entryList["entry"] = {
-        "packageName", "entry",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/main/",
-        "isSO", "false"
-    };
-    entryList["har"] = {
-        "packageName", "har",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "1.2.0",
-        "entryPath", "./Index.ets",
-        "isSO", "true"
-    };
-    pkgList["entry"] = entryList;
-    instance->SetpkgContextInfoList(pkgList);
+    SetupEntryHarPkgContext(instance, "1.2.0", "./Index.ets", "true");
 
     // ConcatNormalizedOhmurlWithData testcase
     CString requestPath = "har";
@@ -2026,6 +2075,18 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized4)
 
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized5)
 {
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+    CMap<CString, CVector<std::pair<CString, CString>>> entryList;
+    entryList["har"] = {
+        {"packageName", "har"},
+        {"bundleName", ""},
+        {"moduleName", ""},
+        {"version", "1.2.0"},
+        {"entryPath", "./Index.ets"},
+        {"isSO", "false"}
+    };
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgList;
     CMap<CString, CVector<CString>> entryList;
     entryList["har"] = {
@@ -2036,6 +2097,7 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized5)
         "entryPath", "./Index.ets",
         "isSO", "false"
     };
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     pkgList["entry"] = entryList;
     instance->SetpkgContextInfoList(pkgList);
 
@@ -2057,8 +2119,13 @@ HWTEST_F_L0(EcmaModuleTest, TranslateNapiFileRequestPath)
     CString result = ModulePathHelper::TranslateNapiFileRequestPath(thread, modulePath, requestName);
     EXPECT_EQ(result, "modulePath/requestName");
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> list;
+    CMap<CString, CVector<std::pair<CString, CString>>> childList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> list;
     CMap<CString, CVector<CString>> childList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     list["hsp"] = childList;
     instance->SetpkgContextInfoList(list);
 
@@ -3241,8 +3308,13 @@ HWTEST_F_L0(EcmaModuleTest, GetBundleNameWithRecordName)
     CString res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
     EXPECT_EQ(res, expectRes);
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> list;
+    CMap<CString, CVector<std::pair<CString, CString>>> childList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> list;
     CMap<CString, CVector<CString>> childList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     list["hsp"] = childList;
     instance->SetpkgContextInfoList(list);
 
@@ -3283,36 +3355,7 @@ HWTEST_F_L0(EcmaModuleTest, ModuleInstantiation_ReEnterTest)
 
 HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl)
 {
-    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
-    CMap<CString, CVector<CString>> entryList;
-    entryList["entry"] = {
-        "packageName", "entry",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/main/",
-        "isSO", "false"
-    };
-    entryList["har"] = {
-        "packageName", "har",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "1.2.0",
-        "entryPath", "",
-        "isSO", "false"
-    };
-    pkgList["entry"] = entryList;
-    CMap<CString, CVector<CString>> ohosTestList;
-    ohosTestList["ohosTest"] = {
-        "packageName", "ohosTest",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/",
-        "isSO", "false"
-    };
-    pkgList["ohosTest"] = ohosTestList;
-    instance->SetpkgContextInfoList(pkgList);
+    SetupEntryHarOhosPkgContext(instance);
 
     CString inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
     CString outBaseFileName = "";
@@ -6459,7 +6502,11 @@ HWTEST_F_L0(EcmaModuleTest, GetPkgNamesWithNormalizedOhmurl)
 
 HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl)
 {
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     pkgList["entry"] = {};
     instance->SetpkgContextInfoList(pkgList);
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsList;
@@ -6508,7 +6555,11 @@ HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl)
 
 HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl1)
 {
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     pkgList["entry"] = {};
     instance->SetpkgContextInfoList(pkgList);
 
@@ -6547,7 +6598,11 @@ HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl2)
 
 HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl_ImportNotNormalizedPrefix)
 {
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     pkgList["entry"] = {};
     instance->SetpkgContextInfoList(pkgList);
 

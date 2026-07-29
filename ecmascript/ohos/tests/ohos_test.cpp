@@ -25,6 +25,7 @@
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/adapter/modulemanager/module_pkg_parser.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/ohos/tests/mock/mock_enable_aot_list_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tests/test_helper.h"
@@ -334,6 +335,14 @@ HWTEST_F_L0(OhosTest, AotIsEnableArkProfileFalse)
     rmdir(whiteListTestDir);
 }
 
+static std::pair<std::unique_ptr<uint8_t[]>, size_t> CreateBufferFromString(const std::string &str)
+{
+    size_t size = str.size();
+    auto buffer = std::make_unique<uint8_t[]>(size);
+    std::copy(str.begin(), str.end(), buffer.get());
+    return std::make_pair(std::move(buffer), size);
+}
+
 HWTEST_F_L0(OhosTest, ModulePkgParserTest)
 {
     std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
@@ -349,25 +358,31 @@ HWTEST_F_L0(OhosTest, ModulePkgParserTest)
         "oh-exports":{}}})";
     std::string hsp2String = R"({"hsp2":{"packageName":"hsp2", "bundleName":"com.xxx.xxxx", "moduleName":
         "hsp2", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias": "@ohos/hsp2"}})";
-    auto createBufferFromString = [](const std::string& str) {
-        size_t size = str.size();
-        auto buffer = std::make_unique<uint8_t[]>(size);
-        std::copy(str.begin(), str.end(), buffer.get());
-        return std::make_pair(std::move(buffer), size);
-    };
-    modulePkgContentMap["entry"] = createBufferFromString(entryString);
-    modulePkgContentMap["library"] = createBufferFromString(libraryString);
-    modulePkgContentMap["hsp"] = createBufferFromString(hspString);
-    modulePkgContentMap["hsp2"] = createBufferFromString(hsp2String);
+    modulePkgContentMap["entry"] = CreateBufferFromString(entryString);
+    modulePkgContentMap["library"] = CreateBufferFromString(libraryString);
+    modulePkgContentMap["hsp"] = CreateBufferFromString(hspString);
+    modulePkgContentMap["hsp2"] = CreateBufferFromString(hsp2String);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgContextInfoList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     CMap<CString, CString> pkgAliasList;
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsMap;
     bool result = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap, pkgContextInfoList, pkgAliasList,
         ohExportsMap);
     EXPECT_TRUE(result);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    EXPECT_EQ(pkgContextInfoList["entry"]["entry"].size(), 6);
+#else
     EXPECT_EQ(pkgContextInfoList["entry"]["entry"].size(), 12);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     EXPECT_EQ(pkgContextInfoList["library"].size(), 1);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    EXPECT_EQ(pkgContextInfoList["library"]["library"].size(), 6);
+#else
     EXPECT_EQ(pkgContextInfoList["library"]["library"].size(), 12);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
     EXPECT_EQ(pkgAliasList.size(), 3);
     EXPECT_EQ(pkgAliasList["har"], "library");
@@ -397,18 +412,34 @@ HWTEST_F_L0(OhosTest, ModulePkgParserTest1)
     };
     std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
     modulePkgContentMap["entry"] = createBufferFromString(entryString);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgContextInfoList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     CMap<CString, CString> pkgAliasList;
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsMap;
     bool result = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap, pkgContextInfoList, pkgAliasList,
         ohExportsMap);
     EXPECT_TRUE(result);
     //version of entry
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(pkgContextInfoList["entry"]["entry"], "version"), "");
+#else
     EXPECT_EQ(pkgContextInfoList["entry"]["entry"][7], "");
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     //libentry.so isSo
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(pkgContextInfoList["entry"]["libentry.so"], "isSO"), "true");
+#else
     EXPECT_EQ(pkgContextInfoList["entry"]["libentry.so"][11], "true");
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     //libhar.so isSo
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(pkgContextInfoList["entry"]["libhar.so"], "isSO"), "false");
+#else
     EXPECT_EQ(pkgContextInfoList["entry"]["libhar.so"][11], "false");
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 }
 
 HWTEST_F_L0(OhosTest, ModulePkgParserTest2)
@@ -422,7 +453,11 @@ HWTEST_F_L0(OhosTest, ModulePkgParserTest2)
     };
     std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
     modulePkgContentMap["entry"] = createBufferFromString(entryString);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgContextInfoList;
+#else
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     CMap<CString, CString> pkgAliasList;
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsMap;
     bool result = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap, pkgContextInfoList,

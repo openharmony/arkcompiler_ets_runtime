@@ -1759,13 +1759,173 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
     return true;
 }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+bool EcmaVM::IsNormalizedOhmUrlPack()
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgContextInfoLock_);
+        return !pkgContextInfoList_.empty();
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().IsNormalizedOhmUrlPack();
+}
+
+void EcmaVM::SetPkgNameList(const CMap<CString, CString> &list)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(pkgNameListLock_);
+        pkgNameList_ = list;
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().SetPkgNameList(list);
+}
+
+void EcmaVM::UpdatePkgNameList(const CMap<CString, CString> &list)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(pkgNameListLock_);
+        pkgNameList_.insert(list.begin(), list.end());
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().UpdatePkgNameList(list);
+}
+
+CMap<CString, CString> EcmaVM::GetPkgNameList()
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgNameListLock_);
+        return pkgNameList_;
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().GetPkgNameList();
+}
+
+CString EcmaVM::GetPkgName(const CString &moduleName)
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgNameListLock_);
+        auto it = pkgNameList_.find(moduleName);
+        if (it == pkgNameList_.end()) {
+            LOG_ECMA(INFO) << " Get Pkg Name failed";
+            return moduleName;
+        }
+        return it->second;
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().GetPkgName(moduleName);
+}
+
+void EcmaVM::UpdatePkgContextInfoList(const CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> &list)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(pkgContextInfoLock_);
+        pkgContextInfoList_.insert(list.begin(), list.end());
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().UpdatePkgContextInfoList(list);
+}
+
+CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> EcmaVM::GetPkgContextInfoList()
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgContextInfoLock_);
+        return pkgContextInfoList_;
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().GetPkgContextInfoList();
+}
+
+CString EcmaVM::GetPkgNameWithAlias(const CString &alias)
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgAliasListLock_);
+        auto it = pkgAliasList_.find(alias);
+        if (it == pkgAliasList_.end()) {
+            return alias;
+        }
+        return it->second;
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().GetPkgNameWithAlias(alias);
+}
+
+void EcmaVM::SetPkgAliasList(const CMap<CString, CString> &list)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(pkgAliasListLock_);
+        pkgAliasList_ = list;
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().SetPkgAliasList(list);
+}
+
+void EcmaVM::UpdatePkgAliasList(const CMap<CString, CString> &list)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(pkgAliasListLock_);
+        pkgAliasList_.insert(list.begin(), list.end());
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().UpdatePkgAliasList(list);
+}
+
+CMap<CString, CString> EcmaVM::GetPkgAliasList()
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgAliasListLock_);
+        return pkgAliasList_;
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().GetPkgAliasList();
+}
+
+CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> EcmaVM::GetOhExportList()
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(ohExportListLock_);
+        return ohExportsList_;
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().GetOhExportList();
+}
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> &list)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(pkgContextInfoLock_);
+        pkgContextInfoList_ = list;
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().SetPkgContextInfoList(list);
+}
+#else
 void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list)
 {
     WriteLockHolder lock(pkgContextInfoLock_);
     pkgContextInfoList_ = list;
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 #if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
+                                           CVector<std::pair<CString, CString>> &resultList)
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(pkgContextInfoLock_);
+        if (packageName.empty()) {
+            return;
+        }
+        auto pkgContextIt = pkgContextInfoList_.find(moduleName);
+        if (pkgContextIt == pkgContextInfoList_.end()) {
+            return;
+        }
+        const CMap<CString, CVector<std::pair<CString, CString>>> &pkgList = pkgContextIt->second;
+        auto pkgIt = pkgList.find(packageName);
+        if (pkgIt == pkgList.end()) {
+            return;
+        }
+        resultList = pkgIt->second;
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().GetPkgContextInfoListElements(moduleName, packageName, resultList);
+}
+#else
 void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
                                            CVector<CString> &resultList)
 {
@@ -1784,6 +1944,7 @@ void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CStr
     }
     resultList = pkgIt->second;
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
 
 void EcmaVM::StopPreLoadSoOrAbc()
@@ -1798,20 +1959,69 @@ void EcmaVM::StopPreLoadSoOrAbc()
     }
 }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void EcmaVM::SetOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+    CUnorderedSet<CString>>> &ohExportsMap)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(ohExportListLock_);
+        ohExportsList_ = ohExportsMap;
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().SetOhExportsList(ohExportsMap);
+}
+#else
 void EcmaVM::SetOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
     CUnorderedSet<CString>>> &ohExportsMap)
 {
     WriteLockHolder lock(ohExportListLock_);
     ohExportsList_ = ohExportsMap;
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+void EcmaVM::UpdateOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+                                 CUnorderedSet<CString>>> &ohExportsMap)
+{
+    if (IsFormThread()) {
+        WriteLockHolder lock(ohExportListLock_);
+        ohExportsList_.insert(ohExportsMap.begin(), ohExportsMap.end());
+        return;
+    }
+    Runtime::GetInstance()->GetPkgContextStore().UpdateOhExportsList(ohExportsMap);
+}
+#else
 void EcmaVM::UpdateOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
                                  CUnorderedSet<CString>>> &ohExportsMap)
 {
     WriteLockHolder lock(ohExportListLock_);
     ohExportsList_.insert(ohExportsMap.begin(), ohExportsMap.end());
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+bool EcmaVM::CheckOhExportsWithOhmurl(const CString &moduleName, const CString &packageName, const CString &ohmurl)
+{
+    if (IsFormThread()) {
+        ReadLockHolder lock(ohExportListLock_);
+        if (packageName.empty()) {
+            return true;
+        }
+        auto moduleIt = ohExportsList_.find(moduleName);
+        if (moduleIt == ohExportsList_.end()) {
+            return true;
+        }
+        const CUnorderedMap<CString, CUnorderedSet<CString>> &moduleExportsList = moduleIt->second;
+        auto packageIt = moduleExportsList.find(packageName);
+        if (packageIt == moduleExportsList.end()) {
+            return true;
+        }
+        const CUnorderedSet<CString> &packageExportsList = packageIt->second;
+        return (packageExportsList.find(ohmurl) != packageExportsList.end());
+    }
+    return Runtime::GetInstance()->GetPkgContextStore().CheckOhExportsWithOhmurl(moduleName, packageName, ohmurl);
+}
+#else
 bool EcmaVM::CheckOhExportsWithOhmurl(const CString &moduleName, const CString &packageName, const CString &ohmurl)
 {
     ReadLockHolder lock(ohExportListLock_);
@@ -1830,6 +2040,7 @@ bool EcmaVM::CheckOhExportsWithOhmurl(const CString &moduleName, const CString &
     const CUnorderedSet<CString> &packageExportsList = packageIt->second;
     return (packageExportsList.find(ohmurl) != packageExportsList.end());
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 // Initialize IcuData Path
 void EcmaVM::InitializeIcuData(const JSRuntimeOptions &options)
