@@ -147,7 +147,7 @@ public:
     void CollectMaterializedVregs(const std::vector<std::pair<VRegId, JSTaggedType>> &deoptValues, size_t shift);
     bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
     JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
-    void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);
+    void UpdateAndDumpDeoptInfo(kungfu::DeoptType type, bool dumpJsStackTrace);
     static PUBLIC_API std::string DisplayItems(kungfu::DeoptType type);
     static PUBLIC_API int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);
     static PUBLIC_API size_t ComputeShift(size_t depth);
@@ -210,7 +210,7 @@ private:
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
-    void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth);
+    void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth, bool dumpJsStackTrace);
     int64_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
     static void ResetJitHotness(JSThread *thread, JSFunction *jsFunc);
     JSThread *thread_ {nullptr};

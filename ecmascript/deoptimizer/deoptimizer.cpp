@@ -17,7 +17,6 @@
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
-#include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
@@ -583,20 +582,17 @@ bool Deoptimizier::CollectVirtualRegisters(JSTaggedValue callTarget, Method *met
     return true;
 }
 
-void Deoptimizier::Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth)
+void Deoptimizier::Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth, bool dumpJsStackTrace)
 {
-    if (thread_->IsPGOProfilerEnable()) {
-        JSFunction *function = JSFunction::Cast(callTarget);
-        auto profileTypeInfo = function->GetProfileTypeInfo(thread_);
-        if (profileTypeInfo.IsUndefined()) {
-            SlowRuntimeStub::NotifyInlineCache(thread_, function);
-        }
-    }
     if (traceDeopt_) {
         std::string checkType = DisplayItems(type);
         LOG_TRACE(INFO) << "Check Type: " << checkType;
-        std::string data = JsStackInfo::BuildJsStackTrace(thread_, true);
-        LOG_COMPILER(INFO) << "Deoptimize" << data;
+        if (dumpJsStackTrace) {
+            std::string data = JsStackInfo::BuildJsStackTrace(thread_, true);
+            LOG_COMPILER(INFO) << "Deoptimize" << data;
+        } else {
+            LOG_COMPILER(INFO) << "Eager deopt disables GC; skip GC-capable JS stack trace construction.";
+        }
         const uint8_t *pc = GetMethod(callTarget)->GetBytecodeArray() + pc_.at(depth);
         BytecodeInstruction inst(pc);
         LOG_COMPILER(INFO) << inst;
@@ -755,7 +751,7 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
 }
 
-void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
+void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type, bool dumpJsStackTrace)
 {
     // depth records the number of layers of nested calls when deopt occurs
     for (size_t i = 0; i <= inlineDepth_; i++) {
@@ -770,7 +766,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
         }
         auto method = GetMethod(callTarget);
         if (i == inlineDepth_) {
-            Dump(callTarget, type, i);
+            Dump(callTarget, type, i, dumpJsStackTrace);
         }
         ASSERT(thread_ != nullptr);
         uint8_t deoptThreshold = method->GetDeoptThreshold();

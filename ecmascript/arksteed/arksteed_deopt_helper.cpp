@@ -1153,7 +1153,7 @@ bool HandleArkSteedDeopt(JSThread *thread, DeoptId deoptId, JSTaggedType *result
                 deopt.CollectSteedDeoptContext(it, frame, asmBridgeSp);
                 deopt.CollectMaterializedVregs(materialized.values,
                                                Deoptimizier::ComputeShift(materialized.inlineDepth));
-                deopt.UpdateAndDumpDeoptInfo(translation.type);
+                deopt.UpdateAndDumpDeoptInfo(translation.type, false);
                 JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
                 *result = deopt.ConstructAsmInterpretFrame(undefined);
                 return true;

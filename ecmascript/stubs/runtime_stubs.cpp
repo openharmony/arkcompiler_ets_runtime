@@ -4015,7 +4015,7 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     ASSERT(!deoptBundle.empty());
     size_t shift = Deoptimizier::ComputeShift(depth);
     deopt.CollectVregs(deoptBundle, shift);
-    deopt.UpdateAndDumpDeoptInfo(type);
+    deopt.UpdateAndDumpDeoptInfo(type, true);
     return deopt.ConstructAsmInterpretFrame(maybeAcc);
 }
 

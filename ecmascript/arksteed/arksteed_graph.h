@@ -43,7 +43,6 @@ public:
           float64Constants_(chunk),
           taggedConstants_(chunk),
           maxCallStackArgs_(0),
-          maxDeoptedStackSize_(0),
           taggedStackSlots_(0),
           untaggedStackSlots_(0),
           maxBlockId_(0),
@@ -225,16 +224,6 @@ public:
         return maxCallStackArgs_;
     }
 
-    void SetMaxDeoptedStackSize(uint32_t size)
-    {
-        maxDeoptedStackSize_ = size;
-    }
-
-    uint32_t GetMaxDeoptedStackSize() const
-    {
-        return maxDeoptedStackSize_;
-    }
-
     void SetTaggedStackSlots(uint32_t slots)
     {
         taggedStackSlots_ = slots;
@@ -293,7 +282,6 @@ private:
     ChunkMap<double, Float64ConstantVertex *> float64Constants_;
     ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
     uint32_t maxCallStackArgs_ = 0;
-    uint32_t maxDeoptedStackSize_ = 0;
     uint32_t taggedStackSlots_ = 0;
     uint32_t untaggedStackSlots_ = 0;
     uint32_t maxBlockId_;
