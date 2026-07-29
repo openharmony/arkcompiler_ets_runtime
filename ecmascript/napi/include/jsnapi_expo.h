@@ -2134,9 +2134,6 @@ public:
     // Only available for cross platform.
     static uint32_t GetCurrentWorkerCount(const EcmaVM *vm);
 
-    static constexpr size_t INVALID_GLOBAL_HANDLE_SIZE = static_cast<size_t>(-1);
-    static size_t GetGlobalHandleCount(const EcmaVM *vm);
-
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:
     static bool isForked_;
