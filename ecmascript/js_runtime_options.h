@@ -135,6 +135,7 @@ enum CommandValues {
     OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT,
     OPTION_COMPILER_ARKSTEED_PRINT_CODE,
     OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS,
+    OPTION_COMPILER_ARKSTEED_DEOPT_ON_INSUFFICIENT_PROFILE,
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_COMPILER_LOG_SNAPSHOT,
@@ -985,6 +986,16 @@ public:
     bool GetCompilerArkSteedReuseStackSlots() const
     {
         return compilerArkSteedReuseStackSlots_;
+    }
+
+    void SetCompilerArkSteedDeoptOnInsufficientProfile(bool value)
+    {
+        compilerArkSteedDeoptOnInsufficientProfile_ = value;
+    }
+
+    bool GetCompilerArkSteedDeoptOnInsufficientProfile() const
+    {
+        return compilerArkSteedDeoptOnInsufficientProfile_;
     }
 
     void SetCompilerLogSnapshot(bool value)
@@ -2754,6 +2765,7 @@ private:
     bool compilerArkSteedEnableCodeComment_ {false};
     bool compilerArkSteedPrintCode_ {false};
     bool compilerArkSteedReuseStackSlots_ {true};
+    bool compilerArkSteedDeoptOnInsufficientProfile_ {true};
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
     bool enableCompilerLogAllMethodsTime_ {false};

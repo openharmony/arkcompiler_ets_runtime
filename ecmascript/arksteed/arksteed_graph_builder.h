@@ -69,7 +69,8 @@ private:
     void ProcessDeadBasicBlock(uint32_t rpoIndex);
     void ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
     void ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex);
-    void VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
+    void FinishDeadLoopBackEdge(BB *owner, uint32_t rpoIndex);
+    BB *VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
 
     void InitFrameState(SharedBCFrameState framestate, uint32_t rpoIndex);
     void InitFrameStateForLoopHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
@@ -77,6 +78,7 @@ private:
 
     void InitCompileInfoFacts(uint32_t rpoIndex);
     void InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex);
+    bool HasEmittedNormalEdge(uint32_t predRpoIndex, uint32_t targetRpoIndex) const;
     void WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex);
     void MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
                          uint32_t actualPredIndex, uint32_t actualNumPreds);
@@ -134,6 +136,8 @@ private:
     LoadTaggedFieldVertex *lazyGlobalEnv_ = nullptr;
 
     ChunkVector<BB *> blocks_;
+    // Entry blocks are stable CFG targets; exit blocks track the final block after any subgraph lowering.
+    ChunkVector<BB *> exitBlocks_;
     ChunkVector<CondensedBCFrameState> frameStates_;
     ChunkVector<CompileInfoFacts *> compileInfoFacts_;
     ChunkVector<CatchBlockInputData *> catchBlockInputs_;

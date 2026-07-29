@@ -449,6 +449,7 @@ GraphBuilder::GraphBuilder(JSThread *compilerThread,
       numParams_(preproc->GetNumParamVRegs()),
       chunk_(preproc->GetChunk()),
       blocks_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      exitBlocks_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
       frameStates_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
       compileInfoFacts_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
       catchBlockInputs_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk())
@@ -524,6 +525,7 @@ void GraphBuilder::InitializeStartBlock(SharedBCFrameState frameState)
     initialLexicalEnv_ = NewVertex<InitialValueVertex>(blocks_[0], {}, -3);
     frameState.SetLexicalEnv(initialLexicalEnv_);
     FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
+    exitBlocks_[0] = blocks_[0];
 }
 
 void GraphBuilder::ProcessDeadBasicBlock(uint32_t rpoIndex)
@@ -542,7 +544,17 @@ void GraphBuilder::ProcessDeadBasicBlock(uint32_t rpoIndex)
     // a dummy basic block is created, which simply jumps the loop header.
     // Uses JumpLoopVertex so that LivenessProcessor can pop the loop from loopUsedVertices_.
     blocks_[rpoIndex] = BB::New(chunk_);
-    FinishBlockWithJumpLoop(blocks_[rpoIndex], blocks_[headerRpoIndex]);
+    FinishDeadLoopBackEdge(blocks_[rpoIndex], rpoIndex);
+    exitBlocks_[rpoIndex] = blocks_[rpoIndex];
+}
+
+void GraphBuilder::FinishDeadLoopBackEdge(BB *owner, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(bcBlock->IsEndOfLoop());
+    uint32_t headerRpoIndex = bcBlock->jumpBlock->rpoIndex;
+    ASSERT(blocks_[headerRpoIndex] != nullptr);
+    FinishBlockWithJumpLoop(owner, blocks_[headerRpoIndex]);
 
     for (PhiVertex *phi : blocks_[headerRpoIndex]->GetPhis()) {
         ASSERT(phi->GetInputCount() == 2);  // 2 : Two jumpPredecessors: one is entry, the other is loop-back
@@ -573,11 +585,19 @@ void GraphBuilder::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpo
         } else {
             FinishBlockWithJump(blocks_[rpoIndex], target);
         }
+        exitBlocks_[rpoIndex] = blocks_[rpoIndex];
     } else {
-        VisitBytecodesOfBasicBlock(frameState, rpoIndex);
+        exitBlocks_[rpoIndex] = VisitBytecodesOfBasicBlock(frameState, rpoIndex);
     }
     if (bcBlock->IsEndOfLoop()) {
-        WriteBackFrameStateToLoopHeader(frameState, rpoIndex);
+        ControlVertex *control = exitBlocks_[rpoIndex]->GetControlVertex();
+        if (control->Is<DeoptVertex>()) {
+            // Keep the structural backedge needed by loop phis and liveness after the real path deopts.
+            FinishDeadLoopBackEdge(BB::New(chunk_), rpoIndex);
+        } else {
+            ASSERT(control->Is<JumpLoopVertex>());
+            WriteBackFrameStateToLoopHeader(frameState, rpoIndex);
+        }
     }
 }
 
@@ -593,27 +613,37 @@ void GraphBuilder::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t
     // Catch block header is always synthetic. Only an unconditional jump.
     ASSERT(bcBlock->IsJump());
     FinishBlockWithJump(blocks_[rpoIndex], ActivateNonCatchBlock(bcBlock->jumpBlock->rpoIndex));
+    exitBlocks_[rpoIndex] = blocks_[rpoIndex];
+}
+
+bool GraphBuilder::HasEmittedNormalEdge(uint32_t predRpoIndex, uint32_t targetRpoIndex) const
+{
+    BB *predExit = exitBlocks_[predRpoIndex];
+    BB *target = blocks_[targetRpoIndex];
+    if (predExit == nullptr || target == nullptr) {
+        return false;
+    }
+    const auto &predecessors = target->GetPredecessors();
+    return std::find(predecessors.begin(), predecessors.end(), predExit) != predecessors.end();
 }
 
 void GraphBuilder::InitFrameState(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
 
-    uint32_t bcNumPreds = static_cast<uint32_t>(bcBlock->jumpPredecessors.size());
-    uint32_t actualNumPreds = 0;
-    for (uint32_t j = 0; j < bcNumPreds; j++) {
-        uint32_t predRpoIndex = bcBlock->jumpPredecessors[j]->rpoIndex;
-        if (blocks_[predRpoIndex] != nullptr) {
-            actualNumPreds += 1;
-        }
-    }
+    BB *target = blocks_[rpoIndex];
+    uint32_t actualNumPreds = target->PredecessorCount();
     uint32_t actualPredIndex = 0;
-    for (uint32_t j = 0; j < bcNumPreds; j++) {
-        uint32_t predRpoIndex = bcBlock->jumpPredecessors[j]->rpoIndex;
-        if (blocks_[predRpoIndex] != nullptr) {
-            MergeFrameState(frameState, rpoIndex, predRpoIndex, actualPredIndex++, actualNumPreds);
+    for (const BasicBlockInfo *predecessor : bcBlock->jumpPredecessors) {
+        uint32_t predRpoIndex = predecessor->rpoIndex;
+        if (!HasEmittedNormalEdge(predRpoIndex, rpoIndex)) {
+            continue;
         }
+        ASSERT(actualPredIndex < actualNumPreds);
+        ASSERT(target->GetPredecessor(actualPredIndex) == exitBlocks_[predRpoIndex]);
+        MergeFrameState(frameState, rpoIndex, predRpoIndex, actualPredIndex++, actualNumPreds);
     }
+    ASSERT(actualPredIndex == actualNumPreds);
 }
 
 void GraphBuilder::InitFrameStateForLoopHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
@@ -690,7 +720,7 @@ void GraphBuilder::InitCompileInfoFacts(uint32_t rpoIndex)
     CompileInfoFacts *facts = nullptr;
     for (const BasicBlockInfo *predecessor : blockInfo->jumpPredecessors) {
         uint32_t predRpoIndex = predecessor->rpoIndex;
-        if (blocks_[predRpoIndex] == nullptr) {
+        if (!HasEmittedNormalEdge(predRpoIndex, rpoIndex)) {
             continue;
         }
         ASSERT(compileInfoFacts_[predRpoIndex] != nullptr);
@@ -967,10 +997,16 @@ struct GraphBuilder::BytecodeVisitor {
     using NamedLoadAccessInfoOpt = std::optional<NamedLoadAccessInfo>;
     using NamedLoadAccessInfosOpt = std::optional<std::vector<NamedLoadAccessInfo>>;
 
-    void Visit(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    bool Visit(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         currentBcInfo = bcInfo;
         currentBcIndex = bcIndex;
+        if (self->GetOptions()->GetCompilerArkSteedDeoptOnInsufficientProfile() &&
+            bcInfo->IsInsufficientProfile()) {
+            EmitUnconditionalDeopt();
+            return false;
+        }
+
         switch (bcInfo->GetOpcode()) {
             case kungfu::EcmaOpcode::NOP:  // Nop: Nothing to do
                 break;
@@ -1517,6 +1553,17 @@ struct GraphBuilder::BytecodeVisitor {
             default:
                 UNREACHABLE();
         }
+        return true;
+    }
+
+    void EmitUnconditionalDeopt()
+    {
+        currentBlock->SetDeferred(true);
+        constexpr auto DEOPT_TYPE = kungfu::DeoptType::INSUFFICIENTPROFILE;
+        uint32_t bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex);
+        auto *deopt = self->FinishBlockWith<DeoptVertex>(
+            currentBlock, {}, self->chunk_, DEOPT_TYPE, bytecodeOffset);
+        deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
     }
 
     // -------- Category #2: Constant Loads --------
@@ -6434,7 +6481,7 @@ struct GraphBuilder::BytecodeVisitor {
     uint32_t currentBcIndex {0};
 };
 
-void GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
+BB *GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
 {
     const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
 
@@ -6459,7 +6506,9 @@ void GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uin
         .lazyCatchBlockInputs = caughtByData,
     };
     for (uint32_t bcIndex = blockInfo->startBcIndex; bcIndex <= blockInfo->endBcIndex; ++bcIndex) {
-        visitor.Visit(preproc_->GetBytecode(bcIndex), bcIndex);
+        if (!visitor.Visit(preproc_->GetBytecode(bcIndex), bcIndex)) {
+            break;
+        }
     }
 
     if (visitor.currentBlock->GetControlVertex() == nullptr) {
@@ -6467,5 +6516,7 @@ void GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uin
         BB *target = ActivateNonCatchBlock(blockInfo->fallthroughBlock->rpoIndex);
         FinishBlockWithJump(visitor.currentBlock, target);
     }
+    // Lowering may create internal subgraphs, so callers need the actual exit block rather than blocks_[rpoIndex].
+    return visitor.currentBlock;
 }
 }  // namespace panda::ecmascript::arksteed
