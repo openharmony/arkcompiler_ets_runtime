@@ -2239,7 +2239,7 @@ public:
     static constexpr size_t PRINT_STEP = 32;
     static constexpr size_t INSTRUCTION_LENGTH = 4;
 
-    inline static void TryRemoveLazyDeoptFlag(uintptr_t& type)
+    __attribute__((no_sanitize("hwaddress"))) inline static void TryRemoveLazyDeoptFlag(uintptr_t& type)
     {
         type &= CLEARD_LAZY_DEOPT_FLAG;
     }

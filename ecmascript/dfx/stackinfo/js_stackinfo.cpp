@@ -355,7 +355,9 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
     return jsFrame;
 }
 
-bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typeOffset, uintptr_t &prevOffset)
+__attribute__((no_sanitize("hwaddress"))) bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType,
+                                                                                       uintptr_t &typeOffset,
+                                                                                       uintptr_t &prevOffset)
 {
     FrameType type = static_cast<FrameType>(frameType);
     switch (type) {
