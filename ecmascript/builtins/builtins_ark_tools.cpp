@@ -1563,6 +1563,9 @@ JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRunti
 JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT()) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -1579,6 +1582,9 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT()) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -1596,6 +1602,9 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::ArkSteedCompileSync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT()) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
