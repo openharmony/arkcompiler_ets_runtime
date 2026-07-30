@@ -46,24 +46,31 @@ FullGCMarkObjectVisitor<evacuateNonMovableSpace> &FullGCRunner<evacuateNonMovabl
 }
 
 template <bool evacuateNonMovableSpace>
-void FullGCRunner<evacuateNonMovableSpace>::HandleMarkingSlot(ObjectSlot slot)
+template <ReferenceType refType>
+void FullGCRunner<evacuateNonMovableSpace>::HandleMarkingSlot(ObjectSlotBase<refType> slot)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }
 
-    if (!value.IsWeakForHeapObject()) {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         TaggedObject *object = value.GetTaggedObject();
         HandleMarkingSlotObject(slot, object);
     } else {
-        RecordWeakReference(reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
+        if (!value.IsWeakForHeapObject()) {
+            TaggedObject *object = value.GetTaggedObject();
+            HandleMarkingSlotObject(slot, object);
+        } else {
+            RecordWeakReference(reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
+        }
     }
 }
 
 template <bool evacuateNonMovableSpace>
 template <class Callback>
-void FullGCRunner<evacuateNonMovableSpace>::VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t endAddr,
+void FullGCRunner<evacuateNonMovableSpace>::VisitBodyInObj(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                                            Callback &&cb)
 {
     JSThread *thread = heap_->GetJSThread();
@@ -71,11 +78,10 @@ void FullGCRunner<evacuateNonMovableSpace>::VisitBodyInObj(BaseObject *root, uin
     ASSERT(!hclass->IsAllTaggedProp());
     int index = 0;
     LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
-    ObjectSlot realEnd(start);
+    ObjectSlot realEnd = start;
     realEnd += layout->GetPropertiesCapacity();
-    ObjectSlot end(endAddr);
     end = end > realEnd ? realEnd : end;
-    for (ObjectSlot slot(start); slot < end; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         PropertyAttributes attr = layout->GetAttr(thread, index++);
         if (attr.IsTaggedRep()) {
             cb(slot);
@@ -95,7 +101,8 @@ void FullGCRunner<evacuateNonMovableSpace>::MarkJitCodeVec(JitCodeVector *vec)
 }
 
 template <bool evacuateNonMovableSpace>
-void FullGCRunner<evacuateNonMovableSpace>::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object)
+template <ReferenceType refType>
+void FullGCRunner<evacuateNonMovableSpace>::HandleMarkingSlotObject(ObjectSlotBase<refType> slot, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     if (objectRegion->InSharedHeap()) {
@@ -177,7 +184,8 @@ bool FullGCRunner<evacuateNonMovableSpace>::IsAlive(TaggedObject *object)
 }
 
 template <bool evacuateNonMovableSpace>
-void FullGCRunner<evacuateNonMovableSpace>::EvacuateObject(ObjectSlot slot, TaggedObject *object,
+template <ReferenceType refType>
+void FullGCRunner<evacuateNonMovableSpace>::EvacuateObject(ObjectSlotBase<refType> slot, TaggedObject *object,
                                                            const MarkWord &markWord)
 {
     JSHClass *klass = markWord.GetJSHClass();
@@ -268,8 +276,9 @@ void FullGCRunner<evacuateNonMovableSpace>::RawCopyObject(uintptr_t fromAddress,
 }
 
 template <bool evacuateNonMovableSpace>
-void FullGCRunner<evacuateNonMovableSpace>::UpdateForwardAddressIfSuccess(ObjectSlot slot, TaggedObject *object,
-    JSHClass *klass, size_t size, TaggedObject *toAddress)
+template <ReferenceType refType>
+void FullGCRunner<evacuateNonMovableSpace>::UpdateForwardAddressIfSuccess(ObjectSlotBase<refType> slot,
+    TaggedObject *object, JSHClass *klass, size_t size, TaggedObject *toAddress)
 {
     workNodeHolder_->IncreaseAliveSize(size);
 
@@ -281,7 +290,8 @@ void FullGCRunner<evacuateNonMovableSpace>::UpdateForwardAddressIfSuccess(Object
 }
 
 template <bool evacuateNonMovableSpace>
-void FullGCRunner<evacuateNonMovableSpace>::UpdateForwardAddressIfFailed(ObjectSlot slot, size_t size,
+template <ReferenceType refType>
+void FullGCRunner<evacuateNonMovableSpace>::UpdateForwardAddressIfFailed(ObjectSlotBase<refType> slot, size_t size,
     uintptr_t toAddress, TaggedObject *dst)
 {
     FreeObject::FillFreeObject(heap_, toAddress, size);
@@ -360,8 +370,8 @@ FullGCMarkObjectVisitor<evacuateNonMovableSpace>::FullGCMarkObjectVisitor(FullGC
     : runner_(runner) {}
 
 template <bool evacuateNonMovableSpace>
-void FullGCMarkObjectVisitor<evacuateNonMovableSpace>::VisitObjectRangeImpl(BaseObject *root, uintptr_t start,
-    uintptr_t end, VisitObjectArea area)
+void FullGCMarkObjectVisitor<evacuateNonMovableSpace>::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start,
+    ObjectSlot end, VisitObjectArea area)
 {
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         runner_->VisitBodyInObj(root, start, end, [this](ObjectSlot slot) {
@@ -369,9 +379,17 @@ void FullGCMarkObjectVisitor<evacuateNonMovableSpace>::VisitObjectRangeImpl(Base
         });
         return;
     }
-    ObjectSlot startSlot(start);
-    ObjectSlot endSlot(end);
-    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        runner_->HandleMarkingSlot(slot);
+    }
+}
+
+template <bool evacuateNonMovableSpace>
+void FullGCMarkObjectVisitor<evacuateNonMovableSpace>::VisitCompressedObjectRangeImpl(
+    BaseObject *root, CompressedObjectSlot start, CompressedObjectSlot end)
+{
+    (void)root;
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
         runner_->HandleMarkingSlot(slot);
     }
 }
@@ -428,7 +446,7 @@ FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>::FullGCUpdateLocalT
 
 template <bool evacuateNonMovableSpace>
 void FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>::VisitObjectRangeImpl(BaseObject *root,
-    uintptr_t start, uintptr_t end, VisitObjectArea area)
+    ObjectSlot start, ObjectSlot end, VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
     ASSERT(!rootRegion->InSharedHeap());
@@ -438,26 +456,36 @@ void FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>::VisitObjectRa
         });
         return;
     }
-    ObjectSlot startSlot(start);
-    ObjectSlot endSlot(end);
-    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         SetLocalToShareRSet(slot, rootRegion);
     }
 }
 
 template <bool evacuateNonMovableSpace>
-void FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>::SetLocalToShareRSet(ObjectSlot slot,
+void FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>::VisitCompressedObjectRangeImpl(
+    BaseObject *root, CompressedObjectSlot start, CompressedObjectSlot end)
+{
+    Region *rootRegion = Region::ObjectAddressToRange(root);
+    ASSERT(!rootRegion->InSharedHeap());
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        SetLocalToShareRSet(slot, rootRegion);
+    }
+}
+
+template <bool evacuateNonMovableSpace>
+template <ReferenceType refType>
+void FullGCUpdateLocalToShareRSetVisitor<evacuateNonMovableSpace>::SetLocalToShareRSet(ObjectSlotBase<refType> slot,
                                                                                        Region *rootRegion)
 {
     ASSERT(!rootRegion->InSharedHeap());
-    JSTaggedType value = slot.GetTaggedType();
-    if (!JSTaggedValue(value).IsHeapObject()) {
+    TaggedValueType<refType> value = slot.GetTaggedValue();
+    if (!value.IsHeapObject()) {
         return;
     }
 
-    Region *valueRegion = Region::ObjectAddressToRange(value);
+    Region *valueRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
     if (valueRegion->InSharedSweepableSpace()) {
-        rootRegion->AtomicInsertLocalToShareRSet(slot.SlotAddress());
+        rootRegion->AtomicInsertLocalToShareRSet<refType>(slot.SlotAddress());
     }
 }
 

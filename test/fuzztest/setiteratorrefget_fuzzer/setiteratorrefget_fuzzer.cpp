@@ -22,7 +22,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/jsnapi_helper.h"

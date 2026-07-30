@@ -27,7 +27,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
@@ -219,7 +219,7 @@ public:
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ICInfo> NewICInfo(uint32_t length);
-    JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
+    JSHandle<ConstantPool> NewConstantPool(uint32_t numOfCache);
     JSHandle<Program> NewProgram();
 
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
@@ -898,7 +898,7 @@ public:
                                            bool needSetAotFlag,
                                            bool *canFastCall = nullptr);
 
-    JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
+    JSHandle<ConstantPool> NewSConstantPool(uint32_t numOfCache);
 
     JSHandle<AOTLiteralInfo> NewSAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 

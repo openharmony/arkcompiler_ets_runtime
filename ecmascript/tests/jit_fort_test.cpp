@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tests/test_helper.h"
 
 #include "ecmascript/mem/concurrent_marker.h"

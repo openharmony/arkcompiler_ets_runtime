@@ -192,7 +192,7 @@ void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
     if (!env_->IsJitCompiler()) {
         GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
         GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
-        GateRef valVec = builder_.GetValueFromTaggedArray(glue_, constpool, valVecIndex);
+        GateRef valVec = builder_.GetExtendElementFromConstPool(glue_, constpool, valVecIndex);
         GateRef hclass = builder_.GetValueFromTaggedArray(glue_, valVec, builder_.Int32(index));
         acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
     } else {
@@ -1270,7 +1270,7 @@ void MCRLowering::LowerMigrateFromHoleIntToHoleNumber(GateRef gate)
         BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
-            GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
+            GateRef value = builder_.GetValueFromTaggedArray(glue_, VariableType::INT64(), elements, *index);
             BRANCH_CIR(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
             builder_.Bind(&storeNormalValue);
             {
@@ -1318,7 +1318,7 @@ void MCRLowering::LowerMigrateFromHoleNumberToHoleInt(GateRef gate)
         BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
-            GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
+            GateRef value = builder_.GetValueFromTaggedArray(glue_, VariableType::INT64(), elements, *index);
             BRANCH_CIR(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
             builder_.Bind(&storeNormalValue);
             {

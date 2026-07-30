@@ -2801,7 +2801,13 @@ void SlowPathLowering::LowerLdObjByName(GateRef gate)
         // The JIT will assume that the cache will not change and that the String is always present in the constantPool.
         auto cache = builder_.IntPtr((int64_t)(compilationEnv_->GetHostThread()->GetLoadMegaICCache()));
         GateRef sharedConstPool = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
-        GateRef prop = builder_.GetValueFromTaggedArray(glue_, sharedConstPool, builder_.TruncInt64ToInt32(stringId));
+        // `temporaryProp` may be a fake JSTaggedValue, see `TemporaryJSTaggedValue`,
+        // DO NOT direct use `temporaryProp` further more without convertion
+        GateRef temporaryProp = builder_.GetObjectFromConstPoolCacheUnsafe(glue_, sharedConstPool,
+            builder_.TruncInt64ToInt32(stringId));
+        // The JIT will assume that the cache will not change and that
+        // the String is always present in the constantPool.
+        GateRef prop = builder_.ConvertTemporaryTaggedObjectToTaggedValue(glue_, temporaryProp);
         LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByNameWithMega,
                             {receiver, stringId, cache, prop, circuit_->GetGlobalEnvCache()});
     } else {
@@ -2828,7 +2834,13 @@ void SlowPathLowering::LowerStObjByName(GateRef gate, bool isThis)
         // The JIT will assume that the cache will not change and that the String is always present in the constantPool.
         auto cache = builder_.IntPtr((int64_t)(compilationEnv_->GetHostThread()->GetStoreMegaICCache()));
         GateRef sharedConstPool = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
-        GateRef prop = builder_.GetValueFromTaggedArray(glue_, sharedConstPool, builder_.TruncInt64ToInt32(stringId));
+        // `temporaryProp` may be a fake JSTaggedValue, see `TemporaryJSTaggedValue`,
+        // DO NOT direct use `temporaryProp` further more without convertion
+        GateRef temporaryProp = builder_.GetObjectFromConstPoolCacheUnsafe(glue_, sharedConstPool,
+            builder_.TruncInt64ToInt32(stringId));
+        // The JIT will assume that the cache will not change and that
+        // the String is always present in the constantPool.
+        GateRef prop = builder_.ConvertTemporaryTaggedObjectToTaggedValue(glue_, temporaryProp);
         LowerCallStubWithIC(gate, CommonStubCSigns::SetPropertyByNameWithMega,
                             {receiver, stringId, value, cache, prop, circuit_->GetGlobalEnvCache()});
     } else {

@@ -21,7 +21,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 enum class BuiltinType : int32_t {

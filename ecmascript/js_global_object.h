@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JSGLOBALOBJECT_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 class JSGlobalObject : public JSObject {

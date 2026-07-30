@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"

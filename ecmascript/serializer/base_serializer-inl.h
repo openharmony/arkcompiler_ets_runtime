@@ -20,58 +20,54 @@
 
 namespace panda::ecmascript {
 
-template <SerializeType serializeType>
-BaseSerializer::SerializeObjectFieldVisitor<serializeType>::SerializeObjectFieldVisitor(BaseSerializer *serializer)
+BaseSerializer::SerializeObjectFieldVisitor::SerializeObjectFieldVisitor(BaseSerializer *serializer)
     : serializer_(serializer) {}
 
-template <SerializeType serializeType>
-void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRangeImpl(BaseObject *rootObject,
-    uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
+void BaseSerializer::SerializeObjectFieldVisitor::VisitObjectRangeImpl(BaseObject *rootObject,
+    ObjectSlot start, ObjectSlot end, VisitObjectArea area)
 {
     JSThread *thread = serializer_->GetThread();
     switch (area) {
         case VisitObjectArea::RAW_DATA:
-            serializer_->WriteMultiRawData(startAddr, endAddr - startAddr);
+            serializer_->WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
             break;
         case VisitObjectArea::NATIVE_POINTER:
-            if (serializeType == SerializeType::VALUE_SERIALIZE) {
-                serializer_->WriteMultiRawData(startAddr, endAddr - startAddr);
-            }
+            serializer_->WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
             break;
         case VisitObjectArea::IN_OBJECT: {
-            serializer_->SerializeInObjField(TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
-                                             ObjectSlot(endAddr));
+            serializer_->SerializeInObjField(TaggedObject::Cast(rootObject), start, end);
             break;
         }
         default: {
-            ObjectSlot end = ObjectSlot(endAddr);
-            for (ObjectSlot slot = ObjectSlot(startAddr); slot < end; slot++) {
+            for (ObjectSlot slot = start; slot < end; slot++) {
                 [[maybe_unused]] JSTaggedValue value =
                     JSTaggedValue(Barriers::GetTaggedValue(thread, slot.SlotAddress()));
             }
-            serializer_->SerializeTaggedObjField(serializeType, TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
-                                                 ObjectSlot(endAddr));
+            serializer_->SerializeTaggedObjField(TaggedObject::Cast(rootObject), start, end);
             break;
         }
     }
 }
 
-template <SerializeType serializeType>
-void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectHClassImpl(
-    BaseObject *rootObject, BaseObject *hclass)
+void BaseSerializer::SerializeObjectFieldVisitor::VisitCompressedObjectRangeImpl(BaseObject *rootObject,
+    CompressedObjectSlot start, CompressedObjectSlot end)
 {
-    (void)rootObject;
+    ASSERT(JSTaggedValue(TaggedObject::Cast(rootObject)).IsConstantPool());
+    serializer_->SerializeConstantPoolFieldIndividually(TaggedObject::Cast(rootObject), start, end);
+}
+
+void BaseSerializer::SerializeObjectFieldVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject,
+                                                                        BaseObject *hclass)
+{
     serializer_->SerializeJSTaggedValue(JSTaggedValue(TaggedObject::Cast(hclass)));
 }
 
-template<SerializeType serializeType>
 void BaseSerializer::SerializeObjectField(TaggedObject *object)
 {
-    SerializeObjectFieldVisitor<serializeType> serializeObjectFieldVisitor(this);
+    SerializeObjectFieldVisitor serializeObjectFieldVisitor(this);
     ObjectXRay::VisitObjectBody<VisitType::ALL_VISIT>(object, object->GetClass(), serializeObjectFieldVisitor);
 }
 
-template<SerializeType serializeType>
 void BaseSerializer::SerializeTaggedObject(TaggedObject *object)
 {
     size_t objectSize = object->GetSize();
@@ -81,7 +77,7 @@ void BaseSerializer::SerializeTaggedObject(TaggedObject *object)
     data_->CalculateSerializedObjectSize(space, objectSize);
     referenceMap_.emplace(object, objectIndex_++);
 
-    SerializeObjectField<serializeType>(object);
+    SerializeObjectField(object);
 }
 }
 

@@ -70,12 +70,10 @@ SharedGCMarkObjectVisitor::SharedGCMarkObjectVisitor(SharedGCWorkNodeHolder *sWo
 {
 }
 
-void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                                      VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -97,6 +95,15 @@ void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t
     }
 }
 
+void SharedGCMarkObjectVisitor::VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                                               CompressedObjectSlot end)
+{
+    Region *rootRegion = Region::ObjectAddressToRange(root);
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot, rootRegion);
+    }
+}
+
 void SharedGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *hclass)
 {
     ASSERT(TaggedObject::Cast(hclass)->GetClass()->IsHClass());
@@ -107,9 +114,10 @@ void SharedGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObjec
     }
 }
 
-void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
+template <ReferenceType refType>
+void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlotBase<refType> slot, Region *rootRegion)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }
@@ -121,14 +129,23 @@ void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
         return;
     }
 
-    if (!value.IsWeakForHeapObject()) {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         TaggedObject *object = value.GetTaggedObject();
         MarkAndPush(object, objectRegion);
         if (objectRegion->InSharedOldSpace() && (rootRegion != objectRegion)) {
-            rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
+            rootRegion->AtomicInsertCrossRegionRSet<refType>(slot.SlotAddress());
         }
     } else {
-        RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        if (!value.IsWeakForHeapObject()) {
+            TaggedObject *object = value.GetTaggedObject();
+            MarkAndPush(object, objectRegion);
+            if (objectRegion->InSharedOldSpace() && (rootRegion != objectRegion)) {
+                rootRegion->AtomicInsertCrossRegionRSet<refType>(slot.SlotAddress());
+            }
+        } else {
+            RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        }
     }
 }
 
@@ -151,26 +168,39 @@ SharedGCMarkLocalToShareRSetVisitor<markType>::SharedGCMarkLocalToShareRSetVisit
 }
 
 template <SharedMarkType markType>
-bool SharedGCMarkLocalToShareRSetVisitor<markType>::operator()(void *mem) const
+template <typename ReferenceTypeWrapper>
+bool SharedGCMarkLocalToShareRSetVisitor<markType>::operator()(void *mem, ReferenceTypeWrapper) const
 {
-    ObjectSlot slot(ToUintPtr(mem));
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
-        if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
-            // For now if record weak references from local to share in marking root, the slots
-            // may be invalid due to LocalGC, so just mark them as strong-reference.
-            MarkObject(value.GetHeapObject());
+    constexpr ReferenceType refType = ReferenceTypeWrapper::value;
+    ObjectSlotBase<refType> slot(ToUintPtr(mem));
+    TaggedValueType<refType> value = slot.GetTaggedValue();
+
+    if (!value.IsHeapObject()) {
+        return false;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
+    if (!valueRegion->InSharedSweepableSpace()) {
+        return false;
+    }
+
+    if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
+        // For now if record weak references from local to share in marking root, the slots
+        // may be invalid due to LocalGC, so just mark them as strong-reference.
+        MarkObject(value.GetHeapObject());
+    } else {
+        static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
+        if constexpr (ReferenceIsCompressed<refType>) {
+            ASSERT(!value.IsWeakForHeapObject());
+            MarkObject(value.GetTaggedObject());
         } else {
-            static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
             if (value.IsWeakForHeapObject()) {
                 RecordWeakReference(reinterpret_cast<JSTaggedType *>(mem));
             } else {
                 MarkObject(value.GetTaggedObject());
             }
         }
-        return true;
     }
-    return false;
+    return true;
 }
 
 template <SharedMarkType markType>

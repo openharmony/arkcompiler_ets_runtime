@@ -23,7 +23,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_regexp_iterator.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/regexp/regexp_executor.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"

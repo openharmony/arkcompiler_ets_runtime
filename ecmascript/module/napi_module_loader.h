@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_MODULE_NAPI_MODULE_LOADER_H
 #define ECMASCRIPT_MODULE_NAPI_MODULE_LOADER_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 namespace panda::ecmascript {
 class NapiModuleLoader {
 public:

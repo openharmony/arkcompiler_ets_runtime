@@ -284,8 +284,6 @@ private:
     VariableType GetVarType(PropertyLookupResult plr);
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);
-    GateRef LoadFromTaggedArray(GateRef array, size_t index);
-    GateRef LoadFromConstPool(GateRef glue, GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef GetLengthFromString(GateRef gate);
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);
     void StorePropertyOnHolder(GateRef holder, GateRef value, PropertyLookupResult plr, bool needBarrier);

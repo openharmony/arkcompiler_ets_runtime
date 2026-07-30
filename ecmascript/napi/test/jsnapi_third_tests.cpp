@@ -41,7 +41,7 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_proxy.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/ic/ic_info.h"

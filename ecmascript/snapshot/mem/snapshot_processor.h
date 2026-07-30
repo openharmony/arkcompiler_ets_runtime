@@ -24,7 +24,7 @@
 #include "ecmascript/serializer/serialize_data.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #if USE_CMS_GC
 #include "ecmascript/mem/cms_mem/slot_space_config.h"
 #endif
@@ -56,8 +56,6 @@ struct SnapshotRegionHeadInfo {
     }
 };
 
-using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
-
 class SnapshotProcessor final {
 public:
     explicit SnapshotProcessor(EcmaVM *vm)
@@ -74,9 +72,8 @@ public:
     void StopAllocate();
     void WriteObjectToFile(std::fstream &write);
     std::vector<size_t> StatisticsObjectSize();
-    void ProcessObjectQueue(CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data);
-    void SerializeObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
-                         std::unordered_map<uint64_t, ObjectEncode> *data);
+    void ProcessObjectQueue(CQueue<TaggedObject *> *queue);
+    void SerializeObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue);
     void Relocate(SnapshotType type, const JSPandaFile *jsPandaFile,
                   uint64_t rootObjSize);
     void RelocateSpaceObject(std::vector<std::pair<uintptr_t, size_t>> &regions, SnapshotType type,
@@ -86,12 +83,11 @@ public:
     void SerializePandaFileMethod();
     AllocResult GetNewObj(size_t objectSize, TaggedObject *objectHeader);
     uintptr_t GetNewObjAddress(size_t objectSize, TaggedObject *objectHeader);
-    EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
-                                 std::unordered_map<uint64_t, ObjectEncode> *data);
-    EncodeBit GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,
-                              std::unordered_map<uint64_t, ObjectEncode> *data);
-    void EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end, CQueue<TaggedObject *> *queue,
-                                 std::unordered_map<uint64_t, ObjectEncode> *data);
+    template <ReferenceType refType>
+    EncodeBitType<refType> EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue);
+    template <ReferenceType refType>
+    EncodeBitType<refType> GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue);
+    void EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end, CQueue<TaggedObject *> *queue);
     void DeserializeObjectExcludeString(uintptr_t regularObjBegin, size_t regularObjSize, size_t pinnedObjSize,
                                         size_t largeObjSize);
     void DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize, size_t nonMovableObjSize,
@@ -132,19 +128,40 @@ public:
     size_t GetNativeTableSize() const;
 
 private:
+    // Canonical source-address -> snapshot allocation entry. A single ordinary object may be
+    // referenced through both a normal-width field and a compressed-width field (for example a
+    // ConstantPool cache slot written via SetObjectToCache() and its AOT array info slot written
+    // via SetAotArrayInfo()). Exactly one snapshot allocation is made per source object; both
+    // encode-bit widths are derived from this canonical entry so object identity survives the
+    // serialize/deserialize round trip instead of producing two divergent copies.
+    struct CanonicalObjectEncode {
+        enum class Kind : uint8_t {
+            ALLOCATED,  // ordinary object copied into snapshot space
+            STRING,     // deduplicated string index (no snapshot allocation)
+            BUILTINS,   // reused builtins/global-constant index (no snapshot allocation)
+        };
+        Kind kind {Kind::ALLOCATED};
+        uintptr_t snapshotAddr {0};  // snapshot-space copy; 0 for STRING/BUILTINS
+        size_t regionIndex {0};      // ALLOCATED only
+        size_t objectOffset {0};     // ALLOCATED only
+        size_t nativeIndex {0};      // STRING/BUILTINS index
+    };
+
     class SerializeObjectVisitor final : public BaseObjectVisitor<SerializeObjectVisitor> {
     public:
         explicit SerializeObjectVisitor(SnapshotProcessor *processor, uintptr_t snapshotObj,
-            CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data);
+            CQueue<TaggedObject *> *queue);
         ~SerializeObjectVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr,
-                                  uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start,
+                                  ObjectSlot end, VisitObjectArea area) override;
+
+        void VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                            CompressedObjectSlot end) override;
     private:
         SnapshotProcessor *processor_ {nullptr};
         uintptr_t snapshotObj_ {-1};
         CQueue<TaggedObject *> *queue_ {nullptr};
-        std::unordered_map<uint64_t, ObjectEncode> *data_{nullptr};
     };
 
     class DeserializeFieldVisitor final : public BaseObjectVisitor<DeserializeFieldVisitor> {
@@ -152,21 +169,25 @@ private:
         explicit DeserializeFieldVisitor(SnapshotProcessor *processor);
         ~DeserializeFieldVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+        void VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start, ObjectSlot end,
                                   VisitObjectArea area) override;
+
+        void VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                            CompressedObjectSlot end) override;
     private:
         SnapshotProcessor *processor_ {nullptr};
     };
 
     bool VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index, VisitObjectArea area);
     void SetObjectEncodeField(uintptr_t obj, size_t offset, uint64_t value);
+    void SetCompressedObjectEncodeField(uintptr_t obj, size_t offset, CompressedEncodeBit encodeBit);
 
-    EncodeBit SerializeObjectHeader(TaggedObject *objectHeader, size_t objectType, CQueue<TaggedObject *> *queue,
-                                    std::unordered_map<uint64_t, ObjectEncode> *data);
-    uint64_t SerializeTaggedField(JSTaggedType *tagged, CQueue<TaggedObject *> *queue,
-                                  std::unordered_map<uint64_t, ObjectEncode> *data);
+    EncodeBit SerializeObjectHeader(TaggedObject *objectHeader, size_t objectType, CQueue<TaggedObject *> *queue);
+    uint64_t SerializeTaggedField(JSTaggedType *tagged, CQueue<TaggedObject *> *queue);
+    CompressedEncodeBit SerializeCompressedTaggedField(CompressedJSTaggedType *tagged, CQueue<TaggedObject *> *queue);
     void DeserializeField(TaggedObject *objectHeader);
     void DeserializeTaggedField(uint64_t *value, TaggedObject *root);
+    void DeserializeCompressedTaggedField(CompressedJSTaggedType *value, TaggedObject *root);
     void DeserializeNativePointer(uint64_t *value);
     void DeserializeClassWord(TaggedObject *object, MemSpaceType spaceType = MemSpaceType::SPACE_TYPE_LAST);
     void DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
@@ -178,7 +199,10 @@ private:
 
     EncodeBit NativePointerToEncodeBit(void *nativePointer);
     size_t SearchNativeMethodIndex(void *nativePointer);
-    uintptr_t TaggedObjectEncodeBitToAddr(EncodeBit taggedBit);
+    template <ReferenceType refType>
+    uintptr_t TaggedObjectEncodeBitToAddr(EncodeBitType<refType> taggedBit);
+    template <ReferenceType refType>
+    EncodeBitType<refType> DeriveEncodeBit(const CanonicalObjectEncode &entry);
     void WriteSpaceObjectToFile(MonoSpace* space, std::fstream &write);
     void WriteHugeObjectToFile(HugeObjectSpace* space, std::fstream &writer);
     size_t StatisticsSpaceObjectSize(MonoSpace* space);
@@ -386,6 +410,8 @@ private:
     */
     CVector<JSHandle<EcmaString>> deserializeStringVector_;
     std::unordered_map<size_t, uintptr_t> regionIndexMap_;
+    // Canonical source-address -> snapshot allocation entry, shared across both encode-bit widths.
+    std::unordered_map<uint64_t, CanonicalObjectEncode> objectEncodeMap_ {};
     size_t regionIndex_ {0};
     bool isRootObjRelocate_ {false};
     JSTaggedValue root_ {JSTaggedValue::Hole()};

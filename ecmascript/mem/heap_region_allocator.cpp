@@ -156,7 +156,7 @@ void HeapRegionAllocator::DecreaseMemMapUsage(Region *region)
 {
     bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
         !region->InSharedHugeObjectSpace();
-    MemMapAllocator::GetInstance()->DecreaseMemUsage(region->GetCapacity(), isRegular);
+    MemMapAllocator::GetInstance()->DecreaseMemMapTotalSize(region->GetCapacity());
 }
 
 bool HeapRegionAllocator::AllocateRegionShouldPageTag(Space *space) const

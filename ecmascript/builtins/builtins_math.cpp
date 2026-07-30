@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_math.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;

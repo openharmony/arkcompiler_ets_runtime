@@ -17,7 +17,7 @@
 #define ECMASCRIPT_INTERPRETER_FRAME_HANDLER_H
 
 #include "ecmascript/frames.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/visitor.h"

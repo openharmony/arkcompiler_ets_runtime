@@ -17,7 +17,7 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_editor.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript::kungfu {
@@ -142,6 +142,7 @@ MemoryAttribute GateAccessor::GetMemoryAttribute(GateRef gate) const
         case OpCode::FETCH_OR:
         case OpCode::LOAD_WITHOUT_BARRIER:
         case OpCode::LOAD:
+        case OpCode::LOAD_FROM_COMPRESSED:
         case OpCode::LOAD_HCLASS_OPCODE:
         case OpCode::STORE_WITHOUT_BARRIER:
         case OpCode::STORE: {

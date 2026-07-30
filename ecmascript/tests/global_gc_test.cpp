@@ -17,7 +17,7 @@
 
 #include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/shared_heap/global_gc.h"

@@ -23,7 +23,7 @@
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/layout_visitor.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"

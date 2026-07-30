@@ -23,7 +23,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/region.h"
+#include "ecmascript/mem/region-inl.h"
 
 #include "securec.h"
 

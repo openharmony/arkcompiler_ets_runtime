@@ -23,7 +23,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 /*
  * Intra-application cross hap:

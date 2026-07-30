@@ -136,10 +136,32 @@ public:
         memMapVector_.emplace_back(memMap);
     }
 
+    MemMap TryGetHugeMem(size_t size)
+    {
+        LOG_ECMA(INFO) << "Huge pool allocate fail, try to allocate in normal pool " << size;
+        ASSERT(IsAligned(size, REGULAR_MMAP_SIZE));
+        size_t numOfDefautMemMap = size / REGULAR_MMAP_SIZE;
+        LockHolder lock(lock_);
+        std::sort(memMapCache_.begin(), memMapCache_.end());
+        size_t length = memMapCache_.size();
+        for (size_t i = 0, j = i + numOfDefautMemMap - 1; j < length; ++i, ++j) {
+            uintptr_t start = ToUintPtr(memMapCache_[i].GetMem());
+            uintptr_t end = ToUintPtr(memMapCache_[j].GetMem()) + REGULAR_MMAP_SIZE;
+            if (start + size == end) {
+                for (size_t k = 0; k < numOfDefautMemMap; ++k) {
+                    memMapCache_[j - k] = memMapCache_.back();
+                    memMapCache_.pop_back();
+                }
+                return MemMap(ToVoidPtr(start), size);
+            }
+        }
+        return MemMap();
+    }
+
 private:
     static constexpr size_t REGULAR_MMAP_SIZE = DEFAULT_REGION_SIZE;
     Mutex lock_;
-    std::deque<MemMap> memMapCache_;
+    std::vector<MemMap> memMapCache_;
     std::vector<MemMap> regularMapCommitted_;
     std::vector<MemMap> memMapVector_;
 };
@@ -202,6 +224,9 @@ public:
             iterate = freeList_.lower_bound(size);
             // Unable to get memory from freeList, use PageMap
             if (iterate == freeList_.end()) {
+#ifdef USE_COMPRESSED_POINTER
+                return MemMap();
+#else
                 size_t incrementCapacity = std::max(size, INCREMENT_HUGE_OBJECT_CAPACITY);
                 MemMap smemMap = PageMap(incrementCapacity, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
                 LOG_GC(INFO) << "Huge object mem pool increase PageMap size: " << smemMap.GetSize();
@@ -209,6 +234,7 @@ public:
                 freeList_.emplace(smemMap.GetSize(), smemMap);
                 iterate = freeList_.lower_bound(size);
                 ASSERT(iterate != freeList_.end());
+#endif
             }
         }
         MemMap memMap = iterate->second;
@@ -218,13 +244,7 @@ public:
             auto next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(memMap.GetMem()) + size);
             freeList_.emplace(remainderSize, MemMap(next, remainderSize));
         }
-        freeListPoolSize_ += size;
         return MemMap(memMap.GetMem(), size);
-    }
-
-    void DecreaseFreeMemSize(size_t size)
-    {
-        freeListPoolSize_ -= size;
     }
 
     void AddMemToList(MemMap memMap)
@@ -237,7 +257,6 @@ private:
     Mutex lock_;
     std::vector<MemMap> memMaps_;
     std::multimap<size_t, MemMap> freeList_;
-    std::atomic_size_t freeListPoolSize_ {0};
 };
 
 class MemMapAllocator {
@@ -248,14 +267,45 @@ public:
     NO_COPY_SEMANTIC(MemMapAllocator);
     NO_MOVE_SEMANTIC(MemMapAllocator);
 
-    void Initialize(size_t alignment, bool isLargeHeap)
+    void Initialize([[maybe_unused]] size_t alignment, [[maybe_unused]] bool isLargeHeap)
     {
         AdapterSuitablePoolCapacity(isLargeHeap);
         memMapTotalSize_ = 0;
         if (!g_isEnableCMCGC) {
+#ifdef USE_COMPRESSED_POINTER
+            MemMap memMap;
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM && defined(NDEBUG)
+            for (size_t i = 0; i <= MEM_MAP_RETRY_NUM; ++i) {
+                void *addr = reinterpret_cast<void *>(
+                    ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) + i * STEP_INCREASE_MEM_MAP_ADDR);
+                memMap = PageMap(INITIAL_MEM_MAP_POOL_CAPACITY_FOR_COMPRESSED_POINTER, PAGE_PROT_NONE,
+                                 INITIAL_MEM_MAP_POOL_CAPACITY_FOR_COMPRESSED_POINTER, addr);
+                if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
+                    break;
+                } else {
+                    PageUnmap(memMap);
+                    LOG_ECMA(ERROR) << "Huge object mem map big addr fail: " << errno;
+                }
+            }
+#else
+            memMap = PageMap(INITIAL_MEM_MAP_POOL_CAPACITY_FOR_COMPRESSED_POINTER, PAGE_PROT_NONE,
+                             INITIAL_MEM_MAP_POOL_CAPACITY_FOR_COMPRESSED_POINTER);
+#endif
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::HEAP);
+            PageRelease(memMap.GetMem(), memMap.GetSize());
+            uintptr_t addr = reinterpret_cast<uintptr_t>(memMap.GetMem());
+            static constexpr uint64_t mask = 0xFFFFFFFF00000000;
+            TaggedStateWord::BASE_ADDRESS = addr & mask;
+            InitializeHugeRegionMapForCompressedPointer(
+                INITIAL_HUGE_OBJECT_CAPACITY_FOR_COMPRESSED_POINTER, ToVoidPtr(addr));
+            InitializeRegularRegionMapForCompressedPointer(
+                INITIAL_REGULAR_OBJECT_CAPACITY_FOR_COMPRESSED_POINTER,
+                ToVoidPtr(addr + INITIAL_HUGE_OBJECT_CAPACITY_FOR_COMPRESSED_POINTER));
+#else
             InitializeCompressRegionMap(alignment);
             InitializeHugeRegionMap(alignment);
             InitializeRegularRegionMap(alignment);
+#endif
         }
     }
 
@@ -265,7 +315,9 @@ public:
         capacity_ = 0;
         memMapFreeList_.Finalize();
         memMapPool_.Finalize();
+#ifndef USE_COMPRESSED_POINTER
         compressMemMapPool_.Finalize();
+#endif
     }
 
     size_t GetCapacity()
@@ -295,14 +347,6 @@ public:
         ECMA_BYTRACE_COUNT_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
     }
 
-    void DecreaseMemUsage(size_t bytes, bool isRegular)
-    {
-        DecreaseMemMapTotalSize(bytes);
-        if (!isRegular) {
-            memMapFreeList_.DecreaseFreeMemSize(bytes);
-        }
-    }
-
     static MemMapAllocator *GetInstance();
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
@@ -315,10 +359,15 @@ public:
     void AsyncFree(void *mem, size_t size, bool isRegular, bool isCompress, bool shouldPageTag);
 
 private:
+#ifdef USE_COMPRESSED_POINTER
+    void InitializeRegularRegionMapForCompressedPointer(size_t capacity, void *addr);
+    void InitializeHugeRegionMapForCompressedPointer(size_t capacity, void *addr);
+#else
     void InitializeRegularRegionMap(size_t alignment);
     void InitializeHugeRegionMap(size_t alignment);
     void InitializeCompressRegionMap(size_t alignment);
-
+    MemMap AlignMemMapTo4G(const MemMap &memMap, size_t targetSize);
+#endif
     MemMap AllocateFromMemPool(const uint32_t threadId, size_t size, size_t alignment,
                                const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
                                bool shouldPageTag, PageTagType type);
@@ -327,7 +376,6 @@ private:
                                     bool shouldPageTag, PageTagType type);
     void InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
                         bool isMachineCode, bool isEnableJitFort, bool shouldPageTag, PageTagType type);
-    MemMap AlignMemMapTo4G(const MemMap &memMap, size_t targetSize);
     // Random generate big mem map addr to avoid js heap is written by others
     void *RandomGenerateBigAddr(uint64_t addr)
     {
@@ -356,7 +404,9 @@ private:
     void ReleaseMemory(void *mem, size_t size, bool isRegular, bool isCompress);
 
     MemMapPool memMapPool_;
+#ifndef USE_COMPRESSED_POINTER
     MemMapPool compressMemMapPool_;
+#endif
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};
     size_t capacity_ {0};

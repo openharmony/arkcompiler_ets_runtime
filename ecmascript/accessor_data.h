@@ -20,7 +20,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/record.h"

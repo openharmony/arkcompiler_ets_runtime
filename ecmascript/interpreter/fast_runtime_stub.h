@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ecmascript/frames.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_fast_operator.h"
 
 namespace panda::ecmascript {

@@ -22,7 +22,7 @@
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_async_function.h"

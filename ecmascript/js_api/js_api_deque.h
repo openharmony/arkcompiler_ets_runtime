@@ -22,7 +22,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 #include "libpandabase/macros.h"
 

@@ -16,7 +16,7 @@
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 #include "gtest/gtest.h"

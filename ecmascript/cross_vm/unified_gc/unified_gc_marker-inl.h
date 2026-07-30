@@ -74,11 +74,9 @@ void UnifiedGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
 UnifiedGCMarkObjectVisitor::UnifiedGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker)
     : workNodeHolder_(workNodeHolder), marker_(marker) {}
 
-void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                                       VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -100,11 +98,27 @@ void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_
     }
 }
 
-void UnifiedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
+void UnifiedGCMarkObjectVisitor::VisitCompressedObjectRangeImpl([[maybe_unused]] BaseObject *root,
+                                                                CompressedObjectSlot start, CompressedObjectSlot end)
 {
-    JSTaggedValue value(slot.GetTaggedType());
-    if (!value.IsHeapObject() || value.IsWeakForHeapObject()) {
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot);
+    }
+}
+
+template <ReferenceType refType>
+void UnifiedGCMarkObjectVisitor::HandleSlot(ObjectSlotBase<refType> slot)
+{
+    TaggedValueType<refType> value = slot.GetTaggedValue();
+    if (!value.IsHeapObject()) {
         return;
+    }
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
+    } else {
+        if (value.IsWeakForHeapObject()) {
+            return;
+        }
     }
     TaggedObject *object = value.GetTaggedObject();
     Region *objectRegion = Region::ObjectAddressToRange(object);

@@ -19,7 +19,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 

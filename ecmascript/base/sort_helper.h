@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_BASE_SORT_HELPER_H
 #define ECMASCRIPT_BASE_SORT_HELPER_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/global_env.h"

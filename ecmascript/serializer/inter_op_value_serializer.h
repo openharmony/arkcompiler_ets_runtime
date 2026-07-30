@@ -29,8 +29,8 @@ public:
     NO_MOVE_SEMANTIC(InterOpValueSerializer);
 
 private:
-    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
-    bool TrySerializeInterOpObject(TaggedObject *object, bool isWeak);
+    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false, bool isCompressed = false) override;
+    bool TrySerializeInterOpObject(TaggedObject *object, bool isWeak, bool isCompressed);
     void SerializeInterOpObjectImpl(TaggedObject *object, JSObject *xRefObject, bool isWeak);
 };
 }

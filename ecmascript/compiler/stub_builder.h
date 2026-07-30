@@ -74,7 +74,10 @@ using namespace panda::ecmascript;
         EXITENTRY();                                                                                         \
     }
 #define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
-    SUBENTRY_WITH_GLUE(messageId, condition, glue)
+    {                                                                               \
+        SUBENTRY_WITH_GLUE(messageId, condition, glue);                             \
+        EXITENTRY();                                                                \
+    }
 #elif defined(ENABLE_ASM_ASSERT)
 #define ASM_ASSERT(messageId, condition)                                            \
     if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit() &&                  \
@@ -88,7 +91,10 @@ using namespace panda::ecmascript;
         EXITENTRY();                                                                                         \
     }
 #define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
-    SUBENTRY_WITH_GLUE(messageId, condition, glue)
+    {                                                                               \
+        SUBENTRY_WITH_GLUE(messageId, condition, glue);                             \
+        EXITENTRY();                                                                \
+    }
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
 #define ASM_ASSERT_WITH_GLUE(messageId, ...) ((void)0)
@@ -244,6 +250,7 @@ public:
     // memory
     GateRef Load(VariableType type, GateRef glue, GateRef base, GateRef offset,
                  MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef LoadFromCompressedTaggedValue(VariableType type, GateRef glue, GateRef base, GateRef offset);
     GateRef LoadZeroOffset(VariableType type, GateRef glue, GateRef base,
                  MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef LoadPrimitive(VariableType type, GateRef base, GateRef offset);
@@ -692,7 +699,7 @@ public:
     GateRef GetUnsharedConstpoolIndex(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef glue, GateRef array, GateRef index);
-    GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
+    GateRef GetValueFromMutantTaggedArray(GateRef glue, GateRef elements, GateRef index);
     void SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue, GateRef attr,
         GateRef value, Variable *newValue, Label *executeSharedSetProp, Label *exit);
     void SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue, GateRef attr,
@@ -879,6 +886,7 @@ public:
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void VerifyBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
+    void VerifyStoreJSValueForCompressedPointer(GateRef glue, GateRef obj, GateRef offset);
     GateRef GetCMCRegionRSet(GateRef obj);
     GateRef GetCMCRegionType(GateRef obj);
     GateRef GetGCPhase(GateRef glue);
@@ -897,7 +905,9 @@ public:
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
                              MemoryAttribute::ShareFlag share = MemoryAttribute::UNKNOWN);
     GateRef GetValueWithBarrier(GateRef glue, GateRef addr);
+    GateRef GetValueFromCompressedWithBarrier(GateRef glue, GateRef addr);
     GateRef FastReadBarrier(GateRef glue, GateRef addr, GateRef value);
+    GateRef FastReadBarrierForCompressed(GateRef glue, GateRef addr, GateRef temporaryValue);
     GateRef IsHeapAddress(GateRef glue, GateRef value);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
                                ProfileOperation callback, GateRef hir = Circuit::NullGate());
@@ -1035,7 +1045,6 @@ public:
     void NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef receiver);
     GateRef GrowElementsCapacity(GateRef glue, GateRef receiver, GateRef capacity);
 
-    inline GateRef GetObjectFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetConstPoolFromFunction(GateRef glue, GateRef jsFunc);
     GateRef GetSharedConstpoolFromMethod(GateRef glue, GateRef method);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);

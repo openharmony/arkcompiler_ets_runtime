@@ -17,7 +17,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/method.h"

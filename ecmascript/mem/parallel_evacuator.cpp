@@ -384,7 +384,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (actualPromoted) {
             if constexpr (updateHClass) {
                 Region *toRegion = Region::ObjectAddressToRange(address);
-                toRegion->InsertCrossRegionRSet(address);
+                toRegion->InsertCrossRegionRSet<ReferenceType::NORMAL>(address);
             }
             SetObjectFieldRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
@@ -596,8 +596,9 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
 template <bool cmsGC>
 void ParallelEvacuator::UpdateRSet(Region *region)
 {
-    auto cb = [this](void *mem) -> bool {
-        ObjectSlot slot(ToUintPtr(mem));
+    auto cb = [this](void *mem, auto referenceTypeWrapper) -> bool {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
         return UpdateOldToNewObjectSlot<cmsGC>(slot);
     };
 
@@ -607,15 +608,16 @@ void ParallelEvacuator::UpdateRSet(Region *region)
             region->MergeOldToNewRSetForCS();
             region->MergeLocalToShareRSetForCS();
         } else {
-            region->AtomicIterateAllSweepingRSetBits(cb);
+            region->AtomicIterateAllSweepingOldToNewRSetBits(cb);
         }
     }
     region->IterateAllOldToNewBits(cb);
     if (heap_->IsYoungMark()) {
         return;
     }
-    region->IterateAllCrossRegionBits([this](void *mem) {
-        ObjectSlot slot(ToUintPtr(mem));
+    region->IterateAllCrossRegionBits([this](void *mem, auto referenceTypeWrapper) {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
         UpdateCrossRegionObjectSlot(slot);
     });
     region->DeleteCrossRegionRSet();
@@ -690,10 +692,8 @@ ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>::
 
 template <TriggerGCType gcType, bool needUpdateLocalToShare>
 void ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>::VisitObjectRangeImpl(
-    BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
+    BaseObject *rootObject, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         auto root = TaggedObject::Cast(rootObject);
         JSThread *thread = evacuator_->heap_->GetJSThread();
@@ -714,6 +714,15 @@ void ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToSha
         return;
     }
     for (ObjectSlot slot = start; slot < end; slot++) {
+        evacuator_->UpdateNewObjectSlot<gcType, needUpdateLocalToShare>(slot);
+    }
+}
+
+template <TriggerGCType gcType, bool needUpdateLocalToShare>
+void ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>::VisitCompressedObjectRangeImpl(
+    BaseObject *rootObject, CompressedObjectSlot start, CompressedObjectSlot end)
+{
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
         evacuator_->UpdateNewObjectSlot<gcType, needUpdateLocalToShare>(slot);
     }
 }
@@ -743,13 +752,20 @@ ParallelEvacuator::UpdateNonMovableObjectFieldVisitor::UpdateNonMovableObjectFie
 }
 
 void ParallelEvacuator::UpdateNonMovableObjectFieldVisitor::VisitObjectRangeImpl(
-    BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
+    BaseObject *rootObject, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     ASSERT(area != VisitObjectArea::IN_OBJECT);
     Region *rootRegion = Region::ObjectAddressToRange(rootObject);
     for (ObjectSlot slot = start; slot < end; slot++) {
+        evacuator_->UpdateNonMovableObjectSlot(rootRegion, slot);
+    }
+}
+
+void ParallelEvacuator::UpdateNonMovableObjectFieldVisitor::VisitCompressedObjectRangeImpl(
+    BaseObject *rootObject, CompressedObjectSlot start, CompressedObjectSlot end)
+{
+    Region *rootRegion = Region::ObjectAddressToRange(rootObject);
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
         evacuator_->UpdateNonMovableObjectSlot(rootRegion, slot);
     }
 }

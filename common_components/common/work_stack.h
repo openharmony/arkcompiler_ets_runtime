@@ -133,7 +133,7 @@ private:
     static constexpr bool HAS_PUSH_TO_GLOBAL_NOTIFY = !std::is_same_v<DummyNoPushToGlobalNotify, PushToGlobalNotify>;
 public:
     template <typename U = PushToGlobalNotify,
-              typename = std::enable_if<!std::is_same_v<DummyNoPushToGlobalNotify, U>>>
+              typename = std::enable_if_t<!std::is_same_v<DummyNoPushToGlobalNotify, U>>>
     LocalStackImpl(GlobalStack *globalStack, PushToGlobalNotify *pushToGlobalNotify)
         : LocalStackBaseWithNotify<PushToGlobalNotify>(pushToGlobalNotify), globalStack_(globalStack)
     {
@@ -142,7 +142,7 @@ public:
     }
 
     template <typename U = PushToGlobalNotify,
-              typename = std::enable_if<std::is_same_v<DummyNoPushToGlobalNotify, U>>>
+              typename = std::enable_if_t<std::is_same_v<DummyNoPushToGlobalNotify, U>>>
     explicit LocalStackImpl(GlobalStack *globalStack) : globalStack_(globalStack)
     {
         inStack_ = new InternalStack();

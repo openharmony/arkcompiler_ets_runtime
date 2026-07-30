@@ -17,7 +17,7 @@
 #define ECMASCRIPT_MODULE_JS_DYNAMIC_IMPORT_H
 
 #include "ecmascript/builtins/builtins_promise_job.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {

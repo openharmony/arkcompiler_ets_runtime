@@ -17,7 +17,7 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_FUNCTION_H
 
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 #define BUILTIN_FUNCTION_PROTOTYPE_FUNCTIONS(V)                                     \
     /* Function.prototype.apply ( thisArg, argArray ) */                            \

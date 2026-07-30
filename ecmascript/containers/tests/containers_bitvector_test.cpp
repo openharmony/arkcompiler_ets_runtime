@@ -21,7 +21,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"

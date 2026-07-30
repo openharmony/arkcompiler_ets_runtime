@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #include "ecmascript/compiler/assembler/x64/extended_assembler_x64.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::x64 {
 

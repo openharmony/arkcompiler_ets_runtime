@@ -399,6 +399,13 @@ config("ark_jsruntime_public_config") {
     defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
     configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
   }
+  print("######### ets_runtime public enable compressed pointer = ${ets_runtime_enable_compressed_pointer} #########")
+  if (ets_runtime_enable_compressed_pointer) {
+    defines += [ "USE_COMPRESSED_POINTER" ]
+  }
+  if (is_debug) {
+    defines += [ "STORE_CHECK_FOR_COMPRESSED_POINTER" ]
+  }
 }
 
 intl_sources = []
@@ -521,6 +528,14 @@ config("ark_jsruntime_common_config") {
     }
   } else {
     defines += [ "USE_STICKY_CMS_GC=0" ]
+  }
+
+  print("############ ets_runtime enable compressed pointer = ${ets_runtime_enable_compressed_pointer} #############")
+  if (ets_runtime_enable_compressed_pointer) {
+    defines += [ "USE_COMPRESSED_POINTER" ]
+  }
+  if (is_debug) {
+    defines += [ "STORE_CHECK_FOR_COMPRESSED_POINTER" ]
   }
 
   if (ark_standalone_build) {
@@ -1170,7 +1185,7 @@ ecma_source = [
   "ecmascript/mem/mem_controller.cpp",
   "ecmascript/mem/shared_mem_controller.cpp",
   "ecmascript/mem/mem_controller_utils.cpp",
-  "ecmascript/mem/mem_map_allocator.cpp",
+  "ecmascript/mem/common_mem_map_allocator.cpp",
   "ecmascript/mem/native_area_allocator.cpp",
   "ecmascript/mem/parallel_evacuator.cpp",
   "ecmascript/mem/parallel_marker.cpp",
@@ -1285,6 +1300,12 @@ ecma_source = [
   "ecmascript/require/js_cjs_module.cpp",
   "ecmascript/require/js_require_manager.cpp",
 ]
+
+if (ets_runtime_enable_compressed_pointer) {
+  ecma_source += [ "ecmascript/mem/compressed_mem_map_allocator.cpp" ]
+} else {
+  ecma_source += [ "ecmascript/mem/normal_mem_map_allocator.cpp" ]
+}
 
 if (is_arkui_x && ark_compile_mode == "release") {
     ecma_source -= [

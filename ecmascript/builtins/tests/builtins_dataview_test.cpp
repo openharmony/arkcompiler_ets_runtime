@@ -23,7 +23,7 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

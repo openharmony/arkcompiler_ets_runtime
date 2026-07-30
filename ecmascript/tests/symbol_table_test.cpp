@@ -17,7 +17,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tests/test_helper.h"
 

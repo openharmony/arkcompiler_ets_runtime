@@ -100,6 +100,8 @@ declare_args() {
   enable_cms_gc = false
 
   enable_sticky_cms_gc = false
+
+  ets_runtime_enable_compressed_pointer = false
 }
 
 if (defined(enable_cmc_gc)) {

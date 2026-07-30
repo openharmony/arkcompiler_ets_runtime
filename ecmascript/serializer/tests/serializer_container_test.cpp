@@ -29,7 +29,7 @@
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/containers/tests/containers_test_helper.h"
 
 #include "ecmascript/containers/containers_arraylist.h"

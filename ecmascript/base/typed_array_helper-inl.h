@@ -30,8 +30,8 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::base {

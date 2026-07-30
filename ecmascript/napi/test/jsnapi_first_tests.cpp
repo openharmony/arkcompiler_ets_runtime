@@ -39,7 +39,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"

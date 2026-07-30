@@ -15,7 +15,7 @@
 
 #include "ecmascript/builtins/builtins_finalization_registry.h"
 #include "ecmascript/js_finalization_registry.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/linked_hash_table.h"
 
 namespace panda::ecmascript::builtins {

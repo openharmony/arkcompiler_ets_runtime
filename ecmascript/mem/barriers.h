@@ -17,7 +17,7 @@
 #define ECMASCRIPT_MEM_BARRIERS_H
 
 #include "ecmascript/common.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
 #include "base_runtime.h"
@@ -67,6 +67,9 @@ public:
                                              bool writeBarrierCheck = false);
     static void PUBLIC_API CheckValueForCMS(const JSThread *thread, JSTaggedValue value);
 
+    template<bool needWriteBarrier = true>
+    static void SetCompressedObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
+
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
     //
@@ -93,12 +96,19 @@ public:
     }
 
     static JSTaggedType ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress, JSTaggedValue value);
+    static TemporaryJSTaggedValue ReadBarrierForCompressedForObject(const JSThread *thread, uintptr_t slotAddress,
+                                                                    TemporaryJSTaggedValue temporaryValue);
     static JSTaggedType ReadBarrierForStringTableSlot(JSTaggedType value, const JSThread *thread);
 
     static TaggedObject* GetTaggedObject(const JSThread *thread, const void* obj, size_t offset);
     static JSTaggedType GetTaggedValue(const JSThread *thread, const void *obj, size_t offset);
     static JSTaggedType GetTaggedValue(const JSThread *thread, uintptr_t slotAddress);
     static JSTaggedType GetTaggedValueAtomic(const JSThread *thread, const void *obj, size_t offset);
+    // obj must be a header of a JS Object
+    static TemporaryJSTaggedValue GetFromCompressedTaggedValue(const JSThread *thread,
+                                                               JSTaggedValue obj, size_t offset);
+    static TemporaryJSTaggedValue GetFromCompressedTaggedValue(const JSThread *thread,
+                                                               uintptr_t slotAddress);
     static JSTaggedType UpdateSlot(const JSThread *thread, void *obj, size_t offset);
     static JSTaggedType UpdateSlot(const JSThread *thread, uintptr_t slotAddress);
 
@@ -114,10 +124,16 @@ public:
     template <RBMode mode>
     static JSTaggedType GetTaggedValueAtomic(const JSThread *thread, const void *obj, size_t offset);
 
+    template <RBMode mode>
+    static TemporaryJSTaggedValue GetFromCompressedTaggedValue(const JSThread *thread, JSTaggedValue obj,
+                                                               size_t offset);
+
+    template <ReferenceType refType>
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                   TaggedObject *value, Region *valueRegion,
                                   WriteBarrierType writeType = WriteBarrierType::NORMAL);
 
+    template <ReferenceType refType>
     static void PUBLIC_API UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                         TaggedObject *value, Region *valueRegion);
     static void PUBLIC_API CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);

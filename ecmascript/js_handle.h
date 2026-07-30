@@ -19,7 +19,7 @@
 #include <type_traits>
 
 #include "ecmascript/ecma_handle_scope.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/barriers.h"
 #include "objects/readonly_handle.h"

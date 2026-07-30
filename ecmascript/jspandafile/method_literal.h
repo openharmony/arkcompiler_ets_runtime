@@ -21,7 +21,7 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/js_function_kind.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "file.h"
 

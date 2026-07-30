@@ -17,7 +17,7 @@
 #define ECMASCRIPT_IC_IC_HANDLER_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/object_operator.h"

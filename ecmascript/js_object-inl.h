@@ -21,7 +21,7 @@
 #include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tagged_array-inl.h"

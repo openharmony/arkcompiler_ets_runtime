@@ -29,7 +29,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/tests/test_helper.h"
 namespace panda::test {

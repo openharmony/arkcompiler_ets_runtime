@@ -54,11 +54,9 @@ void CCMarkRootVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-void CCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
+void CCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start, ObjectSlot end,
                                                VisitObjectArea area)
 {
-    ObjectSlot startSlot(start);
-    ObjectSlot endSlot(end);
     auto root = TaggedObject::Cast(rootObject);
     ASSERT(!Region::ObjectAddressToRange(rootObject)->InSharedHeap());
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
@@ -66,10 +64,10 @@ void CCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_NO_RB>(nullptr).GetTaggedObject());
-        ObjectSlot realEnd(start);
+        ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
-        endSlot = endSlot > realEnd ? realEnd : endSlot;
-        for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+        end = end > realEnd ? realEnd : end;
+        for (ObjectSlot slot = start; slot < end; slot++) {
             PropertyAttributes attr = layout->GetAttr<RBMode::FAST_NO_RB>(nullptr, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot);
@@ -77,7 +75,17 @@ void CCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t
         }
         return;
     }
-    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot);
+    }
+}
+
+void CCMarkObjectVisitor::VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                                         CompressedObjectSlot end)
+{
+    auto root = TaggedObject::Cast(rootObject);
+    ASSERT(!Region::ObjectAddressToRange(rootObject)->InSharedHeap());
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
         HandleSlot(slot);
     }
 }
@@ -102,17 +110,24 @@ void CCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *roo
     }
 }
 
-void CCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
+template <ReferenceType refType>
+void CCMarkObjectVisitor::HandleSlot(ObjectSlotBase<refType> slot)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }
-    if (!value.IsWeakForHeapObject()) {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         TaggedObject *object = value.GetTaggedObject();
         HandleObject(object);
     } else {
-        RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        if (!value.IsWeakForHeapObject()) {
+            TaggedObject *object = value.GetTaggedObject();
+            HandleObject(object);
+        } else {
+            RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        }
     }
 }
 

@@ -18,7 +18,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
 #if ECMASCRIPT_ENABLE_CAST_CHECK
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #endif
 
 namespace panda::ecmascript {

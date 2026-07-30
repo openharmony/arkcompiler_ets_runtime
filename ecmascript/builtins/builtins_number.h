@@ -17,7 +17,7 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_NUMBER_H
 
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 // List of constants in Number, excluding '@@' internal properties.
 #define BUILTIN_NUMBER_CONSTANTS(V)                             \

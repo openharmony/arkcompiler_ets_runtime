@@ -17,7 +17,7 @@
 #define ECMASCRIPT_MODULE_JS_MODULE_DEREGISTER_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {

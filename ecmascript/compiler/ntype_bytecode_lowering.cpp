@@ -162,10 +162,10 @@ void NTypeBytecodeLowering::LowerLdLexVar(GateRef gate)
     indexValue += LexicalEnv::RESERVED_ENV_LENGTH;
     GateRef result = Circuit::NullGate();
     if (levelValue == 0) {
-        result = builder_.LoadFromTaggedArray(currentEnv, indexValue);
+        result = builder_.LoadFromTaggedArray(glue_, currentEnv, indexValue);
     } else if (levelValue == 1) { // 1: level 1
-        auto parentEnv = builder_.LoadFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
-        result = builder_.LoadFromTaggedArray(parentEnv, indexValue);
+        auto parentEnv = builder_.LoadFromTaggedArray(glue_, currentEnv, LexicalEnv::PARENT_ENV_INDEX);
+        result = builder_.LoadFromTaggedArray(glue_, parentEnv, indexValue);
     } else {
         // level > 1, go slowpath
         return;
@@ -186,10 +186,10 @@ void NTypeBytecodeLowering::LowerStLexVar(GateRef gate)
     indexValue += LexicalEnv::RESERVED_ENV_LENGTH;
     GateRef result = Circuit::NullGate();
     if (levelValue == 0) {
-        result = builder_.StoreToTaggedArray(currentEnv, indexValue, value);
+        result = builder_.StoreToTaggedArray(glue_, currentEnv, indexValue, value);
     } else if (levelValue == 1) { // 1: level 1
-        auto parentEnv = builder_.LoadFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
-        result = builder_.StoreToTaggedArray(parentEnv, indexValue, value);
+        auto parentEnv = builder_.LoadFromTaggedArray(glue_, currentEnv, LexicalEnv::PARENT_ENV_INDEX);
+        result = builder_.StoreToTaggedArray(glue_, parentEnv, indexValue, value);
     } else {
         // level > 1, go slowpath
         return;

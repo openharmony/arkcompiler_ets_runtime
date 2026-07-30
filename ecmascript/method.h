@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/deopt_type.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/visitor.h"

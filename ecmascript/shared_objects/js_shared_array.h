@@ -18,7 +18,7 @@
 
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {

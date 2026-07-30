@@ -43,7 +43,7 @@ public:
     static inline void IteratorRange(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end, VisitObjectArea area)
     {
-        visitor(root, ToUintPtr(root) + start, ToUintPtr(root) + end, area);
+        visitor(root, ObjectSlot(ToUintPtr(root) + start), ObjectSlot(ToUintPtr(root) + end), area);
     }
 };
 }  // namespace panda::ecmascript

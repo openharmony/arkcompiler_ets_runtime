@@ -19,7 +19,7 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #if ECMASCRIPT_ENABLE_CAST_CHECK
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #endif
 
 namespace panda::ecmascript {

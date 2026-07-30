@@ -17,7 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_HEAP_REF_H
 
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 

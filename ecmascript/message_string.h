@@ -19,7 +19,11 @@
 #include <string>
 #include "common_components/base/c_string.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
-#include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature_list.h"
+#include "ecmascript/compiler/baseline/baseline_stub_csigns.h"
+#include "ecmascript/compiler/rt_call_signature.h"
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -100,7 +104,13 @@ namespace panda::ecmascript {
     V(LexicalEnvIsInvalid, "LexicalEnv of native JSFunction is invalid, it should be GlobalEnv or Undefined")  \
     V(CurrentEnvIsInvalid, "CurrentEnv is invalid, it should be GlobalEnv, LexicalEnv or SFunctionEnv")        \
     V(AccessCompositeClassField, "this field of CompositeClass is unavailable")                                \
-    V(HClassAddressIsInvalid, "HClass address is invalid")
+    V(HClassAddressIsInvalid, "HClass address is invalid")                                                     \
+    V(ArrayCopyConstantPool, "constant pool do not support array copy, line:%d")                               \
+    V(UseConstPoolInTaggedArrayGet, "const pool do not use tagged array get, line:%d")                         \
+    V(StoreValueToConstPool, "const pool do not support store value in asm, line:%d")                          \
+    V(GetObjectFromConstPoolCacheOutOfBounds, "index of cache element in const pool out of bounds, line:%d")   \
+    V(ConvertNonTemporaryHeapObjectAsHeapObject, "convert a non object temporay tagged as object, line:%d")    \
+    V(ThisBranchOnlySupportInCompressedPointer, "ThisBranchOnlySupportInCompressedPointer")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

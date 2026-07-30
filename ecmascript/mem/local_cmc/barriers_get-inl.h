@@ -16,12 +16,14 @@
 #ifndef ECMASCRIPT_MEM_LOCAL_CMC_BARRIERS_GET_INL_H
 #define ECMASCRIPT_MEM_LOCAL_CMC_BARRIERS_GET_INL_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/barriers.h"
 
 namespace panda::ecmascript {
 PUBLIC_API JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress, JSTaggedValue value);
+PUBLIC_API TemporaryJSTaggedValue ReadBarrierForCompressedImpl(const JSThread *thread, uintptr_t slotAddress,
+    TemporaryJSTaggedValue temporaryValue);
 PUBLIC_API JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value, const JSThread *thread);
 static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset,
                                            const JSTaggedValue &value)
@@ -36,12 +38,34 @@ static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *o
     return value.GetRawData();
 }
 
+static ARK_INLINE TemporaryJSTaggedValue ReadBarrierForCompressed(const JSThread *thread,
+    JSTaggedValue obj, size_t offset, TemporaryJSTaggedValue temporaryValue)
+{
+    // If sticky CMS-GC is enabled, hclass value with object state may not be regareded as heap object and
+    // will skip ReadBarrierImpl. This is fine because hclass must be allocated in non-movable space which
+    // does not participate in concurrent copying, therefore ReadBarrierImpl is not required. Moreover,
+    // ReadBarrier should only be called by js thread and loading hclass value should use specific getter.
+    if (temporaryValue.IsHeapObject()) {
+        return ReadBarrierForCompressedImpl(thread, ToUintPtr(obj.GetTaggedObject()) + offset, temporaryValue);
+    }
+    return temporaryValue;
+}
+
 static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, uintptr_t slotAddress, const JSTaggedValue &value)
 {
     if (value.IsHeapObject()) {
         return ReadBarrierImpl(thread, slotAddress, value);
     }
     return value.GetRawData();
+}
+
+static ARK_INLINE TemporaryJSTaggedValue ReadBarrierForCompressed(const JSThread *thread, uintptr_t slotAddress,
+    TemporaryJSTaggedValue temporaryValue)
+{
+    if (temporaryValue.IsHeapObject()) {
+        return ReadBarrierForCompressedImpl(thread, slotAddress, temporaryValue);
+    }
+    return temporaryValue;
 }
 
 static ARK_INLINE JSTaggedType AtomicReadBarrier(const JSThread *thread, const void *obj, size_t offset,
@@ -57,6 +81,12 @@ inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *th
                                                                JSTaggedValue value)
 {
     return ReadBarrierImpl(thread, slotAddress, value);
+}
+
+inline ARK_INLINE TemporaryJSTaggedValue Barriers::ReadBarrierForCompressedForObject(const JSThread *thread,
+    uintptr_t slotAddress, TemporaryJSTaggedValue temporaryValue)
+{
+    return ReadBarrierForCompressedImpl(thread, slotAddress, temporaryValue);
 }
 
 inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForStringTableSlot(JSTaggedType value, const JSThread *thread)
@@ -79,6 +109,19 @@ inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, 
     return value.GetRawData();
 }
 
+inline ARK_INLINE TemporaryJSTaggedValue Barriers::GetFromCompressedTaggedValue(
+    const JSThread *thread, JSTaggedValue obj, size_t offset)
+{
+    TemporaryJSTaggedValue temporaryValue =
+        CompressedJSTaggedValue(*reinterpret_cast<CompressedJSTaggedType *>(ToUintPtr(obj.GetTaggedObject()) + offset))
+        .Decompress(obj);
+    ASSERT(thread != nullptr);
+    if (UNLIKELY(thread->NeedReadBarrier())) {
+        return ReadBarrierForCompressed(thread, obj, offset, temporaryValue);
+    }
+    return temporaryValue;
+}
+
 inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, uintptr_t slotAddress)
 {
     JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
@@ -92,6 +135,18 @@ inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, 
         return ReadBarrier(thread, slotAddress, value);
     }
     return value.GetRawData();
+}
+
+inline ARK_INLINE TemporaryJSTaggedValue Barriers::GetFromCompressedTaggedValue(
+    const JSThread *thread, uintptr_t slotAddress)
+{
+    TemporaryJSTaggedValue temporaryValue =
+        CompressedJSTaggedValue(*reinterpret_cast<CompressedJSTaggedType *>(slotAddress)).Decompress(slotAddress);
+    ASSERT(thread != nullptr);
+    if (UNLIKELY(thread->NeedReadBarrier())) {
+        return ReadBarrierForCompressed(thread, slotAddress, temporaryValue);
+    }
+    return temporaryValue;
 }
 
 inline ARK_INLINE JSTaggedType Barriers::GetTaggedValueAtomic(const JSThread *thread, const void *obj, size_t offset)
@@ -129,6 +184,25 @@ inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, 
     }
 
     return value.GetRawData();
+}
+
+template <RBMode mode>
+inline ARK_INLINE TemporaryJSTaggedValue Barriers::GetFromCompressedTaggedValue(
+    const JSThread *thread, JSTaggedValue obj, size_t offset)
+{
+    TemporaryJSTaggedValue temporaryValue =
+        CompressedJSTaggedValue(*reinterpret_cast<CompressedJSTaggedType *>(ToUintPtr(obj.GetTaggedObject()) + offset))
+        .Decompress(obj);
+    if constexpr (mode == RBMode::DEFAULT_RB) {
+        ASSERT(thread != nullptr);
+        if (UNLIKELY(thread->NeedReadBarrier())) {
+            return ReadBarrierForCompressed(thread, obj, offset, temporaryValue);
+        }
+    } else if constexpr (mode == RBMode::FAST_CMC_RB) {
+        return ReadBarrierForCompressed(thread, obj, offset, temporaryValue);
+    }
+
+    return temporaryValue;
 }
 
 template <RBMode mode>

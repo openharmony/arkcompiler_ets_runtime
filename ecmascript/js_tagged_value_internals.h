@@ -21,6 +21,15 @@
 namespace panda::ecmascript {
 
 using JSTaggedType = uint64_t;
+#ifdef USE_COMPRESSED_POINTER
+using CompressedJSTaggedType = uint32_t;
+#else
+using CompressedJSTaggedType = JSTaggedType;
+#endif
+
+static_assert(std::is_unsigned<JSTaggedType>::value);
+static_assert(std::is_unsigned<CompressedJSTaggedType>::value);
+static_assert(sizeof(JSTaggedType) >= sizeof(CompressedJSTaggedType));
 
 //  Every double with all of its exponent bits set and its highest mantissa bit set is a quiet NaN.
 //  That leaves 51 bits unaccounted for. We’ll avoid one of those so that we don’t step on Intel’s
@@ -92,5 +101,20 @@ public:
     // Tagged -0.0 = IEEE754 representation of -0.0 + offset
     static constexpr JSTaggedType VALUE_NEGATIVE_ZERO = 0x8000'0000'0000'0000uLL + DOUBLE_ENCODE_OFFSET;
 };
+
+#ifdef USE_COMPRESSED_POINTER
+// Simple compressed TaggedValue, only support `Hole` and `Object` for ConstantPool
+class CompressedJSTaggedValueInternals {
+public:
+    // special tag
+    static constexpr CompressedJSTaggedType TAG_COMPRESSED_SPECIAL = 0x02ULL;
+    static constexpr CompressedJSTaggedType TAG_COMPRESSED_BOOLEAN = 0x04ULL;
+    // tag mask
+    static constexpr CompressedJSTaggedType TAG_COMPRESSED_HEAPOBJECT_MASK =
+        TAG_COMPRESSED_SPECIAL | TAG_COMPRESSED_BOOLEAN;
+    // special value
+    static constexpr CompressedJSTaggedType COMPRESSED_VALUE_HOLE = 0x05ULL;
+};
+#endif
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_JS_TAGGED_VALUE_INTERNALS_H

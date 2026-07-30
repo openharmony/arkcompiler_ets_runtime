@@ -29,7 +29,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"

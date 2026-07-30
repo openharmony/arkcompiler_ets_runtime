@@ -21,7 +21,7 @@
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_tagged_value_internals.h"
 
 namespace panda::ecmascript::kungfu {

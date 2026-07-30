@@ -22,7 +22,7 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_symbol.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/snapshot/mem/snapshot.h"

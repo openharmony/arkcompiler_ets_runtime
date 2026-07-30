@@ -20,7 +20,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/method.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"

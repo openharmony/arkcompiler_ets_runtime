@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_MODULE_MODULE_RESOLVER_H
 #define ECMASCRIPT_MODULE_MODULE_RESOLVER_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 

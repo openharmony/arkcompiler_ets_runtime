@@ -17,7 +17,7 @@
 
 #include "ecmascript/js_handle.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/transitions_dictionary.h"
 

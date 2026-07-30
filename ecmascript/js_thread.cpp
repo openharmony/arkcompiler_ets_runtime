@@ -29,7 +29,7 @@
 #include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/runtime_call_id.h"

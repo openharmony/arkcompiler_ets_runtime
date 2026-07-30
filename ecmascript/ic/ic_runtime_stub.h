@@ -17,7 +17,7 @@
 #define ECMASCRIPT_IC_IC_RUNTIME_STUB_H
 
 #include "ecmascript/ic/profile_type_info.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {

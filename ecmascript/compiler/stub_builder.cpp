@@ -2139,6 +2139,29 @@ void StubBuilder::VerifyBarrier(GateRef glue, GateRef obj, [[maybe_unused]] Gate
     env->SubCfgExit();
 }
 
+void StubBuilder::VerifyStoreJSValueForCompressedPointer(GateRef glue, GateRef obj, GateRef offset)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label check(env);
+    Label fatal(env);
+    Label exit(env);
+    BRANCH(IntPtrEqual(offset, IntPtr(0)), &exit, &check);  // skip check if offset is 0, maybe is hclass
+    Bind(&check);
+    {
+        int msgId = GET_MESSAGE_STRING_ID(StoreValueToConstPool);
+        BRANCH(env_->GetBuilder()->IsConstantPool(glue, obj), &fatal, &exit);
+        Bind(&fatal);
+        {
+            FatalPrint(glue, {Int32(msgId), Int32(__LINE__)});
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 GateRef StubBuilder::GetCMCRegionRSet(GateRef obj)
 {
     GateRef metaDataAddr = IntPtrAnd(TaggedCastToIntPtr(obj),
@@ -2700,6 +2723,46 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
     return ret;
 }
 
+GateRef StubBuilder::GetValueFromCompressedWithBarrier(GateRef glue, [[maybe_unused]] GateRef addr)
+{
+#ifdef USE_COMPRESSED_POINTER
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label notHeapObject(env);
+    Label isHeapObject(env);
+    Label exit(env);
+
+    GateRef lowBit = ZExtInt32ToInt64(LoadZeroOffsetPrimitive(VariableType::INT32(), addr));
+    GateRef highBit = Int64And(ChangeTaggedPointerToInt64(addr),
+                               Int64(CompressedJSTaggedValue::COMPRESSED_HIGH_BIT_MASK));
+    GateRef resultRaw = Int64Or(lowBit, highBit);
+    GateRef temporaryValue = Int64ToTaggedPtr(resultRaw);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), env->GetBuilder()->TemporaryHole());
+
+    BRANCH(env->GetBuilder()->TemporaryTaggedIsHeapObject(temporaryValue), &isHeapObject, &notHeapObject);
+    Bind(&notHeapObject);
+    {
+        result = temporaryValue;
+        Jump(&exit);
+    }
+    Bind(&isHeapObject);
+    {
+        result = FastReadBarrierForCompressed(glue, addr, temporaryValue);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+#else
+    FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchOnlySupportInCompressedPointer)) });
+    return Hole();
+#endif
+}
+
 #ifdef USE_CMC_GC
 GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
 {
@@ -2781,6 +2844,51 @@ GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef StubBuilder::FastReadBarrierForCompressed(GateRef glue, GateRef addr, GateRef temporaryValue)
+{
+#ifdef USE_COMPRESSED_POINTER
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    GateRef value = env->GetBuilder()->ConvertTemporaryTaggedObjectToTaggedValue(glue, temporaryValue);
+    DEFVARIABLE(result, VariableType::JS_ANY(), temporaryValue);
+
+    Label isFromObj(env);
+    GateRef valueRegion = ObjectAddressToRange(value);
+    BRANCH_UNLIKELY(InFromSpace(valueRegion), &isFromObj, &exit);
+    Bind(&isFromObj);
+    {
+        GateRef intValue = ChangeTaggedPointerToInt64(value);
+        GateRef weakMask = Int64And(intValue, Int64(JSTaggedValue::TAG_WEAK));
+        GateRef obj = Int64And(intValue, Int64(~JSTaggedValue::TAG_WEAK));
+        GateRef forwardedAddr = LoadPrimitive(VariableType::INT64(), obj, IntPtr(0));
+        GateRef forwardState = Int64And(forwardedAddr, Int64(MarkWord::TAG_MARK_BIT));
+        Label forwarded(env);
+        Label notForwarded(env);
+        Branch(Int64Equal(forwardState, Int64(MarkWord::TAG_MARK_BIT)),
+            &forwarded, &notForwarded);
+        Bind(&forwarded);
+        {
+            result = Int64ToTaggedPtr(Int64Or(Int64And(forwardedAddr, Int64(~MarkWord::TAG_MARK_BIT)), weakMask));
+            Jump(&exit);
+        }
+        Bind(&notForwarded);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrierForCompressed), { glue, addr, temporaryValue });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+#else
+    FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchOnlySupportInCompressedPointer)) });
+    return Hole();
+#endif
 }
 #endif
 
@@ -11624,7 +11732,7 @@ GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef glue, GateRef receiv
         Jump(&isMutantTaggedArray);
     }
     Bind(&isMutantTaggedArray);
-    GateRef rawValue = GetValueFromMutantTaggedArray(elements, index);
+    GateRef rawValue = GetValueFromMutantTaggedArray(glue, elements, index);
     Label isSpecialHole(env);
     Label isNotSpecialHole(env);
     BRANCH(Int64Equal(rawValue, SpecialHole()), &isSpecialHole, &isNotSpecialHole);
@@ -12098,7 +12206,7 @@ GateRef StubBuilder::MigrateFromRawValueToHeapValues(GateRef glue, GateRef objec
         {
             Label rawValueIsInt(env);
             Label rawValueIsNumber(env);
-            GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+            GateRef value = GetValueFromMutantTaggedArray(glue, elements, *index);
             BRANCH(ValueIsSpecialHole(value), &storeHole, &storeNormalValue);
             Bind(&storeHole);
             {
@@ -12261,7 +12369,7 @@ void StubBuilder::MigrateFromHoleIntToHoleNumber(GateRef glue, GateRef object)
         BRANCH(Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         Bind(&storeValue);
         {
-            GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+            GateRef value = GetValueFromMutantTaggedArray(glue, elements, *index);
             BRANCH(ValueIsSpecialHole(value), &finishStore, &storeNormalValue);
             Bind(&storeNormalValue);
             {
@@ -12310,7 +12418,7 @@ void StubBuilder::MigrateFromHoleNumberToHoleInt(GateRef glue, GateRef object)
         BRANCH(Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         Bind(&storeValue);
         {
-            GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+            GateRef value = GetValueFromMutantTaggedArray(glue, elements, *index);
             BRANCH(ValueIsSpecialHole(value), &finishStore, &storeNormalValue);
             Bind(&storeNormalValue);
             {
@@ -12375,7 +12483,7 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     env->SubCfgEntry(&subentry);
     Label exit(env);
     DEFVARIABLE(ihc, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(val, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(aotLiteralInfo, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label isHeapObject(env);
@@ -12388,49 +12496,57 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     BRANCH(TaggedIsHole(unsharedConstpool), &afterAOTLiteral, &tryGetAOTIhc);
     Bind(&tryGetAOTIhc);
     {
-        val = GetValueFromTaggedArray(glue, unsharedConstpool, index);
-        BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
+        // `temporaryCacheValue` may be a fake JSTaggedValue, see `TemporaryJSTaggedValue`,
+        // DO NOT direct use `temporaryCacheValue` further more without convertion
+        GateRef temporaryCacheValue = env->GetBuilder()->GetObjectFromConstPoolCacheUnsafe(glue, 
+            unsharedConstpool, index);
+        BRANCH(env->GetBuilder()->TemporaryTaggedIsHeapObject(temporaryCacheValue), &isHeapObject, &afterAOTLiteral);
         {
             Bind(&isHeapObject);
+            GateRef cacheValue = env->GetBuilder()->ConvertTemporaryTaggedObjectToTaggedValue(glue,
+                temporaryCacheValue);
             Label isAOTLiteral(env);
-            BRANCH(IsAOTLiteralInfo(glue, *val), &isAOTLiteral, &afterAOTLiteral);
+            BRANCH(IsAOTLiteralInfo(glue, cacheValue), &isAOTLiteral, &afterAOTLiteral);
             {
                 Bind(&isAOTLiteral);
                 {
-                    ihc = GetIhcFromAOTLiteralInfo(glue, *val);
+                    aotLiteralInfo = cacheValue;
+                    ihc = GetIhcFromAOTLiteralInfo(glue, *aotLiteralInfo);
                     Jump(&afterAOTLiteral);
                 }
             }
         }
     }
     Bind(&afterAOTLiteral);
-    GateRef method = GetMethodFromConstPool(glue, constpool, index);
-    Label isSendableFunc(env);
-    Label isNotSendableFunc(env);
-    Label afterDealWithCompiledStatus(env);
-    BRANCH(IsSendableFunction(method), &isSendableFunc, &isNotSendableFunc);
-    Bind(&isSendableFunc);
     {
-        GateRef globalEnv = GetCurrentGlobalEnv();
-        NewObjectStubBuilder newBuilder(this, globalEnv);
-        result = newBuilder.NewJSSendableFunction(glue, method, targetKind);
-        Jump(&afterDealWithCompiledStatus);
-    }
-    Bind(&isNotSendableFunc);
-    {
-        GateRef globalEnv = GetCurrentGlobalEnv();
-        NewObjectStubBuilder newBuilder(this, globalEnv);
-        result = newBuilder.NewJSFunction(glue, method, targetKind);
-        Jump(&afterDealWithCompiledStatus);
-    }
-    Bind(&afterDealWithCompiledStatus);
+        GateRef method = GetMethodFromConstPool(glue, constpool, index);
+        Label isSendableFunc(env);
+        Label isNotSendableFunc(env);
+        Label afterDealWithCompiledStatus(env);
+        BRANCH(IsSendableFunction(method), &isSendableFunc, &isNotSendableFunc);
+        Bind(&isSendableFunc);
+        {
+            GateRef globalEnv = GetCurrentGlobalEnv();
+            NewObjectStubBuilder newBuilder(this, globalEnv);
+            result = newBuilder.NewJSSendableFunction(glue, method, targetKind);
+            Jump(&afterDealWithCompiledStatus);
+        }
+        Bind(&isNotSendableFunc);
+        {
+            GateRef globalEnv = GetCurrentGlobalEnv();
+            NewObjectStubBuilder newBuilder(this, globalEnv);
+            result = newBuilder.NewJSFunction(glue, method, targetKind);
+            Jump(&afterDealWithCompiledStatus);
+        }
+        Bind(&afterDealWithCompiledStatus);
 
-    Label ihcNotUndefined(env);
-    BRANCH(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
-    Bind(&ihcNotUndefined);
-    {
-        CallRuntime(glue, RTSTUB_ID(AOTEnableProtoChangeMarker), {*result, *ihc, *val});
-        Jump(&exit);
+        Label ihcNotUndefined(env);
+        BRANCH(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
+        Bind(&ihcNotUndefined);
+        {
+            CallRuntime(glue, RTSTUB_ID(AOTEnableProtoChangeMarker), {*result, *ihc, *aotLiteralInfo});
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;
@@ -14121,6 +14237,8 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
     Label exit(env);
     Label isEnableCMCGC(env);
     Label notCMCGC(env);
+    ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(ArrayCopyConstantPool),
+                         BoolNot(env_->GetBuilder()->IsConstantPool(glue, srcObj)), glue);
     BRANCH_UNLIKELY(LoadPrimitive(
         VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
         &isEnableCMCGC, &notCMCGC);

@@ -37,7 +37,6 @@ public:
     void Serialize(const CString &fileName = "./snapshot");
     void Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaFile, const CString &fileName = "./snapshot");
     void Serialize(uintptr_t startAddr, size_t size, const CString &fileName = "./snapshot");
-    void SerializeBuiltins(const CString &fileName = "./snapshot");
     bool DeserializeInternal(SnapshotType type, const CString &snapshotFile, SnapshotProcessor &processor,
                              MemMap &fileMap);
     bool Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);

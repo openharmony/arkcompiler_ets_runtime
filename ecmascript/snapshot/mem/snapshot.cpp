@@ -47,16 +47,15 @@ void Snapshot::Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaF
     SnapshotProcessor processor(vm_);
     processor.Initialize();
 
-    std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> data;
     CQueue<TaggedObject *> objectQueue;
 
     if (objectHeader->GetClass()->GetObjectType() == JSType::PROGRAM) {
         processor.SetProgramSerializeStart();
     }
 
-    processor.EncodeTaggedObject(objectHeader, &objectQueue, &data);
+    processor.EncodeTaggedObject<ReferenceType::NORMAL>(objectHeader, &objectQueue);
     size_t rootObjSize = objectQueue.size();
-    processor.ProcessObjectQueue(&objectQueue, &data);
+    processor.ProcessObjectQueue(&objectQueue);
     WriteToFile(writer, jsPandaFile, rootObjSize, processor);
 }
 
@@ -76,72 +75,15 @@ void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileNa
     SnapshotProcessor processor(vm_);
     processor.Initialize();
 
-    std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> data;
     CQueue<TaggedObject *> objectQueue;
 
     ObjectSlot start(startAddr);
     ObjectSlot end(startAddr + size * sizeof(JSTaggedType));
-    processor.EncodeTaggedObjectRange(start, end, &objectQueue, &data);
+    processor.EncodeTaggedObjectRange(start, end, &objectQueue);
 
     size_t rootObjSize = objectQueue.size();
-    processor.ProcessObjectQueue(&objectQueue, &data);
+    processor.ProcessObjectQueue(&objectQueue);
     WriteToFile(writer, nullptr, rootObjSize, processor);
-}
-
-void Snapshot::SerializeBuiltins(const CString &fileName)
-{
-    std::string realPath;
-    if (!RealPath(std::string(fileName), realPath, false)) {
-        LOG_FULL(FATAL) << "snapshot file path error";
-    }
-    std::fstream write(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::app);
-    if (!write.good()) {
-        write.close();
-        LOG_FULL(ERROR) << "snapshot open file failed";
-        return;
-    }
-    // if builtins.snapshot file has exist, return directly
-    if (write.tellg()) {
-        LOG_FULL(DEBUG) << "snapshot already exist";
-        write.close();
-        return;
-    }
-
-    SnapshotProcessor processor(vm_);
-    processor.Initialize();
-    processor.SetBuiltinsSerializeStart();
-
-    std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> data;
-    CQueue<TaggedObject *> objectQueue;
-
-    class SerializeBuiltinsRootVisitor final : public RootVisitor {
-    public:
-        explicit SerializeBuiltinsRootVisitor(SnapshotProcessor *processor,
-            std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> *data, CQueue<TaggedObject *> *objectQueue)
-            : processor_(processor), data_(data), objectQueue_(objectQueue) {}
-        ~SerializeBuiltinsRootVisitor() = default;
-
-        void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override {}
-        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
-        {
-            processor_->EncodeTaggedObjectRange(start, end, objectQueue_, data_);
-        }
-        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type,  [[maybe_unused]] ObjectSlot base,
-            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
-    private:
-        SnapshotProcessor *processor_;
-        std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> *data_;
-        CQueue<TaggedObject *> *objectQueue_;
-    };
-    SerializeBuiltinsRootVisitor serializeBuiltinsRootVisitor(&processor, &data, &objectQueue);
-
-    auto globalEnvHandle = vm_->GetGlobalEnv();
-    auto constant = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    constant->Iterate(serializeBuiltinsRootVisitor);
-    processor.EncodeTaggedObject(*globalEnvHandle, &objectQueue, &data);
-    size_t rootObjSize = objectQueue.size();
-    processor.ProcessObjectQueue(&objectQueue, &data);
-    WriteToFile(write, nullptr, rootObjSize, processor);
 }
 
 bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFile, SnapshotProcessor &processor,

@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_MODULE_JS_MODULE_ENTRY_H
 #define ECMASCRIPT_MODULE_JS_MODULE_ENTRY_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/record.h"
 
 namespace panda::ecmascript {

@@ -15,6 +15,7 @@
         "subsystem": "arkcompiler",
         "syscap": [],
         "features": [
+          "ets_runtime_enable_compressed_pointer",
           "ets_runtime_feature_enable_pgo",
           "ets_runtime_feature_enable_back_annotation",
           "ets_runtime_feature_enable_codemerge",

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_ELEMENT_ACCESSOR_H
 
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda {

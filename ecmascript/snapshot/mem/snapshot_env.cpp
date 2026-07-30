@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/snapshot/mem/snapshot_env.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript {

@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 #define ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 #include <vector>
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/property_attributes.h"
 

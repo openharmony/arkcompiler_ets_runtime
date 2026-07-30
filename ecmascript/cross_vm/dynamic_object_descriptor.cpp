@@ -15,7 +15,7 @@
 
 #include "ecmascript/cross_vm/dynamic_object_descriptor.h"
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "objects/base_object_dispatcher.h"
 
 namespace panda::ecmascript {

@@ -18,7 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/visitor.h"
 
@@ -37,6 +37,7 @@ public:
     template <RBMode mode = RBMode::DEFAULT_RB>
     JSTaggedValue Get(const JSThread *thread, uint32_t idx) const
     {
+        ASSERT(!JSTaggedValue(this).IsConstantPoolSlowForTest());
         ASSERT(idx < GetLength());
         // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
         //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
@@ -48,6 +49,7 @@ public:
 
     JSTaggedValue GetPrimitive(uint32_t idx) const
     {
+        ASSERT(!JSTaggedValue(this).IsConstantPoolSlowForTest());
         ASSERT(idx < GetLength());
         size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
         // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)

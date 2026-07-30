@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_MEM_CMC_GC_BARRIERS_GET_INL_H
 #define ECMASCRIPT_MEM_CMC_GC_BARRIERS_GET_INL_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/barriers.h"
 

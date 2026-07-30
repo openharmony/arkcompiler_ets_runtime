@@ -22,7 +22,7 @@
 #include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/js_api/js_api_list_iterator.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"

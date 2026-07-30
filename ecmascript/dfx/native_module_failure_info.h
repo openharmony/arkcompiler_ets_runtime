@@ -17,7 +17,7 @@
 #define ECMASCRIPT_DFX_NATIVE_MODULE_FAILURE_INFO_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory-inl.h"
 namespace panda::ecmascript {
 class NativeModuleFailureInfo final : public JSObject {

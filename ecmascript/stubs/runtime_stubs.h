@@ -19,7 +19,7 @@
 #include "common_components/heap/allocator/region_desc.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/method.h"
@@ -101,6 +101,7 @@ public:
     static void Comment(uintptr_t argStr);
     static void FatalPrint(int fmtMessageId, ...);
     static void FatalPrintCustom(uintptr_t fmt, ...);
+    static void FatalPrintIfFalse(bool condition, int fmtMessageId, int line);
     // `object` must be the object header, not an interior slot address: the owning Region is
     // resolved via ObjectAddressToRange(object), which mis-resolves for huge-object interiors.
     // `offset` is header-relative. See .cpp and BarrierStubBuilder::HandleMark.
@@ -113,6 +114,8 @@ public:
     static void CheckObjectForCMS(uintptr_t argGlue, uintptr_t object, size_t offset, uintptr_t value,
                                   bool writeBarrierCheck);
     static JSTaggedType ReadBarrier(uintptr_t argGlue, uintptr_t addr, uintptr_t argValue);
+    static TemporaryJSTaggedValue ReadBarrierForCompressed(uintptr_t argGlue, uintptr_t addr,
+                                                           TemporaryJSTaggedValue temporaryValue);
     static void CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget);
     static void CopyArgvArray(uintptr_t argGlue, uintptr_t argv, uint64_t argc);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
@@ -584,8 +587,8 @@ private:
                                                      const JSHandle<EcmaString> &str, std::u16string &resStr);
     static inline bool IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue);
 
-    static inline RememberedSet* CreateLocalToShare(Region *region);
-    static inline RememberedSet* CreateOldToNew(Region *region);
+    static inline RememberedSet *CreateLocalToShare(Region *region);
+    static inline RememberedSet *CreateOldToNew(Region *region);
     static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
     static inline bool IsTargetBundleName(uintptr_t argGlue);
     static inline bool MaybeHasInterfacesType(JSThread *thread, const JSHandle<TaggedArray> &arrayHandle);

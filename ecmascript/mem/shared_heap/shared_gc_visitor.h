@@ -43,13 +43,17 @@ public:
     inline explicit SharedGCMarkObjectVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder);
     ~SharedGCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
+
+    inline void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                               CompressedObjectSlot end) override;
 
     inline void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
 
 private:
-    inline void HandleSlot(ObjectSlot slot, Region *rootRegion);
+    template <ReferenceType refType>
+    inline void HandleSlot(ObjectSlotBase<refType> slot, Region *rootRegion);
 
     inline void MarkAndPush(TaggedObject *object, Region *objectRegion);
 
@@ -64,7 +68,8 @@ public:
     inline explicit SharedGCMarkLocalToShareRSetVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder);
     ~SharedGCMarkLocalToShareRSetVisitor() = default;
 
-    inline bool operator()(void *mem) const;
+    template <typename ReferenceTypeWrapper>
+    inline bool operator()(void *mem, ReferenceTypeWrapper) const;
 
 private:
     inline void MarkObject(TaggedObject *object) const;

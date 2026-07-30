@@ -14,7 +14,7 @@
  */
  
 #include "ecmascript/ic/mega_ic_cache.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JS_ITERATOR_H
 
 #include "ecmascript/accessor_data.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 enum class IterationKind : uint8_t {

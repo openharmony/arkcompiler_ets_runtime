@@ -41,14 +41,18 @@ public:
     inline explicit CCMarkObjectVisitor(WorkNodeHolder *workNodeHolder) : workNodeHolder_(workNodeHolder) {}
     ~CCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
+
+    inline void VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                               CompressedObjectSlot end) override;
 
     inline void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
 
     inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:
-    inline void HandleSlot(ObjectSlot slot);
+    template <ReferenceType refType>
+    inline void HandleSlot(ObjectSlotBase<refType> slot);
 
     inline void HandleObject(TaggedObject *object);
 

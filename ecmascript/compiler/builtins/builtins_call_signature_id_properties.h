@@ -18,7 +18,7 @@
 
 #include "ecmascript/compiler/builtins/builtins_call_signature_list.h"
 #include "ecmascript/global_env_constants.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::kungfu::stubcsigns {
 enum BuiltinsStubCSignsID {

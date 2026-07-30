@@ -20,7 +20,7 @@
 
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 class RegExpParserCache {

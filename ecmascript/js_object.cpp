@@ -22,7 +22,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/property_accessor.h"

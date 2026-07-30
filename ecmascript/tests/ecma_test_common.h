@@ -20,7 +20,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date_time_format.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/tests/ecma_container_common.h"

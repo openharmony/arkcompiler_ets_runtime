@@ -16,15 +16,16 @@
 #include "ecmascript/serializer/inter_op_value_serializer.h"
 
 namespace panda::ecmascript {
-void InterOpValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
+void InterOpValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak, bool isCompressed)
 {
-    if (TrySerializeInterOpObject(object, isWeak)) {
+    if (TrySerializeInterOpObject(object, isWeak, isCompressed)) {
         return;
     }
-    ValueSerializer::SerializeObjectImpl(object, isWeak);
+    ValueSerializer::SerializeObjectImpl(object, isWeak, isCompressed);
 }
 
-bool InterOpValueSerializer::TrySerializeInterOpObject(TaggedObject *object, bool isWeak)
+bool InterOpValueSerializer::TrySerializeInterOpObject(TaggedObject *object,
+                                                       bool isWeak, [[maybe_unused]] bool isCompressed)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread_);
     JSType type = object->GetClass()->GetObjectType();
@@ -50,6 +51,7 @@ bool InterOpValueSerializer::TrySerializeInterOpObject(TaggedObject *object, boo
         return false;
     }
 
+    ASSERT(!isCompressed);
     SerializeInterOpObjectImpl(object, JSObject::Cast(xRef.GetTaggedObject()), isWeak);
     return true;
 }

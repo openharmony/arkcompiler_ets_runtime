@@ -15,7 +15,7 @@
 
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 size_t BuiltinIndex::GetBuiltinIndex(const JSThread *thread, JSTaggedValue key) const

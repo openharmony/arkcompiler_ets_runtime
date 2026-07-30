@@ -17,8 +17,8 @@
 #define ECMASCRIPT_JS_ASYNC_GENERATOR_OBJECT_H
 
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/record.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"

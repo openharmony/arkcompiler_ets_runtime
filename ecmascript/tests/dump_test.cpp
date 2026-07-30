@@ -101,7 +101,7 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_weak_container.h"

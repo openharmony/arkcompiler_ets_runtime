@@ -193,7 +193,7 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
 void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  uintptr_t objAddr, size_t fieldOffset)
 {
     // deserialize object prologue
-    bool isWeak = GetAndResetWeak();
+    FieldType isWeakOrCompressed = GetAndResetWeakOrCompressed();
     bool isTransferBuffer = GetAndResetTransferBuffer();
     bool isSharedArrayBuffer = GetAndResetSharedArrayBuffer();
     void *bufferPointer = GetAndResetBufferPointer();
@@ -265,15 +265,9 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
             SharedModuleManager::GetInstance()->GetOrInsertResolvedSendableBindingName(moduleRecordName);
         binding->SetModuleRecordName(moduleRecordNamePtr);
     }
-#ifdef USE_CMC_GC
-    UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
-    WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                static_cast<JSTaggedType>(addr));
-#else
-    WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                static_cast<JSTaggedType>(addr));
-    UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
-#endif
+    UpdateMaybeWeakOrCompressedWithBarrier<WriteBarrierType::DESERIALIZE>(objAddr, fieldOffset,
+                                                                          static_cast<JSTaggedType>(addr),
+                                                                          isWeakOrCompressed);
 }
 
 void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
@@ -344,7 +338,7 @@ void BaseDeserializer::SetErrorMsgAndStack(uint8_t flag, size_t &handledFieldSiz
 
 size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset)
 {
-    size_t handledFieldSize = sizeof(JSTaggedType);
+    size_t handledFieldSize = isCompressed_ ? sizeof(CompressedJSTaggedType) : sizeof(JSTaggedType);
     ObjectSlot slot(objAddr + fieldOffset);
     switch (encodeFlag) {
         case (uint8_t)SerializedObjectSpace::REGULAR_SPACE:
@@ -365,20 +359,19 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
             JSTaggedType valueAddr = objectVector_.at(valueIndex);
-#ifdef USE_CMC_GC
-            UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
-            WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                        valueAddr);
-#else
-            WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                        valueAddr);
-            UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
-#endif
+            UpdateMaybeWeakOrCompressedWithBarrier<WriteBarrierType::DESERIALIZE>(objAddr, fieldOffset, valueAddr,
+                                                                                  GetAndResetWeakOrCompressed());
             break;
         }
         case (uint8_t)EncodeFlag::WEAK: {
             ASSERT(!isWeak_);
             isWeak_ = true;
+            handledFieldSize = 0;
+            break;
+        }
+        case (uint8_t)EncodeFlag::COMPRESSED_POINTER: {
+            ASSERT(!isCompressed_);
+            isCompressed_ = true;
             handledFieldSize = 0;
             break;
         }
@@ -400,7 +393,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
                 WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                              static_cast<JSTaggedType>(valueAddr));
             }
-            UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
+            UpdateMaybeWeakOrCompressedNoBarrier(objAddr, fieldOffset, static_cast<JSTaggedType>(valueAddr),
+                                                 GetAndResetWeakOrCompressed());
             break;
         }
         case (uint8_t)EncodeFlag::OBJECT_PROTO: {
@@ -410,7 +404,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
                 WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                              static_cast<JSTaggedType>(protoAddr));
             }
-            UpdateMaybeWeak(slot, protoAddr, GetAndResetWeak());
+            UpdateMaybeWeakOrCompressedNoBarrier(objAddr, fieldOffset, static_cast<JSTaggedType>(protoAddr),
+                                                 GetAndResetWeakOrCompressed());
             break;
         }
         case (uint8_t)EncodeFlag::TRANSFER_ARRAY_BUFFER: {
@@ -482,8 +477,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
                 jsErrorInfos_.back().errorStack_ = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(value));
                 break;
             }
-            WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset, value);
-            UpdateMaybeWeak(slot, value, GetAndResetWeak());
+            UpdateMaybeWeakOrCompressedWithBarrier<WriteBarrierType::NORMAL>(objAddr, fieldOffset, value,
+                                                                             GetAndResetWeakOrCompressed());
             break;
         }
         case (uint8_t)EncodeFlag::GLOBAL_ENV: {
@@ -524,13 +519,14 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             handledFieldSize = 0;
             break;
         }
-        case (uint8_t)EncodeFlag::SEQUENCE_HOLE: {
+        case (uint8_t)EncodeFlag::SEQUENCE_COMPRESSED_HOLE: {
             auto count = data_->ReadUint32(position_);
+            CompressedObjectSlot compressedSlot(slot.SlotAddress());
             for (uint32_t i = 0; i < count; i++) {
-                slot.Update(JSTaggedValue::Hole().GetRawData());
-                slot++;
+                compressedSlot.Update(CompressedJSTaggedValue::Hole().GetCompressedRawData());
+                compressedSlot++;
             }
-            handledFieldSize *= count;
+            handledFieldSize = count * sizeof(CompressedJSTaggedType);
             break;
         }
         default:

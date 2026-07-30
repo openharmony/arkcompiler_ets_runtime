@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
 #include "ecmascript/js_function.h"
@@ -32,6 +33,16 @@ GateRef CircuitBuilder::TaggedIsInt(GateRef x)
     x = ChangeTaggedPointerToInt64(x);
     return Equal(Int64And(x, Int64(JSTaggedValue::TAG_MARK)),
                  Int64(JSTaggedValue::TAG_INT));
+}
+
+GateRef CircuitBuilder::TemporaryTaggedIsInt(GateRef temporaryTagged)
+{
+#ifdef USE_COMPRESSED_POINTER
+    // fixme: compressed pointer : support int for compressed value
+    return False();
+#else
+    return TaggedIsInt(temporaryTagged);
+#endif
 }
 
 GateRef CircuitBuilder::TaggedIsDouble(GateRef x)
@@ -451,6 +462,26 @@ GateRef CircuitBuilder::TaggedIsNullPtr(GateRef x)
     return Equal(x, NullPtrConstant());
 }
 
+GateRef CircuitBuilder::WipeHighBitOfTemporaryTagged(GateRef temporaryTagged)
+{
+#ifdef USE_COMPRESSED_POINTER
+    GateRef raw = ChangeTaggedPointerToInt64(temporaryTagged);
+    return Int64And(raw, Int64(CompressedJSTaggedValue::RESERVED_LOW_BIT_MASK));
+#else
+    LOG_ECMA(FATAL) << "only support in compressed pointer";
+    UNREACHABLE();
+#endif
+}
+
+GateRef CircuitBuilder::TemporaryTaggedIsNullPtr(GateRef temporaryTagged)
+{
+#ifdef USE_COMPRESSED_POINTER
+    return Equal(WipeHighBitOfTemporaryTagged(temporaryTagged), TaggedPointerToInt64(NullPtrConstant()));
+#else
+    return TaggedIsNullPtr(temporaryTagged);
+#endif
+}
+
 GateRef CircuitBuilder::IsSpecialHole(GateRef x)
 {
     return Equal(x, SpecialHoleConstant());
@@ -490,6 +521,27 @@ GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
     x = ChangeTaggedPointerToInt64(x);
     auto t = Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK), GateType::Empty(), "checkHeapObject");
     return Equal(t, Int64(0), "checkHeapObject");
+}
+
+GateRef CircuitBuilder::TemporaryTaggedIsHeapObject(GateRef temporaryTagged)
+{
+#ifdef USE_COMPRESSED_POINTER
+    GateRef raw = ChangeTaggedPointerToInt64(temporaryTagged);
+    GateRef temporaryTaggedObjectMask = ZExtInt32ToInt64(
+        Int32(CompressedJSTaggedValue::TAG_COMPRESSED_HEAPOBJECT_MASK));
+    GateRef t = Int64And(raw, temporaryTaggedObjectMask, GateType::Empty(), "checkHeapObject");
+    return Equal(t, Int64(0), "checkHeapObject");
+#else
+    return TaggedIsHeapObject(temporaryTagged);
+#endif
+}
+
+GateRef CircuitBuilder::ConvertTemporaryTaggedObjectToTaggedValue([[maybe_unused]] GateRef glue,
+                                                                  GateRef temporaryTagged)
+{
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(ConvertNonTemporaryHeapObjectAsHeapObject),
+               TemporaryTaggedIsHeapObject(temporaryTagged), glue);
+    return temporaryTagged;
 }
 
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x, const CompilationEnv *compilationEnv)
@@ -799,14 +851,16 @@ GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, ParamType paramType)
     return numberconvert;
 }
 
-GateRef CircuitBuilder::LoadFromTaggedArray(GateRef array, size_t index)
+GateRef CircuitBuilder::LoadFromTaggedArray(GateRef glue, GateRef array, size_t index)
 {
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(UseConstPoolInTaggedArrayGet), BoolNot(IsConstantPool(glue, array)), glue);
     auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
     return LoadConstOffset(VariableType::JS_ANY(), array, dataOffset);
 }
 
-GateRef CircuitBuilder::StoreToTaggedArray(GateRef array, size_t index, GateRef value)
+GateRef CircuitBuilder::StoreToTaggedArray(GateRef glue, GateRef array, size_t index, GateRef value)
 {
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(StoreValueToConstPool), BoolNot(IsConstantPool(glue, array)), glue);
     auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
     return StoreConstOffset(VariableType::JS_ANY(), array, dataOffset, value);
 }
@@ -832,6 +886,7 @@ GateRef CircuitBuilder::GetSecondFromTreeString(GateRef glue, GateRef string)
 
 GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index)
 {
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(UseConstPoolInTaggedArrayGet), BoolNot(IsConstantPool(glue, array)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), glue, array, dataOffset);
@@ -839,13 +894,15 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, Gat
 
 GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index, GateRef depend)
 {
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(UseConstPoolInTaggedArrayGet), BoolNot(IsConstantPool(glue, array)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), glue, array, dataOffset, depend);
 }
 
-GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index)
+GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, VariableType valType, GateRef array, GateRef index)
 {
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(UseConstPoolInTaggedArrayGet), BoolNot(IsConstantPool(glue, array)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     // valType is all PrimitiveType, barrier is not needed
@@ -863,6 +920,7 @@ GateRef CircuitBuilder::GetValueFromJSArrayWithElementsKind(VariableType type, G
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,
                                            GateRef array, GateRef index, GateRef val)
 {
+    ASSERT_ASM(GET_MESSAGE_STRING_ID(StoreValueToConstPool), BoolNot(IsConstantPool(glue, array)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(valType, glue, array, dataOffset, val);

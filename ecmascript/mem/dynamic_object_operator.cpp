@@ -51,11 +51,9 @@ void DynamicObjectOperator::IterateXRef([[maybe_unused]] const BaseObject *objec
 #endif
 }
 
-void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
-                                                 uintptr_t endAddr, VisitObjectArea area)
+void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start,
+                                                 ObjectSlot end, VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         VisitBodyInObj(TaggedObject::Cast(root), start, end, [this](ObjectSlot slot) {
             visit(slot);

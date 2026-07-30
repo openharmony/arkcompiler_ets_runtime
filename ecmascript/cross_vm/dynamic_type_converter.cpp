@@ -16,8 +16,8 @@
 #include "ecmascript/cross_vm/dynamic_type_converter.h"
 
 #include "ecmascript/js_bigint-inl.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "objects/base_object_dispatcher.h"
 #include "objects/base_type.h"
 

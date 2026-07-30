@@ -17,7 +17,7 @@
 #define ECMASCRIPT_FRAMES_H
 
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/method.h"
 #include "ecmascript/stackmap/ark_stackmap.h"

@@ -71,21 +71,19 @@ SweepGCMarkObjectVisitor::SweepGCMarkObjectVisitor(WorkNodeHolder *workNodeHolde
 {
 }
 
-void SweepGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
+void SweepGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start, ObjectSlot end,
                                                     VisitObjectArea area)
 {
-    ObjectSlot startSlot(start);
-    ObjectSlot endSlot(end);
     TaggedObject *root = TaggedObject::Cast(rootObject);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_NO_RB>(nullptr).GetTaggedObject());
-        ObjectSlot realEnd(start);
+        ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
-        endSlot = endSlot > realEnd ? realEnd : endSlot;
-        for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+        end = end > realEnd ? realEnd : end;
+        for (ObjectSlot slot = start; slot < end; slot++) {
             PropertyAttributes attr = layout->GetAttr<RBMode::FAST_NO_RB>(nullptr, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot);
@@ -93,7 +91,15 @@ void SweepGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uint
         }
         return;
     }
-    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot);
+    }
+}
+
+void SweepGCMarkObjectVisitor::VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                                              CompressedObjectSlot end)
+{
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
         HandleSlot(slot);
     }
 }
@@ -117,18 +123,25 @@ void SweepGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject
     }
 }
 
-void SweepGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
+template <ReferenceType refType>
+void SweepGCMarkObjectVisitor::HandleSlot(ObjectSlotBase<refType> slot)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }
 
-    if (!value.IsWeakForHeapObject()) {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         TaggedObject *object = value.GetTaggedObject();
         HandleObject(object);
     } else {
-        RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        if (!value.IsWeakForHeapObject()) {
+            TaggedObject *object = value.GetTaggedObject();
+            HandleObject(object);
+        } else {
+            RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        }
     }
 }
 
@@ -157,20 +170,23 @@ StickyMarkOldToNewRSetVisitor::StickyMarkOldToNewRSetVisitor(WorkNodeHolder *wor
 
 void StickyMarkOldToNewRSetVisitor::operator()(Region *region) const
 {
-    region->IterateAllOldToNewBits([this](void *mem) -> bool {
-        ObjectSlot slot(ToUintPtr(mem));
+    region->IterateAllOldToNewBits([this](void *mem, auto referenceTypeWrapper) -> bool {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
         return HandleSlot(slot);
     });
 }
 
-bool StickyMarkOldToNewRSetVisitor::HandleSlot(ObjectSlot slot) const
+template <ReferenceType refType>
+bool StickyMarkOldToNewRSetVisitor::HandleSlot(ObjectSlotBase<refType> slot) const
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return false;
     }
 
-    if (!value.IsWeakForHeapObject()) {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         TaggedObject *object = value.GetTaggedObject();
         Region *objectRegion = Region::ObjectAddressToRange(object);
         if (!objectRegion->InSharedHeap()) {
@@ -179,7 +195,17 @@ bool StickyMarkOldToNewRSetVisitor::HandleSlot(ObjectSlot slot) const
             }
         }
     } else {
-        workNodeHolder_->PushWeakReference((reinterpret_cast<JSTaggedType*>(slot.SlotAddress())));
+        if (!value.IsWeakForHeapObject()) {
+            TaggedObject *object = value.GetTaggedObject();
+            Region *objectRegion = Region::ObjectAddressToRange(object);
+            if (!objectRegion->InSharedHeap()) {
+                if (objectRegion->AtomicMark(object)) {
+                    workNodeHolder_->Push(object);
+                }
+            }
+        } else {
+            workNodeHolder_->PushWeakReference((reinterpret_cast<JSTaggedType*>(slot.SlotAddress())));
+        }
     }
     return true;
 }

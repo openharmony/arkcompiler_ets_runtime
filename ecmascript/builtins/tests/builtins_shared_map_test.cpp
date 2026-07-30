@@ -18,7 +18,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_shared_map.h"

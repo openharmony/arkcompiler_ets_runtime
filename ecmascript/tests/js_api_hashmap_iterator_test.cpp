@@ -23,7 +23,7 @@
 #include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/ecma_test_common.h"
 

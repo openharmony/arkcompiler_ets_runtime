@@ -64,10 +64,14 @@ public:
     SharedCCUpdateVisitor() = default;
     ~SharedCCUpdateVisitor() = default;
 
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
         VisitObjectArea area) override;
 
-    void HandleSlot(ObjectSlot slot);
+    void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+        CompressedObjectSlot end) override;
+
+    template <ReferenceType refType>
+    void HandleSlot(ObjectSlotBase<refType> slot);
 
 private:
     void HandleInObjectArea(TaggedObject *rootObject, ObjectSlot startSlot, ObjectSlot endSlot);

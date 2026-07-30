@@ -50,6 +50,11 @@ public:
     {
         return originAddr_;
     }
+
+    bool operator<(const MemMap &o) const
+    {
+        return GetMem() < o.GetMem();
+    }
 private:
     void *originAddr_ {nullptr};
     void *mem_ {nullptr};

@@ -21,7 +21,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tests/test_helper.h"

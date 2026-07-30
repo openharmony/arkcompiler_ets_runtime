@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H
 #define ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 

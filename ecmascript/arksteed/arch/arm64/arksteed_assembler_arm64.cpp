@@ -19,7 +19,7 @@
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 #if defined(PANDA_TARGET_ARM64)

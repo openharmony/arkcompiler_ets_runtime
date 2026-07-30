@@ -1341,11 +1341,28 @@ void VerifyBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
+void VerifyStoreJSValueForCompressedPointerStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef offset = PtrArgument(2); // 2 : 3rd para
+    VerifyStoreJSValueForCompressedPointer(glue, obj, offset);
+    Return();
+}
+
 void GetValueWithBarrierStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef addr = TaggedArgument(1);
     GateRef value = GetValueWithBarrier(glue, addr);
+    Return(value);
+}
+
+void GetValueFromCompressedWithBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef addr = TaggedArgument(1);
+    GateRef value = GetValueFromCompressedWithBarrier(glue, addr);
     Return(value);
 }
 

@@ -27,7 +27,7 @@
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
@@ -710,7 +710,7 @@ private:
         // BaseObjectVisitor interface – called by ObjectXRay::VisitObjectBody for
         // each contiguous slot range in an object.
         void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject,
-                                   uintptr_t startAddr, uintptr_t endAddr,
+                                   ObjectSlot start, ObjectSlot end,
                                    VisitObjectArea area) override
         {
             // NATIVE_POINTER: raw C++ pointers, not tagged heap refs
@@ -718,10 +718,19 @@ private:
             if (area == VisitObjectArea::NATIVE_POINTER || area == VisitObjectArea::RAW_DATA) {
                 return;
             }
-            ObjectSlot end(endAddr);
-            for (ObjectSlot slot(startAddr); slot < end; slot++) {
+            for (ObjectSlot slot = start; slot < end; slot++) {
                 JSTaggedValue value(slot.GetTaggedType());
                 TryMark(value);
+            }
+        }
+        void VisitCompressedObjectRangeImpl([[maybe_unused]] BaseObject *rootObject,
+                                            CompressedObjectSlot start, CompressedObjectSlot end) override
+        {
+            for (CompressedObjectSlot slot = start; slot < end; slot++) {
+                TemporaryJSTaggedValue value = slot.GetTaggedValue();
+                if (value.IsHeapObject()) {
+                    TryMark(value.ConvertHeapObjectToJSTaggedValue());
+                }
             }
         }
 

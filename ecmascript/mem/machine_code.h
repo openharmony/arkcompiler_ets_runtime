@@ -16,7 +16,7 @@
 #define ECMASCRIPT_MEM_MACHINE_CODE_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -272,16 +272,13 @@ public:
     {
         ASSERT(visitType == VisitType::ALL_VISIT || visitType == VisitType::OLD_GC_VISIT);
         if constexpr (visitType == VisitType::ALL_VISIT) {
-            visitor(this, ToUintPtr(this),
-                ToUintPtr(this) + GetMachineCodeObjectSize(), VisitObjectArea::RAW_DATA);
+            visitor(this, ObjectSlot(ToUintPtr(this)),
+                ObjectSlot(ToUintPtr(this) + GetMachineCodeObjectSize()), VisitObjectArea::RAW_DATA);
         }
         if constexpr (visitType == VisitType::OLD_GC_VISIT) {
             uintptr_t start = static_cast<uintptr_t>(GetHeapConstantTableAddr());
             uintptr_t end = static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize();
-            visitor(this,
-                    start,
-                    end,
-                    VisitObjectArea::NORMAL);
+            visitor(this, ObjectSlot(start), ObjectSlot(end), VisitObjectArea::NORMAL);
             this->ProcessMarkObject();
         }
     }

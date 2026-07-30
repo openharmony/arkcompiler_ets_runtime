@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_ON_HEAP_H
 #define ECMASCRIPT_ON_HEAP_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 enum class OnHeapMode : uint8_t {

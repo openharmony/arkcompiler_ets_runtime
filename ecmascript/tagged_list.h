@@ -19,7 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JS_API_JS_API_PLAIN_ARRAY_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 class JSAPIPlainArray : public JSObject {

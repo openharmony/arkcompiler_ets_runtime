@@ -15,7 +15,7 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"

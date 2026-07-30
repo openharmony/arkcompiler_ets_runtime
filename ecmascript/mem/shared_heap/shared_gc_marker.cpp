@@ -117,19 +117,23 @@ void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListH
     ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
     MarkWorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
-    auto visitor = [this, &localBuffer](void *mem) -> bool {
-        ObjectSlot slot(ToUintPtr(mem));
-        JSTaggedValue value(slot.GetTaggedType());
+    auto visitor = [this, &localBuffer](void *mem, auto referenceTypeWrapper) -> bool {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
+        TaggedValueType<refType> value = slot.GetTaggedValue();
 
-        if (value.IsInSharedSweepableSpace()) {
-            // For now if record weak references from local to share in marking root, the slots
-            // may be invalid due to LocalGC, so just mark them as strong-reference.
-            MarkObjectFromJSThread(localBuffer, value.GetHeapObject());
-            return true;
+        if (!value.IsHeapObject()) {
+            return false;
+        }
+        Region *valueRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
+        if (!valueRegion->InSharedSweepableSpace()) {
+            return false;
         }
 
-        // clear bit.
-        return false;
+        // For now if record weak references from local to share in marking root, the slots
+        // may be invalid due to LocalGC, so just mark them as strong-reference.
+        MarkObjectFromJSThread(localBuffer, value.GetHeapObject());
+        return true;
     };
     handler->ProcessAll(visitor);
     handler->WaitFinishedThenMergeBack();

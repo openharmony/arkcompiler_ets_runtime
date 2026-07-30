@@ -644,7 +644,7 @@ void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
                 result = builder_.GetValueFromTaggedArray(
-                    VariableType::FLOAT64(), properties, builder_.Int32(plr.GetOffset()));
+                    glue_, VariableType::FLOAT64(), properties, builder_.Int32(plr.GetOffset()));
             }
             acc_.SetMachineType(gate, MachineType::F64);
         } else {
@@ -654,7 +654,7 @@ void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
                 result = builder_.GetValueFromTaggedArray(
-                    VariableType::INT32(), properties, builder_.Int32(plr.GetOffset()));
+                    glue_, VariableType::INT32(), properties, builder_.Int32(plr.GetOffset()));
             }
             acc_.SetMachineType(gate, MachineType::I32);
         }
@@ -1053,7 +1053,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), *current, JSObject::PROPERTIES_OFFSET);
                 result = builder_.GetValueFromTaggedArray(
-                    VariableType::FLOAT64(), properties, builder_.Int32(plr.GetOffset()));
+                    glue_, VariableType::FLOAT64(), properties, builder_.Int32(plr.GetOffset()));
             }
             acc_.SetMachineType(gate, MachineType::F64);
         } else {
@@ -1063,7 +1063,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
                 auto properties =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), *current, JSObject::PROPERTIES_OFFSET);
                 result = builder_.GetValueFromTaggedArray(
-                    VariableType::INT32(), properties, builder_.Int32(plr.GetOffset()));
+                    glue, VariableType::INT32(), properties, builder_.Int32(plr.GetOffset()));
             }
             acc_.SetMachineType(gate, MachineType::I32);
         }

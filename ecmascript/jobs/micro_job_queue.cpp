@@ -17,7 +17,7 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/jobs/pending_job.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript::job {

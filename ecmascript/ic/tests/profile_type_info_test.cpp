@@ -16,7 +16,7 @@
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

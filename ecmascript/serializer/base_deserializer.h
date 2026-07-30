@@ -138,13 +138,19 @@ private:
     void AllocateToSharedOldSpace(size_t sOldSpaceSize);
     void AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSize);
 
-    bool GetAndResetWeak()
+    // fixme: compressed pointer : support weak for compressed pointer
+    struct FieldType {
+        bool isWeak_ {false};
+        bool isCompressed_ {false};
+    };
+    FieldType GetAndResetWeakOrCompressed()
     {
+        ASSERT(!isWeak_ || !isCompressed_);
         bool isWeak = isWeak_;
-        if (isWeak_) {
-            isWeak_ = false;
-        }
-        return isWeak;
+        bool isCompressed = isCompressed_;
+        isWeak_ = false;
+        isCompressed_ = false;
+        return {isWeak, isCompressed};
     }
 
     bool GetAndResetTransferBuffer()
@@ -240,9 +246,51 @@ private:
         }
     }
 
-    void UpdateMaybeWeak(ObjectSlot slot, uintptr_t addr, bool isWeak)
+    template <WriteBarrierType writeType>
+    void UpdateMaybeWeakOrCompressedWithBarrier(uintptr_t objAddr, uintptr_t fieldOffset, JSTaggedType valueAddr,
+                                                FieldType fieldType)
     {
-        isWeak ? slot.UpdateWeak(addr) : slot.Update(addr);
+        // fixme: compressed pointer : support weak for compressed pointer
+        ASSERT(!fieldType.isWeak_ || !fieldType.isCompressed_);
+        if (!fieldType.isCompressed_) {
+#ifndef USE_CMC_GC
+            WriteBarrier<writeType, ReferenceType::NORMAL>(thread_, ToVoidPtr(objAddr), fieldOffset, valueAddr);
+#endif
+            if (fieldType.isWeak_) {
+                ObjectSlot(objAddr + fieldOffset).UpdateWeak(static_cast<uintptr_t>(valueAddr));
+            } else {
+                ObjectSlot(objAddr + fieldOffset).Update(valueAddr);
+            }
+#ifdef USE_CMC_GC
+            WriteBarrier<writeType, ReferenceType::NORMAL>(thread_, ToVoidPtr(objAddr), fieldOffset, valueAddr);
+#endif
+        } else {
+            ASSERT(JSTaggedValue(valueAddr).IsHeapObject());
+#ifndef USE_CMC_GC
+            WriteBarrier<writeType, ReferenceType::COMPRESSED>(thread_, ToVoidPtr(objAddr), fieldOffset, valueAddr);
+#endif
+            CompressedObjectSlot(objAddr + fieldOffset).Update(reinterpret_cast<TaggedObject *>(valueAddr));
+#ifdef USE_CMC_GC
+            WriteBarrier<writeType, ReferenceType::COMPRESSED>(thread_, ToVoidPtr(objAddr), fieldOffset, valueAddr);
+#endif
+        }
+    }
+
+    void UpdateMaybeWeakOrCompressedNoBarrier(uintptr_t objAddr, uintptr_t fieldOffset, uintptr_t valueAddr,
+                                              FieldType fieldType)
+    {
+        // fixme: compressed pointer : support weak for compressed pointer
+        ASSERT(!fieldType.isWeak_ || !fieldType.isCompressed_);
+        if (!fieldType.isCompressed_) {
+            if (fieldType.isWeak_) {
+                ObjectSlot(objAddr + fieldOffset).UpdateWeak(static_cast<uintptr_t>(valueAddr));
+            } else {
+                ObjectSlot(objAddr + fieldOffset).Update(valueAddr);
+            }
+        } else {
+            ASSERT(JSTaggedValue(valueAddr).IsHeapObject());
+            CompressedObjectSlot(objAddr + fieldOffset).Update(reinterpret_cast<TaggedObject *>(valueAddr));
+        }
     }
 
     bool *GetLazyArray()
@@ -287,6 +335,7 @@ private:
     // SerializationChunk store shared objects which have been serialized
     SerializationChunk *sharedObjChunk_ {nullptr};
     bool isWeak_ {false};
+    bool isCompressed_ {false};
     bool isTransferArrayBuffer_ {false};
     bool isSharedArrayBuffer_ {false};
     bool isErrorMsg_ {false};

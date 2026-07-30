@@ -21,7 +21,7 @@
 #include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 #include "unicode/listformatter.h"
 

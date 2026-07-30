@@ -26,7 +26,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript::base {
 using NumberToStringResultCache = builtins::NumberToStringResultCache;

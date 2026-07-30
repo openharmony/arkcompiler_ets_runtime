@@ -906,8 +906,8 @@ void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, Gate
         Bind(&next);
         {
             if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
-                GateRef lower = GetValueFromMutantTaggedArray(elements, *i);
-                GateRef upper = GetValueFromMutantTaggedArray(elements, *j);
+                GateRef lower = GetValueFromMutantTaggedArray(glue, elements, *i);
+                GateRef upper = GetValueFromMutantTaggedArray(glue, elements, *j);
                 FastSetValueWithElementsKind(glue, thisValue, elements, upper, *i, kind);
                 FastSetValueWithElementsKind(glue, thisValue, elements, lower, *j, kind);
                 Jump(&loopEnd);

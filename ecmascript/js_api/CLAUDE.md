@@ -107,7 +107,7 @@ Test files (20+ test files):
 | Dependency | Purpose | Platform |
 |------------|---------|----------|
 | `ecmascript/js_object.h` | Base JS object class | All |
-| `ecmascript/js_tagged_value.h` | Tagged value representation | All |
+| `ecmascript/js_tagged_value_wrapper.h` | Tagged value representation | All |
 | `ecmascript/tagged_node.h` | Linked list and tree nodes | All |
 | `ecmascript/js_thread.h` | Thread-local execution context | All |
 | `ecmascript/global_env.h` | Global environment for registration | All |

@@ -18,7 +18,7 @@
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 #define BUILTIN_WELL_KNOWN_SYMBOLS(V)                   \
     V(hasInstance,        HasInstance)                  \

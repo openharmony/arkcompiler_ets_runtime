@@ -39,6 +39,8 @@ public:
     NO_MOVE_SEMANTIC(BaseSerializer);
 
     void SerializeJSTaggedValue(JSTaggedValue value);
+    // only support for compressed tagged object
+    void SerializeCompressedTaggedObject(TaggedObject *object);
     std::unique_ptr<SerializeData> Release()
     {
         return std::move(data_);
@@ -49,28 +51,27 @@ public:
         return thread_;
     }
 protected:
-    template <SerializeType serializeType>
-    class SerializeObjectFieldVisitor final : public BaseObjectVisitor<SerializeObjectFieldVisitor<serializeType>> {
+    class SerializeObjectFieldVisitor final : public BaseObjectVisitor<SerializeObjectFieldVisitor> {
     public:
-        explicit SerializeObjectFieldVisitor(BaseSerializer *serializer);
+        inline explicit SerializeObjectFieldVisitor(BaseSerializer *serializer);
         ~SerializeObjectFieldVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
-                                  VisitObjectArea area) override;
-        void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
+        inline void VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start, ObjectSlot end,
+                                         VisitObjectArea area) override;
+        inline void VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                                   CompressedObjectSlot end) override;
+        inline void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
     private:
         BaseSerializer *serializer_ {nullptr};
     };
     // Different serialize mode can implement this interface to custom processing
-    virtual void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) = 0;
+    virtual void SerializeObjectImpl(TaggedObject *object, bool isWeak = false, bool isCompressed = false) = 0;
     void WriteMultiRawData(uintptr_t beginAddr, size_t fieldSize);
-    template<SerializeType serializeType>
-    void SerializeTaggedObject(TaggedObject *object);
+    inline void SerializeTaggedObject(TaggedObject *object);
     bool SerializeReference(TaggedObject *object);
     bool SerializeRootObject(TaggedObject *object);
     void SerializeSharedObject(TaggedObject *object);
-    template<SerializeType serializeType>
-    void SerializeObjectField(TaggedObject *object);
+    inline void SerializeObjectField(TaggedObject *object);
     bool SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeHClassFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
@@ -80,9 +81,11 @@ protected:
     void SerializeSendableEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSourceTextModuleFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
-    void SerializeConstantPoolFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    template <ReferenceType refType>
+    void SerializeConstantPoolFieldIndividually(TaggedObject *root,
+                                                ObjectSlotBase<refType> start, ObjectSlotBase<refType> end);
     void SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto);
-    void SerializeTaggedObjField(SerializeType serializeType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    void SerializeTaggedObjField(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeInObjField(TaggedObject *object, ObjectSlot start, ObjectSlot end);
     SerializedObjectSpace GetSerializedObjectSpace(TaggedObject *object) const;
 
