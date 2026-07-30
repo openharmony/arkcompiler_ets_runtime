@@ -77,3 +77,5 @@ Full OHOS tree:
 - Assembly interpreter code is in `ecmascript/compiler/interpreter_stub.cpp`; this directory only provides call entry points.
 - C++ interpreter and assembly interpreter must maintain consistent semantics.
 - Hotness counter updates trigger JIT compilation; ensure correct threshold management.
+- C++ 解释器与 IR/汇编解释器（`ecmascript/compiler/interpreter_stub.cpp`）的字节码语义须保持一致；修改任一路径时检查另一路径是否存在相同逻辑。详见根 `AGENTS.md` 开发注意事项。
+- `CallRuntime`/`SlowRuntimeStub` 路径可能触发 GC，栈上参数须保证 GC 安全；详见 `ecmascript/stubs/AGENTS.md`。

@@ -81,3 +81,5 @@ Test helpers are in `test_runtime_stubs.cpp/.h`. Full validation through:
 - Stub types: `RUNTIME_STUB_WITH_GC_LIST` stubs use the `CallRuntime` path and may trigger GC/exception/deopt; `RUNTIME_STUB_WITHOUT_GC_LIST` (NoGC stubs) use the NoGC runtime path and must not trigger GC, throw, or deopt.
 - Use NoGC stubs only when it is guaranteed there is no allocation or GC risk (for example pure math, debug print, and barrier-style helpers).
 - Sources are part of `ecma_source` in root `BUILD.gn`.
+- Stub 编译生成代码须保证地址连续性；多线程并发写入同一 stub 输出区时须加锁或按线程分区，否则并发交错写入会导致生成代码不一致。
+- 修改 `CallRuntime` 接口时，须检查栈上参数在 GC 触发时是否安全：非 `Tagged` 值（原始指针/整数）可能被 GC 误判为堆指针导致悬挂或误移动；交叉引用见 `ecmascript/interpreter/AGENTS.md`。
