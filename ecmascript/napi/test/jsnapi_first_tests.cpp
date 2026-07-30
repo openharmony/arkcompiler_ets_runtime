@@ -2675,6 +2675,29 @@ HWTEST_F_L0(JSNApiTests, SetReleaseSecureMemCallback)
     ASSERT_FALSE(releaseSecureMemCallBack2 == nullptr);
 }
 
+HWTEST_F_L0(JSNApiTests, SetAbilityName)
+{
+    LocalScope scope(vm_);
+    std::string abilityName = "EntryAbility";
+    JSNApi::SetAbilityName(abilityName);
+    CString res = Runtime::GetInstance()->GetEntryAbilityName();
+    ASSERT_FALSE(res.empty());
+
+    std::string anotherName = "AnotherEntryAbility";
+    JSNApi::SetAbilityName(anotherName);
+    CString res2 = Runtime::GetInstance()->GetEntryAbilityName();
+    ASSERT_EQ(res, res2);
+}
+
+HWTEST_F_L0(JSNApiTests, SetAbilityName_EmptyString)
+{
+    LocalScope scope(vm_);
+    CString before = Runtime::GetInstance()->GetEntryAbilityName();
+    JSNApi::SetAbilityName("");
+    CString after = Runtime::GetInstance()->GetEntryAbilityName();
+    ASSERT_EQ(before, after);
+}
+
 static bool g_finalizeCallbackExecuted = false;
 
 void FinalizeCallback([[maybe_unused]] EcmaVM *vm)

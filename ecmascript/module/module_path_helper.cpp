@@ -1274,4 +1274,28 @@ CString ModulePathHelper::GetBundleModuleName(const CString &baseFileName)
     size_t lastSlash = moduleName.rfind(PathHelper::SLASH_TAG);
     return moduleName.substr(0, lastSlash); // bundleName/moduleName
 }
+
+/*
+ * Before: filename: 1. /data/storage/el1/bundle/moduleName/ets/modules.abc
+ *                   2. /data/storage/el1/bundle/bundleName/moduleName/moduleName/ets/modules.abc
+ * After:  return:   1. false
+ *                   2. true
+ */
+bool ModulePathHelper::CheckCrossBundleHsp(EcmaVM *vm, const CString &filename)
+{
+    CString bundleModuleName = GetBundleModuleName(filename);
+    if (bundleModuleName == filename) {
+        return false;
+    }
+    size_t slashPos = bundleModuleName.find(PathHelper::SLASH_TAG);
+    if (slashPos == CString::npos) {
+        return false;
+    }
+    CString hspBundleName = bundleModuleName.substr(0, slashPos);
+    if (hspBundleName == vm->GetBundleName()) {
+        return false;
+    }
+    return true;
+}
+
 }  // namespace panda::ecmascript

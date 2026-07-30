@@ -21,7 +21,6 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_record_info_snapshot.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "zlib.h"
 
@@ -49,6 +48,8 @@ void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString
         common::Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<JSPandaFileSnapshotTask>(tid, thread, item.get(), path, version));
     }
+    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<CrossBundleHspSnapshotTask>(tid,
+        thread, path, version));
 }
 
 bool JSPandaFileSnapshot::JSPandaFileSnapshotTask::Run(uint32_t threadIndex)
@@ -363,6 +364,189 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
         recordNum++;
     }
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile success with: " << filename;
+    return true;
+}
+
+bool JSPandaFileSnapshot::CrossBundleHspEntry::WriteTo(FileMemMapWriter &writer) const
+{
+    uint32_t pathSize = hspPath_.size();
+    if (!writer.WriteSingleData(&pathSize, sizeof(pathSize), "pathSize")) {
+        return false;
+    }
+    if (!writer.WriteSingleData(hspPath_.c_str(), pathSize, "hspPath")) {
+        return false;
+    }
+    uint32_t entryPointSize = entryPoint_.size();
+    if (!writer.WriteSingleData(&entryPointSize, sizeof(entryPointSize), "entryPointSize")) {
+        return false;
+    }
+    if (!writer.WriteSingleData(entryPoint_.c_str(), entryPointSize, "entryPoint")) {
+        return false;
+    }
+    if (!writer.WriteSingleData(&fileSize_, sizeof(fileSize_), "fileSize")) {
+        return false;
+    }
+    if (!writer.WriteSingleData(&checkSum_, sizeof(checkSum_), "checkSum")) {
+        return false;
+    }
+    return true;
+}
+
+bool JSPandaFileSnapshot::CrossBundleHspEntry::ReadFrom(FileMemMapReader &reader)
+{
+    uint32_t pathSize = 0;
+    if (!reader.ReadSingleData(&pathSize, sizeof(pathSize), "pathSize")) {
+        return false;
+    }
+    if (!reader.ReadString(hspPath_, pathSize, "hspPath")) {
+        return false;
+    }
+    uint32_t entryPointSize = 0;
+    if (!reader.ReadSingleData(&entryPointSize, sizeof(entryPointSize), "entryPointSize")) {
+        return false;
+    }
+    if (!reader.ReadString(entryPoint_, entryPointSize, "entryPoint")) {
+        return false;
+    }
+    if (!reader.ReadSingleData(&fileSize_, sizeof(fileSize_), "fileSize")) {
+        return false;
+    }
+    if (!reader.ReadSingleData(&checkSum_, sizeof(checkSum_), "checkSum")) {
+        return false;
+    }
+    return true;
+}
+
+bool JSPandaFileSnapshot::CrossBundleHspSnapshotTask::Run(uint32_t threadIndex)
+{
+    WriteCrossBundleHspDataToFile(thread_, path_, version_);
+    return true;
+}
+
+bool JSPandaFileSnapshot::WriteCrossBundleHspDataToFile(JSThread *thread, const CString &path, const CString &version)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        "JSPandaFileSnapshot::WriteCrossBundleHspDataToFile", "");
+    CString filename = base::ConcatToCString(path, CROSS_BUNDLE_HSP_FILE_NAME);
+    if (FileExist(filename.c_str())) {
+        LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteCrossBundleHspDataToFile file already exist";
+        return false;
+    }
+    auto fileHeader =
+        ModulesSnapshotHelper::SnapshotVersionInfo::New(thread->GetEcmaVM()->GetApplicationVersionCode(), version, "");
+    std::unordered_map<CString, CString> crossBundleHspPaths =
+        JSPandaFileManager::GetInstance()->GetCrossBundleHspPaths();
+    // Build entries and calculate size in one pass
+    std::vector<CrossBundleHspEntry> entries;
+    entries.reserve(crossBundleHspPaths.size());
+    uint32_t pathCount = crossBundleHspPaths.size();
+    uint32_t contentSize = fileHeader->Size() + sizeof(pathCount) + sizeof(uint32_t);
+    for (const auto &[hspPath, entryPoint] : crossBundleHspPaths) {
+        auto pandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(hspPath);
+        if (pandaFile == nullptr) {
+            LOG_ECMA(ERROR) << "JSPandaFileSnapshot::WriteCrossBundleHspDataToFile FindJSPandaFile failed:" << hspPath;
+            return false;
+        }
+        CrossBundleHspEntry hspEntry(hspPath, entryPoint, pandaFile->GetFileSize(), pandaFile->GetChecksum());
+        entries.emplace_back(hspEntry);
+        contentSize += hspEntry.SerializedSize();
+    }
+    ModulesSnapshotHelper::FileGuard guard(filename, thread->GetCurrentThreadId());
+    MemMap fileMapMem = CreateFileMap(guard.GetTempPath().c_str(), contentSize, FILE_RDWR | FILE_CREAT | FILE_TRUNC,
+        PAGE_PROT_READWRITE);
+    if (fileMapMem.GetOriginAddr() == nullptr) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::WriteCrossBundleHspDataToFile open file failed:" << filename;
+        return false;
+    }
+    MemMapScope memMapScope(fileMapMem);
+    FileMemMapWriter writer(fileMapMem, "JSPandaFileSnapshot::WriteCrossBundleHspDataToFile");
+    if (!ModulesSnapshotHelper::WriteFileHeader(writer, fileHeader)) {
+        return false;
+    }
+    if (!writer.WriteSingleData(&pathCount, sizeof(pathCount), "pathCount")) {
+        return false;
+    }
+    for (const auto &entry : entries) {
+        if (!entry.WriteTo(writer)) {
+            return false;
+        }
+    }
+    uint32_t checksumSize = sizeof(uint32_t);
+    uint32_t checksum = adler32(0, static_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize - checksumSize);
+    if (!writer.WriteSingleData(&checksum, checksumSize, "fileChecksum")) {
+        return false;
+    }
+    FileSync(fileMapMem, FILE_MS_SYNC);
+    memMapScope.Escape();
+    FileUnMap(fileMapMem);
+    if (guard.Done()) {
+        ModulesSnapshotHelper::SetReadOnly(filename);
+        LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteCrossBundleHspDataToFile success with: " << filename;
+    }
+    return true;
+}
+
+bool JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile(JSThread *thread, const CString &path, const CString &version)
+{
+    if (ModulesSnapshotHelper::IsPandafileSnapshotDisabled(path)) {
+        LOG_ECMA(DEBUG) << "ReadCrossBundleHspDataFromFile: Pandafile snapshot not enabled";
+        return false;
+    }
+    CString filename = base::ConcatToCString(path, CROSS_BUNDLE_HSP_FILE_NAME);
+    if (!FileExist(filename.c_str())) {
+        LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile file is not exist";
+        return false;
+    }
+    MemMap fileMapMem = FileMap(filename.c_str(), FILE_RDONLY, PAGE_PROT_READ, 0);
+    if (fileMapMem.GetOriginAddr() == nullptr) {
+        LOG_ECMA(WARN) << "JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile file read failed";
+        return false;
+    }
+    MemMapScope memMapScope(fileMapMem);
+    FileMemMapReader reader(fileMapMem, std::bind(ModulesSnapshotHelper::RemoveFile, filename),
+        "JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile");
+    constexpr const uint32_t fileCheckSumSize = sizeof(uint32_t);
+    const uint32_t contentSize = fileMapMem.GetSize() - fileCheckSumSize;
+    uint32_t readCheckSum = 0;
+    if (!reader.ReadFromOffset(&readCheckSum, fileCheckSumSize, contentSize, "fileChecksum")) {
+        return false;
+    }
+    const uint32_t checksum = adler32(0, static_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
+    if (checksum != readCheckSum) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile checksum compare failed, compute: "
+                        << checksum << ", written: " << readCheckSum;
+        return false;
+    }
+    auto header =
+        ModulesSnapshotHelper::SnapshotVersionInfo::New(thread->GetEcmaVM()->GetApplicationVersionCode(), version, "");
+    if (auto err = ModulesSnapshotHelper::ReadFileHeader(reader, header); !err.empty()) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile file header check failed, error: "
+            << err;
+        return false;
+    }
+    uint32_t pathCount = 0;
+    if (!reader.ReadSingleData(&pathCount, sizeof(pathCount), "pathCount")) {
+        return false;
+    }
+    ReadEscapeGuard escapeGuard(path);
+    for (uint32_t pathIndex = 0; pathIndex < pathCount; pathIndex++) {
+        CrossBundleHspEntry entry;
+        if (!entry.ReadFrom(reader)) {
+            escapeGuard.Done();
+            return false;
+        }
+        auto jsPandaFile = JSPandaFileManager::GetInstance()->LoadSnapShotCrossBundleHsp(thread, entry.GetHspPath(),
+            entry.GetEntryPoint());
+        if (jsPandaFile == nullptr) {
+            LOG_ECMA(ERROR) << "ReadCrossBundleHspDataFromFile LoadJSPandaFile failed: " << entry.GetHspPath();
+            return false;
+        }
+        if (entry.GetCheckSum() != jsPandaFile->GetChecksum() || entry.GetFileSize() != jsPandaFile->GetFileSize()) {
+            LOG_ECMA(ERROR) << "ReadCrossBundleHspDataFromFile Pandafile mismatch: " << entry.GetHspPath();
+            return false;
+        }
+    }
+    escapeGuard.Done();
     return true;
 }
 } // namespace panda::ecmascript

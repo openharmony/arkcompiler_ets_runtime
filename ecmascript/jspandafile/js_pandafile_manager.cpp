@@ -168,6 +168,38 @@ template std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile<ForHyb
 template std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile<ForHybridApp::Hybrid>(JSThread *thread,
     const CString &filename, std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType);
 
+// This Function is used to load the JSPandaFile from the snapshot file.
+std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadSnapShotCrossBundleHsp(JSThread *thread, const CString &filename,
+    std::string_view entryPoint)
+{
+    ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
+    if (resolveBufferCallback == nullptr) {
+        LOG_FULL(ERROR) << "LoadSnapShotCrossBundleHsp resolveBufferCallback is nullptr";
+        return nullptr;
+    }
+    std::string hspPath = ModulePathHelper::ParseHapPath(filename);
+    if (hspPath.empty()) {
+        LOG_FULL(ERROR) << "Invalid input hsp path: " << filename;
+        return nullptr;
+    }
+    uint8_t *data = nullptr;
+    size_t dataSize = 0;
+    std::string errorMsg;
+    bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
+    if (!getBuffer) {
+        LOG_FULL(ERROR) << "LoadSnapShotCrossBundleHsp load hsp failed, hsp name:"
+                        << ModulePathHelper::GetBundleModuleName(filename)
+                        << ", errorMsg:" << errorMsg.c_str();
+        return nullptr;
+    }
+    std::unique_ptr<const panda_file::File> pf = OpenPandaFileFromMemory(data, dataSize);
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "LoadSnapShotCrossBundleHsp open file " << filename << " error";
+        return nullptr;
+    }
+    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint);
+    return jsPandaFile;
+}
 // The security interface needs to be modified accordingly.
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
     std::string_view entryPoint, const void *buffer, size_t size, bool needUpdate)
@@ -622,6 +654,10 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
             return jsPandaFile;
         } else {
             AddJSPandaFile(newJsPandaFile);
+            bool isCrossBundleHsp = ModulePathHelper::CheckCrossBundleHsp(vm, desc);
+            if (isCrossBundleHsp) {
+                crossBundleHspPaths_.emplace(desc, entryPoint);
+            }
             LoadConstpoolSnapshot(thread, newJsPandaFile.get());
             return newJsPandaFile;
         }

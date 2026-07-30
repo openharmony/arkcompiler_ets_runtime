@@ -4976,6 +4976,11 @@ void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::
     }
 }
 
+void JSNApi::SetAbilityName(const std::string &abilityName)
+{
+    ecmascript::Runtime::GetInstance()->SetEntryAbilityName(abilityName.c_str());
+}
+
 // Only used for env created by napi to set module execution mode
 void JSNApi::SetExecuteBufferMode(const EcmaVM *vm)
 {
@@ -6754,6 +6759,7 @@ void JSNApi::ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion)
     }
     vm->SetApplicationVersionCode(appVersion);
     ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+    ecmascript::ohos::JSPandaFileSnapshotInterfaces::ReadCrossBundleHspInfo(vm, path);
     ecmascript::ohos::ModuleSnapshotInterfaces::Deserialize(vm, path);
 }
 

@@ -451,6 +451,18 @@ public:
         return isFork_;
     }
 
+    void SetEntryAbilityName(const CString &abilityName)
+    {
+        if (entryAbilityName_.empty()) {
+            entryAbilityName_ = abilityName;
+        }
+    }
+
+    CString GetEntryAbilityName() const
+    {
+        return entryAbilityName_;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -596,6 +608,7 @@ private:
     bool isMainProcess_ {false};
     TaskPoolShrinkCallback taskpoolShrinkCallback_ {nullptr};
     bool enableEvacuateNonMovableSpace_ {true};
+    CString entryAbilityName_;
 
     static bool isFork_;
 

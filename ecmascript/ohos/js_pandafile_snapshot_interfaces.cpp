@@ -43,4 +43,19 @@ void JSPandaFileSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &p
     ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
     JSPandaFileSnapshot::PostWriteDataToFileJob(vm, path, version);
 }
+
+void JSPandaFileSnapshotInterfaces::ReadCrossBundleHspInfo(const EcmaVM *vm, const CString &path)
+{
+    if (!ecmascript::Runtime::GetInstance()->IsMainProcess()) {
+        LOG_ECMA(DEBUG) << "PandaFileSnapshotInterfaces::ReadCrossBundleHspInfo skiped in child process";
+        return;
+    }
+    ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
+    CString version = OhosVersionInfoTools::GetRomVersion();
+    bool result = JSPandaFileSnapshot::ReadCrossBundleHspDataFromFile(vm->GetJSThread(), path, version);
+    if (!result) {
+        LOG_ECMA(ERROR) << "PandaFileSnapshotInterfaces::ReadCrossBundleHspInfo failed";
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+    }
+}
 } // namespace panda::ecmascript::ohos
