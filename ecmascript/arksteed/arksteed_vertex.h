@@ -760,6 +760,8 @@ public:
         return static_cast<RegallocValueVertexInfo *>(Vertex::GetRegallocInfo());
     }
 
+    void SetHint(InstructionOperand hint);
+
 protected:
     explicit ValueVertex(uint64_t bitfield) : NonControlVertex(bitfield) {}
 };

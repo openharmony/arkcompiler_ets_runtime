@@ -1178,7 +1178,7 @@ void ArkSteedRegisterAllocator::SetLoopPhiRegisterHint(PhiVertex *phi, RegisterT
     for (int i = 0, n = phi->GetInputCount(); i < n; i++) {
         ValueVertex *input = phi->GetInput(i);
         if (input->GetId() > phi->GetId()) {
-            input->GetRegallocInfo()->SetHint(hint);
+            input->SetHint(hint);
         }
     }
 }

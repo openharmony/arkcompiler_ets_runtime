@@ -2567,21 +2567,21 @@ inline void UseFixed(Input input, uint32_t regCode)
     input.GetLocation()->GetOperand() =
         UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, regCode, NO_VREG);
     // Hint the input's vertex towards this register to avoid a later move.
-    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+    input.vertex()->SetHint(input.GetOperand());
 }
 
 inline void UseFixed(Input input, ArkSteedRegister reg)
 {
     input.GetLocation()->GetOperand() =
         UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, static_cast<uint32_t>(reg.Code()), NO_VREG);
-    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+    input.vertex()->SetHint(input.GetOperand());
 }
 
 inline void UseFixed(Input input, ArkSteedDoubleRegister reg)
 {
     input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER,
                                                          static_cast<uint32_t>(reg.Code()), NO_VREG);
-    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+    input.vertex()->SetHint(input.GetOperand());
 }
 
 inline void UseAndClobberFixed(Input input, uint32_t regCode)
@@ -2591,7 +2591,7 @@ inline void UseAndClobberFixed(Input input, uint32_t regCode)
                          UnallocatedState::LifetimeFlag::USED_AT_START,
                          regCode,
                          NO_VREG);
-    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+    input.vertex()->SetHint(input.GetOperand());
 }
 
 inline void UseAndClobberFixed(Input input, ArkSteedRegister reg)
@@ -2604,7 +2604,7 @@ inline void UseAndClobberFixed(Input input, ArkSteedRegister reg)
                          UnallocatedState::LifetimeFlag::USED_AT_START,
                          static_cast<uint32_t>(reg.Code()),
                          NO_VREG);
-    input.vertex()->GetRegallocInfo()->SetHint(input.GetOperand());
+    input.vertex()->SetHint(input.GetOperand());
 }
 
 inline void RequireSpecificTemporary(Vertex *vertex, ArkSteedRegister reg)

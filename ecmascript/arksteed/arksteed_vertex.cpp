@@ -15,6 +15,8 @@
 
 #include "ecmascript/arksteed/arksteed_vertex.h"
 
+#include "ecmascript/arksteed/arksteed_bb.h"
+#include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc_vertex_info.h"
 
 namespace panda::ecmascript::arksteed {
@@ -58,6 +60,38 @@ ValueLocation &ValueVertex::Result()
 const ValueLocation &ValueVertex::Result() const
 {
     return GetRegallocInfo()->GetResult();
+}
+
+void ValueVertex::SetHint(InstructionOperand hint)
+{
+    auto *info = GetRegallocInfo();
+    if (info->HasHint()) {
+        return;
+    }
+    info->SetHint(hint);
+
+    if (info->GetResult().IsUnallocated()) {
+        UnallocatedState operand = UnallocatedState::Cast(info->GetResult().GetOperand());
+        if (operand.HasSameAsInputPolicy()) {
+            GetInput(operand.GetInputIndex())->SetHint(hint);
+        }
+    }
+
+    if (GetOpcode() == VertexOpcode::Phi) {
+        if (GetOwner()->IsLoopHeader()) {
+            // input(0) = loop entry; input(1) = backedge! skip this one, 
+            // invariant is that only 2 inputs exist for PhiVertex.
+            if (GetInput(0) != nullptr) {
+                GetInput(0)->SetHint(hint);
+            }
+        } else {
+            for (uint32_t i = 0; i < GetInputCount(); i++) {
+                if (GetInput(i) != nullptr) {
+                    GetInput(i)->SetHint(hint);
+                }
+            }
+        }
+    }
 }
 
 InputLocation *Input::GetLocation() const
