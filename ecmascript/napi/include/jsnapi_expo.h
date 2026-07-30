@@ -2052,6 +2052,7 @@ public:
         std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap);
     static void UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
         std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap);
+    static void SetAbilityName(const std::string &abilityName);
     static void SetExecuteBufferMode(const EcmaVM *vm);
     // Stop preloading so task callback.
     static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);

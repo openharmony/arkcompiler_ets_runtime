@@ -49,6 +49,9 @@ public:
     std::shared_ptr<JSPandaFile> LoadInsecureJSPandaFile(JSThread *thread, const CString &filename,
                                                          std::string_view entryPoint);
 
+    std::shared_ptr<JSPandaFile> LoadSnapShotCrossBundleHsp(JSThread *thread, const CString &filename,
+                                                            std::string_view entryPoint);
+
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename);
 
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename, const CString &desc);
@@ -108,6 +111,11 @@ public:
     void AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPandaFile);
     void RemoveJSPandaFile(const JSPandaFile *jsPandaFile);
     void ClearNameMap();
+    std::unordered_map<CString, CString> GetCrossBundleHspPaths()
+    {
+        LockHolder lock(jsPandaFileLock_);
+        return crossBundleHspPaths_;
+    }
 
     std::unordered_set<std::shared_ptr<JSPandaFile>> GetAppJSPandaFiles(const EcmaVM *vm, bool hapOnly = false)
     {
@@ -165,6 +173,7 @@ private:
     // for plugin update.
     std::set<std::shared_ptr<JSPandaFile>> oldJSPandaFiles_;
     std::unordered_map<const JSPandaFile *, std::unique_ptr<DebugInfoExtractor>> extractors_;
+    std::unordered_map<CString, CString> crossBundleHspPaths_;
 
     friend class JSPandaFile;
     friend class JSPandaFileSnapshot;

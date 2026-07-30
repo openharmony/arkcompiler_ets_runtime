@@ -6700,6 +6700,66 @@ HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_EmptyPath)
     EXPECT_EQ(res, expectRes);
 }
 
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_DifferentBundle)
+{
+    instance->SetBundleName("com.myapp.bundle");
+    CString filename = "/data/storage/el1/bundle/com.other.bundle/moduleName1/moduleName1/ets/modules.abc";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_SameBundle)
+{
+    instance->SetBundleName("com.myapp.bundle");
+    CString filename = "/data/storage/el1/bundle/com.myapp.bundle/moduleName1/moduleName1/ets/modules.abc";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_SingleModule)
+{
+    CString filename = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_InvalidPath)
+{
+    CString filename = "/invalid/path/moduleName/ets/modules.abc";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_InvalidExtension)
+{
+    CString filename = "/data/storage/el1/bundle/moduleName/ets/modules.invalid";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_EmptyPath)
+{
+    CString filename = "";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_InvalidPathWithBundleName)
+{
+    instance->SetBundleName("com.example.myapplication");
+    CString filename = "/invalid/path/moduleName/ets/modules.abc";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_InvalidExtensionWithBundleName)
+{
+    instance->SetBundleName("com.example.myapplication");
+    CString filename = "/data/storage/el1/bundle/moduleName/ets/modules.invalid";
+    bool res = ModulePathHelper::CheckCrossBundleHsp(instance, filename);
+    EXPECT_FALSE(res);
+}
+
 HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule_CacheIntegration)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();

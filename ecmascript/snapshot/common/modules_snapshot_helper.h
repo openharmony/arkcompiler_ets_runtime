@@ -145,6 +145,7 @@ public:
                                 const SnapshotVersionInfo::UniquePtr& header, const CString& logPrefix);
     static bool ReadDataFromFile(const std::unique_ptr<SerializeData>& data, const CString& filePath,
                                  const SnapshotVersionInfo::UniquePtr& header, const CString& logPrefix);
+    static void UpdateFromStateFile(const CString &path);
 
     static size_t GetAlignUpPadding(const uint8_t* curPtr, void* originAddr, const size_t alignment)
     {
@@ -188,7 +189,6 @@ private:
     static bool TryDisableSnapshot(const std::string_view& reason, const std::string_view& extraInfo = "");
     static bool DoNeedEscape();
     static size_t IntToString(int64_t value, char *buf, size_t bufSize);
-    static void UpdateFromStateFile(const CString &path);
     static bool SigchainHandler(int signo, void *info, void *ucontext);
 
     // utils for snapshot file read/write

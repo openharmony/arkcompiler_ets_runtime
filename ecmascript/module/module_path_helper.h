@@ -224,6 +224,7 @@ public:
     static CString GetPkgNameWithNormalizedOhmurl(const CString &ohmurl);
     static bool IsCrossBundleHsp(const EcmaVM *vm, const CString &ohmurl);
     static CString GetBundleModuleName(const CString &baseFileName);
+    static bool CheckCrossBundleHsp(EcmaVM *vm, const CString &filename);
 
     inline static std::pair<CString, CString> ResolvePath(const char *path)
     {

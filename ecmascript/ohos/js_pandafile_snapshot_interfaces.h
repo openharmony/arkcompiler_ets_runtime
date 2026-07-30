@@ -21,6 +21,7 @@ namespace panda::ecmascript::ohos {
 class JSPandaFileSnapshotInterfaces {
 public:
     static void Serialize(const EcmaVM *vm, const CString &path);
+    static void ReadCrossBundleHspInfo(const EcmaVM *vm, const CString &path);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JS_PANDAFILE_SNAPSHOT_INTERFACES_H

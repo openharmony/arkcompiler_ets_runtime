@@ -31,7 +31,8 @@ void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CStri
 {
     LOG_ECMA(DEBUG) << "ModuleSnapshot::SerializeDataAndPostSavingJob " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::SerializeDataAndPostSavingJob", "");
-    CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
+    CString abilityName = Runtime::GetInstance()->GetEntryAbilityName();
+    CString filePath = base::ConcatToCString(path, abilityName, MODULE_SNAPSHOT_FILE_NAME);
     if (FileExist(filePath.c_str())) {
         LOG_ECMA(INFO) << "Module serialize file already exist";
         return;
@@ -51,7 +52,8 @@ bool ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, cons
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::DeserializeData", "");
     LOG_ECMA(DEBUG) << "ModuleSnapshot::DeserializeData";
-    CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
+    CString abilityName = Runtime::GetInstance()->GetEntryAbilityName();
+    CString filePath = base::ConcatToCString(path, abilityName, MODULE_SNAPSHOT_FILE_NAME);
     if (!FileExist(filePath.c_str())) {
         LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData Module serialize file doesn't exist: " << path;
         return false;
