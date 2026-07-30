@@ -21,6 +21,9 @@
 
 namespace panda::ecmascript {
 using EcmaOpcode = kungfu::EcmaOpcode;
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+using FullJSRecordInfo = JSPandaFile::FullJSRecordInfo;
+#endif
 
 template<class T, class... Args>
 static T *InitializeMemory(T *mem, Args... args)
@@ -278,7 +281,15 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
                                                        JSHandle<ConstantPool> sconstpool,
                                                        JSHandle<ConstantPool> constpool)
 {
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    auto &rawRecordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
+    if (!rawRecordInfo.IsFull()) {
+        LOG_ECMA(FATAL) << "invalid JSRecordInfo object, full object required";
+    }
+    auto &recordInfo = static_cast<FullJSRecordInfo&>(rawRecordInfo);
+#else
     auto &recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
+#endif
     JSThread *thread = vm->GetJSThread();
     ASSERT(!thread->HasPendingException());
     if (recordInfo.IsParsedConstpoolOfCurrentVM(vm)) {

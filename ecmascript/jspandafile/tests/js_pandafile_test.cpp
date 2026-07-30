@@ -43,6 +43,7 @@ using namespace panda::pandasm;
 
 using ClassTranslateWork = std::vector<std::pair<uint32_t, uint32_t>>;
 using CurClassTranslateWork = std::pair<uint32_t, ClassTranslateWork>;
+using FullJSRecordInfo = JSPandaFile::FullJSRecordInfo;
 
 namespace panda::test {
 class MockJSPandaFileSnapshotForTest : public JSPandaFileSnapshot {
@@ -377,10 +378,14 @@ HWTEST_F_L0(JSPandaFileTest, IsParsedConstpoolOfCurrentVM)
     )";
     const CString fileName = "test.pa";
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
-    auto &recordInfo = pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
+    auto &result = pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
+    ASSERT_EQ(result.IsFull(), true);
+    auto &recordInfo = static_cast<FullJSRecordInfo&>(result);
     EXPECT_TRUE(!recordInfo.IsParsedConstpoolOfCurrentVM(instance));
     recordInfo.SetParsedConstpoolVM(instance);
-    EXPECT_TRUE(pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME).IsParsedConstpoolOfCurrentVM(instance));
+    auto& found = pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
+    ASSERT_EQ(found.IsFull(), true);
+    EXPECT_TRUE(static_cast<FullJSRecordInfo&>(found).IsParsedConstpoolOfCurrentVM(instance));
 }
 
 HWTEST_F_L0(JSPandaFileTest, NormalizedFileDescTest)
