@@ -16,6 +16,7 @@
 #include "ecmascript/dependent_infos.h"
 
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
