@@ -1611,3 +1611,26 @@ __attribute__((visibility("default"))) int ark_parse_js_frame_info_local(
     }
     return -1;
 }
+
+__attribute__((visibility("default"))) void EnableArkTsHook()
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    panda::ecmascript::Runtime::GetInstance()->SetHiProfilerEnabled(true);
+    panda::ecmascript::Runtime::GetInstance()->IterateAllThreadList([](panda::ecmascript::JSThread *thread) {
+        thread->SetIsStartHeapSampling(true);
+    });
+#endif
+}
+
+__attribute__((visibility("default"))) void DisableArkTsHook()
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    panda::ecmascript::Runtime::GetInstance()->SetHiProfilerEnabled(false);
+    panda::ecmascript::Runtime::GetInstance()->IterateAllThreadList([](panda::ecmascript::JSThread *thread) {
+        if (thread->IsJitThread() || thread->GetEcmaVM() == nullptr ||
+            thread->GetEcmaVM()->GetHeapProfile() == nullptr) {
+            thread->SetIsStartHeapSampling(false);
+        }
+    });
+#endif
+}

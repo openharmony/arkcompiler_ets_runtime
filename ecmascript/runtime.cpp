@@ -283,6 +283,9 @@ void Runtime::RegisterThread(JSThread* newThread)
         LockHolder lock(threadsLock_);
         ASSERT(std::find(threads_.begin(), threads_.end(), newThread) == threads_.end());
         threads_.emplace_back(newThread);
+        if (UNLIKELY(IsHiProfilerEnabled())) {
+            newThread->SetIsStartHeapSampling(true);
+        }
 
         if (!g_isEnableCMCGC) {
             // send all current suspended requests to the new thread
@@ -683,7 +686,7 @@ void Runtime::IteratorNativeDeleteInSharedGC(WeakVisitor &visitor)
             }
             ++constpoolIter;
         }
-        if (constpools.size() == 0) {
+        if (constpools.size() == 0 && !Runtime::GetInstance()->IsHiProfilerEnabled()) {
             LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
             JSPandaFileManager::GetInstance()->RemoveJSPandaFile(iterator->first);
             iterator = globalSharedConstpools_.erase(iterator);
@@ -723,7 +726,7 @@ void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
             }
             ++constpoolIter;
         }
-        if (constpools.size() == 0) {
+        if (constpools.size() == 0 && !Runtime::GetInstance()->IsHiProfilerEnabled()) {
             LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
             JSPandaFileManager::GetInstance()->RemoveJSPandaFile(iterator->first);
             iterator = globalSharedConstpools_.erase(iterator);

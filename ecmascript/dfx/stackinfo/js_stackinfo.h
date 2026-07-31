@@ -287,3 +287,5 @@ extern "C" int ark_destroy_local();
 // define in dfx_signal_handler.h
 typedef void(*ThreadInfoCallback)(char *buf, size_t len, void *ucontext);
 extern "C" void SetThreadInfoCallback(ThreadInfoCallback func) __attribute__((weak));
+extern "C" void EnableArkTsHook();
+extern "C" void DisableArkTsHook();

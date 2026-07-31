@@ -171,7 +171,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         SuspendAllScope scope(thread);
         SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
         RecursionScope recurScope(this, HeapType::SHARED_HEAP);
-        CheckInHeapProfiler();
+        CheckProfilerEnabled();
         GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
         if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
             // pre gc heap verify
@@ -561,7 +561,7 @@ void SharedHeap::TriggerSharedCC(GCReason gcReason)
 void SharedHeap::RunSharedGC(TriggerGCType gcType, GCReason gcReason)
 {
     ASSERT(gcType != TriggerGCType::SHARED_CC);
-    CheckInHeapProfiler();
+    CheckProfilerEnabled();
     gcType_ = gcType;
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
     if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
@@ -625,7 +625,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         SetGCThreadQosPriority(common::PriorityMode::STW);
         SuspendAllScope scope(dThread_);
         SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
-        CheckInHeapProfiler();
+        CheckProfilerEnabled();
         gcType_ = gcType;
         GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
         if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
@@ -700,17 +700,18 @@ bool SharedHeap::CheckOngoingConcurrentMarking()
     return false;
 }
 
-void SharedHeap::CheckInHeapProfiler()
+void SharedHeap::CheckProfilerEnabled()
 {
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    profilerEnabled_ = Runtime::GetInstance()->IsHiProfilerEnabled();
     Runtime::GetInstance()->GCIterateThreadList([this](JSThread *thread) {
         if (thread->GetEcmaVM()->GetHeapProfile() != nullptr) {
-            inHeapProfiler_ = true;
+            profilerEnabled_ = true;
             return;
         }
     });
 #else
-    inHeapProfiler_ = false;
+    profilerEnabled_ = false;
 #endif
 }
 
@@ -2291,8 +2292,10 @@ void Heap::AdjustOldSpaceLimit()
 void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]] TaggedObject* address,
                                [[maybe_unused]] size_t size)
 {
-    MEMORY_TRACE_ALLOCATE(address, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    if (Runtime::GetInstance()->IsHiProfilerEnabled()) {
+        MEMORY_TRACE_ALLOCATE(address, size);
+    }
     HeapProfilerInterface *profiler = ecmaVm->GetHeapProfile();
     if (profiler != nullptr) {
         base::BlockHookScope blockScope;

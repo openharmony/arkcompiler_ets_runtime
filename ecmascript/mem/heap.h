@@ -1083,12 +1083,12 @@ public:
         ~SharedGCScope();
     };
 
-    bool InHeapProfiler() const
+    bool IsProfilerEnabled() const
     {
-        return inHeapProfiler_;
+        return profilerEnabled_;
     }
 
-    void CheckInHeapProfiler();
+    void CheckProfilerEnabled();
     void SetGCThreadQosPriority(common::PriorityMode mode);
 
     Mutex& GetSuspensionRequestMutex()
@@ -1180,7 +1180,7 @@ private:
     size_t recordSensitiveSize_ {0};
     std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
-    bool inHeapProfiler_ {false};
+    bool profilerEnabled_ {false};
     bool tryCompressHeapAfterStartup_ {false};
     NativePointerList sharedNativePointerList_;
     std::mutex sNativePointerListMutex_;
@@ -1753,7 +1753,7 @@ public:
         WaitAllTasksFinished();
     }
 #endif
-    inline bool InHeapProfiler();
+    inline bool IsProfilerEnabled();
 
     inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 

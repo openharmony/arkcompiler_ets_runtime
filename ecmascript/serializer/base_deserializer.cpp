@@ -41,6 +41,10 @@ BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *
             UNREACHABLE();
         }
     }
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    profilerEnabled_ = Runtime::GetInstance()->IsHiProfilerEnabled() ||
+        thread_->GetEcmaVM()->GetHeapProfile() != nullptr;
+#endif
 }
 
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
@@ -104,6 +108,12 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
     uintptr_t res = RelocateObjectAddr(space, objSize);
     objectVector_.push_back(static_cast<JSTaggedType>(res));
     DeserializeObjectField(res, res + objSize);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    if (profilerEnabled_) {
+        auto vm = thread_->GetEcmaVM();
+        vm->GetHeap()->OnAllocateEvent(vm, reinterpret_cast<TaggedObject *>(res), objSize);
+    }
+#endif
     return res;
 }
 

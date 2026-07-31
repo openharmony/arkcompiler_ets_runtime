@@ -476,6 +476,8 @@
       ark_write_jit_code;
       GetAOTVersion;
       LazyDeoptEntry;
+      EnableArkTsHook;
+      DisableArkTsHook;
     };
   local:
     *;

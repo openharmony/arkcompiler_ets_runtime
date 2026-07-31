@@ -16,6 +16,7 @@
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 HeapSampling::HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval, int stackDepth)
@@ -35,7 +36,9 @@ HeapSampling::HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval
 HeapSampling::~HeapSampling()
 {
     heap_->ClearAllocationInspectorFromAllSpaces();
-    vm_->GetJSThread()->SetIsStartHeapSampling(false);
+    if (!Runtime::GetInstance()->IsHiProfilerEnabled()) {
+        vm_->GetJSThread()->SetIsStartHeapSampling(false);
+    }
 }
 
 const struct SamplingInfo *HeapSampling::GetAllocationProfile()

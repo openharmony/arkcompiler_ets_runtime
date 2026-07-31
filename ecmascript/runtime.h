@@ -444,6 +444,16 @@ public:
         return enableEvacuateNonMovableSpace_;
     }
 
+    void SetHiProfilerEnabled(bool enabled)
+    {
+        hiProfilerEnabled_.store(enabled, std::memory_order_release);
+    }
+
+    bool IsHiProfilerEnabled() const
+    {
+        return hiProfilerEnabled_.load(std::memory_order_acquire);
+    }
+
     static void SetFork(bool isFork)
     {
         isFork_ = isFork;
@@ -623,6 +633,8 @@ private:
     TaskPoolShrinkCallback taskpoolShrinkCallback_ {nullptr};
     bool enableEvacuateNonMovableSpace_ {true};
     CString entryAbilityName_;
+
+    std::atomic<bool> hiProfilerEnabled_ {false};
 
     static bool isFork_;
 

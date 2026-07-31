@@ -181,12 +181,12 @@ private:
 
     class EvacuateRegionWorkload : public Workload {
     public:
-        EvacuateRegionWorkload(SharedGCEvacuator *evacuator, Region *region, SharedHeap *sHeap, bool inHeapProfiler)
-            : Workload(evacuator, region) {}
+        EvacuateRegionWorkload(SharedGCEvacuator *evacuator, Region *region, SharedHeap *sHeap, bool profilerEnabled)
+            : Workload(evacuator, region), sHeap_(sHeap), profilerEnabled_(profilerEnabled) {}
         void Process(uint32_t threadIndex) override;
     private:
         SharedHeap *sHeap_ {nullptr};
-        bool inHeapProfiler_ {false};
+        bool profilerEnabled_ {false};
     };
 
     class UpdateLocalReferenceWorkload : public Workload {
