@@ -407,8 +407,6 @@ public:
 
     void PUBLIC_API SetException(JSTaggedValue exception);
 
-    size_t GetGlobalHandleCount();
-
     JSTaggedValue GetException() const
     {
         return glueData_.exception_;
