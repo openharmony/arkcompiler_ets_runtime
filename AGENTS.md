@@ -109,6 +109,12 @@
 ### 开发注意事项
 
 - 修改 `TaggedObject` 派生类布局时，需注意不同数据类型在 32/64 位平台上的宽度差异；`JSTaggedValue` 或 GC 访问的 tagged 字段需按 `JSTaggedValue::TaggedTypeSize()` 对齐，`SIZE` 也应为该粒度的倍数，避免 `HClass` object size 截断或字段越界。
+- 修改 `StringTable`/`Method`/`Module` 等虚拟机常驻基础数据结构时，须检查结构体 `SIZE` 是否增长，并提醒用户：此类变更影响进程级常驻内存（随 VM/Isolate 实例数量线性放大），需评估常驻内存与启动开销。
+- 修改 `TaggedObject` 派生类的 bit 字段布局时，须用 `static_assert` 校验其与对应 `Literal` 结构字段的 offset 一致，避免类型元数据读取错位。
+- 接口内引入缓存优化时，须检查缓存是否使用强引用（裸指针/`Global<>`/全局表登记）且是否设有大小上限与淘汰策略，防止常驻泄漏或无界增长。
+- 使用位域或 tag pointer 时，须检查标记位是否占用指针高位（57-64 位），与 HWAsan 的 shadow 地址空间冲突。
+- 修改 IR 或 C++ 解释器任一路径的字节码语义时，须检查另一路径是否存在相同逻辑并保持行为一致（见 `ecmascript/interpreter/AGENTS.md` 与 `ecmascript/compiler/AGENTS.md`）。
+- 修改对象布局、删除字段或变更字段语义时，须判定是否构成不兼容变更（影响 `.abc` 类型元数据/`.so` AOT 产物/堆快照/补丁兼容），并显式提醒用户其影响范围。
 
 ### 不要做
 

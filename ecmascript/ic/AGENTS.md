@@ -111,3 +111,4 @@ Full OHOS tree:
 - Prototype chain changes must invalidate relevant ICs via ProtoChangeDetails.
 - ICHandler values must fit within JSTaggedValue size for inline fast path; complex cases use TaggedObject.
 - IC slots are indexed by bytecode slot ID; ensure frontend and runtime slot numbering consistency.
+- 修改属性访问逻辑（LoadIC/StoreIC/ElementIC/GlobalIC）时，须检查属性加载结果是否做了有效性校验（如 `JSTaggedValue` 非空、`HClass`/形状未失效、未命中后是否正确回退而非直接使用缓存值）。

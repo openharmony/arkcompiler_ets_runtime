@@ -99,3 +99,4 @@ Full OHOS tree:
 - ArkTS extensions (SharedArray, SharedMap, SharedSet, SharedTypedArray) are non-standard but documented.
 - Sendable objects require thread-safe implementations.
 - Intl features depend on ICU library version.
+- 修改 `Proxy`/`Reflect` 相关逻辑时，须检查 `receiver` 参数传递是否与 ECMA-262 规范一致（如 `[[Get]]`/`[[Set]]` 的 Receiver 入参），避免 receiver 丢失或被替换为 holder。
