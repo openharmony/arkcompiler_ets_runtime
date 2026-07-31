@@ -57,11 +57,6 @@ struct ThreadWorkload {
     ConditionVariable cv_;
 };
 
-struct EvacuatorEntry {
-    JSThread *thread{nullptr};
-    SharedCCEvacuator *evacuator{nullptr};
-};
-
 class SharedCC {
 public:
     explicit SharedCC(SharedHeap *heap);
@@ -161,7 +156,7 @@ private:
     std::atomic<size_t> sharedIter_{0};
 
     Mutex evacuatorsMutex_;
-    std::vector<EvacuatorEntry> evacuators_;
+    std::vector<SharedCCEvacuator*> evacuators_;
 
     friend class SharedCCCopyTask;
     friend class SharedCCUpdateTask;
