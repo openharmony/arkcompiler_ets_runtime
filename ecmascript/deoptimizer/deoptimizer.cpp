@@ -950,10 +950,12 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
     uintptr_t *prevReturnAddrAddress = nullptr;
-    FrameType *prevFrameTypeAddress;
+    FrameType *prevFrameTypeAddress = nullptr;
     uintptr_t prevFrameCallSiteSp = 0;
+    uintptr_t lazyDeoptTrampoline = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_LazyDeoptEntry);
     for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
-        if (IsNeedLazyDeopt(it)) {
+        // Skips if the ReturnAddr is already patched as lazyDeoptTrampoline before
+        if (IsNeedLazyDeopt(it) && prevReturnAddrAddress != nullptr && *prevReturnAddrAddress != lazyDeoptTrampoline) {
             ReplaceReturnAddrWithLazyDeoptTrampline(
                 thread, prevReturnAddrAddress, prevFrameTypeAddress, prevFrameCallSiteSp);
         }
@@ -977,7 +979,7 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
  * 1. Bytecode processing remains incomplete
  * 2. Post-processing must handle:
  *    a. Program Counter (PC) adjustment
- *    b. Accumulator (ACC) state overwrite
+ *    b. Virtual register state overwrite: Accumulator (ACC) and lexical environment (ENV)
  *    c. Handling pending exceptions
  *
  * Critical Constraint:
@@ -989,13 +991,10 @@ void Deoptimizier::ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint
                                     AsmInterpretedFrame *statePtr)
 {
     bool hasPendingException = thread_->HasPendingException();
-    if (!hasPendingException && NeedOverwriteAcc(resumePc)) {
-        statePtr->acc = maybeAcc.GetTaggedValue();
-    }
-
-    // Todo: add check constructor
-
     if (!hasPendingException) {
+        if (NeedOverwriteAcc(resumePc)) {
+            statePtr->acc = maybeAcc.GetTaggedValue();
+        }
         EcmaOpcode curOpcode = kungfu::Bytecodes::GetOpcode(resumePc);
         resumePc += (BytecodeInstruction::Size(curOpcode));
     }
@@ -1004,9 +1003,6 @@ void Deoptimizier::ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint
 bool Deoptimizier::NeedOverwriteAcc(const uint8_t *pc) const
 {
     BytecodeInstruction inst(pc);
-    if (inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE)) {
-        return true;
-    }
-    return false;
+    return inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE);
 }
 }  // namespace panda::ecmascript

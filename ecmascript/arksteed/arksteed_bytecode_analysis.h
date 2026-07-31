@@ -29,19 +29,28 @@ public:
 
     bool Run();
 
-    const kungfu::BitSet &GetLiveIn(uint32_t blockRpoIndex) const
+    const kungfu::BitSet &GetLiveInOfBlock(uint32_t blockRpoIndex) const
     {
-        return liveIn_[blockRpoIndex];
+        return blockLiveIn_[blockRpoIndex];
     }
-    const kungfu::BitSet &GetLiveOut(uint32_t blockRpoIndex) const
+    const kungfu::BitSet &GetLiveOutOfBlock(uint32_t blockRpoIndex) const
     {
-        return liveOut_[blockRpoIndex];
+        return blockLiveOut_[blockRpoIndex];
     }
     // If current block B is a loop header,
     // then KillSet(B) = Union of every KillSet(C) where C is inside the loop.
-    const kungfu::BitSet &GetKillSet(uint32_t blockRpoIndex) const
+    const kungfu::BitSet &GetKillSetOfBlock(uint32_t blockRpoIndex) const
     {
         return killSet_[blockRpoIndex];
+    }
+
+    const kungfu::BitSet &GetLiveInOfBytecode(uint32_t bcIndex)
+    {
+        return bcLiveIn_[bcIndex];
+    }
+    const kungfu::BitSet &GetLiveOutOfBytecode(uint32_t bcIndex)
+    {
+        return bcLiveOut_[bcIndex];
     }
 
     VRegIDType GetNumLocalVRegs() const
@@ -65,20 +74,36 @@ public:
     std::string Dump() const;
 
 private:
-    void UpdateUpwardExposedSet(const BytecodeInfo *info, uint32_t blockIndex);
-    void UpdateKillSet(const BytecodeInfo *info, uint32_t blockIndex);
+    void AddUpwardExposedUses(const BytecodeInfo *info, const kungfu::BitSet &killed, kungfu::BitSet &ue);
+    void AddUsedVRegs(const BytecodeInfo *info, kungfu::BitSet &bitset);
+    void SetDefinedVRegs(const BytecodeInfo *info, kungfu::BitSet &bitset);
+    void ClearDefinedVRegs(const BytecodeInfo *info, kungfu::BitSet &bitset);
 
     void InitializeUEAndKillSets();
     void InitializeLiveIn();
+    void InitializeBytecodeLiveness();
     void ExpandKillSet();
     void FinalizeWithFixedParamsAndEnv();
 
     bool UpdateLiveness();
     void ComputeExceptionalUE(uint32_t blockIndex, kungfu::BitSet &exceptionalUE);
 
+    VRegIDType AccIndex() const
+    {
+        return numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX;
+    }
+    VRegIDType LexicalEnvIndex() const
+    {
+        return numVRegs_ - EXTRA_VREG_COUNT + LEXICAL_ENV_EXTRA_INDEX;
+    }
+    VRegIDType ThisObjectIndex() const
+    {
+        return VRegOfParam(GetNumLocalVRegs(), THIS_OBJECT_PARAM_INDEX);
+    }
+
     void SetAcc(kungfu::BitSet &bitset)
     {
-        bitset.SetBit(numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX);
+        bitset.SetBit(AccIndex());
     }
     void SetVReg(kungfu::BitSet &bitset, VRegIDType vreg)
     {
@@ -88,12 +113,17 @@ private:
 
     void ClearAcc(kungfu::BitSet &bitset)
     {
-        bitset.ClearBit(numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX);
+        bitset.ClearBit(AccIndex());
+    }
+    void ClearVReg(kungfu::BitSet &bitset, VRegIDType vreg)
+    {
+        ASSERT(vreg < numVRegs_);
+        bitset.ClearBit(vreg);
     }
 
     bool TestAcc(const kungfu::BitSet &bitset) const
     {
-        return bitset.TestBit(numVRegs_ - EXTRA_VREG_COUNT + ACC_EXTRA_INDEX);
+        return bitset.TestBit(AccIndex());
     }
     bool TestVReg(const kungfu::BitSet &bitset, VRegIDType vreg) const
     {
@@ -101,17 +131,17 @@ private:
         return bitset.TestBit(vreg);
     }
 
-    void UpdateKilledBefore(const BytecodeInfo *info, kungfu::BitSet &killedBefore);
-
     std::string DumpBitset(const kungfu::BitSet &bitset) const;
 
     const BytecodePreprocessor *parent_;
     VRegIDType numVRegs_;
-    ChunkVector<kungfu::BitSet> liveIn_;
-    ChunkVector<kungfu::BitSet> liveOut_;
-    // Upward-exposed virtual registers
+    ChunkVector<kungfu::BitSet> blockLiveIn_;
+    ChunkVector<kungfu::BitSet> blockLiveOut_;
+    ChunkVector<kungfu::BitSet> bcLiveIn_;
+    ChunkVector<kungfu::BitSet> bcLiveOut_;
+    // Upward-exposed virtual registers of basic block
     ChunkVector<kungfu::BitSet> ueSet_;
-    // Killed virtial registers by definition
+    // Killed virtial registers by definition of basic block
     ChunkVector<kungfu::BitSet> killSet_;
 };
 }  // namespace panda::ecmascript::arksteed

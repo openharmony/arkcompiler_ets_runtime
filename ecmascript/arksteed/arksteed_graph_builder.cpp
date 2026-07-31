@@ -85,7 +85,7 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
     return true;
 }
 
-void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, kungfu::CommonStubCSigns::ID id)
+void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, CommonStubID id)
 {
 #ifndef NDEBUG
     const kungfu::CallSignature *signature = kungfu::CommonStubCSigns::Get(id);
@@ -116,6 +116,12 @@ void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, kungfu::CommonS
     (void)inputs;  // // No-op in Release build
     (void)id;
 #endif
+}
+
+void ValidateCommonStubCallArgs(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+{
+    auto span = Span<ValueVertex * const>{inputs.begin(), inputs.size()};
+    ValidateCommonStubCallArgs(span, id);
 }
 
 bool SupportsI32CheckedBinOp(BinaryOpKind kind)
@@ -453,7 +459,7 @@ bool GraphBuilder::Run()
 
     SharedBCFrameState frameState(preproc_->GetNumVRegs(), nullptr, chunk_);
     InitializeStartBlock(frameState);
-    frameStates_[0] = CondensedBCFrameState(frameState, analysis_->GetLiveOut(0), chunk_);
+    frameStates_[0] = CondensedBCFrameState(frameState, analysis_->GetLiveOutOfBlock(0), chunk_);
 
     // 1 : Skips the start block (which is initialized before)
     for (uint32_t i = 1, n = preproc_->GetNumLiveBasicBlocks(); i < n; i++) {
@@ -463,7 +469,7 @@ bool GraphBuilder::Run()
         }
         frameState.Reset(nullptr);
         ProcessBasicBlock(frameState, i);
-        frameStates_[i] = CondensedBCFrameState(frameState, analysis_->GetLiveOut(i), chunk_);
+        frameStates_[i] = CondensedBCFrameState(frameState, analysis_->GetLiveOutOfBlock(i), chunk_);
     }
     return true;
 }
@@ -509,21 +515,12 @@ void GraphBuilder::InitializeStartBlock(SharedBCFrameState frameState)
         graph_->AddParameter(v);
         frameState.Set(VRegOfParam(numLocal_, i), v);
     }
+    actualArgc_ = NewVertex<ActualArgcVertex>(blocks_[0], {});
+    taggedActualArgc_ = NewVertex<I32ToTaggedIntVertex>(blocks_[0], {actualArgc_});
+
     // -3 : Fixed header lexicalEnv is at slot -3 in word units.
     initialLexicalEnv_ = NewVertex<InitialValueVertex>(blocks_[0], {}, -3);
     frameState.SetLexicalEnv(initialLexicalEnv_);
-
-    if (GetOptions()->GetCompilerArkSteedPrintMethodName()) {
-        ValueVertex *jsFunc = frameState.Get(VRegOfParam(numLocal_, CALL_TARGET_PARAM_INDEX));
-        DeoptMetadata deoptData{
-            .deoptVRegs = ChunkVector<VRegIDType>(chunk_),
-            .firstDeoptInputIndex = 1,
-            .bytecodeOffset = 0
-        };
-        NewVertex<CallRuntimeVertex>(
-            compileInfoFacts_[0], blocks_[0], {jsFunc}, std::move(deoptData), RTSTUB_ID(PrintMethodName));
-    }
-
     FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
 }
 
@@ -623,8 +620,8 @@ void GraphBuilder::InitFrameStateForLoopHeader(SharedBCFrameState frameState, ui
     ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2 : One is entry, the other is loop-back
 
     kungfu::BitSet phiCandidates(chunk_, frameState.NumVRegs());
-    phiCandidates.CopyFrom(analysis_->GetLiveIn(rpoIndex));
-    phiCandidates.Intersect(analysis_->GetKillSet(rpoIndex));
+    phiCandidates.CopyFrom(analysis_->GetLiveInOfBlock(rpoIndex));
+    phiCandidates.Intersect(analysis_->GetKillSetOfBlock(rpoIndex));
 
     for (uint32_t vregIndex = 0, n = frameState.NumVRegs(); vregIndex < n; vregIndex++) {
         if (phiCandidates.TestBit(vregIndex)) {
@@ -648,7 +645,7 @@ void GraphBuilder::InitFrameStateForCatchBlockHeader(SharedBCFrameState frameSta
     ASSERT(data != nullptr);
     ASSERT(data->totalCount >= 1);
 
-    const kungfu::BitSet &liveIn = analysis_->GetLiveIn(rpoIndex);
+    const kungfu::BitSet &liveIn = analysis_->GetLiveInOfBlock(rpoIndex);
     VRegIDType liveIndex = 0;
     // -1: Skips acc, which is numbered as the last
     for (VRegIDType vregIndex = 0, n = frameState.NumVRegs(); vregIndex < n - 1; vregIndex++) {
@@ -730,7 +727,7 @@ void GraphBuilder::WriteBackFrameStateToLoopHeader(SharedBCFrameState current, u
 void GraphBuilder::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
                                    uint32_t actualPredIndex, uint32_t actualNumPreds)
 {
-    const kungfu::BitSet &liveIn = analysis_->GetLiveIn(rpoIndex);
+    const kungfu::BitSet &liveIn = analysis_->GetLiveInOfBlock(rpoIndex);
     frameStates_[predRpoIndex].ForEach([&, this](ValueVertex *fromPred, VRegIDType vregIndex) {
         if (!liveIn.TestBit(vregIndex)) {
             return;
@@ -934,7 +931,7 @@ BB *GraphBuilder::ActivateCatchBlock(GraphBuilder::CatchBlockInputData **inputDa
 {
     if (UNLIKELY(blocks_[rpoIndex] == nullptr)) {
         blocks_[rpoIndex] = NewBlock();
-        catchBlockInputs_[rpoIndex] = chunk_->New<CatchBlockInputData>(analysis_->GetLiveIn(rpoIndex), chunk_);
+        catchBlockInputs_[rpoIndex] = chunk_->New<CatchBlockInputData>(analysis_->GetLiveInOfBlock(rpoIndex), chunk_);
     }
     ASSERT(catchBlockInputs_[rpoIndex] != nullptr);
     *inputData = catchBlockInputs_[rpoIndex];
@@ -961,6 +958,7 @@ struct GraphBuilder::BytecodeVisitor {
         PropertyLookupResult plr;
         uint32_t holderDepth {0};
         bool isConst {false};
+        bool hasStableProtoChain {false};
     };
 
     using NamedLoadAccessInfoOpt = std::optional<NamedLoadAccessInfo>;
@@ -1247,7 +1245,7 @@ struct GraphBuilder::BytecodeVisitor {
                 LowerCallArgs3(bcInfo);
                 break;
             case kungfu::EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-                LowerCallThis0(bcInfo);
+                LowerCallInit(bcInfo);
                 break;
             case kungfu::EcmaOpcode::CALLTHIS0_IMM8_V8:
                 LowerCallThis0(bcInfo);
@@ -1548,7 +1546,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *numberBigInt = StringFromConstPool(stringId);
-        frameState.SetAcc(RuntimeCall({numberBigInt}, RTSTUB_ID(LdBigInt)));
+        RuntimeCallToAccWithLazyDeopt({numberBigInt}, RTSTUB_ID(LdBigInt));
     }
 
     // -------- Category #3: Unary Arithmetic --------
@@ -1561,7 +1559,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Inc));
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Inc);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerDec()
@@ -1572,7 +1572,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Dec));
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Dec);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerNeg()
@@ -1583,7 +1585,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Neg));
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Neg);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerNot()
@@ -1594,49 +1598,12 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildUnaryOperation(CommonStubID::Not));
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Not);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     // -------- Category #4: Binary Arithmetic --------
-
-    // TODO: DEMONSTRATION ONLY. The following code simply serves as an example of subgraph builder.
-    void LowerAdd2_DemoOnly(const BytecodeInfo *bcInfo)
-    {
-        ValueVertex *x = LoadRegister(bcInfo, 0);
-        ValueVertex *y = frameState.GetAcc();
-
-        BB *trueBranch = self->NewBlock();
-        BB *falseBranch = self->NewBlock();
-        BB *doneBlock = self->NewBlock();
-
-        // Dummy logic: if (x) acc <- x + y
-        //              else   acc <- x + y
-        ValueVertex *xIsTrue = CommonStubCall({glue, x}, CommonStubID::ToBooleanTrue);
-        // Submit currentBlock to the graph.
-        // Note: Blocks should be submitted to the graph by RPO order.
-        self->FinishBlockWithBranch(currentBlock, xIsTrue, trueBranch, falseBranch);
-
-        // Bind currentBlock to trueBranch
-        currentBlock = trueBranch;
-        // Add result1 to currentBlock (which is trueBranch)
-        ValueVertex *result1 = CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Add);
-        // Submit currentBlock (which is trueBranch) to the graph.
-        self->FinishBlockWithJump(currentBlock, doneBlock);
-
-        // Bind currentBlock to falseBranch
-        currentBlock = falseBranch;
-        // Add result2 to currentBlock (which is falseBranch)
-        ValueVertex *result2 = CommonStubCall({glue, x, y, GlobalEnv()}, CommonStubID::Add);
-        // Submit currentBlock (which is falseBranch) to the graph.
-        self->FinishBlockWithJump(currentBlock, doneBlock);
-
-        // Bind currentBlock to doneBlock
-        currentBlock = doneBlock;
-        // Add Phi to currentBlock (which is doneBlock)
-        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, {result1, result2}, self->AccIndex()));
-
-        // ... Continue processing the subsequent bytecodes with doneBlock
-    }
 
     ValueVertex *TaggedConstantFromFoldedValue(JSTaggedValue value)
     {
@@ -1654,7 +1621,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::ADD));
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::ADD);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerSub2(const BytecodeInfo *bcInfo)
@@ -1666,7 +1635,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::SUB));
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::SUB);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerMul2(const BytecodeInfo *bcInfo)
@@ -1678,7 +1649,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::MUL));
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::MUL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerDiv2(const BytecodeInfo *bcInfo)
@@ -1690,19 +1663,23 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::DIV));
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::DIV);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerMod2(const BytecodeInfo * /*bcInfo*/)
     {
-        frameState.SetAcc(BuildBinaryOperation(BinaryOpKind::MOD));
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::MOD);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerExp(const BytecodeInfo *bcInfo)
     {
         ValueVertex *left = LoadRegister(bcInfo, 0);
         ValueVertex *right = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({left, right}, RTSTUB_ID(Exp)));
+        RuntimeCallToAccWithLazyDeopt({left, right}, RTSTUB_ID(Exp));
     }
 
     void LowerShl2(const BytecodeInfo *bcInfo)
@@ -1714,7 +1691,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::SHIFT_LEFT));
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_LEFT);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerShr2(const BytecodeInfo *bcInfo)
@@ -1726,7 +1705,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_LOGICAL));
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerAshr2(const BytecodeInfo *bcInfo)
@@ -1738,7 +1719,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC));
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerAnd2(const BytecodeInfo *bcInfo)
@@ -1750,7 +1733,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::BITWISE_AND));
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_AND);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerOr2(const BytecodeInfo *bcInfo)
@@ -1762,7 +1747,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::BITWISE_OR));
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_OR);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerXor2(const BytecodeInfo *bcInfo)
@@ -1774,7 +1761,9 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
             return;
         }
-        frameState.SetAcc(BuildBitwiseOperation(IntBitwiseKind::BITWISE_XOR));
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_XOR);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     // -------- Category #5: Comparisons --------
@@ -1796,7 +1785,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::EQ)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::EQUAL));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerNotEq(const BytecodeInfo *bcInfo)
@@ -1804,7 +1795,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::NOT_EQ)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::NOT_EQUAL));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::NOT_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerLess(const BytecodeInfo *bcInfo)
@@ -1812,7 +1805,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::LESS_THAN));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::LESS_THAN);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerLessEq(const BytecodeInfo *bcInfo)
@@ -1820,7 +1815,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS_EQ)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::LESS_THAN_OR_EQUAL));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::LESS_THAN_OR_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerGreater(const BytecodeInfo *bcInfo)
@@ -1828,7 +1825,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::GREATER_THAN));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::GREATER_THAN);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerGreaterEq(const BytecodeInfo *bcInfo)
@@ -1836,7 +1835,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER_EQ)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::GREATER_THAN_OR_EQUAL));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::GREATER_THAN_OR_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerStrictNotEq(const BytecodeInfo *bcInfo)
@@ -1844,7 +1845,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_NOT_EQ)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::STRICT_NOT_EQUAL));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::STRICT_NOT_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerStrictEq(const BytecodeInfo *bcInfo)
@@ -1852,7 +1855,9 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_EQ)) {
             return;
         }
-        frameState.SetAcc(BuildCompareOperation(CompareOpKind::STRICT_EQUAL));
+        ValueVertex *result = BuildCompareOperation(CompareOpKind::STRICT_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
     }
 
     void LowerIsTrue()
@@ -1905,7 +1910,7 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(value);
             return;
         }
-        frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumber)));
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(ToNumber));
     }
 
     void LowerToNumeric()
@@ -1921,13 +1926,13 @@ struct GraphBuilder::BytecodeVisitor {
             frameState.SetAcc(value);
             return;
         }
-        frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToNumeric)));
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(ToNumeric));
     }
 
     void LowerToPropertyKey()
     {
         ValueVertex *value = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(ToPropertyKey)));
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(ToPropertyKey));
     }
 
     // -------- Category #7: Property Access --------
@@ -1940,8 +1945,7 @@ struct GraphBuilder::BytecodeVisitor {
             return;
         }
         ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
-        frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName);
     }
 
     void LowerStObjByName(const BytecodeInfo *bcInfo)
@@ -1953,15 +1957,14 @@ struct GraphBuilder::BytecodeVisitor {
             return;
         }
         ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
-        CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
     }
 
     void LowerLdObjByValue(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
     }
 
     void LowerStObjByValue(const BytecodeInfo *bcInfo)
@@ -1969,14 +1972,14 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = LoadRegister(bcInfo, 2);  // 2: key register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
     }
 
     void LowerLdObjByIndex(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(CommonStubCall({glue, receiver, index, GlobalEnv()}, CommonStubID::LdObjByIndex));
+        CommonStubCallToAccWithLazyDeopt({glue, receiver, index, GlobalEnv()}, CommonStubID::LdObjByIndex);
     }
 
     void LowerStObjByIndex(const BytecodeInfo *bcInfo)
@@ -1984,15 +1987,14 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StObjByIndex);
+        CommonStubCallWithLazyDeopt({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StObjByIndex);
     }
 
     void LowerLdThisByValue(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *key = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
     }
 
     void LowerStThisByValue(const BytecodeInfo *bcInfo)
@@ -2000,15 +2002,14 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *key = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
     }
 
     void LowerLdThisByName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        frameState.SetAcc(CommonStubCallWithIC(
-            bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName);
     }
 
     void LowerStThisByName(const BytecodeInfo *bcInfo)
@@ -2016,7 +2017,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
     }
 
     void LowerLdSuperByValue(const BytecodeInfo *bcInfo)
@@ -2024,7 +2025,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *thisObj = LoadRegister(bcInfo, 0);
         ValueVertex *propKey = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({thisObj, propKey, jsFunc}, RTSTUB_ID(OptLdSuperByValue)));
+        RuntimeCallToAccWithLazyDeopt({thisObj, propKey, jsFunc}, RTSTUB_ID(OptLdSuperByValue));
     }
 
     void LowerStSuperByValue(const BytecodeInfo *bcInfo)
@@ -2033,7 +2034,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *thisObj = LoadRegister(bcInfo, 0);
         ValueVertex *propKey = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        RuntimeCall({thisObj, propKey, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
+        RuntimeCallWithLazyDeopt({thisObj, propKey, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
     }
 
     void LowerLdSuperByName(const BytecodeInfo *bcInfo)
@@ -2042,7 +2043,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *thisObj = frameState.GetAcc();
         ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *prop = StringFromConstPool(stringId);
-        frameState.SetAcc(RuntimeCall({thisObj, prop, jsFunc}, RTSTUB_ID(OptLdSuperByValue)));
+        RuntimeCallToAccWithLazyDeopt({thisObj, prop, jsFunc}, RTSTUB_ID(OptLdSuperByValue));
     }
 
     void LowerStSuperByName(const BytecodeInfo *bcInfo)
@@ -2052,7 +2053,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *value = frameState.GetAcc();
         ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *prop = StringFromConstPool(stringId);
-        RuntimeCall({thisObj, prop, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
+        RuntimeCallWithLazyDeopt({thisObj, prop, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
     }
 
     void LowerStOwnByValue(const BytecodeInfo *bcInfo)
@@ -2060,7 +2061,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *key = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, receiver, key, value, GlobalEnv()}, CommonStubID::StOwnByValue);
+        CommonStubCallWithLazyDeopt({glue, receiver, key, value, GlobalEnv()}, CommonStubID::StOwnByValue);
     }
 
     void LowerStOwnByIndex(const BytecodeInfo *bcInfo)
@@ -2068,7 +2069,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StOwnByIndex);
+        CommonStubCallWithLazyDeopt({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StOwnByIndex);
     }
 
     void LowerStOwnByName(const BytecodeInfo *bcInfo)
@@ -2077,7 +2078,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *propKey = StringFromConstPool(stringId);
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *accValue = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByName);
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByName);
     }
 
     void LowerStOwnByValueWithNameSet(const BytecodeInfo *bcInfo)
@@ -2085,7 +2086,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *propKey = LoadRegister(bcInfo, 1);
         ValueVertex *accValue = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByValueWithNameSet);
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, accValue, GlobalEnv()},
+                                    CommonStubID::StOwnByValueWithNameSet);
     }
 
     void LowerStOwnByNameWithNameSet(const BytecodeInfo *bcInfo)
@@ -2094,33 +2096,34 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *propKey = StringFromConstPool(stringId);
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *accValue = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByNameWithNameSet);
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, accValue, GlobalEnv()},
+                                    CommonStubID::StOwnByNameWithNameSet);
     }
 
     void LowerTryLdGlobalByName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {id, GlobalEnv()}, CommonStubID::TryLdGlobalByName));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::TryLdGlobalByName);
     }
 
     void LowerTryStGlobalByName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {id, value, GlobalEnv()}, CommonStubID::TryStGlobalByName);
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::TryStGlobalByName);
     }
 
     void LowerLdGlobalVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {id, GlobalEnv()}, CommonStubID::LdGlobalVar));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::LdGlobalVar);
     }
 
     void LowerStGlobalVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithIC(bcInfo, {id, value, GlobalEnv()}, CommonStubID::StGlobalVar);
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::StGlobalVar);
     }
 
     void LowerStConstToGlobalRecord(const BytecodeInfo *bcInfo, bool isConst)
@@ -2131,7 +2134,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *isConstGate = isConst
             ? self->graph_->GetTaggedConstant(JSTaggedValue::True().GetRawData())
             : self->graph_->GetTaggedConstant(JSTaggedValue::False().GetRawData());
-        RuntimeCall({propKey, value, isConstGate}, RTSTUB_ID(StGlobalRecord));
+        RuntimeCallWithLazyDeopt({propKey, value, isConstGate}, RTSTUB_ID(StGlobalRecord));
     }
 
     void LowerLdGlobal()
@@ -2139,7 +2142,8 @@ struct GraphBuilder::BytecodeVisitor {
         constexpr int32_t offset = static_cast<int32_t>(
             GlobalEnv::HEADER_SIZE + GlobalEnv::JS_GLOBAL_OBJECT_INDEX * JSTaggedValue::TaggedTypeSize());
 
-        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
+        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
     }
 
     void LowerLdSymbol()
@@ -2147,7 +2151,8 @@ struct GraphBuilder::BytecodeVisitor {
         constexpr int32_t offset = static_cast<int32_t>(
             GlobalEnv::HEADER_SIZE + GlobalEnv::SYMBOL_FUNCTION_INDEX * JSTaggedValue::TaggedTypeSize());
 
-        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
+        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
     }
 
     void LowerLdPrivateProperty(const BytecodeInfo *bcInfo)
@@ -2156,7 +2161,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(LdPrivateProperty)));
+        RuntimeCallToAccWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(LdPrivateProperty));
     }
 
     void LowerStPrivateProperty(const BytecodeInfo *bcInfo)
@@ -2166,29 +2171,17 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *obj = LoadRegister(bcInfo, 3);  // 3: obj register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 4);  // 4: lexicalEnv register index
         ValueVertex *value = frameState.GetAcc();
-        RuntimeCall({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(StPrivateProperty));
+        RuntimeCallWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(StPrivateProperty));
     }
 
     // -------- Category #8: Function Calls --------
 
-    template <class InputRange>
-    CallVertex *BuildCallVertex(const InputRange &callInputs, uint32_t actualArgc)
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallVertex *BuildCallVertex(const InputRange &inputs, uint32_t actualArgc)
     {
-        std::vector<ValueVertex *> inputs(std::begin(callInputs), std::end(callInputs));
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = static_cast<uint32_t>(inputs.size());
-        if (blockInfo->catchBlock != nullptr &&
-            blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED &&
-            self->IsExceptionLazyDeoptEnabled()) {
-            AppendCurrentFrameStateForDeopt(&inputs, &deoptVRegs);
-        }
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        return self->NewVertex<CallVertex>(
-            compileInfoFacts_, currentBlock, inputs, std::move(deoptData), actualArgc);
+        auto *call = self->NewVertex<CallVertex>(compileInfoFacts_, currentBlock, inputs, actualArgc);
+        UpdateCatchBlockData(call);
+        return call;
     }
 
     void LowerCallArg0()
@@ -2196,10 +2189,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, undefined}, CALL_ARG0);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, undefined}, CALL_ARG0);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallArg1(const BytecodeInfo *bcInfo)
@@ -2208,10 +2200,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, undefined, a0Value}, CALL_ARG1);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value}, CALL_ARG1);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallArgs2(const BytecodeInfo *bcInfo)
@@ -2221,10 +2212,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallArgs3(const BytecodeInfo *bcInfo)
@@ -2235,10 +2225,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis0(const BytecodeInfo *bcInfo)
@@ -2247,10 +2236,19 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, thisObj}, CALL_ARG0);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj}, CALL_ARG0);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallInit(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj}, CALL_ARG0);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis1(const BytecodeInfo *bcInfo)
@@ -2260,10 +2258,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, thisObj, a0Value}, CALL_ARG1);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value}, CALL_ARG1);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis2(const BytecodeInfo *bcInfo)
@@ -2274,10 +2271,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis3(const BytecodeInfo *bcInfo)
@@ -2289,10 +2285,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *undefined = self->undefinedValue_;
 
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
-        UpdateCatchBlockData(call);
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallRange(const BytecodeInfo *bcInfo)
@@ -2308,8 +2303,8 @@ struct GraphBuilder::BytecodeVisitor {
             args.push_back(LoadRegister(bcInfo, static_cast<int>(idx)));
         }
         CallVertex *call = BuildCallVertex(args, inputSize);
-        UpdateCatchBlockData(call);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThisRange(const BytecodeInfo *bcInfo)
@@ -2327,8 +2322,8 @@ struct GraphBuilder::BytecodeVisitor {
             args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));
         }
         CallVertex *call = BuildCallVertex(args, argc);
-        UpdateCatchBlockData(call);
         frameState.SetAcc(call);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallSpread(const BytecodeInfo *bcInfo)
@@ -2336,7 +2331,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *func = frameState.GetAcc();
         ValueVertex *thisArg = LoadRegister(bcInfo, 0);
         ValueVertex *argsArray = LoadRegister(bcInfo, 1);
-        frameState.SetAcc(RuntimeCall({func, thisArg, argsArray}, RTSTUB_ID(CallSpread)));
+
+        RuntimeCallToAccWithLazyDeopt({func, thisArg, argsArray}, RTSTUB_ID(CallSpread));
     }
 
     void LowerSuperCallThisRange(const BytecodeInfo *bcInfo)
@@ -2348,7 +2344,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *taggedInputSize = TaggedConstantFromInt32(static_cast<int>(inputSize));
         ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedInputSize, inputSize);
 
-        frameState.SetAcc(RuntimeCall({thisFunc, newTarget, taggedArray, taggedInputSize}, RTSTUB_ID(OptSuperCall)));
+        RuntimeCallToAccWithLazyDeopt({thisFunc, newTarget, taggedArray, taggedInputSize}, RTSTUB_ID(OptSuperCall));
     }
 
     void LowerSuperCallArrowRange(const BytecodeInfo *bcInfo)
@@ -2359,7 +2355,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *taggedArgc = TaggedConstantFromInt32(static_cast<int>(argc));
         ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedArgc, argc);
 
-        frameState.SetAcc(RuntimeCall({func, newTarget, taggedArray, taggedArgc}, RTSTUB_ID(OptSuperCall)));
+        RuntimeCallToAccWithLazyDeopt({func, newTarget, taggedArray, taggedArgc}, RTSTUB_ID(OptSuperCall));
     }
 
     void LowerSuperCallSpread(const BytecodeInfo *bcInfo)
@@ -2369,7 +2365,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
 
         ValueVertex *argsArray = CommonStubCall({glue, array, GlobalEnv()}, CommonStubID::GetCallSpreadArgs);
-        frameState.SetAcc(RuntimeCall({func, newTarget, argsArray}, RTSTUB_ID(OptSuperCallSpread)));
+        RuntimeCallToAccWithLazyDeopt({func, newTarget, argsArray}, RTSTUB_ID(OptSuperCallSpread));
     }
 
     void LowerSuperCallForwardAllArgs(const BytecodeInfo *bcInfo)
@@ -2379,15 +2375,14 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
         ValueVertex *taggedActualArgc = TaggedActualArgc();
 
-        frameState.SetAcc(RuntimeCall({
-            superFunc, newTarget, taggedActualArgc}, RTSTUB_ID(OptSuperCallForwardAllArgs)));
+        RuntimeCallToAccWithLazyDeopt({superFunc, newTarget, taggedActualArgc}, RTSTUB_ID(OptSuperCallForwardAllArgs));
     }
 
     void LowerNewObjApply(const BytecodeInfo *bcInfo)
     {
         ValueVertex *target = LoadRegister(bcInfo, 0);
         ValueVertex *args = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({target, args}, RTSTUB_ID(NewObjApply)));
+        RuntimeCallToAccWithLazyDeopt({target, args}, RTSTUB_ID(NewObjApply));
     }
 
     void LowerNewObjRange(const BytecodeInfo *bcInfo)
@@ -2397,19 +2392,19 @@ struct GraphBuilder::BytecodeVisitor {
         for (uint32_t idx = 0; idx < inputSize; idx++) {
             args.push_back(LoadRegister(bcInfo, idx));
         }
-        frameState.SetAcc(RuntimeCall(args, RTSTUB_ID(OptNewObjRange)));
+        RuntimeCallToAccWithLazyDeopt(args, RTSTUB_ID(OptNewObjRange));
     }
 
     // -------- Category #9: Object/Array Creation --------
 
     void LowerCreateEmptyObject()
     {
-        frameState.SetAcc(RuntimeCall({}, RTSTUB_ID(CreateEmptyObject)));
+        RuntimeCallToAccWithLazyDeopt({}, RTSTUB_ID(CreateEmptyObject));
     }
 
     void LowerCreateEmptyArray()
     {
-        frameState.SetAcc(CommonStubCall({glue, GlobalEnv()}, CommonStubID::CreateEmptyArray));
+        CommonStubCallToAccWithLazyDeopt({glue, GlobalEnv()}, CommonStubID::CreateEmptyArray);
     }
 
     void LowerCreateObjectWithBuffer(const BytecodeInfo *bcInfo)
@@ -2417,7 +2412,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *index = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *obj = ObjectFromConstPool(index);
         ValueVertex *lexEnv = LoadRegister(bcInfo, 1);
-        frameState.SetAcc(CommonStubCall({glue, obj, lexEnv}, CommonStubID::CreateObjectHavingMethod));
+        CommonStubCallToAccWithLazyDeopt({glue, obj, lexEnv}, CommonStubID::CreateObjectHavingMethod);
     }
 
     void LowerCreateObjectWithExcludedKeys(const BytecodeInfo *bcInfo)
@@ -2427,7 +2422,7 @@ struct GraphBuilder::BytecodeVisitor {
         for (uint32_t idx = 0; idx < inputSize; idx++) {
             args.push_back(LoadRegister(bcInfo, idx));
         }
-        frameState.SetAcc(RuntimeCall(args, RTSTUB_ID(OptCreateObjectWithExcludedKeys)));
+        RuntimeCallToAccWithLazyDeopt(args, RTSTUB_ID(OptCreateObjectWithExcludedKeys));
     }
 
     void LowerCreateArrayWithBuffer(const BytecodeInfo *bcInfo)
@@ -2436,8 +2431,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *slotId = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 1));
 
-        frameState.SetAcc(CommonStubCall(
-            {glue, index, jsFunc, slotId, GlobalEnv()}, CommonStubID::CreateArrayWithBuffer));
+        CommonStubCallToAccWithLazyDeopt(
+            {glue, index, jsFunc, slotId, GlobalEnv()}, CommonStubID::CreateArrayWithBuffer);
     }
 
     void LowerCreateRegExpWithLiteral(const BytecodeInfo *bcInfo)
@@ -2446,14 +2441,14 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *pattern = StringFromConstPool(stringId);
         ValueVertex *flags = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
 
-        frameState.SetAcc(RuntimeCall({pattern, flags}, RTSTUB_ID(CreateRegExpWithLiteral)));
+        RuntimeCallToAccWithLazyDeopt({pattern, flags}, RTSTUB_ID(CreateRegExpWithLiteral));
     }
 
     void LowerCreateIterResultObj(const BytecodeInfo *bcInfo)
     {
         ValueVertex *value = LoadRegister(bcInfo, 0);
         ValueVertex *done = LoadRegister(bcInfo, 1);
-        frameState.SetAcc(RuntimeCall({value, done}, RTSTUB_ID(CreateIterResultObj)));
+        RuntimeCallToAccWithLazyDeopt({value, done}, RTSTUB_ID(CreateIterResultObj));
     }
 
     // -------- Category #10: Class/Function/Field Definition --------
@@ -2472,11 +2467,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *slotId = TaggedConstantFromInt32(GetICSlotId<int>(bcInfo, 3));
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
 
-        frameState.SetAcc(RuntimeCall(
-            {method, homeObject, length, env, module, slotId, jsFunc}, RTSTUB_ID(DefineMethod)));
+        RuntimeCallToAccWithLazyDeopt(
+            {method, homeObject, length, env, module, slotId, jsFunc}, RTSTUB_ID(DefineMethod));
 #else
-        frameState.SetAcc(RuntimeCall(
-            {method, homeObject, length, env, module}, RTSTUB_ID(DefineMethod)));
+        RuntimeCallToAcc({method, homeObject, length, env, module}, RTSTUB_ID(DefineMethod));
 #endif
     }
 
@@ -2490,9 +2484,8 @@ struct GraphBuilder::BytecodeVisitor {
         // 3: lexicalEnv register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);
 
-        frameState.SetAcc(CommonStubCall(
-            {glue, jsFunc, methodId, length, lexicalEnv, slotId, GlobalEnv()},
-            CommonStubID::Definefunc));
+        CommonStubCallToAccWithLazyDeopt(
+            {glue, jsFunc, methodId, length, lexicalEnv, slotId, GlobalEnv()}, CommonStubID::Definefunc);
     }
 
     void LowerDefineClassWithBuffer(const BytecodeInfo *bcInfo)
@@ -2509,13 +2502,13 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *slotId = TaggedConstantFromInt32(GetICSlotId<int>(bcInfo, 5));  // 5 : Slot ID index
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
 
-        frameState.SetAcc(RuntimeCall(
+        RuntimeCallToAccWithLazyDeopt(
             {proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length, slotId, jsFunc},
-            RTSTUB_ID(CreateClassWithBuffer)));
+            RTSTUB_ID(CreateClassWithBuffer));
 #else
-        frameState.SetAcc(RuntimeCall(
+        RuntimeCallToAcc(
             {proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length},
-            RTSTUB_ID(CreateClassWithBuffer)));
+            RTSTUB_ID(CreateClassWithBuffer));
 #endif
     }
 
@@ -2529,9 +2522,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *undefinedValue = self->undefinedValue_;
         ValueVertex *taggedOne = TaggedConstantFromInt32(1);
 
-        frameState.SetAcc(RuntimeCall(
-            {obj, prop, getter, setter, acc, undefinedValue, taggedOne},
-            RTSTUB_ID(DefineGetterSetterByValue)));
+        RuntimeCallToAccWithLazyDeopt(
+            {obj, prop, getter, setter, acc, undefinedValue, taggedOne}, RTSTUB_ID(DefineGetterSetterByValue));
     }
 
     void LowerDefinePropertyByName(const BytecodeInfo *bcInfo)
@@ -2540,7 +2532,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *prop = StringFromConstPool(stringId);
         ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
+        CommonStubCallWithLazyDeopt({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerDefineFieldByName(const BytecodeInfo *bcInfo)
@@ -2549,7 +2541,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *prop = StringFromConstPool(stringId);
         ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
         ValueVertex *value = frameState.GetAcc();
-        CommonStubCall({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
+        CommonStubCallWithLazyDeopt({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerDefineFieldByValue(const BytecodeInfo *bcInfo)
@@ -2557,7 +2549,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *propKey = LoadRegister(bcInfo, 0);
         ValueVertex *acc = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerDefineFieldByIndex(const BytecodeInfo *bcInfo)
@@ -2565,7 +2557,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *propKey = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *acc = frameState.GetAcc();
-        CommonStubCall({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
     }
 
     void LowerCreatePrivateProperty(const BytecodeInfo *bcInfo)
@@ -2576,7 +2568,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *constpool = SharedConstPool();
         ValueVertex *module = ModuleFromFunction();
 
-        RuntimeCall({lexicalEnv, count, constpool, literalId, module}, RTSTUB_ID(CreatePrivateProperty));
+        RuntimeCallWithLazyDeopt({lexicalEnv, count, constpool, literalId, module}, RTSTUB_ID(CreatePrivateProperty));
     }
 
     void LowerDefinePrivateProperty(const BytecodeInfo *bcInfo)
@@ -2586,7 +2578,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
         ValueVertex *value = frameState.GetAcc();
-        RuntimeCall({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(DefinePrivateProperty));
+        RuntimeCallWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(DefinePrivateProperty));
     }
 
     // -------- Category #11: Iterators --------
@@ -2594,25 +2586,25 @@ struct GraphBuilder::BytecodeVisitor {
     void LowerGetIterator()
     {
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, obj, GlobalEnv()}, CommonStubID::GetIterator));
+        CommonStubCallToAccWithLazyDeopt({glue, obj, GlobalEnv()}, CommonStubID::GetIterator);
     }
 
     void LowerGetPropIterator()
     {
         ValueVertex *object = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, object, GlobalEnv()}, CommonStubID::Getpropiterator));
+        CommonStubCallToAccWithLazyDeopt({glue, object, GlobalEnv()}, CommonStubID::Getpropiterator);
     }
 
     void LowerCloseIterator(const BytecodeInfo *bcInfo)
     {
         ValueVertex *iterator = LoadRegister(bcInfo, 0);
-        frameState.SetAcc(RuntimeCall({iterator}, RTSTUB_ID(CloseIterator)));
+        RuntimeCallToAccWithLazyDeopt({iterator}, RTSTUB_ID(CloseIterator));
     }
 
     void LowerGetNextPropName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *iterator = LoadRegister(bcInfo, 0);
-        frameState.SetAcc(RuntimeCall({iterator}, RTSTUB_ID(GetNextPropNameSlowpath)));
+        RuntimeCallToAccWithLazyDeopt({iterator}, RTSTUB_ID(GetNextPropNameSlowpath));
     }
 
     // -------- Category #12: Lexical Environment --------
@@ -2726,21 +2718,21 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(RuntimeCall({index, jsFunc}, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc)));
+        RuntimeCallToAccWithLazyDeopt({index, jsFunc}, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc));
     }
 
     void LowerGetModuleNamespace(const BytecodeInfo *bcInfo)
     {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(RuntimeCall({index, jsFunc}, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc)));
+        RuntimeCallToAccWithLazyDeopt({index, jsFunc}, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc));
     }
 
     void LowerLdLocalModuleVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(RuntimeCall({index, jsFunc}, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc)));
+        RuntimeCallToAccWithLazyDeopt({index, jsFunc}, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc));
     }
 
     void LowerStModuleVar(const BytecodeInfo *bcInfo)
@@ -2748,27 +2740,27 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *value = frameState.GetAcc();
-        RuntimeCall({index, value, jsFunc}, RTSTUB_ID(StModuleVarByIndexOnJSFunc));
+        RuntimeCallWithLazyDeopt({index, value, jsFunc}, RTSTUB_ID(StModuleVarByIndexOnJSFunc));
     }
 
     void LowerDynamicImport()
     {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *specifier = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({specifier, jsFunc}, RTSTUB_ID(DynamicImport)));
+        RuntimeCallToAccWithLazyDeopt({specifier, jsFunc}, RTSTUB_ID(DynamicImport));
     }
 
     void LowerLdPatchVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(RuntimeCall({index}, RTSTUB_ID(LdPatchVar)));
+        RuntimeCallToAccWithLazyDeopt({index}, RTSTUB_ID(LdPatchVar));
     }
 
     void LowerStPatchVar(const BytecodeInfo *bcInfo)
     {
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *value = frameState.GetAcc();
-        RuntimeCall({index, value}, RTSTUB_ID(StPatchVar));
+        RuntimeCallWithLazyDeopt({index, value}, RTSTUB_ID(StPatchVar));
     }
 
     // -------- Category #14: Miscellaneous --------
@@ -2776,7 +2768,7 @@ struct GraphBuilder::BytecodeVisitor {
     void LowerTypeOf()
     {
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, obj}, CommonStubID::TypeOf));
+        CommonStubCallToAccWithLazyDeopt({glue, obj}, CommonStubID::TypeOf);
     }
 
     void LowerGetUnmappedArgs()
@@ -2785,38 +2777,36 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *numArgs = ActualArgc();
         ValueVertex *argvTaggedArray = self->undefinedValue_;
 
-        frameState.SetAcc(CommonStubCall(
-            {glue, argv, numArgs, argvTaggedArray, GlobalEnv()}, CommonStubID::GetUnmappedArgs));
+        CommonStubCallToAccWithLazyDeopt(
+            {glue, argv, numArgs, argvTaggedArray, GlobalEnv()}, CommonStubID::GetUnmappedArgs);
     }
 
     void LowerCopyRestArgs(const BytecodeInfo *bcInfo)
     {
         ValueVertex *taggedArgc = TaggedActualArgc();
         ValueVertex *taggedRestIdx = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
-        frameState.SetAcc(RuntimeCall({taggedArgc, taggedRestIdx}, RTSTUB_ID(OptCopyRestArgs)));
+        RuntimeCallToAccWithLazyDeopt({taggedArgc, taggedRestIdx}, RTSTUB_ID(OptCopyRestArgs));
     }
 
     void LowerDelObjProp(const BytecodeInfo *bcInfo)
     {
         ValueVertex *object = LoadRegister(bcInfo, 0);
         ValueVertex *prop = frameState.GetAcc();
-
-        frameState.SetAcc(CommonStubCall(
-            {glue, object, prop, GlobalEnv()}, CommonStubID::DeleteObjectProperty));
+        CommonStubCallToAccWithLazyDeopt({glue, object, prop, GlobalEnv()}, CommonStubID::DeleteObjectProperty);
     }
 
     void LowerIsIn(const BytecodeInfo *bcInfo)
     {
         ValueVertex *prop = LoadRegister(bcInfo, 0);
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCall({glue, prop, obj, GlobalEnv()}, CommonStubID::IsIn));
+        CommonStubCallToAccWithLazyDeopt({glue, prop, obj, GlobalEnv()}, CommonStubID::IsIn);
     }
 
     void LowerInstanceOf(const BytecodeInfo *bcInfo)
     {
         ValueVertex *object = LoadRegister(bcInfo, 1);
         ValueVertex *target = frameState.GetAcc();
-        frameState.SetAcc(CommonStubCallWithIC(bcInfo, {object, target, GlobalEnv()}, CommonStubID::Instanceof));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {object, target, GlobalEnv()}, CommonStubID::Instanceof);
     }
 
     void LowerTestIn(const BytecodeInfo *bcInfo)
@@ -2827,14 +2817,14 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(TestIn)));
+        RuntimeCallToAccWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(TestIn));
     }
 
     void LowerCopyDataProperties(const BytecodeInfo *bcInfo)
     {
         ValueVertex *target = LoadRegister(bcInfo, 0);
         ValueVertex *source = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({target, source}, RTSTUB_ID(CopyDataProperties)));
+        RuntimeCallToAccWithLazyDeopt({target, source}, RTSTUB_ID(CopyDataProperties));
     }
 
     void LowerStoreArraySpread(const BytecodeInfo *bcInfo)
@@ -2842,65 +2832,82 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *array = LoadRegister(bcInfo, 0);
         ValueVertex *index = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({array, index, value}, RTSTUB_ID(StArraySpread)));
+        RuntimeCallToAccWithLazyDeopt({array, index, value}, RTSTUB_ID(StArraySpread));
     }
 
     void LowerGetTemplateObject()
     {
         ValueVertex *value = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({value}, RTSTUB_ID(GetTemplateObject)));
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(GetTemplateObject));
     }
 
     void LowerSetObjectWithProto(const BytecodeInfo *bcInfo)
     {
         ValueVertex *proto = LoadRegister(bcInfo, 0);
         ValueVertex *obj = frameState.GetAcc();
-        frameState.SetAcc(RuntimeCall({proto, obj}, RTSTUB_ID(SetObjectWithProto)));
+        RuntimeCallWithLazyDeopt({proto, obj}, RTSTUB_ID(SetObjectWithProto));
     }
 
     void LowerNotifyConcurrentResult()
     {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *result = frameState.GetAcc();
-        RuntimeCall({result, jsFunc}, RTSTUB_ID(NotifyConcurrentResult));
+        RuntimeCallWithLazyDeopt({result, jsFunc}, RTSTUB_ID(NotifyConcurrentResult));
     }
 
     // -------- Category #15: Exceptions --------
 
+    bool TryBuildColdCatchDeopt()
+    {
+        if (!self->IsLazyDeoptEnabled() || !HasNeverExecutedCatchBlock()) {
+            return false;
+        }
+        constexpr auto DEOPT_TYPE = kungfu::DeoptType::INSUFFICIENTPROFILE;
+        auto *deopt = self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, DEOPT_TYPE, currentBcIndex);
+        deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
+        return true;
+    }
+
     void LowerThrow()
     {
-        ValueVertex *exception = frameState.GetAcc();
-        auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw));
-        UpdateCatchBlockData(vertex);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *exception = frameState.GetAcc();
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw));
+            UpdateCatchBlockData(vertex);
+        }
     }
 
     void LowerThrowConstAssignment(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *value = LoadRegister(bcInfo, 0);
-        auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment));
-        UpdateCatchBlockData(vertex);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *value = LoadRegister(bcInfo, 0);
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment));
+            UpdateCatchBlockData(vertex);
+        }
     }
 
     void LowerThrowNotExists()
     {
-        auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {}, RTSTUB_ID(ThrowThrowNotExists));
-        UpdateCatchBlockData(vertex);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowThrowNotExists));
+            UpdateCatchBlockData(vertex);
+        }
     }
 
     void LowerThrowPatternNonCoercible()
     {
-        auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {}, RTSTUB_ID(ThrowPatternNonCoercible));
-        UpdateCatchBlockData(vertex);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowPatternNonCoercible));
+            UpdateCatchBlockData(vertex);
+        }
     }
 
     void LowerThrowDeleteSuperProperty()
     {
-        auto *vertex = self->FinishBlockWith<ThrowVertex>(
-            currentBlock, {}, RTSTUB_ID(ThrowDeleteSuperProperty));
-        UpdateCatchBlockData(vertex);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowDeleteSuperProperty));
+            UpdateCatchBlockData(vertex);
+        }
     }
 
     void LowerThrowIfNotObject(const BytecodeInfo *bcInfo)
@@ -2955,8 +2962,10 @@ struct GraphBuilder::BytecodeVisitor {
         for (BB *exceptionBlock : {notHeapObjectBlock, checkLowerFailedBlock, checkUpperFailedBlock}) {
             currentBlock = exceptionBlock;
             currentBlock->SetDeferred(true);
-            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowIfNotObject));
-            UpdateCatchBlockData(vertex);
+            if (!TryBuildColdCatchDeopt()) {
+                auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowIfNotObject));
+                UpdateCatchBlockData(vertex);
+            }
         }
 
         // Success: value is an ECMA object.
@@ -2977,9 +2986,11 @@ struct GraphBuilder::BytecodeVisitor {
 
         currentBlock = throwBlock;
         currentBlock->SetDeferred(true);
-        auto *throwVertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
-        UpdateCatchBlockData(throwVertex);
-
+        if (!TryBuildColdCatchDeopt()) {
+            auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
+                currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+            UpdateCatchBlockData(throwVertex);
+        }
         currentBlock = doneBlock;
     }
 
@@ -2997,8 +3008,11 @@ struct GraphBuilder::BytecodeVisitor {
 
         currentBlock = throwBlock;
         currentBlock->SetDeferred(true);
-        auto *throwVertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
-        UpdateCatchBlockData(throwVertex);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
+                currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+            UpdateCatchBlockData(throwVertex);
+        }
 
         currentBlock = doneBlock;
     }
@@ -3007,8 +3021,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *thisValue = frameState.GetAcc();
-
-        RuntimeCall({index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+        RuntimeCallWithLazyDeopt({index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
     }
 
     // -------- Category #16: Control Flow --------
@@ -3065,7 +3078,364 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    // -------- Helpers --------
+    // -------- Deoptimization Helpers --------
+
+    // TODO: May be optimized later
+    ValueVertex *NormalizeDeoptInput(ValueVertex *input)
+    {
+        switch (input->GetValueRepresentation()) {
+            case ValueRepresentation::TAGGED:
+                return input;
+            case ValueRepresentation::INT32:
+                return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {input});
+            case ValueRepresentation::FLOAT64:
+            case ValueRepresentation::HOLEY_FLOAT64:
+                return self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {input});
+            default:
+                UNREACHABLE();
+        }
+    }
+
+    void AppendDeoptInput(DeoptMetadata *metadata, uint32_t id, ValueVertex *value)
+    {
+        metadata->indices.emplace_back(id);
+        metadata->sources.emplace_back(value == nullptr ? self->undefinedValue_ : NormalizeDeoptInput(value));
+    }
+
+    void AppendRawDeoptInput(DeoptMetadata *metadata, uint32_t id, ValueVertex *value)
+    {
+        metadata->indices.emplace_back(id);
+        metadata->sources.emplace_back(value == nullptr ? self->undefinedValue_ : value);
+    }
+
+    void AppendCommonDeoptInputs(uint32_t bcIndex, DeoptMetadata *metadata)
+    {
+        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX),
+                         LoadParam(CALL_TARGET_PARAM_INDEX));
+        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX),
+                         LoadParam(NEW_TARGET_PARAM_INDEX));
+        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX),
+                         LoadParam(THIS_OBJECT_PARAM_INDEX));
+        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), TaggedActualArgc());
+        int32_t bcOffset = static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex));
+        AppendRawDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
+                            self->graph_->GetInt32Constant(bcOffset));
+    }
+
+    // D refers to dependency
+    void BuildLazyDeoptInputsForDOnly(uint32_t bcIndex, DeoptMetadata *metadata)
+    {
+        const BytecodeInfo *bcInfo = self->preproc_->GetBytecode(bcIndex);
+        const auto &liveOut = self->analysis_->GetLiveOutOfBytecode(bcIndex);
+
+        auto isInVRegOut = [bcInfo](VRegIDType index) {
+            return std::find(bcInfo->vregOut.begin(), bcInfo->vregOut.end(), index) != bcInfo->vregOut.end();
+        };
+
+        AppendCommonDeoptInputs(bcIndex, metadata);
+        VRegIDType envIndex = self->LexicalEnvIndex();
+        if (!bcInfo->EnvOut() && !isInVRegOut(envIndex)) {
+            AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        }
+        if (!bcInfo->AccOut()) {
+            AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        }
+        for (VRegIDType i = 0; i < self->numLocal_; i++) {
+            VRegIDType localIndex = VRegOfLocal(i);
+            if (liveOut.TestBit(localIndex) && !isInVRegOut(localIndex)) {
+                AppendDeoptInput(metadata, localIndex, frameState.Get(localIndex));
+            }
+        }
+        for (VRegIDType i = 0; i < self->numParams_; i++) {
+            VRegIDType paramIndex = VRegOfParam(self->numLocal_, i);
+            if (liveOut.TestBit(paramIndex) && !isInVRegOut(paramIndex)) {
+                AppendDeoptInput(metadata, paramIndex, LoadParam(i));
+            }
+        }
+    }
+
+    // E refers to exception
+    void BuildLazyDeoptInputsForEOnly(uint32_t bcIndex, DeoptMetadata *metadata)
+    {
+        ASSERT(blockInfo->catchBlock != nullptr);
+        // Exception lazy-deopt resumes at the catch handler entry. Fixed frame fields are still required by
+        // the deoptimizer; only the ordinary vreg set is narrowed to the handler live-ins. ACC is restored as
+        // the exception object by the lazy-deopt trampoline, not from this payload.
+        const kungfu::BitSet &catchLiveIn = self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex);
+
+        AppendCommonDeoptInputs(bcIndex, metadata);
+        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        for (VRegIDType i = 0; i < self->numLocal_; i++) {
+            auto localIndex = VRegOfLocal(i);
+            if (catchLiveIn.TestBit(localIndex)) {
+                AppendDeoptInput(metadata, localIndex, frameState.Get(localIndex));
+            }
+        }
+        for (VRegIDType i = 0; i < self->numParams_; i++) {
+            auto paramIndex = VRegOfParam(self->numLocal_, i);
+            if (catchLiveIn.TestBit(paramIndex)) {
+                AppendDeoptInput(metadata, paramIndex, LoadParam(i));
+            }
+        }
+    }
+
+    // Shared by (1) eager deopt; (2) D+E lazy deopt.
+    // Eager deopt takes live-in virtual registers of current bytecode.
+    // Lazy-deopt takes live-out - {ACC} which is equivalent to live-in - {ACC} with Ark bytecode.
+    void BuildGenericDeoptInputs(uint32_t bcIndex, DeoptMetadata *metadata, bool includeAcc)
+    {
+        kungfu::BitSet liveSet(self->chunk_, self->analysis_->GetNumVRegs());
+        liveSet.CopyFrom(self->analysis_->GetLiveInOfBytecode(bcIndex));
+        // Eager deopt resumes from the bytecode itself. If that bytecode later throws in the interpreter,
+        // the catch handler may still need values not used by the bytecode normal path.
+        if (blockInfo->catchBlock != nullptr) {
+            liveSet.Union(self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex));
+        }
+        AppendCommonDeoptInputs(bcIndex, metadata);
+        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        if (includeAcc) {
+            AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        }
+        for (VRegIDType i = 0; i < self->numLocal_; i++) {
+            auto localIndex = VRegOfLocal(i);
+            if (liveSet.TestBit(localIndex)) {
+                AppendDeoptInput(metadata, localIndex, frameState.Get(localIndex));
+            }
+        }
+        for (VRegIDType i = 0; i < self->numParams_; i++) {
+            auto paramIndex = VRegOfParam(self->numLocal_, i);
+            if (liveSet.TestBit(paramIndex)) {
+                AppendDeoptInput(metadata, paramIndex, LoadParam(i));
+            }
+        }
+    }
+
+    DeoptMetadata *BuildEagerDeoptMetadata(uint32_t bcIndex)
+    {
+        uint32_t bcOffset = self->preproc_->GetBytecodeOffset(bcIndex);
+        auto *metadata = self->chunk_->New<DeoptMetadata>(self->chunk_, bcOffset);
+        BuildGenericDeoptInputs(bcIndex, metadata, true);
+        return metadata;
+    }
+
+    template <class CallT>
+    bool InputMayBeJSReceiver(CallT *call, size_t index) const
+    {
+        constexpr auto JS_RECEIVER = NodeInfo::NodeType::JS_RECEIVER;
+        const NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(call->GetInput(index));
+        return NodeInfo::NodeTypeCanBe(knownType, JS_RECEIVER);
+    }
+
+    bool IsDependencySafeCommonStubCall(CallCommonStubVertex *call) const
+    {
+        constexpr auto JS_RECEIVER = NodeInfo::NodeType::JS_RECEIVER;
+        switch (call->GetCommonStubID()) {
+            // Strict equality is a reference/value comparison and never runs user-defined conversion.
+            case CommonStubID::StrictEqual:
+            case CommonStubID::StrictNotEqual:
+                return true;
+            // Boolean conversion follows ToBoolean and does not call user-defined conversion hooks.
+            case CommonStubID::ToBooleanTrue:
+            case CommonStubID::ToBooleanFalse:
+                return true;
+            // typeof is observable only through the input value category and does not mutate dependencies.
+            case CommonStubID::TypeOf:
+                return true;
+            // These allocation/constant-pool helpers create or load values without observing receiver hooks.
+            case CommonStubID::CreateArrayWithBuffer:
+            case CommonStubID::CreateEmptyArray:
+            case CommonStubID::CreateObjectHavingMethod:
+            case CommonStubID::Definefunc:
+            case CommonStubID::GetObjectFromConstPool:
+            case CommonStubID::GetStringFromConstPool:
+            case CommonStubID::GetUnmappedArgs:
+            case CommonStubID::NewLexicalEnv:
+                return true;
+            // Abstract equality may call user-defined conversion on mixed object/non-object operands.
+            // Unlike relational comparison, object-object equality is a reference check and skips ToPrimitive.
+            case CommonStubID::Equal:
+            case CommonStubID::NotEqual: {
+                // 1 : left operand, after glue.
+                ValueVertex *left = call->GetInput(1);
+                // 2 : right operand, after glue and left operand.
+                ValueVertex *right = call->GetInput(2);
+                if (!NodeInfo::NodeTypeCanBe(compileInfoFacts_->GetKnownType(left), JS_RECEIVER) &&
+                    !NodeInfo::NodeTypeCanBe(compileInfoFacts_->GetKnownType(right), JS_RECEIVER)) {
+                    // If neither side can be an object, abstract equality cannot run user-defined conversion.
+                    return true;
+                }
+                // If both sides are definitely objects, equality is a reference check and still skips conversion.
+                return compileInfoFacts_->CheckType(left, JS_RECEIVER) &&
+                       compileInfoFacts_->CheckType(right, JS_RECEIVER);
+            }
+            // Unary numeric stubs may run ToNumber/ToNumeric on the accumulator operand.
+            case CommonStubID::Inc:
+            case CommonStubID::Dec:
+            case CommonStubID::Neg:
+            case CommonStubID::Not:
+                // 1 : accumulator operand, after glue.
+                return !InputMayBeJSReceiver(call, 1);
+            // Binary arithmetic and bitwise stubs may run ToPrimitive/ToNumeric/ToNumber on either operand.
+            case CommonStubID::Add:
+            case CommonStubID::Sub:
+            case CommonStubID::Mul:
+            case CommonStubID::Div:
+            case CommonStubID::Mod:
+            case CommonStubID::And:
+            case CommonStubID::Or:
+            case CommonStubID::Xor:
+            case CommonStubID::Shl:
+            case CommonStubID::Shr:
+            case CommonStubID::Ashr:
+            case CommonStubID::StringAdd:
+                // 1 : left operand, after glue.
+                // 2 : right operand, after glue and left operand.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // Relational comparison runs ToPrimitive even for object-object inputs, so it cannot use the
+            // object-object equality fast rejection above.
+            case CommonStubID::Less:
+            case CommonStubID::LessEq:
+            case CommonStubID::Greater:
+            case CommonStubID::GreaterEq:
+                // 1 : left operand, after glue.
+                // 2 : right operand, after glue and left operand.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // The `in` operator can consult receiver-side property lookup hooks.
+            case CommonStubID::IsIn:
+                // 1 : property key operand, after glue.
+                // 2 : object operand, after glue and property key.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // `instanceof` may call @@hasInstance on the constructor operand.
+            case CommonStubID::Instanceof:
+                // 2 : constructor operand, after glue and object operand.
+                return !InputMayBeJSReceiver(call, 2);
+            // Define/st-own operations may run receiver/prototype/proxy paths or mutate object shapes.
+            case CommonStubID::DefineField:
+            case CommonStubID::StOwnByValue:
+            case CommonStubID::StOwnByIndex:
+            case CommonStubID::StOwnByName:
+            case CommonStubID::StOwnByValueWithNameSet:
+            case CommonStubID::StOwnByNameWithNameSet:
+                // 1 : receiver operand, after glue.
+                // 2 : property key operand, after glue and receiver.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // Delete can mutate the receiver shape; the key may also run conversion logic.
+            case CommonStubID::DeleteObjectProperty:
+                // 1 : receiver operand, after glue.
+                // 2 : property key operand, after glue and receiver.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            default:
+                return false;
+        }
+    }
+
+    bool IsDependencySafeRuntimeCall(CallRuntimeVertex *call) const
+    {
+        switch (call->GetRuntimeStubID()) {
+            // Allocation and metadata helpers below do not execute user JS and do not invalidate dependencies.
+            case RTSTUB_ID(GetMethodFromCache):
+            case RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc):
+            case RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc):
+            case RTSTUB_ID(LdPatchVar):
+            case RTSTUB_ID(OptNewLexicalEnvWithName):
+                return true;
+            // NumberToString is dependency-safe only when the input cannot be a receiver.
+            case RTSTUB_ID(NumberToString):
+                // 0 : converted value operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Conversion stubs may invoke user-defined valueOf/toString/Symbol.toPrimitive on receiver inputs.
+            case RTSTUB_ID(ToNumber):
+            case RTSTUB_ID(ToNumeric):
+            case RTSTUB_ID(ToPropertyKey):
+                // 0 : converted value operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Iterator slow paths may perform property access or iterator-return callbacks on the receiver.
+            case RTSTUB_ID(GetNextPropNameSlowpath):
+                // 0 : iterator or receiver operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Changing an object's prototype directly invalidates hidden-class/prototype dependencies.
+            case RTSTUB_ID(SetObjectWithProto):
+                // 1 : object operand, after prototype operand.
+                return !InputMayBeJSReceiver(call, 1);
+            // Defining accessors mutates the receiver object's own-property layout.
+            case RTSTUB_ID(DefineGetterSetterByValue):
+                // 0 : receiver object operand.
+                // 1 : property key operand.
+                return !InputMayBeJSReceiver(call, 0) && !InputMayBeJSReceiver(call, 1);
+            // Object spread copies through own-property reads and define-own-property writes.
+            case RTSTUB_ID(CopyDataProperties):
+                // 0 : target object operand.
+                // 1 : source object operand.
+                return !InputMayBeJSReceiver(call, 0) && !InputMayBeJSReceiver(call, 1);
+            // Array spread writes elements to the destination array.
+            case RTSTUB_ID(StArraySpread):
+                // 0 : destination array operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Exponentiation may run ToNumeric on either operand.
+            case RTSTUB_ID(Exp):
+                // 0 : left operand.
+                // 1 : right operand.
+                return !InputMayBeJSReceiver(call, 0) && !InputMayBeJSReceiver(call, 1);
+            default:
+                return false;
+        }
+    }
+
+    void LoadLazyDeoptMetadataForThrowableCall(uint32_t bcIndex, Vertex *vertex)
+    {
+        if (!self->IsLazyDeoptEnabled()) {
+            return;
+        }
+        LazyDeoptimizableMixin *deoptMixin = LazyDeoptMixinOf(vertex);
+        if (deoptMixin == nullptr) {
+            return;
+        }
+        // E refers to exception lazy-deopt
+        bool needsE = HasNeverExecutedCatchBlock();
+        // D refers to dependency lazy-deopt.
+        bool needsD = vertex->Is<CallVertex>();
+        if (auto *call = vertex->TryCast<CallCommonStubVertex>()) {
+            needsD = !IsDependencySafeCommonStubCall(call);
+        } else if (auto *call = vertex->TryCast<CallRuntimeVertex>()) {
+            needsD = !IsDependencySafeRuntimeCall(call);
+        }
+        if (!needsE && !needsD) {
+            return;
+        }
+        ThrowableMixin *throwableMixin = ThrowableMixinOf(vertex);
+        ASSERT(!needsE || throwableMixin != nullptr);
+        if (!deoptMixin->HasLazyDeoptMetadata()) {
+            auto *metadata = self->chunk_->New<DeoptMetadata>(self->chunk_, self->preproc_->GetBytecodeOffset(bcIndex));
+            if (needsE && needsD) {
+                // D+E uses one live-in payload. We assume only ACC may be modified by the bytecode,
+                // so live-in and live-out are equivalent with ACC excluded.
+                BuildGenericDeoptInputs(bcIndex, metadata, false);
+            } else if (needsE) {
+                // E-only resumes at the catch handler entry, so only the handler live-ins are required.
+                BuildLazyDeoptInputsForEOnly(bcIndex, metadata);
+            } else {
+                // D-only uses live-out payload
+                BuildLazyDeoptInputsForDOnly(bcIndex, metadata);
+            }
+            deoptMixin->LoadLazyDeoptMetadata(metadata);
+        }
+        if (needsE && !throwableMixin->HasExceptionLazyDeoptMetadata()) {
+            ASSERT(!throwableMixin->HasCatchBlock());
+            throwableMixin->LoadExceptionLazyDeoptMetadata(deoptMixin->GetLazyDeoptMetadata());
+        }
+    }
+
+    // -------- Miscellaneous Helpers --------
+
+    bool HasCatchBlock() const
+    {
+        return reinterpret_cast<uintptr_t>(lazyCatchBlock) != NO_CATCH_BLOCK_TAG;
+    }
+
+    bool HasNeverExecutedCatchBlock() const
+    {
+        return HasCatchBlock() && blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED;
+    }
 
     BB *JumpTarget() const
     {
@@ -3102,8 +3472,7 @@ struct GraphBuilder::BytecodeVisitor {
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         currentBlock = doneBlock;
-        return self->NewPhiVertexWith(currentBlock, std::initializer_list<ValueVertex *> {trueResult, falseResult},
-                                      resultVreg);
+        return self->NewPhiVertexWith(currentBlock, {trueResult, falseResult}, resultVreg);
     }
 
     ValueVertex *LoadRegister(const BytecodeInfo *bcInfo, int inputIndex) const
@@ -3153,13 +3522,14 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *ActualArgc()
     {
-        return self->NewVertex<ActualArgcVertex>(compileInfoFacts_, currentBlock, {});
+        ASSERT(self->actualArgc_ != nullptr);
+        return self->actualArgc_;
     }
 
     ValueVertex *TaggedActualArgc()
     {
-        ValueVertex *argc = ActualArgc();
-        return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {argc});
+        ASSERT(self->taggedActualArgc_ != nullptr);
+        return self->taggedActualArgc_;
     }
 
     // LDA_STR "" is currently represented by GetStringFromConstPool.
@@ -3338,6 +3708,14 @@ struct GraphBuilder::BytecodeVisitor {
         if (!plr.has_value()) {
             return std::nullopt;
         }
+        bool hasStableProtoChain = false;
+        if (holderDepth > 0) {
+            auto *thread = self->compilerThread_;
+            auto *deps = self->preproc_->GetEnv()->GetDependencies();
+            if (deps != nullptr && deps->DependOnStableProtoChain(thread, *receiverHClass, holderHClass)) {
+                hasStableProtoChain = true;
+            }
+        }
         NamedLoadAccessInfo result {
             .receiverHClass = receiverHClass.value(),
             .holderHClass = holderHClass,
@@ -3346,6 +3724,7 @@ struct GraphBuilder::BytecodeVisitor {
             .plr = plr.value(),
             .holderDepth = holderDepth,
             .isConst = false,
+            .hasStableProtoChain = hasStableProtoChain,
         };
         return result;
     }
@@ -3558,7 +3937,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (ValueVertex *alternative = compileInfoFacts_->TryGetAlternative(value, AlternativeNodes::Kind::INT32)) {
             return alternative;
         }
-        ValueVertex *i32 = self->NewVertex<TaggedIntToI32Vertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{value});
+        ValueVertex *i32 = self->NewVertex<TaggedIntToI32Vertex>(compileInfoFacts_, currentBlock, {value});
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::INT32, i32);
         return i32;
     }
@@ -3631,8 +4010,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildTaggedI32Result(ValueVertex *rawResult)
     {
-        ValueVertex *taggedResult =
-            self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{rawResult});
+        ValueVertex *taggedResult = self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {rawResult});
         compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::INT);
         compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::INT32, rawResult);
         return taggedResult;
@@ -3649,15 +4027,16 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildI32BinOpValue(BinaryOpKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
+        auto inputs = {leftI32, rightI32};
         switch (kind) {
             case BinaryOpKind::ADD:
-                return self->NewVertex<I32AddVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32AddVertex>(compileInfoFacts_, currentBlock, inputs);
             case BinaryOpKind::SUB:
-                return self->NewVertex<I32SubVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32SubVertex>(compileInfoFacts_, currentBlock, inputs);
             case BinaryOpKind::MUL:
-                return self->NewVertex<I32MulVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32MulVertex>(compileInfoFacts_, currentBlock, inputs);
             case BinaryOpKind::DIV:
-                return self->NewVertex<I32DivVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32});
+                return self->NewVertex<I32DivVertex>(compileInfoFacts_, currentBlock, inputs);
             default:
                 return nullptr;
         }
@@ -4034,7 +4413,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildF64BinOpValue(BinaryOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
     {
-        auto inputs = std::initializer_list<ValueVertex *>{leftF64, rightF64};
+        auto inputs = {leftF64, rightF64};
         switch (kind) {
             case BinaryOpKind::ADD:
                 return self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, inputs);
@@ -4070,7 +4449,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildTaggedF64Value(ValueVertex *rawResult)
     {
         ValueVertex *taggedResult =
-            self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{rawResult});
+            self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {rawResult});
         compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::DOUBLE);
         compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::HOLEY_FLOAT64, rawResult);
         return taggedResult;
@@ -4264,8 +4643,8 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildI32BitwiseTaggedValue(IntBitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
-        ValueVertex *raw =
-            self->NewVertex<I32BitwiseBinaryVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32}, kind);
+        ValueVertex *raw = self->NewVertex<I32BitwiseBinaryVertex>(
+            compileInfoFacts_, currentBlock, {leftI32, rightI32}, kind);
         if (kind != IntBitwiseKind::SHIFT_RIGHT_LOGICAL) {
             return BuildTaggedI32Result(raw);
         }
@@ -4292,8 +4671,7 @@ struct GraphBuilder::BytecodeVisitor {
             return BuildTaggedIntToI32(value);
         }
         ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
-        return self->NewVertex<F64ToI32TruncVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
+        return self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, {valueF64});
     }
 
     ValueVertex *BuildBitwiseOperation(IntBitwiseKind kind)
@@ -4393,10 +4771,9 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *valueI32 = BuildTaggedIntToI32(value);
         ValueVertex *zero = self->graph_->GetInt32Constant(0);
-        IntConditionKind condition =
-            trueIfNonZero ? IntConditionKind::NOT_EQUAL : IntConditionKind::EQUAL;
+        IntConditionKind condition = trueIfNonZero ? IntConditionKind::NOT_EQUAL : IntConditionKind::EQUAL;
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32, zero}, condition);
+            compileInfoFacts_, currentBlock, {valueI32, zero}, condition);
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -4439,16 +4816,14 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildTaggedEqual(ValueVertex *left, ValueVertex *right)
     {
-        ValueVertex *result =
-            self->NewVertex<TaggedEqualVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{left, right});
+        ValueVertex *result = self->NewVertex<TaggedEqualVertex>(compileInfoFacts_, currentBlock, {left, right});
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
 
     ValueVertex *BuildTaggedNotEqual(ValueVertex *left, ValueVertex *right)
     {
-        ValueVertex *result =
-            self->NewVertex<TaggedNotEqualVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{left, right});
+        ValueVertex *result = self->NewVertex<TaggedNotEqualVertex>(compileInfoFacts_, currentBlock, {left, right});
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -4496,8 +4871,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *leftI32 = BuildTaggedIntToI32(left);
         ValueVertex *rightI32 = BuildTaggedIntToI32(right);
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32},
-            Int32ConditionFromCompare(kind));
+            compileInfoFacts_, currentBlock, {leftI32, rightI32}, Int32ConditionFromCompare(kind));
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -4512,8 +4886,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
         ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftI32, rightI32},
-            Int32ConditionFromCompare(kind));
+            compileInfoFacts_, currentBlock, {leftI32, rightI32}, Int32ConditionFromCompare(kind));
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -4527,8 +4900,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         ValueVertex *result = self->NewVertex<F64ConditionCheckVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{leftF64, rightF64},
-            Int32ConditionFromCompare(kind));
+            compileInfoFacts_, currentBlock, {leftF64, rightF64}, Int32ConditionFromCompare(kind));
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -4543,8 +4915,7 @@ struct GraphBuilder::BytecodeVisitor {
     ValueVertex *BuildStringCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
     {
         if (kind == CompareOpKind::EQUAL || kind == CompareOpKind::STRICT_EQUAL) {
-            ValueVertex *result = self->NewVertex<StringEqualVertex>(
-                currentBlock, std::initializer_list<ValueVertex *>{glue, left, right, GlobalEnv()});
+            ValueVertex *result = self->NewVertex<StringEqualVertex>(currentBlock, {glue, left, right, GlobalEnv()});
             compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
             return result;
         }
@@ -4766,15 +5137,12 @@ struct GraphBuilder::BytecodeVisitor {
     {
         if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
             ValueVertex *valueI32 = BuildTaggedIntToI32(value);
-            ValueVertex *rawResult =
-                self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32});
+            ValueVertex *rawResult = self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, {valueI32});
             return BuildTaggedI32Result(rawResult);
         }
         ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
-        ValueVertex *truncI32 =
-            self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
-        ValueVertex *rawResult =
-            self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{truncI32});
+        ValueVertex *truncI32 = self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, {valueF64});
+        ValueVertex *rawResult = self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, {truncI32});
         return BuildTaggedI32Result(rawResult);
     }
 
@@ -4783,28 +5151,27 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
         switch (stubId) {
             case CommonStubID::Neg: {
-                ValueVertex *negF64 =
-                    self->NewVertex<F64NegVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64});
-                ValueVertex *result =
-                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{negF64});
+                ValueVertex *negF64 = self->NewVertex<F64NegVertex>(compileInfoFacts_, currentBlock, {valueF64});
+                ValueVertex *result = self->NewVertex<F64ToTaggedDoubleVertex>(
+                    compileInfoFacts_, currentBlock, {negF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
             case CommonStubID::Inc: {
                 ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
-                ValueVertex *addF64 =
-                    self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
-                ValueVertex *result =
-                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{addF64});
+                ValueVertex *addF64 = self->NewVertex<F64AddVertex>(
+                    compileInfoFacts_, currentBlock, {valueF64, oneF64});
+                ValueVertex *result = self->NewVertex<F64ToTaggedDoubleVertex>(
+                    compileInfoFacts_, currentBlock, {addF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
             case CommonStubID::Dec: {
                 ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
-                ValueVertex *subF64 =
-                    self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueF64, oneF64});
-                ValueVertex *result =
-                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{subF64});
+                ValueVertex *subF64 = self->NewVertex<F64SubVertex>(
+                    compileInfoFacts_, currentBlock, {valueF64, oneF64});
+                ValueVertex *result = self->NewVertex<F64ToTaggedDoubleVertex>(
+                    compileInfoFacts_, currentBlock, {subF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
@@ -5119,6 +5486,40 @@ struct GraphBuilder::BytecodeVisitor {
         BuildStoreTaggedField(properties, offset, value);
     }
 
+    ValueVertex *BuildPropertyLoadSource(uint32_t bcIndex, ValueVertex *object, const NamedLoadAccessInfo &accessInfo)
+    {
+        if (accessInfo.holderDepth <= 0) {
+            return object;
+        }
+        if (accessInfo.hasStableProtoChain) {
+            // Proto chain is protected by lazy-deopt dependency. Emit direct prototype loads without eager guards.
+            constexpr int32_t HCLASS_OFFSET = static_cast<int32_t>(TaggedObject::HCLASS_OFFSET);
+            constexpr int32_t PROTOTYPE_OFFSET = static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET);
+            for (uint32_t step = 0; step < accessInfo.holderDepth; step++) {
+                auto *hclass = self->NewVertex<LoadTaggedFieldVertex>(
+                    compileInfoFacts_, currentBlock, {object}, HCLASS_OFFSET);
+                object = self->NewVertex<LoadTaggedFieldVertex>(
+                    compileInfoFacts_, currentBlock, {hclass}, PROTOTYPE_OFFSET);
+            }
+            return object;
+        } else {
+            // Eager deopt check is required
+            ChunkVector<ValueVertex *> checkInputs(self->chunk_);
+            checkInputs.emplace_back(object);
+            auto *loadHolder = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
+                compileInfoFacts_,
+                currentBlock,
+                checkInputs,
+                self->chunk_,
+                accessInfo.holderHClass,
+                accessInfo.expectedPrototypeHClasses,
+                accessInfo.holderDepth,
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            loadHolder->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+            return loadHolder;
+        }
+    }
+
     ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, uint16_t constDataId,
                                       const NamedLoadAccessInfo &accessInfo)
     {
@@ -5294,17 +5695,13 @@ struct GraphBuilder::BytecodeVisitor {
     void UpdateCatchBlockData(VertexT *vertex)
     {
         ThrowableMixin *mixin = vertex;
-        if (blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED &&
-            self->IsExceptionLazyDeoptEnabled()) {
-            ASSERT(blockInfo->catchBlock != nullptr);
-            if (vertex->template Is<CallVertex>() || vertex->template Is<CallCommonStubVertex>() ||
-                vertex->template Is<CallRuntimeVertex>()) {
-                mixin->SetExceptionHandlingMode(ThrowableMixin::ExceptionHandlingMode::LAZY_DEOPT);
-                return;  // Catch block will not be activated
-            }
-        }
         if (reinterpret_cast<uintptr_t>(lazyCatchBlock) == NO_CATCH_BLOCK_TAG) {
-            return;
+            return;  // (1) vertex has no catch block
+        }
+        if (blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED && self->IsLazyDeoptEnabled()) {
+            if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
+                return;  // The catch block is represented by lazy-deopt metadata instead of compiled code.
+            }
         }
         if (UNLIKELY(lazyCatchBlock == nullptr)) {
             lazyCatchBlock = self->ActivateCatchBlock(&lazyCatchBlockInputs, blockInfo->catchBlock->rpoIndex);
@@ -5312,44 +5709,40 @@ struct GraphBuilder::BytecodeVisitor {
         ASSERT(lazyCatchBlockInputs != nullptr);
         uint32_t catchPredIndex = lazyCatchBlockInputs->AddCatchPredecessor(frameState, self->undefinedValue_);
         lazyCatchBlockInputs->AddCompileInfoFacts(*compileInfoFacts_);
-        mixin->SetCaughtBy(lazyCatchBlock);
-        mixin->SetCatchPredecessorIndex(catchPredIndex);
-        mixin->SetExceptionHandlingMode(ThrowableMixin::ExceptionHandlingMode::COMPILED_CATCH);
+        mixin->LoadCatchBlock(lazyCatchBlock, catchPredIndex);
     }
 
-    template <class InputRange>
-    uint32_t BuildThrowableCallInputs(
-        const InputRange &callInputs, std::vector<ValueVertex *> *inputs, ChunkVector<VRegIDType> *deoptVRegs)
+    CallCommonStubVertex *CommonStubCall(
+        std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+        SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
-        inputs->assign(std::begin(callInputs), std::end(callInputs));
-        uint32_t firstDeoptInputIndex = static_cast<uint32_t>(inputs->size());
-        if (blockInfo->catchBlock != nullptr &&
-            blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED &&
-            self->IsExceptionLazyDeoptEnabled()) {
-            AppendCurrentFrameStateForDeopt(inputs, deoptVRegs);
-        }
-        return firstDeoptInputIndex;
-    }
-
-    ValueVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
-                                SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
-    {
-        std::vector<ValueVertex *> allInputs;
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = BuildThrowableCallInputs(inputs, &allInputs, &deoptVRegs);
-        ValidateCommonStubCallArgs({allInputs.data(), firstDeoptInputIndex}, id);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
+        ValidateCommonStubCallArgs(inputs, id);
         auto *vertex = self->NewVertex<CallCommonStubVertex>(
-            compileInfoFacts_, currentBlock, allInputs, std::move(deoptData), id, sideEffectKind);
+            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
 
-    ValueVertex *CommonStubCallWithIC(
+    CallCommonStubVertex *CommonStubCallWithLazyDeopt(
+        std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+        SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallToAccWithLazyDeopt(
+        std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+        SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
+        frameState.SetAcc(vertex);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallWithIC(
         const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
     {
         ChunkVector<ValueVertex *> allArgs(self->chunk_);
@@ -5360,36 +5753,56 @@ struct GraphBuilder::BytecodeVisitor {
         allArgs.push_back(LoadParam(CALL_TARGET_PARAM_INDEX));
         allArgs.push_back(self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0)));
 
-        std::vector<ValueVertex *> allInputs;
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = BuildThrowableCallInputs(allArgs, &allInputs, &deoptVRegs);
-        ValidateCommonStubCallArgs({allInputs.data(), firstDeoptInputIndex}, id);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        auto *vertex = self->NewVertex<CallCommonStubVertex>(
-            compileInfoFacts_, currentBlock, allInputs, std::move(deoptData), id);
+        ValidateCommonStubCallArgs({allArgs.data(), allArgs.size()}, id);
+
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, allArgs, id);
+        UpdateCatchBlockData(vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallWithICAndLazyDeopt(
+        const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    {
+        auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallToAccWithICAndLazyDeopt(
+        const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    {
+        auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
+        frameState.SetAcc(vertex);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallRuntimeVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id,
+                                   SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = self->NewVertex<CallRuntimeVertex>(
+            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
 
     template <class InputRange = std::initializer_list<ValueVertex *>>
-    ValueVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id,
-                             SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    CallRuntimeVertex *RuntimeCallToAccWithLazyDeopt(const InputRange &inputs, RuntimeStubID id,
+                                                     SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
-        std::vector<ValueVertex *> allInputs;
-        ChunkVector<VRegIDType> deoptVRegs {self->chunk_};
-        uint32_t firstDeoptInputIndex = BuildThrowableCallInputs(inputs, &allInputs, &deoptVRegs);
-        DeoptMetadata deoptData{
-            .deoptVRegs = std::move(deoptVRegs),
-            .firstDeoptInputIndex = firstDeoptInputIndex,
-            .bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex),
-        };
-        auto *vertex = self->NewVertex<CallRuntimeVertex>(
-            compileInfoFacts_, currentBlock, allInputs, std::move(deoptData), id, sideEffectKind);
-        UpdateCatchBlockData(vertex);
+        auto *vertex = RuntimeCall(inputs, id, sideEffectKind);
+        frameState.SetAcc(vertex);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallRuntimeVertex *RuntimeCallWithLazyDeopt(const InputRange &inputs, RuntimeStubID id,
+                                                SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = RuntimeCall(inputs, id, sideEffectKind);
+        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 

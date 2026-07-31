@@ -18,10 +18,26 @@
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/ic/profile_type_info_cell.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {
+
+namespace {
+void ClearProfileTypeInfoForLazyDeopt(JSThread *thread, const JSHandle<JSFunction> &func)
+{
+    JSTaggedValue rawProfileTypeInfo = func->GetRawProfileTypeInfo(thread);
+    if (!rawProfileTypeInfo.IsProfileTypeInfoCell()) {
+        return;
+    }
+    ProfileTypeInfoCell *cell = ProfileTypeInfoCell::Cast(rawProfileTypeInfo.GetTaggedObject());
+    if (cell->IsEmptyProfileTypeInfoCell(thread) || cell->GetValue(thread).IsUndefined()) {
+        return;
+    }
+    cell->SetValue(thread, JSTaggedValue::Undefined());
+}
+}  // namespace
 
 JSHandle<DependentInfos> DependentInfos::AppendDependentInfos(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> jsFunc,
@@ -92,6 +108,7 @@ void DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos> dependen
                                                            method.GetObject<Method>(),
                                                            kungfu::DeoptType::LAZYDEOPT,
                                                            false);
+            ClearProfileTypeInfoForLazyDeopt(thread, func);
             TraceLazyDeoptReason(thread, func, (depCollection & collection));
         }
     }

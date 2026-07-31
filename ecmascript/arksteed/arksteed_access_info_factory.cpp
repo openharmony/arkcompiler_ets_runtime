@@ -312,6 +312,10 @@ bool ArkSteedAccessInfoFactory::ComputeNamedLoadAccessInfo(const NamedAccessFeed
         *access = {};
         return false;
     }
+    if (!RegisterDependencies(*access)) {
+        *access = {};
+        return false;
+    }
     return true;
 }
 

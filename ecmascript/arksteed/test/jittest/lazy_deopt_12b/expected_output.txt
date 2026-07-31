@@ -1,0 +1,8 @@
+Before call #1: isCompiled: false
+A loop: 4 37 4 37 74
+After call #1: isCompiled: false
+----------------
+Before call #2: isCompiled: true
+A loop: 4 37 9 52 89
+After call #2: isCompiled: false
+----------------

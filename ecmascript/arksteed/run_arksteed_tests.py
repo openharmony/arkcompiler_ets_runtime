@@ -214,7 +214,7 @@ LIVE_RANGE_PATTERNS = {
     "phi_line": re.compile(r"v\d+/n\d+:\s+Phi[^\(]*\(([^)]+)\)"),
 }
 
-LOG_LINE_PATTERN = re.compile(r"^\[[a-z]+\]")
+LOG_LINE_PATTERN = re.compile(r"^\[(?:compiler)\]")
 LOG_CASE_NAME_PATTERN = re.compile(r"^Test case:\s*(.+)$")
 LOG_RESULT_PATTERN = re.compile(r"^Result:\s*(PASS|FAIL)$")
 

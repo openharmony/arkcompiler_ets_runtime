@@ -1,4 +1,0 @@
-function concat() { [native code] }
-true
-------------------------------------------------------
-undefined

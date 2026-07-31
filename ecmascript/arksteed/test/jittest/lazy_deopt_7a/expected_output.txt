@@ -1,0 +1,9 @@
+Before 1st call: isCompiled: false
+function concat() { [native code] }
+After 1st call: isCompiled: false
+----------------
+------------------------------------------------------
+Before 2nd call: isCompiled: false
+undefined
+After 2nd call: isCompiled: false
+----------------

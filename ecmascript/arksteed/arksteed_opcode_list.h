@@ -104,7 +104,6 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(DeoptIfHClassNotIn)           \
     V(DeoptIfInt32Condition)        \
     V(DeoptIfNotNumber)             \
-    V(Deopt)                        \
     V(StoreTaggedToAddress)         \
     V(StoreI32ToAddress)            \
     V(StoreI64ToAddress)            \
@@ -135,7 +134,8 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 #define TERMINAL_CONTROL_VERTEX_LIST(V) \
     V(Return)                           \
-    V(Throw)
+    V(Throw)                            \
+    V(Deopt)
 
 // List of control vertex types
 #define CONTROL_VERTEX_LIST(V)       \

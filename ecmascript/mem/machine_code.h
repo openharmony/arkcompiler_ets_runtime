@@ -250,7 +250,9 @@ public:
 
     // define BitField
     static constexpr size_t IS_FAST_CALL_BITS = 1;
+    static constexpr size_t IS_ARK_STEED_BITS = 1;
     FIRST_BIT_FIELD(BitField, IsFastCall, bool, IS_FAST_CALL_BITS);
+    NEXT_BIT_FIELD(BitField, IsArkSteedCode, bool, IS_ARK_STEED_BITS, IsFastCall);
 
     DECL_DUMP()
 

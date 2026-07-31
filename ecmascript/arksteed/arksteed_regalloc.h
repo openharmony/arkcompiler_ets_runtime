@@ -369,6 +369,8 @@ private:
     void AssignArbitraryRegisterInput(Vertex *resultVertex, const Input &input);
     void AssignAnyInput(const Input &input);
     void AssignInputs(Vertex *vertex);
+    void AssignDeoptInputs(Vertex *vertex);
+    void AssignDeoptInput(ValueVertex *vertex, InputLocation *location);
     void AssignEagerDeoptFrameSourceLocations(Vertex *vertex);
     void AssignDeoptFrameSourceLocation(ValueVertex *value, InputLocation *sourceLocation);
 

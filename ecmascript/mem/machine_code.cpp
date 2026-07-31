@@ -157,6 +157,7 @@ bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandl
     SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
     SetOsrDeoptFlag(false);
     SetOsrExecuteCnt(0);
+    SetIsArkSteedCode(false);
 
     size_t instrSize = desc.rodataSizeBeforeTextAlign + desc.codeSizeAlign + desc.rodataSizeAfterTextAlign;
 
@@ -260,6 +261,7 @@ bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
     SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
     SetOsrDeoptFlag(false);
     SetOsrExecuteCnt(0);
+    SetIsArkSteedCode(true);
 
     size_t instrSizeAlign = desc.codeSizeAlign;
     SetInstructionsSize(instrSizeAlign);

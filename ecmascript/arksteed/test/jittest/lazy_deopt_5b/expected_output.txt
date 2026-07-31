@@ -1,0 +1,13 @@
+Before: isCompiled: false
+1
+undefined
+1
+After: isCompiled: false
+----------------
+------------------------------------------------------
+Before: isCompiled: true
+2
+undefined
+2
+After: isCompiled: false
+----------------

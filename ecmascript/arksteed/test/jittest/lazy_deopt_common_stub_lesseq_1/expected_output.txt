@@ -1,0 +1,12 @@
+Before 1st call: Test isCompiled: false
+Before 1st call: Operation isCompiled: false
+lazy_deopt_common_stub_lesseq_1 state: 1:true:1:11:16
+After 1st call: Test isCompiled: false
+After 1st call: Operation isCompiled: false
+----------------
+Before 2nd call: Test isCompiled: true
+Before 2nd call: Operation isCompiled: true
+lazy_deopt_common_stub_lesseq_1 state: 1:true:2:11:109
+After 2nd call: Test isCompiled: true
+After 2nd call: Operation isCompiled: false
+----------------

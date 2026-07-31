@@ -1,0 +1,7 @@
+Before: isCompiled: false
+function concat() { [native code] }
+After: isCompiled: false
+------------------------------------------------------
+Before: isCompiled: false
+function concat() { [native code] }
+After: isCompiled: false

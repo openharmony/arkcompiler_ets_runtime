@@ -15,19 +15,36 @@
 
 #include "ecmascript/arksteed/arksteed_opcode.h"
 
-#include "ecmascript/arksteed/arksteed_assembler-inl.h"
+#include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 
 namespace panda::ecmascript::arksteed {
 
 namespace {
-void UseDeoptFrameSlots(Vertex *vertex, const DeoptimizableMixin *deopt)
+void UseDeoptFrameSlot(InputLocation *location)
 {
-    for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
-        UseSlot(vertex->Arg(deopt->DeoptInputIndex(index)));
+    location->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT,
+        UnallocatedState::LifetimeFlag::USED_AT_END, NO_VREG);
+}
+
+void UseEagerDeoptFrameSlots(EagerDeoptimizableMixin *deopt)
+{
+    for (uint32_t index = 0; index < deopt->GetDeoptFrameValueCount(); ++index) {
+        UseDeoptFrameSlot(deopt->GetDeoptSourceLocation(index));
     }
 }
+
+void UseLazyDeoptFrameSlots(LazyDeoptimizableMixin *deopt)
+{
+    if (!deopt->HasLazyDeoptMetadata()) {
+        return;
+    }
+    for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
+        UseDeoptFrameSlot(deopt->GetDeoptLocation(index));
+    }
+}
+
 }  // namespace
 
 #define __ masm->
@@ -153,7 +170,7 @@ void CallRuntimeVertex::SetValueLocationConstraints()
 
     // Set parameter location constraints using helper function
     SetStubValueLocationConstraints(this, GetArgCount());
-    UseDeoptFrameSlots(this, this);
+    UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
 void CallRuntimeVertex::Dump(std::ostream &output) const
@@ -174,10 +191,10 @@ void CallVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 #endif
     UseRegister(Arg(TARGET_INDEX));
-    for (uint32_t i = NEW_TARGET_INDEX; i < FirstDeoptInputIndex(); i++) {
+    for (uint32_t i = NEW_TARGET_INDEX; i < GetInputCount(); i++) {
         UseAny(Arg(i));
     }
-    UseDeoptFrameSlots(this, this);
+    UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
 void CallVertex::Dump(std::ostream &output) const
@@ -192,7 +209,7 @@ void CallCommonStubVertex::SetValueLocationConstraints()
 
     // Set parameter location constraints using helper function
     SetStubValueLocationConstraints(this, GetArgCount());
-    UseDeoptFrameSlots(this, this);
+    UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
 void CallCommonStubVertex::Dump(std::ostream &output) const

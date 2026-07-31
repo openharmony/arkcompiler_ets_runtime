@@ -1,0 +1,17 @@
+Before: isCompiled: false
+Test2 start.
+ChangeProto start.
+ChangeProto end.
+Test2 obj.x : 1
+Test2 end.
+After: isCompiled: false
+----------------
+------------------------------------------------------
+Before: isCompiled: true
+Test2 start.
+ChangeProto start.
+ChangeProto end.
+Test2 obj.x : 1
+Test2 end.
+After: isCompiled: false
+----------------

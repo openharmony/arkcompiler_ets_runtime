@@ -77,9 +77,17 @@ enum class IntBitwiseKind : uint8_t {
 };
 
 struct DeoptMetadata {
-    ChunkVector<VRegIDType> deoptVRegs;
-    uint32_t firstDeoptInputIndex;
-    uint32_t bytecodeOffset;
+    explicit DeoptMetadata(Chunk *chunk, uint32_t offset)
+        : indices(chunk), sources(chunk), locations(chunk), bcOffset(offset)
+    {}
+
+    ChunkVector<VRegIDType> indices;
+    ChunkVector<ValueVertex *> sources;
+    // Set during register allocation.
+    ChunkVector<InputLocation> locations;
+    // bcOffset = starting position of its owner.
+    // For lazy-deopt, PC advancing is done by deopt trampoline in runtime.
+    uint32_t bcOffset;
 };
 
 /**
@@ -276,92 +284,155 @@ private:
 
 class ThrowableMixin {
 public:
-    enum class ExceptionHandlingMode : uint8_t {
-        NONE,
-        COMPILED_CATCH,
-        LAZY_DEOPT,
-    };
+    ThrowableMixin() = default;
 
-    BB *CaughtBy() const
+    ThrowableMixin(BB *caughtBy, uint32_t catchPredIndex)
+        : catchPredIndex_(catchPredIndex),
+          caughtBy_(caughtBy)
+    {
+        ASSERT(caughtBy_ != nullptr);
+        ASSERT(catchPredIndex_ != NULL_INDEX);
+    }
+
+    bool HasCatchBlock() const
+    {
+        return caughtBy_ != nullptr;
+    }
+
+    BB *GetCatchBlock()
     {
         return caughtBy_;
     }
 
-    void SetCaughtBy(BB *caughtBy)
+    const BB *GetCatchBlock() const
     {
-        caughtBy_ = caughtBy;
+        return caughtBy_;
+    }
+
+    void LoadCatchBlock(BB *block, uint32_t catchPredIndex)
+    {
+        ASSERT(block != nullptr);
+        ASSERT(catchPredIndex != NULL_INDEX);
+        caughtBy_ = block;
+        catchPredIndex_ = catchPredIndex;
     }
 
     uint32_t GetCatchPredecessorIndex() const
     {
+        ASSERT(HasCatchBlock() && "Check required.");
+        ASSERT(catchPredIndex_ != NULL_INDEX);
         return catchPredIndex_;
     }
 
-    void SetCatchPredecessorIndex(uint32_t id)
+    void LoadExceptionLazyDeoptMetadata(DeoptMetadata *metadata)
     {
-        catchPredIndex_ = id;
+        ASSERT(metadata != nullptr);
+        deoptMetadata_ = metadata;
     }
 
-    ExceptionHandlingMode GetExceptionHandlingMode() const
+    bool HasExceptionLazyDeoptMetadata() const
     {
-        return exceptionHandlingMode_;
+        return deoptMetadata_ != nullptr;
     }
 
-    void SetExceptionHandlingMode(ExceptionHandlingMode mode)
+    DeoptMetadata *GetExceptionLazyDeoptMetadata()
     {
-        exceptionHandlingMode_ = mode;
+        return deoptMetadata_;
+    }
+
+    const DeoptMetadata *GetExceptionLazyDeoptMetadata() const
+    {
+        return deoptMetadata_;
     }
 
 private:
-    BB *caughtBy_ = nullptr;
-    uint32_t catchPredIndex_ = static_cast<uint32_t>(-1);
-    ExceptionHandlingMode exceptionHandlingMode_ = ExceptionHandlingMode::NONE;
+    static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
+    uint32_t catchPredIndex_ = NULL_INDEX;
+    BB *caughtBy_ {nullptr};
+    DeoptMetadata *deoptMetadata_ {nullptr};
 };
 
-class DeoptimizableMixin {
+class LazyDeoptimizableMixin {
 public:
-    explicit DeoptimizableMixin(DeoptMetadata data)
-        : deoptVRegs_(std::move(data.deoptVRegs)),
-          firstDeoptInputIndex_(data.firstDeoptInputIndex),
-          bytecodeOffset_(data.bytecodeOffset)
-    {}
+    LazyDeoptimizableMixin() = default;
 
-    VRegIDType GetDeoptVReg(uint32_t index) const
+    explicit LazyDeoptimizableMixin(DeoptMetadata *metadata) : metadata_(metadata) {}
+
+    void LoadLazyDeoptMetadata(DeoptMetadata *metadata)
     {
-        ASSERT(index < deoptVRegs_.size());
-        return deoptVRegs_[index];
+        ASSERT(metadata != nullptr);
+        metadata_ = metadata;
     }
 
-    const ChunkVector<VRegIDType> &GetDeoptVRegs() const
+    bool HasLazyDeoptMetadata() const
     {
-        return deoptVRegs_;
+        return metadata_ != nullptr;
     }
 
-    uint32_t FirstDeoptInputIndex() const
+    DeoptMetadata *GetLazyDeoptMetadata()
     {
-        return firstDeoptInputIndex_;
+        return metadata_;
+    }
+
+    const DeoptMetadata *GetLazyDeoptMetadata() const
+    {
+        return metadata_;
     }
 
     uint32_t DeoptInputCount() const
     {
-        return static_cast<uint32_t>(deoptVRegs_.size());
+        return metadata_ == nullptr ? 0 : static_cast<uint32_t>(metadata_->sources.size());
     }
 
-    int DeoptInputIndex(uint32_t index) const
+    VRegIDType GetDeoptVReg(uint32_t index) const
     {
-        ASSERT(index < DeoptInputCount());
-        return static_cast<int>(firstDeoptInputIndex_ + index);
+        ASSERT(metadata_ != nullptr);
+        ASSERT(index < metadata_->indices.size());
+        return metadata_->indices[index];
+    }
+
+    const ChunkVector<VRegIDType> &GetDeoptVRegs() const
+    {
+        ASSERT(metadata_ != nullptr);
+        return metadata_->indices;
+    }
+
+    ValueVertex *GetDeoptSource(uint32_t index)
+    {
+        ASSERT(metadata_ != nullptr);
+        ASSERT(index < metadata_->sources.size());
+        return metadata_->sources[index];
+    }
+
+    const ValueVertex *GetDeoptSource(uint32_t index) const
+    {
+        ASSERT(metadata_ != nullptr);
+        ASSERT(index < metadata_->sources.size());
+        return metadata_->sources[index];
+    }
+
+    InputLocation *GetDeoptLocation(uint32_t index)
+    {
+        ASSERT(metadata_ != nullptr);
+        ASSERT(index < metadata_->locations.size());
+        return &metadata_->locations[index];
+    }
+
+    const InputLocation *GetDeoptLocation(uint32_t index) const
+    {
+        ASSERT(metadata_ != nullptr);
+        ASSERT(index < metadata_->locations.size());
+        return &metadata_->locations[index];
     }
 
     uint32_t GetBytecodeOffset() const
     {
-        return bytecodeOffset_;
+        ASSERT(metadata_ != nullptr);
+        return metadata_->bcOffset;
     }
 
 private:
-    ChunkVector<VRegIDType> deoptVRegs_;
-    uint32_t firstDeoptInputIndex_;
-    uint32_t bytecodeOffset_;
+    DeoptMetadata *metadata_ {nullptr};
 };
 
 class EagerDeoptimizableMixin {
@@ -1062,16 +1133,14 @@ private:
  */
 class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex>,
                           public ThrowableMixin,
-                          public DeoptimizableMixin,
+                          public LazyDeoptimizableMixin,
                           public RuntimeStubIDMixin {
 public:
     static constexpr VertexProperties PROPERTIES =
         VertexProperties::Call() | VertexProperties::AnySideEffects() | VertexProperties::LazyDeopt();
 
-    CallRuntimeVertex(uint64_t bitfield, DeoptMetadata deoptMeta, RuntimeStubID id,
-                      SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    CallRuntimeVertex(uint64_t bitfield, RuntimeStubID id, SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
         : VertexMixin(bitfield),
-          DeoptimizableMixin(std::move(deoptMeta)),
           RuntimeStubIDMixin(id),
           sideEffectKind_(sideEffectKind)
     {
@@ -1080,7 +1149,7 @@ public:
 
     size_t GetArgCount() const
     {
-        return FirstDeoptInputIndex();
+        return GetInputCount();
     }
     SideEffectKind GetSideEffectKind() const
     {
@@ -1092,7 +1161,7 @@ public:
 
     void VerifyInputs() const
     {
-        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
+        ASSERT(GetArgCount() == GetInputCount());
     }
 
 private:
@@ -1101,7 +1170,7 @@ private:
 
 class CallVertex : public VertexMixin<ValueVertex, CallVertex>,
                    public ThrowableMixin,
-                   public DeoptimizableMixin {
+                   public LazyDeoptimizableMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::JsCall();
 
@@ -1110,11 +1179,7 @@ public:
     static constexpr uint32_t THIS_INDEX = 2;
     static constexpr uint32_t FIRST_ARG_INDEX = 3;
 
-    CallVertex(uint64_t bitfield, DeoptMetadata deoptMeta, uint32_t actualArgc)
-        : VertexMixin(bitfield),
-          DeoptimizableMixin(std::move(deoptMeta)),
-          actualArgc_(actualArgc)
-    {}
+    CallVertex(uint64_t bitfield, uint32_t actualArgc) : VertexMixin(bitfield), actualArgc_(actualArgc) {}
 
     uint32_t GetActualArgc() const
     {
@@ -1123,7 +1188,7 @@ public:
 
     size_t GetArgCount() const
     {
-        return FirstDeoptInputIndex();
+        return GetInputCount();
     }
 
     void SetValueLocationConstraints();
@@ -1131,8 +1196,7 @@ public:
 
     void VerifyInputs() const
     {
-        ASSERT(FirstDeoptInputIndex() == FIRST_ARG_INDEX + actualArgc_);
-        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
+        ASSERT(GetInputCount() == FIRST_ARG_INDEX + actualArgc_);
     }
 
 private:
@@ -1144,16 +1208,15 @@ private:
  */
 class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVertex>,
                              public ThrowableMixin,
-                             public DeoptimizableMixin,
+                             public LazyDeoptimizableMixin,
                              public CommonStubIDMixin {
 public:
     static constexpr VertexProperties PROPERTIES =
         VertexProperties::Call() | VertexProperties::AnySideEffects() | VertexProperties::LazyDeopt();
 
-    CallCommonStubVertex(uint64_t bitfield, DeoptMetadata deoptMeta, CommonStubID stubId,
+    CallCommonStubVertex(uint64_t bitfield, CommonStubID stubId,
                          SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
         : VertexMixin(bitfield),
-          DeoptimizableMixin(std::move(deoptMeta)),
           CommonStubIDMixin(stubId),
           sideEffectKind_(sideEffectKind)
     {
@@ -1162,7 +1225,7 @@ public:
 
     size_t GetArgCount() const
     {
-        return FirstDeoptInputIndex();
+        return GetInputCount();
     }
     SideEffectKind GetSideEffectKind() const
     {
@@ -1174,8 +1237,7 @@ public:
 
     void VerifyInputs() const
     {
-        ASSERT(FirstDeoptInputIndex() >= 1);
-        ASSERT(GetInputCount() == FirstDeoptInputIndex() + DeoptInputCount());
+        ASSERT(GetInputCount() >= 1);
     }
 
 private:
@@ -1926,14 +1988,14 @@ public:
     }
 };
 
-class DeoptVertex : public VertexMixin<NonControlVertex, DeoptVertex>, public EagerDeoptimizableMixin {
+class DeoptVertex : public FixedInputVertexMixin<0, ControlVertex, DeoptVertex>, public EagerDeoptimizableMixin {
 public:
     static constexpr VertexProperties PROPERTIES = VertexProperties::EagerDeopt();
     explicit DeoptVertex(uint64_t bitfield,
                          Chunk *chunk,
                          kungfu::DeoptType type,
                          uint32_t bytecodeOffset)
-        : VertexMixin(bitfield),
+        : FixedInputVertexMixin(bitfield),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
           deoptType_(type)
     {}
@@ -2361,14 +2423,21 @@ public:
     {
         return static_cast<uint32_t>(GetInputCount());
     }
+
+    ValueVertex *GetPredecessor(int index)
+    {
+        return GetInput(index);
+    }
     const ValueVertex *GetPredecessor(int index) const
     {
         return GetInput(index);
     }
+
     void SetPredecessor(int index, ValueVertex *value)
     {
         SetInput(index, value);
     }
+
     VirtualRegister GetOwner() const
     {
         return owner_;
@@ -2453,16 +2522,16 @@ private:
 inline BB *CatchBlockOf(Vertex *vertex)
 {
     if (auto *derived = vertex->TryCast<CallVertex>()) {
-        return derived->CaughtBy();
+        return derived->GetCatchBlock();
     }
     if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
-        return derived->CaughtBy();
+        return derived->GetCatchBlock();
     }
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
-        return derived->CaughtBy();
+        return derived->GetCatchBlock();
     }
     if (auto *derived = vertex->TryCast<ThrowVertex>()) {
-        return derived->CaughtBy();
+        return derived->GetCatchBlock();
     }
     return nullptr;
 }
@@ -2481,24 +2550,52 @@ inline uint32_t CatchPredecessorIndexOf(Vertex *vertex)
     if (auto *derived = vertex->TryCast<ThrowVertex>()) {
         return derived->GetCatchPredecessorIndex();
     }
-    return static_cast<uint32_t>(-1);  // NULL_INDEX
+    return static_cast<uint32_t>(-1);
 }
 
-inline ThrowableMixin::ExceptionHandlingMode ExceptionHandlingModeOf(Vertex *vertex)
+inline LazyDeoptimizableMixin *LazyDeoptMixinOf(Vertex *vertex)
 {
     if (auto *derived = vertex->TryCast<CallVertex>()) {
-        return derived->GetExceptionHandlingMode();
+        return derived;
     }
     if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
-        return derived->GetExceptionHandlingMode();
+        return derived;
     }
     if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
-        return derived->GetExceptionHandlingMode();
+        return derived;
     }
-    if (auto *derived = vertex->TryCast<ThrowVertex>()) {
-        return derived->GetExceptionHandlingMode();
+    return nullptr;
+}
+
+inline ThrowableMixin *ThrowableMixinOf(Vertex *vertex)
+{
+    if (auto *derived = vertex->TryCast<CallVertex>()) {
+        return derived;
     }
-    return ThrowableMixin::ExceptionHandlingMode::NONE;
+    if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
+        return derived;
+    }
+    if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
+        return derived;
+    }
+    return nullptr;
+}
+
+inline bool HasExceptionLazyDeoptMetadata(Vertex *vertex)
+{
+    auto hasExceptionLazyDeopt = [](auto *derived) {
+        return !derived->HasCatchBlock() && derived->HasExceptionLazyDeoptMetadata();
+    };
+    if (auto *derived = vertex->TryCast<CallVertex>()) {
+        return hasExceptionLazyDeopt(derived);
+    }
+    if (auto *derived = vertex->TryCast<CallCommonStubVertex>()) {
+        return hasExceptionLazyDeopt(derived);
+    }
+    if (auto *derived = vertex->TryCast<CallRuntimeVertex>()) {
+        return hasExceptionLazyDeopt(derived);
+    }
+    return false;
 }
 
 // =============================================================================

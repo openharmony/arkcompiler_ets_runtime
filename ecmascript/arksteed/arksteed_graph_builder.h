@@ -59,7 +59,7 @@ private:
         return &preproc_->GetEnv()->GetJSOptions();
     }
 
-    bool IsExceptionLazyDeoptEnabled() const
+    bool IsLazyDeoptEnabled() const
     {
         return GetOptions()->IsEnableJitLazyDeopt();
     }
@@ -128,6 +128,8 @@ private:
     ValueVertex *glue_ = nullptr;
     ValueVertex *undefinedValue_ = nullptr;
     InitialValueVertex *initialActualArgc_ = nullptr;
+    ValueVertex *actualArgc_ = nullptr;
+    ValueVertex *taggedActualArgc_ = nullptr;
     InitialValueVertex *initialLexicalEnv_ = nullptr;
     LoadTaggedFieldVertex *lazyGlobalEnv_ = nullptr;
 

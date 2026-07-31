@@ -1,0 +1,8 @@
+Before call #1: isCompiled: false
+A result: 10 13 26 186 10 235
+After call #1: isCompiled: false
+----------------
+Before call #2: isCompiled: true
+A result: 10 13 26 186 20 245
+After call #2: isCompiled: false
+----------------

@@ -1,0 +1,28 @@
+Before 1st call: isCompiled: false
+Test value: 10 1 9
+After 1st call: isCompiled: false
+----------------
+Before 2nd call: isCompiled: true
+Test value: 10 1 9
+After 2nd call: isCompiled: true
+----------------
+Before 3rd call: isCompiled: false
+Test value: 20 2 18
+After 3rd call: isCompiled: false
+----------------
+Before 4th call: isCompiled: true
+Test value: 20 2 18
+After 4th call: isCompiled: true
+----------------
+Before 5th call: isCompiled: true
+Test value: 20 eager NaN
+After 5th call: isCompiled: true
+----------------
+Before 6th call: isCompiled: true
+Test value: 20 3 17
+After 6th call: isCompiled: true
+----------------
+Before 7th call: isCompiled: false
+Test value: 30 3 27
+After 7th call: isCompiled: false
+----------------

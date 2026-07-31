@@ -59,6 +59,28 @@ private:
     Chunk *chunk_ = nullptr;
 };
 
+inline void EnsureDeoptLocations(DeoptMetadata *metadata)
+{
+    if (metadata == nullptr) {
+        return;
+    }
+    ASSERT(metadata->indices.size() == metadata->sources.size());
+    if (metadata->locations.empty()) {
+        metadata->locations.resize(metadata->sources.size());
+        return;
+    }
+    ASSERT(metadata->locations.size() == metadata->sources.size());
+}
+
+template <typename T>
+void EnsureDeoptLocationsForVertex(T *vertex)
+{
+    if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, T>) {
+        auto *deopt = static_cast<LazyDeoptimizableMixin *>(vertex);
+        EnsureDeoptLocations(deopt->GetLazyDeoptMetadata());
+    }
+}
+
 // =============================================================================
 // ValueLocationConstraintProcessor
 // Calls SetValueLocationConstraints() on each vertex to define
@@ -76,6 +98,7 @@ public:
 #define DEF_PROCESS_VERTEX(NAME)                                         \
     void ProcessVertex(NAME##Vertex *vertex, const ArkSteedState &state) \
     {                                                                    \
+        EnsureDeoptLocationsForVertex(vertex);                           \
         vertex->SetValueLocationConstraints();                           \
         return;                                                          \
     }
@@ -199,26 +222,40 @@ private:
     {
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
         vertex->ForAllInputsInRegallocAssignmentOrder([&](const Input &input) {
-            MarkUse(static_cast<ValueVertex *>(input.vertex()), vertex->GetId(), input.GetLocation(), loopUsedVertices);
+            MarkUse(input.vertex()->Cast<ValueVertex>(), vertex->GetId(), input.GetLocation(), loopUsedVertices);
         });
+    }
+
+    template <typename T>
+    void MarkLazyDeoptInputUses(T *vertex, const ArkSteedState &state)
+    {
+        if (!vertex->HasLazyDeoptMetadata()) {
+            return;
+        }
+        uint32_t vertexID = vertex->GetId();
+        LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+        auto *deopt = static_cast<LazyDeoptimizableMixin *>(vertex);
+        for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
+            MarkUse(deopt->GetDeoptSource(index), vertexID, deopt->GetDeoptLocation(index), loopUsedVertices);
+        }
     }
 
     template <typename T>
     void MarkCatchPhiInputUses(T *vertex, const ArkSteedState &state)
     {
-        BB *catchBlock = vertex->CaughtBy();
+        BB *catchBlock = CatchBlockOf(vertex);
         if (catchBlock == nullptr || !catchBlock->HasPhi()) {
             return;
         }
         uint32_t use = vertex->GetId();
-        uint32_t predId = vertex->GetCatchPredecessorIndex();
+        uint32_t predId = CatchPredecessorIndexOf(vertex);
         int predIdx = static_cast<int>(predId);
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
 
         for (PhiVertex *phi : catchBlock->GetPhis()) {
-            const ValueVertex *input = phi->GetInput(predIdx);
+            ValueVertex *input = phi->GetInput(predIdx);
             InputLocation *location = phi->GetInputLocation(predIdx);
-            MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
+            MarkUse(input, use, location, loopUsedVertices);
         }
     }
 
@@ -240,6 +277,9 @@ public:
     {
         MarkDirectInputUses(vertex, state);
         MarkEagerDeoptUses(vertex);
+        if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, T>) {
+            MarkLazyDeoptInputUses(vertex, state);
+        }
         if constexpr (std::is_base_of_v<ThrowableMixin, T>) {
             MarkCatchPhiInputUses(vertex, state);
         }
@@ -262,9 +302,9 @@ public:
 
         const auto &phis = target->GetPhis();
         for (PhiVertex *phi : phis) {
-            const ValueVertex *input = phi->GetPredecessor(predecessorIdx);
+            ValueVertex *input = phi->GetPredecessor(predecessorIdx);
             InputLocation *location = phi->GetInputLocation(predecessorIdx);
-            MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
+            MarkUse(input, use, location, loopUsedVertices);
         }
     }
 
@@ -286,9 +326,9 @@ public:
         if (target->HasPhi()) {
             const auto &phis = target->GetPhis();
             for (PhiVertex *phi : phis) {
-                const ValueVertex *input = phi->GetPredecessor(predecessorIdx);
+                ValueVertex *input = phi->GetPredecessor(predecessorIdx);
                 InputLocation *location = phi->GetInputLocation(predecessorIdx);
-                MarkUse(const_cast<ValueVertex *>(input), use, location, outerLoopUsedVertices);
+                MarkUse(input, use, location, outerLoopUsedVertices);
             }
         }
 

@@ -163,7 +163,7 @@ public:
 
     constexpr bool CanThrow() const
     {
-        return CanThrowBit::Decode(bitfield_) && CanLazyDeopt();
+        return CanThrowBit::Decode(bitfield_);
     }
 
     constexpr bool IsCall() const
@@ -815,7 +815,7 @@ public:
 
     const ValueVertex *vertex() const
     {
-        return const_cast<Vertex *>(base_)->GetInput(index_);
+        return base_->GetInput(index_);
     }
 
     const InputLocation *GetLocation() const;
@@ -970,7 +970,7 @@ void Vertex::ForAllInputsInRegallocAssignmentOrder(Function &&f)
             InputLocation *location = input.GetLocation();
             const InstructionOperand &operand = location->GetOperand();
             ASSERT(operand.IsUnallocated());
-            switch (UnallocatedState::Cast(const_cast<InstructionOperand *>(&operand))->GetExtendedPolicy()) {
+            switch (UnallocatedState::Cast(operand).GetExtendedPolicy()) {
                 case UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER:
                     if (category == InputAllocationPolicy::ARBITRARY_REGISTER) {
                         f(input);

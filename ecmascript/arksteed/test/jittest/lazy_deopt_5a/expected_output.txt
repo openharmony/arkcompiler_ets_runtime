@@ -1,0 +1,13 @@
+Before 1st call: isCompiled: false
+1
+undefined
+1
+After 1st call: isCompiled: false
+----------------
+------------------------------------------------------
+Before 2nd call: isCompiled: true
+2
+undefined
+2
+After 2nd call: isCompiled: false
+----------------

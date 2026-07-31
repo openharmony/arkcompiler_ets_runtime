@@ -104,6 +104,11 @@ public:
 
     bool Run();
 
+    uint32_t GetNumBytecodes() const
+    {
+        return static_cast<uint32_t>(bytecodes_.size());
+    }
+
     uint32_t GetNumLiveBasicBlocks() const
     {
         return static_cast<uint32_t>(rpoList_.size());

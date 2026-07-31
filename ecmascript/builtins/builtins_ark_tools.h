@@ -185,8 +185,9 @@
 
 #if ECMASCRIPT_ENABLE_ARK_STEED
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_ARKSTEED(V)                                                                 \
-    V("arkSteedCompileSync",                       ArkSteedCompileSync,                       1, INVALID)     \
-    V("arkSteedCompileAsync",                      ArkSteedCompileAsync,                      1, INVALID)
+    V("arkSteedCompileSync",                       ArkSteedCompileSync,                       1, INVALID)       \
+    V("arkSteedCompileAsync",                      ArkSteedCompileAsync,                      1, INVALID)       \
+    V("arkSteedIsCompiled",                        ArkSteedIsCompiled,                        1, INVALID)
 #else
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_ARKSTEED(V)
 #endif
@@ -497,6 +498,7 @@ public:
 #if ECMASCRIPT_ENABLE_ARK_STEED
     static JSTaggedValue ArkSteedCompileSync(EcmaRuntimeCallInfo *info);
     static JSTaggedValue ArkSteedCompileAsync(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue ArkSteedIsCompiled(EcmaRuntimeCallInfo *info);
 #endif
     static JSTaggedValue IsInFastJit(EcmaRuntimeCallInfo *info);
     static JSTaggedValue WaitJitCompileFinish(EcmaRuntimeCallInfo *info);

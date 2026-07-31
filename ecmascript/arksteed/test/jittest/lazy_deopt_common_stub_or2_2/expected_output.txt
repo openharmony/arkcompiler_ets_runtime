@@ -1,0 +1,18 @@
+Before 1st call: Test isCompiled: false
+Before 1st call: Operation isCompiled: false
+lazy_deopt_common_stub_or2_2 state: 1:ok:7:1:11:16
+After 1st call: Test isCompiled: false
+After 1st call: Operation isCompiled: false
+----------------
+Before 2nd call: Test isCompiled: true
+lazy_deopt_common_stub_or2_2 state: 1:caught:boom:1:11:16
+After 2nd call: Test isCompiled: true
+----------------
+lazy_deopt_common_stub_or2_2 state: 1:ok:7:1:11:16
+----------------
+Before 3rd call: Test isCompiled: true
+Before 3rd call: Operation isCompiled: true
+lazy_deopt_common_stub_or2_2 state: 1:ok:7:2:11:109
+After 3rd call: Test isCompiled: true
+After 3rd call: Operation isCompiled: false
+----------------

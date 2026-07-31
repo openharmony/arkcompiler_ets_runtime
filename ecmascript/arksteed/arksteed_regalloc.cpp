@@ -26,7 +26,7 @@
 namespace panda::ecmascript::arksteed {
 
 namespace {
-const DeoptimizableMixin *GetLazyDeoptimizableMixin(const Vertex *vertex)
+const LazyDeoptimizableMixin *GetLazyDeoptimizableMixin(const Vertex *vertex)
 {
     switch (vertex->GetOpcode()) {
         case VertexOpcode::CallRuntime:
@@ -45,10 +45,10 @@ void VerifyLazyDeoptInputLocations(const Vertex *vertex)
     if (!vertex->GetProperties().CanLazyDeopt()) {
         return;
     }
-    const DeoptimizableMixin *deopt = GetLazyDeoptimizableMixin(vertex);
+    const LazyDeoptimizableMixin *deopt = GetLazyDeoptimizableMixin(vertex);
     ASSERT(deopt != nullptr);
     for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
-        const InputLocation *location = vertex->GetInputLocation(deopt->DeoptInputIndex(index));
+        const InputLocation *location = deopt->GetDeoptLocation(index);
         ASSERT(location->IsStackSlot() || location->IsConstant());
     }
 }
@@ -339,8 +339,7 @@ void ArkSteedRegisterAllocator::ProcessUnconditionalControl(UnconditionalControl
         MergeRegisterValues(unconditional, target, predecessorId);
         if (target->HasPhi()) {
             for (PhiVertex *phi : target->GetPhis()) {
-                UpdateUse(const_cast<ValueVertex *>(phi->GetPredecessor(predecessorId)),
-                          phi->GetInputLocation(predecessorId));
+                UpdateUse(phi->GetPredecessor(predecessorId), phi->GetInputLocation(predecessorId));
             }
         }
     } else {
@@ -405,12 +404,13 @@ void ArkSteedRegisterAllocator::AllocateControlVertex(ControlVertex *vertex, BB 
 {
     currentVertex_ = vertex;
 
-    // to do: Add AbortVertex && DeoptVertex
     if (vertex->Is<ThrowVertex>()) {
         BB *catchBlock = CatchBlockOf(vertex);
         if (catchBlock != nullptr && catchBlock->HasPhi()) {
             SpillCatchPhiInputsOfIndex(catchBlock, CatchPredecessorIndexOf(vertex));
         }
+        AllocateVertex(vertex);
+    } else if (vertex->Is<DeoptVertex>()) {
         AllocateVertex(vertex);
     } else if (auto *unconditional = vertex->TryCast<UnconditionalControlVertex>()) {
         ProcessUnconditionalControl(unconditional, block);
@@ -485,7 +485,76 @@ void ArkSteedRegisterAllocator::AssignInputs(Vertex *vertex)
         }
         AssignAnyInput(input);
     }
+    AssignDeoptInputs(vertex);
 }
+
+void ArkSteedRegisterAllocator::AssignDeoptInput(ValueVertex *vertex, InputLocation *location)
+{
+    const InstructionOperand &operand = location->GetOperand();
+    ASSERT(operand.IsUnallocated());
+    UnallocatedState unallocated = UnallocatedState::Cast(operand);
+    ASSERT(unallocated.GetExtendedPolicy() == UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT);
+
+    ASSERT(vertex != currentVertex_);
+
+    const InstructionOperand &currentLocation = vertex->GetRegallocInfo()->GetAllocation();
+    if (currentLocation.IsConstant()) {
+        location->GetOperand() = currentLocation;
+        return;
+    }
+    if (currentLocation.IsAnyStackSlot()) {
+        location->GetOperand() = currentLocation;
+        UpdateUse(vertex, location);
+        return;
+    }
+
+    ASSERT(currentLocation.IsRegister());
+    auto *vertexInfo = vertex->GetRegallocInfo();
+    if (vertexInfo->IsLoadable()) {
+        location->GetOperand() = vertexInfo->GetSpillSlot();
+        UpdateUse(vertex, location);
+        return;
+    }
+    if (!vertexInfo->IsSpilled()) {
+        AllocateSpillSlot(vertex);
+    }
+    AllocatedState spillSlot = AllocatedState::Cast(vertexInfo->GetSpillSlot());
+    location->SetAllocated(spillSlot);
+    AddMoveBeforeCurrentVertex(vertex, currentLocation, spillSlot);
+    UpdateUse(vertex, location);
+    vertexInfo->ClearHint();
+}
+
+template <class VertexT, class Callback>
+void AssignDeoptInputsFor(VertexT *vertex, Callback assign)
+{
+    if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
+        auto *lazy = static_cast<LazyDeoptimizableMixin *>(vertex);
+        if (lazy->HasLazyDeoptMetadata()) {
+            for (uint32_t index = 0; index < lazy->DeoptInputCount(); ++index) {
+                assign(lazy->GetDeoptSource(index), lazy->GetDeoptLocation(index));
+            }
+        }
+    }
+}
+
+void ArkSteedRegisterAllocator::AssignDeoptInputs(Vertex *vertex)
+{
+    auto assign = [this](ValueVertex *source, InputLocation *location) {
+        AssignDeoptInput(source, location);
+    };
+    switch (vertex->GetOpcode()) {
+#define ASSIGN_DEOPT_INPUTS(type)                                      \
+        case VertexOpcode::type:                                       \
+            AssignDeoptInputsFor(vertex->Cast<type##Vertex>(), assign); \
+            break;
+        ALL_VERTEX_LIST(ASSIGN_DEOPT_INPUTS)
+#undef ASSIGN_DEOPT_INPUTS
+        default:
+            UNREACHABLE();
+    }
+}
+
 
 void ArkSteedRegisterAllocator::AssignFixedInput(const Input &input)
 {

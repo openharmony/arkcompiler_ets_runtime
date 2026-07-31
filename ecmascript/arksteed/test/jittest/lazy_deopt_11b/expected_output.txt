@@ -1,0 +1,8 @@
+Before call #1: isCompiled: false
+A branch: 5 branch-T 23 5 36
+After call #1: isCompiled: false
+----------------
+Before call #2: isCompiled: true
+A branch: 5 branch-T 23 11 53
+After call #2: isCompiled: false
+----------------
