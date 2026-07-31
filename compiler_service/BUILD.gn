@@ -42,6 +42,8 @@ ohos_shared_library("libcompiler_service") {
   if (!ark_standalone_build) {
     sanitize = {
       cfi = true
+      cfi_cross_dso = true
+      debug = false
     }
     branch_protector_ret = "pac_ret"
   }
