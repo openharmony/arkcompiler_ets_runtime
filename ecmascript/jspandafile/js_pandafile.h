@@ -44,6 +44,7 @@ enum class CreateMode : uint8_t {
 class JSPandaFile {
 public:
     struct JSRecordInfo {
+#if !ENABLE_MODULE_MEMORY_OPTIMIZATION
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
         bool isJson {false};
@@ -56,6 +57,33 @@ public:
         uint32_t lazyImportIdx {0};
         uint32_t classId {CLASSID_OFFSET_NOT_FOUND};
         CString npmPackageName;
+#else
+        virtual bool IsFull() const
+        {
+            return false;
+        };
+        virtual ~JSRecordInfo() = default;
+        uint32_t mainMethodIndex {0};
+        bool isCjs {false};
+        bool isJson {false};
+        bool isSharedModule {false};
+        bool hasTopLevelAwait {false};
+        int jsonStringId {-1};
+        int moduleRecordIdx {-1};
+        uint32_t lazyImportIdx {0};
+        uint32_t classId {CLASSID_OFFSET_NOT_FOUND};
+        CString npmPackageName;
+    };
+
+    struct FullJSRecordInfo : public JSRecordInfo {
+        bool IsFull() const override
+        {
+            return true;
+        };
+        ~FullJSRecordInfo() = default;
+        CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
+        CUnorderedMap<uint32_t, uint64_t> constpoolMap;
+#endif
 
         void SetParsedConstpoolVM(const EcmaVM *vm)
         {
@@ -235,8 +263,13 @@ public:
     const CUnorderedMap<uint32_t, uint64_t> *GetConstpoolMapByReocrd(const CString &recordName) const
     {
         auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+        if (info != jsRecordInfo_.end() && info->second->IsFull()) {
+            return &static_cast<FullJSRecordInfo*>(info->second)->constpoolMap;
+#else
         if (info != jsRecordInfo_.end()) {
             return &info->second->constpoolMap;
+#endif
         }
         LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
         UNREACHABLE();
@@ -500,7 +533,13 @@ public:
     inline void DeleteParsedConstpoolVM(const EcmaVM *vm)
     {
         for (auto &recordInfo : jsRecordInfo_) {
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+            if (recordInfo.second->IsFull()) {
+                static_cast<FullJSRecordInfo*>(recordInfo.second)->vmListOfParsedConstPool.erase(vm);
+            }
+#else
             recordInfo.second->vmListOfParsedConstPool.erase(vm);
+#endif
         }
     }
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);

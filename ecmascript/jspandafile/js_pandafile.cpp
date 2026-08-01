@@ -204,7 +204,11 @@ void JSPandaFile::InitializeUnMergedPF()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    JSRecordInfo* info = new FullJSRecordInfo();
+#else
     JSRecordInfo* info = new JSRecordInfo();
+#endif
     jsRecordInfo_.reserve(numClasses_);
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
