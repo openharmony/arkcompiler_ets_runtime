@@ -312,22 +312,21 @@ void SharedCC::ProcessWeakReference()
 
 void SharedCC::InstallSharedCCEvacuators()
 {
+    LockHolder lock(evacuatorsMutex_);
     evacuators_.clear();
     Runtime::GetInstance()->GCIterateThreadList([this](JSThread *thread) {
         auto *evacuator = new SharedCCEvacuator(SharedHeap::GetInstance());
-        evacuators_.push_back({thread, evacuator});
+        evacuators_.push_back(evacuator);
         thread->InstallSharedCCEvacuator(evacuator);
     });
 }
 
 void SharedCC::FinalizeSharedCCEvacuators()
 {
-    for (auto &entry : evacuators_) {
-        entry.evacuator->GetTlabAllocator()->Finalize();
-        if (entry.thread != nullptr) {
-            entry.thread->InstallSharedCCEvacuator(nullptr);
-        }
-        delete entry.evacuator;
+    LockHolder lock(evacuatorsMutex_);
+    for (auto *evacuator : evacuators_) {
+        evacuator->GetTlabAllocator()->Finalize();
+        delete evacuator;
     }
     evacuators_.clear();
 }
@@ -585,8 +584,8 @@ void SharedCC::UpdateReferences()
     }
     {
         LockHolder lock(evacuatorsMutex_);
-        for (auto &entry : evacuators_) {
-            entry.evacuator->GetTlabAllocator()->GetSharedLocalSpace()->EnumerateRegions(collectToSpace);
+        for (auto *evacuator : evacuators_) {
+            evacuator->GetTlabAllocator()->GetSharedLocalSpace()->EnumerateRegions(collectToSpace);
         }
     }
 
@@ -625,6 +624,7 @@ void SharedCC::RestoreThreadStates()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::RestoreThreadStates", "");
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+        thread->InstallSharedCCEvacuator(nullptr);
         thread->SetSharedCCStatus(SharedCCStatus::IDLE);
         thread->SetReadBarrierState(false);
         thread->SwitchAllStub(true);
@@ -646,7 +646,7 @@ void SharedCC::PrepareNewThread(JSThread *thread)
     {
         LockHolder lock(evacuatorsMutex_);
         auto *evacuator = new SharedCCEvacuator(sHeap_);
-        evacuators_.push_back({thread, evacuator});
+        evacuators_.push_back(evacuator);
         thread->InstallSharedCCEvacuator(evacuator);
     }
     thread->SwitchAllStub(false);
