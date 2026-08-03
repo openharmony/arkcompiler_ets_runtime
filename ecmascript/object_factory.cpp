@@ -2665,7 +2665,13 @@ JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(bool lazyInit, bool isRealm)
     JSHandle<JSHClass> hClassHandle(globalConst->GetHandledHClassClass());
     JSHandle<JSHClass> globalEnvClass = NewEcmaHClass(hClassHandle, GlobalEnv::SIZE,
                                                       JSType::GLOBAL_ENV);
-    TaggedObject *header = heap_->AllocateHugeObject(globalEnvClass, globalEnvClass->GetObjectSize());
+    TaggedObject *header = nullptr;
+    if (thread_->GetEcmaVM()->IsInitialized()) {
+        Runtime::GetInstance()->DisableEvacuateNonMovableSpace();
+        header = heap_->AllocateNonMovableOrHugeObject(globalEnvClass, globalEnvClass->GetObjectSize());
+    } else {
+        header = heap_->AllocateHugeObject(globalEnvClass, globalEnvClass->GetObjectSize());
+    }
     InitObjectFields(header);
     auto globalEnv = JSHandle<GlobalEnv>(thread_, GlobalEnv::Cast(header));
     thread_->GetEcmaVM()->RecordGlobalEnv(GlobalEnv::Cast(header));
