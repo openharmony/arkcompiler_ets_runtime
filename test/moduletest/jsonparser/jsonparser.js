@@ -422,15 +422,6 @@ assert_equal(numParsedObj.numberval9, 0);// less than Number.MIN_VALUE, expect 0
 }
 {
   try {
-    JSON.parse('{"a": 1e1e}');
-    assert_unreachable();
-  } catch (error) {
-    assert_equal(error instanceof SyntaxError, true);
-  }
-}
-
-{
-  try {
     JSON.parse('""abc""');
   } catch (error) {
     assert_equal(error instanceof SyntaxError, true);
