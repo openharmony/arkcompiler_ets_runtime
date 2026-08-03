@@ -1621,6 +1621,11 @@ public:
         return GetArgRef(FIRST_ARGS_INDEX + idx);
     }
 
+    inline Local<JSValueRef> GetCallArgRefUnchecked(uint32_t idx) const
+    {
+        return Local<JSValueRef>(reinterpret_cast<uintptr_t>(&stackArgs_[FIRST_ARGS_INDEX + idx]));
+    }
+
 private:
     enum ArgsIndex : uint8_t { FUNC_INDEX = 0, NEW_TARGET_INDEX, THIS_INDEX, FIRST_ARGS_INDEX };
 
