@@ -23,8 +23,12 @@
 #include "hybrid/ecma_vm_interface.h"
 #include "hybrid/hybrid_frame_info.h"
 #include "hybrid/sts_vm_interface.h"
+#include "profiler/heap_dump.h"
 
 namespace panda::ecmascript {
+
+using common::dump::AbstractDumper;
+using common::dump::DumpRequest;
 
 using JSTaggedType = uint64_t;
 class EcmaVM;
@@ -74,6 +78,7 @@ private:
         bool ForEachDynamicFrame(void *currFrameSP, void *toFrameSP,
                                  const std::function<void(const void *)> &cb) const override;
         const void *GetEcmaVM() const override;
+        std::unique_ptr<AbstractDumper> CreateHeapDumper(const DumpRequest &request) override;
 
     private:
         [[maybe_unused]] EcmaVM *vm_ {nullptr};

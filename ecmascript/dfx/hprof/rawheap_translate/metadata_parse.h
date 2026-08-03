@@ -17,8 +17,8 @@
 #define METADATA_JSON_PARSE_H
 
 #include "cJSON.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/common.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
+#include "common.h"
+#include "utils.h"
 
 namespace rawheap_translate {
 class MetaParser {

@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <fcntl.h>
 #include <regex>
 #include <sstream>
@@ -22,6 +23,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
+#include "ecmascript/dfx/hprof/rawheap_dump.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
 #include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/global_env.h"
@@ -66,7 +68,7 @@ public:
     {
         TestHelper::CreateEcmaVMWithScope(ecmaVm_, thread_, scope_);
         ecmaVm_->SetEnableForceGC(false);
-        HeapProfiler::ResetOOMDump();
+        HeapProfilerInterface::ResetOOMDump();
     }
 
     void TearDown() override
@@ -169,7 +171,13 @@ public:
                 continue;
             }
 
-            if (translate.hashSet_.find(hash) == translate.hashSet_.end()) {
+            std::string expected = "Int:" + std::to_string(hash);
+            bool found = std::any_of(translate.primitiveNodes_.begin(), translate.primitiveNodes_.end(),
+                                     [&translate, &expected](const rawheap_translate::Node *node) {
+                                         auto key = translate.strTable_->GetKeyByStringId(node->strId);
+                                         return translate.strTable_->GetStringByKey(key) == expected;
+                                     });
+            if (!found) {
                 std::cout << "CheckHashInRawheap, missed object hash in rawheap." << std::endl;
                 return false;
             }
@@ -872,6 +880,62 @@ private:
     EcmaVM *instance {nullptr};
 };
 
+class NodeIdTestStream : public Stream {
+public:
+    void EndOfStream() override {}
+
+    int GetSize() override
+    {
+        constexpr int chunkSize = 64;
+        return chunkSize;
+    }
+
+    bool WriteChunk([[maybe_unused]] char *data, [[maybe_unused]] int32_t size) override
+    {
+        return true;
+    }
+
+    bool WriteBinBlock([[maybe_unused]] char *data, [[maybe_unused]] int32_t size) override
+    {
+        return true;
+    }
+
+    bool Good() override
+    {
+        return true;
+    }
+
+    void UpdateHeapStats([[maybe_unused]] HeapStat *data, [[maybe_unused]] int32_t count) override {}
+
+    void UpdateLastSeenObjectId([[maybe_unused]] int32_t lastSeenObjectId,
+                                [[maybe_unused]] int64_t timeStampUs) override
+    {
+    }
+};
+
+class NodeIdTestRawHeapDump final : public RawHeapDump {
+public:
+    NodeIdTestRawHeapDump(const EcmaVM *vm, Stream *stream, EntryIdMap *entryIdMap,
+                          const DumpSnapShotOption &dumpOption)
+        : RawHeapDump(vm, stream, nullptr, entryIdMap, dumpOption)
+    {
+    }
+
+    NodeId GenerateId(JSTaggedType addr)
+    {
+        return GenerateNodeId(addr);
+    }
+
+private:
+    void DumpRootTable() override {}
+    void DumpStringTable() override {}
+    void DumpObjectTable() override {}
+    void DumpObjectMemory() override {}
+    void UpdateStringTable([[maybe_unused]] JSTaggedType addr, [[maybe_unused]] StringId strId) override {}
+    void CollectRootAddrByType([[maybe_unused]] const CSet<JSTaggedType> &rootSet) override {}
+    void WriteGlobalRefHeapObjAddr([[maybe_unused]] JSTaggedType addr) override {}
+};
+
 class MockHeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(MockHeapProfiler);
@@ -974,6 +1038,12 @@ public:
 private:
     Callback &cb_;
 };
+
+HWTEST_F_L0(HeapDumpTest, TestOOMDumpCanOnlyStartOnce)
+{
+    EXPECT_TRUE(HeapProfilerInterface::TryStartOOMDump());
+    EXPECT_FALSE(HeapProfilerInterface::TryStartOOMDump());
+}
 
 HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
 {
@@ -1539,6 +1609,28 @@ void CreateObjectsForBinaryDump(JSThread *thread, ObjectFactory *factory, HeapDu
     CREATE_OBJECT_AND_ADD_REFS(tester, JSWeakMap, refs)
     CREATE_ARRAY_AND_ADD_REFS(factory, JSArrayBuffer, 10, refs)
     CREATE_ARRAY_AND_ADD_REFS(factory, JSSharedArrayBuffer, 10, refs)
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHybridOOMRegistersNodeIdForXRef)
+{
+    constexpr JSTaggedType objectAddress = 0x1000;
+    NodeIdTestStream stream;
+
+    DumpSnapShotOption legacyOption;
+    legacyOption.isDumpOOM = true;
+    EntryIdMap legacyIdMap;
+    NodeIdTestRawHeapDump legacyDump(ecmaVm_, &stream, &legacyIdMap, legacyOption);
+    EXPECT_NE(legacyDump.GenerateId(objectAddress), 0U);
+    EXPECT_EQ(legacyIdMap.FindNodeId(objectAddress), 0U);
+
+    DumpSnapShotOption hybridOption;
+    hybridOption.isDumpOOM = true;
+    hybridOption.isForHybridXRef = true;
+    EntryIdMap hybridIdMap;
+    NodeIdTestRawHeapDump hybridDump(ecmaVm_, &stream, &hybridIdMap, hybridOption);
+    NodeId nodeId = hybridDump.GenerateId(objectAddress);
+    EXPECT_NE(nodeId, 0U);
+    EXPECT_EQ(hybridIdMap.FindNodeId(objectAddress), static_cast<uint32_t>(nodeId));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV0)

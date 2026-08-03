@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/hprof/rawheap_translate/string_hashmap.h"
+#include "string_hashmap.h"
 
 namespace rawheap_translate {
 std::string StringHashMap::GetStringByKey(StringKey key) const
@@ -27,6 +27,13 @@ std::string StringHashMap::GetStringByKey(StringKey key) const
 
 StringKey StringHashMap::GetKeyByStringId(StringId stringId) const
 {
+    // Bounds check: stringId must be >= CUSTOM_STRID_START and within the
+    // inserted range. Out-of-range ids (e.g. a node whose strId was never
+    // assigned) return 0, which GetStringByKey treats as "not found".
+    if (stringId < CUSTOM_STRID_START ||
+        static_cast<size_t>(stringId - CUSTOM_STRID_START) >= orderedKey_.size()) {
+        return 0;
+    }
     return orderedKey_[stringId - CUSTOM_STRID_START]; // 3: index_ start from 3
 }
 

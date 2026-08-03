@@ -56,6 +56,14 @@
 #include "syspara/parameter.h"
 #endif
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include <unistd.h>
+
+#include "ecmascript/cross_vm/cross_vm_operator.h"
+#include "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.h"
+#include "libpandabase/utils/time.h"
+#endif
+
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
 #include "parameters.h"
 #include "hisysevent.h"
@@ -72,6 +80,54 @@ static bool g_futVersion = OHOS::system::GetIntParameter("const.product.dfx.fans
 
 namespace panda::ecmascript {
 RWLock BaseHeap::gcExclusiveRWLock_;
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+using common::dump::DumpExecutionMode;
+using common::dump::DumpReason;
+using common::dump::DumpRequest;
+using common::dump::DumpScope;
+
+/**
+ * @brief Execute a hybrid OOM binary dump.
+ *
+ * The caller selects this path only for a hybrid runtime. Once selected, the
+ * OOM is fully handled here and must not fall back to the legacy dynamic-only
+ * dump, even if one participant fails.
+ */
+static void DumpHybridHeapSnapshotBeforeOOM(EcmaVM *vm, DumpReason reason, bool isProcDump,
+                                            const std::string &spaceType, const std::string &heapType)
+{
+    LOG_ECMA(INFO) << "[HybDump][Dyn] OOM dump begin: scope=" << (isProcDump ? "process" : "vm");
+    DumpRequest request;
+    request.reason = reason;
+    request.oom.spaceType = spaceType;
+    request.oom.heapType = heapType;
+    request.policy.triggerGC = false;
+    request.policy.scope = isProcDump ? DumpScope::PROCESS : DumpScope::VM;
+    request.policy.executionMode = DumpExecutionMode::IN_PROCESS;
+    request.identity = {static_cast<int32_t>(getpid()), static_cast<int32_t>(JSThread::GetCurrentThreadId()),
+                        panda::time::GetCurrentTimeInMillis(true)};
+    auto *crossVMOperator = vm == nullptr ? nullptr : vm->GetCrossVMOperator();
+    auto *ecmaInterface = crossVMOperator == nullptr ? nullptr : crossVMOperator->GetEcmaVMInterface();
+    if (ecmaInterface == nullptr) {
+        LOG_ECMA(ERROR) << "[HybDump][Dyn] OOM dump failed: dynamic interface unavailable";
+        return;
+    }
+    auto *stsInterface = Runtime::GetInstance()->GetSTSVMInterface();
+    if (stsInterface == nullptr) {
+        LOG_ECMA(ERROR) << "[HybDump][Dyn] OOM dump failed: static interface unavailable";
+        return;
+    }
+    bool dumpStaticHeap = stsInterface->IsCurrentThreadAttached();
+    if (!dumpStaticHeap) {
+        LOG_ECMA(INFO) << "[HybDump][Dyn] Static dump skipped: current thread is not attached to static VM";
+    }
+    if (!stsInterface->ExecuteHeapDump(request, ecmaInterface, dumpStaticHeap)) {
+        LOG_ECMA(ERROR) << "[HybDump][Dyn] OOM dump failed";
+    }
+}
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
 SharedHeap *SharedHeap::instance_ = nullptr;
 
 void SharedHeap::CreateNewInstance()
@@ -1029,6 +1085,10 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
                                            [[maybe_unused]] const std::string &heapType)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    if (!HeapProfilerInterface::TryStartOOMDump()) {
+        LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, OOM dump already triggered.";
+        return;
+    }
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
@@ -1047,6 +1107,16 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
 #endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    auto *runtime = Runtime::GetInstance();
+    if (runtime->IsHybridVm()) {
+        const auto dumpReason = source == SharedHeapOOMSource::SHARED_GC ? DumpReason::DYNAMIC_SHARED_GC_OOM
+                                                                        : DumpReason::DYNAMIC_SHARED_OOM;
+        DumpHybridHeapSnapshotBeforeOOM(vm, dumpReason, runtime->IsEnableProcDumpInSharedOOM(), spaceType,
+                                        heapType);
+        return;
+    }
+#endif  // PANDA_JS_ETS_HYBRID_MODE
     HeapProfilerInterface *heapProfile = nullptr;
     if (source == SharedHeapOOMSource::SHARED_GC) {
 #ifndef NDEBUG
@@ -2236,6 +2306,10 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std
                                      [[maybe_unused]] const std::string &heapType)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    if (!HeapProfilerInterface::TryStartOOMDump()) {
+        LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, OOM dump already triggered.";
+        return;
+    }
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
@@ -2253,6 +2327,14 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std
 #endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    if (Runtime::GetInstance()->IsHybridVm()) {
+        DumpHybridHeapSnapshotBeforeOOM(GetEcmaVM(), DumpReason::DYNAMIC_LOCAL_OOM, isProcDump, spaceType,
+                                        heapType);
+        hasOOMDump_ = true;
+        return;
+    }
+#endif  // PANDA_JS_ETS_HYBRID_MODE
     if (ecmaVm_->GetHeapProfile() != nullptr) {
         LOG_ECMA(ERROR) << "Heap::DumpHeapSnapshotBeforeOOM, HeapProfile is nullptr";
         return;
@@ -3553,47 +3635,62 @@ void Heap::SetJsDumpThresholds(size_t thresholds) const
 void Heap::ThresholdReachedDump()
 {
     size_t limitSize = GetHeapLimitSize();
-    if (!limitSize) {
-        LOG_GC(INFO) << "ThresholdReachedDump limitSize is invaild";
+    if (limitSize == 0) {
+        LOG_GC(INFO) << "ThresholdReachedDump limit size is invalid";
         return;
     }
-    size_t nowPrecent = GetHeapObjectSize() * DEC_TO_INT / limitSize;
-    if (g_debugLeak || (nowPrecent >= g_threshold && (g_lastHeapDumpTime == 0 ||
-        GetCurrentTickMillseconds() - g_lastHeapDumpTime > HEAP_DUMP_REPORT_INTERVAL))) {
-            size_t liveObjectSize = GetLiveObjectSize();
-            size_t nowPrecentRecheck = liveObjectSize * DEC_TO_INT / limitSize;
-            LOG_GC(INFO) << "ThresholdReachedDump nowPrecentCheck is " << nowPrecentRecheck;
-            if (nowPrecentRecheck < g_threshold) {
-                return;
-            }
-            g_lastHeapDumpTime = GetCurrentTickMillseconds();
-            base::BlockHookScope blockScope;
-            HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-            AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-            std::string eventConfig;
-            bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
-            GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
-                                                        GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
-                                                        "", 0, LOCAL_HEAP_STR);
-            if (shouldDump) {
-                LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
-            } else {
-                LOG_ECMA(WARN) << "ThresholdReachedDump but avoid freeze failed.";
-                return;
-            }
-            DumpSnapShotOption dumpOption;
-            dumpOption.dumpFormat = DumpFormat::BINARY;
-            dumpOption.isVmMode = true;
-            dumpOption.isPrivate = false;
-            dumpOption.captureNumericValue = false;
-            dumpOption.isFullGC = false;
-            dumpOption.isSimplify = true;
-            dumpOption.isSync = false;
-            dumpOption.isBeforeFill = false;
-            heapProfile->DumpHeapSnapshotForOOM(dumpOption);
-            hasOOMDump_ = false;
-            HeapProfilerInterface::Destroy(ecmaVm_);
+
+    size_t currentPercent = GetHeapObjectSize() * DEC_TO_INT / limitSize;
+    uint64_t currentTime = GetCurrentTickMillseconds();
+    bool reportIntervalElapsed =
+        g_lastHeapDumpTime == 0 || currentTime - g_lastHeapDumpTime > HEAP_DUMP_REPORT_INTERVAL;
+    if (!g_debugLeak && (currentPercent < g_threshold || !reportIntervalElapsed)) {
+        return;
+    }
+
+    size_t liveObjectSize = GetLiveObjectSize();
+    size_t liveObjectPercent = liveObjectSize * DEC_TO_INT / limitSize;
+    LOG_GC(INFO) << "ThresholdReachedDump live object percent is " << liveObjectPercent;
+    if (liveObjectPercent < g_threshold) {
+        return;
+    }
+
+    g_lastHeapDumpTime = currentTime;
+    base::BlockHookScope blockScope;
+    AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
+    std::string eventConfig;
+    bool shouldDump = appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig);
+    GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump", GetHeapLimitSize(), liveObjectSize,
+                                                eventConfig, "", 0, LOCAL_HEAP_STR);
+    if (!shouldDump) {
+        LOG_ECMA(WARN) << "ThresholdReachedDump but avoid freeze failed.";
+        return;
+    }
+    LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = false;
+    dumpOption.captureNumericValue = false;
+    dumpOption.isFullGC = false;
+    dumpOption.isSimplify = true;
+    dumpOption.isSync = false;
+    dumpOption.isBeforeFill = false;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    if (Runtime::GetInstance()->IsHybridVm()) {
+        auto *hybridProfiler = HybridHeapProfiler::GetInstance();
+        if (hybridProfiler == nullptr || !hybridProfiler->BinaryDump(ecmaVm_, dumpOption)) {
+            LOG_ECMA(ERROR) << "[HybDump][Dyn] Threshold dump failed";
         }
+        hasOOMDump_ = false;
+        return;
+    }
+#endif
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
+    heapProfile->DumpHeapSnapshotForOOM(dumpOption);
+    hasOOMDump_ = false;
+    HeapProfilerInterface::Destroy(ecmaVm_);
 }
 #endif
 

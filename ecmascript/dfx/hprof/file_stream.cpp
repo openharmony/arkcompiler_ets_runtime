@@ -106,7 +106,7 @@ void FileDescriptorStream::EndOfStream()
 
 bool FileDescriptorStream::Good()
 {
-    return fd_ > 0;
+    return fd_ >= 0;
 }
 
 // Writes the chunk of data into the stream

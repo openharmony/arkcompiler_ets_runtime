@@ -13,23 +13,42 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
-config("rawheap_translate_config") {
-  include_dirs = [ "$js_root" ]
+config("rawheap_translate_public_config") {
+  include_dirs = [ "$js_root/ecmascript/dfx/hprof/rawheap_translate" ]
 }
 
-ohos_executable("rawheap_translator") {
-  sources = [
-    "main.cpp",
-    "metadata_parse.cpp",
-    "rawheap_translate.cpp",
-    "serializer.cpp",
-    "string_hashmap.cpp",
-    "utils.cpp",
-  ]
+rawheap_translate_sources = [
+  "metadata_parse.cpp",
+  "rawheap_translate.cpp",
+  "serializer.cpp",
+  "snapshot_merger.cpp",
+  "static_rawheap_translate.cpp",
+  "string_hashmap.cpp",
+  "utils.cpp",
+]
+
+ohos_static_library("rawheap_translate_static") {
+  sources = rawheap_translate_sources
 
   cflags_cc = [ "-std=c++17" ]
 
-  configs = [ ":rawheap_translate_config" ]
+  public_configs = [ ":rawheap_translate_public_config" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "cJSON:cjson_static",
+  ]
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_executable("rawheap_translator") {
+  sources = [ "main.cpp" ]
+
+  cflags_cc = [ "-std=c++17" ]
+
+  deps = [ ":rawheap_translate_static" ]
 
   if (!ark_standalone_build) {
     branch_protector_ret = "pac_ret"

@@ -1374,6 +1374,7 @@ if (!is_mingw && !is_mac && target_os != "ios") {
       "ecmascript/dfx/cpu_profiler/sampling_processor.cpp",
       "ecmascript/dfx/cpu_profiler/samples_record.cpp",
       "ecmascript/dfx/hprof/file_stream.cpp",
+      "ecmascript/dfx/hprof/heap_dump_session.cpp",
       "ecmascript/dfx/hprof/heap_marker.cpp",
       "ecmascript/dfx/hprof/heap_profiler.cpp",
       "ecmascript/dfx/hprof/heap_profiler_interface.cpp",
@@ -1390,6 +1391,7 @@ if (!is_mingw && !is_mac && target_os != "ios") {
     ]
     if (ark_js_hybrid) {
       ecma_profiler_source += [
+        "ecmascript/dfx/hprof/dynamic_dump.cpp",
         "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.cpp",
         "ecmascript/dfx/hprof/hybrid/hybrid_heap_snapshot.cpp",
       ]

@@ -16,9 +16,11 @@
 #ifndef RAWHEAP_TRANSLATE_H
 #define RAWHEAP_TRANSLATE_H
 
-#include "ecmascript/dfx/hprof/rawheap_translate/common.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/string_hashmap.h"
+#include <chrono>
+
+#include "common.h"
+#include "metadata_parse.h"
+#include "string_hashmap.h"
 
 namespace panda::test {
 class HeapDumpTestHelper;
@@ -27,6 +29,8 @@ class RawHeapTranslateV2TestHelper;
 };
 
 namespace rawheap_translate {
+class SnapshotMerger;
+class StaticRawheapTranslate;
 class RawHeap {
 public:
     RawHeap() : strTable_(new StringHashMap())
@@ -40,9 +44,27 @@ public:
     virtual bool Translate() = 0;
 
     static bool TranslateRawheap(const std::string &inputPath, const std::string &outputPath);
+
+    /**
+     * @brief Translate a dynamic (V1/V2 rawheap) file plus a static binary
+     * snapshot file into one combined .heapsnapshot.
+     *
+     * The dynamic file is parsed+translated by the existing V1/V2 toolchain;
+     * the static file is parsed by StaticRawheapTranslate; the two graphs are
+     * merged by SnapshotMerger (string pools deduplicated by content, object
+     * addresses live in disjoint virtual-machine spaces, XRef edges spliced
+     * across virtual-machine boundaries).
+     */
+    static bool TranslateRawheap(
+        const std::string &dynamicPath,
+        const std::string &staticPath,
+        const std::string &outputPath);
     static bool ParseMetaData(FileReader &file, MetaParser *parser);
     static RawHeap *ParseRawheap(const Version &version, MetaParser *metaParser);
     static std::string ReadVersion(FileReader &file);
+
+    /** Read-only probe: true for a static/hybrid V3 rawheap. */
+    static bool IsStaticSnapshotFormat(FileReader &file);
 
     std::vector<Node *>* GetNodes();
     std::vector<Edge *>* GetEdges();
@@ -51,15 +73,26 @@ public:
     StringHashMap* GetStringTable();
     std::string GetVersion();
 
+    // Graph-construction primitives. Declared public so that the merger and
+    // tests can build/extend a graph without subclassing; the V1/V2 parsers
+    // and the static parser also use them internally.
+    Node *CreateNode();
+    StringId InsertAndGetStringId(const std::string &str);
+
     std::string spaceType_;
     std::string heapType_;
     std::string vmType_;
 
 protected:
-    Node *CreateNode();
     Node *CreateNodeAt(size_t pos);
     void InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type);
-    StringId InsertAndGetStringId(const std::string &str);
+    // Variant that records the source node on the edge (edge->from). Used by
+    // the static parser so SortEdgesByFrom can group edges by source node.
+    void InsertEdge(Node *fromNode, Node *toNode, uint32_t indexOrStrId, EdgeType type);
+    // Sort edges_ by source node index (edge->from->index), stable. Required by
+    // the .heapsnapshot grouping contract (node i owns the next edgeCount[i]
+    // edges). Edges with from==nullptr sort first. Call after BuildGraph.
+    void SortEdgesByFrom();
     void SetVersion(const std::string &version);
     void CreateHashEdge(Node *node);
     void AddPrimitiveNodes();
@@ -71,6 +104,23 @@ protected:
     void DoAddGlobalHandleObjectNodes(const std::unordered_map<uint64_t, uint64_t> &globalRefEntries);
 
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
+    // Two-file (hybrid) helpers: split out of TranslateRawheap(dynamic, static, out)
+    // so each step stays small. ParseDynamicRawheap returns an owning pointer
+    // (caller deletes); ParseStaticSnapshot fills the provided parser. Both log
+    // the failure reason and return nullptr/false on error.
+    static RawHeap *ParseDynamicRawheap(const std::string &dynamicPath);
+    static bool ParseStaticSnapshot(const std::string &staticPath, StaticRawheapTranslate &staticParser);
+
+    // Single-file helpers: split out of TranslateRawheap(input, out) so each
+    // format path stays small. Both consume the already-opened `file` (its
+    // cursor is left at 0 after the IsStaticSnapshotFormat probe) and measure
+    // duration from `start`, which the caller captures before opening the file.
+    static bool TranslateStaticSnapshot(FileReader &file, const std::string &inputPath,
+                                        const std::string &outputPath,
+                                        std::chrono::steady_clock::time_point start);
+    static bool TranslateDynamicRawheap(FileReader &file, const std::string &inputPath,
+                                        const std::string &outputPath,
+                                        std::chrono::steady_clock::time_point start);
 
     std::unordered_map<StringId, uint64_t> refAddrStrIdMap_ {};  // strId -> refAddr (virtual nodes)
 
@@ -82,11 +132,8 @@ private:
     std::string version_;
     uint32_t nodeIndex_ {0};
 
-#ifdef OHOS_UNIT_TEST
-    std::unordered_set<uint32_t> hashSet_ {};
-#endif
-
     friend class panda::test::HeapDumpTestHelper;
+    friend class SnapshotMerger;
 };
 
 class RawHeapTranslateV1 : public RawHeap {

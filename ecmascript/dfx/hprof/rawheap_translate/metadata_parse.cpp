@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
+#include "metadata_parse.h"
 #include <algorithm>
 
 namespace rawheap_translate {

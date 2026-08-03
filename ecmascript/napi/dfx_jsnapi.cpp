@@ -84,6 +84,13 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
                                  const std::function<void(uint8_t)> &callback)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    if (dumpOption.languageEnv != LanguageEnv::DYNAMIC && dumpOption.dumpFormat == DumpFormat::BINARY) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshot: hybrid binary dump does not support an external path";
+        if (callback) {
+            callback(static_cast<uint8_t>(ecmascript::DumpHeapSnapshotStatus::FORK_FAILED));
+        }
+        return;
+    }
     FileStream stream(path);
     if (dumpOption.languageEnv == LanguageEnv::DYNAMIC) {
         DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
@@ -291,8 +298,8 @@ bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
         return false;
     }
     if (dumpOption.dumpFormat == DumpFormat::BINARY) {
-        LOG_ECMA(ERROR) << "PerformHybridHeapDump: hybrid binary dump is not supported yet";
-        return false;
+        return hybridProfiler->BinaryDump(const_cast<EcmaVM *>(vm),
+                                          const_cast<DumpSnapShotOption &>(dumpOption));
     }
     return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), nullptr,
                                 const_cast<DumpSnapShotOption &>(dumpOption));
@@ -328,12 +335,15 @@ void DFXJSNApi::ScheduleHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
     uint32_t mainTid = vm->GetTid();
 
     if (tid == 0) {
-        // Dump all: main -> hybrid, workers -> dynamic
+        // VM scope: main -> hybrid, workers -> dynamic. Process scope already
+        // includes every dynamic VM and the single static heap in one dump.
         ScheduleHybridDumpOnLoop(vm, dumpOption, mainTid);
-        DumpSnapShotOption dynamicOption = dumpOption;
-        const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) {
-            DumpHeapSnapshotWithVm(workerVm, dynamicOption, workerVm->GetTid());
-        });
+        if (!dumpOption.isProcDump) {
+            DumpSnapShotOption dynamicOption = dumpOption;
+            const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) {
+                DumpHeapSnapshotWithVm(workerVm, dynamicOption, workerVm->GetTid());
+            });
+        }
     } else if (tid == mainTid) {
         // Dump main thread: always hybrid
         ScheduleHybridDumpOnLoop(vm, dumpOption, mainTid);
@@ -377,7 +387,9 @@ void DFXJSNApi::ScheduleHybridDumpOnLoop([[maybe_unused]] const EcmaVM *vm,
     int ret = uv_queue_work(loop, work, [](uv_work_t *) {},
         [](uv_work_t *work, int32_t) {
             struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
-            // tid matches this VM → hybrid/dynamic dump; tid mismatch → static-only dump
+            // A matching VM identifies the dynamic participant. Whether the
+            // current worker also has a static participant can only be decided
+            // here, on that worker's event-loop thread.
             const EcmaVM *targetVm = (dump->vm->GetTid() == dump->tid) ? dump->vm : nullptr;
             PerformHybridHeapDump(targetVm, dump->dumpOption);
             delete dump;

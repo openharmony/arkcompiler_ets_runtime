@@ -20,6 +20,8 @@
 
 namespace panda::ecmascript {
 
+std::atomic<bool> HeapProfilerInterface::oomDumpActive_ {false};
+
 HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)
 {
     return vm->GetOrNewHeapProfile();
@@ -40,9 +42,25 @@ void HeapProfilerInterface::DestroyInstance(HeapProfilerInterface *heapProfiler)
     delete heapProfiler;
 }
 
+bool HeapProfilerInterface::TryStartOOMDump()
+{
+    bool expected = false;
+    return oomDumpActive_.compare_exchange_strong(expected, true);
+}
+
+void HeapProfilerInterface::ResetOOMDump()
+{
+    oomDumpActive_.store(false);
+}
+
 void HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    if (!TryStartOOMDump()) {
+        LOG_ECMA(INFO) << "DumpHeapSnapshotForCMCOOM, OOM dump already triggered.";
+        return;
+    }
+
     EcmaVM *vm = Runtime::GetInstance()->GetMainThread()->GetEcmaVM();
     if (thread != nullptr) {
         vm = reinterpret_cast<JSThread *>(thread)->GetEcmaVM();

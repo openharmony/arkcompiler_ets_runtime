@@ -13,78 +13,117 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
+#include "metadata_parse.h"
+#include "rawheap_translate.h"
+#include "serializer.h"
+#include "utils.h"
+
+#include <cstdlib>
 
 namespace rawheap_translate {
+// Argument index constants for argv positional access.
+static constexpr int ARG_INDEX_INPUT = 1;            // argv[1]: first .rawheap (single or dynamic)
+static constexpr int ARG_INDEX_SINGLE_OUTPUT = 2;    // argv[2]: single-file optional .heapsnapshot
+static constexpr int ARG_INDEX_STATIC = 2;           // argv[2]: static .rawheap (two-file mode)
+static constexpr int ARG_INDEX_TWO_FILE_OUTPUT = 3;  // argv[3]: two-file optional .heapsnapshot
+
+// Minimum argc thresholds for each mode.
+static constexpr int MIN_ARGC_SINGLE = 2;            // single-file: <rawheap>
+static constexpr int MIN_ARGC_SINGLE_OUTPUT = 3;     // single-file + output: <rawheap> <heapsnapshot>
+static constexpr int MIN_ARGC_TWO_FILE = 3;          // two-file: <dynamic> <static>
+static constexpr int MIN_ARGC_TWO_FILE_OUTPUT = 4;   // two-file + output: <dynamic> <static> <heapsnapshot>
+
 std::string RAWHEAP_TRANSLATE_HELPER =
-    "Usage: rawheap_translator <filename.rawheap> <filename.heapsnapshot>\n"
-    "at least 1 argv provide, you can also extend to include <filename.heapsnapshot>, "
-    "if output file not available, an automatic one will be generated after all.";
+    "Usage:\n"
+    "  Single-file mode:\n"
+    "    rawheap_translator <filename.rawheap> [filename.heapsnapshot]\n"
+    "  Two-file hybrid mode:\n"
+    "    rawheap_translator <dynamic.rawheap> <static.rawheap> [filename.heapsnapshot]\n"
+    "\n"
+    "In single-file mode, the input .rawheap is translated to a .heapsnapshot.\n"
+    "In two-file mode, a dynamic (V1/V2) rawheap and a static binary snapshot\n"
+    "are merged into a single .heapsnapshot.\n"
+    "If the output file name is not provided, an automatic one will be generated.";
 
-bool ParseArgs(const int argc, const char **argv, std::string &input, std::string &output)
+// Parse single-file arguments: 1 .rawheap + optional .heapsnapshot.
+bool ParseArgsSingle(const int argc, const char **argv, std::string &input, std::string &output)
 {
-    const int minArgc = 2;  // 2: at least 1 argv provide, including <filename.rawheap>
-    const int maxArgc = 3;  // 3: also extend to include output file <filename.heapsnapshot>
-    if (argc < minArgc || argc > maxArgc) {
-        std::cout << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER << std::endl;
+    std::string rawheapPath = argv[ARG_INDEX_INPUT];
+    std::string userOutput = (argc >= MIN_ARGC_SINGLE_OUTPUT) ? argv[ARG_INDEX_SINGLE_OUTPUT] : "";
+    if (!GenerateOutputNameFromInput(userOutput, output)) {
+        std::cout << "Generate dump file name failed!\n";
         return false;
     }
+    input = rawheapPath;
+    return true;
+}
 
-    int newArgc = 1;
-    std::string rawheapPathOrVersionCheck = argv[newArgc];
-    if (rawheapPathOrVersionCheck == "--version" || rawheapPathOrVersionCheck == "-v") {
-        std::cout << VERSION.ToString() << std::endl;
+// Parse two-file arguments: 2 .rawheap + optional .heapsnapshot.
+bool ParseArgsTwoFile(const int argc, const char **argv, std::string &dynamicInput,
+                      std::string &staticInput, std::string &output)
+{
+    if (argc < MIN_ARGC_TWO_FILE) {
         return false;
     }
-
-    if (rawheapPathOrVersionCheck == "--help" || rawheapPathOrVersionCheck == "-h") {
-        std::cout << RAWHEAP_TRANSLATE_HELPER << std::endl;
+    std::string dynamicPath = argv[ARG_INDEX_INPUT];
+    std::string staticPath = argv[ARG_INDEX_STATIC];
+    if (!EndsWith(dynamicPath, ".rawheap") || !EndsWith(staticPath, ".rawheap")) {
         return false;
     }
-
-    if (!EndsWith(rawheapPathOrVersionCheck, ".rawheap")) {
-        std::cout << "The second argument must be rawheap file!" << std::endl
-                  << RAWHEAP_TRANSLATE_HELPER << std::endl;
+    std::string userOutput = (argc >= MIN_ARGC_TWO_FILE_OUTPUT) ? argv[ARG_INDEX_TWO_FILE_OUTPUT] : "";
+    if (!GenerateOutputNameFromInput(userOutput, output)) {
+        std::cout << "Generate dump file name failed!\n";
         return false;
     }
-
-    newArgc++;
-    std::string outputPath {};
-    if (newArgc < argc) {
-        outputPath = argv[newArgc];
-        if (!EndsWith(outputPath, ".heapsnapshot")) {
-            std::cout << "The last argument must be heapsnapshot file!" << std::endl
-                      << RAWHEAP_TRANSLATE_HELPER << std::endl;
-            return false;
-        }
-    } else {
-        if (!GenerateDumpFileName(outputPath)) {
-            std::cout << "Generate dump file name failed!\n";
-            return false;
-        }
-    }
-
-    input = rawheapPathOrVersionCheck;
-    output = outputPath;
+    dynamicInput = dynamicPath;
+    staticInput = staticPath;
     return true;
 }
 
 int Main(const int argc, const char **argv)
 {
-    std::string rawheapPath;
-    std::string snapshotPath;
-    if (!ParseArgs(argc, argv, rawheapPath, snapshotPath)) {
+    if (argc < MIN_ARGC_SINGLE) {
+        std::cout << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER << std::endl;
         return 0;
     }
 
-    RawHeap::TranslateRawheap(rawheapPath, snapshotPath);
+    std::string firstArg = argv[ARG_INDEX_INPUT];
+    if (firstArg == "--version" || firstArg == "-v") {
+        std::cout << VERSION.ToString() << std::endl;
+        return 0;
+    }
+    if (firstArg == "--help" || firstArg == "-h") {
+        std::cout << RAWHEAP_TRANSLATE_HELPER << std::endl;
+        return 0;
+    }
+
+    // Try two-file mode first (two .rawheap inputs).
+    std::string dynamicInput;
+    std::string staticInput;
+    std::string outputPath;
+    if (ParseArgsTwoFile(argc, argv, dynamicInput, staticInput, outputPath)) {
+        return RawHeap::TranslateRawheap(dynamicInput, staticInput, outputPath) ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+
+    // Fall back to single-file mode.
+    if (!EndsWith(firstArg, ".rawheap")) {
+        std::cout << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER << std::endl;
+        return 0;
+    }
+    std::string singleInput;
+    if (!ParseArgsSingle(argc, argv, singleInput, outputPath)) {
+        std::cout << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER << std::endl;
+        return 0;
+    }
+    RawHeap::TranslateRawheap(singleInput, outputPath);
     return 0;
 }
 
 }  // namespace rawheap_translate
+
+#ifndef RAWHEAP_TRANSLATOR_UNITTEST
 int main(int argc, const char **argv)
 {
     return rawheap_translate::Main(argc, argv);
 }
+#endif

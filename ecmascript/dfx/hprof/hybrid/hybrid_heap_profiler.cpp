@@ -14,12 +14,14 @@
  */
 
 #include <csignal>
+#include <ctime>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/cross_vm/cross_vm_operator.h"
 #include "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/hybrid/hybrid_heap_snapshot.h"
@@ -30,11 +32,17 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
+#include "libpandabase/utils/time.h"
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
 #endif
 
 namespace panda::ecmascript {
+
+using common::dump::DumpExecutionMode;
+using common::dump::DumpRequest;
+using common::dump::DumpScope;
+
 HybridHeapProfiler *HybridHeapProfiler::GetInstance()
 {
     if (!Runtime::HasInstance()) {
@@ -133,10 +141,10 @@ void HybridHeapProfiler::WaitForJSGCFinish(const EcmaVM *vm, const DumpSnapShotO
 
 static void HybridWaitProcess(pid_t pid)
 {
-    time_t startTime = time(nullptr);
+    std::time_t startTime = std::time(nullptr);
     constexpr int dumpTimeOut = 300;
     constexpr int defaultSleepTime = 100000;
-    while (time(nullptr) <= startTime + dumpTimeOut) {
+    while (std::time(nullptr) <= startTime + dumpTimeOut) {
         int status = 0;
         pid_t p = waitpid(pid, &status, WNOHANG);
         if (p < 0) {
@@ -270,6 +278,42 @@ int32_t HybridHeapProfiler::AcquireDumpStream(const DumpSnapShotOption &dumpOpti
 #else
     return -1;
 #endif
+}
+
+bool HybridHeapProfiler::BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption)
+{
+    if (!HasSTSInterface()) {
+        LOG_ECMA(ERROR) << "[HybDump][Dyn] Request rejected: static interface unavailable";
+        return false;
+    }
+    dumpOption.dumpDynamicHeap = vm != nullptr;
+    dumpOption.dumpStaticHeap = stsInterface_->IsCurrentThreadAttached();
+    LOG_ECMA(INFO) << "[HybDump][Dyn] Request ready: dynamic="
+                   << (dumpOption.dumpDynamicHeap ? "true" : "false")
+                   << ", static=" << (dumpOption.dumpStaticHeap ? "true" : "false")
+                   << ", gc=" << (dumpOption.isFullGC ? "true" : "false")
+                   << ", scope=" << (dumpOption.isProcDump ? "process" : "vm")
+                   << ", mode=" << (dumpOption.isSync ? "in_process" : "fork_once");
+    if (!dumpOption.dumpDynamicHeap && !dumpOption.dumpStaticHeap) {
+        return false;
+    }
+
+    DumpRequest request;
+    request.policy.triggerGC = dumpOption.isFullGC;
+    request.policy.scope = dumpOption.isProcDump ? DumpScope::PROCESS : DumpScope::VM;
+    request.policy.executionMode = dumpOption.isSync ? DumpExecutionMode::IN_PROCESS : DumpExecutionMode::FORK_ONCE;
+    request.identity = {static_cast<int32_t>(getpid()), static_cast<int32_t>(JSThread::GetCurrentThreadId()),
+                        panda::time::GetCurrentTimeInMillis(true)};
+    arkplatform::EcmaVMInterface *ecmaInterface = nullptr;
+    if (dumpOption.dumpDynamicHeap) {
+        auto *crossVMOperator = vm->GetCrossVMOperator();
+        ecmaInterface = crossVMOperator == nullptr ? nullptr : crossVMOperator->GetEcmaVMInterface();
+        if (ecmaInterface == nullptr) {
+            LOG_ECMA(ERROR) << "[HybDump][Dyn] Request rejected: dynamic interface unavailable";
+            return false;
+        }
+    }
+    return stsInterface_->ExecuteHeapDump(request, ecmaInterface, dumpOption.dumpStaticHeap);
 }
 
 bool HybridHeapProfiler::SetAppFreezeFilter()

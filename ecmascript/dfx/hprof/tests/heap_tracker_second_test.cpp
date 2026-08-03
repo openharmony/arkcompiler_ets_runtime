@@ -13,9 +13,15 @@
  * limitations under the License.
  */
 
+#include <cerrno>
+#include <cstdlib>
 #include <cstdio>
-#include <fstream>
 #include <fcntl.h>
+#include <fstream>
+#if defined(__linux__)
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -257,11 +263,45 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
     HeapProfilerInterface::Destroy(instance);
 }
 
+#if defined(__linux__)
 HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamEndOfStream)
 {
-    int fd = 3;
+    int pipeFds[2] = {-1, -1};
+    ASSERT_EQ(pipe(pipeFds), 0);
+    int fd = pipeFds[1];
     FileDescriptorStream fileStream(fd);
     EXPECT_TRUE(fileStream.Good());
     fileStream.EndOfStream();
+    errno = 0;
+    EXPECT_EQ(fcntl(fd, F_GETFD), -1);
+    EXPECT_EQ(errno, EBADF);
+    close(pipeFds[0]);
 }
+
+HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamClosesFdZero)
+{
+    pid_t childPid = fork();
+    ASSERT_GE(childPid, 0);
+    if (childPid == 0) {
+        close(STDIN_FILENO);
+        int fd = open("/dev/null", O_WRONLY);
+        if (fd != STDIN_FILENO) {
+            _exit(EXIT_FAILURE);
+        }
+        FileDescriptorStream fileStream(fd);
+        if (!fileStream.Good()) {
+            _exit(EXIT_FAILURE);
+        }
+        fileStream.EndOfStream();
+        errno = 0;
+        bool fdClosed = fcntl(fd, F_GETFD) == -1 && errno == EBADF;
+        _exit(fdClosed ? EXIT_SUCCESS : EXIT_FAILURE);
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(childPid, &status, 0), childPid);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+}
+#endif
 } // namespace panda::test

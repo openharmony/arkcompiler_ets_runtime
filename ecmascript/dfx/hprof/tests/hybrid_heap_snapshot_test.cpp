@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/dfx/hprof/dynamic_dump.h"
+#include "ecmascript/dfx/hprof/heap_dump_session.h"
 #include "ecmascript/dfx/hprof/hybrid/hybrid_heap_profiler.h"
 #include "ecmascript/dfx/hprof/hybrid/hybrid_heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
@@ -22,13 +25,24 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
+#include "profiler/heap_dump.h"
 
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <unistd.h>
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
+
+using common::dump::DumpExecutionMode;
+using common::dump::DumpRequest;
+using common::dump::DumpScope;
 
 // ============================================================================
 // MockSTSVMInterface — implements all Hybrid Heapdump virtual methods
@@ -39,13 +53,17 @@ public:
     std::vector<arkplatform::NodeInfo> roots_;
     std::map<uint64_t, arkplatform::NodeInfo> nodeInfoMap_;
     std::map<uint64_t, std::vector<arkplatform::EdgeInfo>> edgeMap_;
-    std::unordered_map<uint64_t, uint64_t> jsToEts_;
-    std::unordered_map<uint64_t, uint64_t> etsToJs_;
+    XRefMap jsToEts_;
+    XRefMap etsToJs_;
     bool isAttached_ = true;
     bool xgcTriggered_ = false;
+    bool xgcResult_ = true;
     bool etsGCed_ = false;
     bool etsSuspended_ = false;
     bool etsWasSuspended_ = false;
+    bool dumpRequested_ = false;
+    bool dynamicDumpRequested_ = false;
+    bool staticDumpRequested_ = false;
 
     void MarkFromObject(void *obj) override
     {
@@ -105,7 +123,7 @@ public:
     bool TriggerXGCAndWait() override
     {
         xgcTriggered_ = true;
-        return true;
+        return xgcResult_;
     }
 
     void EtsForceFullGC() override
@@ -162,12 +180,20 @@ public:
         }
     }
 
-    void GetXRefMaps(uintptr_t ecmaVM, std::unordered_map<uint64_t, uint64_t> &jsToEts,
-                     std::unordered_map<uint64_t, uint64_t> &etsToJs) override
+    void GetXRefMaps(uintptr_t ecmaVM, XRefMap &jsToEts, XRefMap &etsToJs) override
     {
         (void)ecmaVM;
         jsToEts = jsToEts_;
         etsToJs = etsToJs_;
+    }
+
+    bool ExecuteHeapDump(const DumpRequest &, arkplatform::EcmaVMInterface *ecmaInterface,
+                         bool dumpStaticHeap) override
+    {
+        dumpRequested_ = true;
+        dynamicDumpRequested_ = ecmaInterface != nullptr;
+        staticDumpRequested_ = dumpStaticHeap;
+        return true;
     }
 
     bool IsCurrentThreadAttached() override
@@ -291,6 +317,12 @@ public:
                           const DumpSnapShotOption &dumpOption)
     {
         profiler.FillIdMap(vm, dumpOption);
+    }
+
+    static bool BinaryDump(HybridHeapProfiler &profiler, EcmaVM *vm,
+                           DumpSnapShotOption &dumpOption)
+    {
+        return profiler.BinaryDump(vm, dumpOption);
     }
 };
 }  // namespace panda::ecmascript
@@ -418,6 +450,32 @@ static void AssertOutputContains(const std::string &output, const std::string &f
     ASSERT_NE(output.find(field), std::string::npos) << "serialized snapshot should contain " << field;
 }
 
+static void WaitForHeapDumpSession(std::atomic<JSThread *> &contender, std::atomic<bool> &ready,
+                                   std::atomic<bool> &start, std::atomic<bool> &acquired)
+{
+    RuntimeOption workerOption;
+    workerOption.SetIsWorker();
+    EcmaVM *workerVm = JSNApi::CreateJSVM(workerOption);
+    if (workerVm == nullptr) {
+        ready.store(true, std::memory_order_release);
+        return;
+    }
+
+    JSThread *workerThread = workerVm->GetJSThread();
+    workerThread->ManagedCodeBegin();
+    contender.store(workerThread, std::memory_order_release);
+    ready.store(true, std::memory_order_release);
+    while (!start.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+    {
+        HeapDumpSession waitingSession;
+        acquired.store(true, std::memory_order_release);
+    }
+    workerThread->ManagedCodeEnd();
+    JSNApi::DestroyJSVM(workerVm);
+}
+
 // ============================================================================
 // Fixtures
 // ============================================================================
@@ -429,6 +487,7 @@ public:
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(ecmaVm_, thread_, scope_);
+        JSNApi::InitHybridVMEnv(ecmaVm_);
         ecmaVm_->SetEnableForceGC(false);
     }
 
@@ -484,9 +543,122 @@ HWTEST_F_L0(PureFunctionTest, NewEnumAndStructValues)
     ASSERT_NE(EdgeType::XREF, EdgeType::PROPERTY);
 }
 
+HWTEST_F_L0(PureFunctionTest, HeapDumpSessionsAreSerialized)
+{
+    constexpr size_t threadCount = 4;
+    constexpr size_t iterations = 20;
+    std::atomic<size_t> activeSessions {0};
+    std::atomic<bool> concurrentSessions {false};
+    std::vector<std::thread> workers;
+
+    for (size_t i = 0; i < threadCount; ++i) {
+        workers.emplace_back([&activeSessions, &concurrentSessions]() {
+            for (size_t j = 0; j < iterations; ++j) {
+                HeapDumpSession session;
+                if (activeSessions.fetch_add(1) != 0) {
+                    concurrentSessions.store(true);
+                }
+                std::this_thread::yield();
+                activeSessions.fetch_sub(1);
+            }
+        });
+    }
+
+    for (auto &worker : workers) {
+        worker.join();
+    }
+    EXPECT_FALSE(concurrentSessions.load());
+}
+
 // ============================================================================
 // Profiler basic tests
 // ============================================================================
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicProcessDumpCanSuspendFromExternalThread)
+{
+    DumpRequest request;
+    request.policy.executionMode = DumpExecutionMode::IN_PROCESS;
+    request.policy.scope = DumpScope::PROCESS;
+    request.policy.triggerGC = false;
+
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool prepared = false;
+    bool release = false;
+
+    ThreadSuspensionScope suspensionScope(thread_);
+    std::thread worker([this, &request, &mutex, &prepared, &condition, &release]() {
+        DynamicDump dumper(ecmaVm_, request);
+        dumper.PrepareSession();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            prepared = true;
+        }
+        condition.notify_one();
+
+        std::unique_lock<std::mutex> lock(mutex);
+        condition.wait(lock, [&release]() {
+            return release;
+        });
+    });
+
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        condition.wait(lock, [&prepared]() {
+            return prepared;
+        });
+        EXPECT_TRUE(thread_->HasSuspendRequest());
+        release = true;
+    }
+    condition.notify_one();
+    worker.join();
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, HeapDumpSessionWaitDoesNotBlockSharedGC)
+{
+    if (g_isEnableCMCGC) {
+        GTEST_SKIP() << "JSThread state inspection is unavailable with CMC GC";
+    }
+
+    auto owner = std::make_unique<HeapDumpSession>();
+    std::atomic<JSThread *> contender {nullptr};
+    std::atomic<bool> ready {false};
+    std::atomic<bool> start {false};
+    std::atomic<bool> acquired {false};
+
+    std::thread worker(WaitForHeapDumpSession, std::ref(contender), std::ref(ready),
+                       std::ref(start), std::ref(acquired));
+
+    while (!ready.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+    JSThread *workerThread = contender.load(std::memory_order_acquire);
+    if (workerThread == nullptr) {
+        owner.reset();
+        worker.join();
+        FAIL() << "Cannot create worker VM";
+        return;
+    }
+
+    start.store(true, std::memory_order_release);
+    constexpr size_t waitAttempts = 100000;
+    bool enteredWaitState = false;
+    for (size_t i = 0; i < waitAttempts; ++i) {
+        if (workerThread->GetState() == ThreadState::WAIT) {
+            enteredWaitState = true;
+            break;
+        }
+        std::this_thread::yield();
+    }
+    EXPECT_TRUE(enteredWaitState);
+    if (enteredWaitState) {
+        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+    }
+
+    owner.reset();
+    worker.join();
+    EXPECT_TRUE(acquired.load(std::memory_order_acquire));
+}
 
 HWTEST_F_L0(HybridHeapSnapshotTest, ProfilerBasicBehavior)
 {
@@ -846,7 +1018,7 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpWithXRef_VerifyXRefEdges)
     JSTaggedValue globalObj = ecmaVm_->GetGlobalEnv()->GetGlobalObject();
     ASSERT_TRUE(globalObj.IsHeapObject());
     uint64_t jsAddr = static_cast<uint64_t>(globalObj.GetRawData());
-    mockSts->jsToEts_[jsAddr] = 0x1000;
+    mockSts->jsToEts_.emplace(jsAddr, 0x1000);
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
@@ -868,7 +1040,7 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpWithXRef_StaticToDynamic)
     JSTaggedValue globalObj = ecmaVm_->GetGlobalEnv()->GetGlobalObject();
     ASSERT_TRUE(globalObj.IsHeapObject());
     uint64_t jsAddr = static_cast<uint64_t>(globalObj.GetRawData());
-    mockSts->etsToJs_[0x1000] = jsAddr;
+    mockSts->etsToJs_.emplace(0x1000, jsAddr);
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
@@ -893,8 +1065,8 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpWithXRef_BidirectionalMapping)
 
     ASSERT_TRUE(globalObj.IsHeapObject());
     uint64_t jsAddr = static_cast<uint64_t>(globalObj.GetRawData());
-    mockSts->jsToEts_[jsAddr] = 0x1000;
-    mockSts->etsToJs_[0x1000] = jsAddr;
+    mockSts->jsToEts_.emplace(jsAddr, 0x1000);
+    mockSts->etsToJs_.emplace(0x1000, jsAddr);
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
@@ -1361,6 +1533,96 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Serialization_ValidateJSONStructure)
 
     // Verify test object data is present (SetupMockCycle uses "Obj" prefix)
     AssertOutputContains(output, "\"Obj");
+}
+
+// ============================================================================
+// BinaryDump tests — verify that requests are routed with the selected runtime
+// participants. Byte-level output is covered by the ETS hprof tests.
+// ============================================================================
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_NoSTSInterface_ReturnsFalse)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    // No STS interface set → should return false
+    ASSERT_FALSE(profiler.HasSTSInterface());
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    ASSERT_FALSE(HybridHeapProfilerTestHelper::BinaryDump(profiler, ecmaVm_, dumpOption));
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_DynamicOnly_SetsFlagsCorrectly)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    mockSts->isAttached_ = false;  // STS not attached → only dynamic
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isFullGC = false;
+    dumpOption.isSync = true;
+
+    // BinaryDump sets dumpDynamicHeap=true (vm!=null), dumpStaticHeap=false (not attached)
+    ASSERT_TRUE(HybridHeapProfilerTestHelper::BinaryDump(profiler, ecmaVm_, dumpOption));
+    ASSERT_TRUE(mockSts->dumpRequested_);
+    ASSERT_TRUE(mockSts->dynamicDumpRequested_);
+    ASSERT_FALSE(mockSts->staticDumpRequested_);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_NeitherHeapAvailable_ReturnsFalse)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    mockSts->isAttached_ = false;
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    // Pass vm=nullptr → dynamic heap not available, STS not attached → static not available
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    ASSERT_FALSE(HybridHeapProfilerTestHelper::BinaryDump(profiler, nullptr, dumpOption));
+    ASSERT_FALSE(mockSts->dumpRequested_);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_StaticOnly_SetsFlagsCorrectly)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    mockSts->isAttached_ = true;
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    // vm=nullptr, STS attached → static-only
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isFullGC = false;
+    dumpOption.isSync = true;
+
+    ASSERT_TRUE(HybridHeapProfilerTestHelper::BinaryDump(profiler, nullptr, dumpOption));
+    ASSERT_FALSE(dumpOption.dumpDynamicHeap) << "vm=nullptr should mean dynamic=false";
+    ASSERT_TRUE(dumpOption.dumpStaticHeap) << "STS attached should mean static=true";
+    ASSERT_TRUE(mockSts->dumpRequested_);
+    ASSERT_FALSE(mockSts->dynamicDumpRequested_);
+    ASSERT_TRUE(mockSts->staticDumpRequested_);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_HybridFlags)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    mockSts->isAttached_ = true;
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isFullGC = false;
+    dumpOption.isSync = true;
+
+    ASSERT_TRUE(HybridHeapProfilerTestHelper::BinaryDump(profiler, ecmaVm_, dumpOption));
+    ASSERT_TRUE(dumpOption.dumpDynamicHeap) << "vm!=nullptr should mean dynamic=true";
+    ASSERT_TRUE(dumpOption.dumpStaticHeap) << "STS attached should mean static=true";
+    ASSERT_TRUE(mockSts->dumpRequested_);
+    ASSERT_TRUE(mockSts->dynamicDumpRequested_);
+    ASSERT_TRUE(mockSts->staticDumpRequested_);
 }
 
 }  // namespace panda::test

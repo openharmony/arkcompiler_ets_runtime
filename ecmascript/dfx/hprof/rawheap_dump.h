@@ -102,10 +102,31 @@ public:
 
     void BinaryDump();
 
+    /**
+     * @brief Flush the binary writer buffer and emit the success log / OOM
+     * HiSysEvent. Called at a defined point (end of BinaryDump) rather than
+     * from the destructor.
+     *
+     * In the hybrid fork model the parent process never calls BinaryDump but
+     * still destroys the RawHeapDump instance; performing the flush / event
+     * emission in the destructor would flush the parent's stale buffer into
+     * the child's output file and double-report the OOM event. The destructor
+     * therefore only clears in-memory state, and all side effects live here.
+     */
+    void Finalize();
+
     uint32_t GetRawHeapFileOffset()
     {
         return static_cast<uint32_t>(writer_.GetCurrentFileSize());
     }
+
+    /**
+     * @brief Read-only nodeId lookup for a heap address (no insertion, no
+     * counter advance). Used by DynamicDump::GetNodeId so XRef records carry
+     * the dynamic nodeId instead of the raw address.
+     * @return nodeId assigned to addr (low 32 bits), or 0 if addr was not dumped.
+     */
+    uint32_t FindNodeId(uint64_t addr) const;
 
     uint32_t GetObjectCount()
     {
@@ -190,7 +211,7 @@ private:
     // Update string table for SourceTextModule's EcmaModuleRecordName and EcmaModuleFilename
     void UpdateSourceTextModuleStringTable(JSTaggedType addr, int &strCnt);
 
-    const DumpSnapShotOption *dumpOption_ {};
+    DumpSnapShotOption dumpOption_ {};
     HeapSnapshot *snapshot_ {nullptr};
     EntryIdMap *entryIdMap_ {nullptr};
     BinaryWriter writer_;

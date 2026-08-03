@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_INTERFACE_H
 #define ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_INTERFACE_H
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -46,6 +47,7 @@ struct DumpSnapShotOption {
     bool isClearNodeIdCache = false;  // whether clear node id map cache after dump
     bool dumpDynamicHeap = false;     // whether to dump dynamic (ArkTS) heap
     bool dumpStaticHeap = false;      // whether to dump static heap
+    bool isForHybridXRef = false;     // whether dynamic node IDs are needed by a hybrid XRef dump
     std::string spaceType = "";  // space type for raw heap dump
     std::string heapType = "";  // heap type: local heap or shared heap
     LanguageEnv languageEnv = LanguageEnv::DYNAMIC;  // language environment selection
@@ -67,6 +69,17 @@ public:
     static void DestroyInstance(HeapProfilerInterface *heapProfiler);
 
     static void DumpHeapSnapshotForCMCOOM(void *thread);
+
+    /**
+     * Claim the process-wide dynamic OOM dump attempt.
+     *
+     * Production code never releases this one-shot claim because cascading
+     * OOM notifications must not start another dump.
+     */
+    static bool TryStartOOMDump();
+
+    /** Reset the OOM dump claim for isolated tests. */
+    static void ResetOOMDump();
 
     HeapProfilerInterface() = default;
     virtual ~HeapProfilerInterface() = default;
@@ -94,6 +107,9 @@ public:
 
     NO_MOVE_SEMANTIC(HeapProfilerInterface);
     NO_COPY_SEMANTIC(HeapProfilerInterface);
+
+private:
+    static std::atomic<bool> oomDumpActive_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_INTERFACE_H

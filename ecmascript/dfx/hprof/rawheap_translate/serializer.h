@@ -17,8 +17,8 @@
 #define RAWHEAP_TRANSLATE_SERIALIZER_H
 
 #define NODE_FIELD_COUNT 8
-#include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
+#include "rawheap_translate.h"
+#include "utils.h"
 
 
 namespace rawheap_translate {
