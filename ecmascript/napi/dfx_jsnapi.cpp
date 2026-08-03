@@ -31,6 +31,7 @@
 #endif
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/extractortool/src/source_map.h"
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/jit/jit.h"
@@ -1364,15 +1365,27 @@ void DFXJSNApi::GetTracingBufferUseage([[maybe_unused]] const EcmaVM *vm, [[mayb
 #endif
 }
 
-void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column,
-    std::string &packageName)
+// SourceMap singleton interfaces
+
+void DFXJSNApi::SourceMapSplitSourceMap(const std::string &sourceMapData)
 {
-    auto cb = vm->GetSourceMapTranslateCallback();
-    if (cb == nullptr) {
-        LOG_ECMA(ERROR) << "Translate failed, callback function is nullptr.";
-    } else if (!cb(url, line, column, packageName)) {
-        LOG_ECMA(ERROR) << "Translate failed, url: " << url;
-    }
+    ecmascript::SourceMap::GetInstance().SplitSourceMap(sourceMapData);
+}
+
+bool DFXJSNApi::SourceMapTranslateUrlPosition(std::string &url, int &line, int &column, std::string &packageName)
+{
+    return ecmascript::SourceMap::GetInstance().TranslateUrlPositionBySourceMap(url, line, column, packageName);
+}
+
+std::string DFXJSNApi::SourceMapTranslateBySourceMap(const std::string &stackStr)
+{
+    return ecmascript::SourceMap::GetInstance().TranslateBySourceMap(stackStr);
+}
+
+void DFXJSNApi::SourceMapSetInitStatus(bool success)
+{
+    ecmascript::SourceMap::GetInstance().SetInitStatus(
+        success ? ecmascript::InitStatus::EXECUTED_SUCCESSFULLY : ecmascript::InitStatus::IN_EXECUTED);
 }
 
 uint32_t DFXJSNApi::GetCurrentThreadId()
@@ -1406,9 +1419,8 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
                 mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
         }
     }
-    auto sourceMapcb = vm->GetSourceMapCallback();
-    if (sourceMapcb != nullptr && !stackTraceStr.empty()) {
-        stackTraceStr = sourceMapcb(stackTraceStr);
+    if (!stackTraceStr.empty()) {
+        stackTraceStr = ecmascript::SourceMap::GetInstance().TranslateBySourceMap(stackTraceStr);
     }
 }
 

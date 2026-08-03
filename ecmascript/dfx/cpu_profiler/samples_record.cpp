@@ -18,6 +18,7 @@
 
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/extractortool/src/source_map.h"
 
 namespace panda::ecmascript {
 const std::string JS_PATH = "entry/build/default/cache/default/default@CompileArkTS/esmodule/debug/";
@@ -173,15 +174,11 @@ void SamplesRecord::StringifyNodes()
     sampleData_ += "\"nodes\":[";
     size_t nodeCount = static_cast<size_t>(profileInfo_->nodeCount);
     bool translateCallback = false;
-    if (sourceMapTranslateCallback_ != nullptr) {
-        translateCallback = true;
-    }
+
     for (size_t i = 0; i < nodeCount; i++) {
         struct CpuProfileNode node = profileInfo_->nodes[i];
         struct FrameInfo codeEntry = node.codeEntry;
-        if (translateCallback) {
-            TranslateUrlPositionBySourceMap(codeEntry);
-        }
+        TranslateUrlPositionBySourceMap(codeEntry);
         std::string url = codeEntry.url;
         replace(url.begin(), url.end(), '\\', '/');
         sampleData_ += "{\"id\":"
@@ -633,8 +630,9 @@ void SamplesRecord::TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry)
     if (codeEntry.url.empty()) {
         return;
     }
-    if (!sourceMapTranslateCallback_(codeEntry.url, codeEntry.lineNumber, codeEntry.columnNumber,
-                                     codeEntry.packageName)) {
+
+    if (!SourceMap::GetInstance().TranslateUrlPositionBySourceMap(codeEntry.url, codeEntry.lineNumber,
+        codeEntry.columnNumber, codeEntry.packageName)) {
         size_t find = codeEntry.url.rfind("_.js");
         if (find == std::string::npos) {
             size_t start = codeEntry.url.find("entry/");

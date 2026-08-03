@@ -167,11 +167,6 @@ public:
         enableVMTag_ = flag;
     }
 
-    void SetSourceMapTranslateCallback(SourceMapTranslateCallback cb)
-    {
-        sourceMapTranslateCallback_ = cb;
-    }
-
     void SetTimeDeltaThreshold(uint32_t timeDeltaThreshold)
     {
         timeDeltaThreshold_ = timeDeltaThreshold;
@@ -215,7 +210,6 @@ private:
     bool enableVMTag_ {false};
     uint64_t callTimeStamp_ = 0;
     uint32_t timeDeltaThreshold_ = 0;
-    SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     int traceEventNodePos_ = 0;
     uint32_t traceEventSamplePos_ = 0;
 

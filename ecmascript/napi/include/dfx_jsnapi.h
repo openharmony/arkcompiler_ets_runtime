@@ -199,8 +199,12 @@ public:
     static bool StartTracing(const EcmaVM *vm, std::string &categories);
     static std::unique_ptr<std::vector<TraceEvent>> StopTracing(const EcmaVM *vm);
     static void GetTracingBufferUseage(const EcmaVM *vm, double &percentFull, uint32_t &eventCount, double &value);
-    static void TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column,
-        std::string &packageName);
+
+    // SourceMap singleton interfaces
+    static void SourceMapSplitSourceMap(const std::string &sourceMapData);
+    static bool SourceMapTranslateUrlPosition(std::string &url, int &line, int &column, std::string &packageName);
+    static std::string SourceMapTranslateBySourceMap(const std::string &stackStr);
+    static void SourceMapSetInitStatus(bool success);
 
     static uint32_t GetCurrentThreadId();
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
