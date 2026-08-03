@@ -1236,14 +1236,14 @@ HWTEST_F_L0(BuiltinsStringTest, StringToSListCacheConsistency)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> str = factory->NewFromASCII("test");
 
-    JSTaggedValue sListResult1 = BuiltinsString::StringToSList(thread, str);
-    ASSERT_TRUE(sListResult1.IsJSSharedArray());
+    JSHandle<JSTaggedValue> sListResult1(thread, BuiltinsString::StringToSList(thread, str));
+    ASSERT_TRUE(sListResult1->IsJSSharedArray());
 
-    JSTaggedValue sListResult2 = BuiltinsString::StringToSList(thread, str);
-    ASSERT_TRUE(sListResult2.IsJSSharedArray());
+    JSHandle<JSTaggedValue> sListResult2(thread, BuiltinsString::StringToSList(thread, str));
+    ASSERT_TRUE(sListResult2->IsJSSharedArray());
 
-    JSSharedArray *arr1 = JSSharedArray::Cast(sListResult1.GetTaggedObject());
-    JSSharedArray *arr2 = JSSharedArray::Cast(sListResult2.GetTaggedObject());
+    JSSharedArray *arr1 = JSSharedArray::Cast(sListResult1->GetTaggedObject());
+    JSSharedArray *arr2 = JSSharedArray::Cast(sListResult2->GetTaggedObject());
     EXPECT_EQ(arr1->GetArrayLength(), arr2->GetArrayLength());
 }
 }  // namespace panda::test
