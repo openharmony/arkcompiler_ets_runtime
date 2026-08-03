@@ -31,6 +31,7 @@
 #if defined(ENABLE_UNWINDER)
 #include "unwinder.h"
 #endif
+#include "ecmascript/extractortool/src/source_map.h"
 
 namespace panda::ecmascript {
 static const std::string LIB_HWASAN_SO_NAME = "libclang_rt.hwasan.so";
@@ -148,11 +149,9 @@ std::string SymbolicAddress(const void* const *pc,
             continue;
         }
         dfx_frame->index = index++;
-        if (dfx_frame->isJsFrame && vm != nullptr) {
-            auto cb = vm->GetSourceMapTranslateCallback();
-            if (cb != nullptr) {
-                cb(dfx_frame->mapName, dfx_frame->line, dfx_frame->column, dfx_frame->packageName);
-            }
+        if (dfx_frame->isJsFrame) {
+            SourceMap::GetInstance().TranslateUrlPositionBySourceMap(dfx_frame->mapName, dfx_frame->line,
+                dfx_frame->column, dfx_frame->packageName);
         }
         frames.push_back(*dfx_frame);
     }

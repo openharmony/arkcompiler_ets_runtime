@@ -120,9 +120,9 @@ EnqueueJobTrace::EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &p
         }
         int lineNumber = static_cast<int>(tmp);
         int columnNumber = static_cast<int>(val);
-        auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
-        if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
-            sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber, jsFrameInfo.packageName);
+        if (!jsFrameInfo.fileName.empty()) {
+            SourceMap::GetInstance().TranslateUrlPositionBySourceMap(
+                jsFrameInfo.fileName, lineNumber, columnNumber, jsFrameInfo.packageName);
         }
     }
 
