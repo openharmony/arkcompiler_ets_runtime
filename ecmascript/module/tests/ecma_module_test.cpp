@@ -52,6 +52,26 @@ using namespace panda::pandasm;
 using namespace testing::ext;
 
 namespace panda::test {
+static const char *PATH_OHOS_HILOG = "@ohos.hilog";
+static const char *PATH_OHOS_HILOG_CHANGED = "@ohos:hilog";
+static const char *PATH_OHOS_NO_TAG = "ohos.hilog";
+static const char *PATH_OHOS_NO_POINT = "@ohos";
+static const char *RECORD_NAME_WITH_MODULE = "com.example.mymodule/entry/ets/main/MainAbility";
+static const char *MODULE_NAME_ENTRY = "entry";
+static const char *RECORD_NAME_BUNDLE = "bundleName/moduleName/ets/pages/Index";
+static const char *MODULE_NAME_MODULE = "moduleName";
+static const char *RECORD_NAME_SHORT = "short";
+static const char *NORMALIZED_RECORD_ENTRY = "&entry/src/main/ets/pages/Index";
+static const char *NORMALIZED_RECORD_FEATURE = "&feature/src/main/ets/test";
+static const char *MODULE_NAME_FEATURE = "feature";
+static const char *NORMALIZED_NO_FORMAT = "noproperformat";
+static const char *RESOLVE_PATH_DATA_APP = "/data/app/module";
+static const char *RESOLVE_PATH_DATA_APP_RESULT = "/data/app/module.abc";
+static const char *RESOLVE_PATH_SIMPLE = "/module";
+static const char *RESOLVE_PATH_SIMPLE_RESULT = "/module.abc";
+static const char *RESOLVE_ENTRY_MODULE = "module";
+static const char *TEST_LOCAL_MODULE_NAME = "test_local_module";
+static const char *TEST_TAGGED_MODULE_NAME = "test_tagged_module";
 using FunctionCallbackInfo = JSHandle<JSTaggedValue>(*)(JsiRuntimeCallInfo *);
 class EcmaModuleTest : public testing::Test {
 public:
@@ -7307,6 +7327,142 @@ HWTEST_F_L0(EcmaModuleTest, ModuleVariableAccess_AfterModuleRequestsCleared)
     EXPECT_FALSE(envValue.IsUndefined());
     JSHandle<TaggedArray> env(thread, envValue);
     EXPECT_EQ(env->Get(thread, 0), JSTaggedValue(42));
+}
+
+/*
+ * Feature: ModulePathHelper
+ * Function: ChangeTag
+ * SubFunction: Replace first '.' with ':' in '@xxx.' format
+ * FunctionPoints: Verify tag conversion for native module names
+ * CaseDescription: When path starts with '@' and contains '.', first '.' should become ':'
+ */
+HWTEST_F_L0(EcmaModuleTest, ModulePathHelper_ChangeTag)
+{
+    CString path1 = PATH_OHOS_HILOG;
+    EXPECT_TRUE(ModulePathHelper::ChangeTag(path1));
+    EXPECT_EQ(path1, PATH_OHOS_HILOG_CHANGED);
+
+    CString path2 = PATH_OHOS_NO_TAG;
+    EXPECT_FALSE(ModulePathHelper::ChangeTag(path2));
+
+    CString path3 = PATH_OHOS_NO_POINT;
+    EXPECT_FALSE(ModulePathHelper::ChangeTag(path3));
+}
+
+/*
+ * Feature: ModulePathHelper
+ * Function: GetModuleName
+ * SubFunction: Extract module name from record name
+ * FunctionPoints: Verify module name extraction from bundleName/moduleName/ets/... format
+ * CaseDescription: Module name is the second segment in bundleName/moduleName/ets/... path
+ */
+HWTEST_F_L0(EcmaModuleTest, ModulePathHelper_GetModuleName)
+{
+    EXPECT_EQ(ModulePathHelper::GetModuleName(RECORD_NAME_WITH_MODULE), MODULE_NAME_ENTRY);
+    EXPECT_EQ(ModulePathHelper::GetModuleName(RECORD_NAME_BUNDLE), MODULE_NAME_MODULE);
+    EXPECT_EQ(ModulePathHelper::GetModuleName(RECORD_NAME_SHORT), CString());
+}
+
+/*
+ * Feature: ModulePathHelper
+ * Function: GetModuleNameWithNormalizedName
+ * SubFunction: Extract module name from normalized ohmurl
+ * FunctionPoints: Verify module name extraction from &moduleName/src/... format
+ * CaseDescription: Module name is the segment after '&' and before '/'
+ */
+HWTEST_F_L0(EcmaModuleTest, ModulePathHelper_GetModuleNameWithNormalizedName)
+{
+    EXPECT_EQ(ModulePathHelper::GetModuleNameWithNormalizedName(NORMALIZED_RECORD_ENTRY), MODULE_NAME_ENTRY);
+    EXPECT_EQ(ModulePathHelper::GetModuleNameWithNormalizedName(NORMALIZED_RECORD_FEATURE), MODULE_NAME_FEATURE);
+    EXPECT_EQ(ModulePathHelper::GetModuleNameWithNormalizedName(NORMALIZED_NO_FORMAT), CString());
+}
+
+/*
+ * Feature: ModulePathHelper
+ * Function: ResolvePath
+ * SubFunction: Split path at last '/' and append '.abc'
+ * FunctionPoints: Verify path resolution splits directory and filename
+ * CaseDescription: Returns pair of (directory, filename.abc) from input path
+ */
+HWTEST_F_L0(EcmaModuleTest, ModulePathHelper_ResolvePath)
+{
+    auto res1 = ModulePathHelper::ResolvePath(RESOLVE_PATH_DATA_APP);
+    EXPECT_EQ(res1.first, RESOLVE_PATH_DATA_APP_RESULT);
+    EXPECT_EQ(res1.second, RESOLVE_ENTRY_MODULE);
+
+    auto res2 = ModulePathHelper::ResolvePath(RESOLVE_PATH_SIMPLE);
+    EXPECT_EQ(res2.first, RESOLVE_PATH_SIMPLE_RESULT);
+    EXPECT_EQ(res2.second, RESOLVE_ENTRY_MODULE);
+}
+
+/*
+ * Feature: SourceTextModule
+ * Function: IsCjsModule
+ * SubFunction: Check if module type is CJS_MODULE
+ * FunctionPoints: Verify CJS module type detection
+ * CaseDescription: Returns true only for CJS_MODULE type
+ */
+HWTEST_F_L0(EcmaModuleTest, SourceTextModule_IsCjsModule)
+{
+    EXPECT_TRUE(SourceTextModule::IsCjsModule(ModuleTypes::CJS_MODULE));
+    EXPECT_FALSE(SourceTextModule::IsCjsModule(ModuleTypes::ECMA_MODULE));
+    EXPECT_FALSE(SourceTextModule::IsCjsModule(ModuleTypes::JSON_MODULE));
+    EXPECT_FALSE(SourceTextModule::IsCjsModule(ModuleTypes::NATIVE_MODULE));
+}
+
+/*
+ * Feature: SourceTextModule
+ * Function: IsJsonModule
+ * SubFunction: Check if module type is JSON_MODULE
+ * FunctionPoints: Verify JSON module type detection
+ * CaseDescription: Returns true only for JSON_MODULE type
+ */
+HWTEST_F_L0(EcmaModuleTest, SourceTextModule_IsJsonModule)
+{
+    EXPECT_TRUE(SourceTextModule::IsJsonModule(ModuleTypes::JSON_MODULE));
+    EXPECT_FALSE(SourceTextModule::IsJsonModule(ModuleTypes::ECMA_MODULE));
+    EXPECT_FALSE(SourceTextModule::IsJsonModule(ModuleTypes::CJS_MODULE));
+    EXPECT_FALSE(SourceTextModule::IsJsonModule(ModuleTypes::NATIVE_MODULE));
+}
+
+/*
+ * Feature: ModuleManager
+ * Function: IsLocalModuleLoaded
+ * SubFunction: Check if a module is loaded in local cache
+ * FunctionPoints: Verify local module cache query
+ * CaseDescription: Returns false for unknown module, true after adding
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleManager_IsLocalModuleLoaded)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    EXPECT_FALSE(moduleManager->IsLocalModuleLoaded(TEST_LOCAL_MODULE_NAME));
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> moduleRecord(thread, module.GetTaggedValue());
+    moduleManager->AddResolveImportedModule(TEST_LOCAL_MODULE_NAME, moduleRecord.GetTaggedValue());
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(TEST_LOCAL_MODULE_NAME));
+}
+
+/*
+ * Feature: ModuleManager
+ * Function: TryGetImportedModuleTaggedValue
+ * SubFunction: Get module as out-parameter with bool return
+ * FunctionPoints: Verify module retrieval with success/failure indication
+ * CaseDescription: Returns false for unknown module, true and sets value for known module
+ */
+HWTEST_F_L0(EcmaModuleTest, ModuleManager_TryGetImportedModuleTaggedValue)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSTaggedValue outValue;
+    EXPECT_FALSE(moduleManager->TryGetImportedModuleTaggedValue(TEST_TAGGED_MODULE_NAME, outValue));
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> moduleRecord(thread, module.GetTaggedValue());
+    moduleManager->AddResolveImportedModule(TEST_TAGGED_MODULE_NAME, moduleRecord.GetTaggedValue());
+    EXPECT_TRUE(moduleManager->TryGetImportedModuleTaggedValue(TEST_TAGGED_MODULE_NAME, outValue));
+    EXPECT_EQ(outValue, module.GetTaggedValue());
 }
 
 }  // namespace panda::test
