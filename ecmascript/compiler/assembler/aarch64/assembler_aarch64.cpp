@@ -364,6 +364,26 @@ void AssemblerAarch64::Stlr(const Register &rt, const MemoryOperand &operand)
     EmitU32(instructionCode);
 }
 
+void AssemblerAarch64::Strb(const Register &rt, const MemoryOperand &operand)
+{
+    ASSERT(rt.IsW() && operand.IsImmediateOffset() && operand.GetAddrMode() == OFFSET);
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT(offset >= 0 && offset <= 4095);  // 4095: unsigned imm12 byte offset.
+    uint32_t code =
+        0x39000000 | (static_cast<uint32_t>(offset) << 10) | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Strh(const Register &rt, const MemoryOperand &operand)
+{
+    ASSERT(rt.IsW() && operand.IsImmediateOffset() && operand.GetAddrMode() == OFFSET);
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT(offset >= 0 && (offset % 2) == 0 && offset <= 8190);  // 8190: unsigned imm12 scaled by 2.
+    uint32_t code =
+        0x79000000 | (static_cast<uint32_t>(offset / 2) << 10) | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Ldur(const Register &rt, const MemoryOperand &operand)
 {
     bool regX = !rt.IsW();
@@ -982,6 +1002,13 @@ void AssemblerAarch64::Fcvtzs(const Register &rd, const VRegister &vn)
     EmitU32(code);
 }
 
+void AssemblerAarch64::FcvtFloat32(const VRegister &vd, const VRegister &vn)
+{
+    ASSERT(vd.IsS() && vn.IsD());
+    uint32_t code = 0x1E624000 | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
 bool AssemblerAarch64::IsAddSubImm(uint64_t imm)
 {
     const uint64_t IMM12_MASK = (1 << ADD_SUB_Imm12_WIDTH) - 1;
@@ -1545,5 +1572,14 @@ void AssemblerAarch64::Str(const VRegister &vt, const MemoryOperand &operand)
 {
     EmitLoadStoreD(vt, operand, LoadStoreOpCode::STR_D_Offset, LoadStoreOpCode::STR_D_Pre,
                    LoadStoreOpCode::STR_D_Post);
+}
+void AssemblerAarch64::StrFloat32(const VRegister &vt, const MemoryOperand &operand)
+{
+    ASSERT(vt.IsS() && operand.IsImmediateOffset() && operand.GetRegBase().IsX());
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT(offset >= 0 && (offset % 4) == 0 && offset <= 16380);  // 16380: imm12 scaled by 4.
+    uint32_t encoding = 0xBD000000 | (static_cast<uint32_t>(offset / 4) << 10) |
+                        (static_cast<uint32_t>(operand.GetRegBase().Code()) << 5) | static_cast<uint32_t>(vt.Code());
+    EmitU32(encoding);
 }
 }   // namespace panda::ecmascript::aarch64

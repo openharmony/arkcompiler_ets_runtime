@@ -223,6 +223,21 @@ void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, 
     assembler_.Movq(src, operand);
 }
 
+void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, ArkSteedRegister offset)
+{
+    assembler_.Movq(src, x64::Operand(base, offset, x64::Scale::Times1, 0));
+}
+
+void ArkSteedAssembler::StoreInt8Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    assembler_.Movb(src, x64::Operand(base, offset));
+}
+
+void ArkSteedAssembler::StoreInt16Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    assembler_.Movw(src, x64::Operand(base, offset));
+}
+
 void ArkSteedAssembler::StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
 {
     x64::Operand operand(base, offset);
@@ -237,6 +252,13 @@ void ArkSteedAssembler::StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedReg
 void ArkSteedAssembler::StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset)
 {
     StoreFloat64(x64::Operand(base, offset), src);
+}
+
+void ArkSteedAssembler::StoreFloat32Field(ArkSteedDoubleRegister src, ArkSteedDoubleRegister scratch,
+                                          ArkSteedRegister base, int32_t offset)
+{
+    assembler_.Cvtsd2ss(src, scratch);
+    assembler_.Movss(x64::Operand(base, offset), scratch);
 }
 
 void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
@@ -518,6 +540,11 @@ void ArkSteedAssembler::Lsr(ArkSteedRegister dst, uint32_t shift)
 void ArkSteedAssembler::ShiftRightLogical(ArkSteedRegister dst, uint32_t shift)
 {
     assembler_.Shrq(shift, dst);
+}
+
+void ArkSteedAssembler::ShiftLeft(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Shlq(x64::Immediate(static_cast<int32_t>(shift)), dst);
 }
 
 void ArkSteedAssembler::ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift)

@@ -27,6 +27,10 @@ constexpr size_t NAMED_STORE_INPUT_COUNT = 3;
 constexpr size_t NAMED_ACCESS_SLOT_INPUT = 0;
 constexpr size_t NAMED_ACCESS_NAME_INPUT = 1;
 constexpr size_t NAMED_STORE_RECEIVER_INPUT = 2;
+constexpr size_t ELEMENT_STORE_INPUT_COUNT = 3;
+constexpr size_t ELEMENT_STORE_SLOT_INPUT = 0;
+constexpr size_t ELEMENT_STORE_RECEIVER_INPUT = 1;
+constexpr size_t ELEMENT_STORE_KEY_INPUT = 2;
 
 struct ParsedStoreHandler {
     uint64_t handlerInfo {0};
@@ -68,6 +72,151 @@ bool IsNamedStoreInputShape(const kungfu::BytecodeInfo &bytecodeInfo)
         std::holds_alternative<kungfu::ICSlotId>(bytecodeInfo.inputs[NAMED_ACCESS_SLOT_INPUT]) &&
         std::holds_alternative<kungfu::ConstDataId>(bytecodeInfo.inputs[NAMED_ACCESS_NAME_INPUT]) &&
         std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[NAMED_STORE_RECEIVER_INPUT]);
+}
+
+bool IsElementStoreInputShape(const kungfu::BytecodeInfo &bytecodeInfo)
+{
+    bool isStoreByValue = bytecodeInfo.GetOpcode() == kungfu::EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8 ||
+                          bytecodeInfo.GetOpcode() == kungfu::EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8;
+    return isStoreByValue && bytecodeInfo.inputs.size() == ELEMENT_STORE_INPUT_COUNT &&
+           std::holds_alternative<kungfu::ICSlotId>(bytecodeInfo.inputs[ELEMENT_STORE_SLOT_INPUT]) &&
+           std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[ELEMENT_STORE_RECEIVER_INPUT]) &&
+           std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[ELEMENT_STORE_KEY_INPUT]);
+}
+
+bool IsSupportedTypedArrayType(JSType type)
+{
+    switch (type) {
+        case JSType::JS_INT8_ARRAY:
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_INT16_ARRAY:
+        case JSType::JS_UINT16_ARRAY:
+        case JSType::JS_INT32_ARRAY:
+        case JSType::JS_UINT32_ARRAY:
+        case JSType::JS_FLOAT32_ARRAY:
+        case JSType::JS_FLOAT64_ARRAY:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool CanTransitionElementsKind(JSThread *hostThread, JSHClass *source, JSHClass *target)
+{
+    if (hostThread == nullptr || source == nullptr || target == nullptr || source == target ||
+        !source->IsJSArray() || !target->IsJSArray() || source->IsPrototype() || target->IsPrototype()) {
+        return false;
+    }
+
+    ElementsKind sourceKind = source->GetElementsKind();
+    ElementsKind targetKind = target->GetElementsKind();
+    if (!JSHClass::IsInitialArrayHClassWithElementsKind(hostThread, source, sourceKind) ||
+        !JSHClass::IsInitialArrayHClassWithElementsKind(hostThread, target, targetKind)) {
+        return false;
+    }
+    return Elements::MergeElementsKind(sourceKind, targetKind) == targetKind;
+}
+
+bool CanApplyExplicitElementTransition(JSHClass *source, JSHClass *target)
+{
+    if (source == nullptr || target == nullptr || !source->IsJSArray() || !target->IsJSArray() ||
+        source->IsPrototype() || target->IsPrototype()) {
+        return false;
+    }
+    return source == target ||
+        Elements::MergeElementsKind(source->GetElementsKind(), target->GetElementsKind()) == target->GetElementsKind();
+}
+
+bool BuildElementStoreTransitionGroups(JSThread *hostThread,
+                                       const std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> &hclasses,
+                                       const std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> &explicitTargets,
+                                       const std::array<ArkSteedHClassRef,
+                                                        MAX_ELEMENT_IC_POLY_CASES> &explicitTargetRefs,
+                                       ElementStoreAccessInfo *access)
+{
+    std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> selectedTargets {};
+    std::array<ArkSteedHClassRef, MAX_ELEMENT_IC_POLY_CASES> selectedTargetRefs {};
+    std::array<bool, MAX_ELEMENT_IC_POLY_CASES> selectedTargetsAreExplicit {};
+    for (uint32_t sourceIndex = 0; sourceIndex < access->caseCount; ++sourceIndex) {
+        if (explicitTargets[sourceIndex] != nullptr) {
+            if (!CanApplyExplicitElementTransition(hclasses[sourceIndex], explicitTargets[sourceIndex])) {
+                return false;
+            }
+            selectedTargets[sourceIndex] = explicitTargets[sourceIndex];
+            selectedTargetRefs[sourceIndex] = explicitTargetRefs[sourceIndex];
+            selectedTargetsAreExplicit[sourceIndex] = true;
+            continue;
+        }
+
+        std::array<uint32_t, MAX_ELEMENT_IC_POLY_CASES> candidates {};
+        uint32_t candidateCount = 0;
+        candidates[candidateCount++] = sourceIndex;
+        for (uint32_t targetIndex = 0; targetIndex < access->caseCount; ++targetIndex) {
+            if (CanTransitionElementsKind(hostThread, hclasses[sourceIndex], hclasses[targetIndex])) {
+                candidates[candidateCount++] = targetIndex;
+            }
+        }
+
+        uint32_t widestTarget = sourceIndex;
+        uint32_t widestTargetCount = 0;
+        for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex) {
+            uint32_t possibleTarget = candidates[candidateIndex];
+            bool containsAllCandidates = true;
+            for (uint32_t otherIndex = 0; otherIndex < candidateCount; ++otherIndex) {
+                uint32_t possibleSource = candidates[otherIndex];
+                if (possibleSource != possibleTarget &&
+                    !CanTransitionElementsKind(hostThread, hclasses[possibleSource], hclasses[possibleTarget])) {
+                    containsAllCandidates = false;
+                    break;
+                }
+            }
+            if (containsAllCandidates) {
+                widestTarget = possibleTarget;
+                widestTargetCount++;
+            }
+        }
+        if (widestTargetCount != 1) {
+            widestTarget = sourceIndex;
+        }
+        selectedTargets[sourceIndex] = hclasses[widestTarget];
+        selectedTargetRefs[sourceIndex] = access->cases[widestTarget].expectedHClass;
+    }
+
+    // A group stores its target once and lists every source that must transition to it before the element store.
+    std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> groupTargets {};
+    for (uint32_t caseIndex = 0; caseIndex < access->caseCount; ++caseIndex) {
+        JSHClass *target = selectedTargets[caseIndex];
+        uint32_t groupIndex = 0;
+        for (; groupIndex < access->transitionGroupCount; ++groupIndex) {
+            if (groupTargets[groupIndex] == target) {
+                break;
+            }
+        }
+        if (groupIndex == access->transitionGroupCount) {
+            if (access->transitionGroupCount >= MAX_ELEMENT_IC_POLY_CASES) {
+                return false;
+            }
+            ElementStoreTransitionGroup &group = access->transitionGroups[access->transitionGroupCount++];
+            group.targetHClass = selectedTargetRefs[caseIndex];
+            group.targetElementsKind = target->GetElementsKind();
+            group.useExactHClassTransition = selectedTargetsAreExplicit[caseIndex];
+            groupTargets[groupIndex] = target;
+        } else {
+            access->transitionGroups[groupIndex].useExactHClassTransition =
+                access->transitionGroups[groupIndex].useExactHClassTransition ||
+                selectedTargetsAreExplicit[caseIndex];
+        }
+        if (hclasses[caseIndex] == target) {
+            continue;
+        }
+        ElementStoreTransitionGroup &group = access->transitionGroups[groupIndex];
+        if (group.sourceCount >= MAX_ELEMENT_IC_POLY_CASES) {
+            return false;
+        }
+        group.transitionSources[group.sourceCount++] = access->cases[caseIndex].expectedHClass;
+    }
+    return access->transitionGroupCount > 0;
 }
 
 void SetFieldLocation(uint64_t handlerInfo, PropertyAccessInfo *info)
@@ -461,6 +610,151 @@ bool ArkSteedAccessInfoFactory::TryBuildNamedStoreAccessInfo(int slotIndex, Name
     }
     ArkSteedHeapBroker::SerializingScope scope(broker_, "ArkSteedAccessInfoFactory::TryBuildNamedStoreAccessInfo");
     return ComputeNamedStoreAccessInfo(feedback, access);
+}
+
+bool ArkSteedAccessInfoFactory::TryBuildElementStoreAccessInfo(int slotIndex, ElementStoreAccessInfo *access) const
+{
+    *access = {};
+    if (!IsElementStoreInputShape(bytecodeInfo_)) {
+        return false;
+    }
+
+    ElementAccessFeedback feedback;
+    if (!broker_->GetFeedbackForElementAccess(feedbackReader_, slotIndex, &feedback)) {
+        return false;
+    }
+
+    ArkSteedHeapBroker::SerializingScope scope(broker_, "ArkSteedAccessInfoFactory::TryBuildElementStoreAccessInfo");
+    access->feedback = feedback.base.source;
+    bool hasTaggedArrayBacking = env_ != nullptr && !env_->GetJSOptions().IsEnableMutantArray();
+    std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> hclasses {};
+    std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> explicitTargets {};
+    std::array<ArkSteedHClassRef, MAX_ELEMENT_IC_POLY_CASES> explicitTargetRefs {};
+    std::array<bool, MAX_ELEMENT_IC_POLY_CASES> needsProtoDependency {};
+    for (uint32_t i = 0; i < feedback.caseCount; ++i) {
+        const ElementAccessCaseFeedback &elementCase = feedback.cases[i];
+        JSTaggedValue hclassValue;
+        ParsedStoreHandler parsed;
+        if (!TryReadStoreHandler(broker_, compilerThread_, elementCase.handler, &parsed) ||
+            !broker_->TryResolveRef(elementCase.expectedHClass, &hclassValue) || !hclassValue.IsJSHClass()) {
+            *access = {};
+            return false;
+        }
+
+        uint64_t handlerInfo = parsed.handlerInfo;
+        JSHClass *hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
+        if (HandlerBase::IsStoreOutOfBounds(handlerInfo) || hclass->IsJSShared()) {
+            *access = {};
+            return false;
+        }
+
+        ElementStoreKind caseKind = ElementStoreKind::UNSUPPORTED;
+        ElementsKind elementsKind = ElementsKind::NONE;
+        JSType typedArrayType = JSType::INVALID;
+        OnHeapMode onHeapMode = OnHeapMode::NONE;
+        if (hclass->IsJSArray() && !hclass->IsPrototype() && hclass->IsStableElements() && hasTaggedArrayBacking &&
+            !hclass->IsDictionaryElement() &&
+            HandlerBase::IsNormalElement(handlerInfo) && HandlerBase::IsJSArray(handlerInfo)) {
+            caseKind = ElementStoreKind::JS_ARRAY;
+            elementsKind = hclass->GetElementsKind();
+            if (parsed.hasTransitionHClass) {
+                JSTaggedValue transitionHClassValue = JSTaggedValue::Undefined();
+                if (!broker_->TryResolveRef(parsed.transitionHClass, &transitionHClassValue) ||
+                    !transitionHClassValue.IsJSHClass()) {
+                    *access = {};
+                    return false;
+                }
+                JSHClass *transitionHClass = JSHClass::Cast(transitionHClassValue.GetTaggedObject());
+                if (!transitionHClass->IsJSArray() || transitionHClass->IsPrototype() ||
+                    !transitionHClass->IsStableElements() || transitionHClass->IsDictionaryElement()) {
+                    *access = {};
+                    return false;
+                }
+                explicitTargets[access->caseCount] = transitionHClass;
+                explicitTargetRefs[access->caseCount] = parsed.transitionHClass;
+            }
+            needsProtoDependency[access->caseCount] =
+                parsed.hasProtoCell || hclass->IsJSArrayPrototypeModifiedFromBitField();
+        } else if (hclass->IsTypedArray() && HandlerBase::IsTypedArrayElement(handlerInfo) &&
+                   IsSupportedTypedArrayType(hclass->GetObjectType()) && !parsed.hasTransitionHClass &&
+                   !parsed.hasProtoCell) {
+            caseKind = ElementStoreKind::TYPED_ARRAY;
+            typedArrayType = hclass->GetObjectType();
+            bool isOnHeap = HandlerBase::IsOnHeap(handlerInfo);
+            if (isOnHeap != hclass->IsOnHeapFromBitField()) {
+                *access = {};
+                return false;
+            }
+            onHeapMode = isOnHeap ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
+        } else {
+            *access = {};
+            return false;
+        }
+
+        if (access->caseCount == 0) {
+            access->kind = caseKind;
+            access->typedArrayType = typedArrayType;
+            access->onHeapMode = onHeapMode;
+        } else if (caseKind != access->kind ||
+                   (caseKind == ElementStoreKind::TYPED_ARRAY && typedArrayType != access->typedArrayType)) {
+            *access = {};
+            return false;
+        } else if (caseKind == ElementStoreKind::TYPED_ARRAY) {
+            access->onHeapMode = OnHeap::Merge(access->onHeapMode, onHeapMode);
+        }
+
+        for (uint32_t caseIndex = 0; caseIndex < access->caseCount; ++caseIndex) {
+            if (hclasses[caseIndex] == hclass) {
+                *access = {};
+                return false;
+            }
+        }
+        hclasses[access->caseCount] = hclass;
+        access->cases[access->caseCount++] = ElementStoreAccessCase {elementCase.expectedHClass, elementsKind};
+    }
+
+    if (access->caseCount == 0) {
+        return false;
+    }
+    if (access->IsJSArray() &&
+        !BuildElementStoreTransitionGroups(env_ == nullptr ? nullptr : env_->GetHostThread(), hclasses,
+                                           explicitTargets, explicitTargetRefs, access)) {
+        *access = {};
+        return false;
+    }
+    if (access->IsJSArray() && !dependencyRecorder_.InstallArrayDetector()) {
+        *access = {};
+        return false;
+    }
+    for (uint32_t i = 0; i < access->caseCount; ++i) {
+        if (!dependencyRecorder_.InstallStableHClass(access->cases[i].expectedHClass) ||
+            (access->IsJSArray() && !dependencyRecorder_.InstallNotPrototype(access->cases[i].expectedHClass)) ||
+            (needsProtoDependency[i] &&
+             !dependencyRecorder_.InstallStableProtoChain(access->cases[i].expectedHClass))) {
+            *access = {};
+            return false;
+        }
+    }
+    std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> installedExplicitTargets {};
+    uint32_t installedExplicitTargetCount = 0;
+    for (uint32_t i = 0; access->IsJSArray() && i < access->caseCount; ++i) {
+        JSHClass *target = explicitTargets[i];
+        auto feedbackEnd = hclasses.begin() + access->caseCount;
+        auto installedEnd = installedExplicitTargets.begin() + installedExplicitTargetCount;
+        bool isFeedbackHClass = target != nullptr && std::find(hclasses.begin(), feedbackEnd, target) != feedbackEnd;
+        bool isAlreadyInstalled = target != nullptr &&
+            std::find(installedExplicitTargets.begin(), installedEnd, target) != installedEnd;
+        if (target == nullptr || isFeedbackHClass || isAlreadyInstalled) {
+            continue;
+        }
+        if (!dependencyRecorder_.InstallStableHClass(explicitTargetRefs[i]) ||
+            !dependencyRecorder_.InstallNotPrototype(explicitTargetRefs[i])) {
+            *access = {};
+            return false;
+        }
+        installedExplicitTargets[installedExplicitTargetCount++] = target;
+    }
+    return true;
 }
 
 bool ArkSteedAccessInfoFactory::ComputeNamedStoreAccessInfo(const NamedAccessFeedback &feedback,

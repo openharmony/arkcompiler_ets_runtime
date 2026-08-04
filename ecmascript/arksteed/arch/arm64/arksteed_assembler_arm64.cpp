@@ -301,6 +301,21 @@ void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, 
     StoreRegisterWithOperand(src, operand);
 }
 
+void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, ArkSteedRegister offset)
+{
+    assembler_.Str(src, aarch64::MemoryOperand(base, offset, aarch64::UXTX));
+}
+
+void ArkSteedAssembler::StoreInt8Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    assembler_.Strb(src.W(), aarch64::MemoryOperand(base, offset, aarch64::AddrMode::OFFSET));
+}
+
+void ArkSteedAssembler::StoreInt16Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
+{
+    assembler_.Strh(src.W(), aarch64::MemoryOperand(base, offset, aarch64::AddrMode::OFFSET));
+}
+
 void ArkSteedAssembler::StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)
 {
     aarch64::MemoryOperand operand(base, offset, aarch64::AddrMode::OFFSET);
@@ -316,6 +331,14 @@ void ArkSteedAssembler::StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedReg
 void ArkSteedAssembler::StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset)
 {
     StoreFloat64(aarch64::MemoryOperand(base, offset, aarch64::AddrMode::OFFSET), src);
+}
+
+void ArkSteedAssembler::StoreFloat32Field(ArkSteedDoubleRegister src, ArkSteedDoubleRegister scratch,
+                                          ArkSteedRegister base, int32_t offset)
+{
+    auto floatScratch = aarch64::VRegister::Create(scratch.Code(), 32);
+    assembler_.FcvtFloat32(floatScratch, src);
+    assembler_.StrFloat32(floatScratch, aarch64::MemoryOperand(base, offset, aarch64::AddrMode::OFFSET));
 }
 
 void ArkSteedAssembler::LoadActualArgc(ArkSteedRegister dst)
@@ -627,6 +650,11 @@ void ArkSteedAssembler::ShiftRightLogical(ArkSteedRegister dst, uint32_t shift)
     assembler_.Lsr(dst, dst, shift);
 }
 
+void ArkSteedAssembler::ShiftLeft(ArkSteedRegister dst, uint32_t shift)
+{
+    assembler_.Orr(dst, aarch64::xzr, aarch64::Operand(dst, aarch64::Shift::LSL, shift));
+}
+
 void ArkSteedAssembler::ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift)
 {
     assembler_.Lsr(dst.W(), dst.W(), shift);
@@ -714,9 +742,7 @@ void ArkSteedAssembler::Int32Xor(ArkSteedRegister dst, int32_t immediate)
 
 void ArkSteedAssembler::Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift)
 {
-    ASSERT(shift < 32U);
-    constexpr uint32_t REGISTER_BITS = 32U;
-    assembler_.Ubfm(dst.W(), dst.W(), (REGISTER_BITS - shift) % REGISTER_BITS, REGISTER_BITS - shift - 1U);
+    assembler_.Orr(dst.W(), aarch64::wzr, aarch64::Operand(dst.W(), aarch64::Shift::LSL, shift));
 }
 
 void ArkSteedAssembler::Int32ShiftLeftByRegister(ArkSteedRegister dst, ArkSteedRegister shift)

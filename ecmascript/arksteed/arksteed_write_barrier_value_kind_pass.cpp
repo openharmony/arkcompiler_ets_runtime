@@ -217,6 +217,21 @@ NonControlVertex *WriteBarrierValueKindPass::TryRewriteStore(NonControlVertex *v
         return store;
     }
 
+    if (auto *store = vertex->TryCast<StoreTaggedElementWithBarrierVertex>()) {
+        ArkSteedWriteBarrierValueKind valueKind =
+            ClassifyValue(store->GetInput(StoreTaggedElementWithBarrierVertex::VALUE_INDEX));
+        if (valueKind != ArkSteedWriteBarrierValueKind::Unknown) {
+            store->SetValueKind(valueKind);
+        }
+        if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+            return NewElementStoreWithoutBarrier(store->GetOwner(),
+                                                 store->GetInput(StoreTaggedElementWithBarrierVertex::OBJECT_INDEX),
+                                                 store->GetInput(StoreTaggedElementWithBarrierVertex::INDEX_INDEX),
+                                                 store->GetInput(StoreTaggedElementWithBarrierVertex::VALUE_INDEX));
+        }
+        return store;
+    }
+
     if (auto *store = vertex->TryCast<StoreSharedFieldWithBarrierVertex>()) {
         ArkSteedWriteBarrierValueKind valueKind =
             ClassifyValue(store->GetInput(StoreSharedFieldWithBarrierVertex::VALUE_INDEX));
@@ -248,6 +263,16 @@ StoreTaggedFieldVertex *WriteBarrierValueKindPass::NewStoreWithoutBarrier(
 {
     std::initializer_list<ValueVertex *> inputs {object, value};
     auto *store = Vertex::New<StoreTaggedFieldVertex>(chunk_, inputs, offset);
+    store->SetOwner(owner);
+    return store;
+}
+
+StoreTaggedElementVertex *WriteBarrierValueKindPass::NewElementStoreWithoutBarrier(BB *owner, ValueVertex *object,
+                                                                                   ValueVertex *index,
+                                                                                   ValueVertex *value)
+{
+    std::initializer_list<ValueVertex *> inputs {object, index, value};
+    auto *store = Vertex::New<StoreTaggedElementVertex>(chunk_, inputs);
     store->SetOwner(owner);
     return store;
 }

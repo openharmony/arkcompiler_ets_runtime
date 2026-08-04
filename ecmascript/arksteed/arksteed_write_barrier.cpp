@@ -372,5 +372,39 @@ void ArkSteedWriteBarrierEmitter::TransitionHClass(ArkSteedRegister glue, ArkSte
 #endif
 }
 
+void ArkSteedWriteBarrierEmitter::StoreTaggedElement(ArkSteedRegister glue, ArkSteedRegister object,
+                                                     ArkSteedRegister byteOffset, ArkSteedRegister value,
+                                                     ArkSteedRegister scratch, ArkSteedWriteBarrierValueKind valueKind)
+{
+    ASSERT(glue == ArkSteedAssembler::GetParameterRegister(0));
+    ASSERT(object == ArkSteedAssembler::GetParameterRegister(1));
+    ASSERT(byteOffset == ArkSteedAssembler::GetParameterRegister(2));
+    ASSERT(value == ArkSteedAssembler::GetParameterRegister(3));
+
+    if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+        __ StoreField(value, object, byteOffset);
+        return;
+    }
+    if (valueKind == ArkSteedWriteBarrierValueKind::HeapObject) {
+        __ StoreField(value, object, byteOffset);
+        __ CallNGCRuntime(RTSTUB_ID(ASMFastWriteBarrier));
+        return;
+    }
+
+    Label needsBarrier;
+    Label done;
+    __ Move(scratch, value);
+    __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    __ Compare(scratch, 0);
+    __ JumpIf(Condition::EQUAL, &needsBarrier);
+    __ StoreField(value, object, byteOffset);
+    __ Jump(&done);
+
+    __ Bind(&needsBarrier);
+    __ StoreField(value, object, byteOffset);
+    __ CallNGCRuntime(RTSTUB_ID(ASMFastWriteBarrier));
+    __ Bind(&done);
+}
+
 #undef __
 }  // namespace panda::ecmascript::arksteed

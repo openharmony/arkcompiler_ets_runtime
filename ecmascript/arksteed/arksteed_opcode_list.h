@@ -93,6 +93,9 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(I32ToF64)                         \
     V(CheckedNumberToF64)               \
     V(F64ToI32Trunc)                    \
+    V(I32ToUint8Clamped)                \
+    V(F64ToUint8Clamped)                \
+    V(DoubleToInt32Call)                \
     V(F64ToTaggedDouble)                \
     V(F64Neg)                           \
     V(F64Add)                           \
@@ -106,7 +109,12 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(DeoptIfPrototypeChanged)      \
     V(DeoptIfTaggedCondition)       \
     V(DeoptIfInt32Condition)        \
+    V(DeoptIfFloat64Condition)      \
     V(DeoptIfNotNumber)             \
+    V(DeoptIfNotHeapObject)         \
+    V(DeoptIfArrayBufferDetached)   \
+    V(DeoptIfCOWElements)           \
+    V(DeoptIfElementsUnstable)      \
     V(StoreTaggedToAddress)         \
     V(StoreI32ToAddress)            \
     V(StoreI64ToAddress)            \
@@ -117,6 +125,10 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(StoreInt32FieldWithRep)       \
     V(StoreDoubleFieldWithRep)      \
     V(StoreTaggedFieldWithBarrier)  \
+    V(StoreTaggedElement)           \
+    V(StoreTaggedElementWithBarrier) \
+    V(StoreIntTypedArrayElement)    \
+    V(StoreFloatTypedArrayElement)  \
     V(StoreSharedFieldWithBarrier)  \
     V(TransitionHClassWithBarrier)  \
     V(StoreTaggedFieldByHClass)     \

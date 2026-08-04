@@ -111,6 +111,26 @@ public:
         return descriptor;
     }
 
+    static SideEffectDescriptor Classify(StoreTaggedElementVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreTaggedElementVertex::OBJECT_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreTaggedElementWithBarrierVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreTaggedElementWithBarrierVertex::OBJECT_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreIntTypedArrayElementVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreIntTypedArrayElementVertex::RECEIVER_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreFloatTypedArrayElementVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreFloatTypedArrayElementVertex::RECEIVER_INDEX));
+    }
+
     static SideEffectDescriptor Classify(StoreEnvSlotVertex *vertex)
     {
         SideEffectDescriptor descriptor;
@@ -137,6 +157,15 @@ public:
         static_assert(CanWrite(VertexT::PROPERTIES));
         LOG_COMPILER(WARN) << "ArkSteed side-effect classifier fallback for " << OpcodeToString(vertex->GetOpcode());
         return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
+    }
+
+private:
+    static SideEffectDescriptor ElementsWrite(ValueVertex *receiver)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::ELEMENTS_WRITE;
+        descriptor.receiver = receiver;
+        return descriptor;
     }
 };
 

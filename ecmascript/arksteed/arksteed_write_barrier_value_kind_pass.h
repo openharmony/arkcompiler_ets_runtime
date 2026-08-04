@@ -54,6 +54,8 @@ private:
     NonControlVertex *TryRewriteStore(NonControlVertex *vertex);
     StoreTaggedFieldVertex *NewStoreWithoutBarrier(
         BB *owner, ValueVertex *object, ValueVertex *value, int32_t offset);
+    StoreTaggedElementVertex *NewElementStoreWithoutBarrier(BB *owner, ValueVertex *object, ValueVertex *index,
+                                                            ValueVertex *value);
     bool TryGetIntPtrConstant(ValueVertex *value, int32_t *result) const;
 
     static ArkSteedWriteBarrierValueKind ToValueKind(TargetKind target);

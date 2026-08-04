@@ -1,0 +1,6 @@
+false
+false
+true
+false
+-777
+false

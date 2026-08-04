@@ -40,6 +40,9 @@ public:
     void TransitionHClass(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister hclass,
                           ArkSteedRegister objectRegionScratch, ArkSteedRegister hclassRegionScratch);
 
+    void StoreTaggedElement(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister byteOffset,
+                            ArkSteedRegister value, ArkSteedRegister scratch, ArkSteedWriteBarrierValueKind valueKind);
+
 private:
     void EmitFastWriteBarrier(ArkSteedRegister glue, ArkSteedRegister object, ArkSteedRegister value,
                               int32_t offset);

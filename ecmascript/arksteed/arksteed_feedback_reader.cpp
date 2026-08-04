@@ -18,15 +18,15 @@
 
 namespace panda::ecmascript::arksteed {
 
-constexpr uint32_t NAMED_IC_POLY_CASE_WIDTH = 2;
-constexpr int NAMED_ACCESS_SLOT_INPUT = 0;
+constexpr uint32_t IC_POLY_CASE_WIDTH = 2;
+constexpr int ACCESS_SLOT_INPUT = 0;
 
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const
 {
     if (slotId == nullptr) {
         return false;
     }
-    if (index == NAMED_ACCESS_SLOT_INPUT && !allowImmediate &&
+    if (index == ACCESS_SLOT_INPUT && !allowImmediate &&
         bytecodeInfo_.slotId.GetId() != kungfu::ICSlotId::INVALID_ID) {
         *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
         return true;
@@ -50,7 +50,7 @@ bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate
 
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(uint32_t *slotId) const
 {
-    return TryGetFeedbackSlotId(NAMED_ACCESS_SLOT_INPUT, false, slotId);
+    return TryGetFeedbackSlotId(ACCESS_SLOT_INPUT, false, slotId);
 }
 
 bool ArkSteedFeedbackReader::TryGetConstDataId(int index, uint16_t *constDataId) const
@@ -67,7 +67,7 @@ bool ArkSteedFeedbackReader::TryGetConstDataId(int index, uint16_t *constDataId)
     return true;
 }
 
-bool ArkSteedFeedbackReader::TryGetNamedICMonoSnapshot(int slotIndex, NamedICMonoSnapshot *snapshot) const
+bool ArkSteedFeedbackReader::TryGetICMonoSnapshot(int slotIndex, ICMonoSnapshot *snapshot) const
 {
     uint32_t slotId = 0;
     if (!TryGetFeedbackSlotId(slotIndex, false, &slotId)) {
@@ -96,7 +96,7 @@ bool ArkSteedFeedbackReader::TryGetNamedICMonoSnapshot(int slotIndex, NamedICMon
     return true;
 }
 
-bool ArkSteedFeedbackReader::TryGetNamedICPolySnapshot(int slotIndex, NamedICPolySnapshot *snapshot) const
+bool ArkSteedFeedbackReader::TryGetICPolySnapshot(int slotIndex, ICPolySnapshot *snapshot) const
 {
     uint32_t slotId = 0;
     if (!TryGetFeedbackSlotId(slotIndex, false, &slotId)) {
@@ -118,23 +118,23 @@ bool ArkSteedFeedbackReader::TryGetNamedICPolySnapshot(int slotIndex, NamedICPol
     }
 
     auto *polyArray = TaggedArray::Cast(first.GetTaggedObject());
-    if (polyArray->GetLength() == 0 || (polyArray->GetLength() % NAMED_IC_POLY_CASE_WIDTH) != 0) {
+    if (polyArray->GetLength() == 0 || (polyArray->GetLength() % IC_POLY_CASE_WIDTH) != 0) {
         return false;
     }
     snapshot->polyArray = polyArray;
-    snapshot->caseCount = polyArray->GetLength() / NAMED_IC_POLY_CASE_WIDTH;
+    snapshot->caseCount = polyArray->GetLength() / IC_POLY_CASE_WIDTH;
     snapshot->slotId = slotId;
     return snapshot->caseCount > 0;
 }
 
-bool ArkSteedFeedbackReader::TryGetNamedICPolyCase(const NamedICPolySnapshot &snapshot, uint32_t caseIndex,
-                                                   NamedICCaseSnapshot *icCase) const
+bool ArkSteedFeedbackReader::TryGetICPolyCase(const ICPolySnapshot &snapshot, uint32_t caseIndex,
+                                              ICCaseSnapshot *icCase) const
 {
     if (snapshot.polyArray == nullptr || caseIndex >= snapshot.caseCount) {
         return false;
     }
 
-    uint32_t index = caseIndex * NAMED_IC_POLY_CASE_WIDTH;
+    uint32_t index = caseIndex * IC_POLY_CASE_WIDTH;
     JSTaggedValue cachedHClass = snapshot.polyArray->Get(compilerThread_, index);
     if (!cachedHClass.IsWeak()) {
         return false;
@@ -168,6 +168,18 @@ NamedAccessCaseFeedback ArkSteedFeedbackReader::MakeNamedAccessCaseFeedback(ArkS
     return feedback;
 }
 
+ElementAccessCaseFeedback ArkSteedFeedbackReader::MakeElementAccessCaseFeedback(ArkSteedHClassRef expectedHClass,
+                                                                                JSTaggedValue handler) const
+{
+    ElementAccessCaseFeedback feedback;
+    feedback.expectedHClass = expectedHClass;
+    feedback.handler = broker_->MakeHandlerRef(handler);
+    if (!feedback.expectedHClass.IsSafeForCompile() || !feedback.handler.IsSafeForCompile()) {
+        return feedback;
+    }
+    return feedback;
+}
+
 bool ArkSteedFeedbackReader::ReadNamedAccessFeedback(int slotIndex, NamedAccessFeedback *feedback) const
 {
     *feedback = {};
@@ -176,8 +188,8 @@ bool ArkSteedFeedbackReader::ReadNamedAccessFeedback(int slotIndex, NamedAccessF
         return false;
     }
 
-    NamedICMonoSnapshot monoSnapshot;
-    if (TryGetNamedICMonoSnapshot(slotIndex, &monoSnapshot)) {
+    ICMonoSnapshot monoSnapshot;
+    if (TryGetICMonoSnapshot(slotIndex, &monoSnapshot)) {
         feedback->base.kind = ProcessedFeedbackKind::NAMED_ACCESS;
         feedback->base.source = {monoSnapshot.slotId, false, AccessFeedbackSlotKind::UNKNOWN};
         feedback->cases[0] = MakeNamedAccessCaseFeedback(monoSnapshot.expectedHClass, monoSnapshot.handler);
@@ -189,8 +201,8 @@ bool ArkSteedFeedbackReader::ReadNamedAccessFeedback(int slotIndex, NamedAccessF
         return true;
     }
 
-    NamedICPolySnapshot polySnapshot;
-    if (!TryGetNamedICPolySnapshot(slotIndex, &polySnapshot)) {
+    ICPolySnapshot polySnapshot;
+    if (!TryGetICPolySnapshot(slotIndex, &polySnapshot)) {
         *feedback = {};
         return false;
     }
@@ -202,8 +214,8 @@ bool ArkSteedFeedbackReader::ReadNamedAccessFeedback(int slotIndex, NamedAccessF
     feedback->base.kind = ProcessedFeedbackKind::NAMED_ACCESS;
     feedback->base.source = {polySnapshot.slotId, true, AccessFeedbackSlotKind::UNKNOWN};
     for (uint32_t i = 0; i < polySnapshot.caseCount && feedback->caseCount < MAX_NAMED_IC_POLY_CASES; ++i) {
-        NamedICCaseSnapshot icCase;
-        if (!TryGetNamedICPolyCase(polySnapshot, i, &icCase)) {
+        ICCaseSnapshot icCase;
+        if (!TryGetICPolyCase(polySnapshot, i, &icCase)) {
             *feedback = {};
             return false;
         }
@@ -269,12 +281,12 @@ bool ArkSteedFeedbackReader::ReadValueAccessFeedback(ValueAccessFeedback *feedba
 
     if (caseArray != nullptr) {
         uint32_t length = caseArray->GetLength();
-        if (length == 0 || (length % NAMED_IC_POLY_CASE_WIDTH) != 0 ||
-            length / NAMED_IC_POLY_CASE_WIDTH > MAX_NAMED_IC_POLY_CASES) {
+        if (length == 0 || (length % IC_POLY_CASE_WIDTH) != 0 ||
+            length / IC_POLY_CASE_WIDTH > MAX_NAMED_IC_POLY_CASES) {
             *feedback = {};
             return false;
         }
-        for (uint32_t index = 0; index < length; index += NAMED_IC_POLY_CASE_WIDTH) {
+        for (uint32_t index = 0; index < length; index += IC_POLY_CASE_WIDTH) {
             JSTaggedValue cachedHClass = caseArray->Get(compilerThread_, index);
             if (!cachedHClass.IsWeak()) {
                 *feedback = {};
@@ -297,6 +309,46 @@ bool ArkSteedFeedbackReader::ReadValueAccessFeedback(ValueAccessFeedback *feedba
     feedback->base.kind = ProcessedFeedbackKind::VALUE_ACCESS;
     feedback->base.source = {slotId, isPoly || feedback->caseCount > 1, AccessFeedbackSlotKind::VALUE_LOAD};
     return true;
+}
+
+bool ArkSteedFeedbackReader::ReadElementAccessFeedback(int slotIndex, ElementAccessFeedback *feedback) const
+{
+    *feedback = {};
+    ICMonoSnapshot monoSnapshot;
+    if (TryGetICMonoSnapshot(slotIndex, &monoSnapshot)) {
+        ElementAccessCaseFeedback elementCase =
+            MakeElementAccessCaseFeedback(monoSnapshot.expectedHClass, monoSnapshot.handler);
+        if (!elementCase.expectedHClass.IsSafeForCompile() || !elementCase.handler.IsSafeForCompile()) {
+            return false;
+        }
+        feedback->base.kind = ProcessedFeedbackKind::ELEMENT_ACCESS;
+        feedback->base.source = {monoSnapshot.slotId, false, AccessFeedbackSlotKind::ELEMENT_STORE};
+        feedback->cases[0] = elementCase;
+        feedback->caseCount = 1;
+        return true;
+    }
+
+    ICPolySnapshot polySnapshot;
+    if (!TryGetICPolySnapshot(slotIndex, &polySnapshot) || polySnapshot.caseCount > MAX_ELEMENT_IC_POLY_CASES) {
+        return false;
+    }
+    feedback->base.kind = ProcessedFeedbackKind::ELEMENT_ACCESS;
+    feedback->base.source = {polySnapshot.slotId, true, AccessFeedbackSlotKind::ELEMENT_STORE};
+    for (uint32_t i = 0; i < polySnapshot.caseCount; ++i) {
+        ICCaseSnapshot icCase;
+        if (!TryGetICPolyCase(polySnapshot, i, &icCase)) {
+            *feedback = {};
+            return false;
+        }
+        ElementAccessCaseFeedback elementCase =
+            MakeElementAccessCaseFeedback(icCase.expectedHClass, icCase.handler);
+        if (!elementCase.expectedHClass.IsSafeForCompile() || !elementCase.handler.IsSafeForCompile()) {
+            *feedback = {};
+            return false;
+        }
+        feedback->cases[feedback->caseCount++] = elementCase;
+    }
+    return feedback->caseCount > 0;
 }
 
 ArkSteedOperationHint ArkSteedFeedbackReader::MakeOperationHint(uint32_t rawBits) const

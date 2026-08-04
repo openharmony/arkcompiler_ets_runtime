@@ -31,6 +31,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/on_heap.h"
 
 namespace panda::ecmascript::arksteed {
 using CommonStubID = kungfu::CommonStubCSigns::ID;
@@ -1211,6 +1212,145 @@ public:
 
 private:
     ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
+};
+
+class StoreTaggedElementVertex : public FixedInputVertexMixin<NonControlVertex, StoreTaggedElementVertex> {
+public:
+    enum Indices : uint32_t {
+        OBJECT_INDEX = 0,
+        INDEX_INDEX = 1,
+        VALUE_INDEX = 2,
+        NUM_INPUTS = 3,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
+
+    explicit StoreTaggedElementVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
+class StoreTaggedElementWithBarrierVertex
+    : public FixedInputVertexMixin<NonControlVertex, StoreTaggedElementWithBarrierVertex> {
+public:
+    enum Indices : uint32_t {
+        GLUE_INDEX = 0,
+        OBJECT_INDEX = 1,
+        INDEX_INDEX = 2,
+        VALUE_INDEX = 3,
+        NUM_INPUTS = 4,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::INT_PTR,
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES =
+        VertexPropertyFlag::CAN_WRITE |
+        VertexPropertyFlag::IS_CALL;
+
+    explicit StoreTaggedElementWithBarrierVertex(
+        ArkSteedWriteBarrierValueKind valueKind = ArkSteedWriteBarrierValueKind::Unknown)
+        : FixedInputVertexMixin(), valueKind_(valueKind)
+    {}
+
+    ArkSteedWriteBarrierValueKind GetValueKind() const
+    {
+        return valueKind_;
+    }
+
+    void SetValueKind(ArkSteedWriteBarrierValueKind valueKind)
+    {
+        valueKind_ = valueKind;
+    }
+
+    void SetValueLocationConstraints();
+
+private:
+    ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
+};
+
+class StoreIntTypedArrayElementVertex
+    : public FixedInputVertexMixin<NonControlVertex, StoreIntTypedArrayElementVertex> {
+public:
+    enum Indices : uint32_t {
+        RECEIVER_INDEX = 0,
+        INDEX_INDEX = 1,
+        VALUE_INDEX = 2,
+        NUM_INPUTS = 3,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::INT32,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
+
+    explicit StoreIntTypedArrayElementVertex(JSType type, OnHeapMode onHeapMode)
+        : FixedInputVertexMixin(), type_(type), onHeapMode_(onHeapMode)
+    {}
+
+    JSType GetType() const
+    {
+        return type_;
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return onHeapMode_;
+    }
+
+    void SetValueLocationConstraints();
+
+private:
+    JSType type_ {JSType::INVALID};
+    OnHeapMode onHeapMode_ {OnHeapMode::NONE};
+};
+
+class StoreFloatTypedArrayElementVertex
+    : public FixedInputVertexMixin<NonControlVertex, StoreFloatTypedArrayElementVertex> {
+public:
+    enum Indices : uint32_t {
+        RECEIVER_INDEX = 0,
+        INDEX_INDEX = 1,
+        VALUE_INDEX = 2,
+        NUM_INPUTS = 3,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::FLOAT64,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
+
+    explicit StoreFloatTypedArrayElementVertex(JSType type, OnHeapMode onHeapMode)
+        : FixedInputVertexMixin(), type_(type), onHeapMode_(onHeapMode)
+    {}
+
+    JSType GetType() const
+    {
+        return type_;
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return onHeapMode_;
+    }
+
+    void SetValueLocationConstraints();
+
+private:
+    JSType type_ {JSType::INVALID};
+    OnHeapMode onHeapMode_ {OnHeapMode::NONE};
 };
 
 class StoreSharedFieldWithBarrierVertex
@@ -2401,6 +2541,57 @@ public:
     void SetValueLocationConstraints();
 };
 
+class I32ToUint8ClampedVertex : public FixedInputVertexMixin<ValueVertex, I32ToUint8ClampedVertex> {
+public:
+    enum Indices : uint32_t {
+        INPUT_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::INT32,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = {};
+
+    explicit I32ToUint8ClampedVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
+class F64ToUint8ClampedVertex : public FixedInputVertexMixin<ValueVertex, F64ToUint8ClampedVertex> {
+public:
+    enum Indices : uint32_t {
+        INPUT_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::FLOAT64,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = {};
+
+    explicit F64ToUint8ClampedVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
+class DoubleToInt32CallVertex : public FixedInputVertexMixin<ValueVertex, DoubleToInt32CallVertex> {
+public:
+    enum Indices : uint32_t {
+        INPUT_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::FLOAT64,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL;
+
+    explicit DoubleToInt32CallVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
 class F64ToTaggedDoubleVertex : public FixedInputVertexMixin<ValueVertex, F64ToTaggedDoubleVertex> {
 public:
     enum Indices : uint32_t {
@@ -2708,6 +2899,44 @@ private:
     kungfu::DeoptType deoptType_;
 };
 
+class DeoptIfFloat64ConditionVertex : public VertexMixin<NonControlVertex, DeoptIfFloat64ConditionVertex>,
+                                      public EagerDeoptimizableMixin,
+                                      public ConditionMixin {
+public:
+    enum Indices : uint32_t {
+        LEFT_INDEX = 0,
+        RIGHT_INDEX = 1,
+        NUM_INPUTS = 2,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
+
+    explicit DeoptIfFloat64ConditionVertex(Chunk *chunk, uint32_t bytecodeOffset,
+                                           Condition condition, kungfu::DeoptType deoptType)
+        : VertexMixin(),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          ConditionMixin(condition),
+          deoptType_(deoptType)
+    {}
+
+    kungfu::DeoptType GetDeoptType() const
+    {
+        return deoptType_;
+    }
+
+    void SetValueLocationConstraints();
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::FLOAT64);
+        ASSERT(GetInput(RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::FLOAT64);
+    }
+
+private:
+    kungfu::DeoptType deoptType_;
+};
+
 class DeoptIfNotNumberVertex : public VertexMixin<NonControlVertex, DeoptIfNotNumberVertex>,
                                public EagerDeoptimizableMixin {
 public:
@@ -2729,6 +2958,115 @@ public:
     {
         ASSERT(GetInputCount() == NUM_INPUTS);
         ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class DeoptIfNotHeapObjectVertex : public VertexMixin<NonControlVertex, DeoptIfNotHeapObjectVertex>,
+                                   public EagerDeoptimizableMixin {
+public:
+    enum Indices : uint32_t {
+        VALUE_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
+
+    explicit DeoptIfNotHeapObjectVertex(Chunk *chunk, uint32_t bytecodeOffset)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class DeoptIfArrayBufferDetachedVertex
+    : public VertexMixin<NonControlVertex, DeoptIfArrayBufferDetachedVertex>,
+      public EagerDeoptimizableMixin {
+public:
+    enum Indices : uint32_t {
+        RECEIVER_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr VertexPropertyFlag PROPERTIES =
+        VertexPropertyFlag::CAN_EAGER_DEOPT |
+        VertexPropertyFlag::CAN_READ;
+
+    DeoptIfArrayBufferDetachedVertex(Chunk *chunk, uint32_t bytecodeOffset, OnHeapMode onHeapMode)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), onHeapMode_(onHeapMode)
+    {
+        ASSERT(!OnHeap::IsOnHeap(onHeapMode_));
+    }
+
+    OnHeapMode GetOnHeapMode() const
+    {
+        return onHeapMode_;
+    }
+
+    void SetValueLocationConstraints();
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    OnHeapMode onHeapMode_ {OnHeapMode::NONE};
+};
+
+class DeoptIfCOWElementsVertex : public VertexMixin<NonControlVertex, DeoptIfCOWElementsVertex>,
+                                 public EagerDeoptimizableMixin {
+public:
+    enum Indices : uint32_t {
+        ELEMENTS_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr VertexPropertyFlag PROPERTIES =
+        VertexPropertyFlag::CAN_EAGER_DEOPT |
+        VertexPropertyFlag::CAN_READ;
+
+    explicit DeoptIfCOWElementsVertex(Chunk *chunk, uint32_t bytecodeOffset)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(ELEMENTS_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+};
+
+class DeoptIfElementsUnstableVertex : public VertexMixin<NonControlVertex, DeoptIfElementsUnstableVertex>,
+                                      public EagerDeoptimizableMixin {
+public:
+    enum Indices : uint32_t {
+        RECEIVER_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr VertexPropertyFlag PROPERTIES =
+        VertexPropertyFlag::CAN_EAGER_DEOPT |
+        VertexPropertyFlag::CAN_READ;
+
+    explicit DeoptIfElementsUnstableVertex(Chunk *chunk, uint32_t bytecodeOffset)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
+    {}
+
+    void SetValueLocationConstraints();
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 };
 

@@ -151,9 +151,14 @@ public:
     void LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, ArkSteedRegister data, ArkSteedRegister index,
                                      ArkSteedRegister scratch, JSType elementType);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreField(ArkSteedRegister src, ArkSteedRegister base, ArkSteedRegister offset);
+    void StoreInt8Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreInt16Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreFloat32Field(ArkSteedDoubleRegister src, ArkSteedDoubleRegister scratch, ArkSteedRegister base,
+                           int32_t offset);
     void LoadActualArgc(ArkSteedRegister dst);
 
     void LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp);
@@ -203,6 +208,7 @@ public:
     void And(ArkSteedRegister dst, ArkSteedRegister src);
     void Lsr(ArkSteedRegister dst, uint32_t shift);
     void ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
+    void ShiftLeft(ArkSteedRegister dst, uint32_t shift);
     void ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift);
     void MoveBitMask32(ArkSteedRegister dst, ArkSteedRegister bitIndex);
     void Int32Neg(ArkSteedRegister dst, ArkSteedRegister src);

@@ -39,6 +39,7 @@
 #include "ecmascript/ic/profile_type_info_cell.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_array.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
@@ -1187,7 +1188,7 @@ struct GraphBuilder::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
             case kungfu::EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-                LowerStObjByValue(bcInfo);
+                LowerStObjByValue(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
             case kungfu::EcmaOpcode::STOWNBYVALUE_IMM16_V8_V8:
@@ -2019,11 +2020,17 @@ struct GraphBuilder::BytecodeVisitor {
         CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
     }
 
-    void LowerStObjByValue(const BytecodeInfo *bcInfo)
+    void LowerStObjByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = LoadRegister(bcInfo, 2);  // 2: key register index
         ValueVertex *value = frameState.GetAcc();
+        ElementStoreAccessInfo access;
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        if (factory.TryBuildElementStoreAccessInfo(0, &access) &&
+            TryLowerElementStore(bcIndex, access, receiver, key, value)) {
+            return;
+        }
         CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
     }
 
@@ -4173,6 +4180,17 @@ struct GraphBuilder::BytecodeVisitor {
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
+    void BuildDeoptIfFloat64Condition(ValueVertex *leftF64, ValueVertex *rightF64, Condition condition,
+                                      kungfu::DeoptType deoptType)
+    {
+        std::vector<ValueVertex *> inputs {leftF64, rightF64};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfFloat64ConditionVertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
+            deoptType)
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
     ValueVertex *BuildTaggedIntConstant(int32_t value)
     {
         ValueVertex *constant = self->graph_->GetTaggedConstant(JSTaggedValue(value).GetRawData());
@@ -4672,6 +4690,74 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
         return self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, {valueF64});
+    }
+
+    void BuildTruncatingNumberTypedArrayStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
+                                               const ElementStoreAccessInfo &access)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *intValue = BuildTaggedIntToI32(value);
+            self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                              {receiver, index, intValue}, access.typedArrayType,
+                                                              access.onHeapMode);
+            return;
+        }
+
+        ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
+        ValueVertex *minInt64 = self->graph_->GetFloat64Constant(-0x1p63);
+        ValueVertex *maxInt64 = self->graph_->GetFloat64Constant(0x1p63);
+        BB *checkUpperBlock = self->NewBlock();
+        BB *fastBlock = self->NewBlock();
+        BB *lowerOverflowBlock = self->NewBlock();
+        BB *upperOverflowBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+
+        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(
+            currentBlock, {doubleValue, minInt64}, checkUpperBlock, lowerOverflowBlock,
+            Condition::GREATER_THAN_OR_EQUAL);
+
+        currentBlock = checkUpperBlock;
+        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(
+            currentBlock, {doubleValue, maxInt64}, fastBlock, upperOverflowBlock, Condition::LESS_THAN);
+
+        currentBlock = fastBlock;
+        ValueVertex *fastValue = self->NewVertex<F64ToI32TruncVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{doubleValue});
+        self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                         {receiver, index, fastValue}, access.typedArrayType,
+                                                         access.onHeapMode);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        for (BB *overflowBlock : {lowerOverflowBlock, upperOverflowBlock}) {
+            currentBlock = overflowBlock;
+            currentBlock->SetDeferred(true);
+            ValueVertex *slowValue = self->NewVertex<DoubleToInt32CallVertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{doubleValue});
+            self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                             {receiver, index, slowValue}, access.typedArrayType,
+                                                             access.onHeapMode);
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+        }
+
+        currentBlock = doneBlock;
+    }
+
+    void BuildClampedUint8TypedArrayStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
+                                           const ElementStoreAccessInfo &access)
+    {
+        ValueVertex *clampedValue = nullptr;
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *intValue = BuildTaggedIntToI32(value);
+            clampedValue = self->NewVertex<I32ToUint8ClampedVertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {intValue});
+        } else {
+            ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
+            clampedValue = self->NewVertex<F64ToUint8ClampedVertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {doubleValue});
+        }
+        self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                         {receiver, index, clampedValue}, access.typedArrayType,
+                                                         access.onHeapMode);
     }
 
     ValueVertex *BuildBitwiseOperation(IntBitwiseKind kind)
@@ -5473,6 +5559,507 @@ struct GraphBuilder::BytecodeVisitor {
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
                                               plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
         return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {properties}, offset);
+    }
+
+    void BuildDeoptIfNotHeapObject(ValueVertex *value)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfNotHeapObjectVertex>(
+            currentBlock, {value}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfArrayBufferDetached(ValueVertex *receiver, OnHeapMode onHeapMode)
+    {
+        if (OnHeap::IsOnHeap(onHeapMode)) {
+            return;
+        }
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfArrayBufferDetachedVertex>(
+            currentBlock, {receiver}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), onHeapMode)
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfCOWElements(ValueVertex *elements)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfCOWElementsVertex>(
+            currentBlock, {elements}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfElementsUnstable(ValueVertex *receiver)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfElementsUnstableVertex>(
+            currentBlock, {receiver}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildStoreTaggedElement(ValueVertex *elements, ValueVertex *index, ValueVertex *value,
+                                 ArkSteedWriteBarrierValueKind provenValueKind = ArkSteedWriteBarrierValueKind::Unknown)
+    {
+        ArkSteedWriteBarrierValueKind valueKind = provenValueKind == ArkSteedWriteBarrierValueKind::Unknown
+                                                      ? ClassifyDirectWriteBarrierValueKind(value)
+                                                      : provenValueKind;
+        if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+            self->NewVertex<StoreTaggedElementVertex>(compileInfoFacts_, currentBlock, {elements, index, value});
+            return;
+        }
+        self->NewVertex<StoreTaggedElementWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                             {glue, elements, index, value}, valueKind);
+    }
+
+    ValueVertex *BuildCheckedElementIndex(ValueVertex *key)
+    {
+        if (compileInfoFacts_->CheckType(key, NodeInfo::NodeType::INT)) {
+            return BuildTaggedIntToI32(key);
+        }
+        ValueVertex *keyF64 = BuildCheckedNumberToF64(key);
+        ValueVertex *index = self->NewVertex<F64ToI32TruncVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{keyF64});
+        ValueVertex *roundTrip = self->NewVertex<I32ToF64Vertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{index});
+        BuildDeoptIfFloat64Condition(keyF64, roundTrip, Condition::NOT_EQUAL,
+                                     kungfu::DeoptType::NOTINT7);
+        return index;
+    }
+
+    struct ResolvedElementStoreHClass {
+        JSHClass *hclass {nullptr};
+        ArkSteedHClassRef ref {};
+    };
+
+    struct ResolvedElementStoreTransitionGroup {
+        ResolvedElementStoreHClass target {};
+        ValueVertex *targetHClassConstant {nullptr};
+        std::vector<ResolvedElementStoreHClass> transitionSources {};
+        ElementsKind targetElementsKind {ElementsKind::NONE};
+        bool useExactHClassTransition {false};
+    };
+
+    bool BuildCheckElementStoreHClasses(uint32_t bcIndex, ValueVertex *receiver,
+                                        const std::vector<ResolvedElementStoreHClass> &expectedHClasses)
+    {
+        if (expectedHClasses.empty()) {
+            return false;
+        }
+
+        std::vector<JSHClass *> rawHClasses;
+        rawHClasses.reserve(expectedHClasses.size());
+        for (const ResolvedElementStoreHClass &expected : expectedHClasses) {
+            if (expected.hclass == nullptr || !expected.ref.IsSafeForCompile()) {
+                return false;
+            }
+            rawHClasses.push_back(expected.hclass);
+        }
+
+        std::optional<std::vector<JSHClass *>> knownHClasses =
+            compileInfoFacts_->TryGetPossibleHClasses(receiver);
+        if (knownHClasses.has_value() && !knownHClasses->empty() &&
+            IsHClassSubset(knownHClasses.value(), rawHClasses)) {
+            return true;
+        }
+
+        std::vector<ValueVertex *> expectedConstants;
+        expectedConstants.reserve(expectedHClasses.size());
+        for (const ResolvedElementStoreHClass &expected : expectedHClasses) {
+            ValueVertex *constant = GetHeapConstant(expected.ref);
+            if (constant == nullptr) {
+                return false;
+            }
+            expectedConstants.push_back(constant);
+        }
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        std::vector<BB *> checkBlocks;
+        std::vector<BB *> matchBlocks;
+        checkBlocks.reserve(expectedHClasses.size());
+        matchBlocks.reserve(expectedHClasses.size());
+        for (uint32_t i = 0; i < expectedHClasses.size(); ++i) {
+            checkBlocks.push_back(self->NewBlock());
+            matchBlocks.push_back(self->NewBlock());
+        }
+        BB *primitiveDeoptBlock = self->NewBlock();
+        BB *hclassMissDeoptBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        primitiveDeoptBlock->SetDeferred(true);
+        hclassMissDeoptBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
+            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
+
+        ValueVertex *actualHClass = nullptr;
+        for (uint32_t i = 0; i < expectedHClasses.size(); ++i) {
+            currentBlock = checkBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            if (actualHClass == nullptr) {
+                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
+            }
+            ValueVertex *expectedHClass = self->NewVertex<TaggedToRawI64Vertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {expectedConstants[i]});
+            BB *nextBlock = i + 1 < expectedHClasses.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
+            self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
+                currentBlock, {actualHClass, expectedHClass}, matchBlocks[i], nextBlock, Condition::EQUAL);
+        }
+
+        for (BB *matchBlock : matchBlocks) {
+            currentBlock = matchBlock;
+            compileInfoFacts_ = entryFacts;
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+        }
+
+        auto buildDeoptBlock = [&](BB *deoptBlock) {
+            currentBlock = deoptBlock;
+            compileInfoFacts_ = entryFacts->Clone();
+            auto *deopt = self->FinishBlockWith<DeoptVertex>(
+                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                self->preproc_->GetBytecodeOffset(bcIndex));
+            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        };
+        buildDeoptBlock(primitiveDeoptBlock);
+        buildDeoptBlock(hclassMissDeoptBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        if (rawHClasses.size() == 1) {
+            compileInfoFacts_->RecordHClass(receiver, rawHClasses.front(), true);
+        } else {
+            compileInfoFacts_->RecordPossibleHClasses(receiver, rawHClasses, true);
+        }
+        return true;
+    }
+
+    bool ResolveElementStoreTransitionGroups(
+        const ElementStoreAccessInfo &access, std::vector<ResolvedElementStoreTransitionGroup> *resolvedGroups)
+    {
+        if (!access.IsJSArray() || access.transitionGroupCount == 0) {
+            return false;
+        }
+
+        std::vector<JSHClass *> seenHClasses;
+        seenHClasses.reserve(access.caseCount);
+        resolvedGroups->reserve(access.transitionGroupCount);
+        for (uint32_t groupIndex = 0; groupIndex < access.transitionGroupCount; ++groupIndex) {
+            const ElementStoreTransitionGroup &group = access.transitionGroups[groupIndex];
+            ResolvedElementStoreTransitionGroup resolved;
+            resolved.target.ref = group.targetHClass;
+            if (!TryResolveHClassRef(group.targetHClass, &resolved.target.hclass) ||
+                !resolved.target.hclass->IsJSArray() || group.targetElementsKind == ElementsKind::NONE ||
+                resolved.target.hclass->GetElementsKind() != group.targetElementsKind ||
+                std::find(seenHClasses.begin(), seenHClasses.end(), resolved.target.hclass) != seenHClasses.end()) {
+                return false;
+            }
+            seenHClasses.push_back(resolved.target.hclass);
+            resolved.targetElementsKind = group.targetElementsKind;
+            resolved.useExactHClassTransition = group.useExactHClassTransition;
+            if (resolved.useExactHClassTransition) {
+                resolved.targetHClassConstant = GetHeapConstant(resolved.target.ref);
+                if (resolved.targetHClassConstant == nullptr) {
+                    return false;
+                }
+            }
+            resolved.transitionSources.reserve(group.sourceCount);
+            for (uint32_t sourceIndex = 0; sourceIndex < group.sourceCount; ++sourceIndex) {
+                JSHClass *sourceHClass = nullptr;
+                if (!TryResolveHClassRef(group.transitionSources[sourceIndex], &sourceHClass) ||
+                    !sourceHClass->IsJSArray() ||
+                    std::find(seenHClasses.begin(), seenHClasses.end(), sourceHClass) != seenHClasses.end()) {
+                    return false;
+                }
+                seenHClasses.push_back(sourceHClass);
+                resolved.transitionSources.push_back(
+                    ResolvedElementStoreHClass {sourceHClass, group.transitionSources[sourceIndex]});
+            }
+            resolvedGroups->push_back(std::move(resolved));
+        }
+        return !seenHClasses.empty();
+    }
+
+    void BuildTransitionElementsKind(ValueVertex *receiver, const ResolvedElementStoreTransitionGroup &group)
+    {
+        if (group.useExactHClassTransition) {
+            ASSERT(group.targetHClassConstant != nullptr);
+            self->NewVertex<TransitionHClassWithBarrierVertex>(
+                compileInfoFacts_, currentBlock, {glue, receiver, group.targetHClassConstant});
+            compileInfoFacts_->RecordHClass(receiver, group.target.hclass, false);
+            return;
+        }
+        // Mutant backing is rejected by the access-info factory, so changing to the canonical array HClass is enough.
+        RuntimeCall({receiver, TaggedConstantFromInt32(static_cast<int32_t>(group.targetElementsKind))},
+                    RTSTUB_ID(UpdateHClassForElementsKind));
+    }
+
+    void BuildJSArrayElementStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
+                                  ElementsKind elementsKind)
+    {
+        BuildDeoptIfElementsUnstable(receiver);
+        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSArray::LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(index, length, Condition::GREATER_THAN_OR_EQUAL,
+                                   kungfu::DeoptType::NOTLEGALIDX1);
+        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+        BuildDeoptIfCOWElements(elements);
+        if (Elements::IsIntOrHoleInt(elementsKind)) {
+            BuildCheckedTaggedIntToI32(value);
+            BuildStoreTaggedElement(elements, index, value, ArkSteedWriteBarrierValueKind::NonHeap);
+            return;
+        }
+        if (Elements::IsNumberOrHoleNumber(elementsKind)) {
+            BuildCheckedNumberToF64(value);
+            BuildStoreTaggedElement(elements, index, value, ArkSteedWriteBarrierValueKind::NonHeap);
+            return;
+        }
+        if (Elements::IsStringOrHoleString(elementsKind)) {
+            ValueVertex *stringValue = BuildCheckedTaggedString(value);
+            BuildStoreTaggedElement(elements, index, stringValue, ArkSteedWriteBarrierValueKind::HeapObject);
+            return;
+        }
+        bool objectElements = elementsKind == ElementsKind::OBJECT || elementsKind == ElementsKind::HOLE_OBJECT;
+        if (objectElements) {
+            BuildDeoptIfNotHeapObject(value);
+        }
+        BuildStoreTaggedElement(elements, index, value,
+                                objectElements ? ArkSteedWriteBarrierValueKind::HeapObject
+                                               : ArkSteedWriteBarrierValueKind::Unknown);
+    }
+
+    bool BuildJSArrayElementStoreDispatch(const ElementStoreAccessInfo &access,
+                                          const std::vector<ResolvedElementStoreTransitionGroup> &groups,
+                                          JSHClass *knownHClass, ValueVertex *receiver, ValueVertex *index,
+                                          ValueVertex *value)
+    {
+        if (knownHClass != nullptr) {
+            for (const ResolvedElementStoreTransitionGroup &group : groups) {
+                if (knownHClass == group.target.hclass) {
+                    BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
+                    return true;
+                }
+                auto source = std::find_if(
+                    group.transitionSources.begin(), group.transitionSources.end(),
+                    [knownHClass](const ResolvedElementStoreHClass &candidate) {
+                        return candidate.hclass == knownHClass;
+                    });
+                if (source != group.transitionSources.end()) {
+                    BuildTransitionElementsKind(receiver, group);
+                    BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
+                    return true;
+                }
+            }
+            UNREACHABLE();
+        }
+
+        struct DispatchEntry {
+            const ResolvedElementStoreHClass *hclass {nullptr};
+            ValueVertex *hclassConstant {nullptr};
+            uint32_t groupIndex {0};
+            bool needsTransition {false};
+        };
+        std::vector<DispatchEntry> entries;
+        entries.reserve(access.caseCount + groups.size());
+        for (uint32_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+            entries.push_back(DispatchEntry {&groups[groupIndex].target, nullptr, groupIndex, false});
+            for (const ResolvedElementStoreHClass &source : groups[groupIndex].transitionSources) {
+                entries.push_back(DispatchEntry {&source, nullptr, groupIndex, true});
+            }
+        }
+        if (entries.empty()) {
+            UNREACHABLE();
+        }
+        for (DispatchEntry &entry : entries) {
+            entry.hclassConstant = GetHeapConstant(entry.hclass->ref);
+            if (entry.hclassConstant == nullptr) {
+                return false;
+            }
+        }
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        std::vector<BB *> checkBlocks;
+        checkBlocks.reserve(entries.size());
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            checkBlocks.push_back(self->NewBlock());
+        }
+        std::vector<BB *> actionBlocks;
+        std::vector<BB *> transitionBlocks;
+        actionBlocks.reserve(groups.size());
+        transitionBlocks.reserve(groups.size());
+        for (const ResolvedElementStoreTransitionGroup &group : groups) {
+            actionBlocks.push_back(self->NewBlock());
+            transitionBlocks.push_back(group.transitionSources.empty() ? nullptr : self->NewBlock());
+        }
+        std::vector<BB *> transitionLandingBlocks(entries.size(), nullptr);
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            if (entries[i].needsTransition) {
+                transitionLandingBlocks[i] = self->NewBlock();
+            }
+        }
+        BB *primitiveDeoptBlock = self->NewBlock();
+        BB *hclassMissDeoptBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        primitiveDeoptBlock->SetDeferred(true);
+        hclassMissDeoptBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
+            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
+
+        auto destinationFor = [&actionBlocks, &transitionLandingBlocks](const DispatchEntry &entry,
+                                                                        uint32_t entryIndex) {
+            return entry.needsTransition ? transitionLandingBlocks[entryIndex] : actionBlocks[entry.groupIndex];
+        };
+        ValueVertex *actualHClass = nullptr;
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            currentBlock = checkBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            if (actualHClass == nullptr) {
+                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
+            }
+            ValueVertex *expectedHClass = self->NewVertex<TaggedToRawI64Vertex>(
+                compileInfoFacts_, currentBlock,
+                std::initializer_list<ValueVertex *> {entries[i].hclassConstant});
+            BB *nextBlock = i + 1 < entries.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
+            self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
+                currentBlock, {actualHClass, expectedHClass}, destinationFor(entries[i], i), nextBlock,
+                Condition::EQUAL);
+        }
+
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            if (!entries[i].needsTransition) {
+                continue;
+            }
+            currentBlock = transitionLandingBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            self->FinishBlockWithJump(currentBlock, transitionBlocks[entries[i].groupIndex]);
+        }
+
+        CompileInfoFacts *mergedExitFacts = nullptr;
+        for (uint32_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+            CompileInfoFacts *actionEntryFacts = entryFacts->Clone();
+            if (transitionBlocks[groupIndex] != nullptr) {
+                currentBlock = transitionBlocks[groupIndex];
+                compileInfoFacts_ = entryFacts->Clone();
+                BuildTransitionElementsKind(receiver, groups[groupIndex]);
+                actionEntryFacts->Merge(*compileInfoFacts_);
+                self->FinishBlockWithJump(currentBlock, actionBlocks[groupIndex]);
+            }
+
+            currentBlock = actionBlocks[groupIndex];
+            compileInfoFacts_ = actionEntryFacts;
+            BuildJSArrayElementStore(receiver, index, value, groups[groupIndex].targetElementsKind);
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+            if (mergedExitFacts == nullptr) {
+                mergedExitFacts = compileInfoFacts_->Clone();
+            } else {
+                mergedExitFacts->Merge(*compileInfoFacts_);
+            }
+        }
+
+        auto buildDeoptBlock = [&](BB *deoptBlock) {
+            currentBlock = deoptBlock;
+            compileInfoFacts_ = entryFacts->Clone();
+            auto *deopt = self->FinishBlockWith<DeoptVertex>(
+                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                self->preproc_->GetBytecodeOffset(currentBcIndex));
+            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
+        };
+        buildDeoptBlock(primitiveDeoptBlock);
+        buildDeoptBlock(hclassMissDeoptBlock);
+
+        ASSERT(mergedExitFacts != nullptr);
+        currentBlock = doneBlock;
+        compileInfoFacts_ = mergedExitFacts;
+        return true;
+    }
+
+    bool TryLowerElementStore(uint32_t bcIndex, const ElementStoreAccessInfo &access, ValueVertex *receiver,
+                              ValueVertex *key, ValueVertex *value)
+    {
+        if ((!access.IsJSArray() && !access.IsTypedArray()) || access.caseCount == 0) {
+            return false;
+        }
+
+        std::vector<ResolvedElementStoreTransitionGroup> jsArrayGroups;
+        JSHClass *knownJSArrayHClass = nullptr;
+        if (access.IsJSArray()) {
+            if (!ResolveElementStoreTransitionGroups(access, &jsArrayGroups)) {
+                return false;
+            }
+            knownJSArrayHClass = TryGetKnownHClass(receiver);
+            if (knownJSArrayHClass != nullptr) {
+                bool foundKnownHClass = false;
+                for (const ResolvedElementStoreTransitionGroup &group : jsArrayGroups) {
+                    foundKnownHClass = knownJSArrayHClass == group.target.hclass ||
+                        std::any_of(group.transitionSources.begin(), group.transitionSources.end(),
+                                    [knownJSArrayHClass](const ResolvedElementStoreHClass &source) {
+                                        return source.hclass == knownJSArrayHClass;
+                                    });
+                    if (foundKnownHClass) {
+                        break;
+                    }
+                }
+                if (!foundKnownHClass) {
+                    return false;
+                }
+            }
+        }
+
+        if (access.IsTypedArray()) {
+            std::vector<ResolvedElementStoreHClass> receiverHClasses;
+            receiverHClasses.reserve(access.caseCount);
+            for (uint32_t i = 0; i < access.caseCount; ++i) {
+                JSHClass *receiverHClass = nullptr;
+                if (!TryResolveHClassRef(access.cases[i].expectedHClass, &receiverHClass) ||
+                    !receiverHClass->IsTypedArray() || receiverHClass->GetObjectType() != access.typedArrayType) {
+                    return false;
+                }
+                receiverHClasses.push_back(
+                    ResolvedElementStoreHClass {receiverHClass, access.cases[i].expectedHClass});
+            }
+            if (!BuildCheckElementStoreHClasses(bcIndex, receiver, receiverHClasses)) {
+                return false;
+            }
+        }
+
+        ValueVertex *index = BuildCheckedElementIndex(key);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        BuildDeoptIfInt32Condition(index, zero, Condition::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
+
+        if (access.IsTypedArray()) {
+            BuildDeoptIfArrayBufferDetached(receiver, access.onHeapMode);
+            ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
+                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
+            BuildDeoptIfInt32Condition(index, length, Condition::GREATER_THAN_OR_EQUAL,
+                                       kungfu::DeoptType::NOTLEGALIDX1);
+            switch (access.typedArrayType) {
+                case JSType::JS_INT8_ARRAY:
+                case JSType::JS_UINT8_ARRAY:
+                case JSType::JS_INT16_ARRAY:
+                case JSType::JS_UINT16_ARRAY:
+                case JSType::JS_INT32_ARRAY:
+                case JSType::JS_UINT32_ARRAY: {
+                    BuildTruncatingNumberTypedArrayStore(receiver, index, value, access);
+                    return true;
+                }
+                case JSType::JS_UINT8_CLAMPED_ARRAY:
+                    BuildClampedUint8TypedArrayStore(receiver, index, value, access);
+                    return true;
+                case JSType::JS_FLOAT32_ARRAY:
+                case JSType::JS_FLOAT64_ARRAY: {
+                    ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
+                    self->NewVertex<StoreFloatTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                                       {receiver, index, doubleValue},
+                                                                       access.typedArrayType, access.onHeapMode);
+                    return true;
+                }
+                default:
+                    UNREACHABLE();
+            }
+        }
+
+        return BuildJSArrayElementStoreDispatch(
+            access, jsArrayGroups, knownJSArrayHClass, receiver, index, value);
     }
 
     void BuildStoreTaggedField(ValueVertex *object, int32_t offset, ValueVertex *value)

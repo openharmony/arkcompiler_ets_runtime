@@ -27,6 +27,7 @@ enum class ProcessedFeedbackKind : uint8_t {
     INSUFFICIENT,
     NAMED_ACCESS,
     VALUE_ACCESS,
+    ELEMENT_ACCESS,
 };
 
 enum class ValueAccessFeedbackKind : uint8_t {
@@ -84,6 +85,17 @@ struct ValueAccessFeedback {
     ValueAccessFeedbackKind kind {ValueAccessFeedbackKind::INSUFFICIENT};
     ArkSteedNameRef key {};
     std::array<NamedAccessCaseFeedback, MAX_NAMED_IC_POLY_CASES> cases {};
+    uint32_t caseCount {0};
+};
+
+struct ElementAccessCaseFeedback {
+    ArkSteedHClassRef expectedHClass {};
+    ArkSteedHandlerRef handler {};
+};
+
+struct ElementAccessFeedback {
+    ProcessedFeedbackBase base {};
+    std::array<ElementAccessCaseFeedback, MAX_ELEMENT_IC_POLY_CASES> cases {};
     uint32_t caseCount {0};
 };
 

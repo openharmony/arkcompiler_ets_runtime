@@ -20,11 +20,15 @@
 #include <vector>
 
 #include "ecmascript/arksteed/arksteed_heap_ref.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/on_heap.h"
 
 namespace panda::ecmascript::arksteed {
 
-static constexpr uint32_t MAX_NAMED_IC_POLY_CASES = 4;
+static constexpr uint32_t MAX_IC_POLY_CASES = 4;
+static constexpr uint32_t MAX_NAMED_IC_POLY_CASES = MAX_IC_POLY_CASES;
+static constexpr uint32_t MAX_ELEMENT_IC_POLY_CASES = MAX_IC_POLY_CASES;
 
 enum class AccessMode : uint8_t {
     NAMED_LOAD,
@@ -64,6 +68,7 @@ enum class AccessFeedbackSlotKind : uint8_t {
     NAMED_LOAD,
     NAMED_STORE,
     VALUE_LOAD,
+    ELEMENT_STORE,
 };
 
 enum class ValueLoadAccessKind : uint8_t {
@@ -76,6 +81,12 @@ enum class ElementLoadKind : uint8_t {
     UNSUPPORTED,
     NORMAL,
     STRING,
+    TYPED_ARRAY,
+};
+
+enum class ElementStoreKind : uint8_t {
+    UNSUPPORTED,
+    JS_ARRAY,
     TYPED_ARRAY,
 };
 
@@ -260,6 +271,40 @@ struct ValueLoadAccessSet {
     NamedLoadAccessSet named {};
     std::array<ElementLoadAccessInfo, MAX_NAMED_IC_POLY_CASES> elements {};
     uint32_t elementCount {0};
+};
+
+struct ElementStoreAccessCase {
+    ArkSteedHClassRef expectedHClass {};
+    ElementsKind elementsKind {ElementsKind::NONE};
+};
+
+struct ElementStoreTransitionGroup {
+    ArkSteedHClassRef targetHClass {};
+    std::array<ArkSteedHClassRef, MAX_ELEMENT_IC_POLY_CASES> transitionSources {};
+    uint32_t sourceCount {0};
+    ElementsKind targetElementsKind {ElementsKind::NONE};
+    bool useExactHClassTransition {false};
+};
+
+struct ElementStoreAccessInfo {
+    AccessFeedbackSource feedback {};
+    std::array<ElementStoreAccessCase, MAX_ELEMENT_IC_POLY_CASES> cases {};
+    uint32_t caseCount {0};
+    std::array<ElementStoreTransitionGroup, MAX_ELEMENT_IC_POLY_CASES> transitionGroups {};
+    uint32_t transitionGroupCount {0};
+    ElementStoreKind kind {ElementStoreKind::UNSUPPORTED};
+    JSType typedArrayType {JSType::INVALID};
+    OnHeapMode onHeapMode {OnHeapMode::NONE};
+
+    bool IsJSArray() const
+    {
+        return kind == ElementStoreKind::JS_ARRAY;
+    }
+
+    bool IsTypedArray() const
+    {
+        return kind == ElementStoreKind::TYPED_ARRAY;
+    }
 };
 
 }  // namespace panda::ecmascript::arksteed

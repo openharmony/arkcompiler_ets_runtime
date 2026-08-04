@@ -218,6 +218,9 @@ public:
     void Str(const Register &rt, const MemoryOperand &operand);
     void Stlr(const Register &rt, const MemoryOperand &operand);
     void Str(const VRegister &vt, const MemoryOperand &operand);  // Store SIMD&FP to memory
+    void Strb(const Register &rt, const MemoryOperand &operand);
+    void Strh(const Register &rt, const MemoryOperand &operand);
+    void StrFloat32(const VRegister &vt, const MemoryOperand &operand);
     void Ldur(const Register &rt, const MemoryOperand &operand);
     void Stur(const Register &rt, const MemoryOperand &operand);
     void Mov(const Register &rd, const Immediate &imm);
@@ -267,6 +270,7 @@ public:
     void Fneg(const VRegister &vd, const VRegister &vn);
     void Fcmp(const VRegister &vn, const VRegister &vm);
     void Fcvtzs(const Register &rd, const VRegister &vn);
+    void FcvtFloat32(const VRegister &vd, const VRegister &vn);
     void Cmp(const Register &rd, const Operand &operand);
     void CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond);
     void B(Label *label);

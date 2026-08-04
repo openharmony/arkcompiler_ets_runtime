@@ -49,6 +49,46 @@ public:
         return true;
     }
 
+    bool InstallStableHClass(ArkSteedHClassRef hclass) const
+    {
+        return CheckStableHClass(hclass) && DependOnStableHClass(hclass);
+    }
+
+    bool InstallArrayDetector() const
+    {
+        if (!CanUseLazyDeopt()) {
+            return false;
+        }
+        auto *dependencies = env_->GetDependencies();
+        return dependencies != nullptr &&
+            dependencies->DependOnArrayDetector(env_->GetGlobalEnv().GetObject<GlobalEnv>());
+    }
+
+    bool InstallStableProtoChain(ArkSteedHClassRef receiverHClass) const
+    {
+        if (!CanUseLazyDeopt()) {
+            return false;
+        }
+        JSTaggedValue receiverHClassValue = JSTaggedValue::Undefined();
+        if (broker_ == nullptr || !broker_->TryResolveRef(receiverHClass, &receiverHClassValue) ||
+            !receiverHClassValue.IsJSHClass()) {
+            return false;
+        }
+        if (receiverHClassValue.IsInSharedHeap()) {
+            return true;
+        }
+        auto *dependencies = env_->GetDependencies();
+        return dependencies != nullptr &&
+            dependencies->DependOnStableProtoChain(compilerThread_,
+                JSHClass::Cast(receiverHClassValue.GetTaggedObject()), nullptr,
+                env_->GetGlobalEnv().GetObject<GlobalEnv>());
+    }
+
+    bool InstallNotPrototype(ArkSteedHClassRef receiverHClass) const
+    {
+        return DependOnNotPrototype(receiverHClass);
+    }
+
 private:
     bool Install(PropertyAccessInfo *access) const
     {

@@ -217,12 +217,45 @@ void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
     UseRegister(Arg(RIGHT_INDEX));
 }
 
+void DeoptIfFloat64ConditionVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
 void DeoptIfNotNumberVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
     SetTemporariesNeeded(1);
 }
 
+void DeoptIfNotHeapObjectVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(1);
+    UseEagerDeoptFrameSlots(this);
+}
+
+void DeoptIfArrayBufferDetachedVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(RECEIVER_INDEX));
+    SetTemporariesNeeded(1);
+    UseEagerDeoptFrameSlots(this);
+}
+
+void DeoptIfCOWElementsVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(ELEMENTS_INDEX));
+    UseEagerDeoptFrameSlots(this);
+    SetTemporariesNeeded(1);
+}
+
+void DeoptIfElementsUnstableVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseEagerDeoptFrameSlots(this);
+    SetTemporariesNeeded(1);
+}
 void DeoptVertex::SetValueLocationConstraints()
 {
     for (uint32_t i = 0, n = GetInputCount(); i < n; i++) {
@@ -380,6 +413,40 @@ void StoreTaggedFieldWithBarrierVertex::SetValueLocationConstraints()
     UseRegister(Arg(VALUE_INDEX));
 }
 
+void StoreTaggedElementVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(OBJECT_INDEX));
+    UseRegister(Arg(INDEX_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(1);
+}
+
+void StoreTaggedElementWithBarrierVertex::SetValueLocationConstraints()
+{
+    UseFixed(Arg(GLUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(0).Code()));
+    UseFixed(Arg(OBJECT_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(1).Code()));
+    UseRegister(Arg(INDEX_INDEX));
+    UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
+    RequireSpecificTemporary(this, ArkSteedAssembler::GetParameterRegister(2));
+    SetTemporariesNeeded(1);
+}
+
+void StoreIntTypedArrayElementVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseRegister(Arg(INDEX_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(OnHeap::IsOnHeap(onHeapMode_) ? 2 : 3);
+}
+
+void StoreFloatTypedArrayElementVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseRegister(Arg(INDEX_INDEX));
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(OnHeap::IsOnHeap(onHeapMode_) ? 2 : 3);
+    SetDoubleTemporariesNeeded(1);
+}
 void StoreSharedFieldWithBarrierVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: object and value region scratch registers
@@ -746,6 +813,25 @@ void F64ToI32TruncVertex::SetValueLocationConstraints()
     UseRegister(Arg(INPUT_INDEX));
 }
 
+void I32ToUint8ClampedVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(INPUT_INDEX));
+    DefineSameAsFirst(this);
+}
+
+void F64ToUint8ClampedVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(INPUT_INDEX));
+    DefineAsRegister(this);
+    SetTemporariesNeeded(2);
+    SetDoubleTemporariesNeeded(1);
+}
+
+void DoubleToInt32CallVertex::SetValueLocationConstraints()
+{
+    DefineAsFixed(this, 0);
+    UseFixed(Arg(INPUT_INDEX), ArkSteedDoubleRegister::FromCode(0));
+}
 void F64ToTaggedDoubleVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);

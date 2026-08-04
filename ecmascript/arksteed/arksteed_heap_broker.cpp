@@ -71,4 +71,12 @@ bool ArkSteedHeapBroker::GetFeedbackForValueAccess(const ArkSteedFeedbackReader 
     return true;
 }
 
+bool ArkSteedHeapBroker::GetFeedbackForElementAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
+                                                     ElementAccessFeedback *feedback) const
+{
+    *feedback = {};
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForElementAccess");
+    return reader.ReadElementAccessFeedback(slotIndex, feedback);
+}
+
 }  // namespace panda::ecmascript::arksteed

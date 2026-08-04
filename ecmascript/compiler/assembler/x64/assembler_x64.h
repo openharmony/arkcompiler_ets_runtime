@@ -87,6 +87,10 @@ public:
     void Movsd(const Operand &dst, XMMRegister src);  // Store double from XMM to memory
     void Movss(XMMRegister dst, const Operand &src);  // Load float from memory to XMM
     void Cvtss2sd(XMMRegister src, XMMRegister dst);
+    void Movss(const Operand &dst, XMMRegister src);
+    void Cvtsd2ss(XMMRegister src, XMMRegister dst);
+    void Movb(Register src, const Operand &dst);
+    void Movw(Register src, const Operand &dst);
     void Movq(XMMRegister dst, Register src);  // Move from GP register to XMM register
     void Movq(Register dst, XMMRegister src);  // Move from XMM register to GP register
     void Cvtsi2sd(Register src, XMMRegister dst);

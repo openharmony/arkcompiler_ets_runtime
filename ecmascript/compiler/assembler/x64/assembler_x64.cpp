@@ -1005,6 +1005,23 @@ void AssemblerX64::Movl(Register src, const Operand& dst)
     EmitOperand(src, dst);
 }
 
+void AssemblerX64::Movb(Register src, const Operand &dst)
+{
+    if (src.HighBit() != 0 || dst.rex_ != 0 || src.LowBits() >= 4) {  // 4: SPL/BPL/SIL/DIL require REX.
+        EmitU8(REX_PREFIX_FIXED_BITS | (src.HighBit() << 2) | dst.rex_);
+    }
+    EmitU8(0x88);
+    EmitOperand(src.LowBits(), dst);
+}
+
+void AssemblerX64::Movw(Register src, const Operand &dst)
+{
+    EmitU8(0x66);
+    EmitRexPrefixl(src, dst);
+    EmitU8(0x89);
+    EmitOperand(src.LowBits(), dst);
+}
+
 void AssemblerX64::Testq(Immediate src, Register dst)
 {
     if (InRange8(src.Value())) {
@@ -1872,6 +1889,28 @@ void AssemblerX64::Movsd(const Operand &dst, XMMRegister src)
     EmitU8(0x0F);
     EmitU8(0x11);
     EmitOperand(src.LowBits(), dst);
+}
+
+void AssemblerX64::Movss(const Operand &dst, XMMRegister src)
+{
+    EmitU8(0xF3);
+    if (src.HighBit() || dst.rex_) {
+        EmitU8(REX_PREFIX_FIXED_BITS | (src.HighBit() << 2) | dst.rex_);
+    }
+    EmitU8(0x0F);
+    EmitU8(0x11);
+    EmitOperand(src.LowBits(), dst);
+}
+
+void AssemblerX64::Cvtsd2ss(XMMRegister src, XMMRegister dst)
+{
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(REX_PREFIX_FIXED_BITS | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
 }
 
 void AssemblerX64::Movq(Register dst, XMMRegister src)

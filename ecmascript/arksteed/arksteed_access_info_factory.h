@@ -42,6 +42,7 @@ public:
     bool TryBuildNamedStoreAccessInfo(int slotIndex, NamedStoreAccessSet *access) const;
     bool TryBuildNamedLoadAccessInfo(int slotIndex, NamedLoadAccessSet *access) const;
     bool TryBuildValueLoadAccessInfo(ValueLoadAccessSet *access) const;
+    bool TryBuildElementStoreAccessInfo(int slotIndex, ElementStoreAccessInfo *access) const;
 
 private:
     bool ComputeNamedStoreAccessInfo(const NamedAccessFeedback &feedback, NamedStoreAccessSet *access) const;
