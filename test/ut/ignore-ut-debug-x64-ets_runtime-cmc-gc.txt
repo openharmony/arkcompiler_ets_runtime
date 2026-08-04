@@ -1,5 +1,0 @@
-#27180
-obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest
-
-#30743
-obj/arkcompiler/ets_runtime/common_components/common_runtime/tests/Base_Runtime_Test
