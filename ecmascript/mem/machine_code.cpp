@@ -178,13 +178,7 @@ bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandl
         return false;
     }
 
-    uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
-    CString methodName = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
-    LOG_JIT(DEBUG) << "Fast JIT MachineCode :" << methodName << ", "  << " text addr:" <<
-        reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
-        ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) <<
-        ", size:" << desc.stackMapSizeAlign;
 
     if (!SetPageProtect(textStart, dataSize)) {
         LOG_JIT(ERROR) << "MachineCode::SetData SetPageProtect failed";

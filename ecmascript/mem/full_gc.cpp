@@ -257,7 +257,7 @@ void FullGC::UpdateWeakRoots()
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (UNLIKELY(objectRegion == nullptr)) {
-            LOG_GC(ERROR) << "FullGC updateWeakReference: region is nullptr, header is " << header;
+            LOG_GC(ERROR) << "FullGC updateWeakReference: region is nullptr";
             return nullptr;
         }
         if (!HasEvacuated<evacuateNonMovableSpace>(objectRegion)) {
