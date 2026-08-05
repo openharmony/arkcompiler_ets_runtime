@@ -50,6 +50,9 @@ public:
     void SafeDestroyAllData();
     void SafeDestroyAnData(const std::string &fileName);
     const std::unordered_map<CString, uint32_t> &SafeGetfullFileNameToChecksumMap();
+#if defined(STUB_FUNCTION_REORDERING)
+    void SafePopulateStubIndexMapping();
+#endif
 
     const std::string &GetDir() const
     {
@@ -91,6 +94,9 @@ private:
     std::string UnSafeGetAnFileNameNoSuffix(uint32_t index);
 
     RWLock lock_ {};
+#if defined(STUB_FUNCTION_REORDERING)
+    std::once_flag stubEntriesInitFlag_;
+#endif
     std::vector<std::string> anFileNameVector_ {};
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};  // keep the same order with anFileNameVector_
     std::unordered_map<CString, uint32_t> fullFileNameToChecksumMap_ {};

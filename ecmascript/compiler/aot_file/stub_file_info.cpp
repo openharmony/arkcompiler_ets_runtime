@@ -125,6 +125,14 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
     return true;
 }
 #if defined(STUB_FUNCTION_REORDERING)
+void StubFileInfo::AddIndexMapping(uint32_t compileTimeIndex, uint32_t runtimePosition)
+{
+    bcStubIndexMap_[compileTimeIndex] = runtimePosition;
+#ifndef NDEBUG
+    LOG_ECMA(DEBUG) << "Mapping Enum: " << compileTimeIndex << " pos: " << runtimePosition;
+#endif
+}
+
 uint32_t StubFileInfo::GetRuntimeStubIndex(uint32_t compileTimeIndex) const
 {
     const auto& bcStubMap = GetBCStubIndexMap();

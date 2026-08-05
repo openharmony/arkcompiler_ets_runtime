@@ -80,6 +80,10 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
     if (info == nullptr) {
         return;
     }
+#if defined(STUB_FUNCTION_REORDERING)
+    anFileDataManager->SafePopulateStubIndexMapping();
+#endif
+
 #if ENABLE_MEMORY_OPTIMIZATION
     InitializeStubEntries(*info);
 #else
@@ -545,10 +549,6 @@ void AOTFileManager::InitializeStubEntries(const StubFileInfo &stubInfo)
 #ifndef NDEBUG
     MessageString::CheckStubNameInfo();
 #endif
-#if defined(STUB_FUNCTION_REORDERING)
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    std::shared_ptr<StubFileInfo> stubFileInfo = anFileDataManager->SafeGetStubFileInfo();
-#endif
     auto thread = vm_->GetAssociatedJSThread();
     uint32_t len = stubInfo.GetEntrySize();
     const auto *stubs = stubInfo.GetRawEntries();
@@ -562,10 +562,6 @@ void AOTFileManager::InitializeStubEntries(const StubFileInfo &stubInfo)
             }
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
-#if defined(STUB_FUNCTION_REORDERING)
-            // Update runtime map for BC Stub Entries
-            stubFileInfo->AddIndexMapping(des.indexInKindOrMethodId_, i);
-#endif
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
             if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
                 LoadingByteCodeStubsLog(des.indexInKindOrMethodId_, codeAddr);
@@ -601,10 +597,6 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
 #ifndef NDEBUG
     MessageString::CheckStubNameInfo();
 #endif
-#if defined(STUB_FUNCTION_REORDERING)
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    std::shared_ptr<StubFileInfo> stubFileInfo = anFileDataManager->SafeGetStubFileInfo();
-#endif
     auto thread = vm_->GetAssociatedJSThread();
     size_t len = stubs.size();
     for (size_t i = 0; i < len; i++) {
@@ -616,10 +608,6 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
             }
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
-#if defined(STUB_FUNCTION_REORDERING)
-            // Update runtime map for BC Stub Entries
-            stubFileInfo->AddIndexMapping(des.indexInKindOrMethodId_, i);
-#endif
             if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
                 LoadingByteCodeStubsLog(des.indexInKindOrMethodId_, des.codeAddr_);
             }
