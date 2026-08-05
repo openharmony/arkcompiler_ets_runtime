@@ -325,6 +325,10 @@ void DFXJSNApi::ScheduleHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
                                        [[maybe_unused]] const DumpSnapShotOption &dumpOption,
                                        [[maybe_unused]] uint32_t tid)
 {
+    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+        LOG_ECMA(ERROR) << "ScheduleHybridHeapDump: hybrid binary dump is not supported yet";
+        return;
+    }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
     uint32_t mainTid = vm->GetTid();
 
