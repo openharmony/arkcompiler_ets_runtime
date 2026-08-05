@@ -102,7 +102,13 @@ static std::shared_ptr<JSPandaFile> CreateJSPandaFile()
     // Read panda file from memory
 
     auto data = mem_writer.GetData();
-    auto panda_file = GetPandaFile(data);
+
+    // Keep data alive to prevent use-after-free: the panda File object holds a raw pointer
+    // to this buffer. On platforms with aggressive memory reclamation (e.g. musl on ARM),
+    // the freed memory may be unmapped before the File is done with it.
+    static std::vector<std::vector<uint8_t>> keptAliveData;
+    keptAliveData.push_back(std::move(data));
+    auto panda_file = GetPandaFile(keptAliveData.back());
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     return pfManager->NewJSPandaFile(panda_file.release(), CString("filename"));
 }
