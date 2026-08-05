@@ -313,6 +313,24 @@ void JSHClass::TransitionElementsToDictionary(const JSThread *thread, const JSHa
     obj->GetJSHClass()->SetElementsKind(ElementsKind::DICTIONARY);
 }
 
+#if ENABLE_V70_OPTIMIZATION
+void JSHClass::TransitionElementsToDictionaryOnly(const JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    JSHandle<JSHClass> oldHClass(thread, obj->GetJSHClass());
+    ASSERT(!oldHClass->IsDictionaryElement());
+
+    JSHandle<JSHClass> newHClass = JSHClass::Clone(thread, oldHClass);
+    newHClass->SetIsDictionaryElement(true);
+    newHClass->SetIsStableElements(false);
+    newHClass->SetElementsKind(ElementsKind::DICTIONARY);
+
+#if ECMASCRIPT_ENABLE_IC
+    JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass);
+#endif
+    obj->SynchronizedTransitionClass(thread, *newHClass);
+}
+#endif
+
 void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
 {
     if (obj->GetJSHClass()->IsDictionaryMode()) {

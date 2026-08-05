@@ -16,6 +16,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
+#include "ecmascript/element_accessor.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -27,6 +28,9 @@
 #include "ecmascript/property_accessor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_proxy.h"
+#include "ecmascript/tagged_dictionary.h"
+
+#include <algorithm>
 
 namespace panda::ecmascript {
 using PGOProfiler = pgo::PGOProfiler;
@@ -269,6 +273,122 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSHClass::TransitionElementsToDictionary(thread, obj);
     TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
 }
+
+#if ENABLE_V70_OPTIMIZATION
+void JSObject::NormalizeElements(const JSThread *thread, JSHandle<JSObject> obj)
+{
+    // Elements only; do not call ElementsToDictionary (that also normalizes properties).
+    // Guard shared before any elements access: unlike ElementsToDictionary, this path does not
+    // go through TransitionToDictionary(properties), so the check must stay at API entry.
+    ASSERT(!obj->GetJSHClass()->IsDictionaryElement());
+    if (obj->IsJSShared()) {
+        THROW_TYPE_ERROR(const_cast<JSThread *>(thread),
+                         "shared obj does not support changing or deleting attributes");
+    }
+    JSHandle<TaggedArray> elements(thread, obj->GetElements(thread));
+    uint32_t length = elements->GetLength();
+    uint32_t numUsed = 0;
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedValue value = ElementAccessor::Get(thread, obj, i);
+        if (!value.IsHole()) {
+            numUsed++;
+        }
+    }
+    JSMutableHandle<NumberDictionary> dict(thread,
+        NumberDictionary::Create(thread, NumberDictionary::ComputeHashTableSize(numUsed)));
+    auto attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedValue value = ElementAccessor::Get(thread, obj, i);
+        if (value.IsHole()) {
+            continue;
+        }
+        key.Update(JSTaggedValue(i));
+        valueHandle.Update(value);
+        JSHandle<NumberDictionary> newDict = NumberDictionary::PutIfAbsent(thread, dict, key, valueHandle, attr);
+        dict.Update(newDict);
+    }
+    obj->SetElements(thread, dict);
+
+    ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
+    JSHClass::TransitionElementsToDictionaryOnly(thread, obj);
+    TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
+}
+
+void JSObject::DeleteElementsAtEnd(const JSThread *thread, JSHandle<JSObject> obj, uint32_t entry)
+{
+    ASSERT(!obj->IsJSArray());
+    JSHandle<TaggedArray> elements(thread, obj->GetElements(thread));
+    uint32_t length = elements->GetLength();
+    ASSERT(entry < length);
+    for (; entry > 0; entry--) {
+        if (!ElementAccessor::Get(thread, obj, entry - 1).IsHole()) {
+            break;
+        }
+    }
+    if (entry == 0) {
+        obj->SetElements(thread, thread->GetEcmaVM()->GetFactory()->EmptyArray());
+        return;
+    }
+    elements->Trim(thread, entry);
+}
+
+bool JSObject::ShouldNormalizeElementsOnDeletion(JSThread *thread, JSHandle<JSObject> obj, uint32_t deletedIndex)
+{
+    JSHandle<JSHClass> hclass(thread, obj->GetClass());
+    ASSERT(!hclass->IsDictionaryElement());
+    uint32_t capacity = ElementAccessor::GetElementsLength(thread, obj);
+    constexpr uint32_t kMinLengthForSparsenessCheck = 64;
+    if (capacity < kMinLengthForSparsenessCheck) {
+        return false;
+    }
+
+    uint32_t length = obj->IsJSArray() ? JSArray::Cast(*obj)->GetArrayLength() : capacity;
+    constexpr uint32_t kLengthFraction = 16;
+    // capacity may be >= 64 while JSArray length < 16, making length/16 zero; keep at least one
+    // throttle step so we do not O(n)-scan on every delete in that window.
+    uint32_t threshold = std::max(1U, length / kLengthFraction);
+    uint32_t counter = thread->GetElementsDeletionCounter();
+    // Per-thread throttle before the O(n) sparsity scan.
+    if (counter < threshold) {
+        thread->SetElementsDeletionCounter(counter + 1);
+        return false;
+    }
+    thread->ResetElementsDeletionCounter();
+
+    // Non-array: trailing holes after deletedIndex → shrink instead of normalize.
+    if (!obj->IsJSArray()) {
+        uint32_t i = deletedIndex + 1;
+        for (; i < capacity; i++) {
+            if (!ElementAccessor::Get(thread, obj, i).IsHole()) {
+                break;
+            }
+        }
+        if (i == capacity) {
+            DeleteElementsAtEnd(thread, obj, deletedIndex);
+            return false;
+        }
+    }
+
+    constexpr uint32_t kPreferFastElementsSizeFactor = 3;
+    uint32_t numUsed = 0;
+    for (uint32_t i = 0; i < capacity; i++) {
+        JSTaggedValue value = ElementAccessor::Get(thread, obj, i);
+        if (value.IsHole()) {
+            continue;
+        }
+        numUsed++;
+        uint32_t dictSize = static_cast<uint32_t>(NumberDictionary::ComputeHashTableSize(numUsed));
+        uint64_t dictSpace = static_cast<uint64_t>(kPreferFastElementsSizeFactor) * dictSize *
+                             NumberDictionary::GetEntrySize();
+        if (dictSpace > capacity) {
+            return false;
+        }
+    }
+    return true;
+}
+#endif
 
 JSHandle<JSTaggedValue> JSObject::FindFuncInObjectForHook(JSThread *thread, JSHandle<JSTaggedValue> object,
                                                           const std::string &className, const std::string &funcName)

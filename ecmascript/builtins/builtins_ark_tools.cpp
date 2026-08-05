@@ -1036,12 +1036,12 @@ JSTaggedValue BuiltinsArkTools::HasDictionaryElements([[maybe_unused]] EcmaRunti
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     CHECK(info && info->GetArgsNumber() == 1);
     JSHandle<JSTaggedValue> arg = base::BuiltinsBase::GetCallArg(info, 0);
-    CHECK(thread->GetEcmaVM()->IsEnableElementsKind());
     CHECK(arg->IsJSObject());
     JSHandle<JSObject> obj(arg);
     bool isDict = obj->GetClass()->IsDictionaryElement();
     CHECK(isDict == ElementAccessor::IsDictionaryMode(thread, obj));
-    CHECK(isDict == (obj->GetClass()->GetElementsKind() == ElementsKind::DICTIONARY));
+    // Do not CHECK kind == DICTIONARY: ElementsKind::GENERIC and DICTIONARY share HOLE_TAGGED,
+    // so non-dictionary objects with GENERIC kind would fail the equality when isDict is false.
     return JSTaggedValue(isDict);
 }
 
