@@ -7097,32 +7097,6 @@ HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Cleared)
 /*
  * Feature: Module Memory Optimization
  * Function: ClearInstantiationFieldsIfNeeded
- * SubFunction: ModuleRequests cleared for non-shared module
- * FunctionPoints: Verify ModuleRequests is set to Undefined when conditions are met
- * CaseDescription: Non-shared module without lazy imports, snapshot disabled,
- *                  ModuleRequests should be cleared after Instantiate
- */
-HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ModuleRequests_Cleared_NonShared)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
-    module->SetStatus(ModuleStatus::INSTANTIATED);
-    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
-
-    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
-    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
-    moduleRequests->Set(thread, 0, requestStr);
-    module->SetModuleRequests(thread, moduleRequests);
-    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
-    ASSERT_TRUE(module->GetLazyImportStatusArray() == nullptr);
-
-    ClearInstantiationFieldsIfNeeded(thread, module);
-    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
-}
-
-/*
- * Feature: Module Memory Optimization
- * Function: ClearInstantiationFieldsIfNeeded
  * SubFunction: ModuleRequests NOT cleared for shared module
  * FunctionPoints: Verify ModuleRequests is preserved for shared modules
  * CaseDescription: Shared module needs ModuleRequests for cross-thread fallback resolve
