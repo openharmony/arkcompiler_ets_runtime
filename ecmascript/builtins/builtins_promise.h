@@ -20,7 +20,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 
 // List of functions in Promise, excluding the '@@' propertiex.

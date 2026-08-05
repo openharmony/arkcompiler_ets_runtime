@@ -100,16 +100,18 @@ void SharedGCEvacuator::FlipUpdateLocalRoot(EcmaVM *vm)
 
 void SharedGCEvacuator::UpdateLocalReferenceWorkload::Process([[maybe_unused]]uint32_t threadIndex)
 {
-    region_->IterateAllLocalToShareBits([this](void *mem) {
-        ObjectSlot slot(ToUintPtr(mem));
+    region_->IterateAllLocalToShareBits([this](void *mem, auto referenceTypeWrapper) {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
         return evacuator_->UpdateObjectSlot(slot);
     });
 }
 
 void SharedGCEvacuator::UpdateSharedReferenceWorkload::Process([[maybe_unused]]uint32_t threadIndex)
 {
-    region_->IterateAllCrossRegionBits([this](void *mem) {
-        ObjectSlot slot(ToUintPtr(mem));
+    region_->IterateAllCrossRegionBits([this](void *mem, auto referenceTypeWrapper) {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
         evacuator_->UpdateObjectSlot(slot);
     });
 }
@@ -147,9 +149,10 @@ int SharedGCEvacuator::CalculateParallelThreadNum()
     return static_cast<int>(std::min(std::max(1U, count), common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum()));
 }
 
-bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)
+template <ReferenceType refType>
+bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlotBase<refType> slot)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return false;
     }
@@ -158,24 +161,31 @@ bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)
         return true;
     }
     ASSERT(region->InSharedHeap());
-    bool isWeak = value.IsWeakForHeapObject();
     TaggedObject *object = value.GetHeapObject();
     MarkWord markWord(object, RELAXED_LOAD);
     ASSERT(markWord.IsForwardingAddress());
     TaggedObject *dst = markWord.ToForwardingAddress();
-    if (isWeak) {
-        slot.CASUpdateWeak(value.GetRawHeapObject(), dst);
-    } else {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         slot.CASUpdate(value.GetRawHeapObject(), dst);
+    } else {
+        if (value.IsWeakForHeapObject()) {
+            slot.CASUpdateWeak(value.GetRawHeapObject(), dst);
+        } else {
+            slot.CASUpdate(value.GetRawHeapObject(), dst);
+        }
     }
     return true;
 }
 
-void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
-    uintptr_t endAddr, VisitObjectArea area)
+template bool SharedGCEvacuator::UpdateObjectSlot<ReferenceType::NORMAL>(ObjectSlot slot);
+#ifdef USE_COMPRESSED_POINTER
+template bool SharedGCEvacuator::UpdateObjectSlot<ReferenceType::COMPRESSED>(CompressedObjectSlot slot);
+#endif
+
+void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start,
+    ObjectSlot end, VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = TaggedObject::Cast(root)->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -194,6 +204,14 @@ void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject 
         return;
     }
     for (ObjectSlot slot = start; slot < end; slot++) {
+        evacuator_->UpdateObjectSlot(slot);
+    }
+}
+
+void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitCompressedObjectRangeImpl(BaseObject *root,
+    CompressedObjectSlot start, CompressedObjectSlot end)
+{
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
         evacuator_->UpdateObjectSlot(slot);
     }
 }

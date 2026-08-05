@@ -19,7 +19,7 @@
 #include <cstdint>
 
 #include "ecmascript/cross_vm/verification_hybrid.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/mem.h"
@@ -62,7 +62,8 @@ public:
         VisitAllObjects(obj);
     }
 
-    void operator()(TaggedObject *obj, JSTaggedValue value);
+    template <ReferenceType refType>
+    void operator()(TaggedObject *obj, ObjectSlotBase<refType> value);
 
     size_t GetFailedCount() const
     {
@@ -72,19 +73,32 @@ public:
 private:
     VERIFYOBJECTVISITOR_PRIVATE_HYBRID_EXTENSION();
     void VisitAllObjects(TaggedObject *obj);
-    void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
-    void VerifyHeapObjectSlotLegal(ObjectSlot slot, JSTaggedValue value, TaggedObject *obj) const;
-    void VerifyWeakRef(ObjectSlot slot, TaggedObject *object) const;
-    void VerifyStickyObjectReference(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyMarkSlotSpace(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyConcurrentCopy(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifySharedObjectReference(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyObjectSlotLegal(ObjectSlotBase<refType> slot, TaggedObject *obj) const;
+    template <ReferenceType refType>
+    void VerifyHeapObjectSlotLegal(ObjectSlotBase<refType> slot, JSTaggedValue value, TaggedObject *obj) const;
+    template <ReferenceType refType>
+    void VerifyWeakRef(ObjectSlotBase<refType> slot, TaggedObject *object) const;
+    template <ReferenceType refType>
+    void VerifyStickyObjectReference(TaggedObject *object, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyMarkYoung(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyMarkFull(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyEvacuateOld(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyEvacuateFull(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyMarkSlotSpace(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifyConcurrentCopy(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
+    template <ReferenceType refType>
+    void VerifySharedObjectReference(TaggedObject *obj, ObjectSlotBase<refType> slot, TaggedObject *value) const;
 
     const BaseHeap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};
@@ -182,15 +196,13 @@ private:
     VerifyKind verifyKind_;
 };
 
-template <class Callback>
+template <typename Callback>
 class VerifyVisitor final : public BaseObjectVisitor<VerifyVisitor<Callback>> {
 public:
     explicit VerifyVisitor(Callback &cb) : thread_(JSThread::GetCurrent()), cb_(cb) {}
     ~VerifyVisitor() = default;
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override
+    void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override
     {
-        ObjectSlot start(startAddr);
-        ObjectSlot end(endAddr);
         if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
             auto hclass = TaggedObject::Cast(root)->GetClass();
             ASSERT(!hclass->IsAllTaggedProp());
@@ -205,6 +217,13 @@ public:
             return;
         }
         for (ObjectSlot slot = start; slot < end; slot++) {
+            cb_(slot, TaggedObject::Cast(root));
+        }
+    }
+    void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                        CompressedObjectSlot end) override
+    {
+        for (CompressedObjectSlot slot = start; slot < end; slot++) {
             cb_(slot, TaggedObject::Cast(root));
         }
     }

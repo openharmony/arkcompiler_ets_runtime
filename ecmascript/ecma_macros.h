@@ -746,6 +746,15 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define DECL_VISIT_CONST_POOL(BEGIN_OFFSET, COMPRESSED_REF_LENGTH, REF_LENGTH, LENGTH)                    \
+    template <VisitType visitType, class DerivedVisitor>                                                  \
+    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                                       \
+    {                                                                                                     \
+        ArrayBodyIterator<visitType, (BEGIN_OFFSET)>::IterateBodyWithCompressedPart(                      \
+            this, visitor, (COMPRESSED_REF_LENGTH), (REF_LENGTH), (LENGTH));                              \
+    }
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_OBJECT(BEGIN_OFFSET, END_OFFSET)                                                       \
     template <VisitType visitType, class DerivedVisitor>                                                  \
     void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                                       \

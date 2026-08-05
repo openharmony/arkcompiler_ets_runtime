@@ -16,7 +16,7 @@
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/platform/os.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 void JSSendableArrayBuffer::CopyDataBlockBytes(

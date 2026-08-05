@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_BASE_JSON_STRINGIFY_INL_H
 #define ECMASCRIPT_BASE_JSON_STRINGIFY_INL_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/linked_hash_table.h"

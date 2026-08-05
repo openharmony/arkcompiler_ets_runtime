@@ -43,13 +43,16 @@ public:
     explicit GlobalMarkObjectVisitor(GlobalGCWorkNodeHolder *holder) : holder_(holder) {}
     ~GlobalMarkObjectVisitor() override = default;
 
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+    void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                               VisitObjectArea area) override;
+    void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                        CompressedObjectSlot end) override;
     void VisitObjectHClassImpl(BaseObject *rootObject, BaseObject *hclass) override;
     void HandleObject(TaggedObject *object, Region *objectRegion);
 
 private:
-    void MarkLocalRefFromSlot(ObjectSlot slot);
+    template <ReferenceType refType>
+    void MarkLocalRefFromSlot(ObjectSlotBase<refType> slot);
     GlobalGCWorkNodeHolder *holder_ {nullptr};
 };
 

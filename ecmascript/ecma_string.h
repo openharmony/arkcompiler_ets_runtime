@@ -24,7 +24,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/tagged_object.h"

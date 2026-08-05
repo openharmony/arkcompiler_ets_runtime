@@ -17,7 +17,7 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_BIGINT_H
 
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 // List of functions in BigInt, excluding the constructor and '@@' properties.
 // V(name, func, length, stubIndex)

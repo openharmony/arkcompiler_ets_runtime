@@ -21,7 +21,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"

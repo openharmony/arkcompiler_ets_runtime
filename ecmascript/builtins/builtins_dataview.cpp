@@ -16,7 +16,7 @@
 #include "ecmascript/builtins/builtins_dataview.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_arraybuffer.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript::builtins {
 // 24.2.2.1

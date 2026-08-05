@@ -53,7 +53,6 @@ private:
     void LowerLdLocalModuleVar(GateRef gate, GateRef glue);
     void LowerLdExternalModuleVar(GateRef gate);
 
-    GateRef LoadFromConstPool(GateRef glue, GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef NewActualArgv(GateRef gate, GateRef glue);
     GateRef NewJSArrayLiteral(
         GateRef glue, GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);

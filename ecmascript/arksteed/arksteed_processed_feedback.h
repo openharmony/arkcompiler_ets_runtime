@@ -19,7 +19,7 @@
 #include <array>
 
 #include "ecmascript/arksteed/arksteed_pgo_access_info.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 

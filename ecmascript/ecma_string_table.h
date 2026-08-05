@@ -20,7 +20,7 @@
 #include "common_components/taskpool/task.h"
 #include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"

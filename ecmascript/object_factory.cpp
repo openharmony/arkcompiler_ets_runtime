@@ -3532,14 +3532,15 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     return newArr;
 }
 
-JSHandle<ConstantPool> ObjectFactory::NewConstantPool(uint32_t capacity)
+JSHandle<ConstantPool> ObjectFactory::NewConstantPool(uint32_t numOfCache)
 {
     NewObjectHook();
-    size_t size = ConstantPool::ComputeSize(capacity);
+    numOfCache = ConstantPool::AlignUpNumOfCacheForCompressedPointer(numOfCache);
+    size_t size = ConstantPool::ComputeSize(numOfCache);
     auto header = heap_->AllocateOldOrHugeObject(
         JSHandle<JSHClass>(thread_->GlobalConstants()->GetHandledConstantPoolClass()), size);
     JSHandle<ConstantPool> array(thread_, header);
-    array->InitializeWithSpecialValue(thread_, JSTaggedValue::Hole(), capacity);
+    array->InitializeWithSpecialValue(thread_, CompressedJSTaggedValue::Hole(), numOfCache);
     return array;
 }
 

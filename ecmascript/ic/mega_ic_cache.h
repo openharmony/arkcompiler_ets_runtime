@@ -19,7 +19,7 @@
 #include <array>
 
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_REQUIRE_JS_CJS_EXPORTS_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 class CjsExports final : public JSObject {

@@ -70,7 +70,7 @@ public:
 
     static AOTLiteralInfo* Cast(TaggedObject* object)
     {
-        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        ASSERT(JSTaggedValue(object).IsAOTLiteralInfo());
         return static_cast<AOTLiteralInfo*>(object);
     }
 

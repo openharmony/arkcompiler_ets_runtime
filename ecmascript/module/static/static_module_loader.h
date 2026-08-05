@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_SATTIC_MODULE_LOADER_H
 #define ECMASCRIPT_SATTIC_MODULE_LOADER_H
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_function.h"
 

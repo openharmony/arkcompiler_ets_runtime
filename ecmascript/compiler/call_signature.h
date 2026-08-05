@@ -589,6 +589,7 @@ private:
     V(Comment)                                  \
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
+    V(FatalPrintIfFalse)                            \
     V(GetActualArgvNoGC)                        \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
@@ -743,6 +744,7 @@ private:
     V(ConvertCharToString)                           \
     V(ASMFastWriteBarrier)                           \
     V(VerifyBarrier)                                 \
+    V(VerifyStoreJSValueForCompressedPointer)        \
     V(SortTypedArray)                                \
     V(ReverseTypedArray)                             \
     V(IsFastRegExp)                                  \
@@ -767,9 +769,11 @@ private:
     V(LoadNativeModuleFailed)                        \
     V(GetExternalModuleVar)                          \
     V(GetValueWithBarrier)                           \
+    V(GetValueFromCompressedWithBarrier)             \
     V(LdLexVar)                                      \
     V(StLexVar)                                      \
     V(ReadBarrier)                                   \
+    V(ReadBarrierForCompressed)                      \
     V(ComputeStringHashcode)                         \
     V(CopyCallTarget)                                \
     V(CopyArgvArray)                                 \

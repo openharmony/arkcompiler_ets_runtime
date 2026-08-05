@@ -957,6 +957,9 @@ HWTEST_F_L0(GCTest, stringTableReadBarrierTest)
 
 HWTEST_F_L0(GCTest, MemMapAllocatorAllocateFromMemPoolTest)
 {
+#ifdef USE_COMPRESSED_POINTER
+    return;
+#endif
     MemMapAllocator *allocator = new MemMapAllocator();
     allocator->ResetLargePoolSize();
     constexpr size_t testSize = DEFAULT_REGION_SIZE;

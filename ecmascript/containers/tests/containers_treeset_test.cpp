@@ -20,7 +20,7 @@
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
@@ -174,9 +174,17 @@ HWTEST_F_L0(ContainersTreeSetTest, TreeSetConstructor)
     ASSERT_EQ(size, 0);
 
     // test TreeSetConstructor exception
+    objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
+    objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+    objCallInfo->SetThis(JSTaggedValue::Undefined());
     objCallInfo->SetCallArg(0, JSTaggedValue(0));
     CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, TreeSetConstructor, objCallInfo);
+    objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    objCallInfo->SetThis(JSTaggedValue::Undefined());
+    objCallInfo->SetCallArg(0, JSTaggedValue(0));
     CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, TreeSetConstructor, objCallInfo);
 }
 

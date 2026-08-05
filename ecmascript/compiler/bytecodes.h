@@ -23,7 +23,7 @@
 #include "libpandabase/utils/bit_field.h"
 #include "bytecode_instruction-inl.h"
 #include "ecmascript/common.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::kungfu {
 using VRegIDType = uint32_t;

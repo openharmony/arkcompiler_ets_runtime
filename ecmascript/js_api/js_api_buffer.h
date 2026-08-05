@@ -21,8 +21,8 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include <iomanip>

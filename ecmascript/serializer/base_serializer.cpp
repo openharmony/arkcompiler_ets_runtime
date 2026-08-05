@@ -90,6 +90,16 @@ void BaseSerializer::SerializeJSTaggedValue(JSTaggedValue value)
     }
 }
 
+// only support for compressed tagged object
+void BaseSerializer::SerializeCompressedTaggedObject(TaggedObject *object)
+{
+    // fixme: compressed pointer : support weak for compressed value
+    ASSERT(!JSTaggedValue(object).IsWeak());
+    constexpr bool IsWeak = false;
+    constexpr bool IsCompressed = true;
+    SerializeObjectImpl(object, IsWeak, IsCompressed);
+}
+
 bool BaseSerializer::SerializeReference(TaggedObject *object)
 {
     if (referenceMap_.find(object) != referenceMap_.end()) {
@@ -383,12 +393,10 @@ void BaseSerializer::SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto)
     }
 }
 
-void BaseSerializer::SerializeTaggedObjField(SerializeType serializeType, TaggedObject *root,
-                                             ObjectSlot start, ObjectSlot end)
+void BaseSerializer::SerializeTaggedObjField(TaggedObject *root, ObjectSlot start, ObjectSlot end)
 {
     JSType objectType = root->GetClass()->GetObjectType();
-    if (serializeType != SerializeType::VALUE_SERIALIZE
-        || !SerializeSpecialObjIndividually(objectType, root, start, end)) {
+    if (!SerializeSpecialObjIndividually(objectType, root, start, end)) {
         for (ObjectSlot slot = start; slot < end; slot++) {
             SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
         }
@@ -440,48 +448,60 @@ void BaseSerializer::SerializeSourceTextModuleFieldIndividually(TaggedObject *ro
     }
 }
 
-void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject* root, ObjectSlot start, ObjectSlot end)
+template <ReferenceType refType>
+void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject *root,
+    ObjectSlotBase<refType> start, ObjectSlotBase<refType> end)
 {
-    ASSERT(root->GetClass()->GetObjectType() == JSType::CONSTANT_POOL);
-    constexpr const auto SHARED_CONSTPOOL_ID_OFFSET =
-        ConstantPool::SHARED_CONSTPOOL_ID - ConstantPool::RESERVED_POOL_LENGTH;
-    // constpool size is always less than 65536
-    uint64_t seqHole = 0;
-    // Write sequential holes to serialization data
-    // Holes occur when constant pool slots don't contain heap objects or filtered out
-    auto writeHoles = [&seqHole, this]() {
-        if (seqHole == 0) {
-            return;
-        }
-        ASSERT(seqHole <= UINT16_MAX);
-        data_->WriteEncodeFlag(EncodeFlag::SEQUENCE_HOLE);
-        data_->WriteUint32(static_cast<uint32_t>(seqHole));
-        seqHole = 0;
-    };
-    for (auto slot = start; slot < end; slot++) {
-        JSTaggedValue val = JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress()));
-        if (!val.IsHeapObject()) {
-            const auto toEnd = (end.SlotAddress() - slot.SlotAddress()) / JSTaggedValue::TaggedTypeSize();
-            if (toEnd == SHARED_CONSTPOOL_ID_OFFSET) {
-                writeHoles();
-                SerializeJSTaggedValue(val);
+    ASSERT(JSTaggedValue(root).IsConstantPool());
+    if constexpr (ReferenceIsCompressed<refType>) {
+        // constpool size is always less than 65536
+        uint64_t seqHole = 0;
+        // Write sequential holes to serialization data
+        // Holes occur when constant pool slots don't contain heap objects or filtered out
+        auto writeCompressedHoles = [&seqHole, this]() {
+            if (seqHole == 0) {
+                return;
+            }
+            ASSERT(seqHole <= UINT16_MAX);
+            data_->WriteEncodeFlag(EncodeFlag::SEQUENCE_COMPRESSED_HOLE);
+            data_->WriteUint32(static_cast<uint32_t>(seqHole));
+            seqHole = 0;
+        };
+        for (CompressedObjectSlot slot = start; slot < end; slot++) {
+            TemporaryJSTaggedValue value = Barriers::GetFromCompressedTaggedValue(thread_, slot.SlotAddress());
+            if (!value.IsHeapObject()) {
+                seqHole++;
                 continue;
             }
-            seqHole++;
-            continue;
+            TaggedObject *object = value.GetHeapObject();
+            switch (object->GetClass()->GetObjectType()) {
+                case JSType::LINE_STRING:
+                    writeCompressedHoles();
+                    SerializeCompressedTaggedObject(object);
+                    break;
+                default:
+                    seqHole++;
+                    break;
+            }
         }
-        // ConstantPool solts not have any weakref
-        auto obj = val.GetTaggedObject();
-        switch (obj->GetClass()->GetObjectType()) {
-            case JSType::LINE_STRING:
-                writeHoles();
-                SerializeJSTaggedValue(val);
-                break;
-            default:
-                seqHole++;
-                break;
+        writeCompressedHoles();
+    } else {
+        ConstantPool *constpool = ConstantPool::Cast(root);
+        size_t sharedConstPoolIdOffset = constpool->GetSharedConstpoolIdOffset();
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            size_t fieldOffset = slot.SlotAddress() - ToUintPtr(constpool->GetData());
+            if (fieldOffset == sharedConstPoolIdOffset) {
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+            } else {
+                SerializeJSTaggedValue(JSTaggedValue::Hole());
+            }
         }
     }
-    writeHoles();
 }
+template void BaseSerializer::SerializeConstantPoolFieldIndividually<ReferenceType::NORMAL>(
+    TaggedObject *root, ObjectSlot start, ObjectSlot end);
+#ifdef USE_COMPRESSED_POINTER
+template void BaseSerializer::SerializeConstantPoolFieldIndividually<ReferenceType::COMPRESSED>(
+    TaggedObject *root, CompressedObjectSlot start, CompressedObjectSlot end);
+#endif
 } // namespace panda::ecmascript

@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_GC_ROOT_H
 #define ECMASCRIPT_GC_ROOT_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/slots.h"
 

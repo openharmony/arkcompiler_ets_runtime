@@ -21,7 +21,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/constpool_value.h"
@@ -40,6 +40,7 @@
 
 namespace panda {
 namespace ecmascript {
+class BaseSerializer;
 class JSThread;
 
 class Program : public ECMAObject {
@@ -55,31 +56,31 @@ public:
 
 /*                         ConstantPool(TaggedArray)
  *      +--------------------------------+----------------------------------
- *      |               ...              |       ^           ^          ^   index 0
- *      |  Method / AOTLiteralInfo / Int |       |           |          |
- *      |              String            |       |           |          |
- *      |           Array Literal        | ConstpoolLength   |          |
- *      |           Class Literal        |       |           |          |
- *      |           Object Literal       |       |           |          |
- *      |               ...              |       v           |          |
- *      +--------------------------------+---------------    |          |
- *      |          ProtoTransTableInfo   |PointerToIndexDic  |          |
- *      +--------------------------------+---------------    |          |
- *      |          AOTSymbolInfo         |TaggedArray        |          |
- *      +--------------------------------+---------------    |          |
- *      |      shared constpool id       |int32_t        CacheLength    |
- *      +--------------------------------+---------------    |        Length
- *      |      unshared constpool index  |int32_t            |          |
- *      +--------------------------------+---------------    |          |
- *      |          AOTHClassInfo         |TaggedArray        |          |
- *      +--------------------------------+---------------    |          |
- *      |          AOTArrayInfo          |TaggedArray        |          |
- *      +--------------------------------+---------------    |          |
- *      |         constIndexInfo         |TaggedArray        v          |
- *      +--------------------------------+--------------------------    |
- *      |           IndexHeader          |                              |
- *      +--------------------------------+                              |
- *      |           JSPandaFile          |                              v    index: Length-1
+ *      |               ...              |       ^           ^            ^   index 0
+ *      |  Method / AOTLiteralInfo / Int |       |           |            |
+ *      |              String            |    CacheLength    |            |
+ *      |           Array Literal        | (with special     |            |
+ *      |           Class Literal        |compressed pointer)|            |
+ *      |           Object Literal       |       |           |            |
+ *      |               ...              |       v           |            |
+ *      +--------------------------------+---------------    |            |
+ *      |          ProtoTransTableInfo   |PointerToIndexDic  |            |
+ *      +--------------------------------+---------------    |            |
+ *      |          AOTSymbolInfo         |TaggedArray        |            |
+ *      +--------------------------------+---------------    |            |
+ *      |      shared constpool id       |Tagged int32_t ConstpoolLength  |
+ *      +--------------------------------+---------------    |          Length
+ *      |      unshared constpool id     |Tagged int32_t     |            |
+ *      +--------------------------------+---------------    |            |
+ *      |          AOTHClassInfo         |TaggedArray        |            |
+ *      +--------------------------------+---------------    |            |
+ *      |          AOTArrayInfo          |TaggedArray        |            |
+ *      +--------------------------------+---------------    |            |
+ *      |         constIndexInfo         |TaggedArray        v            |
+ *      +--------------------------------+--------------------------      |
+ *      |           IndexHeader          |                                |
+ *      +--------------------------------+                                |
+ *      |           JSPandaFile          |                                v    index: Length-1
  *      +--------------------------------+-----------------------------------
  */
 class ConstantPool : public TaggedArray {
@@ -179,11 +180,7 @@ public:
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << id.GetOffset();
         auto constpoolSize = mainIndex->method_idx_size;
 
-        JSHandle<ConstantPool> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
-        if (constpool.GetTaggedValue().IsHole()) {
-            ObjectFactory *factory = vm->GetFactory();
-            constpool = factory->NewSConstantPool(constpoolSize);
-        }
+        JSHandle<ConstantPool> constpool(vm->GetFactory()->NewSConstantPool(constpoolSize));
 
         constpool->SetJSPandaFile(jsPandaFile);
         constpool->SetIndexHeader(mainIndex);
@@ -201,14 +198,10 @@ public:
     static JSHandle<ConstantPool> CreateSharedConstPoolForAOT(
         EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t cpId = 0)
     {
-        JSHandle<ConstantPool> sconstpool(vm->GetJSThread(), JSTaggedValue::Hole());
-        uint32_t capacity = constpool->GetConstpoolLength();
-        if (sconstpool.GetTaggedValue().IsHole()) {
-            ObjectFactory *factory = vm->GetFactory();
-            sconstpool = factory->NewSConstantPool(capacity);
-        }
+        uint32_t numOfCache = constpool->GetNumOfCacheElement();
+        JSHandle<ConstantPool> sconstpool(vm->GetFactory()->NewSConstantPool(numOfCache));
         JSThread *thread = vm->GetJSThread();
-        for (uint32_t i = 0; i < capacity; i++) {
+        for (uint32_t i = 0; i < numOfCache; i++) {
             JSTaggedValue val = constpool->GetObjectFromCache(thread, i);
             if (val.IsString()) {
                 sconstpool->SetObjectToCache(thread, i, val);
@@ -312,21 +305,32 @@ public:
         return Barriers::GetPrimitive<panda_file::File::IndexHeader *>(GetData(), GetIndexHeaderOffset());
     }
 
-    static size_t ComputeSize(uint32_t cacheSize)
+    static constexpr size_t CACHE_NUM_TO_SIZE_FACTOR = CompressedJSTaggedValue::CompressFactorToJSTaggedValue();
+
+    static size_t AlignUpNumOfCacheForCompressedPointer(uint32_t numOfCache)
     {
-        return TaggedArray::ComputeSize(
-            JSTaggedValue::TaggedTypeSize(), cacheSize + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
+        return AlignUp(numOfCache, CACHE_NUM_TO_SIZE_FACTOR);
     }
 
-    inline void InitializeWithSpecialValue(JSThread *thread, JSTaggedValue initValue, uint32_t capacity,
-                                    uint32_t extraLength = 0)
+    static size_t ComputeSize(uint32_t numOfCache)
     {
-        ASSERT(initValue.IsSpecial());
-        SetLength(capacity + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
+        ASSERT(IsAligned(numOfCache, CACHE_NUM_TO_SIZE_FACTOR));
+        size_t cacheLength = numOfCache / CACHE_NUM_TO_SIZE_FACTOR;
+        return TaggedArray::ComputeSize(
+            JSTaggedValue::TaggedTypeSize(), cacheLength + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
+    }
+
+    void InitializeWithSpecialValue(JSThread *thread, CompressedJSTaggedValue initValue,
+        uint32_t numOfCache, uint32_t extraLength = 0)
+    {
+        ASSERT(initValue.GetCompressedRawData() == CompressedJSTaggedValue::Hole().GetCompressedRawData());
+        ASSERT(IsAligned(numOfCache, CACHE_NUM_TO_SIZE_FACTOR));
+        size_t cacheLength = numOfCache / CACHE_NUM_TO_SIZE_FACTOR;
+        SetLength(cacheLength + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
         SetExtraLength(extraLength);
-        for (uint32_t i = 0; i < capacity; i++) {
-            size_t offset = JSTaggedValue::TaggedTypeSize() * i;
-            Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+        for (uint32_t i = 0; i < numOfCache; i++) {
+            size_t offset = CompressedJSTaggedValue::CompressedTaggedTypeSize() * i;
+            Barriers::SetPrimitive<CompressedJSTaggedType>(GetData(), offset, initValue.GetCompressedRawData());
         }
         InitializeWithSpecialValue(thread);
     }
@@ -345,14 +349,19 @@ public:
         SetSharedConstpoolId(JSTaggedValue(CONSTPOOL_TYPE_FLAG));
     }
 
-    inline uint32_t GetCacheLength() const
+    inline uint32_t GetNumOfCacheElement() const
     {
-        return GetLength() - RESERVED_POOL_LENGTH;
+        return GetLengthOfCacheElement() * CACHE_NUM_TO_SIZE_FACTOR;
     }
 
-    inline uint32_t GetConstpoolLength() const
+    inline constexpr uint32_t GetNumOfExtendElement() const
     {
-        return GetLength() - RESERVED_POOL_LENGTH - EXTEND_DATA_NUM;
+        return EXTEND_DATA_NUM;
+    }
+
+    inline uint32_t GetLengthOfConstPoolElement() const
+    {
+        return GetLength() - RESERVED_POOL_LENGTH;
     }
 
     inline void SetJSPandaFile(const void *jsPandaFile)
@@ -459,20 +468,24 @@ public:
 
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
-        Set(thread, index, value);
+        ASSERT(index < GetNumOfCacheElement());
+        SetCompressed(thread, index, value);
     }
 
     static void CASSetObjectToCache(
         JSThread *thread, const JSTaggedValue constpool, uint32_t index, JSTaggedValue value)
     {
+        ASSERT(index < ConstantPool::Cast(constpool.GetTaggedObject())->GetNumOfCacheElement());
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-        std::atomic<JSTaggedValue> *atomicVal = reinterpret_cast<std::atomic<JSTaggedValue> *>(
-            reinterpret_cast<uintptr_t>(taggedPool) + DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        JSTaggedValue tempVal = taggedPool->GetObjectFromCache(thread, index);
-        JSTaggedValue expected = IsLoadingAOTMethodInfo(taggedPool->GetJSPandaFile(), tempVal) ? tempVal :
-            JSTaggedValue::Hole();
-        JSTaggedValue desired = value;
+        size_t offset = index * CompressedJSTaggedValue::CompressedTaggedTypeSize();
+        std::atomic<CompressedJSTaggedType> *atomicVal = reinterpret_cast<std::atomic<CompressedJSTaggedType> *>(
+            ToUintPtr(taggedPool) + DATA_OFFSET + offset);
+        TemporaryJSTaggedValue tempVal = taggedPool->GetObjectFromCacheUnsafe(thread, index);
+        CompressedJSTaggedType expected = IsLoadingAOTMethodInfo(taggedPool->GetJSPandaFile(), tempVal)
+            ? CompressedJSTaggedValue::Compress(tempVal).GetCompressedRawData()
+            : CompressedJSTaggedValue::Hole().GetCompressedRawData();
+        CompressedJSTaggedType desired = CompressedJSTaggedValue::Compress(value).GetCompressedRawData();
         if (std::atomic_compare_exchange_strong_explicit(atomicVal, &expected, desired,
             std::memory_order_release, std::memory_order_relaxed)) {
             // set val by Barrier.
@@ -480,15 +493,25 @@ public:
         }
     }
 
-    inline JSTaggedValue GetObjectFromCache(const JSThread *thread, uint32_t index) const
+    inline JSTaggedValue GetFromExtend(const JSThread *thread, uint32_t index) const
     {
-        return Get(thread, index);
+        ASSERT(JSTaggedValue(this).IsConstantPool());
+        ASSERT(index < GetNumOfExtendElement());
+        uint32_t idx = index + GetLengthOfCacheElement();
+        ASSERT(idx < GetLength());
+        // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
+        //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
+        size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+        // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, reinterpret_cast<JSTaggedType *>(ToUintPtr(this)),
+                                                      DATA_OFFSET + offset));
     }
 
     static JSTaggedValue GetMethodFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->GetObjectFromCache(thread, index);
+        TemporaryJSTaggedValue val = taggedPool->GetObjectFromCacheUnsafe(thread, index);
+        ASSERT(val.IsHeapObject() || val.IsHole() || val.IsInt());
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
         // For AOT
@@ -501,24 +524,25 @@ public:
                 // For MethodInfo which does not have ihc infos, we store codeEntry directly.
                 entryIndexVal = val.GetInt();
             } else {
-                JSHandle<AOTLiteralInfo> entryIndexes(thread, val);
+                JSHandle<AOTLiteralInfo> entryIndexes(thread, val.ConvertHeapObjectToJSTaggedValue());
                 entryIndexVal = entryIndexes->GetObjectFromCache(thread, 0).GetInt(); // 0: only one method
             }
             if (entryIndexVal != static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE)) {
                 hasEntryIndex = true;
                 entryIndex = static_cast<uint32_t>(entryIndexVal);
             }
-            val = JSTaggedValue::Hole();
+            val = TemporaryJSTaggedValue::Hole();
         }
 
+        ASSERT(val.IsHeapObject() || val.IsHole());
         if (!val.IsHole()) {
-            return val;
+            return val.ConvertHeapObjectToJSTaggedValue();
         }
 
         if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
             JSTaggedValue unsharedCp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool);
             taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
-            return taggedPool->Get(thread, index);
+            return taggedPool->GetObjectFromCache(thread, index);
         }
 
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -559,15 +583,16 @@ public:
         static_assert(type == ConstPoolType::OBJECT_LITERAL || type == ConstPoolType::ARRAY_LITERAL);
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->GetObjectFromCache(thread, index);
+        TemporaryJSTaggedValue val = taggedPool->GetObjectFromCacheUnsafe(thread, index);
+        ASSERT(val.IsHeapObject() || val.IsHole());
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
         // For AOT
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         JSHandle<AOTLiteralInfo> entryIndexes(thread, JSTaggedValue::Undefined());
         if (isLoadedAOT && val.IsAOTLiteralInfo()) {
-            entryIndexes = JSHandle<AOTLiteralInfo>(thread, val);
-            val = JSTaggedValue::Hole();
+            entryIndexes = JSHandle<AOTLiteralInfo>(thread, val.ConvertHeapObjectToJSTaggedValue());
+            val = TemporaryJSTaggedValue::Hole();
         }
 
         if (val.IsHole()) {
@@ -609,8 +634,9 @@ public:
                         valueHandle.Update(elements->Get(thread, i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
-                    val = obj.GetTaggedValue();
-                    break;
+                    JSTaggedValue value = obj.GetTaggedValue();
+                    constpoolHandle->SetObjectToCache(thread, index, value);
+                    return value;
                 }
                 case ConstPoolType::ARRAY_LITERAL: {
                     // literal fetching from AOT ArrayInfos
@@ -643,17 +669,17 @@ public:
                         JSHandle<JSObject> receiver(arr);
                         Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
                     }
-                    val = arr.GetTaggedValue();
-                    break;
+                    JSTaggedValue value = arr.GetTaggedValue();
+                    constpoolHandle->SetObjectToCache(thread, index, value);
+                    return value;
                 }
                 default:
                     LOG_FULL(FATAL) << "Unknown type: " << static_cast<uint8_t>(type);
                     UNREACHABLE();
             }
-            constpoolHandle->SetObjectToCache(thread, index, val);
         }
 
-        return val;
+        return val.ConvertHeapObjectToJSTaggedValue();
     }
 
     template <ConstPoolType type>
@@ -661,14 +687,15 @@ public:
                                                     uint32_t index, [[maybe_unused]] CString entry)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->GetObjectFromCache(thread, index);
+        TemporaryJSTaggedValue val = taggedPool->GetObjectFromCacheUnsafe(thread, index);
+        ASSERT(val.IsHeapObject() || val.IsHole());
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         if (isLoadedAOT && val.IsAOTLiteralInfo()) {
-            val = JSTaggedValue::Hole();
+            return JSTaggedValue::Undefined();
         }
-        return val.IsHole() ? JSTaggedValue::Undefined() : val;
+        return val.IsHole() ? JSTaggedValue::Undefined() : val.ConvertHeapObjectToJSTaggedValue();
     }
 
     static panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index)
@@ -691,11 +718,86 @@ public:
 
     static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index);
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetLength());
+    // may return a fake JSTaggedValue, which consists of the high bit of heap address and the
+    // low bit of `JSTaggedValue::Hole`.
+    inline TemporaryJSTaggedValue GetObjectFromCacheUnsafe(const JSThread *thread, uint32_t index) const
+    {
+        ASSERT(index < GetNumOfCacheElement());
+        return GetFromCompressed(thread, index);
+    }
+
+    inline JSTaggedValue GetObjectFromCache(const JSThread *thread, uint32_t index) const
+    {
+        TemporaryJSTaggedValue res = GetObjectFromCacheUnsafe(thread, index);
+        return res.ConvertToJSTaggedValue();
+    }
+
+    DECL_VISIT_CONST_POOL(DATA_OFFSET, GetLengthOfCacheElement(), GetLengthOfConstPoolElement(), GetLength());
 
     DECL_DUMP()
 
 private:
+    inline uint32_t GetLengthOfCacheElement() const
+    {
+        return GetLength() - RESERVED_POOL_LENGTH - EXTEND_DATA_NUM;
+    }
+
+    template <RBMode mode = RBMode::DEFAULT_RB>
+    TemporaryJSTaggedValue GetFromCompressed(const JSThread *thread, uint32_t idx) const
+    {
+        ASSERT(JSTaggedValue(this).IsConstantPool());
+        // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
+        //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
+        size_t offset = CompressedJSTaggedValue::CompressedTaggedTypeSize() * idx;
+        ASSERT(offset < GetLength() * JSTaggedValue::TaggedTypeSize());
+        // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+        return TemporaryJSTaggedValue(Barriers::GetFromCompressedTaggedValue<mode>(
+            thread, JSTaggedValue(this), DATA_OFFSET + offset));
+    }
+
+    template<bool needBarrier = true, typename T = JSTaggedValue>
+    void Set(const JSThread *thread, uint32_t idx, const T &value)
+    {
+        ASSERT(JSTaggedValue(this).IsConstantPool());
+        ASSERT(idx < GetLength());
+        size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+
+        if constexpr (std::is_same_v<T, JSTaggedValue>) {
+            if (needBarrier && value.IsHeapObject()) {
+                Barriers::SetObject<true>(thread, reinterpret_cast<void*>(this), offset + DATA_OFFSET,
+                                          value.GetRawData());
+            } else {
+                Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
+            }
+        } else if constexpr (IsJSHandle<T>::value) {
+            auto taggedValue = value.GetTaggedValue();
+            if (taggedValue.IsHeapObject()) {
+                Barriers::SetObject<true>(thread, reinterpret_cast<void*>(this),
+                                        offset + DATA_OFFSET, taggedValue.GetRawData());
+            } else {
+                Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, taggedValue.GetRawData());
+            }
+        } else {
+            static_assert(!std::is_same_v<T, T>, "T must be either JSTaggedValue or JSHandle<>");
+        }
+    }
+
+    template<bool needBarrier = true>
+    void SetCompressed(const JSThread *thread, uint32_t idx, JSTaggedValue value)
+    {
+        ASSERT(JSTaggedValue(this).IsConstantPool());
+        size_t offset = CompressedJSTaggedValue::CompressedTaggedTypeSize() * idx;
+        ASSERT(offset < GetLength() * JSTaggedValue::TaggedTypeSize());
+
+        if (needBarrier && value.IsHeapObject()) {
+            Barriers::SetCompressedObject<true>(
+                thread, reinterpret_cast<void*>(this), offset + DATA_OFFSET, value.GetRawData());
+        } else {
+            Barriers::SetPrimitive<CompressedJSTaggedType>(
+                GetData(), offset, CompressedJSTaggedValue::Compress(value).GetCompressedRawData());
+        }
+    }
+
     inline size_t GetJSPandaFileOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - JS_PANDA_FILE_INDEX);
@@ -746,7 +848,7 @@ private:
         return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
     }
 
-    static bool IsLoadingAOTMethodInfo(const JSPandaFile *pf, JSTaggedValue cachedVal)
+    static bool IsLoadingAOTMethodInfo(const JSPandaFile *pf, TemporaryJSTaggedValue cachedVal)
     {
         // Two types of AOT method infos are stored in the constpool:
         // 1. AOTLiteralInfo which includes function entry index and ihc/chc
@@ -757,6 +859,8 @@ private:
     static JSHandle<JSTaggedValue> GetDeserializedConstantPool(
         EcmaVM *vm, const JSPandaFile *jsPandaFile, int32_t cpID);
     static void MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTaggedValue> &pool);
+
+    friend BaseSerializer;
 };
 }  // namespace ecmascript
 }  // namespace panda

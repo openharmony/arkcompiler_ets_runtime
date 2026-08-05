@@ -17,7 +17,7 @@
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/object_fast_operator.h"
@@ -40,7 +40,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/property_attributes.h"

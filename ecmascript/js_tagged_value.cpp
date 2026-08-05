@@ -405,6 +405,11 @@ bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+bool JSTaggedValue::IsConstantPoolSlowForTest() const
+{
+    return IsConstantPool();
+}
+
 bool JSTaggedValue::IsICInfo() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsICInfo();

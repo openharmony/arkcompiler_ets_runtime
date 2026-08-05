@@ -16,7 +16,7 @@
 #include "ecmascript/builtins/builtins_gc.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "common_components/heap/heap.h"
 
@@ -204,12 +204,12 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, err.GetTaggedValue(), JSTaggedValue::Exception());
     }
 
-    sizeInBytes = RoundUp(sizeInBytes, sizeof(TaggedType)) - JSArray::SIZE;
+    sizeInBytes = RoundUp(sizeInBytes, sizeof(JSTaggedType)) - JSArray::SIZE;
     if (sizeInBytes < 0) {
         sizeInBytes = 0;
     }
 
-    uint32_t numElements = static_cast<uint32_t>(sizeInBytes / sizeof(TaggedType));
+    uint32_t numElements = static_cast<uint32_t>(sizeInBytes / sizeof(JSTaggedType));
     auto array = factory->NewJSArray();
 
     if (numElements > 0) {

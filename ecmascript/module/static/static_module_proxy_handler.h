@@ -17,7 +17,7 @@
 #define ECMASCRIPT_SATTIC_MODULE_PROXY_HANDLER_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_function.h"
 

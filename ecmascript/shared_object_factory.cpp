@@ -729,10 +729,11 @@ JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *g
     return JSHandle<AccessorData>::Cast(obj);
 }
 
-JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
+JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t numOfCache)
 {
     NewSObjectHook();
-    size_t size = ConstantPool::ComputeSize(capacity);
+    numOfCache = ConstantPool::AlignUpNumOfCacheForCompressedPointer(numOfCache);
+    size_t size = ConstantPool::ComputeSize(numOfCache);
     TaggedObject *header = nullptr;
     if (LIKELY(!g_isEnableCMCGC)) {
         header = sHeap_->AllocateOldOrHugeObject(
@@ -742,7 +743,7 @@ JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
             thread_, JSHandle<JSHClass>(sHeap_->GetGlobalConst()->GetHandledSharedConstantPoolClass()), size);
     }
     JSHandle<ConstantPool> array(thread_, header);
-    array->InitializeWithSpecialValue(thread_, JSTaggedValue::Hole(), capacity);
+    array->InitializeWithSpecialValue(thread_, CompressedJSTaggedValue::Hole(), numOfCache);
     ASSERT(!g_isEnableCMCGC || array->IsInSharedHeap());
     return array;
 }

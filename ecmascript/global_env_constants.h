@@ -17,7 +17,7 @@
 #define ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H
 #include <cstdint>
 #include "ecmascript/compiler/builtins/builtins_call_signature_list.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "libpandabase/macros.h"
 #include "ecmascript/cross_vm/global_env_constants_hybrid.h"

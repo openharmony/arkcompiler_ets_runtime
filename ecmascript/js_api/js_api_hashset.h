@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JS_API_JS_API_HASHSET_H
 
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 class JSAPIHashSet : public JSObject {

@@ -335,20 +335,6 @@ void SparseSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
     });
 }
 
-void SparseSpace::IterateOldToNewOverObjects(
-    const std::function<void(TaggedObject *object, JSTaggedValue value)> &visitor) const
-{
-    auto cb = [visitor](void *mem) -> bool {
-        ObjectSlot slot(ToUintPtr(mem));
-        visitor(reinterpret_cast<TaggedObject *>(mem), JSTaggedValue(slot.GetTaggedType()));
-        return true;
-    };
-    EnumerateRegions([cb] (Region *region) {
-        region->IterateAllSweepingRSetBits(cb);
-        region->IterateAllOldToNewBits(cb);
-    });
-}
-
 size_t SparseSpace::GetHeapObjectSize() const
 {
     return liveObjectSize_;

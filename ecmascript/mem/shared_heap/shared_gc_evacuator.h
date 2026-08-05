@@ -89,7 +89,8 @@ public:
 private:
     void EvacuateRegions();
     void UpdateReference();
-    bool UpdateObjectSlot(ObjectSlot slot);
+    template <ReferenceType refType>
+    bool UpdateObjectSlot(ObjectSlotBase<refType> slot);
     void UpdateObjectSlotRoot(ObjectSlot slot);
     void ProcessObjectField(TaggedObject *object, JSHClass *hclass);
     void PostParallelTasks();
@@ -124,7 +125,10 @@ private:
         explicit ObjectFieldCSetVisitor(SharedGCEvacuator *evacuator) : evacuator_(evacuator) {}
         ~ObjectFieldCSetVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+
+        void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                            CompressedObjectSlot end) override;
     private:
         SharedGCEvacuator *evacuator_ {nullptr};
     };

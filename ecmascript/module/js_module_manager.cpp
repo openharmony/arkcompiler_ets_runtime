@@ -453,7 +453,7 @@ void ModuleManager::ResetConstPoolLiterals(const CString &recordName)
     for (const auto& [unsharedConstPoolIndex, indexes] : iter->second) {
         JSTaggedValue unsharedConstPool = vm_->FindUnsharedConstpool(unsharedConstPoolIndex);
         if (!unsharedConstPool.IsHole()) {
-            uint32_t size = ConstantPool::Cast(unsharedConstPool.GetTaggedObject())->GetConstpoolLength();
+            uint32_t size = ConstantPool::Cast(unsharedConstPool.GetTaggedObject())->GetNumOfCacheElement();
             for (uint32_t index : indexes) {
                 if (index >= size) {
                     LOG_ECMA(ERROR) << "ResetConstPoolLiterals index >= size";

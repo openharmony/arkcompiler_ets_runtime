@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_TAGGED_QUEUE_H
 #define ECMASCRIPT_TAGGED_QUEUE_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_array-inl.h"

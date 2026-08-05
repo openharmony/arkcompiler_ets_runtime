@@ -68,8 +68,11 @@ private:
         explicit SetObjectFieldRSetVisitor(ParallelEvacuator *evacuator);
         ~SetObjectFieldRSetVisitor() = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+        void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                   VisitObjectArea area) override;
+
+        void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                            CompressedObjectSlot end) override;
     private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
@@ -81,7 +84,10 @@ private:
         explicit UpdateNewObjectFieldVisitor(ParallelEvacuator *evacuator);
         ~UpdateNewObjectFieldVisitor() = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+
+        void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                            CompressedObjectSlot end) override;
     private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
@@ -91,7 +97,10 @@ private:
         explicit UpdateNonMovableObjectFieldVisitor(ParallelEvacuator *evacuator);
         ~UpdateNonMovableObjectFieldVisitor() = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+
+        void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                            CompressedObjectSlot end) override;
     private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
@@ -256,7 +265,8 @@ private:
     void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
     void EvacuateNonMovableSpaceRegion(TlabAllocator *allocator, Region *region);
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
-    inline void SetObjectRSet(ObjectSlot slot, Region *region);
+    template <ReferenceType refType>
+    inline void SetObjectRSet(ObjectSlotBase<refType> slot, Region *region);
 
     void ProcessFromSpaceEvacuation();
     inline RegionEvacuateType SelectRegionEvacuateType(Region *region);
@@ -284,17 +294,21 @@ private:
     template<TriggerGCType gcType, bool updateHClass>
     void UpdateNewToOldEvacuationReference(Region *region, uint32_t threadIndex);
 
-    inline bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak);
-    template <bool cmsGC>
-    inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
-    inline void UpdateObjectSlot(ObjectSlot &slot);
-    inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
-    inline void UpdateCrossRegionObjectSlot(ObjectSlot &slot);
-    template<TriggerGCType gcType, bool needUpdateLocalToShare>
-    inline void UpdateNewObjectSlot(ObjectSlot &slot);
+    template <ReferenceType refType>
+    bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlotBase<refType> slot, bool isWeak);
+    template <bool cmsGC, ReferenceType refType>
+    bool UpdateOldToNewObjectSlot(ObjectSlotBase<refType> slot);
+    inline void UpdateObjectSlot(ObjectSlot slot);
+    inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot slot);
+    template <ReferenceType refType>
+    void UpdateCrossRegionObjectSlot(ObjectSlotBase<refType> slot);
+    template <TriggerGCType gcType, bool needUpdateLocalToShare, ReferenceType refType>
+    void UpdateNewObjectSlot(ObjectSlotBase<refType> slot);
     inline void UpdateHClassSlot(ObjectSlot slot, TaggedObject *hClass);
-    inline void UpdateNonMovableObjectSlot(Region *objectRegion, ObjectSlot slot);
-    inline void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot);
+    template <ReferenceType refType>
+    inline void UpdateNonMovableObjectSlot(Region *objectRegion, ObjectSlotBase<refType> slot);
+    template <ReferenceType refType>
+    void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlotBase<refType> slot);
 
     inline int CalculateEvacuationThreadNum();
     inline int CalculateUpdateThreadNum();

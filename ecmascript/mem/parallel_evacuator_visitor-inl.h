@@ -24,13 +24,11 @@ template<TriggerGCType gcType>
 SlotUpdateRangeVisitor<gcType>::SlotUpdateRangeVisitor(ParallelEvacuator *evacuator) : evacuator_(evacuator) {}
 
 template<TriggerGCType gcType>
-void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                                           VisitObjectArea area)
 {
     JSThread *thread = evacuator_->heap_->GetJSThread();
     Region *rootRegion = Region::ObjectAddressToRange(root);
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -53,16 +51,29 @@ void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(BaseObject *root, uint
 }
 
 template<TriggerGCType gcType>
-void SlotUpdateRangeVisitor<gcType>::UpdateSlot(ObjectSlot slot, Region *rootRegion)
+void SlotUpdateRangeVisitor<gcType>::VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                                                    CompressedObjectSlot end)
+{
+    JSThread *thread = evacuator_->heap_->GetJSThread();
+    Region *rootRegion = Region::ObjectAddressToRange(root);
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        UpdateSlot(slot, rootRegion);
+    }
+}
+
+template <TriggerGCType gcType>
+template <ReferenceType refType>
+void SlotUpdateRangeVisitor<gcType>::UpdateSlot(ObjectSlotBase<refType> slot, Region *rootRegion)
 {
     evacuator_->UpdateNewObjectSlot<gcType, false>(slot);
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }
-    Region *valueRegion = Region::ObjectAddressToRange(slot.GetTaggedObject());
+    // Region is correct no matter value is weak or not.
+    Region *valueRegion = Region::ObjectAddressToRange(slot.GetTaggedValue().GetRawHeapObject());
     if (valueRegion->InYoungSpace()) {
-        rootRegion->InsertOldToNewRSet(slot.SlotAddress());
+        rootRegion->InsertOldToNewRSet<refType>(slot.SlotAddress());
     }
 }
 

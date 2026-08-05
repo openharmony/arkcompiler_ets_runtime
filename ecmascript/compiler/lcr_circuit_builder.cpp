@@ -210,6 +210,19 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef glue, GateRef base, Gate
     return result;
 }
 
+GateRef CircuitBuilder::LoadFromCompressedTaggedValue(VariableType type, GateRef glue, GateRef base, GateRef offset)
+{
+    ASSERT(type == VariableType::JS_ANY());
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef val = PtrAdd(base, offset);
+    auto bits = LoadStoreAccessor::ToValue(MemoryAttribute::NeedBarrier());
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadFromCompressed(bits), type.GetMachineType(),
+                                           { depend, glue, val }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
+}
+
 GateRef CircuitBuilder::LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset, MemoryAttribute mAttr)
 {
     auto label = GetCurrentLabel();

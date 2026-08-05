@@ -19,7 +19,7 @@
 #include "ecmascript/mem/shared_heap/shared_cc_evacuator.h"
 
 #include "ecmascript/free_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/region-inl.h"
@@ -98,11 +98,11 @@ inline void ProcessSharedCCWeakReferenceSlot(ObjectSlot &slot, SharedCCEvacuator
         MarkWord markWord(header, RELAXED_LOAD);
         if (markWord.IsForwardingAddress()) {
             TaggedObject *dst = markWord.ToForwardingAddress();
-            auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();
+            auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawHeapObject();
             slot.Update(weakRef);
         } else {
             TaggedObject *dst = evacuator.Copy(header, markWord);
-            auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();
+            auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawHeapObject();
             slot.Update(weakRef);
         }
         return;

@@ -21,7 +21,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/debugger/js_debugger_manager.h"

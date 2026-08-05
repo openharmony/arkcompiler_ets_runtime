@@ -19,7 +19,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/barriers.h"

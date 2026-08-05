@@ -532,10 +532,20 @@ static void DumpCOWMutantTaggedArray(const JSThread *thread, const COWMutantTagg
 static void DumpConstantPoolClass(const JSThread *thread, const ConstantPool *pool, std::ostream &os)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t len = pool->GetCacheLength();
+    uint32_t cacheLen = pool->GetNumOfCacheElement();
+    uint32_t extendLen = pool->GetNumOfExtendElement();
+    uint32_t len = cacheLen + extendLen;
     os << " <ConstantPool[" << std::dec << len << "]>\n";
-    for (uint32_t i = 0; i < len; i++) {
+    for (uint32_t i = 0; i < cacheLen; i++) {
         JSTaggedValue val(pool->GetObjectFromCache(thread, i));
+        if (!val.IsHole()) {
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+            val.DumpTaggedValue(thread, os);
+            os << "\n";
+        }
+    }
+    for (uint32_t i = 0; i < extendLen; i++) {
+        JSTaggedValue val(pool->GetFromExtend(thread, i));
         if (!val.IsHole()) {
             os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
             val.DumpTaggedValue(thread, os);
@@ -4112,10 +4122,16 @@ static void DumpElementClass(const JSThread *thread, const TaggedArray *arr, std
 static void DumpConstantPoolClass(const JSThread *thread, const ConstantPool *arr, std::vector<Reference> &vec)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t len = arr->GetCacheLength();
-    vec.reserve(vec.size() + len);
-    for (uint32_t i = 0; i < len; i++) {
+    uint32_t cacheLen = arr->GetNumOfCacheElement();
+    uint32_t extendLen = arr->GetNumOfExtendElement();
+    vec.reserve(vec.size() + cacheLen + extendLen);
+    for (uint32_t i = 0; i < cacheLen; i++) {
         JSTaggedValue val(arr->GetObjectFromCache(thread, i));
+        CString str = ToCString(i);
+        vec.emplace_back(str, val);
+    }
+    for (uint32_t i = 0; i < extendLen; i++) {
+        JSTaggedValue val(arr->GetFromExtend(thread, i));
         CString str = ToCString(i);
         vec.emplace_back(str, val);
     }

@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_PROPERTY_ATTRIBUTES_H
 #define ECMASCRIPT_PROPERTY_ATTRIBUTES_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 #include "libpandabase/utils/bit_field.h"
 

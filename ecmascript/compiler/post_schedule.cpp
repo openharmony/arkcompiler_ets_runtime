@@ -68,6 +68,14 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
                     needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx);
                     break;
                 }
+                case OpCode::LOAD_FROM_COMPRESSED: {
+#ifdef USE_COMPRESSED_POINTER
+                    needRetraverse = VisitLoadFromCompressed(current, cfg, bbIdx, instIdx);
+#else
+                    needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx);
+#endif
+                    break;
+                }
                 case OpCode::LOAD_HCLASS_OPCODE: {
                     needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx, true);
                     break;
@@ -709,12 +717,27 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
                                          {glue, base, offset, value, reseverdFrameState},
                                          Circuit::NullGate(), comment.data());
+#ifdef STORE_CHECK_FOR_COMPRESSED_POINTER
+    GateRef verifyStoreTarget = circuit_->GetConstantGateWithoutCache(MachineType::ARCH,
+        CommonStubCSigns::VerifyStoreJSValueForCompressedPointer, GateType::NJSValue());
+    GateRef reservedFrameStateForVerify = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0,
+        GateType::NJSValue());
+    const CallSignature* verifyStoreCs =
+        CommonStubCSigns::Get(CommonStubCSigns::VerifyStoreJSValueForCompressedPointer);
+    GateRef verifyStore = builder_.Call(verifyStoreCs, glue, verifyStoreTarget, builder_.GetDepend(),
+                                        {glue, base, offset, reservedFrameStateForVerify}, Circuit::NullGate(),
+                                        "verify store");
+#endif
     {
         PrepareToScheduleNewGate(storeBarrier, currentBBGates);
         PrepareToScheduleNewGate(reseverdFrameState, currentBBGates);
         PrepareToScheduleNewGate(target, currentBBGates);
         PrepareToScheduleNewGate(store, currentBBGates);
         PrepareToScheduleNewGate(addr, currentBBGates);
+#ifdef STORE_CHECK_FOR_COMPRESSED_POINTER
+        PrepareToScheduleNewGate(verifyStore, currentBBGates);
+        PrepareToScheduleNewGate(reservedFrameStateForVerify, currentBBGates);
+#endif
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -782,6 +805,17 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     GateRef offset = acc_.GetValueIn(gate, 2); // 2: offset
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
     GateRef compValue = acc_.GetValueIn(gate, 4);  // 3: value
+#ifdef STORE_CHECK_FOR_COMPRESSED_POINTER
+    GateRef verifyStoreTarget = circuit_->GetConstantGateWithoutCache(MachineType::ARCH,
+        CommonStubCSigns::VerifyStoreJSValueForCompressedPointer, GateType::NJSValue());
+    GateRef reservedFrameStateForVerify = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0,
+        GateType::NJSValue());
+    const CallSignature* verifyStoreCs =
+        CommonStubCSigns::Get(CommonStubCSigns::VerifyStoreJSValueForCompressedPointer);
+    GateRef verifyStore = builder_.Call(verifyStoreCs, glue, verifyStoreTarget, builder_.GetDepend(),
+                                        {glue, base, offset, reservedFrameStateForVerify}, Circuit::NullGate(),
+                                        "verify store");
+#endif
     GateRef addr = builder_.PtrAdd(base, offset);
     VariableType type = VariableType(acc_.GetMachineType(compValue), acc_.GetGateType(compValue));
     builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
@@ -799,6 +833,10 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
             PrepareToScheduleNewGate(heapObjectCheck, currentBBGates);
             PrepareToScheduleNewGate(store, currentBBGates);
             PrepareToScheduleNewGate(addr, currentBBGates);
+#ifdef STORE_CHECK_FOR_COMPRESSED_POINTER
+            PrepareToScheduleNewGate(verifyStore, currentBBGates);
+            PrepareToScheduleNewGate(reservedFrameStateForVerify, currentBBGates);
+#endif
         }
     } else {
         GateRef intVal = builder_.ChangeTaggedPointerToInt64(value);
@@ -818,6 +856,10 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
             PrepareToScheduleNewGate(objMask, currentBBGates);
             PrepareToScheduleNewGate(store, currentBBGates);
             PrepareToScheduleNewGate(addr, currentBBGates);
+#ifdef STORE_CHECK_FOR_COMPRESSED_POINTER
+            PrepareToScheduleNewGate(verifyStore, currentBBGates);
+            PrepareToScheduleNewGate(reservedFrameStateForVerify, currentBBGates);
+#endif
         }
     }
 
@@ -921,6 +963,46 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     return false;
 }
 
+bool PostSchedule::VisitLoadFromCompressed([[maybe_unused]] GateRef gate, [[maybe_unused]] ControlFlowGraph &cfg,
+    [[maybe_unused]] size_t bbIdx, [[maybe_unused]] size_t instIdx)
+{
+#ifdef USE_COMPRESSED_POINTER
+    std::vector<GateRef> currentBBGates;
+    std::vector<GateRef> successBBGates;
+    std::vector<GateRef> failBBGates;
+    std::vector<GateRef> endBBGates;
+    MemoryAttribute::Barrier kind = GetBarrierKind(gate);
+    ASSERT(kind == MemoryAttribute::Barrier::NEED_BARRIER);
+    if (isStwCopyStub_) {
+        kind = MemoryAttribute::Barrier::NO_BARRIER;
+    }
+    switch (kind) {
+        case MemoryAttribute::Barrier::NEED_BARRIER: {
+            LoweringLoadFromCompressedWithBarrierAndPrepareScheduleGate(gate, currentBBGates, successBBGates,
+                                                                        failBBGates, endBBGates);
+            ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
+            ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
+            ScheduleNewBB(successBBGates, cfg, bbIdx);
+            ScheduleNewBB(failBBGates, cfg, bbIdx);
+            ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
+            return true;
+        }
+        case MemoryAttribute::Barrier::NO_BARRIER: {
+            LoweringLoadFromCompressedNoBarrierAndPrepareScheduleGate(gate, currentBBGates);
+            ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+            return false;
+        }
+        default:
+            UNREACHABLE();
+            break;
+    }
+    return false;
+#else
+    LOG_ECMA(FATAL) << "this branch is only enable for compressed pointer";
+    UNREACHABLE();
+#endif
+}
+
 void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
                                                                  std::vector<GateRef> &currentBBGates,
                                                                  std::vector<GateRef> &successBBGates,
@@ -1015,6 +1097,113 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
+void PostSchedule::LoweringLoadFromCompressedWithBarrierAndPrepareScheduleGate(GateRef gate,
+    [[maybe_unused]] std::vector<GateRef> &currentBBGates,
+    [[maybe_unused]] std::vector<GateRef> &successBBGates,
+    [[maybe_unused]] std::vector<GateRef> &failBBGates,
+    [[maybe_unused]] std::vector<GateRef> &endBBGates)
+{
+#ifdef USE_COMPRESSED_POINTER
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    GateRef glue = acc_.GetValueIn(gate, 0);
+    GateRef addr = acc_.GetValueIn(gate, 1);
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+
+    GateRef hole = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, JSTaggedValue::VALUE_HOLE, GateType::TaggedValue());
+    DEFVALUE(result, (&builder_), type, hole);
+
+    Label callRuntime(&builder_);
+    Label noBarrier(&builder_);
+    GateRef bitOffset = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false), GateType::NJSValue());
+    GateRef bitAddr = builder_.PtrAdd(glue, bitOffset);
+    GateRef gcStateBitField = builder_.LoadFromAddressWithoutBarrier(VariableType::INT64(), bitAddr);
+    GateRef readBarrierStateMask = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, JSThread::READ_BARRIER_STATE_BITFIELD_MASK, GateType::NJSValue());
+    GateRef readBarrierStateBit = builder_.Int64And(gcStateBitField, readBarrierStateMask);
+    GateRef conditionValue = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef condition = builder_.Equal(readBarrierStateBit, conditionValue);
+    auto currentLabel = env.GetCurrentLabel();
+    BRANCH_CIR_LIKELY(condition, &noBarrier, &callRuntime);
+    {
+        GateRef ifBranch = currentLabel->GetControl();
+        PrepareToScheduleNewGate(ifBranch, currentBBGates);
+        PrepareToScheduleNewGate(condition, currentBBGates);
+        PrepareToScheduleNewGate(conditionValue, currentBBGates);
+        PrepareToScheduleNewGate(readBarrierStateBit, currentBBGates);
+        PrepareToScheduleNewGate(readBarrierStateMask, currentBBGates);
+        PrepareToScheduleNewGate(gcStateBitField, currentBBGates);
+        PrepareToScheduleNewGate(bitAddr, currentBBGates);
+        PrepareToScheduleNewGate(bitOffset, currentBBGates);
+        PrepareToScheduleNewGate(hole, currentBBGates);
+    }
+    builder_.Bind(&noBarrier);
+    {
+        GateRef ifTrue = builder_.GetState();
+        GateRef loadWithoutBarrier = builder_.LoadFromAddressWithoutBarrier(
+            VariableType::INT32(), addr, acc_.GetMemoryAttribute(gate));
+        GateRef lowBit = builder_.ZExtInt32ToInt64(loadWithoutBarrier);
+        GateRef rawHelperAddr = builder_.ChangeTaggedPointerToInt64(addr);
+        GateRef highBitMask = circuit_->GetConstantGateWithoutCache(
+            MachineType::I64, CompressedJSTaggedValue::COMPRESSED_HIGH_BIT_MASK, GateType::NJSValue());
+        GateRef highBit = builder_.Int64And(rawHelperAddr, highBitMask);
+        GateRef resultRaw = builder_.Int64Or(highBit, lowBit);
+        GateRef resultTemporaryTaggedValue = builder_.Int64ToTaggedPtr(resultRaw);
+        result = resultTemporaryTaggedValue;
+        builder_.Jump(&exit);
+        {
+            GateRef ordinaryBlock = noBarrier.GetControl();
+            PrepareToScheduleNewGate(ordinaryBlock, successBBGates);
+            PrepareToScheduleNewGate(resultTemporaryTaggedValue, successBBGates);
+            PrepareToScheduleNewGate(resultRaw, successBBGates);
+            PrepareToScheduleNewGate(highBit, successBBGates);
+            PrepareToScheduleNewGate(highBitMask, successBBGates);
+            PrepareToScheduleNewGate(rawHelperAddr, successBBGates);
+            PrepareToScheduleNewGate(lowBit, successBBGates);
+            PrepareToScheduleNewGate(loadWithoutBarrier, successBBGates);
+            PrepareToScheduleNewGate(ifTrue, successBBGates);
+        }
+    }
+    builder_.Bind(&callRuntime);
+    {
+        GateRef ifFalse = builder_.GetState();
+        int index = CommonStubCSigns::GetValueFromCompressedWithBarrier;
+        const CallSignature *cs = CommonStubCSigns::Get(index);
+        ASSERT(cs->IsCommonStub());
+        GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
+        GateRef reservedFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        GateRef reservedPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        GateRef loadBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
+                                            { glue, addr, reservedFrameArgs, reservedPc },
+                                            Circuit::NullGate(), "load barrier");
+        result = loadBarrier;
+        builder_.Jump(&exit);
+        {
+            GateRef ordinaryBlock = callRuntime.GetControl();
+            PrepareToScheduleNewGate(ordinaryBlock, failBBGates);
+            PrepareToScheduleNewGate(loadBarrier, failBBGates);
+            PrepareToScheduleNewGate(reservedPc, failBBGates);
+            PrepareToScheduleNewGate(reservedFrameArgs, failBBGates);
+            PrepareToScheduleNewGate(target, failBBGates);
+            PrepareToScheduleNewGate(ifFalse, failBBGates);
+        }
+    }
+    builder_.Bind(&exit);
+    {
+        GateRef merge = builder_.GetState();
+        GateRef phi = *result;
+        PrepareToScheduleNewGate(merge, endBBGates);
+        PrepareToScheduleNewGate(phi, endBBGates);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+#else
+    LOG_ECMA(FATAL) << "this branch is only enable for compressed pointer";
+    UNREACHABLE();
+#endif
+}
+
 void PostSchedule::LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1026,6 +1215,38 @@ void PostSchedule::LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std
         PrepareToScheduleNewGate(loadWithoutBarrier, currentBBGates);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), loadWithoutBarrier);
+}
+
+void PostSchedule::LoweringLoadFromCompressedNoBarrierAndPrepareScheduleGate([[maybe_unused]] GateRef gate,
+    [[maybe_unused]] std::vector<GateRef> &currentBBGates)
+{
+#ifdef USE_COMPRESSED_POINTER
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef addr = acc_.GetValueIn(gate, 1);
+    GateRef loadWithoutBarrier = builder_.LoadFromAddressWithoutBarrier(
+        VariableType::INT32(), addr, acc_.GetMemoryAttribute(gate));
+    GateRef lowBit = builder_.ZExtInt32ToInt64(loadWithoutBarrier);
+    GateRef rawHelperAddr = builder_.ChangeTaggedPointerToInt64(addr);
+    GateRef highBitMask = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, CompressedJSTaggedValue::COMPRESSED_HIGH_BIT_MASK, GateType::NJSValue());
+    GateRef highBit = builder_.Int64And(rawHelperAddr, highBitMask);
+    GateRef resultRaw = builder_.Int64Or(highBit, lowBit);
+    GateRef resultTemporaryTaggedValue = builder_.Int64ToTaggedPtr(resultRaw);
+    {
+        PrepareToScheduleNewGate(resultTemporaryTaggedValue, currentBBGates);
+        PrepareToScheduleNewGate(resultRaw, currentBBGates);
+        PrepareToScheduleNewGate(highBit, currentBBGates);
+        PrepareToScheduleNewGate(highBitMask, currentBBGates);
+        PrepareToScheduleNewGate(rawHelperAddr, currentBBGates);
+        PrepareToScheduleNewGate(lowBit, currentBBGates);
+        PrepareToScheduleNewGate(loadWithoutBarrier, currentBBGates);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), resultTemporaryTaggedValue);
+#else
+    LOG_ECMA(FATAL) << "this branch is only enable for compressed pointer";
+    UNREACHABLE();
+#endif
 }
 
 void PostSchedule::LoweringLoadHClassAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)

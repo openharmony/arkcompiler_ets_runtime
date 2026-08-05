@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_SERIALIZER_SERIALIZATION_CHUNK_H
 #define ECMASCRIPT_SERIALIZER_SERIALIZATION_CHUNK_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {

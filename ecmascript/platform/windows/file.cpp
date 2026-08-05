@@ -38,7 +38,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {

@@ -580,7 +580,7 @@ void TypedHCRLowering::LowerMapSize(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
 
     GateRef linkedMap = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSMap::LINKED_MAP_OFFSET);
-    GateRef mapSizeTagged = builder_.LoadFromTaggedArray(linkedMap, LinkedHashMap::NUMBER_OF_ELEMENTS_INDEX);
+    GateRef mapSizeTagged = builder_.LoadFromTaggedArray(glue_, linkedMap, LinkedHashMap::NUMBER_OF_ELEMENTS_INDEX);
     GateRef mapSize = builder_.TaggedGetInt(mapSizeTagged);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), mapSize);
@@ -916,14 +916,6 @@ void TypedHCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, ParamTyp
         UNREACHABLE();
     }
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
-}
-
-GateRef TypedHCRLowering::LoadFromConstPool(GateRef glue, GateRef unsharedConstPool, size_t index, size_t valVecType)
-{
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(unsharedConstPool);
-    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
-    GateRef valVec = builder_.GetValueFromTaggedArray(glue, unsharedConstPool, valVecIndex);
-    return builder_.LoadFromTaggedArray(valVec, index);
 }
 
 void TypedHCRLowering::LowerLoadProperty(GateRef gate)
@@ -1703,8 +1695,12 @@ void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate, GateRef glue)
     CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
 
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(glue, func);
-    GateRef methodTarget = builder_.GetValueFromTaggedArray(glue, sharedConstPool, methodIndex);
-    GateRef check = builder_.Equal(funcMethodTarget, methodTarget);
+    // `temporaryMethodTarget` may be a fake JSTaggedValue, see `TemporaryJSTaggedValue`,
+    // but for HeapObject, it will have the same bit value as `JSTaggedValue`, so it's safe to check equal
+    // with funcMethodTarget.
+    // DO NOT direct use `temporaryMethodTarget` further more without convertion
+    GateRef temporaryMethodTarget = builder_.GetObjectFromConstPoolCacheUnsafe(glue, sharedConstPool, methodIndex);
+    GateRef check = builder_.Equal(funcMethodTarget, temporaryMethodTarget);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1723,8 +1719,12 @@ void TypedHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate, GateRef glue
     CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
 
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(glue, func);
-    GateRef methodTarget = builder_.GetValueFromTaggedArray(glue, sharedConstPool, methodIndex);
-    GateRef check = builder_.Equal(funcMethodTarget, methodTarget);
+    // `temporaryMethodTarget` may be a fake JSTaggedValue, see `TemporaryJSTaggedValue`,
+    // but for HeapObject, it will have the same bit value as `JSTaggedValue`, so it's safe to check equal
+    // with funcMethodTarget.
+    // DO NOT direct use `temporaryMethodTarget` further more without convertion
+    GateRef temporaryMethodTarget = builder_.GetObjectFromConstPoolCacheUnsafe(glue, sharedConstPool, methodIndex);
+    GateRef check = builder_.Equal(funcMethodTarget, temporaryMethodTarget);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1939,7 +1939,7 @@ GateRef TypedHCRLowering::GetLengthFromSupers(GateRef supers)
 
 GateRef TypedHCRLowering::GetValueFromSupers(GateRef supers, size_t index)
 {
-    GateRef val = builder_.LoadFromTaggedArray(supers, index);
+    GateRef val = builder_.LoadFromTaggedArray(glue_, supers, index);
     return builder_.LoadObjectFromWeakRef(val);
 }
 

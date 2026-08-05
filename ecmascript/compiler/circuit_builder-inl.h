@@ -44,6 +44,11 @@ GateRef CircuitBuilder::Hole()
     return HoleConstant();
 }
 
+GateRef CircuitBuilder::TemporaryHole()
+{
+    return TemporaryHoleConstant();
+}
+
 GateRef CircuitBuilder::DoubleIsINF(GateRef x)
 {
     GateRef infinity = Double(base::POSITIVE_INFINITY);

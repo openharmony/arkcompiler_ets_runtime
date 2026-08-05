@@ -26,7 +26,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/tests/test_helper.h"

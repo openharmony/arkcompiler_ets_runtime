@@ -87,10 +87,14 @@ public:
     explicit CCUpdateVisitor(JSThread *thread) : thread_(thread) {}
     ~CCUpdateVisitor() = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
+
+    inline void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                               CompressedObjectSlot end) override;
 private:
-    inline void HandleSlot(ObjectSlot slot, Region *rootRegion);
+    template <ReferenceType refType>
+    inline void HandleSlot(ObjectSlotBase<refType> slot, Region *rootRegion);
 
     JSThread *thread_ {nullptr};
 };

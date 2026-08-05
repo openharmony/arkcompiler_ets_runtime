@@ -17,7 +17,7 @@
 
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {

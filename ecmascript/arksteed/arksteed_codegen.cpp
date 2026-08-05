@@ -21,7 +21,7 @@
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 

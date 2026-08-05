@@ -42,7 +42,7 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"

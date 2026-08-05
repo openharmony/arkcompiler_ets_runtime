@@ -975,6 +975,11 @@ DEF_CALL_SIGNATURE(VerifyBarrier)
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(VerifyBarrier);
 }
 
+DEF_CALL_SIGNATURE(VerifyStoreJSValueForCompressedPointer)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(VerifyStoreJSValueForCompressedPointer);
+}
+
 DEF_CALL_SIGNATURE(CMCSetValueWithBarrier)
 {
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(CMCSetValueWithBarrier);
@@ -2482,6 +2487,23 @@ DEF_CALL_SIGNATURE(FatalPrint)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(FatalPrintIfFalse)
+{
+    // 3 : 3 input parameters (condition, fmtMessageId, line)
+    CallSignature fatalPrintIfFalse("FatalPrintIfFalse", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = fatalPrintIfFalse;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::BOOL(),
+        VariableType::INT32(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FatalPrintCustom)
 {
     // 1 : 1 input parameters
@@ -2774,6 +2796,22 @@ DEF_CALL_SIGNATURE(GetValueWithBarrier)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(GetValueFromCompressedWithBarrier)
+{
+    // 2 : 2 input parameters
+    CallSignature getValueFromCompressedWithBarrier("GetValueFromCompressedWithBarrier", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = getValueFromCompressedWithBarrier;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(LdLexVar)
 {
     // 4 : 4 input parameters
@@ -2817,6 +2855,23 @@ DEF_CALL_SIGNATURE(ReadBarrier)
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetNoTailCall(true);
+}
+
+DEF_CALL_SIGNATURE(ReadBarrierForCompressed)
+{
+    // 3 : 3 input parameters
+    CallSignature index("ReadBarrierForCompressed", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER()
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

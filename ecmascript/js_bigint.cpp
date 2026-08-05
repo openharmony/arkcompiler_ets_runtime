@@ -15,7 +15,7 @@
 
 #include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/global_env_constants-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {

@@ -19,7 +19,7 @@
 #include "ecmascript/enum_cache.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

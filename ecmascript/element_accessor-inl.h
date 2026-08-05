@@ -19,7 +19,7 @@
 #include "ecmascript/element_accessor.h"
 
 #include "ecmascript/mem/barriers-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 

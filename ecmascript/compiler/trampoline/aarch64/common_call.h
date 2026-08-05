@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
 #include "ecmascript/compiler/assembler/aarch64/extend_assembler.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::aarch64 {
 

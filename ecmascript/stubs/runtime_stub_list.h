@@ -168,6 +168,7 @@ namespace panda::ecmascript {
     V(Comment)                                 \
     V(FatalPrint)                              \
     V(FatalPrintCustom)                        \
+    V(FatalPrintIfFalse)                       \
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
@@ -238,6 +239,7 @@ namespace panda::ecmascript {
     V(LoadNativeModuleFailed)                  \
     V(GetExternalModuleVar)                    \
     V(ReadBarrier)                             \
+    V(ReadBarrierForCompressed)                \
     V(CopyCallTarget)                          \
     V(CopyArgvArray)                           \
     V(MarkRSetCardTable)                       \

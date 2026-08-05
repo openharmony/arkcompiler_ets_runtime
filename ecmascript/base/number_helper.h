@@ -20,7 +20,7 @@
 
 #include "ecmascript/string/integer_cache.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::base {
 constexpr double MIN_RADIX = 2;

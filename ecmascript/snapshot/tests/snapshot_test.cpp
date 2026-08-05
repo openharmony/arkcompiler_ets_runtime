@@ -148,13 +148,13 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 0).IsJSFunction());
     EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 1).IsJSFunction());
     EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 3).IsJSFunction());
-    EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 2).GetTaggedObject());
-    EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 4).GetTaggedObject());
-    EcmaString *str33 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 5).GetTaggedObject());
-    EcmaString *str44 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 6).GetTaggedObject());
-    EcmaString *str55 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 7).GetTaggedObject());
-    EcmaString *str66 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 8).GetTaggedObject());
-    EcmaString *str77 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 9).GetTaggedObject());
+    EcmaString *str11 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 2).GetTaggedObject());
+    EcmaString *str22 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 4).GetTaggedObject());
+    EcmaString *str33 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 5).GetTaggedObject());
+    EcmaString *str44 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 6).GetTaggedObject());
+    EcmaString *str55 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 7).GetTaggedObject());
+    EcmaString *str66 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 8).GetTaggedObject());
+    EcmaString *str77 = EcmaString::Cast(constpool1->GetObjectFromCache(thread, 9).GetTaggedObject());
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString(thread).c_str(), "str11"), 0);
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString(thread).c_str(), "str22"), 0);
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str33).ToCString(thread).c_str(), "str11"), 0);
@@ -162,6 +162,53 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str55).ToCString(thread).c_str(), "str11str333333333333"), 0);
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str66).ToCString(thread).c_str(), "str11str333333333333"), 0);
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str77).ToCString(thread).c_str(), "str44"), 0);
+    std::remove(fileName.c_str());
+}
+
+HWTEST_F_L0(SnapshotTest, SerializeMixedWidthAlias)
+{
+    auto factory = ecmaVm->GetFactory();
+
+    // A ConstantPool references its cache through compressed slots (SetObjectToCache ->
+    // SetCompressed) and its tail extend data through normal-width slots (SetAotArrayInfo ->
+    // Set). Aliasing the same heap object through both widths must keep a single snapshot
+    // allocation so that object identity and contents survive the round trip, instead of
+    // allocating a second divergent copy that is left as a raw memcpy.
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(8);
+    JSHandle<TaggedArray> shared = factory->NewTaggedArray(4);
+    shared->Set(thread, 0, JSTaggedValue(11));
+    shared->Set(thread, 1, JSTaggedValue(22));
+    // Compressed-width reference to `shared` (cache slot).
+    constpool->SetObjectToCache(thread, 0, shared.GetTaggedValue());
+    // Normal-width reference to the very same object (AOT array info tail slot).
+    constpool->SetAotArrayInfo(thread, shared.GetTaggedValue());
+
+    CString fileName = "snapshot";
+    Snapshot snapshotSerialize(ecmaVm);
+    // serialize
+    snapshotSerialize.Serialize(*constpool, nullptr, fileName);
+    // deserialize
+    Snapshot snapshotDeserialize(ecmaVm);
+    snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
+    ConstantPool *result;
+    if (g_isEnableCMCGC || G_USE_CMS_GC) {
+        result = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
+    } else {
+        auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
+        result = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+    }
+
+    JSTaggedValue fromCache = result->GetObjectFromCache(thread, 0);
+    JSTaggedValue fromAot = result->GetAotArrayInfo(thread);
+    // Identity: both reference widths must resolve to the SAME deserialized object.
+    EXPECT_TRUE(fromCache.IsHeapObject());
+    EXPECT_TRUE(fromAot.IsHeapObject());
+    EXPECT_EQ(fromCache.GetTaggedObject(), fromAot.GetTaggedObject());
+    // Contents: the aliased object survived the round trip intact.
+    TaggedArray *sharedResult = TaggedArray::Cast(fromCache.GetTaggedObject());
+    EXPECT_EQ(sharedResult->GetLength(), static_cast<uint32_t>(4));
+    EXPECT_EQ(sharedResult->Get(thread, 0).GetRawData(), JSTaggedValue(11).GetRawData());
+    EXPECT_EQ(sharedResult->Get(thread, 1).GetRawData(), JSTaggedValue(22).GetRawData());
     std::remove(fileName.c_str());
 }
 

@@ -19,7 +19,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_operator.h"
 

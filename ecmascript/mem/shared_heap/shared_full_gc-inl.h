@@ -49,19 +49,26 @@ bool SharedFullGCRunner::NeedEvacuate(Region *region) const
     return region->InSharedOldSpace();
 }
 
-void SharedFullGCRunner::MarkValue(ObjectSlot slot)
+template <ReferenceType refType>
+void SharedFullGCRunner::MarkValue(ObjectSlotBase<refType> slot)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (value.IsInSharedSweepableSpace()) {
-        if (!value.IsWeakForHeapObject()) {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            ASSERT(!value.IsWeakForHeapObject());
             MarkObject(slot, value.GetTaggedObject());
         } else {
-            RecordWeakReference(reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
+            if (!value.IsWeakForHeapObject()) {
+                MarkObject(slot, value.GetTaggedObject());
+            } else {
+                RecordWeakReference(reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
+            }
         }
     }
 }
 
-void SharedFullGCRunner::MarkObject(ObjectSlot slot, TaggedObject *object)
+template <ReferenceType refType>
+void SharedFullGCRunner::MarkObject(ObjectSlotBase<refType> slot, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     ASSERT(objectRegion->InSharedHeap());
@@ -83,7 +90,8 @@ void SharedFullGCRunner::MarkObject(ObjectSlot slot, TaggedObject *object)
     return EvacuateObject(slot, object, markWord);
 }
 
-void SharedFullGCRunner::EvacuateObject(ObjectSlot slot, TaggedObject *object, const MarkWord &markWord)
+template <ReferenceType refType>
+void SharedFullGCRunner::EvacuateObject(ObjectSlotBase<refType> slot, TaggedObject *object, const MarkWord &markWord)
 {
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
@@ -124,8 +132,9 @@ void SharedFullGCRunner::RawCopyObject(uintptr_t fromAddress, uintptr_t toAddres
     *reinterpret_cast<MarkWordType *>(toAddress) = markWord.GetValue();
 }
 
-void SharedFullGCRunner::UpdateForwardAddressIfSuccess(ObjectSlot slot, TaggedObject *object, JSHClass *klass,
-                                                       size_t size, TaggedObject *toObject)
+template <ReferenceType refType>
+void SharedFullGCRunner::UpdateForwardAddressIfSuccess(ObjectSlotBase<refType> slot, TaggedObject *object,
+                                                       JSHClass *klass, size_t size, TaggedObject *toObject)
 {
     sWorkNodeHolder_->IncreaseAliveSize(size);
 
@@ -139,7 +148,8 @@ void SharedFullGCRunner::UpdateForwardAddressIfSuccess(ObjectSlot slot, TaggedOb
     slot.Update(toObject);
 }
 
-void SharedFullGCRunner::UpdateForwardAddressIfFailed(ObjectSlot slot, size_t size, uintptr_t toAddress,
+template <ReferenceType refType>
+void SharedFullGCRunner::UpdateForwardAddressIfFailed(ObjectSlotBase<refType> slot, size_t size, uintptr_t toAddress,
                                                       TaggedObject *dst)
 {
     FreeObject::FillFreeObject(sHeap_, toAddress, size);
@@ -199,11 +209,9 @@ SharedFullGCMarkObjectVisitor::SharedFullGCMarkObjectVisitor(SharedFullGCRunner 
 {
 }
 
-void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, ObjectSlot start, ObjectSlot end,
                                                          VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         auto root = TaggedObject::Cast(rootObject);
         JSHClass *hclass = root->SynchronizedGetClass();
@@ -226,6 +234,14 @@ void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject,
     }
 }
 
+void SharedFullGCMarkObjectVisitor::VisitCompressedObjectRangeImpl(BaseObject *rootObject, CompressedObjectSlot start,
+                                                                   CompressedObjectSlot end)
+{
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        sRunner_->MarkValue(slot);
+    }
+}
+
 void SharedFullGCMarkObjectVisitor::VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass)
 {
     ASSERT(hclass->GetClass()->IsHClass());
@@ -237,19 +253,32 @@ SharedFullGCMarkLocalToShareRSetVisitor::SharedFullGCMarkLocalToShareRSetVisitor
 {
 }
 
-bool SharedFullGCMarkLocalToShareRSetVisitor::operator()(void *mem) const
+template <typename ReferenceTypeWrapper>
+bool SharedFullGCMarkLocalToShareRSetVisitor::operator()(void *mem, ReferenceTypeWrapper) const
 {
-    ObjectSlot slot(ToUintPtr(mem));
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
+    constexpr ReferenceType refType = ReferenceTypeWrapper::value;
+    ObjectSlotBase<refType> slot(ToUintPtr(mem));
+    TaggedValueType<refType> value = slot.GetTaggedValue();
+
+    if (!value.IsHeapObject()) {
+        return false;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
+    if (!value.IsInSharedSweepableSpace()) {
+        return false;
+    }
+
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
+        sRunner_->MarkObject(slot, value.GetTaggedObject());
+    } else {
         if (!value.IsWeakForHeapObject()) {
             sRunner_->MarkObject(slot, value.GetTaggedObject());
         } else {
             sRunner_->RecordWeakReference(reinterpret_cast<JSTaggedType *>(mem));
         }
-        return true;
     }
-    return false;
+    return true;
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_FULL_GC_INL_H

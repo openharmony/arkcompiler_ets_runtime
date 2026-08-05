@@ -76,7 +76,7 @@ private:
     bool SerializeResolvedRecordIndexBindingNativeObjects(TaggedObject *object);
     bool SerializeResolvedRecordBindingNativeObjects(TaggedObject *object);
 protected:
-    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
+    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false, bool isCompressed = false) override;
     bool notSupport_ {false};
 
 private:

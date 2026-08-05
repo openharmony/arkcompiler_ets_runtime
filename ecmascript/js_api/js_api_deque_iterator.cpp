@@ -19,7 +19,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

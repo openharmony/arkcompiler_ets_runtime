@@ -17,6 +17,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/dfx/hprof/rawheap_dump.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/common.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 #ifdef ENABLE_HISYSEVENT
@@ -60,14 +61,27 @@ void ObjectMarker::VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlo
 {
 }
 
-void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, uintptr_t start,
-                                        uintptr_t endAddr, [[maybe_unused]]VisitObjectArea area)
+void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, ObjectSlot start,
+                                        ObjectSlot end, [[maybe_unused]]VisitObjectArea area)
 {
-    ObjectSlot end(endAddr);
-    for (ObjectSlot slot(start); slot < end; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         JSTaggedValue value(slot.GetTaggedType());
         if (value.GetRawData() != 0 && value.IsHeapObject() && !value.IsWeak()) {
             MarkObject(slot.GetTaggedType());
+        }
+    }
+}
+
+void ObjectMarker::VisitCompressedObjectRangeImpl([[maybe_unused]]BaseObject *root, CompressedObjectSlot start,
+                                                  CompressedObjectSlot end)
+{
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        TemporaryJSTaggedValue value = slot.GetTaggedValue();
+        if (value.IsHeapObject()) {
+            JSTaggedValue val = value.ConvertHeapObjectToJSTaggedValue();
+            if (val.GetRawData() != 0 && !val.IsWeak()) {
+                MarkObject(val.GetRawData());
+            }
         }
     }
 }
@@ -640,6 +654,87 @@ void RawHeapDumpV1::DumpStringTable()
     LOG_ECMA(INFO) << "rawheap dump, string table capcity " << strTable->GetCapcity();
 }
 
+class CompressedSlotCounter : public BaseObjectVisitor<CompressedSlotCounter> {
+public:
+    size_t compressedSlots = 0;
+    void VisitObjectRangeImpl(BaseObject *, ObjectSlot, ObjectSlot, VisitObjectArea) {}
+    void VisitCompressedObjectRangeImpl(BaseObject *, CompressedObjectSlot start, CompressedObjectSlot end)
+    {
+        for (CompressedObjectSlot s = start; s < end; s++) {
+            compressedSlots++;
+        }
+    }
+};
+
+static size_t GetDecompressedObjectSize(TaggedObject *object)
+{
+    CompressedSlotCounter counter;
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, object->GetClass(), counter);
+    constexpr size_t DELTA_SIZE =
+        JSTaggedValue::TaggedTypeSize() - CompressedJSTaggedValue::CompressedTaggedTypeSize();
+    return object->GetSize() + counter.compressedSlots * DELTA_SIZE;
+}
+
+template <typename RefFn, typename ZeroFn>
+class SlotEmitVisitor : public BaseObjectVisitor<SlotEmitVisitor<RefFn, ZeroFn>> {
+    RefFn emitRef_;
+    ZeroFn emitZero_;
+public:
+    size_t normalSlots = 0;
+    size_t compressedSlots = 0;
+    SlotEmitVisitor(RefFn r, ZeroFn z) : emitRef_(r), emitZero_(z) {}
+    void VisitObjectRangeImpl(BaseObject *, ObjectSlot start, ObjectSlot end, VisitObjectArea)
+    {
+        for (ObjectSlot s = start; s < end; s++) {
+            normalSlots++;
+            JSTaggedValue v(s.GetTaggedType());
+            if (v.GetRawData() != 0 && v.IsHeapObject() && !v.IsWeak()) {
+                emitRef_(v.GetRawData());
+            } else {
+                emitZero_();
+            }
+        }
+    }
+    void VisitCompressedObjectRangeImpl(BaseObject *, CompressedObjectSlot start, CompressedObjectSlot end)
+    {
+        for (CompressedObjectSlot s = start; s < end; s++) {
+            compressedSlots++;
+            TemporaryJSTaggedValue tv = s.GetTaggedValue();
+            if (tv.IsHeapObject()) {
+                JSTaggedValue v = tv.ConvertHeapObjectToJSTaggedValue();
+                if (v.GetRawData() != 0 && !v.IsWeak()) {
+                    emitRef_(v.GetRawData());
+                    continue;
+                }
+            }
+            emitZero_();
+        }
+    }
+};
+
+template <typename RawFn>
+class RawEmitVisitor : public BaseObjectVisitor<RawEmitVisitor<RawFn>> {
+    RawFn emit_;
+public:
+    size_t normalSlots = 0;
+    size_t compressedSlots = 0;
+    explicit RawEmitVisitor(RawFn fn) : emit_(fn) {}
+    void VisitObjectRangeImpl(BaseObject *, ObjectSlot start, ObjectSlot end, VisitObjectArea)
+    {
+        for (ObjectSlot s = start; s < end; s++) {
+            normalSlots++;
+            emit_(s.GetTaggedType());
+        }
+    }
+    void VisitCompressedObjectRangeImpl(BaseObject *, CompressedObjectSlot start, CompressedObjectSlot end)
+    {
+        for (CompressedObjectSlot s = start; s < end; s++) {
+            compressedSlots++;
+            emit_(s.GetTaggedValue().ConvertToJSTaggedValue().GetRawData());
+        }
+    }
+};
+
 void RawHeapDumpV1::DumpObjectTable()
 {
     AddSectionOffset();
@@ -652,6 +747,9 @@ void RawHeapDumpV1::DumpObjectTable()
             memOffset += sizeof(JSHClass *);
             EcmaString *str = EcmaString::Cast(obj);
             table.objSize = EcmaStringAccessor(str).GetLength();
+        } else if (obj->GetClass()->IsConstantPool()) {
+            table.objSize = static_cast<uint32_t>(GetDecompressedObjectSize(obj));
+            memOffset += table.objSize;
         } else {
             memOffset += table.objSize;
         }
@@ -671,7 +769,23 @@ void RawHeapDumpV1::DumpObjectMemory()
         if (obj->GetClass()->IsString()) {
             size = sizeof(JSHClass *);
         }
-        if (g_isEnableCMCGC) {
+        if (obj->GetClass()->IsConstantPool()) {
+            uintptr_t base = reinterpret_cast<uintptr_t>(obj);
+            size_t decompressedSize = GetDecompressedObjectSize(obj);
+            uint32_t decompressedLength = static_cast<uint32_t>(
+                (decompressedSize - ConstantPool::DATA_OFFSET) / JSTaggedValue::TaggedTypeSize());
+            WriteU64(reinterpret_cast<JSTaggedType>(obj->GetClass()));
+            WriteU32(decompressedLength);
+            WriteU32(ConstantPool::Cast(obj)->GetExtraLength());
+            RawEmitVisitor visitor([this](uint64_t v) { WriteU64(v); });
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, obj->GetClass(), visitor);
+            size_t visitedBytes = visitor.compressedSlots * CompressedJSTaggedValue::CompressedTaggedTypeSize() +
+                                  visitor.normalSlots * JSTaggedValue::TaggedTypeSize();
+            size_t reservedStart = ConstantPool::DATA_OFFSET + visitedBytes;
+            if (obj->GetSize() > reservedStart) {
+                WriteChunk(reinterpret_cast<char *>(base + reservedStart), obj->GetSize() - reservedStart);
+            }
+        } else if (g_isEnableCMCGC) {
             WriteU64(reinterpret_cast<JSTaggedType>(obj->GetClass()));
             WriteChunk(reinterpret_cast<char *>(addr + sizeof(JSTaggedType)), size - sizeof(JSTaggedType));
         } else {
@@ -800,9 +914,12 @@ void RawHeapDumpV2::DumpObjectTable()
     uint32_t memOffset = GetObjectCount() * sizeof(AddrTableItem);
     IterateMarkedObjects([this, &memOffset](JSTaggedType addr) {
         TaggedObject *obj = reinterpret_cast<TaggedObject *>(addr);
+        size_t dumpSize = obj->GetClass()->IsConstantPool()
+                              ? GetDecompressedObjectSize(obj)
+                              : obj->GetSize();
         AddrTableItem table = {
             GenerateSyntheticAddr(addr),
-            obj->GetSize(),
+            static_cast<uint32_t>(dumpSize),
             GenerateNodeId(addr),
             obj->GetClass()->IsJSNativePointer() ? JSNativePointer::Cast(obj)->GetBindingSize() : 0,
             static_cast<uint32_t>(obj->GetClass()->GetObjectType())
@@ -825,6 +942,32 @@ void RawHeapDumpV2::DumpObjectMemory()
 
         WriteU32(GenerateSyntheticAddr(reinterpret_cast<JSTaggedType>(object->GetClass())));
         if (object->GetClass()->IsString()) {
+            return;
+        }
+        if (object->GetClass()->IsConstantPool()) {
+            // Header [hclass+8, DATA_OFFSET): non-pointer, emit zero tokens
+            for (ObjectSlot s(addr + sizeof(JSTaggedType));
+                 s < ObjectSlot(addr + ConstantPool::DATA_OFFSET); s++) {
+                WriteU8(rawheap_translate::ZERO_VALUE);
+            }
+            // Data region: visitor-driven (compressed cache decompressed + normal extend)
+            SlotEmitVisitor visitor(
+                [this](JSTaggedType v) { WriteU32(GenerateSyntheticAddr(v)); },
+                [this]() { WriteU8(rawheap_translate::ZERO_VALUE); });
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, object->GetClass(), visitor);
+            // Reserved region [visitedEnd, end): generic 8B tokens
+            size_t visitedBytes = visitor.compressedSlots * CompressedJSTaggedValue::CompressedTaggedTypeSize() +
+                                  visitor.normalSlots * JSTaggedValue::TaggedTypeSize();
+            ObjectSlot reservedStart(static_cast<uintptr_t>(addr + ConstantPool::DATA_OFFSET + visitedBytes));
+            ObjectSlot objEnd(static_cast<uintptr_t>(addr + object->GetSize()));
+            for (ObjectSlot s = reservedStart; s < objEnd; s++) {
+                JSTaggedValue value(s.GetTaggedType());
+                if (value.GetRawData() != 0 && value.IsHeapObject() && !value.IsWeak()) {
+                    WriteU32(GenerateSyntheticAddr(value.GetRawData()));
+                } else {
+                    WriteU8(rawheap_translate::ZERO_VALUE);
+                }
+            }
             return;
         }
         ObjectSlot end(static_cast<uintptr_t>(addr + object->GetSize()));

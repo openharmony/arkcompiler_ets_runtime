@@ -19,7 +19,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/object_factory.h"

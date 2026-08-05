@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_HANDLE_SCOPE_H
 #define ECMASCRIPT_HANDLE_SCOPE_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 class JSThread;

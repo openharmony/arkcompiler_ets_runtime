@@ -17,7 +17,7 @@
 #include "ecmascript/generator_helper.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 JSGeneratorState JSGeneratorObject::GeneratorValidate(JSThread *thread, const JSHandle<JSTaggedValue> &obj)

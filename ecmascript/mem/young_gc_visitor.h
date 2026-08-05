@@ -44,12 +44,16 @@ public:
     inline explicit YoungGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder);
     ~YoungGCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
+
+    inline void VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                               CompressedObjectSlot end) override;
 
     inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:
-    inline void HandleSlot(ObjectSlot slot);
+    template <ReferenceType refType>
+    inline void HandleSlot(ObjectSlotBase<refType> slot);
 
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };
@@ -62,7 +66,8 @@ public:
 
     inline void operator()(Region *region) const;
 private:
-    inline bool HandleSlot(ObjectSlot slot) const;
+    template <ReferenceType refType>
+    inline bool HandleSlot(ObjectSlotBase<refType> slot) const;
 
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };

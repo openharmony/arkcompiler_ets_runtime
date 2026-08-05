@@ -48,7 +48,7 @@
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit_task.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"

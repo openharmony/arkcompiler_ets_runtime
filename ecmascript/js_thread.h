@@ -30,7 +30,7 @@
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object_resizing_strategy.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
 #include "ecmascript/js_thread_elements_hclass_entries.h"

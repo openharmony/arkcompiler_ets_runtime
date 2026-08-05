@@ -18,7 +18,7 @@
 
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/heap-inl.h"

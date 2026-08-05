@@ -18,7 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_generator_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_function.h"
 
 namespace panda::ecmascript {

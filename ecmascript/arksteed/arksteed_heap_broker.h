@@ -25,7 +25,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 

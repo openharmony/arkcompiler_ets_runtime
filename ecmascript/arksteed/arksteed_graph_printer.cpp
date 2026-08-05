@@ -24,7 +24,7 @@
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 

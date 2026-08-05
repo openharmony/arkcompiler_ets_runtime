@@ -285,10 +285,11 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
         Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
         Region *curMachineCodeObjRegion =
             Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
+        uintptr_t addr = reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i]));
         if (heapObjRegion->InYoungSpace()) {
-            curMachineCodeObjRegion->InsertOldToNewRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+            curMachineCodeObjRegion->InsertOldToNewRSet<ReferenceType::NORMAL>(addr);
         } else if (heapObjRegion->InSharedHeap()) {
-            curMachineCodeObjRegion->InsertLocalToShareRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+            curMachineCodeObjRegion->InsertLocalToShareRSet<ReferenceType::NORMAL>(addr);
         }
     }
 }

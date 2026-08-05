@@ -23,6 +23,7 @@ namespace panda::ecmascript {
 template<bool needBarrier, typename T>
 inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const T &value)
 {
+    ASSERT(!JSTaggedValue(this).IsConstantPoolSlowForTest());
     ASSERT(idx < GetLength());
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
 
@@ -59,6 +60,7 @@ template <bool needBarrier, bool maybeOverlap>
 inline void TaggedArray::Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
                               const TaggedArray* srcArray, uint32_t count)
 {
+    ASSERT(!JSTaggedValue(srcArray).IsConstantPoolSlowForTest());
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT((dstStart + count <= GetLength()) && "TaggedArray::Copy dst count is out of range");
     ASSERT((srcStart + count <= srcArray->GetLength()) && "TaggedArray::Copy src count is out of range");

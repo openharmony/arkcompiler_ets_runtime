@@ -24,7 +24,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_proxy.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/runtime_call_id.h"

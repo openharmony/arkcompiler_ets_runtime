@@ -17,7 +17,7 @@
 #define ECMASCRIPT_REQUIRE_CJS_REQUIRE_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
 namespace panda::ecmascript {

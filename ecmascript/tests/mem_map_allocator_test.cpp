@@ -35,26 +35,33 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemFromList)
 {
     MemMap memMap = PageMap(HUGE_OBJECT_CAPACITY, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
     PageRelease(memMap.GetMem(), memMap.GetSize());
-    MemMapFreeList memMapFreeList;
-    memMapFreeList.Initialize(memMap);
 
-    // From FreeList
-    size_t size1 = 256 * 1024 * 1024;
-    auto mem1 = memMapFreeList.GetMemFromList(size1);
-    EXPECT_EQ(mem1.GetSize(), size1);
+    constexpr size_t LOOP_TIMES = 10;
+    for (size_t i = 0; i < LOOP_TIMES; ++i) {
+        // From FreeList
+        size_t size1 = 256 * 1024 * 1024;
+        auto mem1 = MemMapAllocator::GetInstance()->
+            Allocate(0, size1, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
+        EXPECT_EQ(mem1.GetSize(), size1);
 
-    // From FreeList
-    size_t size2 = 512 * 1024 * 1024;
-    auto mem2 = memMapFreeList.GetMemFromList(size2);
-    EXPECT_EQ(mem2.GetSize(), size2);
+        // From FreeList
+        size_t size2 = 512 * 1024 * 1024;
+        auto mem2 = MemMapAllocator::GetInstance()->
+            Allocate(0, size2, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
+        EXPECT_EQ(mem2.GetSize(), size2);
 
-    // From PageMap
-    size_t size3 = 512 * 1024 * 1024;
-    auto mem3 = memMapFreeList.GetMemFromList(size3);
-    EXPECT_EQ(mem3.GetSize(), size3);
+        // From PageMap
+        size_t size3 = 512 * 1024 * 1024;
+        auto mem3 = MemMapAllocator::GetInstance()->
+            Allocate(0, size3, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
+        EXPECT_EQ(mem3.GetSize(), size3);
 
-    memMapFreeList.AddMemToList(mem3);
-    memMapFreeList.Finalize();
+        thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+        MemMapAllocator::GetInstance()->CacheOrFree(mem1.GetMem(), mem1.GetSize(), false, false, 0, false, false);
+        MemMapAllocator::GetInstance()->CacheOrFree(mem2.GetMem(), mem2.GetSize(), false, false, 0, false, false);
+        MemMapAllocator::GetInstance()->CacheOrFree(mem3.GetMem(), mem3.GetSize(), false, false, 0, false, false);
+        thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    }
 }
 
 HWTEST_F_L0(MemMapAllocatorTest, GetMemOverflow)
@@ -77,7 +84,7 @@ HWTEST_F_L0(MemMapAllocatorTest, AsyncFreeTest)
                                                          ToSpaceTypeName(space->GetSpaceType()),
                                                          false, false, false, false, false, false);
     EXPECT_EQ(mem.GetSize(), TEST_SIZE);
-    MemMapAllocator::GetInstance()->DecreaseMemUsage(TEST_SIZE, false);
+    MemMapAllocator::GetInstance()->DecreaseMemMapTotalSize(TEST_SIZE);
     MemMapAllocator::GetInstance()->AsyncFree(mem.GetMem(), TEST_SIZE, false, false, false);
     MemMap mem2 = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), TEST_SIZE, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),

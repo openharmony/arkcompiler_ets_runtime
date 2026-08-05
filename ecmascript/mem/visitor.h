@@ -69,14 +69,24 @@ public:
     NO_MOVE_SEMANTIC(BaseObjectVisitor);
     NO_COPY_SEMANTIC(BaseObjectVisitor);
 
-    void operator()(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
+    void operator()(BaseObject *rootObject, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
     {
-        static_cast<DerivedVisitor*>(this)->VisitObjectRangeImpl(rootObject, startAddr, endAddr, area);
+        static_cast<DerivedVisitor *>(this)->VisitObjectRangeImpl(rootObject, start, end, area);
     }
+
+#ifdef USE_COMPRESSED_POINTER
+    void operator()(BaseObject *rootObject, CompressedObjectSlot start, CompressedObjectSlot end,
+                    VisitObjectArea area)
+    {
+        // only for const pool now
+        ASSERT(area == VisitObjectArea::NORMAL);
+        static_cast<DerivedVisitor *>(this)->VisitCompressedObjectRangeImpl(rootObject, start, end);
+    }
+#endif
 
     void VisitHClass(BaseObject *rootObject, BaseObject *hclass)
     {
-        static_cast<DerivedVisitor*>(this)->VisitObjectHClassImpl(rootObject, hclass);
+        static_cast<DerivedVisitor *>(this)->VisitObjectHClassImpl(rootObject, hclass);
     }
 
     void VisitWeakLinkedHashMap(BaseObject *rootObject)
@@ -85,10 +95,12 @@ public:
         static_cast<DerivedVisitor*>(this)->VisitWeakLinkedHashMapImpl(rootObject);
     }
 
-    virtual void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] uintptr_t startAddr,
-                                      [[maybe_unused]] uintptr_t endAddr, [[maybe_unused]] VisitObjectArea area)
-    {
-    }
+    virtual void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] ObjectSlot start,
+                                      [[maybe_unused]] ObjectSlot end, [[maybe_unused]] VisitObjectArea area) = 0;
+
+    virtual void VisitCompressedObjectRangeImpl([[maybe_unused]] BaseObject *rootObject,
+                                                [[maybe_unused]] CompressedObjectSlot start,
+                                                [[maybe_unused]] CompressedObjectSlot end) = 0;
 
     virtual void VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] BaseObject *hclass)
     {
@@ -138,11 +150,11 @@ public:
     {
         if constexpr (visitType == VisitType::ALL_VISIT) {
             constexpr size_t hclassEnd = sizeof(JSTaggedType);
-            visitor(root, ToUintPtr(root),
-                ToUintPtr(root) + hclassEnd, VisitObjectArea::NORMAL);
+            visitor(root, ObjectSlot(ToUintPtr(root)),
+                ObjectSlot(ToUintPtr(root) + hclassEnd), VisitObjectArea::NORMAL);
             if constexpr (size > hclassEnd) {
-                visitor(root, ToUintPtr(root) + hclassEnd,
-                    ToUintPtr(root) + size, VisitObjectArea::RAW_DATA);
+                visitor(root, ObjectSlot(ToUintPtr(root) + hclassEnd),
+                    ObjectSlot(ToUintPtr(root) + size), VisitObjectArea::RAW_DATA);
             }
         }
     }
@@ -162,8 +174,8 @@ public:
             IterateBefore(root, visitor);
         }
         if constexpr (startOffset < endOffset) {
-            visitor(root, ToUintPtr(root) + startOffset,
-                ToUintPtr(root) + endOffset, area);
+            visitor(root, ObjectSlot(ToUintPtr(root) + startOffset),
+                ObjectSlot(ToUintPtr(root) + endOffset), area);
         }
 
         if constexpr (visitType == VisitType::ALL_VISIT) {
@@ -216,8 +228,8 @@ public:
     static inline void IteratorRange(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end)
     {
-        visitor(root, ToUintPtr(root) + start,
-                ToUintPtr(root) + end, VisitObjectArea::RAW_DATA);
+        visitor(root, ObjectSlot(ToUintPtr(root) + start),
+                ObjectSlot(ToUintPtr(root) + end), VisitObjectArea::RAW_DATA);
     }
 };
 
@@ -233,8 +245,48 @@ public:
         }
         if (LIKELY(refLength != 0)) {
             size_t endOffset = startOffset + refLength * JSTaggedValue::TaggedTypeSize();
-            visitor(root, ToUintPtr(root) + startOffset,
-                ToUintPtr(root) + endOffset, VisitObjectArea::NORMAL);
+            visitor(root, ObjectSlot(ToUintPtr(root) + startOffset),
+                ObjectSlot(ToUintPtr(root) + endOffset), VisitObjectArea::NORMAL);
+        }
+        if constexpr (visitType == VisitType::ALL_VISIT) {
+            IterateAfter(root, visitor, refLength, length);
+        }
+    }
+
+    // for constpool only, shape like this
+    /**
+     *  ---------------------           ^                       ^               ^
+     * |  c_val1  |  c_val2  |          |                       |               |
+     * |  c_val3  |  c_val4  |    compressed value     compress ref length      |
+     * |  c_val5  |  c_val6  |          |                       |               |
+     * |       ......        |          v                       v               |
+     *  ---------------------           ^                                       |
+     * |    tagged_value1    |          |                                  ref length
+     * |    tagged value2    |      tagged value                                |
+     * |       ......        |          |                                       |
+     *  ---------------------           v                                       |
+     * |    native value1    |                                                  |
+     * |    native value2    |                                                  |
+     * |       ......        |                                                  |
+     *  ---------------------                                                   v
+     */
+    template <class DerivedVisitor>
+    static inline void IterateBodyWithCompressedPart(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor,
+        size_t compressedRefLength, size_t refLength, size_t length)
+    {
+        if constexpr (visitType == VisitType::ALL_VISIT) {
+            IterateBefore(root, visitor);
+        }
+        size_t compressedRefEndOffset = startOffset;
+        if (LIKELY(compressedRefLength != 0)) {
+            compressedRefEndOffset += compressedRefLength * JSTaggedValue::TaggedTypeSize();
+            visitor(root, CompressedObjectSlot(ToUintPtr(root) + startOffset),
+                CompressedObjectSlot(ToUintPtr(root) + compressedRefEndOffset), VisitObjectArea::NORMAL);
+        }
+        if (LIKELY(refLength != 0)) {
+            size_t endOffset = startOffset + refLength * JSTaggedValue::TaggedTypeSize();
+            visitor(root, ObjectSlot(ToUintPtr(root) + compressedRefEndOffset),
+                ObjectSlot(ToUintPtr(root) + endOffset), VisitObjectArea::NORMAL);
         }
         if constexpr (visitType == VisitType::ALL_VISIT) {
             IterateAfter(root, visitor, refLength, length);
@@ -265,8 +317,8 @@ public:
     static inline void IteratorRange(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end)
     {
-        visitor(root, ToUintPtr(root) + start,
-                ToUintPtr(root) + end, VisitObjectArea::RAW_DATA);
+        visitor(root, ObjectSlot(ToUintPtr(root) + start),
+                ObjectSlot(ToUintPtr(root) + end), VisitObjectArea::RAW_DATA);
     }
 };
 }  // namespace panda::ecmascript

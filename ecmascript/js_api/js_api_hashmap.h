@@ -18,7 +18,7 @@
 
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/tagged_node.h"
 
 namespace panda::ecmascript {

@@ -165,7 +165,7 @@ void SharedFullGC::UpdateRecordWeakReference()
                 MarkWord markWord(header, RELAXED_LOAD);
                 if (markWord.IsForwardingAddress()) {
                     TaggedObject *dst = markWord.ToForwardingAddress();
-                    auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();
+                    TaggedObject *weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawHeapObject();
                     slot.Update(weakRef);
                 } else {
                     slot.Clear();

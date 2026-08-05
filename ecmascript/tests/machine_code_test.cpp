@@ -20,7 +20,7 @@
 #include "ecmascript/jit/jit.h"
 
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/object_factory-inl.h"

@@ -17,8 +17,8 @@
 #define ECMASCRIPT_JSARRAY_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 

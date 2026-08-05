@@ -20,7 +20,7 @@
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
@@ -45,6 +45,7 @@ public:
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
+        thread->GetEcmaVM()->GetHeap()->EnableHeapVerication(true);
     }
 
     void TearDown() override
@@ -178,9 +179,17 @@ HWTEST_F_L0(ContainersTreeMapTest, TreeMapConstructor)
     ASSERT_EQ(size, 0);
 
     // test TreeMapConstructor exception
+    objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
+    objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+    objCallInfo->SetThis(JSTaggedValue::Undefined());
     objCallInfo->SetCallArg(0, JSTaggedValue(0));
     CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, TreeMapConstructor, objCallInfo);
+    objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    objCallInfo->SetThis(JSTaggedValue::Undefined());
+    objCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, TreeMapConstructor, objCallInfo);
 }
 

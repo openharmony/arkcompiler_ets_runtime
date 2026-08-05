@@ -17,7 +17,7 @@
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"

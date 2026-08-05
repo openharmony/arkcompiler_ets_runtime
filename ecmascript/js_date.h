@@ -19,7 +19,7 @@
 #include <array>
 
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 static constexpr int64_t DAYS_IN_YEAR = 365;

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_ELEMENTS_H
 
 #include "ecmascript/global_env_fields.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {

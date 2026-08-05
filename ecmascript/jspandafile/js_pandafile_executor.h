@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
 #define ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_execute_type.h"

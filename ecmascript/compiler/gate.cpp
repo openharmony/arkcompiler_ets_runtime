@@ -151,9 +151,7 @@ void Gate::CheckValueInput(bool isArch64) const
                 CheckInputMachineType(idx, MachineType::I1, isArch64);
                 break;
             case OpCode::LOAD:
-                ASSERT(idx == valueStart);
-                CheckInputMachineType(idx, MachineType::ARCH, isArch64);
-                break;
+            case OpCode::LOAD_FROM_COMPRESSED:
             case OpCode::LOAD_WITHOUT_BARRIER:
                 ASSERT(idx == valueStart);
                 CheckInputMachineType(idx, MachineType::ARCH, isArch64);

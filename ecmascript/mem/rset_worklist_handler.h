@@ -21,11 +21,13 @@
 namespace panda::ecmascript {
 class Heap;
 class Region;
-class RememberedSet;
+template <ReferenceType refType>
+class RememberedSetBase;
 
+template <ReferenceType refType>
 class RSetItem {
 public:
-    explicit RSetItem(Region *region, RememberedSet *rSet) : region_(region), rSet_(rSet) {}
+    explicit RSetItem(Region *region, RememberedSetBase<refType> *rSet) : region_(region), rSet_(rSet) {}
     ~RSetItem() = default;
 
     template<class Visitor>
@@ -35,7 +37,7 @@ public:
 
 private:
     Region *region_ {nullptr};
-    RememberedSet *rSet_ {nullptr};
+    RememberedSetBase<refType> *rSet_ {nullptr};
 };
 
 class RSetWorkListHandler {
@@ -57,9 +59,6 @@ public:
 
     inline void EnumerateRegions(const Heap *heap);
 
-    template<class Visitor>
-    inline void ProcessAllVisitor(const Visitor &visitor, int done);
-
     inline void MergeBackForAllItem();
 
     JSThread *GetOwnerThreadUnsafe() const
@@ -72,6 +71,9 @@ private:
 
     template<class Visitor>
     inline bool ProcessNext(const Visitor &visitor);
+
+    template<class Visitor>
+    inline bool ProcessNextCompressed(const Visitor &visitor);
 
     inline bool TryMergeBack();
 
@@ -90,9 +92,12 @@ private:
      * And thus WaitFinishedThenMergeBack should ONLY be called from the bound js thread in RUNNING state.
     */
     bool initialized_ {false};
-    std::vector<RSetItem> items_;
+    std::vector<RSetItem<ReferenceType::NORMAL>> items_;
+    std::vector<RSetItem<ReferenceType::COMPRESSED>> compressedItems_;
     std::atomic<int> nextItemIndex_ {-1};
+    std::atomic<int> nextCompressedItemIndex_ {-1};
     int remainItems_ {0};
+    int remainCompressedItems_ {0};
     Mutex mutex_;
     ConditionVariable cv_;
 };

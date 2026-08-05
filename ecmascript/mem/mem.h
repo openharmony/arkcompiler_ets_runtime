@@ -42,6 +42,13 @@ enum class MemAlignmentLog2 : uint8_t {
 static constexpr size_t INITIAL_REGULAR_OBJECT_CAPACITY = 1024_MB;
 static constexpr size_t INITIAL_HUGE_OBJECT_CAPACITY = 1024_MB;
 static constexpr size_t INITIAL_NONMOVALBE_OBJECT_CAPACITY = 1024_MB;
+#ifdef USE_COMPRESSED_POINTER
+static_assert(std::is_same_v<size_t, uint64_t>);
+static constexpr size_t INITIAL_MEM_MAP_POOL_CAPACITY_FOR_COMPRESSED_POINTER = 4096_MB;
+static constexpr size_t INITIAL_HUGE_OBJECT_CAPACITY_FOR_COMPRESSED_POINTER = 1024_MB;
+static constexpr size_t INITIAL_REGULAR_OBJECT_CAPACITY_FOR_COMPRESSED_POINTER =
+    INITIAL_MEM_MAP_POOL_CAPACITY_FOR_COMPRESSED_POINTER - INITIAL_HUGE_OBJECT_CAPACITY_FOR_COMPRESSED_POINTER;
+#endif
 static constexpr size_t INCREMENT_HUGE_OBJECT_CAPACITY = 128_MB;
 static constexpr size_t LARGE_POOL_SIZE = 480_MB;
 static constexpr size_t MEDIUM_POOL_SIZE = 256_MB;
@@ -156,6 +163,8 @@ template<typename T>
 constexpr inline T AlignUp(T x, size_t alignment)
 {
     ASSERT(std::is_integral<T>::value && (x + alignment) > 0);
+    // alignment must be a power of two.
+    ASSERT(alignment != 0 && ((alignment & (alignment - 1U)) == 0));
     return AlignDown<T>(static_cast<T>(x + alignment - 1U), alignment);
 }
 

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_INTERPRETER_SLOW_RUNTIME_STUB_H
 
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {

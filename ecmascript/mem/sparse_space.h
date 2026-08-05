@@ -101,8 +101,20 @@ public:
     void DetachFreeObjectSet(Region *region);
 
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
-    void IterateOldToNewOverObjects(
-        const std::function<void(TaggedObject *object, JSTaggedValue value)> &visitor) const;
+    template <typename Visitor>
+    void IterateOldToNewOverObjects(Visitor &visitor) const
+    {
+        auto cb = [&visitor](void *mem, auto referenceTypeWrapper) -> bool {
+            constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+            ObjectSlotBase<refType> slot(ToUintPtr(mem));
+            visitor(reinterpret_cast<TaggedObject *>(mem), slot);
+            return true;
+        };
+        EnumerateRegions([&cb] (Region *region) {
+            region->IterateAllSweepingOldToNewRSetBits(cb);
+            region->IterateAllOldToNewBits(cb);
+        });
+    }
 
     size_t GetHeapObjectSize() const;
 

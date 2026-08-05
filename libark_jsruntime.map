@@ -1,5 +1,7 @@
 {
   global:
+    _ZN5panda10ecmascript8Barriers6Update*;
+    _ZN5panda10ecmascript8Barriers12UpdateShared*;
     extern "C++" {
       vtable?for?Initializer;
       vtable?for?panda::LocalScope;
@@ -175,6 +177,7 @@
       panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::ReadBarrierImpl*;
+      panda::ecmascript::ReadBarrierForCompressedImpl*;
       panda::ecmascript::Barriers::CheckObjectForCMS*;
       panda::ecmascript::Barriers::CheckValueForCMS*;
       panda::ecmascript::BaseHeap::IsAlive*;
@@ -285,6 +288,7 @@
       panda::ecmascript::JSSharedMap::Set*;
       panda::ecmascript::JSTaggedValue::IsBoolean*;
       panda::ecmascript::JSTaggedValue::IsBigInt*;
+      panda::ecmascript::JSTaggedValue::IsConstantPoolSlowForTest*;
       panda::ecmascript::JSTaggedValue::IsTaggedArray*;
       panda::ecmascript::JSTaggedValue::IsJSProxy*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;

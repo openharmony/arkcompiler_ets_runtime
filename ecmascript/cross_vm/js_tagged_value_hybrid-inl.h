@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_CROSS_VM_JS_TAGGED_VALUE_HYBRID_INL_H
 #define ECMASCRIPT_CROSS_VM_JS_TAGGED_VALUE_HYBRID_INL_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 #include "ecmascript/js_hclass.h"
 

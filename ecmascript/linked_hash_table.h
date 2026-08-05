@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_LINKED_HASH_TABLE_H
 #define ECMASCRIPT_LINKED_HASH_TABLE_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_number.h"

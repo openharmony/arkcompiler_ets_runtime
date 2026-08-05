@@ -36,7 +36,7 @@ using panda::ecmascript::ObjectXRay;
 using panda::ecmascript::FreeObject;
 using panda::ecmascript::ObjectSlot;
 using panda::ecmascript::JSThread;
-using panda::ecmascript::TaggedType;
+using panda::ecmascript::JSTaggedType;
 
 // A fake EcmaVM which will never used, only for unify the BaseRuntime::Init&Fini
 static panda::ecmascript::EcmaVM *g_fakeEcmaVM = nullptr;
@@ -413,7 +413,7 @@ void JitFortUnProt(size_t size, void* base)
 
 bool IsMachineCodeObject(uintptr_t objPtr)
 {
-    JSTaggedValue value(static_cast<TaggedType>(objPtr));
+    JSTaggedValue value(static_cast<JSTaggedType>(objPtr));
     return value.IsMachineCodeObject();
 }
 

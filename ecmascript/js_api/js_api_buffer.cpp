@@ -32,7 +32,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory.h"
 #include "jsnapi_expo.h"

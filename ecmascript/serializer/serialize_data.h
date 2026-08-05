@@ -20,7 +20,7 @@
 
 #include "common_components/heap/heap.h"
 #include "common_components/serialize/serialize_utils.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/shared_mm/shared_mm.h"
@@ -60,6 +60,7 @@ enum class EncodeFlag : uint8_t {
     NEW_OBJECT = 0x00,
     REFERENCE = 0x10,
     WEAK,
+    COMPRESSED_POINTER,
     PRIMITIVE,
     MULTI_RAW_DATA,
     ROOT_OBJECT,
@@ -77,7 +78,7 @@ enum class EncodeFlag : uint8_t {
     MODULE_FILE_NAME,
     MODULE_RECORD_NAME,
     MODULE_LAZY_ARRAY,
-    SEQUENCE_HOLE,
+    SEQUENCE_COMPRESSED_HOLE,
     LAST
 };
 
@@ -98,11 +99,6 @@ enum class SerializedObjectSpace : uint8_t {
     SHARED_HUGE_SPACE,
 };
 using common::SerializedBaseObjectSpace;
-
-enum class SerializeType : uint8_t {
-    VALUE_SERIALIZE,
-    PGO_SERIALIZE
-};
 
 enum class SerializeErrorInfo : uint8_t {
     ONLY_MSG = 1,

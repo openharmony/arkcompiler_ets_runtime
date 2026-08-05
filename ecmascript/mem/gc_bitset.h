@@ -23,15 +23,17 @@
 #include "ecmascript/mem/mem.h"
 
 // |----word(32 bit)----|----word(32 bit)----|----...----|----word(32 bit)----|----word(32 bit)----|
-// |---------------------------------------GCBitset(4 kb)------------------------------------------|
+// |---------------------------------------GCBitsetBase(4 kb)--------------------------------------|
 
 namespace panda::ecmascript {
 enum class AccessType { ATOMIC, NON_ATOMIC };
 
-class GCBitset {
+template <ReferenceType refType>
+class GCBitsetBase {
 public:
     using GCBitsetWord = uint32_t;
     using GCBitsetTwoWords = uint64_t;
+    using T = RawDataType<refType>;
     static constexpr uint32_t BYTE_PER_WORD = sizeof(GCBitsetWord);
     static constexpr uint32_t BYTE_PER_WORD_LOG2 = base::MathHelper::GetIntLog2(BYTE_PER_WORD);
     static constexpr uint32_t BIT_PER_BYTE = 8;
@@ -40,16 +42,30 @@ public:
     static constexpr uint32_t BIT_PER_WORD_LOG2 = base::MathHelper::GetIntLog2(BIT_PER_WORD);
     static constexpr uint32_t BIT_PER_WORD_MASK = BIT_PER_WORD - 1;
 
-    GCBitset() = default;
-    ~GCBitset() = default;
+    static constexpr uint32_t TYPE_SIZE = sizeof(T);
+    static constexpr uint32_t TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TYPE_SIZE);
+    
+    template <typename Visitor, typename... Args>
+    static auto InvokeVisitorWithOptionalReferenceType(Visitor &&visitor, Args&&... args)
+    {
+        using RefType = std::integral_constant<ReferenceType, refType>;
+        if constexpr (std::is_invocable_v<Visitor, Args..., RefType>) {
+            return visitor(std::forward<Args>(args)..., RefType{});
+        } else {
+            return visitor(std::forward<Args>(args)...);
+        }
+    }
 
-    NO_COPY_SEMANTIC(GCBitset);
-    NO_MOVE_SEMANTIC(GCBitset);
+    GCBitsetBase() = default;
+    ~GCBitsetBase() = default;
+
+    NO_COPY_SEMANTIC(GCBitsetBase);
+    NO_MOVE_SEMANTIC(GCBitsetBase);
 
     static constexpr size_t SizeOfGCBitset(size_t rangeSize)
     {
         ASSERT(IsAligned(rangeSize, DEFAULT_REGION_SIZE));
-        size_t bitSize = AlignUp(rangeSize, TAGGED_TYPE_SIZE) >> TAGGED_TYPE_SIZE_LOG;
+        size_t bitSize = AlignUp(rangeSize, TYPE_SIZE) >> TYPE_SIZE_LOG;
         return AlignUp(AlignUp(bitSize, BIT_PER_BYTE) >> BIT_PER_BYTE_LOG2, BYTE_PER_WORD);
     }
 
@@ -95,10 +111,67 @@ public:
     template <AccessType mode = AccessType::NON_ATOMIC>
     bool SetBit(uintptr_t offset);
 
-    bool SetBitRange(uintptr_t offset, uint32_t mask);
+    template <>
+    bool SetBit<AccessType::NON_ATOMIC>(uintptr_t offset)
+    {
+        size_t index = Index(offset);
+        GCBitsetWord mask = Mask(IndexInWord(offset));
+        if (Words()[index] & mask) {
+            return false;
+        }
+        Words()[index] |= mask;
+        return true;
+    }
+
+    template <>
+    bool SetBit<AccessType::ATOMIC>(uintptr_t offset)
+    {
+        volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
+        auto mask = Mask(IndexInWord(offset));
+        auto oldValue = word->load(std::memory_order_relaxed);
+        GCBitsetWord oldValueBeforeCAS;
+        do {
+            if (oldValue & mask) {
+                return false;
+            }
+            oldValueBeforeCAS = oldValue;
+            std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue | mask,
+                std::memory_order_relaxed, std::memory_order_relaxed);
+        } while (oldValue != oldValueBeforeCAS);
+        return true;
+    }
+
+    bool SetBitRange(uintptr_t offset, uint32_t mask)
+    {
+        size_t index = Index(offset);
+        Words()[index] |= mask;
+        return true;
+    }
 
     template <AccessType mode = AccessType::NON_ATOMIC>
     void ClearBit(uintptr_t offset);
+
+    template <>
+    void ClearBit<AccessType::NON_ATOMIC>(uintptr_t offset)
+    {
+        Words()[Index(offset)] &= ~Mask(IndexInWord(offset));
+    }
+
+    template <>
+    void ClearBit<AccessType::ATOMIC>(uintptr_t offset)
+    {
+        volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
+        GCBitsetWord mask = ~Mask(IndexInWord(offset));
+        GCBitsetWord oldValue = word->load(std::memory_order_relaxed);
+        GCBitsetWord oldValueBeforeCAS;
+        do {
+            oldValueBeforeCAS = oldValue;
+            if (!std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue & mask,
+                                                              std::memory_order_relaxed, std::memory_order_relaxed)) {
+                LOG_JIT(FATAL) << "jit fort data race!";
+            }
+        } while (oldValue != oldValueBeforeCAS);
+    }
 
     template <AccessType mode = AccessType::NON_ATOMIC>
     void ClearBitRange(uintptr_t offsetBegin, uintptr_t offsetEnd)
@@ -126,8 +199,8 @@ public:
         return Words()[Index(offset)] & Mask(IndexInWord(offset));
     }
 
-    template <typename Visitor, AccessType mode = AccessType::NON_ATOMIC>
-    void IterateMarkedBits(uintptr_t begin, size_t bitSize, Visitor visitor)
+    template <typename Visitor, AccessType mode>
+    void IterateMarkedBits(uintptr_t begin, size_t bitSize, Visitor &&visitor)
     {
         auto words = Words();
         uint32_t wordCount = WordCount(bitSize);
@@ -137,12 +210,13 @@ public:
             while (word != 0) {
                 index = static_cast<uint32_t>(__builtin_ctz(word));
                 ASSERT(index < BIT_PER_WORD);
-                if (!visitor(reinterpret_cast<void *>(begin + (index << TAGGED_TYPE_SIZE_LOG)))) {
+                void *mem = reinterpret_cast<void *>(begin + (index << TYPE_SIZE_LOG));
+                if (!InvokeVisitorWithOptionalReferenceType(visitor, mem)) {
                     ClearWord<mode>(i, Mask(index));
                 }
                 word &= ~(1u << index);
             }
-            begin += TAGGED_TYPE_SIZE * BIT_PER_WORD;
+            begin += TYPE_SIZE * BIT_PER_WORD;
         }
     }
 
@@ -157,14 +231,15 @@ public:
             while (word != 0) {
                 index = static_cast<uint32_t>(__builtin_ctz(word));
                 ASSERT(index < BIT_PER_WORD);
-                visitor(reinterpret_cast<void *>(begin + (index << TAGGED_TYPE_SIZE_LOG)));
+                void *mem = reinterpret_cast<void *>(begin + (index << TYPE_SIZE_LOG));
+                InvokeVisitorWithOptionalReferenceType(visitor, mem);
                 word &= ~(1u << index);
             }
-            begin += TAGGED_TYPE_SIZE * BIT_PER_WORD;
+            begin += TYPE_SIZE * BIT_PER_WORD;
         }
     }
 
-    void Merge(GCBitset *bitset, size_t bitSize)
+    void Merge(GCBitsetBase<refType> *bitset, size_t bitSize)
     {
         ASSERT(bitSize % sizeof(GCBitsetTwoWords) == 0);
         auto words = TwoWords();
@@ -231,64 +306,8 @@ private:
     }
 };
 
-inline bool GCBitset::SetBitRange(uintptr_t offset, uint32_t mask)
-{
-    size_t index = Index(offset);
-    Words()[index] |= mask;
-    return true;
-}
-
-template <>
-inline bool GCBitset::SetBit<AccessType::NON_ATOMIC>(uintptr_t offset)
-{
-    size_t index = Index(offset);
-    GCBitsetWord mask = Mask(IndexInWord(offset));
-    if (Words()[index] & mask) {
-        return false;
-    }
-    Words()[index] |= mask;
-    return true;
-}
-
-template <>
-inline bool GCBitset::SetBit<AccessType::ATOMIC>(uintptr_t offset)
-{
-    volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
-    auto mask = Mask(IndexInWord(offset));
-    auto oldValue = word->load(std::memory_order_relaxed);
-    GCBitsetWord oldValueBeforeCAS;
-    do {
-        if (oldValue & mask) {
-            return false;
-        }
-        oldValueBeforeCAS = oldValue;
-        std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue | mask,
-            std::memory_order_relaxed, std::memory_order_relaxed);
-    } while (oldValue != oldValueBeforeCAS);
-    return true;
-}
-
-template <>
-inline void GCBitset::ClearBit<AccessType::NON_ATOMIC>(uintptr_t offset)
-{
-    Words()[Index(offset)] &= ~Mask(IndexInWord(offset));
-}
-
-template <>
-inline void GCBitset::ClearBit<AccessType::ATOMIC>(uintptr_t offset)
-{
-    volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
-    GCBitsetWord mask = ~Mask(IndexInWord(offset));
-    GCBitsetWord oldValue = word->load(std::memory_order_relaxed);
-    GCBitsetWord oldValueBeforeCAS;
-    do {
-        oldValueBeforeCAS = oldValue;
-        if (!std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue & mask,
-                                                          std::memory_order_relaxed, std::memory_order_relaxed)) {
-            LOG_JIT(FATAL) << "jit fort data race!";
-        }
-    } while (oldValue != oldValueBeforeCAS);
-}
+using GCBitset = GCBitsetBase<ReferenceType::NORMAL>;
+using CompressedGCBitset = GCBitsetBase<ReferenceType::COMPRESSED>;
 
 template <size_t BitSetNum, typename Enable = std::enable_if_t<(BitSetNum >= 1), int>>
 class GCBitSetUpdater {

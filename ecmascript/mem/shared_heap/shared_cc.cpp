@@ -508,8 +508,9 @@ bool SharedCCUpdateTask::Run(uint32_t threadIndex)
     };
 
     auto processLocal = [&updateVisitor](Region *region) {
-        region->IterateAllLocalToShareBits([&updateVisitor](void *mem) {
-            ObjectSlot slot(ToUintPtr(mem));
+        region->IterateAllLocalToShareBits([&updateVisitor](void *mem, auto referenceTypeWrapper) {
+            constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+            ObjectSlotBase<refType> slot(ToUintPtr(mem));
             updateVisitor.HandleSlot(slot);
             return true;
         });
@@ -690,26 +691,34 @@ void SharedCC::Finish()
     sHeap_->InvokeSharedNativePointerCallbacks();
 }
 
-void SharedCCUpdateVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+void SharedCCUpdateVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
     VisitObjectArea area)
 {
-    ObjectSlot startSlot(start);
-    ObjectSlot endSlot(end);
     auto rootObject = TaggedObject::Cast(root);
 
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        HandleInObjectArea(rootObject, startSlot, endSlot);
+        HandleInObjectArea(rootObject, start, end);
         return;
     }
 
-    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         HandleSlot(slot);
     }
 }
 
-void SharedCCUpdateVisitor::HandleSlot(ObjectSlot slot)
+void SharedCCUpdateVisitor::VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+    CompressedObjectSlot end)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedObject *rootObject = TaggedObject::Cast(root);
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot);
+    }
+}
+
+template <ReferenceType refType>
+void SharedCCUpdateVisitor::HandleSlot(ObjectSlotBase<refType> slot)
+{
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }
@@ -722,12 +731,18 @@ void SharedCCUpdateVisitor::HandleSlot(ObjectSlot slot)
 
     TaggedObject *object = value.GetHeapObject();
     MarkWord markWord(object, RELAXED_LOAD);
+
     ASSERT(markWord.IsForwardingAddress());
     TaggedObject *dst = markWord.ToForwardingAddress();
-    if (value.IsWeakForHeapObject()) {
-        slot.CASUpdateWeak(rawObject, dst);
-    } else {
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
         slot.CASUpdate(rawObject, dst);
+    } else {
+        if (value.IsWeakForHeapObject()) {
+            slot.CASUpdateWeak(rawObject, dst);
+        } else {
+            slot.CASUpdate(rawObject, dst);
+        }
     }
 }
 

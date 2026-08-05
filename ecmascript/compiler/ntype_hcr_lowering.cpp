@@ -121,8 +121,8 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     if (arrayLength > literialLength) {
         elements = CreateElementsWithLength(gate, glue, arrayLength);
         for (uint32_t i = 0; i < literialLength; i++) {
-            GateRef value = builder_.LoadFromTaggedArray(literialElements, i);
-            builder_.StoreToTaggedArray(elements, i, value);
+            GateRef value = builder_.LoadFromTaggedArray(glue_, literialElements, i);
+            builder_.StoreToTaggedArray(glue_, elements, i, value);
         }
         length = builder_.IntPtr(arrayLength);
     } else {
@@ -142,7 +142,7 @@ GateRef NTypeHCRLowering::NewActualArgv(GateRef gate, GateRef glue)
     GateRef array = CreateElementsWithLength(gate, glue, length);
     for (size_t i = funcIdx; i < argAcc->ArgsCount(); i++) {
         GateRef value = argAcc->ArgsAt(i);
-        builder_.StoreToTaggedArray(array, i - funcIdx, value);
+        builder_.StoreToTaggedArray(glue_, array, i - funcIdx, value);
     }
     return array;
 }
@@ -191,14 +191,6 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
             UNREACHABLE();
         }
     }
-}
-
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef glue, GateRef unsharedConstpool, size_t index, size_t valVecType)
-{
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(unsharedConstpool);
-    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
-    GateRef valVec = builder_.GetValueFromTaggedArray(glue, unsharedConstpool, valVecIndex);
-    return builder_.LoadFromTaggedArray(valVec, index);
 }
 
 GateRef NTypeHCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength)

@@ -17,7 +17,7 @@
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::x64 {

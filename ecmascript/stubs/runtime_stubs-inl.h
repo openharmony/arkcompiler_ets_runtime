@@ -17,7 +17,7 @@
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -45,6 +45,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_value_accessor.h"

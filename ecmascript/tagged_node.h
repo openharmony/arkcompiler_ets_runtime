@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_TAGGED_NODE_H
 #define ECMASCRIPT_TAGGED_NODE_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/mem/tagged_object.h"
 
 namespace panda::ecmascript {

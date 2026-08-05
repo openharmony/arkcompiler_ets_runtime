@@ -212,7 +212,7 @@ bool ValueSerializer::SerializeSharedObj([[maybe_unused]] TaggedObject *object)
     }
 }
 
-void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
+void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak, bool isCompressed)
 {
     if (notSupport_) {
         return;
@@ -223,7 +223,14 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         return;
     }
     if (isWeak) {
+        // fixme: compressed pointer : support weak for compressed pointer
+        ASSERT(!isCompressed);
         data_->WriteEncodeFlag(EncodeFlag::WEAK);
+    }
+    if (isCompressed) {
+        // fixme: compressed pointer : support weak for compressed pointer
+        ASSERT(!isWeak);
+        data_->WriteEncodeFlag(EncodeFlag::COMPRESSED_POINTER);
     }
     if (SerializeReference(object) || SerializeRootObject(object)) {
         return;
@@ -314,7 +321,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     }
 
     // serialize object here
-    SerializeTaggedObject<SerializeType::VALUE_SERIALIZE>(object);
+    SerializeTaggedObject(object);
 
     // serialize epilogue
     switch (type) {

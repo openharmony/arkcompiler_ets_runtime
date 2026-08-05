@@ -35,7 +35,7 @@
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/ohos/ohos_constants.h"

@@ -40,7 +40,7 @@
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_date_time_format.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/tests/test_common.h"

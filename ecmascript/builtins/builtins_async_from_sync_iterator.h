@@ -20,7 +20,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript::builtins {
 class BuiltinsAsyncFromSyncIterator : public base::BuiltinsBase {

@@ -22,7 +22,7 @@
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_typed_array.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript {
 class JSStableArray {
@@ -129,7 +129,7 @@ public:
 
 private:
     template <RBMode mode = RBMode::DEFAULT_RB, class Predicate>
-    static const JSTaggedType *IndexOfElements(JSThread *thread, Span<const TaggedType> rawElements,
+    static const JSTaggedType *IndexOfElements(JSThread *thread, Span<const JSTaggedType> rawElements,
                                                IndexOfOptions options, Predicate predicate);
     static const JSTaggedType *IndexOfUndefined(JSThread *thread, Span<const JSTaggedType> elements,
                                                 IndexOfOptions options, bool isMutant);

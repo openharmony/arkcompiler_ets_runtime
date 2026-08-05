@@ -24,7 +24,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {

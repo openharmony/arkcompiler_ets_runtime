@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_MODULE_JS_SHARED_MODULE_MANAGER_H
 #define ECMASCRIPT_MODULE_JS_SHARED_MODULE_MANAGER_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"

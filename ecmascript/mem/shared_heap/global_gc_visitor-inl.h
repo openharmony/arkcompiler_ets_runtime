@@ -52,11 +52,9 @@ void GlobalMarkRootVisitor::MarkLocalObject(ObjectSlot slot)
     }
 }
 
-void GlobalMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+void GlobalMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
                                                    VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = TaggedObject::Cast(root)->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -79,6 +77,14 @@ void GlobalMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t s
     }
 }
 
+void GlobalMarkObjectVisitor::VisitCompressedObjectRangeImpl(BaseObject *root, CompressedObjectSlot start,
+                                                             CompressedObjectSlot end)
+{
+    for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        MarkLocalRefFromSlot(slot);
+    }
+}
+
 void GlobalMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *rootObject, BaseObject *hclassObject)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
@@ -95,9 +101,10 @@ void GlobalMarkObjectVisitor::HandleObject(TaggedObject *object, Region *objectR
     }
 }
 
-void GlobalMarkObjectVisitor::MarkLocalRefFromSlot(ObjectSlot slot)
+template <ReferenceType refType>
+void GlobalMarkObjectVisitor::MarkLocalRefFromSlot(ObjectSlotBase<refType> slot)
 {
-    JSTaggedValue value(slot.GetTaggedType());
+    TaggedValueType<refType> value = slot.GetTaggedValue();
     if (!value.IsHeapObject()) {
         return;
     }

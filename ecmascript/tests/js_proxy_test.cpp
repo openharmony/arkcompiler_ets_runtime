@@ -24,7 +24,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_proxy.h"
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 

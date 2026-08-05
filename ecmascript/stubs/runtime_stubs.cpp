@@ -859,6 +859,13 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     UNREACHABLE();
 }
 
+void RuntimeStubs::FatalPrintIfFalse(bool condition, int fmtMessageId, int line)
+{
+    if (!condition) {
+        FatalPrint(fmtMessageId, line);
+    }
+}
+
 void RuntimeStubs::FatalPrintCustom(uintptr_t fmt, ...)
 {
     va_list args;
@@ -3666,7 +3673,7 @@ void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
 {
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
-    return region->InsertOldToNewRSet(slotAddr);
+    return region->InsertOldToNewRSet<ReferenceType::NORMAL>(slotAddr);
 }
 
 void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
@@ -3674,7 +3681,7 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
 {
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
-    region->InsertLocalToShareRSet(slotAddr);
+    region->InsertLocalToShareRSet<ReferenceType::NORMAL>(slotAddr);
 }
 
 void RuntimeStubs::SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -3715,7 +3722,7 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
 #endif
     ASSERT(thread->IsConcurrentMarkingOrFinished());
     if (!g_isEnableCMCGC) {
-        Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
+        Barriers::Update<ReferenceType::NORMAL>(thread, slotAddr, objectRegion, value, valueRegion);
     }
 }
 
@@ -3736,7 +3743,7 @@ void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, s
 #endif
     ASSERT(thread->IsSharedConcurrentMarkingOrFinished());
     if (!g_isEnableCMCGC) {
-        Barriers::UpdateShared(thread, slotAddr, objectRegion, value, valueRegion);
+        Barriers::UpdateShared<ReferenceType::NORMAL>(thread, slotAddr, objectRegion, value, valueRegion);
     }
 }
 
@@ -3772,6 +3779,18 @@ JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr, uintpt
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     return Barriers::ReadBarrierForObject(thread, addr, JSTaggedValue(static_cast<JSTaggedType>(argValue)));
+}
+
+TemporaryJSTaggedValue RuntimeStubs::ReadBarrierForCompressed(uintptr_t argGlue, uintptr_t addr,
+                                                              TemporaryJSTaggedValue temporaryValue)
+{
+#ifdef USE_COMPRESSED_POINTER
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    return Barriers::ReadBarrierForCompressedForObject(thread, addr, temporaryValue);
+#else
+    LOG_ECMA(FATAL) << "this branch is only enable for compressed pointer";
+    UNREACHABLE();
+#endif
 }
 
 void RuntimeStubs::CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget)
@@ -4309,12 +4328,12 @@ bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
     return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisValue);
 }
 
-RememberedSet* RuntimeStubs::CreateLocalToShare(Region* region)
+RememberedSet *RuntimeStubs::CreateLocalToShare(Region* region)
 {
     return region->CreateLocalToShareRememberedSet();
 }
 
-RememberedSet* RuntimeStubs::CreateOldToNew(Region* region)
+RememberedSet *RuntimeStubs::CreateOldToNew(Region* region)
 {
     return region->CreateOldToNewRememberedSet();
 }

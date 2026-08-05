@@ -19,22 +19,27 @@
 #include "ecmascript/mem/gc_bitset.h"
 
 namespace panda::ecmascript {
-class RememberedSet {
+
+template <ReferenceType refType>
+class RememberedSetBase {
+    using BitSet = GCBitsetBase<refType>;
+    static constexpr size_t TYPE_SIZE = BitSet::TYPE_SIZE;
+    static constexpr size_t TYPE_SIZE_LOG = BitSet::TYPE_SIZE_LOG;
 public:
     static constexpr size_t GCBITSET_DATA_OFFSET = sizeof(size_t);
-    explicit RememberedSet(size_t size) : size_(size) {}
+    explicit RememberedSetBase(size_t size) : size_(size) {}
 
-    NO_COPY_SEMANTIC(RememberedSet);
-    NO_MOVE_SEMANTIC(RememberedSet);
+    NO_COPY_SEMANTIC(RememberedSetBase);
+    NO_MOVE_SEMANTIC(RememberedSetBase);
 
-    GCBitset *GCBitsetData()
+    BitSet *GCBitsetData()
     {
-        return reinterpret_cast<GCBitset *>(reinterpret_cast<uintptr_t>(this) + GCBITSET_DATA_OFFSET);
+        return reinterpret_cast<BitSet *>(reinterpret_cast<uintptr_t>(this) + GCBITSET_DATA_OFFSET);
     }
 
-    const GCBitset *GCBitsetData() const
+    const BitSet *GCBitsetData() const
     {
-        return reinterpret_cast<GCBitset *>(reinterpret_cast<uintptr_t>(this) + GCBITSET_DATA_OFFSET);
+        return reinterpret_cast<BitSet *>(reinterpret_cast<uintptr_t>(this) + GCBITSET_DATA_OFFSET);
     }
 
     void ClearAll()
@@ -44,51 +49,53 @@ public:
 
     bool Insert(uintptr_t begin, uintptr_t addr)
     {
-        return GCBitsetData()->SetBit<AccessType::NON_ATOMIC>((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
+        return GCBitsetData()->template SetBit<AccessType::NON_ATOMIC>((addr - begin) >> TYPE_SIZE_LOG);
     }
 
+    template <typename Dummy = void,
+              typename = std::enable_if_t<!ReferenceIsCompressed<refType>, Dummy>>
     bool InsertRange(uintptr_t begin, uintptr_t addr, uint32_t mask)
     {
-        return GCBitsetData()->SetBitRange((addr - begin) >> TAGGED_TYPE_SIZE_LOG, mask);
+        return GCBitsetData()->SetBitRange((addr - begin) >> TYPE_SIZE_LOG, mask);
     }
 
     bool AtomicInsert(uintptr_t begin, uintptr_t addr)
     {
-        return GCBitsetData()->SetBit<AccessType::ATOMIC>((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
+        return GCBitsetData()->template SetBit<AccessType::ATOMIC>((addr - begin) >> TYPE_SIZE_LOG);
     }
 
     void ClearBit(uintptr_t begin, uintptr_t addr)
     {
-        GCBitsetData()->ClearBit((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
+        GCBitsetData()->ClearBit((addr - begin) >> TYPE_SIZE_LOG);
     }
 
     void ClearRange(uintptr_t begin, uintptr_t start, uintptr_t end)
     {
-        GCBitsetData()->ClearBitRange<AccessType::NON_ATOMIC>(
-            (start - begin) >> TAGGED_TYPE_SIZE_LOG, (end - begin) >> TAGGED_TYPE_SIZE_LOG);
+        GCBitsetData()->template ClearBitRange<AccessType::NON_ATOMIC>(
+            (start - begin) >> TYPE_SIZE_LOG, (end - begin) >> TYPE_SIZE_LOG);
     }
 
     void AtomicClearRange(uintptr_t begin, uintptr_t start, uintptr_t end)
     {
-        GCBitsetData()->ClearBitRange<AccessType::ATOMIC>(
-            (start - begin) >> TAGGED_TYPE_SIZE_LOG, (end - begin) >> TAGGED_TYPE_SIZE_LOG);
+        GCBitsetData()->template ClearBitRange<AccessType::ATOMIC>(
+            (start - begin) >> TYPE_SIZE_LOG, (end - begin) >> TYPE_SIZE_LOG);
     }
 
     bool TestBit(uintptr_t begin, uintptr_t addr) const
     {
-        return GCBitsetData()->TestBit((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
+        return GCBitsetData()->TestBit((addr - begin) >> TYPE_SIZE_LOG);
     }
 
     template <typename Visitor>
     void IterateAllMarkedBits(uintptr_t begin, Visitor &&visitor)
     {
-        GCBitsetData()->IterateMarkedBits<Visitor, AccessType::NON_ATOMIC>(begin, size_, visitor);
+        GCBitsetData()->template IterateMarkedBits<Visitor, AccessType::NON_ATOMIC>(begin, size_, visitor);
     }
 
     template <typename Visitor>
     void AtomicIterateAllMarkedBits(uintptr_t begin, Visitor &&visitor)
     {
-        GCBitsetData()->IterateMarkedBits<Visitor, AccessType::ATOMIC>(begin, size_, visitor);
+        GCBitsetData()->template IterateMarkedBits<Visitor, AccessType::ATOMIC>(begin, size_, visitor);
     }
 
     template <typename Visitor>
@@ -97,9 +104,9 @@ public:
         GCBitsetData()->IterateMarkedBitsConst(begin, size_, visitor);
     }
 
-    void Merge(RememberedSet *rset)
+    void Merge(RememberedSetBase *rset)
     {
-        GCBitset *bitset = rset->GCBitsetData();
+        BitSet *bitset = rset->GCBitsetData();
         GCBitsetData()->Merge(bitset, size_);
     }
 
@@ -111,5 +118,8 @@ public:
 private:
     size_t size_;
 };
+
+using RememberedSet = RememberedSetBase<ReferenceType::NORMAL>;
+using CompressedRememberedSet = RememberedSetBase<ReferenceType::COMPRESSED>;
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_REMEMBERED_SET_H

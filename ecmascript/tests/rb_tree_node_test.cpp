@@ -17,7 +17,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_node.h"

@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_TYPES_PGO_TYPE_GENERATOR_H
 #define ECMASCRIPT_PGO_PROFILER_TYPES_PGO_TYPE_GENERATOR_H
 
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"

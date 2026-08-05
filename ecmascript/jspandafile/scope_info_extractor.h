@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_SCOPE_INFO_EXTRACTOR_H
 #define ECMASCRIPT_JSPANDAFILE_SCOPE_INFO_EXTRACTOR_H
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
 
 namespace panda::ecmascript {
 struct ScopeDebugInfo {

@@ -32,6 +32,16 @@ inline RememberedSet *Region::CreateRememberedSet()
     return ret;
 }
 
+inline CompressedRememberedSet *Region::CreateCompressedRememberedSet()
+{
+    auto bitSize = CompressedGCBitset::SizeOfGCBitset(GetCapacity());
+    auto setAddr = nativeAreaAllocator_->Allocate(bitSize + CompressedRememberedSet::GCBITSET_DATA_OFFSET);
+    auto ret = new (setAddr) CompressedRememberedSet(bitSize);
+    ret->ClearAll();
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    return ret;
+}
+
 inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
 {
     if (UNLIKELY(crossRegionSet_ == nullptr)) {
@@ -43,12 +53,25 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
     return crossRegionSet_;
 }
 
-ARK_NOINLINE RememberedSet* Region::CreateOldToNewRememberedSet()
+inline CompressedRememberedSet *Region::GetOrCreateCompressedCrossRegionRememberedSet()
+{
+    if (UNLIKELY(compressedCrossRegionSet_ == nullptr)) {
+        LockHolder lock(*lock_);
+        if (compressedCrossRegionSet_ == nullptr) {
+            compressedCrossRegionSet_ = CreateCompressedRememberedSet();
+        }
+    }
+    return compressedCrossRegionSet_;
+}
+
+ARK_NOINLINE RememberedSet *Region::CreateOldToNewRememberedSet()
 {
     LockHolder lock(*lock_);
     if (packedData_.oldToNewSet_ == nullptr) {
         if (sweepingOldToNewRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
+            // this bit is for batch barrier, and const pool do not support, so do not mark for
+            // `compressedSweepingOldToNewRSet_` now
             ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
             sweepingOldToNewRSet_ = nullptr;
         } else {
@@ -58,7 +81,22 @@ ARK_NOINLINE RememberedSet* Region::CreateOldToNewRememberedSet()
     return packedData_.oldToNewSet_;
 }
 
-inline RememberedSet* Region::GetOrCreateOldToNewRememberedSet()
+ARK_NOINLINE CompressedRememberedSet *Region::CreateCompressedOldToNewRememberedSet()
+{
+    LockHolder lock(*lock_);
+    if (packedData_.compressedOldToNewSet_ == nullptr) {
+        if (compressedSweepingOldToNewRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
+            packedData_.compressedOldToNewSet_ = compressedSweepingOldToNewRSet_;
+            // const pool do not support copy, so do not need support for batch barrier
+            compressedSweepingOldToNewRSet_ = nullptr;
+        } else {
+            packedData_.compressedOldToNewSet_ = CreateCompressedRememberedSet();
+        }
+    }
+    return packedData_.compressedOldToNewSet_;
+}
+
+inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
 {
     if (UNLIKELY(packedData_.oldToNewSet_ == nullptr)) {
         return CreateOldToNewRememberedSet();
@@ -66,7 +104,15 @@ inline RememberedSet* Region::GetOrCreateOldToNewRememberedSet()
     return packedData_.oldToNewSet_;
 }
 
-ARK_NOINLINE RememberedSet* Region::CreateLocalToShareRememberedSet()
+inline CompressedRememberedSet *Region::GetOrCreateCompressedOldToNewRememberedSet()
+{
+    if (UNLIKELY(packedData_.compressedOldToNewSet_ == nullptr)) {
+        return CreateCompressedOldToNewRememberedSet();
+    }
+    return packedData_.compressedOldToNewSet_;
+}
+
+ARK_NOINLINE RememberedSet *Region::CreateLocalToShareRememberedSet()
 {
     LockHolder lock(*lock_);
     if (packedData_.localToShareSet_ == nullptr) {
@@ -81,6 +127,21 @@ ARK_NOINLINE RememberedSet* Region::CreateLocalToShareRememberedSet()
     return packedData_.localToShareSet_;
 }
 
+ARK_NOINLINE CompressedRememberedSet *Region::CreateCompressedLocalToShareRememberedSet()
+{
+    LockHolder lock(*lock_);
+    if (packedData_.compressedLocalToShareSet_ == nullptr) {
+        if (compressedSweepingLocalToShareRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
+            packedData_.compressedLocalToShareSet_ = compressedSweepingLocalToShareRSet_;
+            // const pool do not support copy, so do not need support for batch barrier
+            compressedSweepingLocalToShareRSet_ = nullptr;
+        } else {
+            packedData_.compressedLocalToShareSet_ = CreateCompressedRememberedSet();
+        }
+    }
+    return packedData_.compressedLocalToShareSet_;
+}
+
 inline RememberedSet *Region::GetOrCreateLocalToShareRememberedSet()
 {
     if (UNLIKELY(packedData_.localToShareSet_ == nullptr)) {
@@ -89,47 +150,89 @@ inline RememberedSet *Region::GetOrCreateLocalToShareRememberedSet()
     return packedData_.localToShareSet_;
 }
 
+inline CompressedRememberedSet *Region::GetOrCreateCompressedLocalToShareRememberedSet()
+{
+    if (UNLIKELY(packedData_.compressedLocalToShareSet_ == nullptr)) {
+        return CreateCompressedLocalToShareRememberedSet();
+    }
+    return packedData_.compressedLocalToShareSet_;
+}
+
 inline void Region::MergeLocalToShareRSetForCS()
 {
-    if (sweepingLocalToShareRSet_ == nullptr) {
-        return;
+    if (sweepingLocalToShareRSet_ != nullptr) {
+        if (packedData_.localToShareSet_ == nullptr) {
+            packedData_.localToShareSet_ = sweepingLocalToShareRSet_;
+            sweepingLocalToShareRSet_ = nullptr;
+        } else {
+            packedData_.localToShareSet_->Merge(sweepingLocalToShareRSet_);
+            DeleteSweepingLocalToShareRSetImpl();
+            sweepingLocalToShareRSet_ = nullptr;
+        }
+        ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
     }
-    if (packedData_.localToShareSet_ == nullptr) {
-        packedData_.localToShareSet_ = sweepingLocalToShareRSet_;
-        sweepingLocalToShareRSet_ = nullptr;
-    } else {
-        packedData_.localToShareSet_->Merge(sweepingLocalToShareRSet_);
-        DeleteSweepingLocalToShareRSet();
-        sweepingLocalToShareRSet_ = nullptr;
+
+    if (compressedSweepingLocalToShareRSet_ != nullptr) {
+        if (packedData_.compressedLocalToShareSet_ == nullptr) {
+            packedData_.compressedLocalToShareSet_ = compressedSweepingLocalToShareRSet_;
+            compressedSweepingLocalToShareRSet_ = nullptr;
+        } else {
+            packedData_.compressedLocalToShareSet_->Merge(compressedSweepingLocalToShareRSet_);
+            DeleteCompressedSweepingLocalToShareRSetImpl();
+            compressedSweepingLocalToShareRSet_ = nullptr;
+        }
+        // fixme: compressed pointer : const pool do not support copy, so do not need support for batch barrier
     }
-    ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
 }
 
 inline void Region::MergeOldToNewRSetForCS()
 {
-    if (sweepingOldToNewRSet_ == nullptr) {
-        return;
+    if (sweepingOldToNewRSet_ != nullptr) {
+        if (packedData_.oldToNewSet_ == nullptr) {
+            packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
+            sweepingOldToNewRSet_ = nullptr;
+        } else {
+            packedData_.oldToNewSet_->Merge(sweepingOldToNewRSet_);
+            DeleteSweepingOldToNewRSetImpl();
+            sweepingOldToNewRSet_ = nullptr;
+        }
+        ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
     }
-    if (packedData_.oldToNewSet_ == nullptr) {
-        packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
-        sweepingOldToNewRSet_   = nullptr;
-    } else {
-        packedData_.oldToNewSet_->Merge(sweepingOldToNewRSet_);
-        DeleteSweepingOldToNewRSet();
-        sweepingOldToNewRSet_ = nullptr;
+
+    if (compressedSweepingOldToNewRSet_ != nullptr) {
+        if (packedData_.compressedOldToNewSet_ == nullptr) {
+            packedData_.compressedOldToNewSet_ = compressedSweepingOldToNewRSet_;
+            compressedSweepingOldToNewRSet_ = nullptr;
+        } else {
+            packedData_.compressedOldToNewSet_->Merge(compressedSweepingOldToNewRSet_);
+            DeleteCompressedSweepingOldToNewRSetImpl();
+            compressedSweepingOldToNewRSet_ = nullptr;
+        }
+        // fixme: compressed pointer : const pool do not support copy, so do not need support for batch barrier
     }
-    ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
 }
 
-inline void Region::MergeLocalToShareRSetForCM(RememberedSet *set)
+template <ReferenceType refType>
+inline void Region::MergeLocalToShareRSetForCM(RememberedSetBase<refType> *set)
 {
-    if (packedData_.localToShareSet_ == nullptr) {
-        packedData_.localToShareSet_ = set;
+    auto &regionSet = [this]() -> auto& {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return packedData_.compressedLocalToShareSet_;
+        } else {
+            return packedData_.localToShareSet_;
+        }
+    }();
+
+    if (regionSet == nullptr) {
+        regionSet = set;
     } else {
-        packedData_.localToShareSet_->Merge(set);
+        regionSet->Merge(set);
         nativeAreaAllocator_->Free(set, set->Size());
     }
-    ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
+    // fixme: compressed pointer : const pool do not support copy, so do not need support for batch barrier
+    if constexpr (!ReferenceIsCompressed<refType>) {
+        ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
+    }
 }
 
 inline GCBitset *Region::GetMarkGCBitset() const
@@ -173,11 +276,18 @@ inline bool Region::Test(uintptr_t addrPtr) const
 }
 
 // ONLY used for heap verification.
+template <ReferenceType refType>
 inline bool Region::TestOldToNew(uintptr_t addr)
 {
     ASSERT(InRange(addr));
     // Only used for heap verification, so donot need to use lock
-    auto set = packedData_.oldToNewSet_;
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return packedData_.compressedOldToNewSet_;
+        } else {
+            return packedData_.oldToNewSet_;
+        }
+    }();
     if (set == nullptr) {
         return false;
     }
@@ -185,14 +295,22 @@ inline bool Region::TestOldToNew(uintptr_t addr)
 }
 
 // ONLY used for heap verification.
+template <ReferenceType refType>
 inline bool Region::TestLocalToShare(uintptr_t addr)
 {
     ASSERT(InRange(addr));
     // Only used for heap verification, so donot need to use lock
-    if (packedData_.localToShareSet_ == nullptr) {
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return packedData_.compressedLocalToShareSet_;
+        } else {
+            return packedData_.localToShareSet_;
+        }
+    }();
+    if (set == nullptr) {
         return false;
     }
-    return packedData_.localToShareSet_->TestBit(ToUintPtr(this), addr);
+    return set->TestBit(ToUintPtr(this), addr);
 }
 
 template <typename Visitor>
@@ -209,17 +327,31 @@ inline void Region::ClearMarkGCBitset()
     }
 }
 
+template <ReferenceType refType>
 inline void Region::InsertCrossRegionRSet(uintptr_t addr)
 {
     ASSERT(InRange(addr));
-    auto set = GetOrCreateCrossRegionRememberedSet();
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return GetOrCreateCompressedCrossRegionRememberedSet();
+        } else {
+            return GetOrCreateCrossRegionRememberedSet();
+        }
+    }();
     set->Insert(ToUintPtr(this), addr);
 }
 
+template <ReferenceType refType>
 inline void Region::AtomicInsertCrossRegionRSet(uintptr_t addr)
 {
     ASSERT(InRange(addr));
-    auto set = GetOrCreateCrossRegionRememberedSet();
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return GetOrCreateCompressedCrossRegionRememberedSet();
+        } else {
+            return GetOrCreateCrossRegionRememberedSet();
+        }
+    }();
     set->AtomicInsert(ToUintPtr(this), addr);
 }
 
@@ -238,17 +370,41 @@ inline RememberedSet *Region::CollectLocalToShareRSet()
     return set;
 }
 
+inline CompressedRememberedSet *Region::CollectCompressedLocalToShareRSet()
+{
+    CompressedRememberedSet *set = packedData_.compressedLocalToShareSet_;
+    packedData_.compressedLocalToShareSet_ = nullptr;
+    // const pool do not support copy, so do not need support for batch barrier
+    return set;
+}
+
+template <ReferenceType refType>
 inline void Region::InsertLocalToShareRSet(uintptr_t addr)
 {
     ASSERT(InRange(addr));
-    auto set = GetOrCreateLocalToShareRememberedSet();
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return GetOrCreateCompressedLocalToShareRememberedSet();
+        } else {
+            return GetOrCreateLocalToShareRememberedSet();
+        }
+    }();
     set->Insert(ToUintPtr(this), addr);
 }
 
+template <ReferenceType refType>
 inline void Region::InsertSweepingLocalToShareRSetForCC(uintptr_t addr)
 {
-    ASSERT(sweepingLocalToShareRSet_);
-    sweepingLocalToShareRSet_->Insert(ToUintPtr(this), addr);
+    ASSERT(InRange(addr));
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return compressedSweepingLocalToShareRSet_;
+        } else {
+            return sweepingLocalToShareRSet_;
+        }
+    }();
+    ASSERT(set);
+    set->Insert(ToUintPtr(this), addr);
 }
 
 template <Region::RegionSpaceKind kind>
@@ -257,10 +413,17 @@ Region::Updater<kind> Region::GetBatchRSetUpdater(uintptr_t addr)
     return Region::Updater<kind>(addr, *this);
 }
 
+template <ReferenceType refType>
 inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
 {
     ASSERT(InRange(addr));
-    auto set = GetOrCreateLocalToShareRememberedSet();
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return GetOrCreateCompressedLocalToShareRememberedSet();
+        } else {
+            return GetOrCreateLocalToShareRememberedSet();
+        }
+    }();
     set->AtomicInsert(ToUintPtr(this), addr);
 }
 
@@ -269,12 +432,8 @@ inline void Region::ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
     if (packedData_.localToShareSet_ != nullptr) {
         packedData_.localToShareSet_->ClearRange(ToUintPtr(this), start, end);
     }
-}
-
-inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
-{
-    if (packedData_.localToShareSet_ != nullptr) {
-        packedData_.localToShareSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    if (packedData_.compressedLocalToShareSet_ != nullptr) {
+        packedData_.compressedLocalToShareSet_->ClearRange(ToUintPtr(this), start, end);
     }
 }
 
@@ -284,6 +443,11 @@ inline void Region::DeleteLocalToShareRSet()
         nativeAreaAllocator_->Free(packedData_.localToShareSet_, packedData_.localToShareSet_->Size());
         packedData_.localToShareSet_ = nullptr;
     }
+    if (packedData_.compressedLocalToShareSet_ != nullptr) {
+        nativeAreaAllocator_->Free(packedData_.compressedLocalToShareSet_,
+                                   packedData_.compressedLocalToShareSet_->Size());
+        packedData_.compressedLocalToShareSet_ = nullptr;
+    }
 }
 
 inline void Region::AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
@@ -291,13 +455,30 @@ inline void Region::AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, 
     if (sweepingLocalToShareRSet_ != nullptr) {
         sweepingLocalToShareRSet_->AtomicClearRange(ToUintPtr(this), start, end);
     }
+    if (compressedSweepingLocalToShareRSet_ != nullptr) {
+        compressedSweepingLocalToShareRSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    }
 }
 
 inline void Region::DeleteSweepingLocalToShareRSet()
 {
+    DeleteSweepingLocalToShareRSetImpl();
+    DeleteCompressedSweepingLocalToShareRSetImpl();
+}
+
+inline void Region::DeleteSweepingLocalToShareRSetImpl()
+{
     if (sweepingLocalToShareRSet_!= nullptr) {
         nativeAreaAllocator_->Free(sweepingLocalToShareRSet_, sweepingLocalToShareRSet_->Size());
         sweepingLocalToShareRSet_ = nullptr;
+    }
+}
+
+inline void Region::DeleteCompressedSweepingLocalToShareRSetImpl()
+{
+    if (compressedSweepingLocalToShareRSet_!= nullptr) {
+        nativeAreaAllocator_->Free(compressedSweepingLocalToShareRSet_, compressedSweepingLocalToShareRSet_->Size());
+        compressedSweepingLocalToShareRSet_ = nullptr;
     }
 }
 
@@ -307,6 +488,9 @@ inline void Region::IterateAllLocalToShareBits(Visitor &&visitor)
     if (packedData_.localToShareSet_ != nullptr) {
         packedData_.localToShareSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
+    if (packedData_.compressedLocalToShareSet_ != nullptr) {
+        packedData_.compressedLocalToShareSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
 }
 
 template <typename Visitor>
@@ -315,12 +499,18 @@ inline void Region::IterateAllCrossRegionBits(Visitor &&visitor) const
     if (crossRegionSet_ != nullptr) {
         crossRegionSet_->IterateAllMarkedBitsConst(ToUintPtr(this), visitor);
     }
+    if (compressedCrossRegionSet_ != nullptr) {
+        compressedCrossRegionSet_->IterateAllMarkedBitsConst(ToUintPtr(this), visitor);
+    }
 }
 
 inline void Region::ClearCrossRegionRSet()
 {
     if (crossRegionSet_ != nullptr) {
         crossRegionSet_->ClearAll();
+    }
+    if (compressedCrossRegionSet_ != nullptr) {
+        compressedCrossRegionSet_->ClearAll();
     }
 }
 
@@ -329,12 +519,18 @@ inline void Region::ClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end)
     if (crossRegionSet_ != nullptr) {
         crossRegionSet_->ClearRange(ToUintPtr(this), start, end);
     }
+    if (compressedCrossRegionSet_ != nullptr) {
+        compressedCrossRegionSet_->ClearRange(ToUintPtr(this), start, end);
+    }
 }
 
 inline void Region::AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end)
 {
     if (crossRegionSet_ != nullptr) {
         crossRegionSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    }
+    if (compressedCrossRegionSet_ != nullptr) {
+        compressedCrossRegionSet_->AtomicClearRange(ToUintPtr(this), start, end);
     }
 }
 
@@ -344,20 +540,24 @@ inline void Region::DeleteCrossRegionRSet()
         nativeAreaAllocator_->Free(crossRegionSet_, crossRegionSet_->Size());
         crossRegionSet_ = nullptr;
     }
+    if (compressedCrossRegionSet_ != nullptr) {
+        nativeAreaAllocator_->Free(compressedCrossRegionSet_, compressedCrossRegionSet_->Size());
+        compressedCrossRegionSet_ = nullptr;
+    }
 }
 
+template <ReferenceType refType>
 inline void Region::InsertOldToNewRSet(uintptr_t addr)
 {
     ASSERT(InRange(addr));
-    auto set = GetOrCreateOldToNewRememberedSet();
+    auto set = [this]() {
+        if constexpr (ReferenceIsCompressed<refType>) {
+            return GetOrCreateCompressedOldToNewRememberedSet();
+        } else {
+            return GetOrCreateOldToNewRememberedSet();
+        }
+    }();
     set->Insert(ToUintPtr(this), addr);
-}
-
-inline void Region::ClearOldToNewRSet(uintptr_t addr)
-{
-    ASSERT(InRange(addr));
-    auto set = GetOrCreateOldToNewRememberedSet();
-    set->ClearBit(ToUintPtr(this), addr);
 }
 
 template <typename Visitor>
@@ -366,21 +566,30 @@ inline void Region::IterateAllOldToNewBits(Visitor &&visitor)
     if (packedData_.oldToNewSet_ != nullptr) {
         packedData_.oldToNewSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
-}
-
-template <typename Visitor>
-inline void Region::AtomicIterateAllSweepingRSetBits(Visitor &&visitor)
-{
-    if (sweepingOldToNewRSet_ != nullptr) {
-        sweepingOldToNewRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    if (packedData_.compressedOldToNewSet_ != nullptr) {
+        packedData_.compressedOldToNewSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 
 template <typename Visitor>
-inline void Region::IterateAllSweepingRSetBits(Visitor &&visitor)
+inline void Region::AtomicIterateAllSweepingOldToNewRSetBits(Visitor &&visitor)
+{
+    if (sweepingOldToNewRSet_ != nullptr) {
+        sweepingOldToNewRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+    if (compressedSweepingOldToNewRSet_ != nullptr) {
+        compressedSweepingOldToNewRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+}
+
+template <typename Visitor>
+inline void Region::IterateAllSweepingOldToNewRSetBits(Visitor &&visitor)
 {
     if (sweepingOldToNewRSet_ != nullptr) {
         sweepingOldToNewRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
+    if (compressedSweepingOldToNewRSet_ != nullptr) {
+        compressedSweepingOldToNewRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
     }
 }
 
@@ -389,12 +598,18 @@ inline void Region::ClearOldToNewRSet()
     if (packedData_.oldToNewSet_ != nullptr) {
         packedData_.oldToNewSet_->ClearAll();
     }
+    if (packedData_.compressedOldToNewSet_ != nullptr) {
+        packedData_.compressedOldToNewSet_->ClearAll();
+    }
 }
 
 inline void Region::ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end)
 {
     if (packedData_.oldToNewSet_ != nullptr) {
         packedData_.oldToNewSet_->ClearRange(ToUintPtr(this), start, end);
+    }
+    if (packedData_.compressedOldToNewSet_ != nullptr) {
+        packedData_.compressedOldToNewSet_->ClearRange(ToUintPtr(this), start, end);
     }
 }
 
@@ -404,6 +619,10 @@ inline void Region::DeleteOldToNewRSet()
         nativeAreaAllocator_->Free(packedData_.oldToNewSet_, packedData_.oldToNewSet_->Size());
         packedData_.oldToNewSet_ = nullptr;
     }
+    if (packedData_.compressedOldToNewSet_ != nullptr) {
+        nativeAreaAllocator_->Free(packedData_.compressedOldToNewSet_, packedData_.compressedOldToNewSet_->Size());
+        packedData_.compressedOldToNewSet_ = nullptr;
+    }
 }
 
 inline void Region::AtomicClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end)
@@ -411,20 +630,30 @@ inline void Region::AtomicClearSweepingOldToNewRSetInRange(uintptr_t start, uint
     if (sweepingOldToNewRSet_ != nullptr) {
         sweepingOldToNewRSet_->AtomicClearRange(ToUintPtr(this), start, end);
     }
-}
-
-inline void Region::ClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end)
-{
-    if (sweepingOldToNewRSet_ != nullptr) {
-        sweepingOldToNewRSet_->ClearRange(ToUintPtr(this), start, end);
+    if (compressedSweepingOldToNewRSet_ != nullptr) {
+        compressedSweepingOldToNewRSet_->AtomicClearRange(ToUintPtr(this), start, end);
     }
 }
 
 inline void Region::DeleteSweepingOldToNewRSet()
 {
+    DeleteSweepingOldToNewRSetImpl();
+    DeleteCompressedSweepingOldToNewRSetImpl();
+}
+
+inline void Region::DeleteSweepingOldToNewRSetImpl()
+{
     if (sweepingOldToNewRSet_ != nullptr) {
         nativeAreaAllocator_->Free(sweepingOldToNewRSet_, sweepingOldToNewRSet_->Size());
         sweepingOldToNewRSet_ = nullptr;
+    }
+}
+
+inline void Region::DeleteCompressedSweepingOldToNewRSetImpl()
+{
+    if (compressedSweepingOldToNewRSet_ != nullptr) {
+        nativeAreaAllocator_->Free(compressedSweepingOldToNewRSet_, compressedSweepingOldToNewRSet_->Size());
+        compressedSweepingOldToNewRSet_ = nullptr;
     }
 }
 

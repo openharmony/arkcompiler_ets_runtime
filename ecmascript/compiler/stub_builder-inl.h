@@ -39,10 +39,11 @@
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/ic/properties_cache.h"
@@ -429,6 +430,13 @@ inline GateRef StubBuilder::Load(VariableType type, GateRef glue, GateRef base, 
         return env_->GetBuilder()->Load(type, glue, base, offset);
     }
     return LoadPrimitive(type, base, offset);
+}
+
+inline GateRef StubBuilder::LoadFromCompressedTaggedValue(VariableType type, GateRef glue, GateRef base,
+                                                          GateRef offset)
+{
+    ASSERT(type == VariableType::JS_ANY());
+    return env_->GetBuilder()->LoadFromCompressedTaggedValue(type, glue, base, offset);
 }
 
 inline GateRef StubBuilder::LoadZeroOffset(VariableType type, GateRef glue, GateRef base,
@@ -2546,7 +2554,6 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
 
     // NOTE: need to translate MarkingBarrier
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value, mAttr);
-    EXITENTRY();
 }
 
 inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
@@ -2707,6 +2714,8 @@ inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glu
                                                GateRef index, GateRef val, MemoryAttribute mAttr)
 {
     // NOTE: need to translate MarkingBarrier
+    ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(StoreValueToConstPool),
+                         BoolNot(env_->GetBuilder()->IsConstantPool(glue, array)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(valType, glue, array, dataOffset, val, mAttr);
@@ -2714,6 +2723,8 @@ inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glu
 
 inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index)
 {
+    ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(UseConstPoolInTaggedArrayGet),
+                         BoolNot(env_->GetBuilder()->IsConstantPool(glue, array)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), glue, array, dataOffset);
@@ -2753,9 +2764,7 @@ inline GateRef StubBuilder::GetDataPtrInTaggedArray(GateRef array, GateRef index
 
 inline GateRef StubBuilder::GetUnsharedConstpoolIndex(GateRef glue, GateRef constpool)
 {
-    GateRef constPoolSize = GetLengthOfTaggedArray(constpool);
-    GateRef unshareIdx = Int32Sub(constPoolSize, Int32(ConstantPool::UNSHARED_CONSTPOOL_INDEX));
-    return GetValueFromTaggedArray(glue, constpool, unshareIdx);
+    return env_->GetBuilder()->GetUnsharedConstpoolIndex(glue, constpool);
 }
 
 inline GateRef StubBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
@@ -2770,8 +2779,10 @@ inline GateRef StubBuilder::GetUnsharedConstpool(GateRef glue, GateRef arrayAddr
     return LoadZeroOffset(VariableType::JS_ANY(), glue, dataOffset);
 }
 
-inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, GateRef index)
+inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef glue, GateRef elements, GateRef index)
 {
+    ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(UseConstPoolInTaggedArrayGet),
+                         BoolNot(env_->GetBuilder()->IsConstantPool(glue, elements)), glue);
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(int64_t)));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return LoadPrimitive(VariableType::INT64(), elements, dataOffset);
@@ -3178,11 +3189,6 @@ inline GateRef StubBuilder::TruncInt64ToInt1(GateRef x)
 inline GateRef StubBuilder::TruncInt32ToInt1(GateRef x)
 {
     return env_->GetBuilder()->TruncInt32ToInt1(x);
-}
-
-inline GateRef StubBuilder::GetObjectFromConstPool(GateRef glue, GateRef constpool, GateRef index)
-{
-    return GetValueFromTaggedArray(glue, constpool, index);
 }
 
 inline GateRef StubBuilder::GetGlobalConstantAddr(GateRef index)
@@ -4242,7 +4248,7 @@ inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef glue, GateRef jsFu
     GateRef constPool = Load(VariableType::JS_ANY(), glue, method, IntPtr(Method::CONSTANT_POOL_OFFSET));
     auto length = GetLengthOfTaggedArray(constPool);
     auto index = Int32Sub(length, Int32(ConstantPool::JS_PANDA_FILE_INDEX));
-    auto jsPandaFile = GetValueFromTaggedArray(glue, constPool, index);
+    auto jsPandaFile = env_->GetBuilder()->GetExtendElementFromConstPool(glue, constPool, index);
     auto jsPfAddr = ChangeInt64ToIntPtr(ChangeTaggedPointerToInt64(jsPandaFile));
     auto pfAddr = LoadPrimitive(VariableType::NATIVE_POINTER(), jsPfAddr, Int32(JSPandaFile::PF_OFFSET));
     auto pfHeader = LoadPrimitive(VariableType::NATIVE_POINTER(), pfAddr, Int32(0));
@@ -4255,7 +4261,7 @@ inline GateRef StubBuilder::LoadHCIndexInfosFromConstPool(GateRef glue, GateRef 
     GateRef constPool = Load(VariableType::JS_ANY(), glue, method, IntPtr(Method::CONSTANT_POOL_OFFSET));
     auto length = GetLengthOfTaggedArray(constPool);
     auto index = Int32Sub(length, Int32(ConstantPool::CONSTANT_INDEX_INFO_INDEX));
-    return GetValueFromTaggedArray(glue, constPool, index);
+    return env_->GetBuilder()->GetExtendElementFromConstPool(glue, constPool, index);
 }
 
 inline GateRef StubBuilder::LoadHCIndexFromConstPool(
