@@ -202,7 +202,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadSnapShotCrossBundleHsp(JSTh
 }
 // The security interface needs to be modified accordingly.
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, const void *buffer, size_t size, bool needUpdate)
+    std::string_view entryPoint, const void *buffer, size_t size, bool needUpdate, const std::string &filePath)
 {
     if (buffer == nullptr || size == 0) {
         LOG_FULL(ERROR) << "Input buffer is empty";
@@ -225,9 +225,16 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
-    auto pf = ParseAndOpenPandaFile(buffer, size, filename);
+
+    std::unique_ptr<const panda_file::File> pf;
+    if (!filePath.empty()) {
+        pf = ParseAndOpenPandaFile(buffer, size, filePath);
+    } else {
+        pf = ParseAndOpenPandaFile(buffer, size, filename.c_str());
+    }
+
     if (pf == nullptr) {
-        LOG_ECMA(ERROR) << "open file " << filename << " error";
+        LOG_ECMA(ERROR) << "open file " << filePath << " error";
         return nullptr;
     }
 

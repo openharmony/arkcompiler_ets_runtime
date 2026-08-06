@@ -1858,7 +1858,18 @@ public:
     // merge abc, execute module buffer
     static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "",
                                     bool needUpdate = false);
-    static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
+    /**
+     * @brief Return the abc file type
+     * @param[in] vm : The virtual machine of the current thread
+     * @param[in] data : begin pos of abc file
+     * @param[in] size : length of abc file
+     * @param[in] file : The module name of abc
+     * @param[in] filePath : The absolute path of abc file
+     * @return 0 Success
+     *         1 Failure
+     */
+    static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file,
+                                        const std::string &filePath = "");
     /**
      * @brief Return the abc file type
      * @param[in] data : begin pos of abc file

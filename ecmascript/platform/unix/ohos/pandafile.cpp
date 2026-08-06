@@ -54,14 +54,9 @@ std::unique_ptr<const panda_file::File> OpenPandaFileFromMemory(uint8_t *buffer,
 }
 
 std::unique_ptr<const panda_file::File> ParseAndOpenPandaFile(const void *buffer, size_t size,
-    [[maybe_unused]] const CString &filename)
+    [[maybe_unused]] const std::string &filename)
 {
-    CString tag = ModulePathHelper::ParseFileNameToVMAName(filename);
-    constexpr size_t PR_SET_VMA_ANON_NAME_MAX_LEN = 80;
-    constexpr size_t ANON_FLAG_LEN = 7; // [anon:]
-    if (tag.length() > PR_SET_VMA_ANON_NAME_MAX_LEN - ANON_FLAG_LEN) {
-        tag = CString(ModulePathHelper::VMA_NAME_ARKTS_CODE);
-    }
-    return panda_file::OpenPandaFileFromMemory(buffer, size, tag.c_str());
+    std::string tag = ModulePathHelper::ParseFileNameToVMAName(buffer, filename);
+    return panda_file::OpenPandaFileFromMemory(buffer, size, tag);
 }
 } // namespace panda::ecmascript
