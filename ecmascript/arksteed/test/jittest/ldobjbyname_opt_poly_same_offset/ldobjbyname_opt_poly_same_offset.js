@@ -34,8 +34,7 @@ for (let i = 0; i < 20; i++) {
     sum += LoadScore(right);
 }
 
-ArkTools.jitCompileAsync(LoadScore);
-print(ArkTools.waitJitCompileFinish(LoadScore));
+print(ArkTools.arkSteedCompileSync(LoadScore));
 print(sum);
 print(LoadScore(left));
 print(LoadScore(right));

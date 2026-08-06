@@ -36,8 +36,7 @@ for (let i = 0; i < 20; i++) {
     }
 }
 
-ArkTools.jitCompileAsync(LoadScore);
-print(ArkTools.waitJitCompileFinish(LoadScore));
+print(ArkTools.arkSteedCompileSync(LoadScore));
 
 print(hits);
 print(LoadScore(receiver).value);

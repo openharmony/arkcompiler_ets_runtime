@@ -39,8 +39,7 @@ for (let i = 0; i < 20; i++) {
     warmup += LoadX(obj2);
 }
 
-ArkTools.jitCompileAsync(LoadX);
-print(ArkTools.waitJitCompileFinish(LoadX));
+print(ArkTools.arkSteedCompileSync(LoadX));
 print(warmup);
 print(LoadX(obj));
 print(LoadX(obj2));

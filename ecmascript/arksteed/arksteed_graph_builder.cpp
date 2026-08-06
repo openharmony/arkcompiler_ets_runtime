@@ -2360,8 +2360,8 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerSuperCallArrowRange(const BytecodeInfo *bcInfo)
     {
-        uint32_t argc = bcInfo->inputs.size() - 1;
-        ValueVertex *func = LoadRegister(bcInfo, argc);
+        uint32_t argc = bcInfo->inputs.size();
+        ValueVertex *func = frameState.GetAcc();
         ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
         ValueVertex *taggedArgc = TaggedConstantFromInt32(static_cast<int>(argc));
         ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedArgc, argc);

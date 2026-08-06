@@ -41,8 +41,7 @@ for (let i = 0; i < 20; i++) {
     LoadX(second);
 }
 
-ArkTools.jitCompileAsync(LoadX);
-print(ArkTools.waitJitCompileFinish(LoadX));
+print(ArkTools.arkSteedCompileSync(LoadX));
 print(LoadX(first));
 print(LoadX(second));
 
