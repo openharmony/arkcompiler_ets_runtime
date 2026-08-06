@@ -1188,17 +1188,14 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
                     value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                  JSHandle<JSTaggedValue>(obj));
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
-                    if (obj->GetProperties(thread_).IsDictionary()) {
-                        dictStart = i;
-                        handleValue_.Update(value);
-                        hasContent = JsonStringifier::AppendJsonString<ReplacerAndGapUndefined>(obj, hasContent);
-                        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
-                        break;
-                    }
                 }
                 handleValue_.Update(value);
                 hasContent = JsonStringifier::AppendJsonString<ReplacerAndGapUndefined>(obj, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+                if (obj->GetProperties(thread_).IsDictionary()) {
+                    dictStart = i;
+                    break;
+                }
             }
             if (dictStart < length) {
                 propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties(thread_));
