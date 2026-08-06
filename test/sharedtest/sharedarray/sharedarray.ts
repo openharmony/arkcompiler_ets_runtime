@@ -54,6 +54,12 @@ class SuperUnSharedClass {
     }
 }
 
+class SubNormalArray extends Array {
+    constructor() {
+        super();
+    }
+}
+
 SendableArray.from<string>(['a', 'r', 'k']);
 
 function at() {
@@ -136,6 +142,642 @@ function includes() {
     print("" + pets.includes('cat')); // true
 
     print("" + pets.includes('at')); // false
+}
+
+function containsAll() {
+    print("Start Test containsAll")
+
+    print("=== Common usage case ===");
+    const array1 = new SendableArray<number>(1, 2, 3);
+    const normalArray1 = new Array<number>(1, 3);
+    print("" + array1.containsAll([1, 3]));
+    print("" + array1.containsAll(normalArray1));
+    print("" + array1.containsAll(new SendableArray<number>(1, 3)));
+
+    const normalArray2 = new Array<number>(1, 3, 5);
+    print("" + array1.containsAll([6]));
+    print("" + array1.containsAll(normalArray2));
+    print("" + array1.containsAll(new SendableArray<number>(1, 2, 3, 4)));
+    const normalArray3 = new Array([1, 3]); // [[1, 3]]
+    print("" + array1.containsAll(normalArray3));
+
+    print("" + array1.containsAll([1, 2, 3]));
+    print("" + array1.containsAll(new SendableArray<number>(1, 2, 3)));
+    print("" + array1.containsAll([3, 1]));
+    print("" + array1.containsAll(new SendableArray<number>(3, 1)));
+
+    print("=== empty elements case ===");
+    print("" + array1.containsAll(new SendableArray<number>()));
+    print("" + array1.containsAll([]));
+
+    print("=== empty receiver case ===");
+    const emptyArray = new SendableArray<number>();
+    print("" + emptyArray.containsAll([1]));
+    print("" + emptyArray.containsAll(new SendableArray<number>(1)));
+    print("" + emptyArray.containsAll([]));
+    print("" + emptyArray.containsAll(new SendableArray<number>()));
+    print("" + emptyArray.containsAll(new Array<number>(1)));
+    print("" + emptyArray.containsAll(new Array<number>(10)));
+
+    print("=== repeating elements case ===");
+    print("" + array1.containsAll([3, 3, 2, 2]));
+    print("" + array1.containsAll(new SendableArray<number>(3, 3, 2, 2)));
+
+    print("=== NAN/+0/-0 case ===");
+    const sameValueZeroArray1 = new SendableArray<number>(NaN, +0);
+    print("" + sameValueZeroArray1.containsAll([NaN, -0]));
+    print("" + sameValueZeroArray1.containsAll(new SendableArray<number>(NaN, -0)));
+    print("" + sameValueZeroArray1.containsAll([0]));
+    print("" + sameValueZeroArray1.containsAll(new SendableArray<number>(0)));
+    const sameValueZeroArray2 = new SendableArray<number>(-0);
+    print("" + sameValueZeroArray2.containsAll([+0]));
+    print("" + sameValueZeroArray2.containsAll(new SendableArray<number>(+0)));
+    print("" + sameValueZeroArray2.containsAll([NaN]));
+    print("" + sameValueZeroArray2.containsAll(new SendableArray<number>(NaN)));
+    const sameValueZeroArray3 = new SendableArray<number>(0);
+    print("" + sameValueZeroArray3.containsAll([-0]));
+    print("" + sameValueZeroArray3.containsAll(new SendableArray<number>(-0)));
+    print("" + sameValueZeroArray3.containsAll([+0]));
+    print("" + sameValueZeroArray3.containsAll(new SendableArray<number>(+0)));
+
+    print("=== string case ===");
+    const numberArray = new SendableArray<number | string>(1);
+    print("" + numberArray.containsAll(["1"]));
+    print("" + numberArray.containsAll(new SendableArray<number>("1")));
+
+    print("=== prototype modify case ===");
+    const undefinedArray = new SendableArray<undefined>(undefined);
+    print("" + undefinedArray.containsAll(new Array<undefined>(1)));
+    print("" + undefinedArray.containsAll(new SendableArray<undefined>(undefined)));
+    print("" + array1.containsAll(new SendableArray<number>(undefined)));
+    print("" + array1.containsAll(new Array<number>(1)));
+    Array.prototype[10] = 10; // proto change, 10 do not contain in array1
+    Array.prototype[0] = 30; // proto change, 30 do not contain in array1
+    try {
+        print("" + array1.containsAll(new Array<number>(1))); // [hole]
+    } finally {
+        delete Array.prototype[10];
+        delete Array.prototype[0];
+    }
+
+    print("=== accessor elements case ===");
+    const getterArray = new Array<number>(1);
+    Object.defineProperty(getterArray, 0, {
+        get() {
+            return 2;
+        }
+    });
+    print("" + array1.containsAll(getterArray));
+    const getterArray2 = new Array<number>(0);
+    Object.defineProperty(getterArray2, 0, {
+        get() {
+            return 2;
+        }
+    }); // [2]
+    print("" + array1.containsAll(getterArray2));
+    Object.defineProperty(getterArray2, 1, {
+        get() {
+            return 3;
+        }
+    }); // [2, 3]
+    print("" + array1.containsAll(getterArray2));
+    Object.defineProperty(getterArray2, 3, {
+        get() {
+            return 1;
+        }
+    }); // [2, 3, , 1]
+    print("" + array1.containsAll(getterArray2));
+
+    print("=== sparseArray case ===");
+    let sparseArray = new Array(2);
+    sparseArray[0] = 1;
+    print("" + array1.containsAll(sparseArray));
+    sparseArray = new Array(0x4000);
+    sparseArray[1050] = 3;
+    sparseArray[2050] = 3;
+    sparseArray[3050] = 1;
+    print("" + array1.containsAll(sparseArray));
+    const arrayWithUndefined = new SendableArray<number | undefined>(1, 3, undefined);
+    print("" + arrayWithUndefined.containsAll(sparseArray));
+    sparseArray = new Array(2);
+    print("" + arrayWithUndefined.containsAll(sparseArray));
+    sparseArray = new Array(3);
+    sparseArray[1] = 1;
+    print("" + arrayWithUndefined.containsAll(sparseArray));
+
+    print("=== undefined/null case ===");
+    const nullAndUndefinedArray = new SendableArray<null | undefined>(null, undefined);
+    const onlyNullArray = new SendableArray<null | undefined>(null);
+    const onlyUndefinedArray = new SendableArray<null | undefined>(undefined);
+    print("" + nullAndUndefinedArray.containsAll([null]) + "," + nullAndUndefinedArray.containsAll([undefined]));
+    print("" + nullAndUndefinedArray.containsAll(new SendableArray<null>(null)) +
+        "," + nullAndUndefinedArray.containsAll(new SendableArray<null>(undefined)));
+    print("" + onlyNullArray.containsAll([undefined]) + "," + onlyUndefinedArray.containsAll([null]));
+    print("" + onlyNullArray.containsAll(new SendableArray<null>(undefined)) +
+        "," + onlyUndefinedArray.containsAll(new SendableArray<null>(null)));
+
+    print("=== obj case ===");
+    const obj1 = new SuperClass(1);
+    const obj2 = new SuperClass(1);
+    const objArray = new SendableArray<SuperClass>(obj1);
+    print("" + objArray.containsAll([obj1]));
+    print("" + objArray.containsAll(new SendableArray<SuperClass>(obj1)));
+    print("" + objArray.containsAll([obj2]));
+    print("" + objArray.containsAll(new SendableArray<SuperClass>(obj2)));
+    const unshared = new SuperUnSharedClass(1);
+    print("" + objArray.containsAll([unshared]));
+
+    print("=== inherit case start ===");
+    const subSharedReceiver = new SubSharedClass();
+    subSharedReceiver.push(1);
+    subSharedReceiver.push(2);
+    subSharedReceiver.push(3);
+    const subSharedElements = new SubSharedClass();
+    subSharedElements.push(1);
+    subSharedElements.push(3);
+    const subNormalArray = new SubNormalArray();
+    subNormalArray.push(1);
+    subNormalArray.push(3);
+    print("" + subSharedReceiver.containsAll([1, 3]));
+    print("" + subSharedReceiver.containsAll(new SendableArray<number>(1, 3)));
+    print("" + subSharedReceiver.containsAll(subNormalArray));
+    print("" + subSharedReceiver.containsAll(subSharedElements));
+    print("" + array1.containsAll(subSharedElements));
+    print("" + array1.containsAll(subNormalArray));
+
+    print("=== immutableArray case ===");
+    const immutableArray = new SendableArray<number>(1, 2);
+    const before = "" + immutableArray;
+    const result = immutableArray.containsAll([2]);
+    print("" + result + "," + (immutableArray.length === 2) + "," + (before === "" + immutableArray));
+    const elementsArray = [2];
+    const elementsBefore = "" + elementsArray;
+    const elementsResult = immutableArray.containsAll(elementsArray);
+    print("" + elementsResult + "," + (elementsArray.length === 1) + "," + (elementsBefore === "" + elementsArray));
+    const elementsSharedArray = new SendableArray<number>(2);
+    const elementsSharedBefore = "" + elementsSharedArray;
+    const sharedElementsResult = immutableArray.containsAll(elementsSharedArray);
+    print("" + sharedElementsResult + "," + (elementsSharedArray.length === 1) +
+        "," + (elementsSharedBefore === "" + elementsSharedArray));
+
+    print("=== receiver self test ===");
+    print("" + array1.containsAll(array1));
+    print("" + subSharedReceiver.containsAll(subSharedReceiver));
+
+    print("=== concurrent case ===");
+    const containsAllConcurrentArray = new SendableArray<number>(1, 2);
+    try {
+        print("" + containsAllConcurrentArray.retainAll((_value: number) => {
+            containsAllConcurrentArray.containsAll(containsAllConcurrentArray);
+            return true;
+        }));
+    } catch (err) {
+        print("containsAll self concurrent failed. err: " + err + ", code: " + err.code);
+    }
+    const containsAllConcurrentArray2 = new SendableArray<number>(1, 2);
+    try {
+        containsAllConcurrentArray2.forEach((_value: number, _index: number, array: SendableArray<number>) => {
+            print(array.containsAll(containsAllConcurrentArray2));
+        });
+    } catch (err) {
+        print("containsAll self concurrent failed. err: " + err + ", code: " + err.code +
+            ", array: " + containsAllConcurrentArray2);
+    }
+
+    print("=== exception case ===");
+    try {
+        print("" + array1.containsAll({0: 1, length: 1}));
+    } catch (err) {
+        print("containsAll arrayLike failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll());
+    } catch (err) {
+        print("containsAll undefined failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(undefined));
+    } catch (err) {
+        print("containsAll undefined failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(null));
+    } catch (err) {
+        print("containsAll null failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(new Uint8Array([1, 2])));
+    } catch (err) {
+        print("containsAll typedArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(new Set([1])));
+    } catch (err) {
+        print("containsAll set failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(new SendableSet([1])));
+    } catch (err) {
+        print("containsAll sendableSet failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll({}));
+    } catch (err) {
+        print("containsAll object failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(1));
+    } catch (err) {
+        print("containsAll primitive failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.containsAll(new Map([[1, 'one']]).entries()));
+    } catch (err) {
+        print("containsAll iterator failed. err: " + err + ", code: " + err.code);
+    }
+
+    const unboundContainsAll = array1.containsAll;
+    const boundContainsAll = unboundContainsAll.bind(new SuperUnSharedClass(1));
+    try {
+        print("" + boundContainsAll([1]));
+    } catch (err) {
+        print("containsAll bind failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function retainAll() {
+    print("Start Test retainAll");
+
+    print("=== retainAll common usage case ===");
+    const array1 = new SendableArray<number>(1, 2, 3);
+    print("" + array1.retainAll([1, 2, 3]) + "," + array1);
+    print("" + array1.retainAll(new SendableArray<number>(1, 2, 3)) + "," + array1);
+    const partialArray1 = new SendableArray<number>(1, 2, 3, 4);
+    print("" + partialArray1.retainAll([1, 3]) + "," + partialArray1);
+    const partialArray2 = new SendableArray<number>(3, 1, 2);
+    print("" + partialArray2.retainAll(new SendableArray<number>(1, 3)) + "," + partialArray2);
+    const clearArray1 = new SendableArray<number>(1, 2);
+    print("" + clearArray1.retainAll([6]) + "," + clearArray1.length + "," + clearArray1);
+    const clearArray2 = new SendableArray<number>(1, 2);
+    print("" + clearArray2.retainAll(new SendableArray<number>(6)) + "," + clearArray2.length + "," + clearArray2);
+
+    print("=== retainAll empty case ===");
+    const emptyElementsArray1 = new SendableArray<number>(1, 2);
+    print("" + emptyElementsArray1.retainAll([]) + "," + emptyElementsArray1.length + "," + emptyElementsArray1);
+    const emptyElementsArray2 = new SendableArray<number>(1, 2);
+    print("" + emptyElementsArray2.retainAll(new SendableArray<number>()) +
+        "," + emptyElementsArray2.length + "," + emptyElementsArray2);
+    const emptyElementsArray3 = new SendableArray<number>(1, 2);
+    print("" + emptyElementsArray3.retainAll(new Array<number>(10)) +
+        "," + emptyElementsArray3.length + "," + emptyElementsArray3);
+    const emptyReceiver = new SendableArray<number>();
+    print("" + emptyReceiver.retainAll([1]) + "," + emptyReceiver.length + "," + emptyReceiver);
+    print("" + emptyReceiver.retainAll(new SendableArray<number>(1)) + "," +
+        emptyReceiver.length + "," + emptyReceiver);
+    print("" + emptyReceiver.retainAll([]) + "," + emptyReceiver.length + "," + emptyReceiver);
+    print("" + emptyReceiver.retainAll(new SendableArray<number>()) + "," +
+        emptyReceiver.length + "," + emptyReceiver);
+    print("" + emptyReceiver.retainAll(new Array<number>()) + "," + emptyReceiver.length + "," + emptyReceiver);
+    print("" + emptyReceiver.retainAll(new Array<number>(10)) + "," + emptyReceiver.length + "," + emptyReceiver);
+
+    print("=== retainAll repeating elements case ===");
+    const repeatedElementsArray = new SendableArray<number>(1);
+    print("" + repeatedElementsArray.retainAll([1, 1]) + "," + repeatedElementsArray);
+    const repeatedReceiverArray = new SendableArray<number>(1, 1, 2, 3);
+    print("" + repeatedReceiverArray.retainAll(new SendableArray<number>(1, 3, 3)) + "," + repeatedReceiverArray);
+
+    print("=== retainAll SameValueZero case ===");
+    const sameValueZeroArray1 = new SendableArray<number>(NaN, 1);
+    print("" + sameValueZeroArray1.retainAll([NaN]) + "," + sameValueZeroArray1);
+    const sameValueZeroArray2 = new SendableArray<number>(+0, 1);
+    print("" + sameValueZeroArray2.retainAll(new SendableArray<number>(-0)) + "," + sameValueZeroArray2);
+    const sameValueZeroArray3 = new SendableArray<number>(-0, 1);
+    print("" + sameValueZeroArray3.retainAll([+0]) + "," + sameValueZeroArray3);
+    const sameValueZeroArray4 = new SendableArray<number>(0, 1);
+    print("" + sameValueZeroArray4.retainAll(new SendableArray<number>(-0)) + "," + sameValueZeroArray4);
+    const sameValueZeroArray5 = new SendableArray<number>(0, -0);
+    print("" + sameValueZeroArray5.retainAll(new SendableArray<number>(+0)) + "," + sameValueZeroArray5);
+
+    print("=== retainAll undefined/null case ===");
+    const nullAndUndefinedArray1 = new SendableArray<null | undefined>(null, undefined);
+    print("" + nullAndUndefinedArray1.retainAll([undefined]) + "," + nullAndUndefinedArray1.length +
+        "," + (nullAndUndefinedArray1[0] === undefined));
+    const nullAndUndefinedArray2 = new SendableArray<null | undefined>(null, undefined);
+    print("" + nullAndUndefinedArray2.retainAll(new SendableArray<null | undefined>(null)) +
+        "," + nullAndUndefinedArray2.length + "," + (nullAndUndefinedArray2[0] === null));
+
+    print("=== retainAll sparseArray case ===");
+    const undefinedArray = new SendableArray<undefined>(undefined);
+    print("" + undefinedArray.retainAll(new Array<undefined>(1)) + "," + undefinedArray.length +
+        "," + undefinedArray);
+    const numberArray = new SendableArray<number>(1);
+    print("" + numberArray.retainAll(new Array<number>(1)) + "," + numberArray.length + "," + numberArray);
+    const noProtoArray = new SendableArray<number>(1);
+    Array.prototype[0] = 1;
+    try {
+        print("" + noProtoArray.retainAll(new Array<number>(1)) + "," + noProtoArray.length + "," + noProtoArray);
+    } finally {
+        delete Array.prototype[0];
+    }
+    const sparseReceiver = new SendableArray<number | undefined>(1, 3, undefined);
+    const sparseElements = new Array(3);
+    sparseElements[1] = 3;
+    print("" + sparseReceiver.retainAll(sparseElements) + "," + sparseReceiver.length + "," + sparseReceiver);
+    const getterElements = new Array<number>(1);
+    Object.defineProperty(getterElements, 0, {
+        get() {
+            return 2;
+        }
+    });
+    Object.defineProperty(getterElements, 10, {
+        get() {
+            return 11;
+        }
+    });
+    const getterReceiver = new SendableArray<number>(1, 2, 3);
+    print("" + getterReceiver.retainAll(getterElements) + "," + getterReceiver.length + "," + getterReceiver);
+    const getterEmptyElements = new Array<number>(0);
+    Object.defineProperty(getterEmptyElements, 2, {
+        get() {
+            return 3;
+        }
+    }); // [, , 3]
+    const getterReceiver2 = new SendableArray<number>(1, 2, 3);
+    print("" + getterReceiver2.retainAll(getterEmptyElements) + "," + getterReceiver2.length + "," + getterReceiver2);
+    let sparseArray = new Array(0x4000);
+    sparseArray[1050] = 3;
+    sparseArray[2050] = 3;
+    sparseArray[3050] = 1;
+    const sparseReceiver2 = new SendableArray<number>(1, 2, 3);
+    print("" + sparseReceiver2.retainAll(sparseArray) + "," + sparseReceiver2.length + "," + sparseReceiver2);
+
+    print("=== retainAll obj case ===");
+    const obj1 = new SuperClass(1);
+    const obj2 = new SuperClass(1);
+    const objArray1 = new SendableArray<SuperClass>(obj1);
+    print("" + objArray1.retainAll([obj1]) + "," + objArray1.length + "," + objArray1[0].num);
+    const objArray2 = new SendableArray<SuperClass>(obj1);
+    print("" + objArray2.retainAll(new SendableArray<SuperClass>(obj2)) + "," + objArray2.length + "," + objArray2);
+    const unshared = new SuperUnSharedClass(1);
+    const objArray3 = new SendableArray<number>(1, 2);
+    print("" + objArray3.retainAll([unshared]) + "," + objArray3.length + "," + objArray3);
+
+    print("=== retainAll inherit case ===");
+    const subSharedReceiver = new SubSharedClass();
+    subSharedReceiver.push(1);
+    subSharedReceiver.push(2);
+    subSharedReceiver.push(3);
+    const subSharedElements = new SubSharedClass();
+    subSharedElements.push(1);
+    subSharedElements.push(3);
+    const subNormalElements = new SubNormalArray();
+    subNormalElements.push(1);
+    subNormalElements.push(3);
+    print("" + subSharedReceiver.retainAll(subNormalElements) + "," + subSharedReceiver);
+    const subSharedReceiver2 = new SubSharedClass();
+    subSharedReceiver2.push(1);
+    subSharedReceiver2.push(2);
+    subSharedReceiver2.push(3);
+    print("" + subSharedReceiver2.retainAll(subSharedElements) + "," + subSharedReceiver2);
+    let sharedReceiver1 = new SendableArray<number>(1, 2, 3);
+    print("" + sharedReceiver1.retainAll(subNormalElements) + "," + sharedReceiver1);
+    let sharedReceiver2 = new SendableArray<number>(1, 2, 3);
+    print("" + sharedReceiver2.retainAll(subSharedElements) + "," + sharedReceiver2);
+
+    print("=== retainAll immutable elements case ===");
+    const immutableReceiver = new SendableArray<number>(1, 2);
+    const normalElements = [2];
+    const normalElementsBefore = "" + normalElements;
+    print("" + immutableReceiver.retainAll(normalElements) + "," + immutableReceiver +
+        "," + (normalElements.length === 1) + "," + (normalElementsBefore === "" + normalElements));
+    const sharedElements = new SendableArray<number>(2);
+    const sharedElementsBefore = "" + sharedElements;
+    print("" + immutableReceiver.retainAll(sharedElements) + "," + immutableReceiver +
+        "," + (sharedElements.length === 1) + "," + (sharedElementsBefore === "" + sharedElements));
+
+    print("=== retainAll predicate case ===");
+    const predicateArray0 = new SendableArray<number>(1, 2, 3);
+    const predicateResult0 = predicateArray0.retainAll((value: number) => {
+        return false;
+    });
+    print("" + predicateResult0 + "," + predicateArray0);
+    const predicateArray1 = new SendableArray<number>(1, 2, 3);
+    let predicateCalls = "";
+    const predicateResult1 = predicateArray1.retainAll((value: number) => {
+        predicateCalls += value + ";";
+        return value >= 2;
+    });
+    print("" + predicateResult1 + "," + predicateArray1 + "," + predicateCalls);
+    const predicateArray1SingleArg = new SendableArray<number>(1, 2);
+    let predicateSingleArgCalls = "";
+    const predicateSingleArgResult = predicateArray1SingleArg.retainAll(function (value: number): boolean {
+        predicateSingleArgCalls += arguments.length + ":" + value + ";";
+        return true;
+    });
+    print("" + predicateSingleArgResult + "," + predicateArray1SingleArg + "," + predicateSingleArgCalls);
+    const predicateArray2 = new SendableArray<number>(1, 2);
+    print("" + predicateArray2.retainAll((value: number) => value > 0) + "," + predicateArray2);
+    const predicateArray3 = new SendableArray<number>(1, 2);
+    print("" + predicateArray3.retainAll((value: number) => value > 3) + "," + predicateArray3.length +
+        "," + predicateArray3);
+    const predicateArray4 = new SendableArray<number>(1, 1, 2);
+    print("" + predicateArray4.retainAll((value: number) => value === 1) + "," + predicateArray4);
+    const predicateArray5 = new SendableArray<number>(1, 2, 3);
+    print("" + predicateArray5.retainAll((value: number) => value === 2 ? "keep" : "") + "," + predicateArray5);
+    const predicateArray6 = new SendableArray<number>(1, 2, 3);
+    print("" + predicateArray6.retainAll((value: number) => value === 2 ? 1 : 0) + "," + predicateArray6);
+    const predicateArray7 = new SendableArray<number>(1, 2, 3);
+    print("" + predicateArray7.retainAll((value: number) => value === 2 ? {} : null) + "," + predicateArray7);
+    const emptyPredicateArray = new SendableArray<number>();
+    let emptyPredicateCalls = 0;
+    print("" + emptyPredicateArray.retainAll(() => {
+        emptyPredicateCalls++;
+        return true;
+    }) + "," + emptyPredicateArray.length + "," + emptyPredicateCalls);
+    const subPredicateReceiver = new SubSharedClass();
+    subPredicateReceiver.push(1);
+    subPredicateReceiver.push(2);
+    subPredicateReceiver.push(3);
+    print("" + subPredicateReceiver.retainAll((value: number) => value !== 2) + "," + subPredicateReceiver);
+    const predicateThrowArray = new SendableArray<number>(1, 2, 3);
+    try {
+        print("" + predicateThrowArray.retainAll((value: number) => {
+            if (value === 3) {
+                throw "retainAll predicate error";
+            }
+            return value > 1;
+        }));
+    } catch (err) {
+        print("retainAll predicate throw failed. err: " + err + ", code: " + err.code +
+            ", array: " + predicateThrowArray);
+    }
+    const predicateConcurrentArray = new SendableArray<number>(1, 2);
+    try {
+        print("" + predicateConcurrentArray.retainAll((value: number) => {
+            predicateConcurrentArray.includes(value);
+            return true;
+        }));
+    } catch (err) {
+        print("retainAll predicate concurrent failed. err: " + err + ", code: " + err.code +
+            ", array: " + predicateConcurrentArray);
+    }
+    print("=== retainAll predicate repeat case ===");
+    const repeatArray0 = new SendableArray<number>(1, 2, -3, 1);
+    const repeatResult0 = repeatArray0.retainAll((value: number) => {
+        return value > 0;
+    });
+    print("" + repeatResult0 + "," + repeatArray0);
+
+    print("=== retainAll predicate receiver empty case ===");
+    const emptyPredicateArray1 = new SendableArray<number>();
+    let emptyPredicateCallCount = 0;
+    const emptyPredicateResult1 = emptyPredicateArray1.retainAll((value: number) => {
+        emptyPredicateCallCount++;
+        return true;
+    });
+    print("" + emptyPredicateResult1 + "," + emptyPredicateArray1 + "," + emptyPredicateCallCount);
+
+    print("=== retainAll receiver self test ===");
+    const selfArray = new SendableArray<number>(1, 2);
+    print("" + selfArray.retainAll(selfArray) + "," + selfArray);
+    const subSharedReceiver3 = new SubSharedClass();
+    subSharedReceiver3.push(1);
+    subSharedReceiver3.push(2);
+    subSharedReceiver3.push(3);
+    print("" + subSharedReceiver3.retainAll(subSharedReceiver3) + "," + subSharedReceiver3);
+    const retainAllConcurrentArray = new SendableArray<number>(1, 2);
+    try {
+        retainAllConcurrentArray.forEach((_value: number, _index: number, array: SendableArray<number>) => {
+            array.retainAll(array);
+        });
+    } catch (err) {
+        print("retainAll self concurrent failed. err: " + err + ", code: " + err.code +
+            ", array: " + retainAllConcurrentArray);
+    }
+
+    print("=== retainAll exception case ===");
+    try {
+        print("" + array1.retainAll({0: 1, length: 1}));
+    } catch (err) {
+        print("retainAll arrayLike failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll());
+    } catch (err) {
+        print("retainAll undefined failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(undefined));
+    } catch (err) {
+        print("retainAll undefined failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(null));
+    } catch (err) {
+        print("retainAll null failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(new Uint8Array([1, 2])));
+    } catch (err) {
+        print("retainAll typedArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(new Set([1])));
+    } catch (err) {
+        print("retainAll set failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(new SendableSet([1])));
+    } catch (err) {
+        print("retainAll sendableSet failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll({}));
+    } catch (err) {
+        print("retainAll object failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(1));
+    } catch (err) {
+        print("retainAll primitive failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print("" + array1.retainAll(new Map([[1, 'one']]).entries()));
+    } catch (err) {
+        print("retainAll iterator failed. err: " + err + ", code: " + err.code);
+    }
+
+    const unboundRetainAll = array1.retainAll;
+    const boundRetainAll = unboundRetainAll.bind(new SuperUnSharedClass(1));
+    try {
+        print("" + boundRetainAll([1]));
+    } catch (err) {
+        print("retainAll bind failed. err: " + err + ", code: " + err.code);
+    }
+    try {
+        print("" + boundRetainAll((value: number) => value > 0));
+    } catch (err) {
+        print("retainAll bind failed. err: " + err + ", code: " + err.code);
+    }
+
+    const throwErrorElements = new Array<number>(5);
+    throwErrorElements[0] = 1;
+    // throwErrorElements[1] is a hole.
+    throwErrorElements[2] = 3;
+    throwErrorElements[3] = 4;
+    Object.defineProperty(throwErrorElements, 4, {
+        get() {
+            throw "getter error";
+        }
+    });
+    const elementsThrowArray = new SendableArray<number>(1, 2, 3);
+    try {
+        print("" + elementsThrowArray.retainAll(throwErrorElements) + "," +
+            elementsThrowArray.length + "," + elementsThrowArray);
+    } catch (err) {
+        print("retainAll element throw failed. err: " + err + ", code: " + err.code +
+            ", array: " + elementsThrowArray);
+    }
+
+    const throwAfterCompactElements = new Array<number>(3);
+    throwAfterCompactElements[0] = 1;
+    let throwAfterCompactGetterCount = 0;
+    Object.defineProperty(throwAfterCompactElements, 1, {
+        get() {
+            throwAfterCompactGetterCount++;
+            if (throwAfterCompactGetterCount >= 2) {
+                throw "getter error after compact";
+            }
+            return 9;
+        }
+    });
+    throwAfterCompactElements[2] = 4;
+    const throwAfterCompactArray = new SendableArray<number>(2, 1, 3);
+    try {
+        print("" + throwAfterCompactArray.retainAll(throwAfterCompactElements) + "," +
+            throwAfterCompactArray.length + "," + throwAfterCompactArray);
+    } catch (err) {
+        print("retainAll element throw after compact failed. err: " + err + ", code: " + err.code +
+            ", array: " + throwAfterCompactArray);
+    }
 }
 
 function index() {
@@ -1568,6 +2210,9 @@ function subSendableArrayTest() {
     print(array.__proto__["findIndex"]((element: number) => element > 13));
     print(array.__proto__["forEach"]((element: number) => print(element)));
     print(array.__proto__["includes"](1));
+    print(array.__proto__["containsAll"]([]));
+    print(array.__proto__["retainAll"]([]));
+    print(array.__proto__["retainAll"]((element: number) => element > 10));
     print(array.__proto__["indexOf"](1));
     print(array.__proto__["join"]());
     print(array.__proto__["keys"]());
@@ -1623,6 +2268,9 @@ values()
 find();
 
 includes();
+
+containsAll();
+retainAll();
 
 index();
 

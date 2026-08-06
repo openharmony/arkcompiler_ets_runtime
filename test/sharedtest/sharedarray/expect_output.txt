@@ -39,6 +39,193 @@ Start Test includes
 true
 true
 false
+Start Test containsAll
+=== Common usage case ===
+true
+true
+true
+false
+false
+false
+false
+true
+true
+true
+true
+=== empty elements case ===
+true
+true
+=== empty receiver case ===
+false
+false
+true
+true
+true
+true
+=== repeating elements case ===
+true
+true
+=== NAN/+0/-0 case ===
+true
+true
+true
+true
+true
+true
+false
+false
+true
+true
+true
+true
+=== string case ===
+false
+false
+=== prototype modify case ===
+true
+true
+false
+true
+true
+=== accessor elements case ===
+true
+true
+true
+true
+=== sparseArray case ===
+true
+true
+true
+true
+true
+=== undefined/null case ===
+true,true
+true,true
+false,false
+false,false
+=== obj case ===
+true
+true
+false
+false
+false
+=== inherit case start ===
+true
+true
+true
+true
+true
+true
+=== immutableArray case ===
+true,true,true
+true,true,true
+true,true,true
+=== receiver self test ===
+true
+true
+=== concurrent case ===
+containsAll self concurrent failed. err: BusinessError: Concurrent modification exception, code: 10200201
+true
+true
+=== exception case ===
+containsAll arrayLike failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll undefined failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll undefined failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll null failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll typedArray failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll set failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll sendableSet failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll object failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll primitive failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll iterator failed. err: BusinessError: Parameter error.Only accept Array or SendableArray., code: 401
+containsAll bind failed. err: BusinessError: The containsAll method cannot be bound., code: 10200011
+Start Test retainAll
+=== retainAll common usage case ===
+false,1,2,3
+false,1,2,3
+true,1,3
+true,3,1
+true,0,
+true,0,
+=== retainAll empty case ===
+true,0,
+true,0,
+true,0,
+false,0,
+false,0,
+false,0,
+false,0,
+false,0,
+false,0,
+=== retainAll repeating elements case ===
+false,1
+true,1,1,3
+=== retainAll SameValueZero case ===
+true,NaN
+true,0
+true,0
+true,0
+false,0,0
+=== retainAll undefined/null case ===
+true,1,true
+true,1,true
+=== retainAll sparseArray case ===
+true,0,
+true,0,
+true,0,
+true,1,3
+true,1,2
+true,1,3
+true,2,1,3
+=== retainAll obj case ===
+false,1,1
+true,0,
+true,0,
+=== retainAll inherit case ===
+true,1,3
+true,1,3
+true,1,3
+true,1,3
+=== retainAll immutable elements case ===
+true,2,true,true
+false,2,true,true
+=== retainAll predicate case ===
+true,
+true,2,3,1;2;3;
+false,1,2,1:1;1:2;
+false,1,2
+true,0,
+true,1,1
+true,2
+true,2
+true,2
+false,0,0
+true,1,3
+retainAll predicate throw failed. err: retainAll predicate error, code: undefined, array: 2,2,3
+retainAll predicate concurrent failed. err: BusinessError: Concurrent modification exception, code: 10200201, array: 1,2
+=== retainAll predicate repeat case ===
+true,1,2,1
+=== retainAll predicate receiver empty case ===
+false,,0
+=== retainAll receiver self test ===
+false,1,2
+false,1,2,3
+retainAll self concurrent failed. err: BusinessError: Concurrent modification exception, code: 10200201, array: 1,2
+=== retainAll exception case ===
+retainAll arrayLike failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll undefined failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll undefined failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll null failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll typedArray failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll set failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll sendableSet failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll object failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll primitive failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll iterator failed. err: BusinessError: Parameter error.Only accept Array, SendableArray or callable., code: 401
+retainAll bind failed. err: BusinessError: The retainAll method cannot be bound., code: 10200011
+retainAll bind failed. err: BusinessError: The retainAll method cannot be bound., code: 10200011
+retainAll element throw failed. err: getter error, code: undefined, array: 1,2,3
+retainAll element throw after compact failed. err: getter error after compact, code: undefined, array: 1,1,3
 Start Test index
 3
 Start Test fill
@@ -453,6 +640,9 @@ undefined
 undefined
 -1
 undefined
+false
+true
+false
 false
 -1
 

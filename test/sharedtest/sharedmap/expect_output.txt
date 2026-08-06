@@ -88,9 +88,197 @@ sharedMap set[shared] element success
 sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 ===Type check end===
+Start Test SendableMap containsValue
+=== containsValue common usage case ===
+containsValue 1: true
+containsValue missing: false
+containsValue size unchanged: 4
+containsValue entries:[one, 1]
+containsValue entries:[nan, NaN]
+containsValue entries:[zero, 0]
+containsValue entries:[undefined, undefined]
+=== containsValue empty case ===
+containsValue empty: false
+=== containsValue SameValueZero case ===
+containsValue NaN: true
+containsValue +0: true
+containsValue -0: true
+=== containsValue undefined/null case ===
+containsValue undefined: true
+containsValue null: false
+containsValue null hit: true
+=== containsValue duplicate value case ===
+containsValue duplicate value: true
+containsValue duplicate kept after delete: true
+=== containsValue deleted entry case ===
+containsValue deleted slot: false
+containsValue kept after delete: true
+=== containsValue object case ===
+containsValue unshared object: false
+containsValue same sendable object: true
+containsValue other sendable object: false
+=== containsValue exception case ===
+containsValue bind error: BusinessError: The containsValue method cannot be bound., errCode: 10200011
+containsValue bind error: BusinessError: The containsValue method cannot be bound., errCode: 10200011
+=== containsValue concurrent case ===
+containsValue Scenario[forEach]: true
+containsValue Scenario[forEach]: true
+Start Test SendableMap put
+=== put common usage case ===
+put missing old undefined: true
+put missing value: three
+put missing size: 3
+put existing old: one
+put existing value: ONE
+put existing size: 3
+put entries:[1, ONE]
+put entries:[2, two]
+put entries:[3, three]
+=== put SameValueZero case ===
+put NaN first undefined: true
+put NaN second old: first
+put NaN size: 1
+put NaN value: second
+put +0 first undefined: true
+put -0 old: zero
+put zero size: 2
+put zero value: minus zero
+put zero normal zero: minus zero
+put zero value: normal zero
+=== put undefined case ===
+put undefined existed: true
+put undefined old: true
+put undefined value: A
+=== put exception case ===
+put non-sendable key: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+put non-sendable value: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+put bind error: BusinessError: The put method cannot be bound., errCode: 10200011
+put bind error: BusinessError: The put method cannot be bound., errCode: 10200011
+=== put concurrent case ===
+Put Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Start Test SendableMap putAll
+=== putAll common usage case ===
+putAll SendableMap return undefined: true
+putAll SendableMap size: 4
+putAll SendableMap entries:[1, ONE]
+putAll SendableMap entries:[2, two]
+putAll SendableMap entries:[3, three]
+putAll SendableMap entries:[4, four]
+putAll BuiltinMap return undefined: true
+putAll BuiltinMap size: 5
+putAll BuiltinMap entries:[1, ONE]
+putAll BuiltinMap entries:[2, TWO]
+putAll BuiltinMap entries:[3, three]
+putAll BuiltinMap entries:[4, four]
+putAll BuiltinMap entries:[5, five]
+=== putAll source immutable case ===
+putAll SendableMap source size: 2
+putAll SendableMap source entries:[1, one]
+putAll SendableMap source entries:[2, two]
+putAll BuiltinMap source size: 2
+putAll BuiltinMap source entries:[1, one]
+putAll BuiltinMap source entries:[2, two]
+=== putAll empty and self case ===
+putAll empty size: 1
+putAll self return undefined: true
+putAll self size: 1
+putAll self entries:[1, one]
+=== putAll SameValueZero case ===
+putAll NaN value: NAN
+putAll zero value: minus zero
+putAll SameValueZero size: 2
+=== putAll undefined/null case ===
+putAll undefined key: undefined key
+putAll null key: null key
+putAll undefined value: true
+putAll null value: true
+putAll undefined/null size: 4
+=== putAll deleted source entry case ===
+putAll deleted source entries:[2, two]
+putAll deleted source entries:[3, three]
+putAll deleted source entries:[4, four]
+putAll deleted BuiltinMap source entries:[2, two]
+putAll deleted BuiltinMap source entries:[4, four]
+=== putAll subclass case ===
+putAll subclass size: 3
+putAll subclass entries:[1, one]
+putAll subclass entries:[2, two]
+putAll subclass entries:[3, three]
+putAll subclass self return undefined: true
+putAll subclass self size: 3
+putAll subclass self entries:[1, one]
+putAll subclass self entries:[2, two]
+putAll subclass self entries:[3, three]
+putAll subclass size: 3
+putAll subclass entries:[1, one]
+putAll subclass entries:[2, two]
+putAll subclass entries:[3, three]
+putAll subclass size: 3
+putAll subclass entries:[1, one]
+putAll subclass entries:[2, two]
+putAll subclass entries:[3, three]
+=== putAll exception case ===
+putAll non-sendable key: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+putAll partial key size: 2
+putAll partial key entries:[origin, origin]
+putAll partial key entries:[ok, ok]
+putAll non-sendable value: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+putAll partial value size: 2
+putAll partial value entries:[origin, origin]
+putAll partial value entries:[ok, ok]
+putAll invalid missing: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid undefined: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid null: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid array: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid arrayLike: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid plain object: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid custom iterable: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid MapIterator: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid SendableMapIterator: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid WeakMap: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid primitive: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll invalid receiver.entries: BusinessError: Parameter error.Only accept Map or SendableMap.
+putAll bind error: BusinessError: The putAll method cannot be bound., errCode: 10200011
+putAll bind error: BusinessError: The putAll method cannot be bound., errCode: 10200011
+putAll prototype call return undefined: true
+putAll prototype call size: 2
+=== putAll concurrent case ===
+PutAll Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+PutAll Scenario[forEach self]: BusinessError: Concurrent modification exception, errCode: 10200201
+Start Test SendableMap remove
+=== remove common usage case ===
+remove existing old: one
+remove existing has: false
+remove existing size: 2
+remove missing undefined: true
+remove missing size: 2
+remove missing entries:[2, two]
+remove missing entries:[undefined, undefined]
+=== remove undefined case ===
+remove undefined existed: true
+remove undefined old: true
+remove undefined has: false
+=== remove SameValueZero case ===
+remove NaN old: nan
+remove NaN has: false
+remove -0 old: zero
+remove zero has: false
+=== remove object case ===
+remove other sendable object: true
+remove same sendable object: value
+=== remove exception case ===
+remove bind error: BusinessError: The remove method cannot be bound., errCode: 10200011
+remove bind error: BusinessError: The remove method cannot be bound., errCode: 10200011
+=== remove concurrent case ===
+Remove Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Class inheritance test begin ===
 true
 1
+true
+one
+ONE
+ONE
+false
 add extension(.): TypeError: Cannot add property "extension" in prevent extensions
 add extension([]): TypeError: Cannot add property "extension" in prevent extensions
 SubSendableMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
@@ -101,6 +289,11 @@ SubSendableMap [key, value][for-of]: [3, three]
 SubSendableMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 true
 1
+true
+one
+ONE
+ONE
+false
 SubSubSendableMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 3
 SubSubSendableMap [key, value][for-of]: [1, one]

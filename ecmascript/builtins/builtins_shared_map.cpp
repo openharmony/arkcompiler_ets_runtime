@@ -17,6 +17,7 @@
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_map.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
@@ -118,6 +119,38 @@ JSTaggedValue BuiltinsSharedMap::Delete(EcmaRuntimeCallInfo *argv)
     return GetTaggedBoolean(flag);
 }
 
+JSTaggedValue BuiltinsSharedMap::ContainsValue(EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, SharedMap, ContainsValue);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> self(GetThis(argv));
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The containsValue method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, self);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSSharedMap> map(self);
+    JSHandle<JSTaggedValue> targetValue = GetCallArg(argv, 0);
+    JSHandle<LinkedHashMap> hashMap(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
+    int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
+    for (int index = 0; index < totalElements; index++) {
+        JSTaggedValue key = hashMap->GetKey(thread, index);
+        if (key.IsHole()) {
+            continue;
+        }
+        JSTaggedValue value = hashMap->GetValue(thread, index);
+        if (JSTaggedValue::SameValueZero(thread, value, targetValue.GetTaggedValue())) {
+            return GetTaggedBoolean(true);
+        }
+        thread->CheckSafepointIfSuspended();
+    }
+    return GetTaggedBoolean(false);
+}
+
 JSTaggedValue BuiltinsSharedMap::Has(EcmaRuntimeCallInfo *argv)
 {
     BUILTINS_API_TRACE(argv->GetThread(), SharedMap, Has);
@@ -150,6 +183,110 @@ JSTaggedValue BuiltinsSharedMap::Get(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     JSTaggedValue value = JSSharedMap::Get(thread, map, key.GetTaggedValue());
     return value;
+}
+
+JSTaggedValue BuiltinsSharedMap::Put(EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, SharedMap, Put);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> self(GetThis(argv));
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The put method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
+    if (!key->IsSharedType() || !value->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error. Only accept sendable value.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap, ModType::WRITE> scope(thread, self);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSSharedMap> map(self);
+    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
+    JSHandle<JSTaggedValue> oldValue(thread, mapHandle->Get(thread, key.GetTaggedValue()));
+    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, mapHandle, key, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    map->SetLinkedMap(thread, newMap);
+    return oldValue.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsSharedMap::PutAll(EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, SharedMap, PutAll);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> self(GetThis(argv));
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The putAll method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+
+    JSHandle<JSTaggedValue> from = GetCallArg(argv, 0);
+    if (!from->IsJSSharedMap() && !from->IsJSMap()) {
+        auto error = containers::ContainerError::ParamError(thread,
+            "Parameter error.Only accept Map or SendableMap.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap, ModType::WRITE> scope(thread, self);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    if (self->GetRawData() == from->GetRawData()) {
+        return JSTaggedValue::Undefined();
+    }
+
+    JSHandle<JSSharedMap> receiver(self);
+    if (from->IsJSSharedMap()) {
+        [[maybe_unused]] ConcurrentApiScope<JSSharedMap> fromScope(thread, from);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSSharedMap> fromMap(from);
+        JSHandle<LinkedHashMap> fromLinkedMap(thread,
+            LinkedHashMap::Cast(fromMap->GetLinkedMap(thread).GetTaggedObject()));
+        JSTaggedValue result = JSSharedMap::PutAllFromLinkedMap(thread, receiver, fromLinkedMap);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, result);
+        return JSTaggedValue::Undefined();
+    }
+
+    JSHandle<JSMap> fromMap(from);
+    JSHandle<LinkedHashMap> fromLinkedMap(thread,
+        LinkedHashMap::Cast(fromMap->GetLinkedMap(thread).GetTaggedObject()));
+    JSTaggedValue result = JSSharedMap::PutAllFromLinkedMap(thread, receiver, fromLinkedMap);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, result);
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsSharedMap::Remove(EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, SharedMap, Remove);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> self(GetThis(argv));
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The remove method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
+
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap, ModType::WRITE> scope(thread, self);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSSharedMap> map(self);
+    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
+    int entry = mapHandle->FindElement(thread, key.GetTaggedValue());
+    if (entry == -1) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<JSTaggedValue> oldValue(thread, mapHandle->GetValue(thread, entry));
+    mapHandle->RemoveEntry(thread, entry);
+    return oldValue.GetTaggedValue();
 }
 
 JSTaggedValue BuiltinsSharedMap::ForEach(EcmaRuntimeCallInfo *argv)

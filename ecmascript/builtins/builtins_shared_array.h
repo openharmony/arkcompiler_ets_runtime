@@ -55,6 +55,10 @@
     V("forEach", ForEach, 1, INVALID)                                            \
     /* SharedArray.prototype.includes ( searchElement [ , fromIndex ] ) */       \
     V("includes", Includes, 1, INVALID)                                          \
+    /* SharedArray.prototype.containsAll ( elements ) */                         \
+    V("containsAll", ContainsAll, 1, INVALID)                                     \
+    /* SharedArray.prototype.retainAll ( elements | predicate ) */               \
+    V("retainAll", RetainAll, 1, INVALID)                                         \
     /* SharedArray.prototype.indexOf ( searchElement [ , fromIndex ] ) */        \
     V("indexOf", IndexOf, 1, SharedArrayIndexOf)                                 \
     /* SharedArray.prototype.join ( separator ) */                               \
@@ -147,6 +151,8 @@ public:
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ContainsAll(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue RetainAll(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ShrinkTo(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ExtendTo(EcmaRuntimeCallInfo *argv);
@@ -254,6 +260,22 @@ private:
                                                       const JSHandle<JSTaggedValue> &thisHandle, int64_t len);
     static JSTaggedValue ReduceRightInternalHandle(EcmaRuntimeCallInfo *argv, JSThread *thread,
             const JSHandle<JSTaggedValue> &thisHandle, JSHandle<JSObject>& thisObjHandle, uint32_t argc, int64_t len);
+
+    template<bool targetElementsIsSharedArray = true>
+    static JSTaggedValue ContainsAllElements(JSThread *thread,
+                                             JSHandle<JSTaggedValue> &receiverHandle,
+                                             JSHandle<JSTaggedValue> &targetElements);
+    static JSTaggedValue FinishRetain(JSThread *thread,
+                                      JSHandle<JSObject> &thisObjHandle,
+                                      int64_t retainedLen,
+                                      int64_t thisLen);
+    static JSTaggedValue RetainByPredicate(JSThread *thread,
+                                           JSHandle<JSTaggedValue> &thisHandle,
+                                           JSHandle<JSTaggedValue> &predicate);
+    template<bool elementsIsSharedArray = true>
+    static JSTaggedValue RetainElements(JSThread *thread,
+                                        JSHandle<JSTaggedValue> &thisHandle,
+                                        JSHandle<JSTaggedValue> &elements);
 
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),

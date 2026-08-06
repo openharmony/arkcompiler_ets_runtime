@@ -22,6 +22,7 @@
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/object_operator.h"
 #include "ecmascript/base/sort_helper.h"
 
 namespace panda::ecmascript::builtins {
@@ -2237,6 +2238,249 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
     }
     // 11. Return false.
     return GetTaggedBoolean(false);
+}
+
+JSTaggedValue BuiltinsSharedArray::ContainsAll(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, ContainsAll);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ARRAY_CHECK_SHARED_ARRAY("The containsAll method cannot be bound.")
+
+    JSHandle<JSTaggedValue> elements = GetCallArg(argv, 0);
+    if (!elements->IsJSSharedArray() && !elements->IsJSArray()) {
+        auto error = ContainerError::ParamError(thread, "Parameter error.Only accept Array or SendableArray.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> thisScope(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    if (thisHandle->GetRawData() == elements->GetRawData()) {
+        return GetTaggedBoolean(true);
+    }
+
+    if (elements->IsJSSharedArray()) {
+        [[maybe_unused]] ConcurrentApiScope<JSSharedArray> elementsScope(thread, elements);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return ContainsAllElements<true>(thread, thisHandle, elements);
+    }
+
+    return ContainsAllElements<false>(thread, thisHandle, elements);
+}
+
+template<bool targetElementsIsSharedArray>
+JSTaggedValue BuiltinsSharedArray::ContainsAllElements(JSThread *thread,
+                                                       JSHandle<JSTaggedValue> &receiverHandle,
+                                                       JSHandle<JSTaggedValue> &targetElements)
+{
+    int64_t elementsLen = ArrayHelper::GetArrayLength(thread, targetElements);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (elementsLen == 0) {
+        return GetTaggedBoolean(true);
+    }
+
+    int64_t thisLen = JSSharedArray::Cast(receiverHandle->GetTaggedObject())->GetArrayLength();
+
+    [[maybe_unused]] JSHandle<JSObject> targetElementsObj = JSHandle<JSObject>::Cast(targetElements);
+    JSHandle<JSObject> receiverObjHandle = JSHandle<JSObject>::Cast(receiverHandle);
+
+    JSMutableHandle<JSTaggedValue> targetElement(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> receiverElement(thread, JSTaggedValue::Undefined());
+    for (int64_t elementsIndex = 0; elementsIndex < elementsLen; elementsIndex++) {
+        if constexpr (targetElementsIsSharedArray) {
+            targetElement.Update(
+                BuiltinsSharedArray::GetElementByKey(thread, targetElementsObj, elementsIndex));
+        } else {
+            ObjectOperator op(thread, targetElements, static_cast<uint32_t>(elementsIndex), OperatorType::OWN);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (op.IsFound()) {
+                targetElement.Update(op.FastGetValue().GetTaggedValue());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            } else {
+                continue;
+            }
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+        if (thisLen == 0) {
+            return GetTaggedBoolean(false);
+        }
+
+        bool found = false;
+        for (int64_t receiverIndex = 0; receiverIndex < thisLen; receiverIndex++) {
+            receiverElement.Update(
+                BuiltinsSharedArray::GetElementByKey(thread, receiverObjHandle, receiverIndex));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (JSTaggedValue::SameValueZero(
+                thread, targetElement.GetTaggedValue(), receiverElement.GetTaggedValue())) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return GetTaggedBoolean(false);
+        }
+        thread->CheckSafepointIfSuspended();
+    }
+    return GetTaggedBoolean(true);
+}
+
+JSTaggedValue BuiltinsSharedArray::RetainAll(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, RetainAll);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ARRAY_CHECK_SHARED_ARRAY("The retainAll method cannot be bound.")
+
+    JSHandle<JSTaggedValue> arg = GetCallArg(argv, 0);
+    if (!arg->IsJSSharedArray() && !arg->IsJSArray() && !arg->IsCallable()) {
+        auto error = ContainerError::ParamError(thread,
+            "Parameter error.Only accept Array, SendableArray or callable.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> thisScope(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    if (arg->IsCallable()) {
+        return RetainByPredicate(thread, thisHandle, arg);
+    }
+
+    JSHandle<JSTaggedValue> elements = arg;
+    if (thisHandle->GetRawData() == elements->GetRawData()) {
+        return GetTaggedBoolean(false);
+    }
+
+    if (elements->IsJSSharedArray()) {
+        [[maybe_unused]] ConcurrentApiScope<JSSharedArray> elementsScope(thread, elements);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return RetainElements<true>(thread, thisHandle, elements);
+    }
+
+    return RetainElements<false>(thread, thisHandle, elements);
+}
+
+JSTaggedValue BuiltinsSharedArray::FinishRetain(JSThread *thread,
+                                                JSHandle<JSObject> &thisObjHandle,
+                                                int64_t retainedLen,
+                                                int64_t thisLen)
+{
+    if (retainedLen == thisLen) {
+        return GetTaggedBoolean(false);
+    }
+
+    JSHandle<JSTaggedValue> newLenHandle(thread, JSTaggedValue(retainedLen));
+    JSSharedArray::LengthSetter(thread, thisObjHandle, newLenHandle, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return GetTaggedBoolean(true);
+}
+
+JSTaggedValue BuiltinsSharedArray::RetainByPredicate(JSThread *thread,
+                                                     JSHandle<JSTaggedValue> &thisHandle,
+                                                     JSHandle<JSTaggedValue> &predicate)
+{
+    int64_t thisLen = JSSharedArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
+    if (thisLen == 0) {
+        return GetTaggedBoolean(false);
+    }
+
+    int64_t retainedLen = 0;
+    JSMutableHandle<JSTaggedValue> receiverElement(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSHandle<JSObject> thisObjHandle = JSHandle<JSObject>::Cast(thisHandle);
+    const uint32_t argsLength = 1; // 1: «value»
+    for (int64_t receiverIndex = 0; receiverIndex < thisLen; receiverIndex++) {
+        receiverElement.Update(BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, receiverIndex));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, predicate, undefined, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
+        info->SetCallArg(receiverElement.GetTaggedValue());
+        JSTaggedValue callResult = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+        if (callResult.ToBoolean()) {
+            if (retainedLen != receiverIndex) {
+                TaggedArray *receiverElements = TaggedArray::Cast(thisObjHandle->GetElements(thread));
+                ASSERT(static_cast<uint32_t>(retainedLen) < receiverElements->GetLength());
+                receiverElements->Set(thread, static_cast<uint32_t>(retainedLen), receiverElement);
+            }
+            retainedLen++;
+        }
+        thread->CheckSafepointIfSuspended();
+    }
+
+    return FinishRetain(thread, thisObjHandle, retainedLen, thisLen);
+}
+
+template<bool elementsIsSharedArray>
+JSTaggedValue BuiltinsSharedArray::RetainElements(JSThread *thread,
+                                                  JSHandle<JSTaggedValue> &thisHandle,
+                                                  JSHandle<JSTaggedValue> &elements)
+{
+    int64_t thisLen = JSSharedArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
+    if (thisLen == 0) {
+        return GetTaggedBoolean(false);
+    }
+
+    int64_t elementsLen = ArrayHelper::GetArrayLength(thread, elements);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSObject> thisObjHandle = JSHandle<JSObject>::Cast(thisHandle);
+    [[maybe_unused]] JSHandle<JSObject> elementsObjHandle = JSHandle<JSObject>::Cast(elements);
+    if (elementsLen == 0) {
+        return FinishRetain(thread, thisObjHandle, 0, thisLen);
+    }
+
+    int64_t retainedLen = 0;
+    JSMutableHandle<JSTaggedValue> receiverElement(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> targetElement(thread, JSTaggedValue::Undefined());
+    for (int64_t receiverIndex = 0; receiverIndex < thisLen; receiverIndex++) {
+        receiverElement.Update(BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, receiverIndex));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+        bool retained = false;
+        for (int64_t elementsIndex = 0; elementsIndex < elementsLen; elementsIndex++) {
+            if constexpr (elementsIsSharedArray) {
+                targetElement.Update(
+                    BuiltinsSharedArray::GetElementByKey(thread, elementsObjHandle, elementsIndex));
+            } else {
+                ObjectOperator op(thread, elements, static_cast<uint32_t>(elementsIndex), OperatorType::OWN);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                if (op.IsFound()) {
+                    targetElement.Update(op.FastGetValue().GetTaggedValue());
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                } else {
+                    continue;
+                }
+            }
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+            if (JSTaggedValue::SameValueZero(
+                thread, receiverElement.GetTaggedValue(), targetElement.GetTaggedValue())) {
+                retained = true;
+                break;
+            }
+        }
+
+        if (retained) {
+            if (retainedLen != receiverIndex) {
+                TaggedArray *receiverElements = TaggedArray::Cast(thisObjHandle->GetElements(thread));
+                ASSERT(static_cast<uint32_t>(retainedLen) < receiverElements->GetLength());
+                receiverElements->Set(thread, static_cast<uint32_t>(retainedLen), receiverElement);
+            }
+            retainedLen++;
+        }
+        thread->CheckSafepointIfSuspended();
+    }
+
+    return FinishRetain(thread, thisObjHandle, retainedLen, thisLen);
 }
 
 // 23.1.3.1 Array.prototype.at ( index )

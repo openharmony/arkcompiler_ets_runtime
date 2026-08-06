@@ -40,6 +40,12 @@ public:
 
     static JSTaggedValue GetValue(JSThread *thread, const JSHandle<JSSharedMap> &map, uint32_t entry);
 
+    static JSTaggedValue PutAllFromLinkedMap(JSThread *thread, const JSHandle<JSSharedMap> &receiver,
+                                             const JSHandle<LinkedHashMap> &from);
+    static JSTaggedValue SetEntryForPutAll(JSThread *thread, const JSHandle<JSSharedMap> &receiver,
+                                           const JSHandle<JSTaggedValue> &key,
+                                           const JSHandle<JSTaggedValue> &value);
+
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, MOD_RECORD_OFFSET)
     ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, LAST_OFFSET)
