@@ -804,41 +804,147 @@ void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CStr
     }
 }
 
-CString ModulePathHelper::ParseFileNameToVMAName(const CString &filename)
+std::string ToString(ModulePathType type)
 {
-    size_t pos = CString::npos;
+    return std::to_string(static_cast<uint8_t>(type));
+}
+
+CString GetModulePathPrefix(ModulePathType type)
+{
+    static CString EMPTY_STRING = "";
+    switch (type) {
+        case ModulePathType::SYSTEM_MODULE_PATH:
+            return ModulePathHelper::PREFIX_SYSTEM_LIB64_MODULE.data();
+        default:
+            return EMPTY_STRING;
+    }
+}
+
+/*
+ * input : buffer: begin pos of abc file
+ *         filename: ""
+ *         filename: "/system/lib64/module/xxx/xxx/xxx.z.so"
+ *         filename: "/system/lib64/module/xxx/xxx/xxx/xxx.z.so"(size>76)
+ *         filename: "/system/etc/abc/xxx/xxx/xxx.abc"
+ * output: "ArkTS Code: ToUintPtr(buffer)"
+ *         "ArkTS Code: /system/lib64/module/xxx/xxx/xxx.z.so_offset_1"
+ *         "ArkTS Code: /xxx/xxx/xxx.z.so_offset_2"
+ *         "ArkTS Code: /system/etc/abc/xxx/xxx/xxx.abc"
+ */
+std::string ModulePathHelper::ParseFileNameToVMAName(const void *buffer, const std::string &filename)
+{
+    constexpr size_t PR_SET_VMA_ANON_NAME_MAX_LEN = 80;
+    std::string tag = std::string(VMA_NAME_ARKTS_CODE);
     if (filename.empty()) {
-        return VMA_NAME_ARKTS_CODE.data();
+        return tag.append(std::to_string(ToUintPtr(buffer)));
     }
 
-    if (filename.find(EXT_NAME_JS) != CString::npos) {
-        pos = filename.find(EXT_NAME_Z_SO);
-        if (pos == CString::npos) {
-            return VMA_NAME_ARKTS_CODE.data();
-        }
-        CString moduleName = filename.substr(0, pos);
-        pos = moduleName.rfind(PathHelper::POINT_TAG);
-        if (pos == CString::npos) {
-            return base::ConcatToCString(VMA_NAME_ARKTS_CODE, PathHelper::COLON_TAG, filename);
-        }
-        CString realModuleName = moduleName.substr(pos + 1);
-        CString realFileName = realModuleName;
-        std::transform(realFileName.begin(), realFileName.end(), realFileName.begin(), ::tolower);
-        CString file = base::ConcatToCString(PREFIX_LIB, realFileName, EXT_NAME_Z_SO, PathHelper::SLASH_TAG,
-                                             realModuleName, EXT_NAME_JS);
-        return base::ConcatToCString(VMA_NAME_ARKTS_CODE, PathHelper::COLON_TAG, file);
+    size_t len = filename.length();
+    if (len >= EXT_NAME_ABC_LEN && filename.compare(len - EXT_NAME_ABC_LEN, EXT_NAME_ABC_LEN, EXT_NAME_ABC) == 0) {
+        return tag.append(filename);
     }
 
-    if (filename.find(EXT_NAME_ABC) != CString::npos) {
-        pos = filename.find(BUNDLE_INSTALL_PATH);
-        if (pos == CString::npos) {
-            return base::ConcatToCString(VMA_NAME_ARKTS_CODE, PathHelper::COLON_TAG, filename);
-        }
-        CString file = filename.substr(BUNDLE_INSTALL_PATH_LEN);
-        return base::ConcatToCString(VMA_NAME_ARKTS_CODE, PathHelper::COLON_TAG, file);
+    if (len < EXT_NAME_SO_LEN || filename.compare(len - EXT_NAME_SO_LEN, EXT_NAME_SO_LEN, EXT_NAME_SO) != 0) {
+        return tag.append(filename);
     }
 
-    return VMA_NAME_ARKTS_CODE.data();
+#if defined(PANDA_TARGET_OHOS)
+    Dl_info info;
+    if (!dladdr(buffer, &info) || !info.dli_fbase) {
+        LOG_ECMA(ERROR) << "dladdr failed: " << filename;
+        return tag.append(std::to_string(ToUintPtr(buffer)));
+    }
+
+    uint64_t offset = ToUintPtr(buffer) - ToUintPtr(info.dli_fbase);
+    std::string offsetStr = std::to_string(offset);
+    // 4 means '_' & '_' & '0' & '/0'
+    if (offsetStr.size() + VMA_NAME_ARKTS_CODE_LEN + len + 4 <= PR_SET_VMA_ANON_NAME_MAX_LEN) {
+        return tag.append(filename).append("_").append(offsetStr).append("_").append(
+            ToString(ModulePathType::SHORT_MODULE_PATH));
+    }
+
+    if (filename.compare(0, PREFIX_SYSTEM_LIB64_MODULE_LEN, PREFIX_SYSTEM_LIB64_MODULE) == 0) {
+        std::string relativePath = filename.substr(PREFIX_SYSTEM_LIB64_MODULE_LEN);
+        return tag.append(relativePath).append("_").append(offsetStr).append("_").append(
+            ToString(ModulePathType::SYSTEM_MODULE_PATH));
+    }
+#endif
+
+    return tag.append(filename).substr(0, PR_SET_VMA_ANON_NAME_MAX_LEN - 1); // 1 means '/0'
+}
+
+/*
+ * inputPath : /xxx/xxx/xxx.hap(hqf/hsp)
+ *             [anon:ArkTS Code:/system/lib64/module/xxx/xxx/xxx.z.so_offset_1]
+ *             [anon:ArkTS Code:/xxx/xxx/xxx.z.so_offset_2]
+ *             [anon:ArkTS Code:/system/etc/abc/xxx/xxx/xxx.abc]
+ *             /system/etc/abc/xxx/xxx.abc
+ * outputPath: /xxx/xxx/xxx.hap(hqf/hsp)
+ *             /system/lib64/module/xxx/xxx/xxx.z.so
+ *             /system/lib64/module/xxx/xxx/xxx.z.so
+ *             /system/etc/abc/xxx/xxx/xxx.abc
+ *             /system/etc/abc/xxx/xxx.abc
+ * return    : ModulePathType::HAP_MODULE_PATH
+ *             ModulePathType::SHORT_MODULE_PATH
+ *             ModulePathType::SYSTEM_MODULE_PATH
+ *             ModulePathType::ABC_MODULE_PATH
+ *             ModulePathType::ABC_MODULE_PATH
+ */
+ModulePathType ModulePathHelper::ParseVMANameToFileName(const CString &inputPath, uintptr_t &offset,
+                                                        CString &outputPath)
+{
+    if (StringHelper::StringEndWith(inputPath, ModulePathHelper::EXT_NAME_HAP) ||
+        StringHelper::StringEndWith(inputPath, ModulePathHelper::EXT_NAME_HSP) ||
+        StringHelper::StringEndWith(inputPath, ModulePathHelper::EXT_NAME_HQF)) {
+        outputPath = inputPath;
+        return ModulePathType::HAP_MODULE_PATH;
+    }
+
+    if (StringHelper::StringEndWith(inputPath, ModulePathHelper::EXT_NAME_ABC)) {
+        outputPath = inputPath;
+        return ModulePathType::ABC_MODULE_PATH;
+    }
+
+    if (!StringHelper::StringStartWith(inputPath, ModulePathHelper::PREFIX_ARKTS_CODE)) {
+        return ModulePathType::INVALID_MODULE_PATH;
+    }
+
+    if (base::StringHelper::StringEndWith(inputPath, ModulePathHelper::EXT_NAME_ABC_WITH_RSQBRKT)) {
+        outputPath = inputPath.substr(ModulePathHelper::PREFIX_ARKTS_CODE_LEN, inputPath.size() -
+            ModulePathHelper::PREFIX_ARKTS_CODE_LEN - 1); // 1 means "]"
+        return ModulePathType::ABC_MODULE_PATH;
+    }
+
+    size_t soPos = inputPath.rfind(ModulePathHelper::EXT_NAME_SO);
+    if (soPos == CString::npos) {
+        return ModulePathType::INVALID_MODULE_PATH;
+    }
+
+    size_t soEnd = soPos + ModulePathHelper::EXT_NAME_SO_LEN;
+    size_t lastUnderscore = inputPath.rfind('_');
+    if (lastUnderscore == CString::npos || lastUnderscore <= soEnd ||
+        lastUnderscore + 2 >= inputPath.size()) { // 2 means max { "_]", "_" }
+        return ModulePathType::INVALID_MODULE_PATH;
+    }
+
+    CString offsetStr = inputPath.substr(soEnd + 1, lastUnderscore - (soEnd + 1));
+    CString typeStr = inputPath.substr(lastUnderscore + 1);
+    if (offsetStr.empty() || typeStr.empty()) {
+        return ModulePathType::INVALID_MODULE_PATH;
+    }
+
+    offset = static_cast<uintptr_t>(std::stoull(offsetStr.c_str()));
+    ModulePathType type = static_cast<ModulePathType>(std::stoull(typeStr.c_str()));
+
+    switch (type) {
+        case ModulePathType::SHORT_MODULE_PATH:
+        case ModulePathType::SYSTEM_MODULE_PATH:
+            outputPath = GetModulePathPrefix(type) + inputPath.substr(ModulePathHelper::PREFIX_ARKTS_CODE_LEN,
+                soEnd - ModulePathHelper::PREFIX_ARKTS_CODE_LEN);
+            return type;
+        default:
+            return ModulePathType::INVALID_MODULE_PATH;
+    }
 }
 
 #if !ENABLE_LATEST_OPTIMIZATION

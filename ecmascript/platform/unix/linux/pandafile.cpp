@@ -39,7 +39,7 @@ std::unique_ptr<const panda_file::File> OpenPandaFileFromMemory(uint8_t *buffer,
 }
 
 std::unique_ptr<const panda_file::File> ParseAndOpenPandaFile(const void *buffer, size_t size,
-    [[maybe_unused]] const CString &filename)
+    [[maybe_unused]] const std::string &filename)
 {
     return panda_file::OpenPandaFileFromMemory(buffer, size);
 }

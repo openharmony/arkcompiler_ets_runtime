@@ -29,6 +29,6 @@ namespace panda::ecmascript {
     void LoadJSPandaFileFailLog([[maybe_unused]] const CString &failLog);
     std::unique_ptr<const panda_file::File> OpenPandaFileFromMemory(uint8_t *buffer, size_t size);
     std::unique_ptr<const panda_file::File> ParseAndOpenPandaFile(const void *buffer, size_t size,
-        [[maybe_unused]] const CString &filename);
+        [[maybe_unused]] const std::string &filename);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_PANDAFILE_H

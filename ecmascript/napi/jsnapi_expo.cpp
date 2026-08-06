@@ -6884,12 +6884,13 @@ void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb, QueueType
     MicroJobQueue::EnqueueJob(thread, job, queueType, fun, array);
 }
 
-bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file)
+bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
+                                     const std::string &file, const std::string &filePath)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, ENTRY_POINTER, file.c_str(), false,
-        ecmascript::ExecuteTypes::NATIVE_MODULE)) {
+        ecmascript::ExecuteTypes::NATIVE_MODULE, filePath)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
         }

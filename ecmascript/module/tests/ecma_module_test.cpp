@@ -997,19 +997,6 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionInput)
     EXPECT_EQ(requestPath, "@ohos:app:@native.system.app");
 }
 
-HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName2)
-{
-    // has .js
-    CString filename = "test.js";
-    CString res = ModulePathHelper::ParseFileNameToVMAName(filename);
-    EXPECT_EQ(res, "ArkTS Code");
-
-    // other branches
-    filename = "test.ts";
-    res = ModulePathHelper::ParseFileNameToVMAName(filename);
-    EXPECT_EQ(res, "ArkTS Code");
-}
-
 HWTEST_F_L0(EcmaModuleTest, GetRecordName1)
 {
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
@@ -1745,34 +1732,6 @@ HWTEST_F_L0(EcmaModuleTest, ConcatPandaFilePath2)
     CString res3 = "/data/storage/el1/bundle/com.crosshsp.application/crosshsp/crosshsp/ets/modules.abc";
     CString outFileName3 = ModulePathHelper::ConcatPandaFilePath(bundleName, moduleName);
     EXPECT_EQ(outFileName3, res3);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName)
-{
-    CString inputFileName = "test.abc";
-    CString outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
-    CString exceptOutFileName = "ArkTS Code:test.abc";
-    EXPECT_EQ(outFileName, exceptOutFileName);
-
-    inputFileName = "";
-    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
-    exceptOutFileName = "ArkTS Code";
-    EXPECT_EQ(outFileName, exceptOutFileName);
-
-    inputFileName = "libutil.z.so/util.js";
-    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
-    exceptOutFileName = "ArkTS Code:libutil.z.so/util.js";
-    EXPECT_EQ(outFileName, exceptOutFileName);
-
-    inputFileName = "libutil.HashMap.z.so/util.HashMap.js";
-    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
-    exceptOutFileName = "ArkTS Code:libhashmap.z.so/HashMap.js";
-    EXPECT_EQ(outFileName, exceptOutFileName);
-
-    inputFileName = "/data/storage/el1/bundle/com.example.application/ets/modules.abc";
-    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
-    exceptOutFileName = "ArkTS Code:com.example.application/ets/modules.abc";
-    EXPECT_EQ(outFileName, exceptOutFileName);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatUnifiedOhmUrl)
@@ -6718,6 +6677,81 @@ HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_EmptyPath)
     CString expectRes = "";
     CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
     EXPECT_EQ(res, expectRes);
+}
+
+
+HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName)
+{
+    const void *buffer = reinterpret_cast<void*>(0x1234);
+
+    std::string inputFileName = "";
+    std::string outFileName = ModulePathHelper::ParseFileNameToVMAName(buffer, inputFileName);
+    std::string exceptOutFileName = "ArkTS Code:" + std::to_string(ToUintPtr(buffer));
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "/data/storage/el1/bundle/com.example.application/ets/modules.abc";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(buffer, inputFileName);
+    exceptOutFileName = "ArkTS Code:/data/storage/el1/bundle/com.example.application/ets/modules.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "/system/etc/abc/arkui/node.abc";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(buffer, inputFileName);
+    exceptOutFileName = "ArkTS Code:/system/etc/abc/arkui/node.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseVMANameToFileName)
+{
+    uintptr_t offset = 0;
+    CString mapName = "[anon:ArkTS Code:/system/etc/abc/arkui/node.abc]";
+    CString outputFileName = "";
+    auto type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    CString exceptOutPut = "/system/etc/abc/arkui/node.abc";
+    EXPECT_EQ(type, ModulePathType::ABC_MODULE_PATH);
+    EXPECT_EQ(outputFileName, exceptOutPut);
+
+    mapName = "[anon:ArkTS Code:/system/lib64/module/hms/hds/libmetaball.z.so_52512_1]";
+    outputFileName = "";
+    offset = 0;
+    type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    exceptOutPut = "/system/lib64/module/hms/hds/libmetaball.z.so";
+    EXPECT_EQ(type, ModulePathType::SHORT_MODULE_PATH);
+    EXPECT_EQ(offset, 52512);
+    EXPECT_EQ(outputFileName, exceptOutPut);
+
+    mapName = "[anon:ArkTS Code:/application/libdatashareextensionability_napi.z.so_21400_2]";
+    outputFileName = "";
+    offset = 0;
+    type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    exceptOutPut = "/system/lib64/module/application/libdatashareextensionability_napi.z.so";
+    EXPECT_EQ(type, ModulePathType::SYSTEM_MODULE_PATH);
+    EXPECT_EQ(offset, 21400);
+    EXPECT_EQ(outputFileName, exceptOutPut);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseVMANameToFileName2)
+{
+    uintptr_t offset = 0;
+    CString mapName = "[anon:ArkTS Code:/application/libdatashareextensionability_napi.z.so_21400_]";
+    CString outputFileName = "";
+    auto type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    EXPECT_EQ(type, ModulePathType::INVALID_MODULE_PATH);
+
+    mapName = "[anon:ArkTS Code:/application/libdatashareextensionability_napi.z.so_21400]";
+    type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    EXPECT_EQ(type, ModulePathType::INVALID_MODULE_PATH);
+
+    mapName = "[anon:ArkTS Code:/application/libdatashareextensionability_napi.z.so_]";
+    type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    EXPECT_EQ(type, ModulePathType::INVALID_MODULE_PATH);
+
+    mapName = "[anon:ArkTS Code:/application/libdatashareextensionability_napi.z.so]";
+    type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    EXPECT_EQ(type, ModulePathType::INVALID_MODULE_PATH);
+
+    mapName = "/application/libdatashareextensionability_napi.z.so";
+    type = ModulePathHelper::ParseVMANameToFileName(mapName, offset, outputFileName);
+    EXPECT_EQ(type, ModulePathType::INVALID_MODULE_PATH);
 }
 
 HWTEST_F_L0(EcmaModuleTest, CheckCrossBundleHsp_DifferentBundle)

@@ -44,7 +44,8 @@ public:
     static Expected<JSTaggedValue, bool> ExecuteFromBuffer(JSThread *thread, const void *buffer, size_t size,
                                                            std::string_view entryPoint, const CString &filename = "",
                                                            bool needUpdate = false,
-                                                           const ExecuteTypes &executeType = ExecuteTypes::STATIC);
+                                                           const ExecuteTypes &executeType = ExecuteTypes::STATIC,
+                                                           const std::string &filePath = "");
     static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, const void *buffer, size_t size,
                                                              const CString &filename = "", bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,

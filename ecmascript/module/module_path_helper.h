@@ -59,17 +59,30 @@ using StringHelper = base::StringHelper;
 
 enum ValidateFilePath { ABC, ETS_MODULES };
 
+enum class ModulePathType : uint8_t {
+    INVALID_MODULE_PATH = 0,
+    SHORT_MODULE_PATH,
+    SYSTEM_MODULE_PATH,
+    HAP_MODULE_PATH,
+    ABC_MODULE_PATH,
+};
+
 class ModulePathHelper {
 public:
     static constexpr std::string_view EXT_NAME_ABC = ".abc";
+    static constexpr std::string_view EXT_NAME_ABC_WITH_RSQBRKT = ".abc]";
     static constexpr std::string_view EXT_NAME_ETS = ".ets";
     static constexpr std::string_view EXT_NAME_TS = ".ts";
     static constexpr std::string_view EXT_NAME_JS = ".js";
     static constexpr std::string_view EXT_NAME_JSON = ".json";
+    static constexpr std::string_view EXT_NAME_SO = ".so";
     static constexpr std::string_view EXT_NAME_Z_SO = ".z.so";
     static constexpr std::string_view EXT_NAME_D_TS = ".d.ts";
     static constexpr std::string_view EXT_NAME_MJS = ".mjs";
+    static constexpr std::string_view EXT_NAME_HAP = ".hap";
+    static constexpr std::string_view EXT_NAME_HSP = ".hsp";
     static constexpr std::string_view EXT_NAME_HQF = ".hqf";
+    static constexpr std::string_view PREFIX_ARKTS_CODE = "[anon:ArkTS Code:";
     static constexpr std::string_view PREFIX_NORMALIZED = "@normalized:";
     static constexpr std::string_view PREFIX_NORMALIZED_SO = "@normalized:Y";
     static constexpr std::string_view PREFIX_NORMALIZED_NOT_SO = "@normalized:N";
@@ -80,6 +93,7 @@ public:
     static constexpr std::string_view PREFIX_HMS = "hms:";
     static constexpr std::string_view PREFIX_ETS = "ets/";
     static constexpr std::string_view PREFIX_LIB = "lib";
+    static constexpr std::string_view PREFIX_SYSTEM_LIB64_MODULE = "/system/lib64/module";
     static constexpr std::string_view REQUIRE_NAITVE_MODULE_PREFIX = "@native:";
     static constexpr std::string_view REQUIRE_NAPI_OHOS_PREFIX = "@ohos:";
     static constexpr std::string_view REQUIRE_NAPI_APP_PREFIX = "@app:";
@@ -95,7 +109,7 @@ public:
     static constexpr std::string_view PREVIEW_OF_ACROSS_HAP_FLAG = "[preview]";
     static constexpr std::string_view PREVIER_TEST_DIR = ".test";
     static constexpr std::string_view PHYCICAL_FILE_PATH = "/src/main";
-    static constexpr std::string_view VMA_NAME_ARKTS_CODE = "ArkTS Code";
+    static constexpr std::string_view VMA_NAME_ARKTS_CODE = "ArkTS Code:";
     static constexpr std::string_view ENTRY_MAIN_FUNCTION = "_GLOBAL::func_main_0";
     static constexpr std::string_view ENTRY_FUNCTION_NAME = "func_main_0";
     static constexpr std::string_view TRUE_FLAG = "true";
@@ -103,10 +117,15 @@ public:
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
     static constexpr size_t EXT_NAME_ABC_LEN = 4;
+    static constexpr size_t EXT_NAME_ABC_WITH_RSQBRKT_LEN = 4;
     static constexpr size_t EXT_NAME_ETS_LEN = 4;
+    static constexpr size_t EXT_NAME_SO_LEN = 3;
     static constexpr size_t EXT_NAME_TS_LEN = 3;
     static constexpr size_t EXT_NAME_JS_LEN = 3;
     static constexpr size_t EXT_NAME_JSON_LEN = 5;
+    static constexpr size_t VMA_NAME_ARKTS_CODE_LEN = 11;
+    static constexpr size_t PREFIX_ARKTS_CODE_LEN = 17;
+    static constexpr size_t PREFIX_SYSTEM_LIB64_MODULE_LEN = 20;
     static constexpr size_t PREFIX_BUNDLE_LEN = 8;
     static constexpr size_t PREFIX_MODULE_LEN = 8;
     static constexpr size_t PREFIX_PACKAGE_LEN = 9;
@@ -210,7 +229,8 @@ public:
     static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
     static CString Utf8ConvertToString(JSThread *thread, JSTaggedValue str);
 
-    static CString ParseFileNameToVMAName(const CString &filename);
+    static std::string ParseFileNameToVMAName(const void *buffer, const std::string &filename);
+    static ModulePathType ParseVMANameToFileName(const CString &inputPath, uintptr_t &offset, CString &outputPath);
     static CString ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos, const CString &moduleName,
                                                            const CString &requestPath);
     static bool IsOhmUrl(const CString &str);

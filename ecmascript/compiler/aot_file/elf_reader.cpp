@@ -422,4 +422,32 @@ void ElfReader::SeparateSymtabSections(BinaryBufferParser &parser,
         secOffset += symtabSize;
     }
 }
+
+uint64_t ElfReader::RuntimeOffsetToFileOffset(uint64_t runtimeOffset)
+{
+    if (fileMapMem_.GetOriginAddr() == nullptr) {
+        return 0;
+    }
+    char *addr = reinterpret_cast<char *>(fileMapMem_.GetOriginAddr());
+    llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMapMem_.GetOriginAddr());
+    llvm::ELF::Elf64_Phdr *phdr = reinterpret_cast<llvm::ELF::Elf64_Phdr *>(addr + ehdr->e_phoff);
+
+    for (int i = 0; i < ehdr->e_phnum; ++i) {
+        if (phdr[i].p_type != llvm::ELF::PT_LOAD) {
+            continue;
+        }
+        if (!phdr[i].p_filesz) {
+            continue;
+        }
+
+        uint64_t segStart = phdr[i].p_vaddr;
+        uint64_t segEnd = phdr[i].p_vaddr + phdr[i].p_filesz;
+
+        if (runtimeOffset >= segStart && runtimeOffset < segEnd) {
+            return static_cast<uint64_t>(phdr[i].p_offset + (runtimeOffset - segStart));
+        }
+    }
+
+    return 0;
+}
 }  // namespace panda::ecmascript

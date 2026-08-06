@@ -115,7 +115,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
 // The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
     const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate,
-    const ExecuteTypes &executeType)
+    const ExecuteTypes &executeType, const std::string &filePath)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
     CString traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + filename +
@@ -123,7 +123,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint,
+            buffer, size, needUpdate, filePath);
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
         CString msg = "jsPandaFile is nullptr";

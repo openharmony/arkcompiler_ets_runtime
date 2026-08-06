@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
@@ -1146,12 +1147,48 @@ bool JSSymbolExtractor::InitializeAbcFileInfo([[maybe_unused]]const char* filePa
     return isInitialized_;
 }
 
+bool JSSymbolExtractor::InitializeELFFileInfo(uintptr_t offset, const char* filePath)
+{
+    // only for dynamic_abc, because dynamic_abc may be compiled into .so
+#if defined(PANDA_TARGET_OHOS)
+    if (isInitialized_) {
+        return isInitialized_;
+    }
+    fileMapMem_ = FileMap(filePath, O_RDONLY, PROT_READ, 0);
+    if (fileMapMem_.GetMem() == nullptr) {
+        return isInitialized_;
+    }
+
+    ElfReader reader(fileMapMem_);
+    uint64_t fileOffset = reader.RuntimeOffsetToFileOffset(offset);
+
+    data_ = reinterpret_cast<uint8_t *>(reinterpret_cast<uintptr_t>(fileMapMem_.GetMem()) + fileOffset);
+    auto header = reinterpret_cast<const panda_file::File::Header *>(data_);
+    dataSize_ = header->file_size;
+    isInitialized_ = true;
+    CreateJSPandaFile();
+#endif
+    return isInitialized_;
+}
+
 bool JSSymbolExtractor::Initialize(uintptr_t offset, bool needTranslate, const char* filePath)
 {
-    if (base::StringHelper::StringEndWith(filePath, ModulePathHelper::EXT_NAME_ABC)) {
-        return InitializeAbcFileInfo(filePath);
+    uintptr_t elfOffset = 0;
+    CString realPath;
+    auto type = ModulePathHelper::ParseVMANameToFileName(filePath, elfOffset, realPath);
+    switch (type) {
+        case ModulePathType::HAP_MODULE_PATH:
+            return InitializeHapFileInfo(offset, needTranslate, filePath);
+        case ModulePathType::ABC_MODULE_PATH:
+            return InitializeAbcFileInfo(realPath.c_str());
+        case ModulePathType::SHORT_MODULE_PATH:
+        case ModulePathType::SYSTEM_MODULE_PATH:
+            return InitializeELFFileInfo(elfOffset, realPath.c_str());
+        default:
+            LOG_ECMA(ERROR) << "Invalid file path: " << filePath;
+            return false;
     }
-    return InitializeHapFileInfo(offset, needTranslate, filePath);
+    return false;
 }
 
 bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] uintptr_t mapBase,

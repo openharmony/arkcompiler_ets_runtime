@@ -39,7 +39,8 @@ public:
                                                  const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     std::shared_ptr<JSPandaFile> LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
-                                                 const void *buffer, size_t size, bool needUpdate = false);
+                                                 const void *buffer, size_t size, bool needUpdate = false,
+                                                 const std::string &filePath = "");
 
     // load pandafile from secure mem
     std::shared_ptr<JSPandaFile> LoadJSPandaFileSecure(JSThread *thread, const CString &filename,

@@ -205,6 +205,7 @@ private:
     void CreateSourceMap(const std::string &hapPath);
     void CreateDebugExtractor();
     bool InitializeAbcFileInfo(const char* filePath);
+    bool InitializeELFFileInfo(uintptr_t offset, const char* filePath);
     bool InitializeHapFileInfo(uintptr_t offset, bool needTranslate, const char* filePath);
 
     MemMap fileMapMem_ {};

@@ -55,6 +55,7 @@ public:
         const uintptr_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
     void SeparateSymtabSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
         const uintptr_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
+    uint64_t RuntimeOffsetToFileOffset(uint64_t runtimeOffset);
 
 private:
     static uint32_t GetModuleNum(size_t moduleInfoSize)
