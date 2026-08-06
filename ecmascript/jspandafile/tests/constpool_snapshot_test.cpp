@@ -37,6 +37,12 @@
 #undef protected
 #undef private
 
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/serializer/file_deserializer.h"
+#include "ecmascript/serializer/file_serializer.h"
+
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -213,6 +219,37 @@ public:
         PandaFileTranslator::TranslateClasses(thread, pf.get(), CString(methodName));
         // Register shared constpools so ForEachSharedConstpool can find them
         thread->GetEcmaVM()->CreateAllConstpool(pf.get());
+    }
+
+    // Round-trips a single ConstantPool through the same FileSerializer/FileDeserializer pipeline
+    // that ConstPoolSnapshot::GetSerializeData / DeserializeData rely on, so that the constpool
+    // cache (compressed area) serialization filtering can be inspected in isolation.
+    // The returned handle is rooted in the test scope and its cache slots can be inspected directly.
+    JSHandle<ConstantPool> SerializeAndDeserializeConstPool(JSHandle<ConstantPool> constpool)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        // ConstPoolSnapshot wraps the shared constpools in a TaggedArray root before serializing.
+        JSHandle<JSTaggedValue> root(factory->NewTaggedArray(1));
+        TaggedArray::Cast(root.GetTaggedValue())->Set(thread, 0, constpool.GetTaggedValue());
+
+        std::unique_ptr<SerializeData> data;
+        {
+            EcmaHandleScope scope(thread);
+            JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+            FileSerializer serializer(thread);
+            EXPECT_TRUE(serializer.WriteValue(thread, root, undefined, undefined));
+            data = serializer.Release();
+        }
+        EXPECT_NE(data, nullptr);
+        if (data == nullptr) {
+            return JSHandle<ConstantPool>(thread, JSTaggedValue::Hole());
+        }
+        // Deserialize with the same FileDeserializer used by ConstPoolSnapshot::DeserializeData.
+        FileDeserializer deserializer(thread, data.get());
+        JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+        EXPECT_TRUE(result->IsTaggedArray());
+        JSTaggedValue constpoolVal = TaggedArray::Cast(result.GetTaggedValue())->Get(thread, 0);
+        return JSHandle<ConstantPool>(thread, constpoolVal);
     }
 
     EcmaVM *instance{nullptr};
@@ -431,5 +468,73 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ReadDataFromFileTest)
     std::unique_ptr<SerializeData> data = std::make_unique<SerializeData>(thread);
     ASSERT_TRUE(MockConstPoolSnapshot::ReadDataFromFile(data, fileName, std::move(readHeader)));
     ASSERT_NE(data, nullptr);
+}
+
+// ConstPool cache field serialization: a STRING entry CAN be serialized and survives the
+// serialize/deserialize round-trip (the cache serializer keeps only LINE_STRING entries).
+HWTEST_F_L0(ConstPoolSnapshotTest, CacheStringCanBeSerialized)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const uint32_t numOfCache = ConstantPool::AlignUpNumOfCacheForCompressedPointer(8);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(numOfCache);
+    constpool->SetSharedConstpoolId(JSTaggedValue(0));
+
+    static constexpr uint32_t STRING_SLOT = 0;
+    JSHandle<EcmaString> originStr = factory->NewFromASCII("ConstPoolCacheString");
+    // The constpool cache serializer keeps only LINE_STRING entries.
+    ASSERT_TRUE(originStr.GetTaggedValue().IsLineString());
+    constpool->SetObjectToCache(thread, STRING_SLOT, originStr.GetTaggedValue());
+
+    JSHandle<ConstantPool> deserialized = SerializeAndDeserializeConstPool(constpool);
+    ASSERT_TRUE(deserialized.GetTaggedValue().IsConstantPool());
+    JSTaggedValue cached = deserialized->GetObjectFromCache(thread, STRING_SLOT);
+    // String cache entries CAN survive the serialize/deserialize round-trip.
+    ASSERT_TRUE(cached.IsString());
+    JSHandle<EcmaString> desStr(thread, cached);
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), desStr, originStr));
+}
+
+// ConstPool cache field serialization: a METHOD entry (AOTLiteralInfo) CANNOT be serialized
+// and becomes a Hole after the round-trip.
+HWTEST_F_L0(ConstPoolSnapshotTest, CacheMethodCannotBeSerialized)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const uint32_t numOfCache = ConstantPool::AlignUpNumOfCacheForCompressedPointer(8);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(numOfCache);
+    constpool->SetSharedConstpoolId(JSTaggedValue(0));
+
+    static constexpr uint32_t METHOD_SLOT = 1;
+    // In the constpool cache a method is stored as an AOTLiteralInfo.
+    JSHandle<AOTLiteralInfo> methodInfo = factory->NewAOTLiteralInfo(1);
+    ASSERT_TRUE(methodInfo.GetTaggedValue().IsAOTLiteralInfo());
+    constpool->SetObjectToCache(thread, METHOD_SLOT, methodInfo.GetTaggedValue());
+
+    JSHandle<ConstantPool> deserialized = SerializeAndDeserializeConstPool(constpool);
+    ASSERT_TRUE(deserialized.GetTaggedValue().IsConstantPool());
+    JSTaggedValue cached = deserialized->GetObjectFromCache(thread, METHOD_SLOT);
+    // Non-string cache entries (method / AOTLiteralInfo) CANNOT be serialized and become Hole.
+    ASSERT_TRUE(cached.IsHole());
+}
+
+// ConstPool cache field serialization: a LITERAL entry (JSArray/JSObject) CANNOT be serialized
+// and becomes a Hole after the round-trip.
+HWTEST_F_L0(ConstPoolSnapshotTest, CacheLiteralCannotBeSerialized)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const uint32_t numOfCache = ConstantPool::AlignUpNumOfCacheForCompressedPointer(8);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(numOfCache);
+    constpool->SetSharedConstpoolId(JSTaggedValue(0));
+
+    static constexpr uint32_t LITERAL_SLOT = 2;
+    // An array/object literal cached in the constpool is a JSArray/JSObject.
+    JSHandle<JSArray> literal = factory->NewJSArray();
+    ASSERT_TRUE(literal.GetTaggedValue().IsJSArray());
+    constpool->SetObjectToCache(thread, LITERAL_SLOT, literal.GetTaggedValue());
+
+    JSHandle<ConstantPool> deserialized = SerializeAndDeserializeConstPool(constpool);
+    ASSERT_TRUE(deserialized.GetTaggedValue().IsConstantPool());
+    JSTaggedValue cached = deserialized->GetObjectFromCache(thread, LITERAL_SLOT);
+    // Non-string cache entries (literal / JSArray) CANNOT be serialized and become Hole.
+    ASSERT_TRUE(cached.IsHole());
 }
 } // namespace panda::test
