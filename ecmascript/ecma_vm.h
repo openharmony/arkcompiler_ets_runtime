@@ -233,6 +233,12 @@ private:
     IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
 };
 
+enum class ModuleRequestsClearState : uint8_t {
+    UNINITIALIZED = 0,
+    CAN_CLEAR = 1,
+    CANNOT_CLEAR = 2,
+};
+
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -343,6 +349,16 @@ public:
     JSRuntimeOptions &GetJSOptions()
     {
         return options_;
+    }
+
+    ModuleRequestsClearState GetModuleRequestsClearState()
+    {
+        return moduleRequestsClearState_;
+    }
+
+    void SetModuleRequestsClearState(ModuleRequestsClearState state)
+    {
+        moduleRequestsClearState_ = state;
     }
 
     const EcmaParamConfiguration &GetEcmaParamConfiguration() const
@@ -1775,6 +1791,8 @@ private:
 
     //apiVersion states
     uint32_t apiVersion_ = 8;
+
+    ModuleRequestsClearState moduleRequestsClearState_ {ModuleRequestsClearState::UNINITIALIZED};
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;

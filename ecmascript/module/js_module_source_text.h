@@ -564,9 +564,11 @@ private:
                                                          const JSHandle<SourceTextModule> module,
                                                          const int index);
 
-    static void ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module);
+    static void ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module);
 
     static void ClearTopLevelCapabilityIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module);
+
+    static void ClearModuleRequestsIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     static void EvaluateJsonModule(JSThread *thread, JSHandle<SourceTextModule> module,
                                    const JSPandaFile *jsPandaFile, CString recordName);

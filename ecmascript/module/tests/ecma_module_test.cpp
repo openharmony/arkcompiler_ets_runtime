@@ -23,6 +23,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -105,14 +106,19 @@ public:
 
     // Wrappers for private SourceTextModule methods — friendship is not inherited,
     // so gtest-derived classes cannot call them directly.
-    static void ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
+    static void ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
     {
-        SourceTextModule::ClearInstantiationFieldsIfNeeded(thread, module);
+        SourceTextModule::ClearImportEntriesIfNeeded(thread, module);
     }
 
     static void ClearTopLevelCapabilityIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module)
     {
         SourceTextModule::ClearTopLevelCapabilityIfNeeded(thread, module);
+    }
+
+    static void ClearModuleRequestsIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module)
+    {
+        SourceTextModule::ClearModuleRequestsIfNeeded(thread, module);
     }
 };
 
@@ -7107,13 +7113,13 @@ HWTEST_F_L0(EcmaModuleTest, ModuleValueAccessor_GetNativeOrCjsExports_OtherModul
 
 /*
  * Feature: Module Memory Optimization
- * Function: ClearInstantiationFieldsIfNeeded
+ * Function: ClearImportEntriesIfNeeded
  * SubFunction: ImportEntries cleared after Instantiate
  * FunctionPoints: Verify ImportEntries is set to Undefined
  * CaseDescription: Create a module at INSTANTIATED status, add ImportEntries, call cleanup,
  *                  verify ImportEntries is cleared
  */
-HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Cleared)
+HWTEST_F_L0(EcmaModuleTest, ClearImportEntries_ImportEntries_Cleared)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
@@ -7124,18 +7130,18 @@ HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Cleared)
     SourceTextModule::AddImportEntry(thread, module, importEntry, 0, 1);
     EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
 
-    ClearInstantiationFieldsIfNeeded(thread, module);
+    ClearImportEntriesIfNeeded(thread, module);
     EXPECT_TRUE(module->GetImportEntries(thread).IsUndefined());
 }
 
 /*
  * Feature: Module Memory Optimization
- * Function: ClearInstantiationFieldsIfNeeded
- * SubFunction: ModuleRequests NOT cleared for shared module
- * FunctionPoints: Verify ModuleRequests is preserved for shared modules
- * CaseDescription: Shared module needs ModuleRequests for cross-thread fallback resolve
+ * Function: ClearImportEntriesIfNeeded
+ * SubFunction: ImportEntries NOT cleared for shared module
+ * FunctionPoints: Verify ImportEntries is preserved for shared modules
+ * CaseDescription: Shared module ImportEntries should not be cleared by ClearImportEntriesIfNeeded
  */
-HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ModuleRequests_NotCleared_Shared)
+HWTEST_F_L0(EcmaModuleTest, ClearImportEntries_NotCleared_Shared)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
@@ -7143,23 +7149,24 @@ HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ModuleRequests_NotCleared_S
     module->SetSharedType(SharedTypes::SHARED_MODULE);
 
     // Shared module fields cannot be populated with non-shared-heap values
-    // (WriteBarrier ASSERT in debug mode). ModuleRequests is initially undefined
-    // and should remain undefined after cleanup — i.e., shared modules are skipped.
-    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+    // (WriteBarrier ASSERT in debug mode). ImportEntries is initially undefined
+    // and should remain undefined — ClearImportEntriesIfNeeded does not have
+    // IsSharedModule check, but shared module ImportEntries starts as undefined.
+    EXPECT_TRUE(module->GetImportEntries(thread).IsUndefined());
 
-    ClearInstantiationFieldsIfNeeded(thread, module);
-    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+    ClearImportEntriesIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetImportEntries(thread).IsUndefined());
 }
 
 /*
  * Feature: Module Memory Optimization
- * Function: ClearInstantiationFieldsIfNeeded
+ * Function: ClearImportEntriesIfNeeded
  * SubFunction: ImportEntries preserved when ModuleLogger is enabled
  * FunctionPoints: Verify ImportEntries is NOT cleared when ModuleLogger is active
  * CaseDescription: ModuleLogger reads ImportEntries for diagnostics, so it must be
  *                  preserved even after Instantiate when logging is on.
  */
-HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Preserved_WithModuleLogger)
+HWTEST_F_L0(EcmaModuleTest, ClearImportEntries_ImportEntries_Preserved_WithModuleLogger)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
@@ -7175,7 +7182,7 @@ HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Preserved_Wit
     ModuleLogger *moduleLogger = new ModuleLogger(vm);
     thread->SetModuleLogger(moduleLogger);
 
-    ClearInstantiationFieldsIfNeeded(thread, module);
+    ClearImportEntriesIfNeeded(thread, module);
     EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
 
     // Cleanup
@@ -7190,7 +7197,7 @@ HWTEST_F_L0(EcmaModuleTest, ClearInstantiationFields_ImportEntries_Preserved_Wit
  * FunctionPoints: Verify TopLevelCapability is set to Undefined after Evaluate
  * CaseDescription: Non-shared module at EVALUATED status, TopLevelCapability should be cleared
  */
-HWTEST_F_L0(EcmaModuleTest, ClearPostEvaluationFields_TopLevelCapability_Cleared)
+HWTEST_F_L0(EcmaModuleTest, ClearTopLevelCapability_Cleared)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
@@ -7212,7 +7219,7 @@ HWTEST_F_L0(EcmaModuleTest, ClearPostEvaluationFields_TopLevelCapability_Cleared
  * FunctionPoints: Verify shared module preserves TopLevelCapability
  * CaseDescription: Shared module needs TopLevelCapability for cross-thread Evaluate redirect
  */
-HWTEST_F_L0(EcmaModuleTest, ClearPostEvaluationFields_TopLevelCapability_NotCleared_Shared)
+HWTEST_F_L0(EcmaModuleTest, ClearTopLevelCapability_NotCleared_Shared)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
@@ -7226,6 +7233,68 @@ HWTEST_F_L0(EcmaModuleTest, ClearPostEvaluationFields_TopLevelCapability_NotClea
 
     ClearTopLevelCapabilityIfNeeded(thread, module);
     EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: ModuleRequests NOT cleared when VM state is CANNOT_CLEAR
+ * FunctionPoints: Verify ModuleRequests is preserved when snapshot is active
+ * CaseDescription: Non-shared module, snapshot active (CANNOT_CLEAR state),
+ *                  ModuleRequests should not be cleared until serialization completes
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_NotCleared_CannotClearState)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // CANNOT_CLEAR: ModuleRequests not cleared
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CANNOT_CLEAR);
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Transition to CAN_CLEAR: now cleared
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: ModuleRequests NOT cleared for shared module regardless of VM state
+ * FunctionPoints: Verify shared modules skip ModuleRequests clearing entirely
+ * CaseDescription: Shared module needs ModuleRequests for cross-thread fallback resolve
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_NotCleared_Shared)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+
+    // Shared module fields cannot be populated with non-shared-heap values
+    // (WriteBarrier ASSERT in debug mode). ModuleRequests is initially undefined
+    // and should remain undefined after cleanup — i.e., shared modules are skipped.
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
 }
 
 /*
@@ -7251,14 +7320,17 @@ HWTEST_F_L0(EcmaModuleTest, EvaluatedModule_SkipsCycleRootErrorCheck)
 
 /*
  * Feature: Module Memory Optimization
- * Function: ClearInstantiationFieldsIfNeeded + ClearTopLevelCapabilityIfNeeded
+ * Function: ClearImportEntriesIfNeeded + ClearTopLevelCapabilityIfNeeded
  * SubFunction: Full cleanup lifecycle for non-shared module
- * FunctionPoints: Verify both cleanup phases work correctly
- * CaseDescription: Instantiate phase clears ImportEntries, Evaluate phase clears TopLevelCapability
+ * FunctionPoints: Verify both sync and async cleanup phases work correctly with VM state
+ * CaseDescription: Sync path (InnerModuleEvaluationUnsafe): ImportEntries + TopLevelCapability
+ *                  Async path (AsyncModuleExecutionFulfilled): TopLevelCapability + ModuleRequests
+ *                  ModuleRequests clearing depends on VM ModuleRequestsClearState
  */
 HWTEST_F_L0(EcmaModuleTest, FullLifecycle_NonSharedModule_FieldsCleared)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
 
@@ -7266,16 +7338,238 @@ HWTEST_F_L0(EcmaModuleTest, FullLifecycle_NonSharedModule_FieldsCleared)
     module->SetStatus(ModuleStatus::INSTANTIATED);
     JSHandle<ImportEntry> importEntry = factory->NewImportEntry();
     SourceTextModule::AddImportEntry(thread, module, importEntry, 0, 1);
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
     EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
 
-    ClearInstantiationFieldsIfNeeded(thread, module);
+    ClearImportEntriesIfNeeded(thread, module);
     EXPECT_TRUE(module->GetImportEntries(thread).IsUndefined());
+    // ModuleRequests NOT cleared by ClearImportEntriesIfNeeded (only ImportEntries)
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
 
-    // Phase 2: Evaluate → clear TopLevelCapability
+    // Phase 2: Evaluate — sync path (InnerModuleEvaluationUnsafe)
+    // TopLevelCapability cleared, ModuleRequests NOT cleared (CANNOT_CLEAR state)
     module->SetStatus(ModuleStatus::EVALUATED);
     JSHandle<JSPromise> capability = factory->NewJSPromise();
     module->SetTopLevelCapability(thread, capability);
     EXPECT_FALSE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CANNOT_CLEAR);
+    ClearTopLevelCapabilityIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    // ModuleRequests NOT cleared in CANNOT_CLEAR state
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Phase 3: Simulate second launch — state CAN_CLEAR (directly set for test)
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: UNINITIALIZED lazy init — DisableModuleSnapshot sets CAN_CLEAR
+ * FunctionPoints: Verify lazy init path evaluates DisableModuleSnapshot and caches state
+ * CaseDescription: VM state is UNINITIALIZED, DisableModuleSnapshot is true,
+ *                  first call should init state to CAN_CLEAR and clear ModuleRequests
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_LazyInit_DisableModuleSnapshot)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // UNINITIALIZED state — lazy init evaluates DisableModuleSnapshot + IsModuleSnapshotDisabled
+    // and caches the result. After init, state should not be UNINITIALIZED.
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_NE(vm->GetModuleRequestsClearState(), ModuleRequestsClearState::UNINITIALIZED);
+
+    // Cleanup
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: IsUndefined early return skips redundant clearing
+ * FunctionPoints: Verify already-cleared module is skipped without side effects
+ * CaseDescription: ModuleRequests already undefined, second call should return immediately
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_SkipAlreadyCleared)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    // ModuleRequests starts as undefined (no SetModuleRequests call)
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+    // Should return immediately — no crash, no side effects
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: UNINITIALIZED lazy init with g_featureLoaded_ MODULE bit set
+ * FunctionPoints: Verify lazy init path checks g_featureLoaded_ and sets CAN_CLEAR
+ * CaseDescription: VM state UNINITIALIZED, g_featureLoaded_ MODULE bit set
+ *                  (simulating second launch after serialization), should clear ModuleRequests
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_LazyInit_FeatureLoaded)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Simulate second launch: DisableModuleSnapshot=true triggers CAN_CLEAR in CanClearModuleRequests
+    vm->GetJSOptions().SetDisableModuleSnapshot(true);
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+    ModulesSnapshotHelper::MarkModuleSnapshotLoaded();
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_EQ(vm->GetModuleRequestsClearState(), ModuleRequestsClearState::CAN_CLEAR);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+    vm->GetJSOptions().SetDisableModuleSnapshot(false);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearImportEntriesIfNeeded
+ * SubFunction: ImportEntries preserved when IsDebugApp is true
+ * FunctionPoints: Verify ImportEntries is NOT cleared when debugger is attached
+ * CaseDescription: Debug app needs ImportEntries for debugging, so it must be preserved.
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearImportEntries_NotCleared_DebugApp)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<ImportEntry> importEntry = factory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry, 0, 1);
+    EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+
+    vm->GetJsDebuggerManager()->SetIsDebugApp(true);
+    ClearImportEntriesIfNeeded(thread, module);
+    EXPECT_FALSE(module->GetImportEntries(thread).IsUndefined());
+
+    // Cleanup
+    vm->GetJsDebuggerManager()->SetIsDebugApp(false);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearTopLevelCapabilityIfNeeded
+ * SubFunction: TopLevelCapability preserved when IsDebugApp is true
+ * FunctionPoints: Verify TopLevelCapability is NOT cleared when debugger is attached
+ * CaseDescription: Debug app needs TopLevelCapability for debugging, so it must be preserved.
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearTopLevelCapability_NotCleared_DebugApp)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<JSPromise> capability = factory->NewJSPromise();
+    module->SetTopLevelCapability(thread, capability);
+    EXPECT_FALSE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    vm->GetJsDebuggerManager()->SetIsDebugApp(true);
+    ClearTopLevelCapabilityIfNeeded(thread, module);
+    EXPECT_FALSE(module->GetTopLevelCapability(thread).IsUndefined());
+
+    // Cleanup
+    vm->GetJsDebuggerManager()->SetIsDebugApp(false);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: ModuleRequests preserved when IsDebugApp is true
+ * FunctionPoints: Verify ModuleRequests is NOT cleared when debugger is attached
+ * CaseDescription: Debug app needs ModuleRequests for debugging, so it must be preserved.
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_NotCleared_DebugApp)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+    vm->GetJsDebuggerManager()->SetIsDebugApp(true);
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    vm->GetJsDebuggerManager()->SetIsDebugApp(false);
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
+}
+
+/*
+ * Feature: Module Memory Optimization
+ * Function: ClearTopLevelCapabilityIfNeeded
+ * SubFunction: TopLevelCapability IsUndefined early return
+ * FunctionPoints: Verify already-undefined TopLevelCapability is skipped without side effects
+ * CaseDescription: TopLevelCapability already undefined, call should return immediately.
+ */
+HWTEST_F_L0(EcmaModuleTest, ClearTopLevelCapability_SkipAlreadyUndefined)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+
+    // TopLevelCapability starts as undefined (no SetTopLevelCapability call)
+    EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
 
     ClearTopLevelCapabilityIfNeeded(thread, module);
     EXPECT_TRUE(module->GetTopLevelCapability(thread).IsUndefined());
@@ -7283,58 +7577,71 @@ HWTEST_F_L0(EcmaModuleTest, FullLifecycle_NonSharedModule_FieldsCleared)
 
 /*
  * Feature: Module Memory Optimization
- * Function: SerializeModuleCNativeObjects
- * SubFunction: ModuleRequests=Undefined → serialization skips gracefully
- * FunctionPoints: Verify no crash when serializing module with cleaned ModuleRequests
- * CaseDescription: After ClearInstantiationFieldsIfNeeded, ModuleRequests is Undefined.
- *                  Serialization should skip lazy-import array traversal safely.
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: ModuleRequests NOT cleared when LazyImportStatusArray exists
+ * FunctionPoints: Verify ModuleRequests is preserved when lazyArray is non-null
+ * CaseDescription: Serialization depends on lazyArray && ModuleRequests.IsTaggedArray(),
+ *                  so ModuleRequests must not be cleared while lazyArray exists.
  */
-HWTEST_F_L0(EcmaModuleTest, ModuleRequestsUndefined_SnapshotSerializeNoCrash)
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_NotCleared_LazyArrayExists)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
-    module->SetEcmaModuleRecordNameString("test");
+    module->SetStatus(ModuleStatus::EVALUATED);
     module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
 
-    // Simulate cleaned ModuleRequests after ClearInstantiationFieldsIfNeeded
-    module->SetModuleRequests(thread, JSTaggedValue::Undefined());
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
 
-    // Verify serialization code can read Undefined ModuleRequests without crash:
-    // lazyArray && requests.IsTaggedArray() → false → skip traversal
-    JSTaggedValue requests = module->GetModuleRequests(thread);
-    EXPECT_TRUE(requests.IsUndefined());
-    EXPECT_FALSE(requests.IsTaggedArray());
+    // Simulate lazy import array present
+    bool *lazyArray = new bool[1] {false};
+    module->SetLazyImportArray(lazyArray);
+
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+    ClearModuleRequestsIfNeeded(thread, module);
+    // ModuleRequests NOT cleared because lazyArray exists
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    module->DestroyLazyImportArray();
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
 }
 
 /*
  * Feature: Module Memory Optimization
- * Function: ClearInstantiationFieldsIfNeeded
- * SubFunction: Module variable access via Environment unaffected by ModuleRequests cleanup
- * FunctionPoints: Verify Environment binding is preserved after ModuleRequests is cleared
- * CaseDescription: Module variable access goes through Environment, not ModuleRequests.
- *                  Clearing ModuleRequests after Instantiate must not affect variable access.
+ * Function: ClearModuleRequestsIfNeeded
+ * SubFunction: ModuleRequests cleared when LazyImportStatusArray is null
+ * FunctionPoints: Verify ModuleRequests is cleared when lazyArray is null and VM state allows
+ * CaseDescription: When lazyArray is null, serialization does not depend on ModuleRequests,
+ *                  so it can be safely cleared.
  */
-HWTEST_F_L0(EcmaModuleTest, ModuleVariableAccess_AfterModuleRequestsCleared)
+HWTEST_F_L0(EcmaModuleTest, ClearModuleRequests_Cleared_LazyArrayNull)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
-    module->SetEcmaModuleRecordNameString("test");
-    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
     module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
 
-    // Set up Environment binding (simulates Instantiate result)
-    JSHandle<TaggedArray> environment = factory->NewTaggedArray(1);
-    environment->Set(thread, 0, JSTaggedValue(42));
-    module->SetEnvironment(thread, environment);
+    JSHandle<EcmaString> requestStr = factory->NewFromASCII("./module_a");
+    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
+    moduleRequests->Set(thread, 0, requestStr);
+    module->SetModuleRequests(thread, moduleRequests);
+    EXPECT_FALSE(module->GetModuleRequests(thread).IsUndefined());
 
-    // Clear ModuleRequests
-    module->SetModuleRequests(thread, JSTaggedValue::Undefined());
+    // lazyArray is null by default (NewSourceTextModule does not set it)
+    EXPECT_EQ(module->GetLazyImportStatusArray(), nullptr);
 
-    // Environment still accessible
-    JSTaggedValue envValue = module->GetEnvironment(thread);
-    EXPECT_FALSE(envValue.IsUndefined());
-    JSHandle<TaggedArray> env(thread, envValue);
-    EXPECT_EQ(env->Get(thread, 0), JSTaggedValue(42));
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+    ClearModuleRequestsIfNeeded(thread, module);
+    EXPECT_TRUE(module->GetModuleRequests(thread).IsUndefined());
+
+    // Cleanup
+    vm->SetModuleRequestsClearState(ModuleRequestsClearState::UNINITIALIZED);
 }
 
 /*

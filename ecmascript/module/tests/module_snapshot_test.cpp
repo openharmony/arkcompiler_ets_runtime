@@ -801,13 +801,13 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeSlicedString)
 
 HWTEST_F_L0(ModuleSnapshotTest, DisableSnapshotFeatureByOption)
 {
-    auto oldLoaded = ModulesSnapshotHelper::g_featureState_;
+    auto oldFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
     ModulesSnapshotHelper::g_featureState_ = 0;
     ModulesSnapshotHelper::MarkSnapshotDisabledByOption();
     ASSERT_EQ(ModulesSnapshotHelper::g_featureState_,
         static_cast<int>(SnapshotFeatureState::MODULE) |
             static_cast<int>(SnapshotFeatureState::PANDAFILE));
-    ASSERT_EQ(ModulesSnapshotHelper::g_featureLoaded_, oldLoaded);
+    ASSERT_EQ(ModulesSnapshotHelper::g_featureLoaded_, oldFeatureLoaded);
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, ShouldDisableModuleSnapshot)
