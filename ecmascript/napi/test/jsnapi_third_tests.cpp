@@ -4393,6 +4393,111 @@ HWTEST_F_L0(JSNApiTests, SetStopPreLoadSoCallback)
     EXPECT_EQ(stopPreLoadCallbacks.size(), 0);
 }
 
+static std::pair<std::unique_ptr<uint8_t[]>, size_t> CreateBufferFromString(const std::string &str)
+{
+    size_t size = str.size();
+    auto buffer = std::make_unique<uint8_t[]>(size);
+    std::copy(str.begin(), str.end(), buffer.get());
+    return std::make_pair(std::move(buffer), size);
+}
+
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+[[maybe_unused]] static constexpr size_t PKG_FLAT_ENTRY_COUNT = 12;  // 6 pkg fields x 2 (key, value)
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+static constexpr size_t ENTRY_HAP_PAIR_COUNT = 3;   // non-empty pairs for the "entry" hap
+static constexpr size_t HSP_PAIR_COUNT = 4;         // non-empty pairs for the "hsp"
+static constexpr size_t LIBRARY_PAIR_COUNT = 6;     // non-empty pairs for the "library"
+
+static void VerifyEntryHspPkgInfo(EcmaVM *vm)
+{
+#if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> hapInfo{};
+    vm->GetPkgContextInfoListElements("entry", "entry", hapInfo);
+    EXPECT_EQ(hapInfo.size(), ENTRY_HAP_PAIR_COUNT);
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "packageName"), "entry");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "bundleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "moduleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "version"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "entryPath"), "src/main/");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "isSO"), "false");
+    CVector<std::pair<CString, CString>> hspInfo{};
+    vm->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
+    EXPECT_EQ(hspInfo.size(), HSP_PAIR_COUNT);
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "packageName"), "hsp");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "bundleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "moduleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "version"), "1.1.0");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "entryPath"), "Index.ets");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "isSO"), "false");
+#else
+    CVector<CString> hapInfo{};
+    vm->GetPkgContextInfoListElements("entry", "entry", hapInfo);
+    EXPECT_EQ(hapInfo.size(), PKG_FLAT_ENTRY_COUNT);
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_PACKAGE_NAME_INDEX], "entry");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_BUDNLE_NAME_INDEX], "");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_MODULE_NAME_INDEX], "");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_VERSION_INDEX], "");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_ENTRY_PATH_INDEX], "src/main/");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_IS_SO_INDEX], "false");
+    CVector<CString> hspInfo{};
+    vm->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
+    EXPECT_EQ(hspInfo.size(), PKG_FLAT_ENTRY_COUNT);
+    EXPECT_EQ(hspInfo[ModulePathHelper::PKGINFO_PACKAGE_NAME_INDEX], "hsp");
+    EXPECT_EQ(hspInfo[ModulePathHelper::PKGINFO_BUDNLE_NAME_INDEX], "");
+    EXPECT_EQ(hspInfo[ModulePathHelper::PKGINFO_MODULE_NAME_INDEX], "");
+    EXPECT_EQ(hspInfo[ModulePathHelper::PKGINFO_VERSION_INDEX], "1.1.0");
+    EXPECT_EQ(hspInfo[ModulePathHelper::PKGINFO_ENTRY_PATH_INDEX], "Index.ets");
+    EXPECT_EQ(hspInfo[ModulePathHelper::PKGINFO_IS_SO_INDEX], "false");
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+#endif
+}
+
+static void VerifyEntryLibraryPkgInfo(EcmaVM *vm)
+{
+#if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> hapInfo{};
+    vm->GetPkgContextInfoListElements("entry", "entry", hapInfo);
+    EXPECT_EQ(hapInfo.size(), ENTRY_HAP_PAIR_COUNT);
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "packageName"), "entry");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "bundleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "moduleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "version"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "entryPath"), "src/main/");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hapInfo, "isSO"), "false");
+    CVector<std::pair<CString, CString>> libraryInfo{};
+    vm->GetPkgContextInfoListElements("library", "library", libraryInfo);
+    EXPECT_EQ(libraryInfo.size(), LIBRARY_PAIR_COUNT);
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(libraryInfo, "packageName"), "library");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(libraryInfo, "bundleName"), "com.xxx.xxxx");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(libraryInfo, "moduleName"), "library");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(libraryInfo, "version"), "1.0.0");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(libraryInfo, "entryPath"), "Index.ets");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(libraryInfo, "isSO"), "false");
+#else
+    CVector<CString> hapInfo{};
+    vm->GetPkgContextInfoListElements("entry", "entry", hapInfo);
+    EXPECT_EQ(hapInfo.size(), PKG_FLAT_ENTRY_COUNT);
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_PACKAGE_NAME_INDEX], "entry");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_BUDNLE_NAME_INDEX], "");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_MODULE_NAME_INDEX], "");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_VERSION_INDEX], "");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_ENTRY_PATH_INDEX], "src/main/");
+    EXPECT_EQ(hapInfo[ModulePathHelper::PKGINFO_IS_SO_INDEX], "false");
+    CVector<CString> libraryInfo{};
+    vm->GetPkgContextInfoListElements("library", "library", libraryInfo);
+    EXPECT_EQ(libraryInfo.size(), PKG_FLAT_ENTRY_COUNT);
+    EXPECT_EQ(libraryInfo[ModulePathHelper::PKGINFO_PACKAGE_NAME_INDEX], "library");
+    EXPECT_EQ(libraryInfo[ModulePathHelper::PKGINFO_BUDNLE_NAME_INDEX], "com.xxx.xxxx");
+    EXPECT_EQ(libraryInfo[ModulePathHelper::PKGINFO_MODULE_NAME_INDEX], "library");
+    EXPECT_EQ(libraryInfo[ModulePathHelper::PKGINFO_VERSION_INDEX], "1.0.0");
+    EXPECT_EQ(libraryInfo[ModulePathHelper::PKGINFO_ENTRY_PATH_INDEX], "Index.ets");
+    EXPECT_EQ(libraryInfo[ModulePathHelper::PKGINFO_IS_SO_INDEX], "false");
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+#endif
+}
+
 HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
 {
     std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
@@ -4417,31 +4522,20 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
     };
     newPkgList["hsp"] = {hspList};
     JSNApi::UpdatePkgContextInfoList(vm_, newPkgList);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> vmPkgList = vm_->GetPkgContextInfoList();
+    EXPECT_EQ(vmPkgList.size(), 2);
+    EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 3);
+    EXPECT_EQ(vmPkgList["hsp"].size(), 1);
+    EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 4);
+#else
     CMap<CString, CMap<CString, CVector<CString>>> vmPkgList = vm_->GetPkgContextInfoList();
     EXPECT_EQ(vmPkgList.size(), 2);
     EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
     EXPECT_EQ(vmPkgList["hsp"].size(), 1);
     EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 12);
-#if ENABLE_LATEST_OPTIMIZATION
-    CVector<CString> hapInfo{};
-    vm_->GetPkgContextInfoListElements("entry", "entry", hapInfo);
-    EXPECT_EQ(hapInfo.size(), 12);
-    EXPECT_EQ(hapInfo[1], "entry");
-    EXPECT_EQ(hapInfo[3], "");
-    EXPECT_EQ(hapInfo[5], "");
-    EXPECT_EQ(hapInfo[7], "");
-    EXPECT_EQ(hapInfo[9], "src/main/");
-    EXPECT_EQ(hapInfo[11], "false");
-    CVector<CString> hspInfo{};
-    vm_->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
-    EXPECT_EQ(hspInfo.size(), 12);
-    EXPECT_EQ(hspInfo[1], "hsp");
-    EXPECT_EQ(hspInfo[3], "");
-    EXPECT_EQ(hspInfo[5], "");
-    EXPECT_EQ(hspInfo[7], "1.1.0");
-    EXPECT_EQ(hspInfo[9], "Index.ets");
-    EXPECT_EQ(hspInfo[11], "false");
-#endif
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    VerifyEntryHspPkgInfo(vm_);
 }
 
 HWTEST_F_L0(JSNApiTests, UpdatePkgNameList)
@@ -4483,40 +4577,23 @@ HWTEST_F_L0(JSNApiTests, SetPkgContextInfoListWithBuffer)
         "", "version":"", "entryPath":"src/main/", "isSO":false, "dependencyAlias":""}})";
     std::string libraryString = R"({"library":{"packageName":"library", "bundleName":"com.xxx.xxxx", "moduleName":
         "library", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias":"har"}})";
-    auto createBufferFromString = [](const std::string& str) {
-        size_t size = str.size();
-        auto buffer = std::make_unique<uint8_t[]>(size);
-        std::copy(str.begin(), str.end(), buffer.get());
-        return std::make_pair(std::move(buffer), size);
-    };
-    modulePkgContentMap["entry"] = createBufferFromString(entryString);
-    modulePkgContentMap["library"] = createBufferFromString(libraryString);
+    modulePkgContentMap["entry"] = CreateBufferFromString(entryString);
+    modulePkgContentMap["library"] = CreateBufferFromString(libraryString);
     JSNApi::SetPkgContextInfoList(vm_, modulePkgContentMap);
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> vmPkgList = vm_->GetPkgContextInfoList();
+    EXPECT_EQ(vmPkgList.size(), 2);
+    EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 3);
+    EXPECT_EQ(vmPkgList["library"].size(), 1);
+    EXPECT_EQ(vmPkgList["library"]["library"].size(), 6);
+#else
     CMap<CString, CMap<CString, CVector<CString>>> vmPkgList = vm_->GetPkgContextInfoList();
     EXPECT_EQ(vmPkgList.size(), 2);
     EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
     EXPECT_EQ(vmPkgList["library"].size(), 1);
     EXPECT_EQ(vmPkgList["library"]["library"].size(), 12);
-#if ENABLE_LATEST_OPTIMIZATION
-    CVector<CString> hapInfo{};
-    vm_->GetPkgContextInfoListElements("entry", "entry", hapInfo);
-    EXPECT_EQ(hapInfo.size(), 12);
-    EXPECT_EQ(hapInfo[1], "entry");
-    EXPECT_EQ(hapInfo[3], "");
-    EXPECT_EQ(hapInfo[5], "");
-    EXPECT_EQ(hapInfo[7], "");
-    EXPECT_EQ(hapInfo[9], "src/main/");
-    EXPECT_EQ(hapInfo[11], "false");
-    CVector<CString> libraryInfo{};
-    vm_->GetPkgContextInfoListElements("library", "library", libraryInfo);
-    EXPECT_EQ(libraryInfo.size(), 12);
-    EXPECT_EQ(libraryInfo[1], "library");
-    EXPECT_EQ(libraryInfo[3], "com.xxx.xxxx");
-    EXPECT_EQ(libraryInfo[5], "library");
-    EXPECT_EQ(libraryInfo[7], "1.0.0");
-    EXPECT_EQ(libraryInfo[9], "Index.ets");
-    EXPECT_EQ(libraryInfo[11], "false");
-#endif
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    VerifyEntryLibraryPkgInfo(vm_);
 }
 
 HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoListWithBuffer)
@@ -4533,6 +4610,17 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoListWithBuffer)
     updatePkgContentMap["hsp"] = createBufferFromString(hspString);
     JSNApi::UpdatePkgContextInfoList(vm_, updatePkgContentMap);
 #if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> hspInfo{};
+    vm_->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
+    EXPECT_EQ(hspInfo.size(), 5);
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "packageName"), "hsp");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "bundleName"), "");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "moduleName"), "hsp");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "version"), "1.1.0");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "entryPath"), "Index.ets");
+    EXPECT_EQ(ModulePathHelper::GetPkgInfoValueOrEmpty(hspInfo, "isSO"), "false");
+#else
     CVector<CString> hspInfo{};
     vm_->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
     EXPECT_EQ(hspInfo.size(), 12);
@@ -4542,6 +4630,7 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoListWithBuffer)
     EXPECT_EQ(hspInfo[7], "1.1.0");
     EXPECT_EQ(hspInfo[9], "Index.ets");
     EXPECT_EQ(hspInfo[11], "false");
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
 }
 

@@ -1032,6 +1032,20 @@ public:
         return isRestrictedWorker_;
     }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    // True for the form (card) thread: pkg-context accessors demux to thread-local storage
+    // instead of the process-level Runtime shared store. Set once at thread creation.
+    void SetIsFormThread(bool isFormThread)
+    {
+        isFormThread_ = isFormThread;
+    }
+
+    bool IsFormThread() const
+    {
+        return isFormThread_;
+    }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+
     bool EnableIC() const
     {
         return enableIC_;
@@ -2696,6 +2710,9 @@ private:
     bool enableRuntimeStat_ {false};
     bool isWorker_ {false};
     bool isRestrictedWorker_ {false};
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    bool isFormThread_ {false};
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};

@@ -145,12 +145,32 @@ public:
     static constexpr size_t SO_PREFIX_LEN = 3;
     static constexpr size_t SO_SUFFIX_LEN = 3;
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    static constexpr std::string_view PKGINFO_PACKAGE_NAME = "packageName";
+    static constexpr std::string_view PKGINFO_BUNDLE_NAME = "bundleName";
+    static constexpr std::string_view PKGINFO_MODULE_NAME = "moduleName";
+    static constexpr std::string_view PKGINFO_VERSION = "version";
+    static constexpr std::string_view PKGINFO_ENTRY_PATH = "entryPath";
+    static constexpr std::string_view PKGINFO_IS_SO = "isSO";
+
+    // Returns the value for key if present, otherwise empty string.
+    static CString GetPkgInfoValueOrEmpty(const CVector<std::pair<CString, CString>> &data, std::string_view key)
+    {
+        for (const auto &item : data) {
+            if (item.first == key) {
+                return item.second;
+            }
+        }
+        return CString();
+    }
+#else
     static constexpr size_t PKGINFO_PACKAGE_NAME_INDEX = 1;
     static constexpr size_t PKGINFO_BUDNLE_NAME_INDEX = 3;
     static constexpr size_t PKGINFO_MODULE_NAME_INDEX = 5;
     static constexpr size_t PKGINFO_VERSION_INDEX = 7;
     static constexpr size_t PKGINFO_ENTRY_PATH_INDEX = 9;
     static constexpr size_t PKGINFO_IS_SO_INDEX = 11;
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
     static CString PUBLIC_API ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
         CString &baseFileName, const CString &recordName, const CString &requestName);
@@ -202,8 +222,13 @@ public:
                                                    [[maybe_unused]] CString &baseFileName, const CString &recordName,
                                                    CString &requestPath);
 #if !ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    static CVector<std::pair<CString, CString>> GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
+                                                          const CString &packageName);
+#else
     static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
                                                           const CString &packageName);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
                                                 const CString &requestName);
@@ -224,8 +249,14 @@ public:
                                                                   const CString &requestName);
     static void ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                             [[maybe_unused]] const CString &baseFileName, CString &requestPath);
-    static CString ConcatNormalizedOhmurlWithData(const CVector<CString> &data, const CString &pkgName,
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    static CString ConcatNormalizedOhmurlWithData(const CVector<std::pair<CString, CString>> &data,
+        const CString &pkgName,
                                                   CString &entryPath);
+#else
+    static CString ConcatNormalizedOhmurlWithData(const CVector<CString> &data, const CString &pkgName,
+        CString &entryPath);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
     static CString Utf8ConvertToString(JSThread *thread, JSTaggedValue str);
 

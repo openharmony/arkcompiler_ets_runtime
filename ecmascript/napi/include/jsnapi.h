@@ -246,6 +246,16 @@ public:
         return isRestrictedWorker_;
     }
 
+    void SetIsFormThread(bool isFormThread)
+    {
+        isFormThread_ = isFormThread;
+    }
+
+    bool GetIsFormThread() const
+    {
+        return isFormThread_;
+    }
+
     void SetBundleName(const std::string &value)
     {
         bundleName_ = value;
@@ -472,6 +482,8 @@ private:
     bool enableBuiltinsLazy_ {true};
     bool isWorker_ {false};
     bool isRestrictedWorker_ {false};
+    bool isFormThread_ {false};
+
     std::string bundleName_ {};
     bool enableAOT_ {false};
     std::string anDir_ {};

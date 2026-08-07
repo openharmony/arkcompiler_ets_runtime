@@ -242,6 +242,40 @@ CString ModulePathHelper::ThrowInvalidOhmurlError(EcmaVM *vm, const CString &old
         oldEntryPoint);
 }
 
+namespace {
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+CString BuildNormalizedOhmUrlFromData(const CVector<std::pair<CString, CString>> &data, const CString &pkgname,
+                                      const CString &path, const CString &oldEntryPoint, size_t pathPos)
+#else
+CString BuildNormalizedOhmUrlFromData(const CVector<CString> &data, const CString &pkgname,
+                                      const CString &path, const CString &oldEntryPoint, size_t pathPos)
+#endif
+{
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CString entryPath = ModulePathHelper::GetPkgInfoValueOrEmpty(data, ModulePathHelper::PKGINFO_ENTRY_PATH);
+    CString version = ModulePathHelper::GetPkgInfoValueOrEmpty(data, ModulePathHelper::PKGINFO_VERSION);
+    CString bundleName = ModulePathHelper::GetPkgInfoValueOrEmpty(data, ModulePathHelper::PKGINFO_BUNDLE_NAME);
+#else
+    const CString &entryPath = data[ModulePathHelper::PKGINFO_ENTRY_PATH_INDEX];
+    const CString &version = data[ModulePathHelper::PKGINFO_VERSION_INDEX];
+    const CString &bundleName = data[ModulePathHelper::PKGINFO_BUDNLE_NAME_INDEX];
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    // If the subPath starts with '.test', it is a preview test, no need to splice the entry path.
+    CString subPath = oldEntryPoint.substr(pathPos + 1);
+    if (StringHelper::StringStartWith(subPath, ModulePathHelper::PREVIER_TEST_DIR)) {
+        return ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgname, path, version);
+    }
+    // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
+    if (!entryPath.empty() && StringHelper::StringEndWith(entryPath, PathHelper::SLASH_TAG)) {
+        size_t endPos = entryPath.rfind(PathHelper::SLASH_TAG);
+        CString subEntryPath = entryPath.substr(0, endPos);
+        return ModulePathHelper::ConcatUnifiedOhmUrl(bundleName, pkgname, subEntryPath, path, version);
+    }
+    // entryPath is empty.
+    return ModulePathHelper::ConcatUnifiedOhmUrl(bundleName, pkgname, "", path, version);
+}
+}  // namespace
+
 CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName,
     const CString &baseFileName, const CString &oldEntryPoint)
 {
@@ -270,31 +304,24 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
         currentModuleName = moduleName;
     }
 #if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> data {};
+#else
     CVector<CString> data {};
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     vm->GetPkgContextInfoListElements(currentModuleName, pkgname, data);
 #else
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgname);
+#else
     CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgname);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
     if (data.empty()) {
         LOG_ECMA(WARN) << "The PkgContextInfo is empty: " << pkgname << " , currentModuleName:" << currentModuleName;
         return oldEntryPoint;
     }
-    const CString &entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
-    const CString &version = data[PKGINFO_VERSION_INDEX];
-    const CString &bundleName = data[PKGINFO_BUDNLE_NAME_INDEX];
-    // If the subPath starts with '.test', it is a preview test, no need to splice the entry path.
-    CString subPath = oldEntryPoint.substr(pathPos + 1);
-    if (StringHelper::StringStartWith(subPath, PREVIER_TEST_DIR)) {
-        return ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgname, path, version);
-    }
-    // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
-    if (!entryPath.empty() && StringHelper::StringEndWith(entryPath, PathHelper::SLASH_TAG)) {
-        size_t endPos = entryPath.rfind(PathHelper::SLASH_TAG);
-        CString subEntryPath = entryPath.substr(0, endPos);
-        return ConcatUnifiedOhmUrl(bundleName, pkgname, subEntryPath, path, version);
-    }
-    // entryPath is empty.
-    return ConcatUnifiedOhmUrl(bundleName, pkgname, "", path, version);
+    return BuildNormalizedOhmUrlFromData(data, pkgname, path, oldEntryPoint, pathPos);
 }
 
 /*
@@ -948,8 +975,28 @@ ModulePathType ModulePathHelper::ParseVMANameToFileName(const CString &inputPath
 }
 
 #if !ENABLE_LATEST_OPTIMIZATION
-CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
-                                                                 const CString &packageName)
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+CVector<std::pair<CString, CString>> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm,
+    const CString &moduleName, const CString &packageName)
+{
+    CVector<std::pair<CString, CString>> resultList;
+    if (packageName.empty()) {
+        return resultList;
+    }
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgContextList = vm->GetPkgContextInfoList();
+    if (pkgContextList.find(moduleName) == pkgContextList.end()) {
+        return resultList;
+    }
+    CMap<CString, CVector<std::pair<CString, CString>>> pkgList = pkgContextList[moduleName];
+    if (pkgList.find(packageName) == pkgList.end()) {
+        return resultList;
+    }
+    resultList = pkgList[packageName];
+    return resultList;
+}
+#else
+CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm,
+    const CString &moduleName, const CString &packageName)
 {
     CVector<CString> resultList;
     if (packageName.empty()) {
@@ -966,6 +1013,7 @@ CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm, con
     resultList = pkgList[packageName];
     return resultList;
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
 
 CString ModulePathHelper::ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName,
@@ -1053,10 +1101,18 @@ void ModulePathHelper::ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile
     }
     CString pkgName = vm->GetPkgNameWithAlias(requestPath);
 #if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> data {};
+#else
     CVector<CString> data {};
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     vm->GetPkgContextInfoListElements(currentModuleName, pkgName, data);
 #else
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
+#else
     CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
     if (!data.empty()) {
         CString entryPath;
@@ -1095,10 +1151,18 @@ CString ModulePathHelper::ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, si
     CString entryPath = requestPath.substr(filePathPos + 1);
     CString pkgName = vm->GetPkgNameWithAlias(alias);
 #if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> data {};
+#else
     CVector<CString> data {};
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
     vm->GetPkgContextInfoListElements(moduleName, pkgName, data);
 #else
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CVector<std::pair<CString, CString>> data = GetPkgContextInfoListElements(vm, moduleName, pkgName);
+#else
     CVector<CString> data = GetPkgContextInfoListElements(vm, moduleName, pkgName);
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 #endif
     if (!data.empty()) {
         result = ConcatNormalizedOhmurlWithData(data, pkgName, entryPath);
@@ -1106,6 +1170,28 @@ CString ModulePathHelper::ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, si
     return result;
 }
 
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+CString ModulePathHelper::ConcatNormalizedOhmurlWithData(const CVector<std::pair<CString, CString>> &data,
+    const CString &pkgName, CString &entryPath)
+{
+    CString bundleName = GetPkgInfoValueOrEmpty(data, PKGINFO_BUNDLE_NAME);
+    CString moduleName = GetPkgInfoValueOrEmpty(data, PKGINFO_MODULE_NAME);
+    CString version = GetPkgInfoValueOrEmpty(data, PKGINFO_VERSION);
+    if (entryPath.empty()) {
+        entryPath = GetPkgInfoValueOrEmpty(data, PKGINFO_ENTRY_PATH);
+    }
+    CString isSO = GetPkgInfoValueOrEmpty(data, PKGINFO_IS_SO);
+    if (entryPath.find(PathHelper::CURRENT_DIREATORY_TAG) == 0) {
+        entryPath = entryPath.substr(CURRENT_DIREATORY_TAG_LEN);
+    }
+    if (isSO == TRUE_FLAG) {
+        return ConcatNativeSoNormalizedOhmurl(moduleName, bundleName, pkgName, version);
+    } else {
+        entryPath = RemoveSuffix(entryPath);
+        return ConcatNotSoNormalizedOhmurl(moduleName, bundleName, pkgName, entryPath, version);
+    }
+}
+#else
 CString ModulePathHelper::ConcatNormalizedOhmurlWithData(const CVector<CString> &data, const CString &pkgName,
     CString &entryPath)
 {
@@ -1126,6 +1212,7 @@ CString ModulePathHelper::ConcatNormalizedOhmurlWithData(const CVector<CString> 
         return ConcatNotSoNormalizedOhmurl(moduleName, bundleName, pkgName, entryPath, version);
     }
 }
+#endif // ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
 
 CString ModulePathHelper::TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
     const CString &requestName)
