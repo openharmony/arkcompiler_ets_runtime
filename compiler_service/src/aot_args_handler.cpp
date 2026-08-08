@@ -759,54 +759,12 @@ bool AOTArgsParserBase::IsFileExists(const std::string &fileName)
     return panda::ecmascript::FileExist(realPath.c_str());
 }
 
-int32_t StaticFrameworkAOTArgsParser::Parse(AotCompilerArgs &args, std::vector<std::string> &argVector,
+int32_t StaticFrameworkAOTArgsParser::Parse([[maybe_unused]] AotCompilerArgs &args,
+    [[maybe_unused]] std::vector<std::string> &argVector,
     [[maybe_unused]] int32_t thermalLevel)
 {
-    std::string abcPath = args.sysCompPath.empty() ? args.abcPath : args.sysCompPath;
-    if (abcPath.empty()) {
-        LOG_SA(ERROR) << "aot compiler args parsing error: abcPath is empty";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-
-    if (IsFileExists(args.anFileName)) {
-        LOG_SA(INFO) << "framework's an is exist";
-        return ERR_AOT_COMPILER_CALL_CANCELLED;
-    }
-
-    argVector.clear();
-    argVector.emplace_back(STATIC_AOT_EXE);
-
-    // Override fields for framework compilation
-    args.appIdentifier = ArgsIdx::OWNERID_SHARED_TAG;
-    args.bundleUid = OID_SYSTEM;
-    args.bundleGid = OID_SYSTEM;
-
-    for (auto &defaultArg : staticFrameworkAOTDefaultArgs) {
-        argVector.emplace_back(defaultArg);
-    }
-
-    std::string fullBootfiles;
-    if (!ParseBootPandaFiles(fullBootfiles)) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    if (fullBootfiles.empty()) {
-        LOG_SA(ERROR) << "can not find paoc panda files ";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::BOOT_PANDA_FILES + Symbols::EQ + fullBootfiles);
-
-    std::string bundleName = abcPath;
-    if (!args.anFileName.empty()) {
-        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_OUTPUT + Symbols::EQ + args.anFileName);
-    }
-    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_PANDA_FILES + Symbols::EQ + abcPath);
-
-    std::string blackListMethods = ParseBlackListMethods(bundleName);
-    if (!blackListMethods.empty()) {
-        // Use the generated regex pattern instead of comma-separated list
-        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_REGEX + Symbols::EQ + blackListMethods);
-    }
-    return ERR_OK;
+    LOG_SA(INFO) << "skip framework static AOT";
+    return ERR_AOT_COMPILER_CALL_CANCELLED;
 }
 
 bool StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList(const nlohmann::json &item,
