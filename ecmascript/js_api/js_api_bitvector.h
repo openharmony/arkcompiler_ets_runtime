@@ -75,6 +75,11 @@ public:
         return GetLength();
     }
 
+    static constexpr uint32_t ComputeBitSetCount(uint32_t length)
+    {
+        return length == 0 ? 0 : (length - 1) / BIT_SET_LENGTH + 1;
+    }
+
     static constexpr size_t NATIVE_POINTER_OFFSET = JSObject::SIZE;
     ACCESSORS(NativePointer, NATIVE_POINTER_OFFSET, LENGTH_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Length, int32_t, LENGTH_OFFSET, MOD_RECORD_OFFSET);

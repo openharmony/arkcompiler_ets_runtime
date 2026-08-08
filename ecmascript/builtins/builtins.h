@@ -251,6 +251,8 @@ private:
 
     void InitializeSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
     void InitializeSSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+    void InitializeSBitVectorIterator(const JSHandle<GlobalEnv> &env,
+                                      const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass,
                                  const JSHandle<JSHClass> &iteratorPrototypeClass) const;

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <array>
+
 #include "arkcompiler/ets_runtime/ecmascript/containers/containers_bitvector.h"
 #include "arkcompiler/ets_runtime/ecmascript/js_api/js_api_bitvector.h"
 #include "arkcompiler/ets_runtime/ecmascript/js_api/js_api_bitvector_iterator.h"
@@ -86,8 +88,8 @@ protected:
     }
     void Push(JSHandle<JSAPIBitVector> bitVector)
     {
-        constexpr uint32_t NODE_NUMBERS = 64;
-        for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        constexpr uint32_t nodeNumbers = 64;
+        for (uint32_t i = 0; i < nodeNumbers; i++) {
             if (i >= 32) { // 32 means half bitvector length
                 auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
                 callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -152,6 +154,22 @@ HWTEST_F_L0(ContainersBitVectorTest, BitVectorConstructor)
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersBitVector, BitVectorConstructor, objCallInfo);
 }
+
+HWTEST_F_L0(ContainersBitVectorTest, ArkPrivateUsesInitializedBitVector)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> initializedConstructor = env->GetBitVectorFunction();
+    JSHandle<JSTaggedValue> initializedPrototype = env->GetBitVectorPrototype();
+    JSHandle<JSTaggedValue> initializedIteratorPrototype = env->GetBitVectorIteratorPrototype();
+
+    ASSERT_TRUE(initializedConstructor->IsJSFunction());
+    ASSERT_TRUE(initializedPrototype->IsJSObject());
+    ASSERT_TRUE(initializedIteratorPrototype->IsJSObject());
+    EXPECT_EQ(InitializeBitVectorConstructor(), initializedConstructor.GetTaggedValue());
+    EXPECT_EQ(InitializeBitVectorConstructor(), initializedConstructor.GetTaggedValue());
+    EXPECT_EQ(env->GetBitVectorPrototype().GetTaggedValue(), initializedPrototype.GetTaggedValue());
+    EXPECT_EQ(env->GetBitVectorIteratorPrototype().GetTaggedValue(), initializedIteratorPrototype.GetTaggedValue());
+}
 /**
    * @tc.number: _BitVector_push_Func_001
    * @tc.name: test_push
@@ -162,9 +180,9 @@ HWTEST_F_L0(ContainersBitVectorTest, BitVectorConstructor)
    */
 HWTEST_F_L0(ContainersBitVectorTest, Push_001)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -186,9 +204,9 @@ HWTEST_F_L0(ContainersBitVectorTest, Push_001)
    */
 HWTEST_F_L0(ContainersBitVectorTest, Pop_001)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -199,7 +217,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Pop_001)
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -416,8 +434,8 @@ HWTEST_F_L0(ContainersBitVectorTest, SetBitsByRange_003)
         ContainersBitVector::SetBitsByRange(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    constexpr uint32_t NODE_NUMBERS = 64;
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    constexpr uint32_t nodeNumbers = 64;
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         if (i >= 32) { // 32 means half bitvector length
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -489,9 +507,9 @@ HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_001)
    */
 HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_002)
 {
-    constexpr uint32_t NODE_NUMBERS = 64;
+    constexpr uint32_t nodeNumbers = 64;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -510,7 +528,7 @@ HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_002)
         ContainersBitVector::SetAllBits(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -530,9 +548,9 @@ HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_002)
    */
 HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_003)
 {
-    constexpr uint32_t NODE_NUMBERS = 64;
+    constexpr uint32_t nodeNumbers = 64;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -551,7 +569,7 @@ HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_003)
         ContainersBitVector::SetAllBits(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -695,9 +713,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitsByRange_003)
    */
 HWTEST_F_L0(ContainersBitVectorTest, Resize_01)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -708,7 +726,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_01)
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -729,9 +747,9 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_01)
    */
 HWTEST_F_L0(ContainersBitVectorTest, Resize_02)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -742,7 +760,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_02)
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -763,9 +781,9 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_02)
    */
 HWTEST_F_L0(ContainersBitVectorTest, Resize_03)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -776,7 +794,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_03)
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -806,9 +824,9 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_03)
    */
 HWTEST_F_L0(ContainersBitVectorTest, Resize_04)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -819,7 +837,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_04)
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -830,6 +848,39 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_04)
         EXPECT_TRUE(thread->HasPendingException());
         EXPECT_EQ(result, JSTaggedValue::Exception());
         thread->ClearException();
+    }
+}
+
+/**
+   * @tc.number: _BitVector_resize_Func_005
+   * @tc.name: test_resize_from_zero
+   * @tc.desc: Resize a zero-length bitVector across bitset boundaries.
+   * @tc.size: MediumTest
+   * @tc.type: Function
+   * @tc.level: Level 0
+   */
+HWTEST_F_L0(ContainersBitVectorTest, Resize_05)
+{
+    constexpr std::array<uint32_t, 5> NEW_SIZES = {0, 1, 63, 64, 65};
+    for (uint32_t newSize : NEW_SIZES) {
+        JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(bitVector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(newSize));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersBitVector::Resize(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        EXPECT_EQ(result, JSTaggedValue::Undefined());
+        EXPECT_EQ(bitVector->GetLength(), newSize);
+        JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
+        auto elements = reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(
+            np->GetExternalPointer());
+        EXPECT_EQ(elements->size(), JSAPIBitVector::ComputeBitSetCount(newSize));
+        for (uint32_t index = 0; index < newSize; index++) {
+            EXPECT_EQ(bitVector->Get(thread, index), JSTaggedValue(0));
+        }
     }
 }
 /**
@@ -914,9 +965,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitCountByRange_002)
    */
 HWTEST_F_L0(ContainersBitVectorTest, GetBitCountByRange_003)
 {
-    constexpr uint32_t NODE_NUMBERS = 64;
+    constexpr uint32_t nodeNumbers = 64;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         if (i >= 32) {
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -1042,9 +1093,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetIndexOf_002)
    */
 HWTEST_F_L0(ContainersBitVectorTest, GetIndexOf_003)
 {
-    constexpr uint32_t NODE_NUMBERS = 64;
+    constexpr uint32_t nodeNumbers = 64;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         if (i >= 32) {
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -1170,9 +1221,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetLastIndexOf_002)
    */
 HWTEST_F_L0(ContainersBitVectorTest, GetLastIndexOf_003)
 {
-    constexpr uint32_t NODE_NUMBERS = 64;
+    constexpr uint32_t nodeNumbers = 64;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         if (i >= 32) {
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -1305,8 +1356,8 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitByIndex_003)
 {
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
     Push(bitVector);
-    constexpr uint32_t NODE_NUMBERS = 64;
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    constexpr uint32_t nodeNumbers = 64;
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -1315,7 +1366,7 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitByIndex_003)
         ContainersBitVector::FlipBitByIndex(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         if (i >= 32) {
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -1445,8 +1496,8 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitsByRange_003)
         ContainersBitVector::FlipBitsByRange(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    constexpr uint32_t NODE_NUMBERS = 64;
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    constexpr uint32_t nodeNumbers = 64;
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         if (i >= 32) {
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -1476,9 +1527,9 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitsByRange_003)
    */
 HWTEST_F_L0(ContainersBitVectorTest, GetIteratorObj)
 {
-    constexpr uint32_t NODE_NUMBERS = 8;
+    constexpr uint32_t nodeNumbers = 8;
     JSHandle<JSAPIBitVector> bitVector = CreateJSAPIBitVector();
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(bitVector.GetTaggedValue());
@@ -1496,7 +1547,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetIteratorObj)
     JSHandle<JSTaggedValue> iterValues(thread, ContainersBitVector::GetIteratorObj(callInfo1));
     TestHelper::TearDownFrame(thread, prev1);
     JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(iterValues.GetTaggedValue());
