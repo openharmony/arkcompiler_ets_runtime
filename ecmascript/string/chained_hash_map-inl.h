@@ -292,11 +292,9 @@ bool ChainedHashMapOperation<Mutex, ThreadHolder, SlotBarrier>::CheckWeakRef(con
         if constexpr (SlotBarrier == ChainedHashMapConfig::NeedSlotBarrier) {
             entry->SetValue(nullptr);
         }
-        LOG_COMMON(VERBOSE) << "StringTable: delete string " << std::hex << object;
         return true;
     } else if (fwd != object) {
         entry->SetValue(reinterpret_cast<BaseString*>(fwd));
-        LOG_COMMON(VERBOSE) << "StringTable: forward " << std::hex << object << " -> " << fwd;
     }
     return false;
 }
