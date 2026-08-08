@@ -25,8 +25,8 @@
 #include <unordered_set>
 #include <memory>
 #include <string>
-#include <securec.h>
 #include <sstream>
+#include <cstring>
 
 namespace rawheap_translate {
 #define LOG_INFO_ Logger(0) << std::left << std::setw(24) << __func__
@@ -41,6 +41,12 @@ namespace rawheap_translate {
 bool RealPath(const std::string &filename, std::string &realpath);
 
 bool GenerateDumpFileName(std::string &filename);
+
+// Resolve the output .heapsnapshot path from a user-provided argument:
+//  - empty: fall back to the timestamped hprof_<ts>.heapsnapshot name
+//  - already ends in ".heapsnapshot": use as-is
+//  - otherwise: append ".heapsnapshot" to the provided name
+bool GenerateOutputNameFromInput(const std::string &userOutput, std::string &output);
 
 bool EndsWith(const std::string &str, const std::string &suffix);
 
@@ -94,10 +100,10 @@ public:
 
     bool Initialize(const std::string &path);
     bool Read(char *buf, uint32_t size);
-    bool Seek(uint32_t offset);
+    bool Seek(uint64_t offset);
     bool ReadArray(std::vector<uint32_t> &array, uint32_t size);
     bool ReadArray(std::vector<uint64_t> &array, uint32_t size);
-    bool CheckAndGetHeaderAt(uint32_t offset, uint32_t assertNum);
+    bool CheckAndGetHeaderAt(uint64_t offset, uint32_t assertNum);
 
     uint32_t GetHeaderLeft()
     {
@@ -109,18 +115,18 @@ public:
         return right_;
     }
 
-    uint32_t GetFileSize()
+    uint64_t GetFileSize()
     {
         return fileSize_;
     }
 
-    static uint32_t GetFileSize(const std::string &path);
+    static uint64_t GetFileSize(const std::string &path);
 
 private:
     std::ifstream file_;
     uint32_t left_ {0};
     uint32_t right_ {0};
-    uint32_t fileSize_ {0};
+    uint64_t fileSize_ {0};
 };
 
 class Version {
@@ -152,6 +158,10 @@ public:
     {
         return std::to_string(major_) + '.' + std::to_string(minor_) + '.' + std::to_string(build_);
     }
+
+    int GetMajor() const { return major_; }
+    int GetMinor() const { return minor_; }
+    int GetBuild() const { return build_; }
 
 private:
     int major_ {0};

@@ -16,7 +16,20 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
+#include "ecmascript/dfx/hprof/rawheap_translate/static_rawheap_translate.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
+
+#include <cstdlib>
+
+// Forward declarations for the rawheap_translator CLI entry functions
+// (defined in main.cpp, compiled into this test binary via the BUILD.gn
+// sources list).
+namespace rawheap_translate {
+bool ParseArgsSingle(const int argc, const char **argv, std::string &input, std::string &output);
+bool ParseArgsTwoFile(const int argc, const char **argv, std::string &dynamicInput,
+    std::string &staticInput, std::string &output);
+int Main(const int argc, const char **argv);
+}  // namespace rawheap_translate
 
 using namespace panda::ecmascript;
 
@@ -1331,4 +1344,230 @@ HWTEST_F_L0(RawHeapTranslateTest, ParseRawheapWithoutGlobalHandleObjectData)
     ASSERT_NO_FATAL_FAILURE(ParseV2NoGlobalHandleObject("sentinel", sentinel));
 }
 
+// ============================================================================
+// rawheap_translator CLI entry points: ParseArgsSingle / ParseArgsTwoFile.
+// main.cpp inspects the input format, selects a parser, then runs either the
+// merge path or the single-file path through these entry functions.
+// ============================================================================
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsSingle_Basic)
+{
+    // Single-file mode: 1 .rawheap path, no explicit output
+    const char *argv[] = {"rawheap_translator", "/tmp/test.rawheap"};
+    int argc = 2;
+    std::string input, output;
+    bool result = rawheap_translate::ParseArgsSingle(argc, argv, input, output);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(input, "/tmp/test.rawheap");
+    // No output provided: fall back to the timestamped hprof_<ts>.heapsnapshot.
+    ASSERT_FALSE(output.empty());
+    ASSERT_TRUE(rawheap_translate::EndsWith(output, ".heapsnapshot"));
+    ASSERT_EQ(output.rfind("hprof_", 0), 0U);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsSingle_WithExplicitOutput)
+{
+    // Single-file mode with a correct explicit output path (argv[2])
+    const char *argv[] = {"rawheap_translator", "/tmp/test.rawheap", "/tmp/out.heapsnapshot"};
+    int argc = 3;
+    std::string input, output;
+    bool result = rawheap_translate::ParseArgsSingle(argc, argv, input, output);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(input, "/tmp/test.rawheap");
+    ASSERT_EQ(output, "/tmp/out.heapsnapshot");
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsSingle_WrongOutputExtension)
+{
+    // Single-file mode, output given with a wrong extension: append ".heapsnapshot"
+    const char *argv[] = {"rawheap_translator", "/tmp/test.rawheap", "/tmp/out.txt"};
+    int argc = 3;
+    std::string input, output;
+    bool result = rawheap_translate::ParseArgsSingle(argc, argv, input, output);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(input, "/tmp/test.rawheap");
+    ASSERT_EQ(output, "/tmp/out.txt.heapsnapshot");
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsTwoFile_Basic)
+{
+    // Two-file mode: dynamic + static .rawheap paths, no explicit output
+    const char *argv[] = {"rawheap_translator", "/tmp/dynamic.rawheap", "/tmp/static.rawheap"};
+    int argc = 3;
+    std::string dynamicInput, staticInput, output;
+    bool result = rawheap_translate::ParseArgsTwoFile(argc, argv, dynamicInput, staticInput, output);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(dynamicInput, "/tmp/dynamic.rawheap");
+    ASSERT_EQ(staticInput, "/tmp/static.rawheap");
+    // No output provided: fall back to the timestamped hprof_<ts>.heapsnapshot.
+    ASSERT_TRUE(rawheap_translate::EndsWith(output, ".heapsnapshot"));
+    ASSERT_EQ(output.rfind("hprof_", 0), 0U);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsTwoFile_WithExplicitOutput)
+{
+    // Two-file mode with explicit output path
+    const char *argv[] = {"rawheap_translator", "/tmp/dynamic.rawheap", "/tmp/static.rawheap",
+                          "/tmp/merged.heapsnapshot"};
+    int argc = 4;
+    std::string dynamicInput, staticInput, output;
+    bool result = rawheap_translate::ParseArgsTwoFile(argc, argv, dynamicInput, staticInput, output);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(dynamicInput, "/tmp/dynamic.rawheap");
+    ASSERT_EQ(staticInput, "/tmp/static.rawheap");
+    ASSERT_EQ(output, "/tmp/merged.heapsnapshot");
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsTwoFile_InvalidExtension)
+{
+    // Two-file mode: one file without .rawheap extension → should fail
+    const char *argv[] = {"rawheap_translator", "/tmp/dynamic.heapsnapshot", "/tmp/static.rawheap"};
+    int argc = 3;
+    std::string dynamicInput, staticInput, output;
+    bool result = rawheap_translate::ParseArgsTwoFile(argc, argv, dynamicInput, staticInput, output);
+    ASSERT_FALSE(result);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_ParseArgsTwoFile_InsufficientArgs)
+{
+    // Only 1 argument → two-file mode should fail
+    const char *argv[] = {"rawheap_translator", "/tmp/test.rawheap"};
+    int argc = 2;
+    std::string dynamicInput, staticInput, output;
+    bool result = rawheap_translate::ParseArgsTwoFile(argc, argv, dynamicInput, staticInput, output);
+    ASSERT_FALSE(result);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_Main_VersionFlag)
+{
+    // --version should return 0 without doing any translation
+    const char *argv[] = {"rawheap_translator", "--version"};
+    int argc = 2;
+    int result = rawheap_translate::Main(argc, argv);
+    ASSERT_EQ(result, 0);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_Main_HelpFlag)
+{
+    // --help should return 0 without doing any translation
+    const char *argv[] = {"rawheap_translator", "--help"};
+    int argc = 2;
+    int result = rawheap_translate::Main(argc, argv);
+    ASSERT_EQ(result, 0);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_Main_NoArgs)
+{
+    // No arguments → should return 0 (print help message)
+    const char *argv[] = {"rawheap_translator"};
+    int argc = 1;
+    int result = rawheap_translate::Main(argc, argv);
+    ASSERT_EQ(result, 0);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_Main_InvalidInput)
+{
+    // Non-.rawheap argument → should return 0 (print help/error)
+    const char *argv[] = {"rawheap_translator", "/tmp/something.txt"};
+    int argc = 2;
+    int result = rawheap_translate::Main(argc, argv);
+    ASSERT_EQ(result, 0);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, CLI_Main_TwoFileTranslationFailure)
+{
+    const char *dynamicPath = "/tmp/nonexistent_dynamic.rawheap";
+    const char *staticPath = "/tmp/nonexistent_static.rawheap";
+    const char *outputPath = "/tmp/nonexistent_output.heapsnapshot";
+    std::remove(dynamicPath);
+    std::remove(staticPath);
+    std::remove(outputPath);
+    const char *argv[] = {"rawheap_translator", dynamicPath, staticPath, outputPath};
+
+    EXPECT_EQ(rawheap_translate::Main(4, argv), EXIT_FAILURE);
+}
+
+// ============================================================================
+// TranslateRawheap error paths: malformed input and merge-failure scenarios
+// must return false rather than crashing.
+// ============================================================================
+
+HWTEST_F_L0(RawHeapTranslateTest, TranslateRawheap_BadMagic_ReturnsFalse)
+{
+    // Write a file with wrong magic/version - parser should reject and return false
+    std::string badPath = "/tmp/bad_magic_test.rawheap";
+    std::ofstream ofs(badPath, std::ios::binary);
+    // Write 8 zero bytes instead of valid version string
+    for (int i = 0; i < 33; i++) {  // minimum header size
+        ofs.put(0x00);
+    }
+    ofs.close();
+
+    std::string outPath = badPath + ".heapsnapshot";
+    bool result = rawheap_translate::RawHeap::TranslateRawheap(badPath, outPath);
+    EXPECT_FALSE(result) << "TranslateRawheap should return false for bad magic";
+
+    std::remove(badPath.c_str());
+    std::remove(outPath.c_str());
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, TranslateRawheap_TruncatedFile_ReturnsFalse)
+{
+    // Write a truncated file - header starts but body is incomplete
+    std::string truncPath = "/tmp/truncated_test.rawheap";
+    std::ofstream ofs(truncPath, std::ios::binary);
+    // Write version string "3.0.0\0\0\0" (valid static header start)
+    ofs.write("3.0.0\0\0\0", 8);
+    // Write partial identifierSize (2 bytes instead of 4)
+    ofs.put(0x04);
+    ofs.put(0x00);
+    ofs.close();  // truncated before header is complete
+
+    std::string outPath = truncPath + ".heapsnapshot";
+    bool result = rawheap_translate::RawHeap::TranslateRawheap(truncPath, outPath);
+    EXPECT_FALSE(result) << "TranslateRawheap should return false for truncated file";
+
+    std::remove(truncPath.c_str());
+    std::remove(outPath.c_str());
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, TranslateRawheap_TwoFileMergeFails_ReturnsFalse)
+{
+    // Two-file merge with invalid dynamic file should return false
+    // Write a valid-looking static file and an invalid dynamic file
+    std::string staticPath = "/tmp/static_merge_test.rawheap";
+    std::string dynamicPath = "/tmp/dynamic_merge_test.rawheap";
+    std::string outPath = "/tmp/merge_output.heapsnapshot";
+
+    // Static file: minimal valid header
+    std::ofstream staticOfs(staticPath, std::ios::binary);
+    staticOfs.write("3.0.0\0\0\0", 8);  // version
+    uint32_t idSize = 4;
+    staticOfs.write(reinterpret_cast<const char*>(&idSize), 4);
+    uint64_t timestamp = 1000000;
+    staticOfs.write(reinterpret_cast<const char*>(&timestamp), 8);
+    uint8_t language = 1;  // STATIC
+    staticOfs.put(language);
+    uint32_t headerSize = 33;
+    staticOfs.write(reinterpret_cast<const char*>(&headerSize), 4);
+    uint32_t recordCount = 0;
+    staticOfs.write(reinterpret_cast<const char*>(&recordCount), 4);
+    uint32_t flags = 0;
+    staticOfs.write(reinterpret_cast<const char*>(&flags), 4);
+    staticOfs.close();
+
+    // Dynamic file: garbage (not V1/V2 format)
+    std::ofstream dynamicOfs(dynamicPath, std::ios::binary);
+    dynamicOfs.write("GARBAGE", 7);
+    dynamicOfs.close();
+
+    bool result = rawheap_translate::RawHeap::TranslateRawheap(dynamicPath, staticPath, outPath);
+    EXPECT_FALSE(result) << "Two-file merge with invalid dynamic should return false";
+
+    std::remove(staticPath.c_str());
+    std::remove(dynamicPath.c_str());
+    std::remove(outPath.c_str());
+}
+
+// ============================================================================
 }  // namespace panda::test

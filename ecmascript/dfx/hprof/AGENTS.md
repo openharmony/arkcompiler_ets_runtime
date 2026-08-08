@@ -71,7 +71,13 @@ Tests are organized into multiple test suites in `tests/BUILD.gn`:
 - **HeapTrackerFirstTest/SecondTest/ThirdTest**
 - **HeapSamplingTest**
 - **HProfTest**
-- **RawHeapTranslateTest**
+- **RawHeapTranslateTest** - CLI entry and metadata parsing tests
+- **RawHeapStaticSnapshotTest** - static binary snapshot format tests
+  (wire-format parsing, class/instance/array records, merge, xref)
+- **RawHeapFormatContractTest** - static assertions bridging common.h
+  and dump_format.h format constants (only built when ark_js_hybrid=true)
+- **HybridHeapSnapshotTest** - hybrid heap snapshot construction and
+  serialization tests (mock STS, entry ID map, XRef edge emission)
 - **JSMetadataTest**
 - **LocalHandleLeakDetectTest** / **GlobalHandleLeakDetectTest**
 

@@ -19,6 +19,9 @@
 #include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 #include "ecmascript/cross_vm/heap_hybrid-inl.h"
 #include "ecmascript/cross_vm/unified_gc/unified_gc.h"
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+#include "ecmascript/dfx/hprof/dynamic_dump.h"
+#endif
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -248,5 +251,15 @@ bool CrossVMOperator::EcmaVMInterfaceImpl::ForEachDynamicFrame(void *currFrameSP
 const void *CrossVMOperator::EcmaVMInterfaceImpl::GetEcmaVM() const
 {
     return static_cast<const void *>(vm_);
+}
+
+std::unique_ptr<AbstractDumper> CrossVMOperator::EcmaVMInterfaceImpl::CreateHeapDumper(const DumpRequest &request)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    return DynamicDump::Create(vm_, request);
+#else
+    (void)request;
+    return nullptr;
+#endif
 }
 }  // namespace panda::ecmascript

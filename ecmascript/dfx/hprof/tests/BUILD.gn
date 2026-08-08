@@ -73,12 +73,6 @@ host_unittest_action("HeapDumpTest") {
   module_out_path = module_output_path
 
   sources = [
-    # test file
-    "../rawheap_translate/metadata_parse.cpp",
-    "../rawheap_translate/rawheap_translate.cpp",
-    "../rawheap_translate/serializer.cpp",
-    "../rawheap_translate/string_hashmap.cpp",
-    "../rawheap_translate/utils.cpp",
     "heap_dump_test.cpp",
   ]
 
@@ -86,6 +80,7 @@ host_unittest_action("HeapDumpTest") {
 
   deps = [
     ":gen_metadata_for_test",
+    "../rawheap_translate:rawheap_translate_static",
     "../../../../:libark_jsruntime_test",
   ]
 
@@ -271,15 +266,48 @@ host_unittest_action("RawHeapTranslateTest") {
     # test file
     "../rawheap_translate/metadata_parse.cpp",
     "../rawheap_translate/rawheap_translate.cpp",
+    "../rawheap_translate/snapshot_merger.cpp",
+    "../rawheap_translate/static_rawheap_translate.cpp",
     "../rawheap_translate/serializer.cpp",
     "../rawheap_translate/string_hashmap.cpp",
     "../rawheap_translate/utils.cpp",
+    "../rawheap_translate/main.cpp",
     "rawheap_translate_test.cpp",
   ]
 
   configs = [ "$js_root:ecma_test_config" ]
 
   deps = [ "$js_root:libark_jsruntime_test" ]
+
+  cflags_cc = [ "-std=c++17", "-DRAWHEAP_TRANSLATOR_UNITTEST" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "cJSON:cjson_static",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("RawHeapStaticSnapshotTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "rawheap_static_snapshot_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  # Uses rawheap_translate_static for the translate logic. The static lib
+  # does not depend on arkplatform (common.h carries its own format constants).
+  deps = [
+    "../rawheap_translate:rawheap_translate_static",
+    "$js_root:libark_jsruntime_test",
+  ]
 
   cflags_cc = [ "-std=c++17" ]
 
@@ -483,6 +511,7 @@ group("unittest") {
     ":HeapTrackerSecondTest",
     ":HeapTrackerThirdTest",
     ":JSMetadataTest",
+    ":RawHeapStaticSnapshotTest",
     ":RawHeapTranslateTest",
     ":HybridHeapSnapshotTest",
   ]
@@ -514,6 +543,7 @@ group("host_unittest") {
     ":HeapTrackerThirdTestAction",
     ":HybridHeapSnapshotTestAction",
     ":JSMetadataTestAction",
+    ":RawHeapStaticSnapshotTestAction",
     ":RawHeapTranslateTestAction",
   ]
   if (is_mac) {

@@ -164,22 +164,33 @@ void ObjectMarker::MarkRootObjects()
 
 RawHeapDump::RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
                          EntryIdMap *entryIdMap, const DumpSnapShotOption &dumpOption)
-    : vm_(vm), dumpOption_(&dumpOption), snapshot_(snapshot), entryIdMap_(entryIdMap),
-      writer_(stream), marker_(vm, &dumpOption)
+    : vm_(vm), dumpOption_(dumpOption), snapshot_(snapshot), entryIdMap_(entryIdMap),
+      writer_(stream), marker_(vm, &dumpOption_)
 {
     startTime_ = std::chrono::steady_clock::now();
 }
 
 RawHeapDump::~RawHeapDump()
 {
-    writer_.EndOfWriteBinBlock();
+    // Finalize() performs the flush / success log / HiSysEvent at a defined
+    // point (end of BinaryDump). The destructor must NOT repeat those side
+    // effects: in the hybrid fork model the parent process never calls
+    // BinaryDump but still destroys this instance, and flushing the parent's
+    // stale buffer / emitting a duplicate OOM event would corrupt the child's
+    // output and double-report. Only release in-memory state that is safe to
+    // drop in either process.
     secIndexVec_.clear();
+}
+
+void RawHeapDump::Finalize()
+{
+    writer_.EndOfWriteBinBlock();
     auto endTime = std::chrono::steady_clock::now();
     double duration = std::chrono::duration<double>(endTime - startTime_).count();
     LOG_ECMA(INFO) << "rawheap dump success, cost " << duration << "s, " << "file size " << GetRawHeapFileOffset();
-    if (dumpOption_->isDumpOOM) {
+    if (dumpOption_.isDumpOOM) {
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 0, "MESSAGE", "OK",
-                        "OOM_TYPE", dumpOption_->isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM",
+                        "OOM_TYPE", dumpOption_.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM",
                         "OBJ_COUNT", GetObjectCount(),
                         "STR_COUNT", GetEcmaStringTable()->GetCapcity(),
                         "HEAP_SIZE", marker_.GetHeapSize(),
@@ -238,6 +249,9 @@ void RawHeapDump::BinaryDump()
     DumpObjectMemory();
 
     DumpSectionIndex();
+    // Flush the writer buffer and emit the success/OOM events at a defined
+    // point rather than from the destructor (see ~RawHeapDump).
+    Finalize();
 }
 
 void RawHeapDump::IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor)
@@ -307,8 +321,8 @@ void RawHeapDump::DumpVersion(const std::string &version)
 
 void RawHeapDump::DumpMetadataFields()
 {
-    DumpStringField(dumpOption_->spaceType, 32, "space type");  // 32: space type size
-    DumpStringField(dumpOption_->heapType, 16, "heap type");    // 16: heap type size
+    DumpStringField(dumpOption_.spaceType, 32, "space type");  // 32: space type size
+    DumpStringField(dumpOption_.heapType, 16, "heap type");    // 16: heap type size
     DumpStringField("dynamic", 8, "vm type");                   // 8: vm type size
 }
 
@@ -340,14 +354,27 @@ void RawHeapDump::DumpSectionIndex()
 */
 NodeId RawHeapDump::GenerateNodeId(JSTaggedType addr)
 {
-    NodeId nodeId = dumpOption_->isDumpOOM ? entryIdMap_->GetNextId() : entryIdMap_->FindOrInsertNodeId(addr);
-    if (!dumpOption_->isJSLeakWatcher) {
+    NodeId nodeId = dumpOption_.isDumpOOM && !dumpOption_.isForHybridXRef
+                        ? entryIdMap_->GetNextId()
+                        : entryIdMap_->FindOrInsertNodeId(addr);
+    if (!dumpOption_.isJSLeakWatcher) {
         return nodeId;
     }
 
     JSTaggedValue value {addr};
     int32_t hash = value.IsJSObject() ? JSObject::Cast(value)->GetHash(vm_->GetJSThreadNoCheck()) : 0;
     return (static_cast<uint64_t>(hash) << 32) | (nodeId & 0xFFFFFFFF);  // 32: 32-bits means a half of uint64_t
+}
+
+uint32_t RawHeapDump::FindNodeId(uint64_t addr) const
+{
+    if (entryIdMap_ == nullptr) {
+        return 0;
+    }
+    // EntryIdMap keys by JSTaggedType (uint64_t); jsAddr from STS XRef maps is
+    // the same tagged value the dumper registered (the legacy hybrid path also
+    // resolves jsToEts by the dynamic node's address). FindNodeId is read-only.
+    return entryIdMap_->FindNodeId(static_cast<JSTaggedType>(addr));
 }
 
 void RawHeapDump::WriteChunk(char *data, size_t size)
@@ -424,7 +451,7 @@ void RawHeapDump::WriteGlobalRefGroup()
         }
         entries.push_back({reinterpret_cast<uintptr_t>(ref), value.GetRawData()});
     };
-    if (dumpOption_->isProcDump) {
+    if (dumpOption_.isProcDump) {
         Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
             thread->IterateGlobalRefMappings(collector);
         });

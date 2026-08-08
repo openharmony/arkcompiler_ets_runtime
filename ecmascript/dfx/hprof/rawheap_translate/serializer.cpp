@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
+#include "serializer.h"
+#include "securec.h"
 
 namespace rawheap_translate {
 bool StreamWriter::Initialize(const std::string &filePath)
@@ -100,7 +101,7 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(RawHeap *rawheap, Strea
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"number\",\"native\",\"synthetic\",\"concatenated string\",\"slicedstring\",\"symbol\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"bigint\",\"framework\",\"handle\"],");
+    writer->WriteString("\"bigint\",\"framework\",\"handle\",\"class\"],");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"string\",\"number\",\"number\",\"number\",\"number\",\"number\",\"number\"],\n");  // 4.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
@@ -108,7 +109,10 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(RawHeap *rawheap, Strea
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"edge_types\":[[\"context\",\"element\",\"property\",\"internal\",\"hidden\",\"shortcut\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"weak\"],\"string_or_number\",\"node\"],\n");  // 6.
+    writer->WriteString("\"weak\",\"xref\"],\"string_or_number\",\"node\"],\n");  // 6.
+    // "xref" at index 7 mirrors EdgeType::XREF (common.h) — without it, any
+    // cross-VM xref edge emitted by the hybrid merger would carry an
+    // out-of-range type field in the .heapsnapshot meta.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"trace_function_info_fields\":[\"function_id\",\"name\",\"script_name\",\"script_id\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
@@ -193,7 +197,7 @@ void HeapSnapshotJSONSerializer::SerializeStringTable(RawHeap *rawheap, StreamWr
     writer->WriteString("\"\",\n");
     writer->WriteString("\"GC roots\",\n");
     // StringId Range from 3
-    size_t capcity = stringTable->GetCapcity();
+    size_t capcity = stringTable->GetCapacity();
     if (capcity <= 0) {
         return;
     }
@@ -220,6 +224,7 @@ void HeapSnapshotJSONSerializer::SerializeString(const char *str, StreamWriter *
     }
     const char *s = str;
     while (*s != '\0') {
+        const auto ch = static_cast<unsigned char>(*s);
         if (*s == '\"' || *s == '\\') {
             writer->WriteChar('\\');
             writer->WriteChar(*s);
@@ -239,12 +244,12 @@ void HeapSnapshotJSONSerializer::SerializeString(const char *str, StreamWriter *
         } else if (*s == '\t') {
             writer->WriteString("\\t");
             s++;
-        } else if (*s > ASCII_US && *s < ASCII_DEL) {
+        } else if (ch > ASCII_US && ch < ASCII_DEL) {
             writer->WriteChar(*s);
             s++;
-        } else if (*s <= ASCII_US || *s == ASCII_DEL) {
-            // special char convert to \u unicode
-            SerializeUnicodeChar(static_cast<uint32_t>(*s), writer);
+        } else if (ch <= ASCII_US || ch == ASCII_DEL) {
+            // Escape JSON control characters.
+            SerializeUnicodeChar(ch, writer);
             s++;
         } else {
             writer->WriteChar(*s);

@@ -16,8 +16,8 @@
 #ifndef RAWHEAP_TRANSLATE_STRING_HASHMAP_H
 #define RAWHEAP_TRANSLATE_STRING_HASHMAP_H
 
-#include "ecmascript/dfx/hprof/rawheap_translate/common.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
+#include "common.h"
+#include "utils.h"
 
 namespace rawheap_translate {
 // An Implementation for Native StringTable without Auto Mem-Management
@@ -45,7 +45,7 @@ public:
     std::string GetStringByKey(StringKey key) const;
     StringKey GetKeyByStringId(StringId stringId) const;
     StringId InsertStrAndGetStringId(const std::string &cstrArg);
-    size_t GetCapcity() const
+    size_t GetCapacity() const
     {
         return orderedKey_.size();
     }

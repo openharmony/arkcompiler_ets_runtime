@@ -42,6 +42,8 @@ public:
 
     bool Dump(EcmaVM *vm, Stream *stream, DumpSnapShotOption &dumpOption);
 
+    bool BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption);
+
     EntryIdMap *GetEntryIdMap()
     {
         return &entryIdMap_;

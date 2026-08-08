@@ -30,6 +30,8 @@
 #include <chrono>
 #include <csignal>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <thread>
 #include <vector>
 
@@ -1549,6 +1551,8 @@ HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_DumpOption)
 
 HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_WithStream)
 {
+    // Without an attached STS runtime, the stream path fails for any format.
+    // BINARY serialization bytes are covered in arkplatform tests.
     const std::string filePath = "DFXJSNApiTests_perform_stream.heapsnapshot";
     ASSERT_TRUE(CreateEmptyFile(filePath));
     ecmascript::FileStream stream(filePath);
@@ -1889,4 +1893,66 @@ HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Perf_100k)
 #endif
 }
 
+HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_BinaryFormat_ReturnsFalseWithoutSTS)
+{
+    // When DumpFormat::BINARY and no STS runtime, PerformHybridHeapDump
+    // should route to HybridHeapProfiler::BinaryDump which returns false.
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::BINARY;
+    bool result = DFXJSNApi::PerformHybridHeapDump(vm_, dumpOption);
+    EXPECT_FALSE(result) << "BINARY format hybrid dump should fail without an attached STS runtime";
+}
+
+HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_BinaryFormatWithStream_ReturnsFalse)
+{
+    // When DumpFormat::BINARY with stream, should return false
+    // (hybrid binary dump with external stream is not supported yet)
+    const std::string filePath = "DFXJSNApiTests_binary_stream.heapsnapshot";
+    ASSERT_TRUE(CreateEmptyFile(filePath));
+    ecmascript::FileStream stream(filePath);
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::BINARY;
+    bool result = DFXJSNApi::PerformHybridHeapDump(vm_, &stream, dumpOption);
+    EXPECT_FALSE(result) << "BINARY format hybrid dump with stream should return false";
+    EXPECT_TRUE(IsEmptyFile(filePath));
+    std::remove(filePath.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_HybridBinaryPathPreservesExistingFile)
+{
+    const std::string filePath = "DFXJSNApiTests_binary_path.rawheap";
+    const std::string originalContent = "existing heap dump";
+    {
+        std::ofstream output(filePath, std::ios::binary | std::ios::trunc);
+        ASSERT_TRUE(output.is_open());
+        output.write(originalContent.data(), originalContent.size());
+    }
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::BINARY;
+    dumpOption.languageEnv = ecmascript::LanguageEnv::HYBRID;
+    bool callbackCalled = false;
+    uint8_t callbackStatus = 0;
+    DFXJSNApi::DumpHeapSnapshot(vm_, filePath, dumpOption, [&](uint8_t status) {
+        callbackCalled = true;
+        callbackStatus = status;
+    });
+
+    std::ifstream input(filePath, std::ios::binary);
+    std::string actualContent((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(actualContent, originalContent);
+    EXPECT_TRUE(callbackCalled);
+    EXPECT_EQ(callbackStatus, static_cast<uint8_t>(ecmascript::DumpHeapSnapshotStatus::FORK_FAILED));
+    std::remove(filePath.c_str());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_JSONFormat_StillFailsWithoutSTS)
+{
+    // JSON format should still fail without STS (same as before)
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    bool result = DFXJSNApi::PerformHybridHeapDump(vm_, dumpOption);
+    EXPECT_FALSE(result) << "JSON format hybrid dump should still fail without STS runtime";
+}
 } // namespace panda::test

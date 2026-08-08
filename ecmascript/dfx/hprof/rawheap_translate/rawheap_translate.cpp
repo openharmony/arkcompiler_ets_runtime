@@ -13,11 +13,16 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <sstream>
-#include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
+
+#include "rawheap_translate.h"
+#include "serializer.h"
+#include "static_rawheap_translate.h"
+#include "snapshot_merger.h"
+#include "utils.h"
 
 namespace rawheap_translate {
 RawHeap::~RawHeap()
@@ -25,14 +30,10 @@ RawHeap::~RawHeap()
     for (auto node : nodes_) {
         delete node;
     }
-
     for (auto edge : edges_) {
         delete edge;
     }
-
     delete strTable_;
-    nodes_.clear();
-    edges_.clear();
 }
 
 bool RawHeap::TranslateRawheap(const std::string &inputPath, const std::string &outputPath)
@@ -42,7 +43,39 @@ bool RawHeap::TranslateRawheap(const std::string &inputPath, const std::string &
     if (!file.Initialize(inputPath)) {
         return false;
     }
+    // Static binary snapshot files carry their own root framework; V1/V2
+    // rawheap files go through the metadata + trailer + Parse/Translate path.
+    if (IsStaticSnapshotFormat(file)) {
+        return TranslateStaticSnapshot(file, inputPath, outputPath, start);
+    }
+    return TranslateDynamicRawheap(file, inputPath, outputPath, start);
+}
 
+bool RawHeap::TranslateStaticSnapshot(FileReader &file, const std::string &inputPath,
+                                      const std::string &outputPath,
+                                      std::chrono::steady_clock::time_point start)
+{
+    StaticRawheapTranslate parser;
+    parser.EnableRootFramework();
+    uint64_t fileSize = FileReader::GetFileSize(inputPath);
+    if (!parser.Parse(file, fileSize) || !parser.Translate()) {
+        return false;
+    }
+    StreamWriter writer;
+    if (!writer.Initialize(outputPath)) {
+        return false;
+    }
+    HeapSnapshotJSONSerializer::Serialize(&parser, &writer);
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    LOG_INFO_ << "file save to " << outputPath << ", cost " << duration << "ms";
+    return true;
+}
+
+bool RawHeap::TranslateDynamicRawheap(FileReader &file, const std::string &inputPath,
+                                      const std::string &outputPath,
+                                      std::chrono::steady_clock::time_point start)
+{
     uint64_t fileSize = FileReader::GetFileSize(inputPath);
     if (!file.CheckAndGetHeaderAt(fileSize - sizeof(uint64_t), 0)) {
         LOG_ERROR_ << "Read rawheap file header failed!";
@@ -78,8 +111,117 @@ bool RawHeap::TranslateRawheap(const std::string &inputPath, const std::string &
     HeapSnapshotJSONSerializer::Serialize(rawheap, &writer);
     delete rawheap;
     auto end = std::chrono::steady_clock::now();
-    int duration = (int)std::chrono::duration<double>(end - start).count();
-    LOG_INFO_ << "file save to " << outputPath << ", cost " << std::to_string(duration) << 's';
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    LOG_INFO_ << "file save to " << outputPath << ", cost " << duration << "ms";
+    return true;
+}
+
+bool RawHeap::IsStaticSnapshotFormat(FileReader &file)
+{
+    std::string versionString = ReadVersion(file);
+    (void)file.Seek(0);
+    if (versionString.empty()) {
+        return false;
+    }
+    Version version;
+    return version.Parse(versionString) && version.GetMajor() == STATIC_SNAPSHOT_MAJOR_VERSION;
+}
+
+// Parse + translate the dynamic (V1/V2 rawheap) side of a two-file merge.
+// Returns an owning pointer on success (caller deletes), nullptr on failure.
+RawHeap *RawHeap::ParseDynamicRawheap(const std::string &dynamicPath)
+{
+    FileReader dynamicFile;
+    if (!dynamicFile.Initialize(dynamicPath)) {
+        LOG_ERROR_ << "failed to open dynamic rawheap file: " << dynamicPath;
+        return nullptr;
+    }
+    uint64_t dynamicFileSize = FileReader::GetFileSize(dynamicPath);
+    if (!dynamicFile.CheckAndGetHeaderAt(dynamicFileSize - sizeof(uint64_t), 0)) {
+        LOG_ERROR_ << "dynamic rawheap file header check failed";
+        return nullptr;
+    }
+    if (IsStaticSnapshotFormat(dynamicFile)) {
+        LOG_ERROR_ << "dynamic file is a static binary snapshot; two-file mode "
+                      "expects a V1/V2 rawheap for the dynamic side";
+        return nullptr;
+    }
+    MetaParser metaParser;
+    if (!ParseMetaData(dynamicFile, &metaParser)) {
+        return nullptr;
+    }
+    Version version;
+    if (!version.Parse(RawHeap::ReadVersion(dynamicFile))) {
+        return nullptr;
+    }
+    RawHeap *dynamic = ParseRawheap(version, &metaParser);
+    if (dynamic == nullptr) {
+        return nullptr;
+    }
+    if (!dynamic->Parse(dynamicFile, dynamicFile.GetHeaderLeft()) || !dynamic->Translate()) {
+        delete dynamic;
+        return nullptr;
+    }
+    return dynamic;
+}
+
+// Parse the static binary snapshot file into the provided parser. The path
+// must be non-empty; returns false (and logs) on open/format/parse failure.
+bool RawHeap::ParseStaticSnapshot(const std::string &staticPath, StaticRawheapTranslate &staticParser)
+{
+    FileReader staticFile;
+    if (!staticFile.Initialize(staticPath)) {
+        LOG_ERROR_ << "failed to open static snapshot file: " << staticPath;
+        return false;
+    }
+    if (!IsStaticSnapshotFormat(staticFile)) {
+        LOG_ERROR_ << "static file is not a static binary snapshot";
+        return false;
+    }
+    uint64_t staticFileSize = FileReader::GetFileSize(staticPath);
+    return staticParser.Parse(staticFile, staticFileSize);
+}
+
+bool RawHeap::TranslateRawheap(
+    const std::string &dynamicPath,
+    const std::string &staticPath,
+    const std::string &outputPath)
+{
+    auto start = std::chrono::steady_clock::now();
+
+    // 1. Parse + translate the dynamic (V1/V2 rawheap) file.
+    RawHeap *dynamic = ParseDynamicRawheap(dynamicPath);
+    if (dynamic == nullptr) {
+        return false;
+    }
+
+    // 2-3. Parse the static snapshot (if provided) and merge it in.
+    if (!staticPath.empty()) {
+        StaticRawheapTranslate staticParser;
+        if (!ParseStaticSnapshot(staticPath, staticParser)) {
+            delete dynamic;
+            return false;
+        }
+        SnapshotMerger merger;
+        if (!merger.Merge(*dynamic, staticParser)) {
+            delete dynamic;
+            return false;
+        }
+    }
+
+    // 4. Serialize the (merged) graph and free the owning dynamic pointer.
+    StreamWriter writer;
+    if (!writer.Initialize(outputPath)) {
+        LOG_ERROR_ << "failed to initialize output writer: " << outputPath;
+        delete dynamic;
+        return false;
+    }
+    HeapSnapshotJSONSerializer::Serialize(dynamic, &writer);
+    delete dynamic;
+
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    LOG_INFO_ << "hybrid file saved to " << outputPath << ", cost " << duration << "ms";
     return true;
 }
 
@@ -218,6 +360,27 @@ void RawHeap::InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type)
     edges_.push_back(edge);
 }
 
+void RawHeap::InsertEdge(Node *fromNode, Node *toNode, uint32_t indexOrStrId, EdgeType type)
+{
+    Edge *edge = new Edge(fromNode, toNode, indexOrStrId, type);
+    edges_.push_back(edge);
+}
+
+void RawHeap::SortEdgesByFrom()
+{
+    // Stable sort by source node index so the flat edges_ vector becomes
+    // grouped: [node0's edges, node1's edges, ...]. The .heapsnapshot format
+    // requires this (node i owns the next edgeCount[i] edges). Edges with
+    // from==nullptr (V1/V2 path, already grouped) sort first and keep relative
+    // order due to stable_sort.
+    std::stable_sort(edges_.begin(), edges_.end(),
+                     [](const Edge *a, const Edge *b) {
+                         uint32_t ia = (a->from != nullptr) ? a->from->index : 0;
+                         uint32_t ib = (b->from != nullptr) ? b->from->index : 0;
+                         return ia < ib;
+                     });
+}
+
 StringId RawHeap::InsertAndGetStringId(const std::string &str)
 {
     return strTable_->InsertStrAndGetStringId(str);
@@ -244,10 +407,6 @@ void RawHeap::CreateHashEdge(Node *node)
     InsertEdge(hashNode, hashStrId, EdgeType::DEFAULT);
     primitiveNodes_.push_back(hashNode);
     node->edgeCount++;
-
-#ifdef OHOS_UNIT_TEST
-    hashSet_.insert(hash);
-#endif
 }
 
 void RawHeap::AddPrimitiveNodes()
@@ -271,7 +430,7 @@ void RawHeap::CreateRootNode(Node *root, const std::string &name, size_t count)
 void RawHeap::CreateMetadataNode(Node *metadataNode)
 {
     metadataNode->nodeId = 0;
-    metadataNode->type = 8;     // 8 is native nodetype
+    metadataNode->type = DEFAULT_NODETYPE;
     metadataNode->strId = InsertAndGetStringId("HeapMetadata");
     metadataNode->edgeCount = 0;
     metadataNode->size = VIRTUAL_NODE_SIZE;
@@ -794,7 +953,7 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
 {
     Node *syntheticRoot = CreateNode();
     syntheticRoot->nodeId = 1;      // 1: means root node
-    syntheticRoot->type = 9;        // 9: means SYNTHETIC node type
+    syntheticRoot->type = SYNTHETIC_NODETYPE;  // SYNTHETIC node type
     syntheticRoot->strId = InsertAndGetStringId("SyntheticRoot");
     syntheticRoot->edgeCount = roots.size();
 
@@ -1661,7 +1820,7 @@ void RawHeapTranslateV2::AddHandleRootEdges(const std::vector<uint32_t> &handleR
 void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
 {
     syntheticRoot_->nodeId = 1;      // 1: means root node
-    syntheticRoot_->type = 9;        // 9: means SYNTHETIC node type
+    syntheticRoot_->type = SYNTHETIC_NODETYPE;  // SYNTHETIC node type
     syntheticRoot_->strId = InsertAndGetStringId("SyntheticRoot");
     syntheticRoot_->edgeCount = roots.size();
     StringId strId = InsertAndGetStringId("-subroot-");

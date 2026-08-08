@@ -79,8 +79,8 @@ private:
     bool isSimplify_ {false};
 
     // xref maps (populated in BuildUp, used in FillEdges)
-    std::unordered_map<uint64_t, uint64_t> jsToEts_;
-    std::unordered_map<uint64_t, uint64_t> etsToJs_;
+    arkplatform::STSVMInterface::XRefMap jsToEts_;
+    arkplatform::STSVMInterface::XRefMap etsToJs_;
 };
 
 }  // namespace panda::ecmascript

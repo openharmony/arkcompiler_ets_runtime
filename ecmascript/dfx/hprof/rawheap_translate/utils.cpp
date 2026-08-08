@@ -21,7 +21,8 @@
 #include <sys/stat.h>
 #include <ctime>
 #include <sstream>
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
+#include "securec.h"
+#include "utils.h"
 
 namespace rawheap_translate {
 bool RealPath(const std::string &filename, std::string &realpath)
@@ -40,8 +41,9 @@ bool RealPath(const std::string &filename, std::string &realpath)
         return false;
     }
 
-    char resolvedPath[PATH_MAX];
-    if (strcpy_s(resolvedPath, PATH_MAX, filename.c_str()) != 0) {
+    char resolvedPath[PATH_MAX] = {};
+    if (memcpy_s(resolvedPath, PATH_MAX, filename.c_str(), filename.size() + 1) != EOK) {
+        LOG_ERROR_ << "memcpy_s failed!";
         return false;
     }
 
@@ -86,6 +88,22 @@ bool GenerateDumpFileName(std::string &filename)
     filename += '-' + std::to_string(now->tm_min);
     filename += '-' + std::to_string(now->tm_sec);
     filename += ".heapsnapshot";
+    return true;
+}
+
+bool GenerateOutputNameFromInput(const std::string &userOutput, std::string &output)
+{
+    if (userOutput.empty()) {
+        // Not provided: use the timestamped hprof_<ts>.heapsnapshot name.
+        return GenerateDumpFileName(output);
+    }
+    if (EndsWith(userOutput, ".heapsnapshot")) {
+        // Correctly provided: use as-is.
+        output = userOutput;
+        return true;
+    }
+    // Provided but wrong extension: append ".heapsnapshot".
+    output = userOutput + ".heapsnapshot";
     return true;
 }
 
@@ -188,21 +206,29 @@ bool FileReader::Read(char *buf, uint32_t size)
         LOG_ERROR_ << "file buf is nullptr!";
         return false;
     }
-    if (file_.read(buf, size).fail()) {
+    file_.read(buf, size);
+    // eof+fail together means we requested more bytes than remain — a normal
+    // EOF exit when parsing record-driven formats.  Pure fail (no eof) is a
+    // genuine I/O or format error worth logging.
+    if (file_.eof() && file_.fail()) {
+        file_.clear();  // reset both flags so subsequent Seek/Read works
+        return false;   // normal EOF
+    }
+    if (file_.fail()) {
         LOG_ERROR_ << "read failed!";
         return false;
     }
     return true;
 }
 
-bool FileReader::Seek(uint32_t offset)
+bool FileReader::Seek(uint64_t offset)
 {
     if (!file_.is_open()) {
         LOG_ERROR_ << "file not open!";
         return false;
     }
     file_.clear();
-    if (!file_.seekg(offset)) {
+    if (!file_.seekg(static_cast<std::streamoff>(offset))) {
         LOG_ERROR_ << "set file offset failed, offset=" << offset;
         return false;
     }
@@ -231,7 +257,7 @@ bool FileReader::ReadArray(std::vector<uint64_t> &array, uint32_t size)
     return true;
 }
 
-bool FileReader::CheckAndGetHeaderAt(uint32_t offset, uint32_t assertNum)
+bool FileReader::CheckAndGetHeaderAt(uint64_t offset, uint32_t assertNum)
 {
     constexpr int HEADER_SIZE = sizeof(uint64_t) / sizeof(uint32_t);
     std::vector<uint32_t> header(HEADER_SIZE);
@@ -250,14 +276,14 @@ bool FileReader::CheckAndGetHeaderAt(uint32_t offset, uint32_t assertNum)
     return true;
 }
 
-uint32_t FileReader::GetFileSize(const std::string &path)
+uint64_t FileReader::GetFileSize(const std::string &path)
 {
     if (path.empty()) {
         return 0;
     }
     struct stat fileInfo;
     if (stat(path.c_str(), &fileInfo) == 0) {
-        return static_cast<uint32_t>(fileInfo.st_size);
+        return static_cast<uint64_t>(fileInfo.st_size);
     }
     return 0;
 }

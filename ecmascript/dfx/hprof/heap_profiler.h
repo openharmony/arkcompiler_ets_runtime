@@ -48,6 +48,19 @@ public:
     static constexpr uint64_t SEQ_STEP = 2;
     std::pair<bool, NodeId> FindId(JSTaggedType addr);
     NodeId FindOrInsertNodeId(JSTaggedType addr);
+    // Read-only nodeId probe: returns the assigned nodeId or 0 if `addr` was
+    // never registered. Unlike FindId (which advances nextId_ on a miss), this
+    // is non-mutating and safe for non-dumping lookups such as XRef resolution
+    // (HeapDumpCoordinator::CollectAndWriteXRef converts a JS heap address to the
+    // dynamic nodeId so the XRef record is symmetric with the static staNodeId).
+    // Returns uint32_t: only the low 32 bits are meaningful (the translator
+    // strips the high hash bits), mirroring the static-side ObjectIdMap::NodeId.
+    // 0 is a safe sentinel: entryIds start at 3 (nextId_ init) and stride by 2.
+    uint32_t FindNodeId(JSTaggedType addr) const
+    {
+        auto it = idMap_.find(addr);
+        return (it != idMap_.end()) ? static_cast<uint32_t>(it->second) : 0;
+    }
     bool InsertId(JSTaggedType addr, NodeId id);
     bool EraseId(JSTaggedType addr);
     bool Move(JSTaggedType oldAddr, JSTaggedType forwardAddr);
@@ -126,8 +139,6 @@ public:
     bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) override;
     void StopHeapSampling() override;
     const struct SamplingInfo *GetAllocationProfile() override;
-    static bool TryStartOOMDump();
-    static void ResetOOMDump();
     size_t GetIdCount() override
     {
         return entryIdMap_->GetIdCount();
@@ -168,7 +179,6 @@ public:
     std::unordered_map<uintptr_t, uint64_t> GetHandleNodeIdMap() override;
 
 private:
-    static bool oomDumpActive_;  // don't dump again while OOM dump is in progress.
     /**
      * trigger full gc to make sure no unreachable objects in heap
      */

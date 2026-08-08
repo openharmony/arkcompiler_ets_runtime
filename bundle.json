@@ -103,6 +103,15 @@
                     }
                 },
                 {
+                    "name": "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/rawheap_translate:rawheap_translate_static",
+                    "header": {
+                      "header_files": [
+                        "rawheap_translate.h"
+                      ],
+                      "header_base": "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/rawheap_translate"
+                    }
+                },
+                {
                     "name": "//arkcompiler/ets_runtime/compiler_service:libcompiler_service",
                     "header": {
                       "header_files": [

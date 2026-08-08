@@ -43,8 +43,6 @@
 
 namespace panda::ecmascript {
 
-bool HeapProfiler::oomDumpActive_ = false;
-
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
@@ -186,7 +184,7 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
     doDumpOption.isBeforeFill = false;
 #endif
     int32_t fd;
-    if (doDumpOption.isDumpOOM && doDumpOption.dumpFormat == DumpFormat::BINARY) {
+    if (doDumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
     } else {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
@@ -222,11 +220,6 @@ static void InitFork()
 
 void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
-    if (!TryStartOOMDump()) {
-        LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
-        return;
-    }
-
     SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
     if (dumpOption.isProcDump) {
         Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
@@ -550,12 +543,6 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         // hidumper do fork and fillmap.
         if (dumpOption.isBeforeFill) {
             FillIdMap();
-        }
-        if (dumpOption.isDumpOOM) {
-            if (!TryStartOOMDump()) {
-                LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
-                return false;
-            }
         }
         // fork for hidumper or oom
         pid = ForkAndPerformDump(stream, dumpOption, progress);
@@ -966,18 +953,6 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
         Backtrace(stack, true);
         InsertHandleBackTrace(handle, stack.str());
     }
-}
-
-bool HeapProfiler::TryStartOOMDump()
-{
-    bool result = oomDumpActive_;
-    oomDumpActive_ = true;
-    return !result;
-}
-
-void HeapProfiler::ResetOOMDump()
-{
-    oomDumpActive_ = false;
 }
 
 #if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
