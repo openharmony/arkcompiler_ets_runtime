@@ -167,12 +167,5 @@ std::vector<std::string> staticAOTDefaultArgs {
     "--paoc-generate-symbols=true"
 };
 
-std::vector<std::string> staticFrameworkAOTDefaultArgs {
-    "--load-runtimes=ets",
-    "--compiler-enable-fast-interop=false",
-    "--compiler-lower-boxed-boolean=false",
-    "--paoc-generate-symbols=true"
-};
-
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_LIST_H
