@@ -714,6 +714,7 @@ bool ZipFile::UnzipWithInflatedFromMMap(const ZipEntry &zipEntry, [[maybe_unused
     }
     uint8_t *dstDataPtr = static_cast<uint8_t *>(dataPtr.get());
     void *mmapSrcDataPtr = mmapDataPtr;
+    size_t totalWritten = 0;
 
     while ((remainCompressedSize > 0) || (zstream.avail_in > 0)) {
         if (!ReadZStreamFromMMap(bufIn, mmapSrcDataPtr, zstream, remainCompressedSize)) {
@@ -729,12 +730,18 @@ bool ZipFile::UnzipWithInflatedFromMMap(const ZipEntry &zipEntry, [[maybe_unused
 
         inflateLen = UNZIP_BUF_OUT_LEN - zstream.avail_out;
         if (inflateLen > 0) {
-            if (memcpy_s(dstDataPtr, inflateLen, bufOut, inflateLen) != EOK) {
+            if (totalWritten + inflateLen > len) {
+                LOG_ECMA(ERROR) << "Buffer overflow detected: inflated size exceeds declared uncompressedSize";
+                ret = false;
+                break;
+            }
+            if (memcpy_s(dstDataPtr, len - totalWritten, bufOut, inflateLen) != EOK) {
                 ret = false;
                 break;
             }
 
             dstDataPtr += inflateLen;
+            totalWritten += inflateLen;
             zstream.next_out = bufOut;
             zstream.avail_out = UNZIP_BUF_OUT_LEN;
             errorTimes = 0;
@@ -753,6 +760,9 @@ bool ZipFile::UnzipWithInflatedFromMMap(const ZipEntry &zipEntry, [[maybe_unused
         ret = false;
     }
 
+    if (!ret) {
+        dataPtr.reset();
+    }
     delete[] bufOut;
     delete[] bufIn;
     return ret;
