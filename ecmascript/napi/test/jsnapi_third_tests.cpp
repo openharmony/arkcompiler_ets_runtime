@@ -5384,4 +5384,66 @@ HWTEST_F_L0(JSNApiTests, GetGlobalHandleCount_005)
     EXPECT_EQ(jsnapiCount, threadCount);
     vm_->SetEnableForceGC(true);
 }
+
+class JSNApiGlobalLeakCheckTests : public testing::Test {
+public:
+    static void SetUpTestCase()
+    {
+        GTEST_LOG_(INFO) << "SetUpTestCase";
+    }
+
+    static void TearDownTestCase()
+    {
+        GTEST_LOG_(INFO) << "TearDownCase";
+    }
+
+    void SetUp() override
+    {
+        JSRuntimeOptions options;
+        options.SetArkProperties(options.GetArkProperties() | GLOBAL_OBJECT_LEAK_CHECK |
+                                 GLOBAL_PRIMITIVE_LEAK_CHECK);
+        vm_ = JSNApi::CreateEcmaVM(options);
+        ASSERT_TRUE(vm_ != nullptr) << "Cannot create EcmaVM with global leak check";
+        thread_ = vm_->GetJSThread();
+        thread_->ManagedCodeBegin();
+        scope_ = new EcmaHandleScope(thread_);
+        vm_->SetEnableForceGC(false);
+    }
+
+    void TearDown() override
+    {
+        TestHelper::DestroyEcmaVMWithScope(vm_, scope_);
+    }
+
+    JSThread *thread_ {nullptr};
+    EcmaVM *vm_ {nullptr};
+    EcmaHandleScope *scope_ {nullptr};
+};
+
+/**
+ * @tc.number: ffi_interface_api_GetGlobalHandleCount_006
+ * @tc.name: GetGlobalHandleCount_LeakCheckEnabled
+ * @tc.desc: Verify global handle count increases/decreases correctly when global leak check is
+ *           enabled (exercises the globalDebugStorage_ path), and JSNApi count matches JSThread count.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiGlobalLeakCheckTests, GetGlobalHandleCount_006)
+{
+    ASSERT_TRUE(vm_->GetJSOptions().EnableGlobalLeakCheck());
+    vm_->SetEnableForceGC(false);
+    size_t countBefore = JSNApi::GetGlobalHandleCount(vm_);
+    {
+        LocalScope scope(vm_);
+        Global<ObjectRef> globalObj(vm_, ObjectRef::New(vm_));
+        size_t countAfter = JSNApi::GetGlobalHandleCount(vm_);
+        EXPECT_GE(countAfter, countBefore + 1);
+        EXPECT_EQ(countAfter, thread_->GetGlobalHandleCount());
+        globalObj.FreeGlobalHandleAddr();
+    }
+    size_t countAfterFree = JSNApi::GetGlobalHandleCount(vm_);
+    EXPECT_LT(countAfterFree, countBefore + 1);
+    EXPECT_EQ(countAfterFree, thread_->GetGlobalHandleCount());
+    vm_->SetEnableForceGC(true);
+}
 } // namespace panda::test

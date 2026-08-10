@@ -547,9 +547,15 @@ void JSThread::ClearMegaIC()
 size_t JSThread::GetGlobalHandleCount()
 {
     size_t count = 0;
-    globalStorage_->IterateUsageGlobal([&count](Node *node) {
-        count++;
-    });
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_->IterateUsageGlobal([&count](Node *node) {
+            count++;
+        });
+    } else {
+        globalDebugStorage_->IterateUsageGlobal([&count](DebugNode *node) {
+            count++;
+        });
+    }
     return count;
 }
 
