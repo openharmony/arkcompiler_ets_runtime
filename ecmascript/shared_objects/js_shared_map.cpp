@@ -96,4 +96,39 @@ JSTaggedValue JSSharedMap::GetValue(JSThread *thread, const JSHandle<JSSharedMap
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     return LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject())->GetValue(thread, entry);
 }
+
+JSTaggedValue JSSharedMap::SetEntryForPutAll(JSThread *thread, const JSHandle<JSSharedMap> &receiver,
+    const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
+{
+    if (!key->IsSharedType() || !value->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error. Only accept sendable value.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+
+    JSHandle<LinkedHashMap> receiverLinkedMap(thread,
+        LinkedHashMap::Cast(receiver->GetLinkedMap(thread).GetTaggedObject()));
+    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, receiverLinkedMap, key, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    receiver->SetLinkedMap(thread, newMap);
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue JSSharedMap::PutAllFromLinkedMap(JSThread *thread, const JSHandle<JSSharedMap> &receiver,
+    const JSHandle<LinkedHashMap> &from)
+{
+    int totalElements = from->NumberOfElements() + from->NumberOfDeletedElements();
+    for (int index = 0; index < totalElements; index++) {
+        JSTaggedValue fromKey = from->GetKey(thread, index);
+        if (fromKey.IsHole()) {
+            continue;
+        }
+        JSHandle<JSTaggedValue> key(thread, fromKey);
+        JSHandle<JSTaggedValue> value(thread, from->GetValue(thread, index));
+        JSTaggedValue result = SetEntryForPutAll(thread, receiver, key, value);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, result);
+        thread->CheckSafepointIfSuspended();
+    }
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript

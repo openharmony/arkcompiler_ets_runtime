@@ -26,6 +26,8 @@
 #define BUILTIN_MAP_PROTOTYPE_FUNCTIONS(V)                      \
     /* Map.prototype.clear ( ) */                               \
     V("clear",   Clear,   0, MapClear)                          \
+    /* Map.prototype.containsValue ( value ) */                  \
+    V("containsValue", ContainsValue, 1, INVALID)                \
     /* Map.prototype.delete ( key ) */                          \
     V("delete",  Delete,  1, SharedMapDelete)                   \
     /* Map.prototype.entries ( ) */                             \
@@ -38,6 +40,12 @@
     V("has",     Has,     1, SharedMapHas)                      \
     /* Map.prototype.keys ( ) */                                \
     V("keys",    Keys,    0, SharedMapKeys)                     \
+    /* Map.prototype.put ( key, value ) */                      \
+    V("put",     Put,     2, INVALID)                           \
+    /* Map.prototype.putAll ( from ) */                         \
+    V("putAll",  PutAll,  1, INVALID)                           \
+    /* Map.prototype.remove ( key ) */                          \
+    V("remove",  Remove,  1, INVALID)                           \
     /* Map.prototype.set ( key, value ) */                      \
     V("set",     Set,     2, SharedMapSet)                      \
     /* Map.prototype.values ( ) */                              \
@@ -49,12 +57,16 @@ public:
     static JSTaggedValue Constructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Clear(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ContainsValue(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Delete(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Get(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Has(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Put(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue PutAll(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Remove(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Set(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetSize(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
