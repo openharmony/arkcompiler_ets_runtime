@@ -47,7 +47,6 @@ static constexpr std::string_view FLAG_PACKAGE_INFO = "    \"package-info\": \""
 static constexpr std::string_view FLAG_BLOCK_END = "  }";
 
 // Constants from ability_runtime
-const std::string NOT_INIT = "SourceMap is not initialized yet \n";
 const std::string NOT_FOUNDMAP = "Cannot get SourceMap info, dump raw stack:\n";
 const std::string FLAG_CLOSE_BRACE = ")";
 const std::string FLAG_OPEN_BRACE = "(";
@@ -672,9 +671,6 @@ bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& t
 std::string SourceMap::TranslateBySourceMap(const std::string& stackStr)
 {
     std::lock_guard<std::mutex> lock(sourceMapMutex_);
-    if (!GetInitStatus()) {
-        return (NOT_INIT + stackStr);
-    }
     std::string ans = "";
 
     // find per line of stack
@@ -791,10 +787,9 @@ void SourceMap::SetInitStatus(InitStatus status)
     initStatus_.store(status, std::memory_order_release);
 }
 
-bool SourceMap::GetInitStatus() const
+InitStatus SourceMap::GetInitStatus() const
 {
-    auto status = initStatus_.load(std::memory_order_acquire);
-    return status == InitStatus::NOT_EXECUTED || status == InitStatus::EXECUTED_SUCCESSFULLY;
+    return initStatus_.load(std::memory_order_acquire);
 }
 }   // namespace panda
 }   // namespace ecmascript

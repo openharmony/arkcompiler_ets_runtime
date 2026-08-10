@@ -86,7 +86,7 @@ public:
     static std::string ExtractFileName(const std::string& str);
     static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res);
     void SetInitStatus(InitStatus status);
-    bool GetInitStatus() const;
+    InitStatus GetInitStatus() const;
 
 private:
     void SplitSourceMap();

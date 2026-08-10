@@ -193,12 +193,15 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
 
     std::string stackTrace = BuildStackTraceWithLimit(thread, nativeInstanceObj);
     JSHandle<EcmaString> stackTraceStr = factory->NewFromStdString(stackTrace);
-    JSHandle<EcmaString> cbStackTraceStr;
+    JSHandle<EcmaString> cbStackTraceStr = stackTraceStr;
     if (!stackTrace.empty()) {
-        std::string translated = SourceMap::GetInstance().TranslateBySourceMap(stackTrace);
-        cbStackTraceStr = factory->NewFromStdString(translated);
-    } else {
-        cbStackTraceStr = stackTraceStr;
+        auto& sourceMap = SourceMap::GetInstance();
+        auto initStatus = sourceMap.GetInitStatus();
+        if (initStatus == InitStatus::EXECUTED_SUCCESSFULLY) {
+            cbStackTraceStr = factory->NewFromStdString(sourceMap.TranslateBySourceMap(stackTrace));
+        } else if (initStatus == InitStatus::IN_EXECUTED) {
+            cbStackTraceStr = factory->NewFromStdString("SourceMap is not initialized yet \n" + stackTrace);
+        }
     }
 
     PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(cbStackTraceStr), true, false, true);
