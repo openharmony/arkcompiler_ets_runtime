@@ -228,4 +228,28 @@ HWTEST_F_L0(RuntimeTest, ExecuteTaskpoolShrinkCallback)
 
     Runtime::GetInstance()->SetTaskpoolShrinkCallback(nullptr);
 }
+
+HWTEST_F_L0(RuntimeTest, ConcurrentLoadStubFileRace)
+{
+    constexpr int kThreadCount = 8;
+    std::vector<std::thread> workers;
+    for (int i = 0; i < kThreadCount; i++) {
+        workers.emplace_back([]() {
+            RuntimeOption option;
+            option.SetLogLevel(common::LOG_LEVEL::ERROR);
+            // ensures LoadStubFile() runs
+            option.SetEnableAsmInterpreter(true);
+            EcmaVM *vm = JSNApi::CreateJSVM(option);
+            ASSERT_TRUE(vm != nullptr);
+            // destroy on the SAME thread that created it
+            JSNApi::DestroyJSVM(vm);
+        });
+    }
+    {
+        ecmascript::ThreadSuspensionScope scope(thread);
+        for (auto &t : workers) {
+            t.join();
+        }
+    }
+}
 }

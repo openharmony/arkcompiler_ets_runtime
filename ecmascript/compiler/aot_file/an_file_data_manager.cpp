@@ -66,6 +66,34 @@ void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
     info->Destroy();
 }
 
+#if defined(STUB_FUNCTION_REORDERING)
+void AnFileDataManager::SafePopulateStubIndexMapping()
+{
+    std::call_once(stubEntriesInitFlag_, [this]() {
+        WriteLockHolder lock(lock_);
+        if (loadedStub_ == nullptr) {
+            return;
+        }
+#if ENABLE_MEMORY_OPTIMIZATION
+        uint32_t len = loadedStub_->GetEntrySize();
+        const auto *stubs = loadedStub_->GetRawEntries();
+        for (uint32_t i = 0; i < len; i++) {
+            if (stubs[i].IsBCStub()) {
+                loadedStub_->AddIndexMapping(stubs[i].indexInKindOrMethodId_, i);
+            }
+        }
+#else
+        auto stubs = loadedStub_->GetStubs();
+        for (size_t i = 0; i < stubs.size(); i++) {
+            if (stubs[i].IsBCStub()) {
+                loadedStub_->AddIndexMapping(stubs[i].indexInKindOrMethodId_, i);
+            }
+        }
+#endif
+    });
+}
+#endif
+
 bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
 {
     WriteLockHolder lock(lock_);
