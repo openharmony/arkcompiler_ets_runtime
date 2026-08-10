@@ -150,6 +150,9 @@ ohos_shared_library("libark_llvmcodegen") {
     ldflags += [ "-Wl,-u," + symbol ]
   }
   ldflags += [ "-Wl,-mllvm,-import-instr-limit=0" ]
+  if (is_ohos && target_cpu == "arm64") {
+    ldflags += [ "-Wl,--version-script=" + rebase_path("libark_llvmcodegen.versionscript") ]
+  }
   install_enable = true
   if (!is_mingw && !is_mac) {
     output_extension = "so"
