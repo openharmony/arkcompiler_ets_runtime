@@ -1,4 +1,2 @@
 # Known failure list for regress test - release-x64
-# Compilation error: Issue #18551
-regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
-# --- end of #18551
+
