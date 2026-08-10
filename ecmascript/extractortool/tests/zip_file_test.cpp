@@ -17,7 +17,9 @@
 #include <fstream>
 #include <ostream>
 #include <string>
+#include <vector>
 
+#include <zlib.h>
 #include "gtest/gtest.h"
 #include "ecmascript/extractortool/src/zip_file.h"
 #include "ecmascript/tests/test_helper.h"
@@ -366,5 +368,144 @@ HWTEST_F_L0(ZipFileTest, CheckCoherencyLocalHeaderTest)
     EXPECT_FALSE(zipFileFriend.CheckCoherencyLocalHeader(zipEntry, extraSize));
     zipEntry.fileName = "differentName.txt";
     EXPECT_FALSE(zipFileFriend.CheckCoherencyLocalHeader(zipEntry, extraSize));
+}
+
+// Helper: build a minimal ZIP file where the DEFLATED entry's uncompressedSize is understated.
+// The ZIP contains one entry with compressionMethod=8 (DEFLATED), but the declared
+// uncompressedSize is much smaller than the actual decompressed data, triggering a
+// heap buffer overflow in UnzipWithInflatedFromMMap if not properly checked.
+static bool CreateMalformedZipForOverflowTest(const std::string &zipPath, const std::string &entryName,
+    const std::vector<uint8_t> &rawData, uint32_t fakeUncompSize)
+{
+    // 1. Compress rawData with raw deflate
+    uLongf compSize = compressBound(rawData.size());
+    std::vector<uint8_t> compData(compSize);
+    z_stream strm = {};
+    if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL,
+        Z_DEFAULT_STRATEGY) != Z_OK) {
+        return false;
+    }
+    strm.next_in = const_cast<Bytef *>(rawData.data());
+    strm.avail_in = rawData.size();
+    strm.next_out = compData.data();
+    strm.avail_out = compSize;
+    if (deflate(&strm, Z_FINISH) != Z_STREAM_END) {
+        deflateEnd(&strm);
+        return false;
+    }
+    compSize = strm.total_out;
+    deflateEnd(&strm);
+
+    // 2. Compute CRC of actual uncompressed data
+    uLong crcVal = crc32(0L, rawData.data(), rawData.size());
+
+    // 3. Build Local Header (with lying uncompressedSize)
+    uint16_t nameSize = static_cast<uint16_t>(entryName.size());
+    LocalHeader lh = {};
+    lh.signature = 0x04034b50;
+    lh.versionNeeded = 20;
+    lh.flags = 0;
+    lh.compressionMethod = 8; // Z_DEFLATED
+    lh.crc = static_cast<uint32_t>(crcVal);
+    lh.compressedSize = static_cast<uint32_t>(compSize);
+    lh.uncompressedSize = fakeUncompSize;
+    lh.nameSize = nameSize;
+    lh.extraSize = 0;
+
+    // 4. Build Central Directory Entry (must match local header for CheckCoherencyLocalHeader)
+    CentralDirEntry cd = {};
+    cd.signature = 0x02014b50;
+    cd.versionMade = 20;
+    cd.versionNeeded = 20;
+    cd.flags = 0;
+    cd.compressionMethod = 8;
+    cd.crc = static_cast<uint32_t>(crcVal);
+    cd.compressedSize = static_cast<uint32_t>(compSize);
+    cd.uncompressedSize = fakeUncompSize;
+    cd.nameSize = nameSize;
+    cd.extraSize = 0;
+    cd.commentSize = 0;
+    cd.diskNumStart = 0;
+    cd.internalAttr = 0;
+    cd.externalAttr = 0;
+    cd.localHeaderOffset = 0;
+
+    // 5. Build End of Central Directory
+    uint32_t cdOffset = sizeof(LocalHeader) + nameSize + static_cast<uint32_t>(compSize);
+    EndDir eocd = {};
+    eocd.signature = 0x06054b50;
+    eocd.numDisk = 0;
+    eocd.startDiskOfCentralDir = 0;
+    eocd.totalEntriesInThisDisk = 1;
+    eocd.totalEntries = 1;
+    eocd.sizeOfCentralDir = sizeof(CentralDirEntry) + nameSize;
+    eocd.offset = cdOffset;
+    eocd.commentLen = 0;
+
+    // 6. Write ZIP file
+    std::ofstream out(zipPath, std::ios::binary);
+    if (!out) {
+        return false;
+    }
+    out.write(reinterpret_cast<const char *>(&lh), sizeof(lh));
+    out.write(entryName.data(), nameSize);
+    out.write(reinterpret_cast<const char *>(compData.data()), compSize);
+    out.write(reinterpret_cast<const char *>(&cd), sizeof(cd));
+    out.write(entryName.data(), nameSize);
+    out.write(reinterpret_cast<const char *>(&eocd), sizeof(eocd));
+    out.close();
+    return out.good();
+}
+
+// Test that UnzipWithInflatedFromMMap rejects a DEFLATED entry whose actual
+// decompressed size exceeds the declared uncompressedSize (zip bomb / heap overflow).
+HWTEST_F_L0(ZipFileTest, UnzipWithInflatedFromMMap_BufferOverflowDetected)
+{
+    // Prepare test data: 4096 bytes of repetitive content
+    std::vector<uint8_t> rawData(4096, 'A');
+    const std::string entryName = "ets/sourceMaps.map";
+    const uint32_t fakeUncompSize = 16; // Lie: claim only 16 bytes, actual is 4096
+
+    std::string zipPath = "malformed_overflow_test.zip";
+    ASSERT_TRUE(CreateMalformedZipForOverflowTest(zipPath, entryName, rawData, fakeUncompSize));
+
+    ZipFileFriend zipFileFriend(zipPath);
+    ASSERT_TRUE(zipFileFriend.Open());
+
+    std::unique_ptr<uint8_t[]> dataPtr;
+    size_t len = 0;
+    // ExtractToBufByName should fail because the actual inflated data (4096 bytes)
+    // exceeds the declared uncompressedSize (16 bytes), triggering the overflow check
+    bool result = zipFileFriend.ExtractToBufByName(entryName, dataPtr, len);
+    EXPECT_FALSE(result);
+
+    zipFileFriend.Close();
+    std::remove(zipPath.c_str());
+}
+
+// Test that UnzipWithInflatedFromMMap succeeds when uncompressedSize matches actual data
+HWTEST_F_L0(ZipFileTest, UnzipWithInflatedFromMMap_ValidEntrySucceeds)
+{
+    // Prepare test data with correct uncompressedSize
+    std::vector<uint8_t> rawData(256, 'B');
+    const std::string entryName = "ets/sourceMaps.map";
+    const uint32_t realUncompSize = static_cast<uint32_t>(rawData.size());
+
+    std::string zipPath = "valid_inflate_test.zip";
+    ASSERT_TRUE(CreateMalformedZipForOverflowTest(zipPath, entryName, rawData, realUncompSize));
+
+    ZipFileFriend zipFileFriend(zipPath);
+    ASSERT_TRUE(zipFileFriend.Open());
+
+    std::unique_ptr<uint8_t[]> dataPtr;
+    size_t len = 0;
+    bool result = zipFileFriend.ExtractToBufByName(entryName, dataPtr, len);
+    EXPECT_TRUE(result);
+    // Verify the decompressed data matches
+    ASSERT_EQ(len, realUncompSize);
+    EXPECT_EQ(memcmp(dataPtr.get(), rawData.data(), realUncompSize), 0);
+
+    zipFileFriend.Close();
+    std::remove(zipPath.c_str());
 }
 }
