@@ -21,8 +21,7 @@
 #include <cstring>
 #include <limits>
 #include <numeric>
-
-#include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#include <sstream>
 
 namespace panda::ecmascript::arksteed {
 namespace {
@@ -36,7 +35,7 @@ constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AARCH64;
 constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AMD64;
 #endif
 
-void EncodeDeoptValue(std::vector<uint8_t> *out, const kungfu::ARKDeopt &deopt)
+void EncodeDeoptValue(ChunkVector<uint8_t> *out, const kungfu::ARKDeopt &deopt)
 {
     std::vector<uint8_t> bytes;
     size_t byteSize = 0;
@@ -60,9 +59,9 @@ void EncodeDeoptValue(std::vector<uint8_t> *out, const kungfu::ARKDeopt &deopt)
     out->insert(out->end(), bytes.begin(), bytes.begin() + byteSize);
 }
 
-std::vector<uint8_t> EncodeDeopts(const std::vector<kungfu::ARKDeopt> &deopts)
+ChunkVector<uint8_t> EncodeDeopts(Chunk *chunk, const std::vector<kungfu::ARKDeopt> &deopts)
 {
-    std::vector<uint8_t> out;
+    ChunkVector<uint8_t> out(chunk);
     for (const auto &deopt : deopts) {
         EncodeDeoptValue(&out, deopt);
     }
@@ -89,15 +88,13 @@ ArkSteedSafepointEntry NewEntry(uint32_t pcOffset)
 // Builder
 // ============================================================================
 
-ArkSteedSafepointTableBuilder::~ArkSteedSafepointTableBuilder() = default;
-
 ArkSteedSafepointTableBuilder::Safepoint ArkSteedSafepointTableBuilder::DefineSafepoint(uint32_t pcOffset)
 {
     if (entries_.empty()) {
-        deoptSideTable_.clear();
+        encodedDeoptData_.clear();
     }
     entries_.push_back(NewEntry(pcOffset));
-    deoptSideTable_.emplace_back();
+    encodedDeoptData_.emplace_back(chunk_);
     return Safepoint(&entries_.back());
 }
 
@@ -105,7 +102,7 @@ void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(
     uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts, ExceptionHandlerKind exceptionHandlerKind)
 {
     if (entries_.empty()) {
-        deoptSideTable_.clear();
+        encodedDeoptData_.clear();
     }
     std::sort(deopts.begin(), deopts.end(), [](const kungfu::ARKDeopt &lhs, const kungfu::ARKDeopt &rhs) {
         return lhs.id < rhs.id;
@@ -117,7 +114,7 @@ void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(
     ASSERT(kind <= static_cast<uint16_t>(ExceptionHandlerKind::LAZY_DEOPT));
     entries_.back().extraSpillSlotsAndFlags |=
         static_cast<uint16_t>(kind << ArkSteedSafepointEntry::EXCEPTION_HANDLER_KIND_SHIFT);
-    deoptSideTable_.push_back(std::move(deopts));
+    encodedDeoptData_.push_back(EncodeDeopts(chunk_, deopts));
 }
 
 void ArkSteedSafepointTableBuilder::SetFrameSlots(uint32_t tagged, uint32_t untagged)
@@ -131,9 +128,9 @@ size_t ArkSteedSafepointTableBuilder::GetTableSize() const
     ASSERT(entries_.size() <= std::numeric_limits<uint32_t>::max());
     size_t size = sizeof(ArkSteedSafepointHeader);
     AddEncodedSize(&size, entries_.size(), sizeof(ArkSteedSafepointEntry));
-    ASSERT(entries_.size() == deoptSideTable_.size());
-    for (const auto &deopts : deoptSideTable_) {
-        AddEncodedSize(&size, EncodeDeopts(deopts).size(), 1);
+    ASSERT(entries_.size() == encodedDeoptData_.size());
+    for (const auto &encoded : encodedDeoptData_) {
+        AddEncodedSize(&size, encoded.size(), 1);
     }
     ASSERT(size <= std::numeric_limits<uint32_t>::max());
     return size;
@@ -141,8 +138,7 @@ size_t ArkSteedSafepointTableBuilder::GetTableSize() const
 
 void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
 {
-    ASSERT(entries_.size() == deoptSideTable_.size());
-    const auto &deoptEntries = deoptSideTable_;
+    ASSERT(entries_.size() == encodedDeoptData_.size());
     auto *header = reinterpret_cast<ArkSteedSafepointHeader *>(buffer);
     header->numEntries = static_cast<uint32_t>(entries_.size());
     header->numTaggedSlots = numTaggedSlots_;
@@ -151,7 +147,7 @@ void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
 
     auto *entryBuffer = reinterpret_cast<ArkSteedSafepointEntry *>(buffer + sizeof(ArkSteedSafepointHeader));
 
-    std::vector<size_t> order(entries_.size());
+    ChunkVector<size_t> order(entries_.size(), chunk_);
     std::iota(order.begin(), order.end(), 0);
     std::sort(order.begin(), order.end(), [this](size_t lhs, size_t rhs) {
         return entries_[lhs].pcOffset < entries_[rhs].pcOffset;
@@ -161,7 +157,7 @@ void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
     for (size_t i = 0; i < order.size(); i++) {
         size_t index = order[i];
         entryBuffer[i] = entries_[index];
-        auto encodedDeopts = EncodeDeopts(deoptEntries[index]);
+        const auto &encodedDeopts = encodedDeoptData_[index];
         if (!encodedDeopts.empty()) {
             ASSERT(deoptOffset <= std::numeric_limits<uint32_t>::max());
             entryBuffer[i].deoptOffset = static_cast<uint32_t>(deoptOffset);
@@ -183,6 +179,30 @@ uint8_t *ArkSteedSafepointTableBuilder::EmitToNewBuffer() const
     uint8_t *buffer = new uint8_t[size];
     Emit(buffer);
     return buffer;
+}
+
+std::string ArkSteedSafepointTableBuilder::DumpMemoryUsage() const
+{
+    ASSERT(entries_.size() == encodedDeoptData_.size());
+    size_t headerSize = sizeof(ArkSteedSafepointHeader);
+    size_t entriesSize = entries_.size() * sizeof(ArkSteedSafepointEntry);
+    size_t deoptSize = 0;
+    uint32_t deoptEntryCount = 0;
+    for (const auto &encoded : encodedDeoptData_) {
+        deoptSize += encoded.size();
+        if (!encoded.empty()) {
+            ++deoptEntryCount;
+        }
+    }
+    size_t totalSize = headerSize + entriesSize + deoptSize;
+    std::stringstream ss;
+    ss << "Safepoint table: " << entries_.size() << " entries ("
+       << deoptEntryCount << " with deopt), "
+       << totalSize << " bytes total ("
+       << headerSize << " header + "
+       << entriesSize << " entries + "
+       << deoptSize << " deopt data)";
+    return ss.str();
 }
 
 // ============================================================================

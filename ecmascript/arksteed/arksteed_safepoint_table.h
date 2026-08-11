@@ -18,8 +18,7 @@
 
 #include <vector>
 
-#include "ecmascript/arksteed/arksteed_deopt_helper.h"
-#include "ecmascript/common.h"
+#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript::arksteed {
@@ -48,7 +47,6 @@ enum class ExceptionHandlerKind : uint16_t {
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
 //   2. Per-safepoint: outgoing stack arguments are roots until the call returns
 
-#pragma pack(1)
 struct ArkSteedSafepointHeader {
     uint32_t numEntries;
     uint32_t numTaggedSlots;
@@ -63,8 +61,8 @@ struct ArkSteedSafepointEntry {
     static constexpr uint16_t ENTRY_FLAGS_MASK = EXCEPTION_HANDLER_KIND_MASK;
 
     uint32_t pcOffset;
-    uint16_t extraSpillSlotsAndFlags;
     uint32_t deoptOffset;
+    uint16_t extraSpillSlotsAndFlags;
     uint16_t deoptNum;
 
     uint16_t GetNumExtraSpillSlots() const
@@ -81,7 +79,6 @@ struct ArkSteedSafepointEntry {
     }
 };
 
-#pragma pack()
 
 static_assert(sizeof(ArkSteedSafepointHeader) == 16, "Header must be 16 bytes");  // 16: header size in bytes
 static_assert(sizeof(ArkSteedSafepointEntry) == 12, "Entry must be 12 bytes");  // 12: entry size in bytes
@@ -91,16 +88,18 @@ static_assert(sizeof(ArkSteedSafepointEntry) == 12, "Entry must be 12 bytes");  
 
 class PUBLIC_API ArkSteedSafepointTableBuilder {
 public:
-    ~ArkSteedSafepointTableBuilder();
+    explicit ArkSteedSafepointTableBuilder(Chunk *chunk)
+        : chunk_(chunk), entries_(chunk), encodedDeoptData_(chunk)
+    {}
+    ~ArkSteedSafepointTableBuilder() = default;
 
     class Safepoint {
     public:
         void SetNumExtraSpillSlots(uint32_t count)
         {
             ASSERT(count <= ArkSteedSafepointEntry::EXTRA_SPILL_SLOTS_MASK);
-            entry_->extraSpillSlotsAndFlags =
-                static_cast<uint16_t>((entry_->extraSpillSlotsAndFlags & ArkSteedSafepointEntry::ENTRY_FLAGS_MASK) |
-                                      count);
+            entry_->extraSpillSlotsAndFlags = static_cast<uint16_t>(
+                (entry_->extraSpillSlotsAndFlags & ArkSteedSafepointEntry::ENTRY_FLAGS_MASK) | count);
         }
 
     private:
@@ -118,23 +117,19 @@ public:
     void Emit(uint8_t *buffer) const;
     uint8_t *EmitToNewBuffer() const;
 
+    std::string DumpMemoryUsage() const;
+
     uint32_t GetNumEntries() const
     {
         return static_cast<uint32_t>(entries_.size());
     }
 
 private:
+    Chunk *chunk_;
     uint32_t numTaggedSlots_ = 0;
     uint32_t numUntaggedSlots_ = 0;
-    std::vector<ArkSteedSafepointEntry> entries_;
-    // Per-safepoint deopt payloads, parallel to entries_ (entry i -> deopts for
-    // safepoint i). Formerly a process-global std::unordered_map keyed by the
-    // builder pointer; that shared, long-lived mutable state was the victim of
-    // heap corruption during eager-deopt-heavy compiles (e.g. box2d), surfacing
-    // as SIGSEGV inside the map's bucket walk. Making it a per-builder member
-    // removes the shared heap entirely and ties the side table's lifetime to the
-    // builder, so corruption can no longer cross compile boundaries.
-    std::vector<std::vector<kungfu::ARKDeopt>> deoptSideTable_;
+    ChunkVector<ArkSteedSafepointEntry> entries_;
+    ChunkVector<ChunkVector<uint8_t>> encodedDeoptData_;
 };
 
 // ============================================================================

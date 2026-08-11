@@ -1564,7 +1564,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildUnaryOperation(CommonStubID::Inc);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerDec()
@@ -1577,7 +1577,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildUnaryOperation(CommonStubID::Dec);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerNeg()
@@ -1590,7 +1590,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildUnaryOperation(CommonStubID::Neg);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerNot()
@@ -1603,7 +1603,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildUnaryOperation(CommonStubID::Not);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     // -------- Category #4: Binary Arithmetic --------
@@ -1626,7 +1626,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBinaryOperation(BinaryOpKind::ADD);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerSub2(const BytecodeInfo *bcInfo)
@@ -1640,7 +1640,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBinaryOperation(BinaryOpKind::SUB);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerMul2(const BytecodeInfo *bcInfo)
@@ -1654,7 +1654,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBinaryOperation(BinaryOpKind::MUL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerDiv2(const BytecodeInfo *bcInfo)
@@ -1668,14 +1668,14 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBinaryOperation(BinaryOpKind::DIV);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerMod2(const BytecodeInfo * /*bcInfo*/)
     {
         ValueVertex *result = BuildBinaryOperation(BinaryOpKind::MOD);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerExp(const BytecodeInfo *bcInfo)
@@ -1696,7 +1696,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_LEFT);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerShr2(const BytecodeInfo *bcInfo)
@@ -1710,7 +1710,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerAshr2(const BytecodeInfo *bcInfo)
@@ -1724,7 +1724,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerAnd2(const BytecodeInfo *bcInfo)
@@ -1738,7 +1738,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_AND);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerOr2(const BytecodeInfo *bcInfo)
@@ -1752,7 +1752,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_OR);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerXor2(const BytecodeInfo *bcInfo)
@@ -1766,7 +1766,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_XOR);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     // -------- Category #5: Comparisons --------
@@ -1790,7 +1790,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::EQUAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerNotEq(const BytecodeInfo *bcInfo)
@@ -1800,7 +1800,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::NOT_EQUAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerLess(const BytecodeInfo *bcInfo)
@@ -1810,7 +1810,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::LESS_THAN);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerLessEq(const BytecodeInfo *bcInfo)
@@ -1820,7 +1820,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::LESS_THAN_OR_EQUAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerGreater(const BytecodeInfo *bcInfo)
@@ -1830,7 +1830,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::GREATER_THAN);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerGreaterEq(const BytecodeInfo *bcInfo)
@@ -1840,7 +1840,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::GREATER_THAN_OR_EQUAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerStrictNotEq(const BytecodeInfo *bcInfo)
@@ -1850,7 +1850,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::STRICT_NOT_EQUAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerStrictEq(const BytecodeInfo *bcInfo)
@@ -1860,7 +1860,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *result = BuildCompareOperation(CompareOpKind::STRICT_EQUAL);
         frameState.SetAcc(result);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
 
     void LowerIsTrue()
@@ -2202,7 +2202,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, undefined}, CALL_ARG0);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallArg1(const BytecodeInfo *bcInfo)
@@ -2213,7 +2213,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value}, CALL_ARG1);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallArgs2(const BytecodeInfo *bcInfo)
@@ -2225,7 +2225,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallArgs3(const BytecodeInfo *bcInfo)
@@ -2238,7 +2238,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis0(const BytecodeInfo *bcInfo)
@@ -2249,7 +2249,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, thisObj}, CALL_ARG0);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallInit(const BytecodeInfo *bcInfo)
@@ -2259,7 +2259,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *undefined = self->undefinedValue_;
 
         CallVertex *call = BuildCallVertex({func, undefined, thisObj}, CALL_ARG0);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis1(const BytecodeInfo *bcInfo)
@@ -2271,7 +2271,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value}, CALL_ARG1);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis2(const BytecodeInfo *bcInfo)
@@ -2284,7 +2284,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThis3(const BytecodeInfo *bcInfo)
@@ -2298,7 +2298,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallRange(const BytecodeInfo *bcInfo)
@@ -2315,7 +2315,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         CallVertex *call = BuildCallVertex(args, inputSize);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallThisRange(const BytecodeInfo *bcInfo)
@@ -2334,7 +2334,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         CallVertex *call = BuildCallVertex(args, argc);
         frameState.SetAcc(call);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
     }
 
     void LowerCallSpread(const BytecodeInfo *bcInfo)
@@ -3091,50 +3091,83 @@ struct GraphBuilder::BytecodeVisitor {
 
     // -------- Deoptimization Helpers --------
 
-    // TODO: May be optimized later
-    ValueVertex *NormalizeDeoptInput(ValueVertex *input)
+    using LazyDeoptFrameState = LazyDeoptimizableMixin::LazyDeoptFrameState;
+    using EagerDeoptFrameState = EagerDeoptimizableMixin::EagerDeoptFrameState;
+
+    DeoptTranslationKind GetDeoptValueKind(ValueVertex *value) const
     {
-        switch (input->GetValueRepresentation()) {
+        switch (value->GetValueRepresentation()) {
             case ValueRepresentation::TAGGED:
-                return input;
+                return DeoptTranslationKind::TAGGED;
             case ValueRepresentation::INT32:
-                return self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {input});
+                return DeoptTranslationKind::INT32_TO_TAGGED;
             case ValueRepresentation::FLOAT64:
             case ValueRepresentation::HOLEY_FLOAT64:
-                return self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {input});
-            default:
-                UNREACHABLE();
+                return DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE;
+            case ValueRepresentation::UINT32:
+            case ValueRepresentation::INT64:
+            case ValueRepresentation::NONE:
+                break;
+        }
+        UNREACHABLE();
+    }
+
+    template <class DeoptFrameState>
+    void AppendDeoptInput(DeoptFrameState *deoptFrameState, int32_t id, ValueVertex *value)
+    {
+        ValueVertex *frameValue = value == nullptr ? self->undefinedValue_ : value;
+        deoptFrameState->emplace_back(id, frameValue, GetDeoptValueKind(frameValue));
+    }
+
+    template <class DeoptFrameState>
+    void AppendCommonDeoptInputs(uint32_t bcIndex, DeoptFrameState *deoptFrameState)
+    {
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX),
+                         LoadParam(CALL_TARGET_PARAM_INDEX));
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX),
+                         LoadParam(NEW_TARGET_PARAM_INDEX));
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX),
+                         LoadParam(THIS_OBJECT_PARAM_INDEX));
+        int32_t bcOffset = static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex));
+        deoptFrameState->emplace_back(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
+                                      self->graph_->GetInt32Constant(bcOffset), DeoptTranslationKind::RAW_INT32);
+    }
+
+    void AppendLazyCommonDeoptInputs(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState)
+    {
+        AppendCommonDeoptInputs(bcIndex, deoptFrameState);
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), TaggedActualArgc());
+    }
+
+    void AppendEagerCommonDeoptInputs(uint32_t bcIndex, EagerDeoptFrameState *deoptFrameState)
+    {
+        AppendCommonDeoptInputs(bcIndex, deoptFrameState);
+        ValueVertex *lexicalEnv = frameState.GetLexicalEnv();
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX),
+                         lexicalEnv == self->initialLexicalEnv_ ? self->undefinedValue_ : lexicalEnv);
+        deoptFrameState->emplace_back(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX),
+                                      self->initialActualArgc_, DeoptTranslationKind::INT32_TO_TAGGED);
+    }
+
+    template <class DeoptFrameState, class Predicate>
+    void AppendLiveLocalsAndParams(DeoptFrameState *deoptFrameState, VRegIDType firstParamIndex, Predicate predicate)
+    {
+        for (VRegIDType i = 0; i < self->numLocal_; i++) {
+            VRegIDType localIndex = VRegOfLocal(i);
+            if (predicate(localIndex)) {
+                AppendDeoptInput(deoptFrameState, static_cast<int32_t>(localIndex), frameState.Get(localIndex));
+            }
+        }
+        for (VRegIDType i = firstParamIndex; i < self->numParams_; i++) {
+            VRegIDType paramIndex = VRegOfParam(self->numLocal_, i);
+            if (predicate(paramIndex)) {
+                AppendDeoptInput(deoptFrameState, static_cast<int32_t>(paramIndex), LoadParam(i));
+            }
         }
     }
 
-    void AppendDeoptInput(DeoptMetadata *metadata, uint32_t id, ValueVertex *value)
-    {
-        metadata->indices.emplace_back(id);
-        metadata->sources.emplace_back(value == nullptr ? self->undefinedValue_ : NormalizeDeoptInput(value));
-    }
-
-    void AppendRawDeoptInput(DeoptMetadata *metadata, uint32_t id, ValueVertex *value)
-    {
-        metadata->indices.emplace_back(id);
-        metadata->sources.emplace_back(value == nullptr ? self->undefinedValue_ : value);
-    }
-
-    void AppendCommonDeoptInputs(uint32_t bcIndex, DeoptMetadata *metadata)
-    {
-        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX),
-                         LoadParam(CALL_TARGET_PARAM_INDEX));
-        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX),
-                         LoadParam(NEW_TARGET_PARAM_INDEX));
-        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX),
-                         LoadParam(THIS_OBJECT_PARAM_INDEX));
-        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), TaggedActualArgc());
-        int32_t bcOffset = static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex));
-        AppendRawDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
-                            self->graph_->GetInt32Constant(bcOffset));
-    }
-
     // D refers to dependency
-    void BuildLazyDeoptInputsForDOnly(uint32_t bcIndex, DeoptMetadata *metadata)
+    void BuildLazyDeoptInputsForDOnly(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState)
     {
         const BytecodeInfo *bcInfo = self->preproc_->GetBytecode(bcIndex);
         const auto &liveOut = self->analysis_->GetLiveOutOfBytecode(bcIndex);
@@ -3143,90 +3176,71 @@ struct GraphBuilder::BytecodeVisitor {
             return std::find(bcInfo->vregOut.begin(), bcInfo->vregOut.end(), index) != bcInfo->vregOut.end();
         };
 
-        AppendCommonDeoptInputs(bcIndex, metadata);
+        AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
         VRegIDType envIndex = self->LexicalEnvIndex();
         if (!bcInfo->EnvOut() && !isInVRegOut(envIndex)) {
-            AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+            constexpr int32_t ENV_INDEX = static_cast<int32_t>(SpecVregIndex::ENV_INDEX);
+            AppendDeoptInput(deoptFrameState, ENV_INDEX, frameState.GetLexicalEnv());
         }
         if (!bcInfo->AccOut()) {
-            AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+            constexpr int32_t ACC_INDEX = static_cast<int32_t>(SpecVregIndex::ACC_INDEX);
+            AppendDeoptInput(deoptFrameState, ACC_INDEX, frameState.GetAcc());
         }
-        for (VRegIDType i = 0; i < self->numLocal_; i++) {
-            VRegIDType localIndex = VRegOfLocal(i);
-            if (liveOut.TestBit(localIndex) && !isInVRegOut(localIndex)) {
-                AppendDeoptInput(metadata, localIndex, frameState.Get(localIndex));
-            }
-        }
-        for (VRegIDType i = 0; i < self->numParams_; i++) {
-            VRegIDType paramIndex = VRegOfParam(self->numLocal_, i);
-            if (liveOut.TestBit(paramIndex) && !isInVRegOut(paramIndex)) {
-                AppendDeoptInput(metadata, paramIndex, LoadParam(i));
-            }
-        }
+        AppendLiveLocalsAndParams(deoptFrameState, 0, [&liveOut, &isInVRegOut](VRegIDType index) {
+            return liveOut.TestBit(index) && !isInVRegOut(index);
+        });
     }
 
     // E refers to exception
-    void BuildLazyDeoptInputsForEOnly(uint32_t bcIndex, DeoptMetadata *metadata)
+    void BuildLazyDeoptInputsForEOnly(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState)
     {
         ASSERT(blockInfo->catchBlock != nullptr);
-        // Exception lazy-deopt resumes at the catch handler entry. Fixed frame fields are still required by
-        // the deoptimizer; only the ordinary vreg set is narrowed to the handler live-ins. ACC is restored as
-        // the exception object by the lazy-deopt trampoline, not from this payload.
+        // Exception lazy-deopt resumes at the catch handler entry. ACC is restored as the exception object by
+        // the lazy-deopt trampoline, not from this payload.
         const kungfu::BitSet &catchLiveIn = self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex);
-
-        AppendCommonDeoptInputs(bcIndex, metadata);
-        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
-        for (VRegIDType i = 0; i < self->numLocal_; i++) {
-            auto localIndex = VRegOfLocal(i);
-            if (catchLiveIn.TestBit(localIndex)) {
-                AppendDeoptInput(metadata, localIndex, frameState.Get(localIndex));
-            }
-        }
-        for (VRegIDType i = 0; i < self->numParams_; i++) {
-            auto paramIndex = VRegOfParam(self->numLocal_, i);
-            if (catchLiveIn.TestBit(paramIndex)) {
-                AppendDeoptInput(metadata, paramIndex, LoadParam(i));
-            }
-        }
+        AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        AppendLiveLocalsAndParams(deoptFrameState, 0, [&catchLiveIn](VRegIDType index) {
+            return catchLiveIn.TestBit(index);
+        });
     }
 
-    // Shared by (1) eager deopt; (2) D+E lazy deopt.
-    // Eager deopt takes live-in virtual registers of current bytecode.
+    // D+E (dependency + exception) lazy deopt.
     // Lazy-deopt takes live-out - {ACC} which is equivalent to live-in - {ACC} with Ark bytecode.
-    void BuildGenericDeoptInputs(uint32_t bcIndex, DeoptMetadata *metadata, bool includeAcc)
+    void BuildLazyDeoptInputsForDE(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState, bool includeAcc)
     {
         kungfu::BitSet liveSet(self->chunk_, self->analysis_->GetNumVRegs());
         liveSet.CopyFrom(self->analysis_->GetLiveInOfBytecode(bcIndex));
-        // Eager deopt resumes from the bytecode itself. If that bytecode later throws in the interpreter,
-        // the catch handler may still need values not used by the bytecode normal path.
         if (blockInfo->catchBlock != nullptr) {
             liveSet.Union(self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex));
         }
-        AppendCommonDeoptInputs(bcIndex, metadata);
-        AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
         if (includeAcc) {
-            AppendDeoptInput(metadata, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+            AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
         }
-        for (VRegIDType i = 0; i < self->numLocal_; i++) {
-            auto localIndex = VRegOfLocal(i);
-            if (liveSet.TestBit(localIndex)) {
-                AppendDeoptInput(metadata, localIndex, frameState.Get(localIndex));
-            }
-        }
-        for (VRegIDType i = 0; i < self->numParams_; i++) {
-            auto paramIndex = VRegOfParam(self->numLocal_, i);
-            if (liveSet.TestBit(paramIndex)) {
-                AppendDeoptInput(metadata, paramIndex, LoadParam(i));
-            }
-        }
+        AppendLiveLocalsAndParams(deoptFrameState, 0, [&liveSet](VRegIDType index) {
+            return liveSet.TestBit(index);
+        });
     }
 
-    DeoptMetadata *BuildEagerDeoptMetadata(uint32_t bcIndex)
+    EagerDeoptFrameState BuildCurrentEagerDeoptFrameState(uint32_t bcIndex)
     {
-        uint32_t bcOffset = self->preproc_->GetBytecodeOffset(bcIndex);
-        auto *metadata = self->chunk_->New<DeoptMetadata>(self->chunk_, bcOffset);
-        BuildGenericDeoptInputs(bcIndex, metadata, true);
-        return metadata;
+        EagerDeoptFrameState frameStateValues {self->chunk_};
+        kungfu::BitSet liveSet(self->chunk_, self->analysis_->GetNumVRegs());
+        liveSet.CopyFrom(self->analysis_->GetLiveInOfBytecode(bcIndex));
+        if (blockInfo->catchBlock != nullptr) {
+            liveSet.Union(self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex));
+        }
+
+        AppendEagerCommonDeoptInputs(bcIndex, &frameStateValues);
+        if (liveSet.TestBit(self->AccIndex())) {
+            AppendDeoptInput(&frameStateValues, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        }
+        AppendLiveLocalsAndParams(&frameStateValues, FIXED_PARAM_VREG_COUNT, [&liveSet](VRegIDType index) {
+            return liveSet.TestBit(index);
+        });
+        return frameStateValues;
     }
 
     template <class CallT>
@@ -3392,7 +3406,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    void LoadLazyDeoptMetadataForThrowableCall(uint32_t bcIndex, Vertex *vertex)
+    void LoadLazyDeoptFrameStateForThrowableCall(uint32_t bcIndex, Vertex *vertex)
     {
         if (!self->IsLazyDeoptEnabled()) {
             return;
@@ -3415,24 +3429,24 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ThrowableMixin *throwableMixin = ThrowableMixinOf(vertex);
         ASSERT(!needsE || throwableMixin != nullptr);
-        if (!deoptMixin->HasLazyDeoptMetadata()) {
-            auto *metadata = self->chunk_->New<DeoptMetadata>(self->chunk_, self->preproc_->GetBytecodeOffset(bcIndex));
+        if (!deoptMixin->HasLazyDeoptFrameState()) {
+            auto *deoptFrameState = self->chunk_->New<LazyDeoptFrameState>(self->chunk_);
             if (needsE && needsD) {
                 // D+E uses one live-in payload. We assume only ACC may be modified by the bytecode,
                 // so live-in and live-out are equivalent with ACC excluded.
-                BuildGenericDeoptInputs(bcIndex, metadata, false);
+                BuildLazyDeoptInputsForDE(bcIndex, deoptFrameState, false);
             } else if (needsE) {
                 // E-only resumes at the catch handler entry, so only the handler live-ins are required.
-                BuildLazyDeoptInputsForEOnly(bcIndex, metadata);
+                BuildLazyDeoptInputsForEOnly(bcIndex, deoptFrameState);
             } else {
                 // D-only uses live-out payload
-                BuildLazyDeoptInputsForDOnly(bcIndex, metadata);
+                BuildLazyDeoptInputsForDOnly(bcIndex, deoptFrameState);
             }
-            deoptMixin->LoadLazyDeoptMetadata(metadata);
+            deoptMixin->SetLazyDeoptFrameState(deoptFrameState, self->preproc_->GetBytecodeOffset(bcIndex));
         }
-        if (needsE && !throwableMixin->HasExceptionLazyDeoptMetadata()) {
+        if (needsE && !throwableMixin->HasExceptionLazyDeopt()) {
             ASSERT(!throwableMixin->HasCatchBlock());
-            throwableMixin->LoadExceptionLazyDeoptMetadata(deoptMixin->GetLazyDeoptMetadata());
+            throwableMixin->MarkExceptionLazyDeopt();
         }
     }
 
@@ -3803,121 +3817,6 @@ struct GraphBuilder::BytecodeVisitor {
             return std::nullopt;
         }
         return result;
-    }
-
-    void BuildCurrentFrameStateForDeopt(
-        uint32_t bcIndex, std::vector<ValueVertex *> *inputs, ChunkVector<VRegIDType> *vregIds)
-    {
-        auto normalizeFrameValue = [this](ValueVertex *value) -> ValueVertex * {
-            switch (value->GetValueRepresentation()) {
-                case ValueRepresentation::TAGGED:
-                    return value;
-                case ValueRepresentation::INT32:
-                    return self->NewVertex<I32ToTaggedIntVertex>(
-                        compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value});
-                case ValueRepresentation::FLOAT64:
-                case ValueRepresentation::HOLEY_FLOAT64:
-                    return self->NewVertex<F64ToTaggedDoubleVertex>(
-                        compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value});
-                case ValueRepresentation::UINT32:
-                case ValueRepresentation::INT64:
-                case ValueRepresentation::NONE:
-                    break;
-            }
-            UNREACHABLE();
-        };
-        auto add = [&](int32_t id, ValueVertex *value) {
-            vregIds->emplace_back(id);
-            inputs->emplace_back(normalizeFrameValue(value == nullptr ? self->undefinedValue_ : value));
-        };
-        auto addRaw = [&](int32_t id, ValueVertex *value) {
-            vregIds->emplace_back(id);
-            inputs->emplace_back(value == nullptr ? self->undefinedValue_ : value);
-        };
-
-        add(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX), LoadParam(CALL_TARGET_PARAM_INDEX));
-        add(static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX), LoadParam(NEW_TARGET_PARAM_INDEX));
-        add(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX), LoadParam(THIS_OBJECT_PARAM_INDEX));
-        add(static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
-        add(static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
-        add(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), TaggedActualArgc());
-        addRaw(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
-               self->graph_->GetInt32Constant(static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex))));
-
-        for (VRegIDType index = 0; index < self->numLocal_; index++) {
-            add(static_cast<int32_t>(VRegOfLocal(index)), frameState.Get(VRegOfLocal(index)));
-        }
-        for (VRegIDType index = 0; index < self->numParams_; index++) {
-            add(static_cast<int32_t>(VRegOfParam(self->numLocal_, index)), LoadParam(index));
-        }
-    }
-
-    uint32_t AppendCurrentFrameStateForDeopt(std::vector<ValueVertex *> *inputs, ChunkVector<VRegIDType> *vregIds)
-    {
-        ASSERT(inputs != nullptr);
-        uint32_t firstDeoptInputIndex = static_cast<uint32_t>(inputs->size());
-        BuildCurrentFrameStateForDeopt(currentBcIndex, inputs, vregIds);
-        return firstDeoptInputIndex;
-    }
-
-    using EagerDeoptFrameState = EagerDeoptimizableMixin::EagerDeoptFrameState;
-
-    void BuildCurrentFrameStateForDeopt(uint32_t bcIndex, EagerDeoptFrameState *frameStateValues)
-    {
-        ASSERT(frameStateValues != nullptr);
-        auto getDeoptValueKind = [](ValueVertex *value) {
-            switch (value->GetValueRepresentation()) {
-                case ValueRepresentation::TAGGED:
-                    return DeoptTranslationKind::TAGGED;
-                case ValueRepresentation::INT32:
-                    return DeoptTranslationKind::INT32_TO_TAGGED;
-                case ValueRepresentation::FLOAT64:
-                case ValueRepresentation::HOLEY_FLOAT64:
-                    return DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE;
-                case ValueRepresentation::UINT32:
-                case ValueRepresentation::INT64:
-                case ValueRepresentation::NONE:
-                    break;
-            }
-            UNREACHABLE();
-        };
-        auto add = [&](int32_t id, ValueVertex *value) {
-            ValueVertex *frameValue = value == nullptr ? self->undefinedValue_ : value;
-            frameStateValues->emplace_back(id, frameValue, getDeoptValueKind(frameValue));
-        };
-        auto addRaw = [&](int32_t id, ValueVertex *value) {
-            ASSERT(value != nullptr);
-            frameStateValues->emplace_back(id, value, DeoptTranslationKind::RAW_INT32);
-        };
-        auto addInt32ToTagged = [&](int32_t id, ValueVertex *value) {
-            ASSERT(value != nullptr);
-            frameStateValues->emplace_back(id, value, DeoptTranslationKind::INT32_TO_TAGGED);
-        };
-
-        add(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX), LoadParam(CALL_TARGET_PARAM_INDEX));
-        add(static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX), LoadParam(NEW_TARGET_PARAM_INDEX));
-        add(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX), LoadParam(THIS_OBJECT_PARAM_INDEX));
-        ValueVertex *lexicalEnv = frameState.GetLexicalEnv();
-        add(static_cast<int32_t>(SpecVregIndex::ENV_INDEX),
-            lexicalEnv == self->initialLexicalEnv_ ? self->undefinedValue_ : lexicalEnv);
-        add(static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
-        addInt32ToTagged(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), self->initialActualArgc_);
-        addRaw(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
-               self->graph_->GetInt32Constant(static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex))));
-
-        for (VRegIDType index = 0; index < self->numLocal_; index++) {
-            add(static_cast<int32_t>(VRegOfLocal(index)), frameState.Get(VRegOfLocal(index)));
-        }
-        for (VRegIDType index = 0; index < self->numParams_; index++) {
-            add(static_cast<int32_t>(VRegOfParam(self->numLocal_, index)), LoadParam(index));
-        }
-    }
-
-    EagerDeoptFrameState BuildCurrentEagerDeoptFrameState(uint32_t bcIndex)
-    {
-        EagerDeoptFrameState frameStateValues {self->chunk_};
-        BuildCurrentFrameStateForDeopt(bcIndex, &frameStateValues);
-        return frameStateValues;
     }
 
     std::optional<int32_t> TryGetInt32Value(ValueVertex *value) const
@@ -5627,7 +5526,7 @@ struct GraphBuilder::BytecodeVisitor {
         auto *prepareField = self->NewVertex<PrepareSharedStoreFieldVertex>(
             compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value}, access.handlerInfo);
         UpdateCatchBlockData(prepareField);
-        LoadLazyDeoptMetadataForThrowableCall(bcIndex, prepareField);
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, prepareField);
         self->NewVertex<StoreSharedFieldWithBarrierVertex>(
             compileInfoFacts_, currentBlock, {glue, storeTarget, prepareField}, access.fieldOffset);
         return true;
@@ -5673,7 +5572,7 @@ struct GraphBuilder::BytecodeVisitor {
         currentBlock = internalAccessorBlock;
         compileInfoFacts_ = entryFacts->Clone();
         auto *internalCall = RuntimeCall({receiver, accessor, value}, RTSTUB_ID(CallInternalSetter));
-        LoadLazyDeoptMetadataForThrowableCall(bcIndex, internalCall);
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, internalCall);
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         currentBlock = loadSetterBlock;
@@ -5687,14 +5586,14 @@ struct GraphBuilder::BytecodeVisitor {
         currentBlock = undefinedSetterBlock;
         compileInfoFacts_ = setterFacts->Clone();
         auto *throwCall = RuntimeCall({}, RTSTUB_ID(ThrowSetterIsUndefinedException));
-        LoadLazyDeoptMetadataForThrowableCall(bcIndex, throwCall);
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, throwCall);
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         currentBlock = callSetterBlock;
         compileInfoFacts_ = setterFacts->Clone();
         CallVertex *call = BuildCallVertex(
             std::initializer_list<ValueVertex *> {setter, self->undefinedValue_, receiver, value}, 1);
-        LoadLazyDeoptMetadataForThrowableCall(bcIndex, call);
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, call);
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         currentBlock = doneBlock;
@@ -5816,7 +5715,7 @@ struct GraphBuilder::BytecodeVisitor {
                 compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {glue, receiver},
                 static_cast<int32_t>(access.fieldIndex));
             UpdateCatchBlockData(properties);
-            LoadLazyDeoptMetadataForThrowableCall(bcIndex, properties);
+            LoadLazyDeoptFrameStateForThrowableCall(bcIndex, properties);
             BuildPreparedNamedStoreField(properties, access.fieldOffset, preparedValue,
                                          access.fieldRepresentation);
         } else {
@@ -6351,7 +6250,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         if (blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED && self->IsLazyDeoptEnabled()) {
             if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
-                return;  // The catch block is represented by lazy-deopt metadata instead of compiled code.
+                return;  // The catch block is represented by lazy-deopt frame state instead of compiled code.
             }
         }
         if (UNLIKELY(lazyCatchBlock == nullptr)) {
@@ -6379,7 +6278,7 @@ struct GraphBuilder::BytecodeVisitor {
         SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
         auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
@@ -6389,7 +6288,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
         frameState.SetAcc(vertex);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
@@ -6415,7 +6314,7 @@ struct GraphBuilder::BytecodeVisitor {
         const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
     {
         auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
@@ -6424,7 +6323,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
         frameState.SetAcc(vertex);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
@@ -6444,7 +6343,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         auto *vertex = RuntimeCall(inputs, id, sideEffectKind);
         frameState.SetAcc(vertex);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
@@ -6453,7 +6352,7 @@ struct GraphBuilder::BytecodeVisitor {
                                                 SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
         auto *vertex = RuntimeCall(inputs, id, sideEffectKind);
-        LoadLazyDeoptMetadataForThrowableCall(currentBcIndex, vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 

@@ -41,8 +41,6 @@ constexpr uint32_t LEB128_PAYLOAD_BITS = 7U;
 constexpr uint32_t LEB128_MAX_SHIFT = 63U;
 constexpr size_t MIN_EXPLICIT_INPUT_SIZE = 3U;  // opcode, vreg and source
 constexpr size_t DEOPT_TRANSLATION_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint8_t);
-constexpr uint8_t FIRST_SHORT_MATCH_OPCODE = static_cast<uint8_t>(DeoptTranslationOpcode::COUNT);
-constexpr uint32_t MAX_SHORT_MATCH_COUNT = UINT8_MAX - FIRST_SHORT_MATCH_OPCODE + 1U;
 constexpr int64_t ARKSTEED_SUPPORTED_INLINE_DEPTH = 0;
 
 enum class DeoptTranslationSpecialKind : uint8_t {
@@ -54,8 +52,6 @@ enum class DeoptTranslationSpecialKind : uint8_t {
     EXCEPTION,
 };
 
-static_assert(FIRST_SHORT_MATCH_OPCODE <= UINT8_MAX);
-static_assert(MAX_SHORT_MATCH_COUNT > 0);
 static_assert(sizeof(kungfu::DeoptType) == sizeof(uint8_t));
 
 void WriteUint32LE(uint32_t value, std::vector<uint8_t> &output)
@@ -407,41 +403,7 @@ void EncodeExplicitInput(const DeoptTranslationInput &input, std::vector<uint8_t
     UNREACHABLE();
 }
 
-void EncodeBasisMatch(size_t count, std::vector<uint8_t> &output)
-{
-    CHECK(count > 0);
-    if (count <= MAX_SHORT_MATCH_COUNT) {
-        output.push_back(static_cast<uint8_t>(FIRST_SHORT_MATCH_OPCODE + count - 1U));
-        return;
-    }
-    WriteOpcode(DeoptTranslationOpcode::MATCH_BASIS, output);
-    WriteULEB128(count, output);
-}
-
-void EncodeDeltaInputs(const DeoptTranslation &translation, const DeoptTranslation &basis,
-                       std::vector<uint8_t> &output)
-{
-    CHECK(translation.inputs.size() == basis.inputs.size());
-    size_t matchCount = 0;
-    for (size_t index = 0; index < translation.inputs.size(); ++index) {
-        CHECK(translation.inputs[index].vreg == basis.inputs[index].vreg);
-        if (translation.inputs[index] == basis.inputs[index]) {
-            ++matchCount;
-            continue;
-        }
-        if (matchCount != 0) {
-            EncodeBasisMatch(matchCount, output);
-            matchCount = 0;
-        }
-        EncodeExplicitInput(translation.inputs[index], output);
-    }
-    if (matchCount != 0) {
-        EncodeBasisMatch(matchCount, output);
-    }
-}
-
 struct DecodedBodyHeader {
-    uint32_t basisBodyIdDistance {0};
     uint32_t bytecodeOffset {0};
     uint32_t inputCount {0};
     const uint8_t *inputStart {nullptr};
@@ -482,8 +444,7 @@ bool DecodeBodyHeader(const uint8_t *begin, const uint8_t *end, DecodedBodyHeade
         return false;
     }
     const uint8_t *cursor = begin + 1;
-    if (!ReadUint32ULEB(cursor, end, &header->basisBodyIdDistance) ||
-        !ReadUint32ULEB(cursor, end, &header->bytecodeOffset) ||
+    if (!ReadUint32ULEB(cursor, end, &header->bytecodeOffset) ||
         !ReadUint32ULEB(cursor, end, &header->inputCount)) {
         return false;
     }
@@ -574,8 +535,7 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
                          DeoptTranslationInput *input)
 {
     if (encodedOpcode == static_cast<uint8_t>(DeoptTranslationOpcode::BEGIN) ||
-        encodedOpcode >= static_cast<uint8_t>(DeoptTranslationOpcode::COUNT) ||
-        encodedOpcode == static_cast<uint8_t>(DeoptTranslationOpcode::MATCH_BASIS) || input == nullptr ||
+        encodedOpcode >= static_cast<uint8_t>(DeoptTranslationOpcode::COUNT) || input == nullptr ||
         !ReadInt32SLEB(cursor, end, &input->vreg)) {
         return false;
     }
@@ -627,8 +587,8 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
     return DecodeSignedSource(cursor, end, &input->source);
 }
 
-bool DecodeBasisInputs(const DecodedBodyHeader &header, const uint8_t *end,
-                       std::vector<DeoptTranslationInput> *inputs)
+bool DecodeInputs(const DecodedBodyHeader &header, const uint8_t *end,
+                  std::vector<DeoptTranslationInput> *inputs)
 {
     if (header.inputStart > end || header.inputCount > inputs->max_size() ||
         header.inputCount > static_cast<size_t>(end - header.inputStart) / MIN_EXPLICIT_INPUT_SIZE) {
@@ -651,46 +611,6 @@ bool DecodeBasisInputs(const DecodedBodyHeader &header, const uint8_t *end,
     }
     return cursor == end;
 }
-
-bool DecodeMatchCount(uint8_t opcode, const uint8_t *&cursor, const uint8_t *end, uint32_t *count)
-{
-    if (opcode >= static_cast<uint8_t>(DeoptTranslationOpcode::COUNT)) {
-        *count = static_cast<uint32_t>(opcode - static_cast<uint8_t>(DeoptTranslationOpcode::COUNT)) + 1U;
-        return true;
-    }
-    return opcode == static_cast<uint8_t>(DeoptTranslationOpcode::MATCH_BASIS) &&
-           ReadUint32ULEB(cursor, end, count) && *count > 0;
-}
-
-bool ApplyDeltaInputs(const DecodedBodyHeader &header, const uint8_t *end,
-                      std::vector<DeoptTranslationInput> *inputs)
-{
-    if (inputs == nullptr || header.inputCount != inputs->size()) {
-        return false;
-    }
-    const uint8_t *cursor = header.inputStart;
-    size_t position = 0;
-    while (position < header.inputCount) {
-        if (cursor >= end) {
-            return false;
-        }
-        uint8_t opcode = *cursor++;
-        uint32_t matchCount = 0;
-        if (DecodeMatchCount(opcode, cursor, end, &matchCount)) {
-            if (matchCount > inputs->size() - position) {
-                return false;
-            }
-            position += matchCount;
-            continue;
-        }
-        DeoptTranslationInput input {};
-        if (!DecodeExplicitInput(opcode, cursor, end, &input) || input.vreg != (*inputs)[position].vreg) {
-            return false;
-        }
-        (*inputs)[position++] = input;
-    }
-    return cursor == end;
-}
 }  // namespace
 
 DeoptId DeoptTranslationBuilder::AddTranslation(
@@ -703,16 +623,6 @@ DeoptId DeoptTranslationBuilder::AddTranslation(
     for (size_t index = 0; index < inputs.size(); ++index) {
         ValidateTranslationInput(inputs[index]);
         CHECK(index == 0 || inputs[index - 1U].vreg < inputs[index].vreg);
-    }
-
-    auto basisIterator = basisBodyIds_.find(bytecodeOffset);
-    if (basisIterator != basisBodyIds_.end()) {
-        CHECK(basisIterator->second < bodies_.size());
-        const auto &basisInputs = bodies_[basisIterator->second].inputs;
-        CHECK(inputs.size() == basisInputs.size());
-        for (size_t index = 0; index < inputs.size(); ++index) {
-            CHECK(inputs[index].vreg == basisInputs[index].vreg);
-        }
     }
 
     DeoptTranslation candidate {
@@ -736,7 +646,6 @@ DeoptId DeoptTranslationBuilder::AddTranslation(
         bodyId = static_cast<uint32_t>(bodies_.size());
         bodies_.push_back(std::move(candidate));
         bodyIndex_.emplace(bodyHash, bodyId);
-        basisBodyIds_.try_emplace(bytecodeOffset, bodyId);
     }
 
     uint64_t headerKey = GetTranslationHeaderKey(bodyId, type);
@@ -770,23 +679,11 @@ std::vector<uint8_t> DeoptTranslationBuilder::Encode() const
         CHECK(stream.size() <= std::numeric_limits<uint32_t>::max());
         offsets.push_back(static_cast<uint32_t>(stream.size()));
 
-        auto basisIterator = basisBodyIds_.find(translation.bytecodeOffset);
-        CHECK(basisIterator != basisBodyIds_.end());
-        uint32_t basisBodyId = basisIterator->second;
-        CHECK(basisBodyId <= index);
-        CHECK(basisBodyId < offsets.size());
-        uint32_t basisBodyIdDistance = static_cast<uint32_t>(index) - basisBodyId;
-
         WriteOpcode(DeoptTranslationOpcode::BEGIN, stream);
-        WriteULEB128(basisBodyIdDistance, stream);
         WriteULEB128(translation.bytecodeOffset, stream);
         WriteULEB128(translation.inputs.size(), stream);
-        if (basisBodyIdDistance == 0) {
-            for (const auto &input : translation.inputs) {
-                EncodeExplicitInput(input, stream);
-            }
-        } else {
-            EncodeDeltaInputs(translation, bodies_[basisBodyId], stream);
+        for (const auto &input : translation.inputs) {
+            EncodeExplicitInput(input, stream);
         }
     }
     CHECK(stream.size() <= std::numeric_limits<uint32_t>::max());
@@ -932,26 +829,8 @@ bool DeoptTranslationReader::GetBody(uint32_t bodyId, DeoptTranslation *translat
     }
 
     std::vector<DeoptTranslationInput> inputs;
-    if (header.basisBodyIdDistance == 0) {
-        if (!DecodeBasisInputs(header, end, &inputs)) {
-            return false;
-        }
-    } else {
-        if (header.basisBodyIdDistance > bodyId) {
-            return false;
-        }
-        uint32_t basisBodyId = bodyId - header.basisBodyIdDistance;
-        const uint8_t *basisBegin = nullptr;
-        const uint8_t *basisEnd = nullptr;
-        if (!GetBodyRange(basisBodyId, &basisBegin, &basisEnd)) {
-            return false;
-        }
-        DecodedBodyHeader basisHeader {};
-        if (!DecodeBodyHeader(basisBegin, basisEnd, &basisHeader) || basisHeader.basisBodyIdDistance != 0 ||
-            basisHeader.bytecodeOffset != header.bytecodeOffset || basisHeader.inputCount != header.inputCount ||
-            !DecodeBasisInputs(basisHeader, basisEnd, &inputs) || !ApplyDeltaInputs(header, end, &inputs)) {
-            return false;
-        }
+    if (!DecodeInputs(header, end, &inputs)) {
+        return false;
     }
 
     DeoptTranslation decoded {
@@ -999,8 +878,8 @@ int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTran
     }
 }
 
-DeoptTranslationInput BuildDeoptTranslationInput(ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
-                                                 uint32_t index)
+DeoptTranslationInput BuildDeoptTranslationInput(
+    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex, uint32_t index)
 {
     DeoptTranslationInput input {
         vertex->GetDeoptVReg(index),
@@ -1033,8 +912,8 @@ DeoptTranslationInput BuildDeoptTranslationInput(ArkSteedAssembler *assembler, c
     return input;
 }
 
-std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(ArkSteedAssembler *assembler,
-                                                               const EagerDeoptimizableMixin *vertex)
+std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(
+    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex)
 {
     std::vector<DeoptTranslationInput> inputs;
     inputs.reserve(vertex->GetDeoptFrameValueCount() + 1);

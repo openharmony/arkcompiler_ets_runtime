@@ -21,6 +21,7 @@
 #include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/gc_helper.h"
+#include "ecmascript/base/number_helper.h"
 
 #ifdef ECMASCRIPT_ENABLE_ARK_STEED
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
@@ -152,13 +153,45 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
             DwarfRegType dwarfReg = value.first;
             OffsetType offset = value.second;
             ASSERT (dwarfReg == GCStackMapRegisters::FP || dwarfReg == GCStackMapRegisters::SP);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            auto kind = arksteed::DecodeLazyDeoptOffsetTag(static_cast<int32_t>(offset));
+            int32_t realOffset = arksteed::StripLazyDeoptOffsetTag(static_cast<int32_t>(offset));
+#else
+            int32_t realOffset = static_cast<int32_t>(offset);
+#endif
             uintptr_t addr;
             if (dwarfReg == GCStackMapRegisters::SP) {
-                addr = context_.callsiteSp + offset;
+                addr = context_.callsiteSp + realOffset;
             } else {
-                addr = context_.callsiteFp + offset;
+                addr = context_.callsiteFp + realOffset;
             }
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            // Apply type conversion based on the DeoptTranslationKind tag embedded in offset LSBs
+            // by the ArkSteed lazy-deopt safepoint encoder.  AOT deopt offsets are naturally aligned
+            // (tag == 0 → TAGGED) so this path is also safe for the shared AOT+ArkSteed deopt handler.
+            switch (kind) {
+                case arksteed::DeoptTranslationKind::INT32_TO_TAGGED:
+                    v = JSTaggedValue(static_cast<int32_t>(*reinterpret_cast<int32_t *>(addr))).GetRawData();
+                    break;
+                case arksteed::DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE: {
+                    uint64_t raw = *reinterpret_cast<uint64_t *>(addr);
+                    if (raw >= static_cast<uint64_t>(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET)) {
+                        v = JSTaggedValue(base::NAN_VALUE).GetRawData();
+                    } else {
+                        v = static_cast<JSTaggedType>(raw + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+                    }
+                    break;
+                }
+                case arksteed::DeoptTranslationKind::RAW_INT32:
+                    v = static_cast<JSTaggedType>(static_cast<int64_t>(*reinterpret_cast<int32_t *>(addr)));
+                    break;
+                default:
+                    v = *(reinterpret_cast<JSTaggedType *>(addr));
+                    break;
+            }
+#else
             v = *(reinterpret_cast<JSTaggedType *>(addr));
+#endif
         } else if (std::holds_alternative<LargeInt>(deopt.value)) {
             ASSERT(deopt.kind == LocationTy::Kind::CONSTANTNDEX);
             v = JSTaggedType(static_cast<int64_t>(std::get<LargeInt>(deopt.value)));

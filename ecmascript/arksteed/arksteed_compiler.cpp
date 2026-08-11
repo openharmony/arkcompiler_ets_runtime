@@ -255,7 +255,7 @@ bool ArkSteedCompilerTask::Compile()
 #ifdef JIT_ENABLE_CODE_SIGN
     EnableCodeSign();
 #endif
-    safepointTableBuilder_ = new ArkSteedSafepointTableBuilder();
+    safepointTableBuilder_ = new ArkSteedSafepointTableBuilder(chunk_.get());
     translationBuilder_ = new DeoptTranslationBuilder();
     ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_);
     codegen.Generate();
@@ -298,6 +298,7 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
         codeDesc.stackMapOrOffsetTableAddr = 0;
         codeDesc.stackMapOrOffsetTableSize = 0;
     }
+    LOG_COMPILER(DEBUG) << safepointTableBuilder_->DumpMemoryUsage();
 
 #if ECMASCRIPT_ENABLE_ARK_STEED
     arkSteedTask_->SetDeoptTranslationData(translationBuilder_->Encode());

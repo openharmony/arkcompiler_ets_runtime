@@ -37,11 +37,11 @@ void UseEagerDeoptFrameSlots(EagerDeoptimizableMixin *deopt)
 
 void UseLazyDeoptFrameSlots(LazyDeoptimizableMixin *deopt)
 {
-    if (!deopt->HasLazyDeoptMetadata()) {
+    if (!deopt->HasLazyDeoptFrameState()) {
         return;
     }
-    for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
-        UseDeoptFrameSlot(deopt->GetDeoptLocation(index));
+    for (uint32_t index = 0, valueCount = deopt->GetDeoptFrameValueCount(); index < valueCount; ++index) {
+        UseDeoptFrameSlot(deopt->GetDeoptSourceLocation(index));
     }
 }
 

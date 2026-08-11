@@ -76,20 +76,6 @@ enum class IntBitwiseKind : uint8_t {
     SHIFT_RIGHT_ARITHMETIC,
 };
 
-struct DeoptMetadata {
-    explicit DeoptMetadata(Chunk *chunk, uint32_t offset)
-        : indices(chunk), sources(chunk), locations(chunk), bcOffset(offset)
-    {}
-
-    ChunkVector<VRegIDType> indices;
-    ChunkVector<ValueVertex *> sources;
-    // Set during register allocation.
-    ChunkVector<InputLocation> locations;
-    // bcOffset = starting position of its owner.
-    // For lazy-deopt, PC advancing is done by deopt trampoline in runtime.
-    uint32_t bcOffset;
-};
-
 /**
  * CRTP Mixin Classes for ArkSteed Opcodes
  *
@@ -282,157 +268,90 @@ private:
     Condition cc_;
 };
 
-class ThrowableMixin {
-public:
-    ThrowableMixin() = default;
-
-    ThrowableMixin(BB *caughtBy, uint32_t catchPredIndex)
-        : catchPredIndex_(catchPredIndex),
-          caughtBy_(caughtBy)
-    {
-        ASSERT(caughtBy_ != nullptr);
-        ASSERT(catchPredIndex_ != NULL_INDEX);
-    }
-
-    bool HasCatchBlock() const
-    {
-        return caughtBy_ != nullptr;
-    }
-
-    BB *GetCatchBlock()
-    {
-        return caughtBy_;
-    }
-
-    const BB *GetCatchBlock() const
-    {
-        return caughtBy_;
-    }
-
-    void LoadCatchBlock(BB *block, uint32_t catchPredIndex)
-    {
-        ASSERT(block != nullptr);
-        ASSERT(catchPredIndex != NULL_INDEX);
-        caughtBy_ = block;
-        catchPredIndex_ = catchPredIndex;
-    }
-
-    uint32_t GetCatchPredecessorIndex() const
-    {
-        ASSERT(HasCatchBlock() && "Check required.");
-        ASSERT(catchPredIndex_ != NULL_INDEX);
-        return catchPredIndex_;
-    }
-
-    void LoadExceptionLazyDeoptMetadata(DeoptMetadata *metadata)
-    {
-        ASSERT(metadata != nullptr);
-        deoptMetadata_ = metadata;
-    }
-
-    bool HasExceptionLazyDeoptMetadata() const
-    {
-        return deoptMetadata_ != nullptr;
-    }
-
-    DeoptMetadata *GetExceptionLazyDeoptMetadata()
-    {
-        return deoptMetadata_;
-    }
-
-    const DeoptMetadata *GetExceptionLazyDeoptMetadata() const
-    {
-        return deoptMetadata_;
-    }
-
-private:
-    static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
-    uint32_t catchPredIndex_ = NULL_INDEX;
-    BB *caughtBy_ {nullptr};
-    DeoptMetadata *deoptMetadata_ {nullptr};
-};
-
 class LazyDeoptimizableMixin {
 public:
+    struct LazyDeoptFrameValue {
+        VRegIDType vreg;
+        ValueVertex *value;
+        DeoptTranslationKind valueKind;
+        InputLocation sourceLocation;
+
+        LazyDeoptFrameValue(VRegIDType vregId, ValueVertex *frameValue, DeoptTranslationKind kind)
+            : vreg(vregId), value(frameValue), valueKind(kind)
+        {}
+    };
+
+    using LazyDeoptFrameState = ChunkVector<LazyDeoptFrameValue>;
+
     LazyDeoptimizableMixin() = default;
 
-    explicit LazyDeoptimizableMixin(DeoptMetadata *metadata) : metadata_(metadata) {}
-
-    void LoadLazyDeoptMetadata(DeoptMetadata *metadata)
+    void SetLazyDeoptFrameState(LazyDeoptFrameState *frameState, uint32_t bytecodeOffset)
     {
-        ASSERT(metadata != nullptr);
-        metadata_ = metadata;
+        ASSERT(frameState != nullptr);
+        lazyDeoptFrameState_ = frameState;
+        bytecodeOffset_ = bytecodeOffset;
     }
 
-    bool HasLazyDeoptMetadata() const
+    bool HasLazyDeoptFrameState() const
     {
-        return metadata_ != nullptr;
+        return lazyDeoptFrameState_ != nullptr;
     }
 
-    DeoptMetadata *GetLazyDeoptMetadata()
+    uint32_t GetDeoptFrameValueCount() const
     {
-        return metadata_;
-    }
-
-    const DeoptMetadata *GetLazyDeoptMetadata() const
-    {
-        return metadata_;
-    }
-
-    uint32_t DeoptInputCount() const
-    {
-        return metadata_ == nullptr ? 0 : static_cast<uint32_t>(metadata_->sources.size());
+        return lazyDeoptFrameState_ == nullptr ? 0 : static_cast<uint32_t>(lazyDeoptFrameState_->size());
     }
 
     VRegIDType GetDeoptVReg(uint32_t index) const
     {
-        ASSERT(metadata_ != nullptr);
-        ASSERT(index < metadata_->indices.size());
-        return metadata_->indices[index];
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        ASSERT(index < lazyDeoptFrameState_->size());
+        return (*lazyDeoptFrameState_)[index].vreg;
     }
 
-    const ChunkVector<VRegIDType> &GetDeoptVRegs() const
+    ValueVertex *GetDeoptFrameValue(uint32_t index) const
     {
-        ASSERT(metadata_ != nullptr);
-        return metadata_->indices;
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        ASSERT(index < lazyDeoptFrameState_->size());
+        return (*lazyDeoptFrameState_)[index].value;
     }
 
-    ValueVertex *GetDeoptSource(uint32_t index)
+    DeoptTranslationKind GetDeoptValueKind(uint32_t index) const
     {
-        ASSERT(metadata_ != nullptr);
-        ASSERT(index < metadata_->sources.size());
-        return metadata_->sources[index];
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        ASSERT(index < lazyDeoptFrameState_->size());
+        return (*lazyDeoptFrameState_)[index].valueKind;
     }
 
-    const ValueVertex *GetDeoptSource(uint32_t index) const
+    InputLocation *GetDeoptSourceLocation(uint32_t index)
     {
-        ASSERT(metadata_ != nullptr);
-        ASSERT(index < metadata_->sources.size());
-        return metadata_->sources[index];
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        ASSERT(index < lazyDeoptFrameState_->size());
+        return &(*lazyDeoptFrameState_)[index].sourceLocation;
     }
 
-    InputLocation *GetDeoptLocation(uint32_t index)
+    const InputLocation *GetDeoptSourceLocation(uint32_t index) const
     {
-        ASSERT(metadata_ != nullptr);
-        ASSERT(index < metadata_->locations.size());
-        return &metadata_->locations[index];
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        ASSERT(index < lazyDeoptFrameState_->size());
+        return &(*lazyDeoptFrameState_)[index].sourceLocation;
     }
 
-    const InputLocation *GetDeoptLocation(uint32_t index) const
+    const LazyDeoptFrameState &GetLazyDeoptFrameState() const
     {
-        ASSERT(metadata_ != nullptr);
-        ASSERT(index < metadata_->locations.size());
-        return &metadata_->locations[index];
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        return *lazyDeoptFrameState_;
     }
 
     uint32_t GetBytecodeOffset() const
     {
-        ASSERT(metadata_ != nullptr);
-        return metadata_->bcOffset;
+        ASSERT(lazyDeoptFrameState_ != nullptr);
+        return bytecodeOffset_;
     }
 
 private:
-    DeoptMetadata *metadata_ {nullptr};
+    LazyDeoptFrameState *lazyDeoptFrameState_ {nullptr};
+    uint32_t bytecodeOffset_ {0};
 };
 
 class EagerDeoptimizableMixin {
@@ -508,6 +427,67 @@ public:
 private:
     EagerDeoptFrameState eagerDeoptFrameState_;
     uint32_t bytecodeOffset_;
+};
+
+class ThrowableMixin {
+public:
+    ThrowableMixin() = default;
+
+    ThrowableMixin(BB *caughtBy, uint32_t catchPredIndex)
+        : catchPredIndex_(catchPredIndex),
+          caughtBy_(caughtBy)
+    {
+        ASSERT(caughtBy_ != nullptr);
+        ASSERT(catchPredIndex_ != NULL_INDEX);
+    }
+
+    bool HasCatchBlock() const
+    {
+        return caughtBy_ != nullptr;
+    }
+
+    BB *GetCatchBlock()
+    {
+        return caughtBy_;
+    }
+
+    const BB *GetCatchBlock() const
+    {
+        return caughtBy_;
+    }
+
+    void LoadCatchBlock(BB *block, uint32_t catchPredIndex)
+    {
+        ASSERT(block != nullptr);
+        ASSERT(catchPredIndex != NULL_INDEX);
+        caughtBy_ = block;
+        catchPredIndex_ = catchPredIndex;
+    }
+
+    uint32_t GetCatchPredecessorIndex() const
+    {
+        ASSERT(HasCatchBlock() && "Check required.");
+        ASSERT(catchPredIndex_ != NULL_INDEX);
+        return catchPredIndex_;
+    }
+
+    void MarkExceptionLazyDeopt()
+    {
+        exceptionLazyDeopt_ = true;
+    }
+
+    bool HasExceptionLazyDeopt() const
+    {
+        return exceptionLazyDeopt_;
+    }
+
+private:
+    static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
+
+    uint32_t catchPredIndex_ = NULL_INDEX;
+    // If exceptionLazyDeopt_ == true, then LazyDeoptimizableMixin is used instead.
+    bool exceptionLazyDeopt_ = false;
+    BB *caughtBy_ = nullptr;
 };
 
 //==============================================================================
@@ -2978,10 +2958,10 @@ inline ThrowableMixin *ThrowableMixinOf(Vertex *vertex)
     return nullptr;
 }
 
-inline bool HasExceptionLazyDeoptMetadata(Vertex *vertex)
+inline bool HasExceptionLazyDeopt(Vertex *vertex)
 {
     auto hasExceptionLazyDeopt = [](auto *derived) {
-        return !derived->HasCatchBlock() && derived->HasExceptionLazyDeoptMetadata();
+        return !derived->HasCatchBlock() && derived->HasExceptionLazyDeopt();
     };
     if (auto *derived = vertex->TryCast<CallVertex>()) {
         return hasExceptionLazyDeopt(derived);

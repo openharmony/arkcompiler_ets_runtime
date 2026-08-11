@@ -33,8 +33,8 @@ void VerifyLazyDeoptInputLocations(const Vertex *vertex)
     }
     const LazyDeoptimizableMixin *deopt = LazyDeoptMixinOf(vertex);
     ASSERT(deopt != nullptr);
-    for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
-        const InputLocation *location = deopt->GetDeoptLocation(index);
+    for (uint32_t index = 0, valueCount = deopt->GetDeoptFrameValueCount(); index < valueCount; ++index) {
+        const InputLocation *location = deopt->GetDeoptSourceLocation(index);
         ASSERT(location->IsStackSlot() || location->IsConstant());
     }
 }
@@ -515,10 +515,9 @@ template <class VertexT, class Callback>
 void AssignDeoptInputsFor(VertexT *vertex, Callback assign)
 {
     if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
-        auto *lazy = static_cast<LazyDeoptimizableMixin *>(vertex);
-        if (lazy->HasLazyDeoptMetadata()) {
-            for (uint32_t index = 0; index < lazy->DeoptInputCount(); ++index) {
-                assign(lazy->GetDeoptSource(index), lazy->GetDeoptLocation(index));
+        if (vertex->HasLazyDeoptFrameState()) {
+            for (uint32_t index = 0, valueCount = vertex->GetDeoptFrameValueCount(); index < valueCount; ++index) {
+                assign(vertex->GetDeoptFrameValue(index), vertex->GetDeoptSourceLocation(index));
             }
         }
     }

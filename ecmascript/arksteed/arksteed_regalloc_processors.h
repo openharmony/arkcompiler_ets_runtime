@@ -59,25 +59,20 @@ private:
     Chunk *chunk_ = nullptr;
 };
 
-inline void EnsureDeoptLocations(DeoptMetadata *metadata)
-{
-    if (metadata == nullptr) {
-        return;
-    }
-    ASSERT(metadata->indices.size() == metadata->sources.size());
-    if (metadata->locations.empty()) {
-        metadata->locations.resize(metadata->sources.size());
-        return;
-    }
-    ASSERT(metadata->locations.size() == metadata->sources.size());
-}
-
 template <typename T>
 void EnsureDeoptLocationsForVertex(T *vertex)
 {
     if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, T>) {
         auto *deopt = static_cast<LazyDeoptimizableMixin *>(vertex);
-        EnsureDeoptLocations(deopt->GetLazyDeoptMetadata());
+        if (!deopt->HasLazyDeoptFrameState()) {
+            return;
+        }
+        for (uint32_t index = 0; index < deopt->GetDeoptFrameValueCount(); ++index) {
+            InputLocation *location = deopt->GetDeoptSourceLocation(index);
+            if (location->GetOperand().IsInvalid()) {
+                location->GetOperand() = UnallocatedState(NO_VREG);
+            }
+        }
     }
 }
 
@@ -229,14 +224,15 @@ private:
     template <typename T>
     void MarkLazyDeoptInputUses(T *vertex, const ArkSteedState &state)
     {
-        if (!vertex->HasLazyDeoptMetadata()) {
+        if (!vertex->HasLazyDeoptFrameState()) {
             return;
         }
         uint32_t vertexID = vertex->GetId();
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
-        auto *deopt = static_cast<LazyDeoptimizableMixin *>(vertex);
-        for (uint32_t index = 0; index < deopt->DeoptInputCount(); ++index) {
-            MarkUse(deopt->GetDeoptSource(index), vertexID, deopt->GetDeoptLocation(index), loopUsedVertices);
+        for (uint32_t index = 0, valueCount = vertex->GetDeoptFrameValueCount(); index < valueCount; ++index) {
+            ValueVertex *value = vertex->GetDeoptFrameValue(index);
+            InputLocation *location = vertex->GetDeoptSourceLocation(index);
+            MarkUse(value, vertexID, location, loopUsedVertices);
         }
     }
 

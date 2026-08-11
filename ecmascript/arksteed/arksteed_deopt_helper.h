@@ -28,7 +28,6 @@
 
 namespace panda::ecmascript {
 class JSThread;
-
 namespace arksteed {
 class ArkSteedAssembler;
 class EagerDeoptimizableMixin;
@@ -41,6 +40,29 @@ enum class DeoptTranslationKind : uint8_t {
     FLOAT64_TO_TAGGED_DOUBLE = 2,
     RAW_INT32 = 3,
 };
+
+// Lazy-deopt safepoint offsets are FP-relative and 8-byte aligned, so the low 3 bits are
+// free.  We encode DeoptTranslationKind there so the trampoline can reconstruct the correct
+// JSTaggedValue without requiring upfront normalization nodes on the hot path.
+constexpr int32_t LAZY_DEOPT_OFFSET_TAG_MASK = 0x7;
+static_assert(static_cast<int32_t>(DeoptTranslationKind::RAW_INT32) <= LAZY_DEOPT_OFFSET_TAG_MASK);
+
+inline int32_t EncodeLazyDeoptOffset(int32_t offset, DeoptTranslationKind valueKind)
+{
+    ASSERT((offset & LAZY_DEOPT_OFFSET_TAG_MASK) == 0);
+    int32_t tag = static_cast<int32_t>(valueKind);
+    return offset | tag;
+}
+
+inline DeoptTranslationKind DecodeLazyDeoptOffsetTag(int32_t offset)
+{
+    return static_cast<DeoptTranslationKind>(static_cast<uint8_t>(offset & LAZY_DEOPT_OFFSET_TAG_MASK));
+}
+
+inline int32_t StripLazyDeoptOffsetTag(int32_t offset)
+{
+    return offset & ~LAZY_DEOPT_OFFSET_TAG_MASK;
+}
 
 enum class DeoptSourceKind : uint8_t {
     CONSTANT = 0,
@@ -65,7 +87,7 @@ enum class DeoptSourceKind : uint8_t {
  * bodyOpcodeStream and points to a BEGIN opcode.
  *
  * Unsigned operands use ULEB128:
- *   basisBodyIdDistance, bytecodeOffset, inputCount, registerCode, specialKind and long matchCount.
+ *   bytecodeOffset, inputCount, registerCode, specialKind.
  * Signed operands use SLEB128:
  *   vreg, frame-pointer-relative stackOffset and signed integer constants.
  * LEB128 operands use their shortest canonical byte sequence. Readers reject overflow and unterminated sequences.
@@ -73,7 +95,7 @@ enum class DeoptSourceKind : uint8_t {
  * Float64 constants and tagged-double bit patterns store their raw 64-bit value in little-endian byte order.
  *
  * Opcode operands:
- *   BEGIN                    basisBodyIdDistance:ULEB, bytecodeOffset:ULEB, inputCount:ULEB
+ *   BEGIN                    bytecodeOffset:ULEB, inputCount:ULEB
  *   TAGGED_REGISTER          vreg:SLEB, registerCode:ULEB
  *   TAGGED_STACK_SLOT        vreg:SLEB, stackOffset:SLEB
  *   TAGGED_SPECIAL           vreg:SLEB, specialKind:ULEB
@@ -88,15 +110,11 @@ enum class DeoptSourceKind : uint8_t {
  *   RAW_INT32_REGISTER       vreg:SLEB, registerCode:ULEB
  *   RAW_INT32_STACK_SLOT     vreg:SLEB, stackOffset:SLEB
  *   RAW_INT32_CONSTANT       vreg:SLEB, value:SLEB
- *   MATCH_BASIS              matchCount:ULEB
  *
- * basisBodyIdDistance is the difference between the current bodyId and the Basis bodyId. Zero identifies a full
- * Basis body. A delta body directly references an earlier full Basis with the same bytecodeOffset, inputCount and
- * logical vreg order. MATCH_BASIS copies input descriptions from the same logical positions in that Basis.
- * Values below COUNT are regular opcodes. Values from COUNT through UINT8_MAX encode a short Basis match whose count
- * is encodedValue - COUNT + 1. The decoder finishes after producing exactly inputCount logical inputs; no END opcode
- * is stored. Raw translation data may contain immediate tagged values, signed integers and floating-point bits, but
- * never an address managed by the moving GC.
+ * Each body is self-contained: BEGIN is followed by exactly inputCount explicit input opcodes, one per logical vreg.
+ * The decoder finishes after producing exactly inputCount logical inputs; no END opcode is stored. Raw translation
+ * data may contain immediate tagged values, signed integers and floating-point bits, but never an address managed
+ * by the moving GC.
  */
 enum class DeoptTranslationOpcode : uint8_t {
     BEGIN = 0,
@@ -114,7 +132,6 @@ enum class DeoptTranslationOpcode : uint8_t {
     RAW_INT32_REGISTER,
     RAW_INT32_STACK_SLOT,
     RAW_INT32_CONSTANT,
-    MATCH_BASIS,
     COUNT,
 };
 
@@ -172,8 +189,6 @@ private:
     // A body hash selects candidates only. Full BodyEquals comparison decides whether a bodyId can be reused.
     std::unordered_multimap<uint64_t, uint32_t> bodyIndex_;
     std::unordered_map<uint64_t, DeoptId> headerIndex_;
-    // The first unique body at each bytecode offset is the only Basis referenced by later bodies.
-    std::unordered_map<uint32_t, uint32_t> basisBodyIds_;
 };
 
 class DeoptTranslationReader {

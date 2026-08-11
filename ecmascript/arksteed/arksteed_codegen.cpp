@@ -520,45 +520,41 @@ void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *verte
     deopts->emplace_back(deoptValue);
 }
 
-void AppendDeoptSource(std::vector<kungfu::ARKDeopt> *deopts, const DeoptMetadata *metadata,
-                       uint32_t index, ArkSteedAssembler *assembler)
+void AppendDeoptSource(std::vector<kungfu::ARKDeopt> *deopts,
+                       const LazyDeoptimizableMixin::LazyDeoptFrameValue &frameValue,
+                       ArkSteedAssembler *assembler)
 {
-    ASSERT(metadata != nullptr);
-    ASSERT(index < metadata->sources.size());
-    ASSERT(index < metadata->locations.size());
-    ASSERT(index < metadata->indices.size());
-
-    const ValueVertex *source = metadata->sources[index];
-    const InputLocation &location = metadata->locations[index];
-    int32_t vregId = metadata->indices[index];
-    const InstructionOperand &operand = location.GetOperand();
+    const InstructionOperand &operand = frameValue.sourceLocation.GetOperand();
     if (operand.IsConstant()) {
-        deopts->emplace_back(MakeConstantDeopt(vregId, GetConstantForDeopt(source, vregId)));
+        kungfu::ARKDeopt deopt = MakeConstantDeopt(
+            frameValue.vreg, GetConstantForDeopt(frameValue.value, frameValue.vreg));
+        deopts->emplace_back(std::move(deopt));
         return;
     }
 
     ASSERT(operand.IsAnyStackSlot());
     auto stackSlot = AllocatedState::Cast(operand);
     kungfu::ARKDeopt deoptValue;
-    deoptValue.id = static_cast<kungfu::LLVMStackMapType::VRegId>(vregId);
+    deoptValue.id = static_cast<kungfu::LLVMStackMapType::VRegId>(frameValue.vreg);
     deoptValue.kind = kungfu::LocationTy::Kind::INDIRECT;
-    int32_t offset =
-        assembler->GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
-    deoptValue.value = std::make_pair(static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GCStackMapRegisters::FP),
-                                      static_cast<kungfu::LLVMStackMapType::OffsetType>(offset));
+    int32_t offset = assembler->GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
+    // Embed DeoptTranslationKind in offset LSBs so the lazy-deopt trampoline can reconstruct
+    // the JSTaggedValue without upfront normalization nodes on the hot path.
+    deoptValue.value = std::make_pair(
+        static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GCStackMapRegisters::FP),
+        static_cast<kungfu::LLVMStackMapType::OffsetType>(EncodeLazyDeoptOffset(offset, frameValue.valueKind)));
     deopts->emplace_back(deoptValue);
 }
 
-void AppendDeoptSources(std::vector<kungfu::ARKDeopt> *deopts, const DeoptMetadata *metadata,
+void AppendDeoptSources(std::vector<kungfu::ARKDeopt> *deopts,
+                        const LazyDeoptimizableMixin *lazy,
                         ArkSteedAssembler *assembler)
 {
-    if (metadata == nullptr) {
+    if (lazy == nullptr || !lazy->HasLazyDeoptFrameState()) {
         return;
     }
-    ASSERT(metadata->sources.size() == metadata->locations.size());
-    ASSERT(metadata->sources.size() == metadata->indices.size());
-    for (uint32_t index = 0; index < metadata->sources.size(); ++index) {
-        AppendDeoptSource(deopts, metadata, index, assembler);
+    for (const auto &frameValue : lazy->GetLazyDeoptFrameState()) {
+        AppendDeoptSource(deopts, frameValue, assembler);
     }
 }
 
@@ -566,7 +562,7 @@ template <class NodeT>
 bool HasLazyDeoptSafepointFor(const NodeT *vertex)
 {
     if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, NodeT>) {
-        return static_cast<const LazyDeoptimizableMixin *>(vertex)->HasLazyDeoptMetadata();
+        return static_cast<const LazyDeoptimizableMixin *>(vertex)->HasLazyDeoptFrameState();
     }
     return false;
 }
@@ -585,21 +581,22 @@ bool HasLazyDeoptSafepoint(const Vertex *vertex)
 }
 
 template <class NodeT>
-void EmitLazyDeoptSafepoint(ArkSteedAssembler *assembler, ArkSteedSafepointTableBuilder *safepointBuilder,
+void EmitLazyDeoptSafepoint(ArkSteedAssembler *assembler,
+                            ArkSteedSafepointTableBuilder *safepointBuilder,
                             const NodeT *vertex)
 {
     static_assert(std::is_base_of_v<LazyDeoptimizableMixin, NodeT>);
     ASSERT(safepointBuilder != nullptr);
     const auto *lazy = static_cast<const LazyDeoptimizableMixin *>(vertex);
-    ASSERT(lazy->HasLazyDeoptMetadata());
+    ASSERT(lazy->HasLazyDeoptFrameState());
 
     std::vector<kungfu::ARKDeopt> deopts;
     deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    AppendDeoptSources(&deopts, lazy->GetLazyDeoptMetadata(), assembler);
+    AppendDeoptSources(&deopts, lazy, assembler);
 
     ExceptionHandlerKind exceptionHandlerKind = ExceptionHandlerKind::NONE;
     if constexpr (std::is_base_of_v<ThrowableMixin, NodeT>) {
-        if (!vertex->HasCatchBlock() && vertex->HasExceptionLazyDeoptMetadata()) {
+        if (!vertex->HasCatchBlock() && vertex->HasExceptionLazyDeopt()) {
             exceptionHandlerKind = ExceptionHandlerKind::LAZY_DEOPT;
         }
     }
@@ -705,15 +702,15 @@ Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(
     auto translationInputs = BuildDeoptTranslationInputs(assembler_, vertex);
     DeoptId deoptId = translationBuilder_->AddTranslation(bytecodeOffset, type, std::move(translationInputs));
 
-    EagerDeoptTarget *target = nullptr;
-    if (deoptId.value < eagerDeoptTargetsById_.size()) {
-        target = eagerDeoptTargetsById_[deoptId.value];
-        ASSERT(target != nullptr);
-        ASSERT(target->deoptId == deoptId);
-    } else {
-        ASSERT(deoptId.value == eagerDeoptTargetsById_.size());
+    if (deoptId.value >= eagerDeoptTargetsById_.size()) {
+        eagerDeoptTargetsById_.resize(static_cast<size_t>(deoptId.value) + 1U, nullptr);
+    }
+    EagerDeoptTarget *target = eagerDeoptTargetsById_[deoptId.value];
+    if (target == nullptr) {
         target = graph_->GetChunk()->New<EagerDeoptTarget>(deoptId);
-        eagerDeoptTargetsById_.push_back(target);
+        eagerDeoptTargetsById_[deoptId.value] = target;
+    } else {
+        ASSERT(target->deoptId == deoptId);
     }
     return &target->label;
 }
@@ -3142,7 +3139,7 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
     }
 
     if (vertex->GetProperties().CanThrow() || vertex->GetProperties().IsAnyCall()) {
-        if (HasExceptionLazyDeoptMetadata(vertex)) {
+        if (HasExceptionLazyDeopt(vertex)) {
             ASSERT(CatchBlockOf(vertex) == nullptr);
             return;
         }
