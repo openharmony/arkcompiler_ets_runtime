@@ -91,9 +91,9 @@ void SamplingProcessor::AddSample(SamplesRecord *generator)
         uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
         generator->AddEmptyStackSample(sampleTimeStamp);
     } else {
-        while (!generator->samplesQueue_->IsEmpty()) {
-            FrameStackAndInfo *frame = generator->samplesQueue_->PopFrame();
-            generator->AddSample(frame);
+        auto frame = std::make_unique<FrameStackAndInfo>();
+        while (generator->samplesQueue_->PopFrame(*frame)) {
+            generator->AddSample(*frame);
         }
     }
 }

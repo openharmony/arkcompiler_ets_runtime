@@ -31,7 +31,7 @@ public:
         samples_record.NodeInit();
     }
     
-    std::string AddRunningStateTest(char *functionName, RunningState state, kungfu::DeoptType type)
+    std::string AddRunningStateTest(const char *functionName, RunningState state, kungfu::DeoptType type)
     {
         return samples_record.AddRunningState(functionName, state, type);
     }
@@ -78,6 +78,26 @@ public:
     void PostHybridStackFrameTest(const arkplatform::HybridFrameInfo &frameInfo)
     {
         samples_record.PostHybridStackFrame(frameInfo);
+    }
+
+    void AddSampleTest(const FrameStackAndInfo &frame)
+    {
+        samples_record.AddSample(frame);
+    }
+
+    void SetNodeCount(int count)
+    {
+        samples_record.profileInfo_->nodeCount = count;
+    }
+
+    int GetSamplesSize()
+    {
+        return static_cast<int>(samples_record.profileInfo_->samples.size());
+    }
+
+    int GetTimeDeltasSize()
+    {
+        return static_cast<int>(samples_record.profileInfo_->timeDeltas.size());
     }
 
 private:
@@ -547,5 +567,152 @@ HWTEST_F_L0(SamplesRecordTest, PostHybridStackFrameTest_NegativeLineColumn)
     EXPECT_TRUE(samplesRecord.GetFrameInfoTempsTest(0, resultFrame));
     EXPECT_EQ(resultFrame.lineNumber, -100);
     EXPECT_EQ(resultFrame.columnNumber, -50);
+}
+
+/**
+* @tc.name: SamplesQueuePopFrameTest_Basic
+* @tc.desc: Test PopFrame basic functionality after lock-split optimization.
+*           Post one frame and pop it, verify data integrity.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(SamplesRecordTest, SamplesQueuePopFrameTest_Basic)
+{
+    SamplesQueue queue;
+
+    // Prepare test data
+    FrameInfoTemp frameInfoTemps[MAX_STACK_SIZE] = {};
+    MethodKey frameStack[MAX_STACK_SIZE] = {};
+
+    frameInfoTemps[0].lineNumber = 10;
+    frameInfoTemps[0].columnNumber = 5;
+    frameInfoTemps[0].scriptId = 1;
+    int ret = snprintf_s(frameInfoTemps[0].functionName, sizeof(frameInfoTemps[0].functionName),
+                         sizeof(frameInfoTemps[0].functionName) - 1, "testFunc");
+    EXPECT_GE(ret, 0);
+    ret = snprintf_s(frameInfoTemps[0].url, sizeof(frameInfoTemps[0].url),
+                     sizeof(frameInfoTemps[0].url) - 1, "test.js");
+    EXPECT_GE(ret, 0);
+
+    frameStack[0].methodIdentifier = reinterpret_cast<void *>(0x1234);
+    frameStack[0].state = RunningState::CINT;
+
+    queue.PostFrame(frameInfoTemps, frameStack, 1, 1);
+
+    // Pop and verify
+    FrameStackAndInfo out = {};
+    EXPECT_TRUE(queue.PopFrame(out));
+    EXPECT_EQ(out.frameInfoTempsLength, 1);
+    EXPECT_EQ(out.frameStackLength, 1);
+    EXPECT_EQ(out.frameInfoTemps[0].lineNumber, 10);
+    EXPECT_EQ(out.frameInfoTemps[0].columnNumber, 5);
+    EXPECT_EQ(out.frameInfoTemps[0].scriptId, 1);
+    EXPECT_STREQ(out.frameInfoTemps[0].functionName, "testFunc");
+    EXPECT_STREQ(out.frameInfoTemps[0].url, "test.js");
+    EXPECT_EQ(out.frameStack[0].methodIdentifier, reinterpret_cast<void *>(0x1234));
+    EXPECT_EQ(out.frameStack[0].state, RunningState::CINT);
+
+    // Queue should now be empty
+    EXPECT_FALSE(queue.PopFrame(out));
+}
+
+/**
+* @tc.name: SamplesQueuePopFrameTest_PartialData
+* @tc.desc: Test PopFrame with frameInfoTempsLength < MAX_STACK_SIZE.
+*           Only the specified number of elements should be meaningful.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(SamplesRecordTest, SamplesQueuePopFrameTest_PartialData)
+{
+    SamplesQueue queue;
+
+    FrameInfoTemp frameInfoTemps[MAX_STACK_SIZE] = {};
+    MethodKey frameStack[MAX_STACK_SIZE] = {};
+
+    // Only fill 3 frameInfoTemps and 5 frameStack entries
+    for (int i = 0; i < 3; ++i) {
+        frameInfoTemps[i].lineNumber = i;
+        frameInfoTemps[i].scriptId = i + 100;
+        std::string funcName = "partialFunc" + std::to_string(i);
+        int ret = snprintf_s(frameInfoTemps[i].functionName, sizeof(frameInfoTemps[i].functionName),
+                             sizeof(frameInfoTemps[i].functionName) - 1, "%s", funcName.c_str());
+        EXPECT_GE(ret, 0);
+    }
+    for (int i = 0; i < 5; ++i) {
+        frameStack[i].methodIdentifier = reinterpret_cast<void *>(0x2000 + i);
+        frameStack[i].lineNumber = i * 2;
+    }
+
+    queue.PostFrame(frameInfoTemps, frameStack, 3, 5);
+
+    FrameStackAndInfo out = {};
+    EXPECT_TRUE(queue.PopFrame(out));
+    EXPECT_EQ(out.frameInfoTempsLength, 3);
+    EXPECT_EQ(out.frameStackLength, 5);
+
+    // Verify the 3 frameInfoTemps
+    for (int i = 0; i < 3; ++i) {
+        EXPECT_EQ(out.frameInfoTemps[i].lineNumber, i);
+        EXPECT_EQ(out.frameInfoTemps[i].scriptId, i + 100);
+        EXPECT_STREQ(out.frameInfoTemps[i].functionName, ("partialFunc" + std::to_string(i)).c_str());
+    }
+    // Verify the 5 frameStack entries
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_EQ(out.frameStack[i].methodIdentifier, reinterpret_cast<void *>(0x2000 + i));
+        EXPECT_EQ(out.frameStack[i].lineNumber, i * 2);
+    }
+}
+
+/**
+* @tc.name: AddSampleMaxNodeCountTest_DiscardIncompleteSample
+* @tc.desc: Test AddSample discards sample when nodeCount reaches MAX_NODE_COUNT.
+*           After early return, no sample should be attributed to wrong node.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(SamplesRecordTest, AddSampleMaxNodeCountTest_DiscardIncompleteSample)
+{
+    SamplesRecordFriendTest samplesRecord;
+    samplesRecord.NodeInit();
+
+    // NodeInit creates 3 nodes: (root), (program), (idle)
+    // Set nodeCount to MAX_NODE_COUNT - 1 so the next new node creation hits the limit
+    samplesRecord.SetNodeCount(MAX_NODE_COUNT - 1);
+
+    int samplesBefore = samplesRecord.GetSamplesSize();
+    int timeDeltasBefore = samplesRecord.GetTimeDeltasSize();
+
+    // Build a frame with 2 stack entries that would require creating new nodes
+    FrameStackAndInfo frame = {};
+    frame.frameStackLength = 2;
+    frame.frameInfoTempsLength = 2;
+    frame.timeStamp = 1000;
+
+    // Each unique methodIdentifier creates a new node
+    frame.frameStack[0].methodIdentifier = reinterpret_cast<void *>(0xA000);
+    frame.frameStack[0].state = RunningState::CINT;
+    frame.frameStack[1].methodIdentifier = reinterpret_cast<void *>(0xA001);
+    frame.frameStack[1].state = RunningState::CINT;
+
+    frame.frameInfoTemps[0].lineNumber = 1;
+    int ret = snprintf_s(frame.frameInfoTemps[0].functionName,
+                         sizeof(frame.frameInfoTemps[0].functionName),
+                         sizeof(frame.frameInfoTemps[0].functionName) - 1, "funcA");
+    EXPECT_GE(ret, 0);
+    frame.frameInfoTemps[0].methodKey = frame.frameStack[0];
+
+    frame.frameInfoTemps[1].lineNumber = 2;
+    ret = snprintf_s(frame.frameInfoTemps[1].functionName,
+                     sizeof(frame.frameInfoTemps[1].functionName),
+                     sizeof(frame.frameInfoTemps[1].functionName) - 1, "funcB");
+    EXPECT_GE(ret, 0);
+    frame.frameInfoTemps[1].methodKey = frame.frameStack[1];
+
+    samplesRecord.AddSampleTest(frame);
+
+    // After early return: samples and timeDeltas should not increase
+    EXPECT_EQ(samplesRecord.GetSamplesSize(), samplesBefore);
+    EXPECT_EQ(samplesRecord.GetTimeDeltasSize(), timeDeltasBefore);
+
+    // nodeCount should be MAX_NODE_COUNT (one new node created before return)
+    EXPECT_EQ(samplesRecord.GetProfileInfoTest()->nodeCount, MAX_NODE_COUNT);
 }
 }  // namespace panda::test
