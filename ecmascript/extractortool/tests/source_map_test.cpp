@@ -303,4 +303,55 @@ HWTEST_F_L0(SourceMapTest, GetLineAndColumnNumbersTest)
     EXPECT_EQ(column, 99);
     EXPECT_FALSE(isReplaces);
 }
+
+HWTEST_F_L0(SourceMapTest, GetInitStatusDefaultTest)
+{
+    SourceMapFriend sourceMapFriend(sourceMapData4);
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::NOT_EXECUTED);
+}
+
+HWTEST_F_L0(SourceMapTest, SetAndGetInitStatusTest)
+{
+    SourceMapFriend sourceMapFriend(sourceMapData4);
+
+    sourceMapFriend.SetInitStatus(InitStatus::IN_EXECUTED);
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::IN_EXECUTED);
+
+    sourceMapFriend.SetInitStatus(InitStatus::EXECUTED_SUCCESSFULLY);
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::EXECUTED_SUCCESSFULLY);
+
+    sourceMapFriend.SetInitStatus(InitStatus::NOT_EXECUTED);
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::NOT_EXECUTED);
+}
+
+HWTEST_F_L0(SourceMapTest, InitStatusTransitionTest)
+{
+    SourceMapFriend sourceMapFriend(sourceMapData4);
+
+    // NOT_EXECUTED -> IN_EXECUTED -> EXECUTED_SUCCESSFULLY
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::NOT_EXECUTED);
+    sourceMapFriend.SetInitStatus(InitStatus::IN_EXECUTED);
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::IN_EXECUTED);
+    sourceMapFriend.SetInitStatus(InitStatus::EXECUTED_SUCCESSFULLY);
+    EXPECT_EQ(sourceMapFriend.GetInitStatus(), InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+HWTEST_F_L0(SourceMapTest, InitStatusThreeStatesDistinctTest)
+{
+    SourceMapFriend sourceMapFriend(sourceMapData4);
+
+    sourceMapFriend.SetInitStatus(InitStatus::NOT_EXECUTED);
+    InitStatus s1 = sourceMapFriend.GetInitStatus();
+
+    sourceMapFriend.SetInitStatus(InitStatus::IN_EXECUTED);
+    InitStatus s2 = sourceMapFriend.GetInitStatus();
+
+    sourceMapFriend.SetInitStatus(InitStatus::EXECUTED_SUCCESSFULLY);
+    InitStatus s3 = sourceMapFriend.GetInitStatus();
+
+    // Three states must be distinct
+    EXPECT_NE(s1, s2);
+    EXPECT_NE(s2, s3);
+    EXPECT_NE(s1, s3);
+}
 }
