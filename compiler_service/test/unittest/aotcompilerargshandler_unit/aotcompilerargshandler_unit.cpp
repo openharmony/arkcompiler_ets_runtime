@@ -180,29 +180,11 @@ const AotCompilerArgs framewordArgsForTest = []() {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
 {
-    std::ofstream(staticPaocBlackListPath) << "{\"blackMethodList\":[]}";
-
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsForTest);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
-    std::string fileName = argsHandler->GetFileName();
-    EXPECT_TRUE(!fileName.empty());
-    int32_t bundleUid;
-    int32_t bundleGid;
-    argsHandler->GetBundleId(bundleUid, bundleGid);
-    EXPECT_EQ(bundleUid, OID_SYSTEM);
-    EXPECT_EQ(bundleGid, OID_SYSTEM);
-    std::vector<const char*> argv = argsHandler->GetAotArgs();
-    EXPECT_STREQ(argv[0], "/system/bin/ark_aot");
-    for (const auto& arg : argv) {
-        if (std::strcmp(arg, "boot-panda-files") == 0) {
-            EXPECT_STREQ(arg, "--boot-panda-files=/system/framework/etsstdlib_bootabc.abc");
-        }
-    }
-
-    unlink(staticPaocBlackListPath);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
 }
 
 /**
@@ -1034,7 +1016,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_072, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_073
- * @tc.desc: Test StaticFrameworkAOTArgsParser::Parse function with non-empty blackListMethods
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Parse skips framework AOT with non-empty blackListMethods
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
@@ -1057,7 +1039,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
 
     unlink(staticPaocBlackListPath);
 }

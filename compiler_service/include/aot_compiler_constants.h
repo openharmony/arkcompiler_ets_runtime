@@ -93,7 +93,6 @@ const std::string APP_ABC_PHYS_PATH_PREFIX = "/data/app/el1/bundle/public/";
 const std::string ETS_PATH = "/ets";
 
 // Tags and misc
-const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
 const std::string EMPTY_JSON_ARRAY = "[]";
 const std::string BUNDLE_PATH_SEGMENT = "bundle";
 const std::string LOG_OPT_ALLASM = "allasm";
