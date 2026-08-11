@@ -50,6 +50,9 @@ public:
     void SafeDestroyAllData();
     void SafeDestroyAnData(const std::string &fileName);
     const std::unordered_map<CString, uint32_t> &SafeGetfullFileNameToChecksumMap();
+#if defined(STUB_FUNCTION_REORDERING)
+    void SafePopulateStubIndexMapping();
+#endif
 
     const std::string &GetDir() const
     {
@@ -97,6 +100,9 @@ private:
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
     std::string anDir_;
     bool anEnable_ {false};
+#if defined(STUB_FUNCTION_REORDERING)
+    bool stubEntriesInitFlag_ {false};
+#endif
     NO_COPY_SEMANTIC(AnFileDataManager);
     NO_MOVE_SEMANTIC(AnFileDataManager);
 };
