@@ -7474,8 +7474,10 @@ struct GraphBuilder::BytecodeVisitor {
         CompileInfoFacts *entryFacts = compileInfoFacts_;
         std::vector<BB *> checkBlocks;
         std::vector<BB *> caseBlocks;
+        std::vector<CompileInfoFacts *> caseExitFacts;
         checkBlocks.reserve(access.caseCount);
         caseBlocks.reserve(access.caseCount);
+        caseExitFacts.reserve(access.caseCount);
         for (uint32_t i = 0; i < access.caseCount; ++i) {
             checkBlocks.push_back(self->NewBlock());
             caseBlocks.push_back(self->NewBlock());
@@ -7506,7 +7508,7 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_ = entryFacts;
             if (actualHClass == nullptr) {
                 actualHClass = self->NewVertex<LoadHClassAddressVertex>(
-                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
+                    currentBlock, std::initializer_list<ValueVertex *> {receiver});
             }
             BB *nextBlock = i + 1 < access.caseCount ? checkBlocks[i + 1] : hclassMissDeoptBlock;
             self->FinishBlockWithBranch<BranchIfHClassInVertex>(
@@ -7515,12 +7517,16 @@ struct GraphBuilder::BytecodeVisitor {
 
             currentBlock = caseBlocks[i];
             compileInfoFacts_ = entryFacts->Clone();
-            compileInfoFacts_->RecordHClass(receiver, expectedHClasses[i], false);
+            compileInfoFacts_->RecordHClass(
+                receiver, expectedHClasses[i],
+                IsHClassStableForFacts(expectedHClasses[i],
+                                       access.cases[i].dependencies.canAssumeStableHClass));
             bool lowered = TryLowerNamedStoreField(bcIndex, access.cases[i], receiver, value);
             ASSERT(lowered);
             if (!lowered) {
                 UNREACHABLE();
             }
+            caseExitFacts.push_back(compileInfoFacts_);
             self->FinishBlockWithJump(currentBlock, doneBlock);
         }
 
@@ -7536,8 +7542,11 @@ struct GraphBuilder::BytecodeVisitor {
         buildDeoptBlock(hclassMissDeoptBlock);
 
         currentBlock = doneBlock;
-        compileInfoFacts_ = entryFacts;
-        compileInfoFacts_->OnSideEffect();
+        ASSERT(!caseExitFacts.empty());
+        compileInfoFacts_ = caseExitFacts.front()->Clone();
+        for (size_t i = 1; i < caseExitFacts.size(); ++i) {
+            compileInfoFacts_->Merge(*caseExitFacts[i]);
+        }
         return true;
     }
 
