@@ -99,7 +99,7 @@ public:
                    int frameInfoTempsLength, int frameStackLength);
     void PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
                        CVector<MethodKey> &napiFrameStack);
-    FrameStackAndInfo *PopFrame();
+    bool PopFrame(FrameStackAndInfo &out);
     bool IsEmpty();
     bool IsFull();
     int GetSize();
@@ -120,13 +120,13 @@ public:
     virtual ~SamplesRecord();
 
     void NodeInit();
-    void AddSample(FrameStackAndInfo *frame);
+    void AddSample(const FrameStackAndInfo &frame);
     void AddEmptyStackSample(uint64_t sampleTimeStamp);
     void StringifySampleData();
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
     std::string GetSampleData() const;
-    std::string GetModuleName(char *recordName);
+    std::string GetModuleName(const char *recordName);
     void SetThreadStartTime(uint64_t threadStartTime);
     uint64_t GetThreadStartTime();
     void SetThreadStopTime();
@@ -180,8 +180,8 @@ private:
     void StringifyNodes();
     void StringifySamples();
     struct FrameInfo GetMethodInfo(struct MethodKey &methodKey);
-    std::string AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type);
-    void FrameInfoTempToMap(FrameInfoTemp *frameInfoTemps, int frameInfoTempLength);
+    std::string AddRunningState(const char *functionName, RunningState state, kungfu::DeoptType type);
+    void FrameInfoTempToMap(const FrameInfoTemp *frameInfoTemps, int frameInfoTempLength);
     void NapiFrameInfoTempToMap();
     void StatisticStateTime(int timeDelta, RunningState state);
     void TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry);

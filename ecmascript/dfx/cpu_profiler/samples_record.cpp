@@ -68,24 +68,29 @@ void SamplesRecord::NodeInit()
     profileInfo_->nodes[0].children.push_back(methodNode.id);
 }
 
-void SamplesRecord::AddSample(FrameStackAndInfo *frame)
+void SamplesRecord::AddSample(const FrameStackAndInfo &frame)
 {
-    int frameStackLength = frame->frameStackLength;
+    int frameStackLength = frame.frameStackLength;
     if (frameStackLength == 0) {
-        AddEmptyStackSample(frame->timeStamp);
+        AddEmptyStackSample(frame.timeStamp);
         return;
     }
 
-    FrameInfoTempToMap(frame->frameInfoTemps, frame->frameInfoTempsLength);
+    FrameInfoTempToMap(frame.frameInfoTemps, frame.frameInfoTempsLength);
 
     struct NodeKey nodeKey;
     struct CpuProfileNode methodNode;
     methodNode.id = 1;
     for (; frameStackLength >= 1; frameStackLength--) {
-        nodeKey.methodKey = frame->frameStack[frameStackLength - 1];
+        nodeKey.methodKey = frame.frameStack[frameStackLength - 1];
         methodNode.parentId = nodeKey.parentId = methodNode.id;
         auto result = nodeMap_.find(nodeKey);
         if (result == nodeMap_.end()) {
+            if (profileInfo_->nodeCount >= MAX_NODE_COUNT) {
+                LOG_ECMA(ERROR) << "AddSample: nodeCount exceeds MAX_NODE_COUNT";
+                previousTimeStamp_ = frame.timeStamp;
+                return;
+            }
             int id = static_cast<int>(nodeMap_.size() + 1);
             nodeMap_.emplace(nodeKey, id);
             previousId_ = methodNode.id = id;
@@ -100,7 +105,7 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
     }
 
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
-    int timeDelta = static_cast<int>(frame->timeStamp -
+    int timeDelta = static_cast<int>(frame.timeStamp -
         (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
 
     // delete abnormal sample
@@ -116,7 +121,7 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
     profileInfo_->nodes[sampleNodeId - 1].hitCount++;
     profileInfo_->samples.push_back(sampleNodeId);
     profileInfo_->timeDeltas.push_back(timeDelta);
-    previousTimeStamp_ = frame->timeStamp;
+    previousTimeStamp_ = frame.timeStamp;
 }
 
 void SamplesRecord::AddEmptyStackSample(uint64_t sampleTimeStamp)
@@ -242,7 +247,7 @@ struct FrameInfo SamplesRecord::GetMethodInfo(struct MethodKey &methodKey)
     return entry;
 }
 
-std::string SamplesRecord::AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type)
+std::string SamplesRecord::AddRunningState(const char *functionName, RunningState state, kungfu::DeoptType type)
 {
     std::string temp = functionName;
     switch (state) {
@@ -491,7 +496,7 @@ bool SamplesRecord::PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp)
     return true;
 }
 
-std::string SamplesRecord::GetModuleName(char *recordName)
+std::string SamplesRecord::GetModuleName(const char *recordName)
 {
     std::string recordNameStr = recordName;
     std::string::size_type atPos = recordNameStr.find("@");
@@ -507,7 +512,7 @@ std::string SamplesRecord::GetModuleName(char *recordName)
     return recordNameStr.substr(slashPos + 1, atPos - slashPos - 1);
 }
 
-void SamplesRecord::FrameInfoTempToMap(FrameInfoTemp *frameInfoTemps, int frameInfoTempLength)
+void SamplesRecord::FrameInfoTempToMap(const FrameInfoTemp *frameInfoTemps, int frameInfoTempLength)
 {
     if (frameInfoTempLength == 0) {
         return;
@@ -766,15 +771,27 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
     }
 }
 
-FrameStackAndInfo *SamplesQueue::PopFrame()
+bool SamplesQueue::PopFrame(FrameStackAndInfo &out)
 {
-    LockHolder holder(mtx_);
-    if (!IsEmpty()) {
-        FrameStackAndInfo *frame = &frames_[front_];
-        front_ = (front_ + 1) % QUEUE_CAPACITY;
-        return frame;
+    int index = 0;
+    {
+        LockHolder holder(mtx_);
+        if (IsEmpty()) {
+            return false;
+        }
+        index = front_;
+        out.frameInfoTempsLength =  frames_[index].frameInfoTempsLength;
+        out.frameStackLength = frames_[index].frameStackLength;
+        out.timeStamp = frames_[index].timeStamp;
+        front_ = (front_ + 1) % QUEUE_CAPACITY;  // 递增索引，允许PostFrame写入
     }
-    return nullptr;
+    for (int i = 0; i < out.frameInfoTempsLength; i++) {
+        out.frameInfoTemps[i] = frames_[index].frameInfoTemps[i];
+    }
+    for (int i = 0; i < out.frameStackLength; ++i) {
+        out.frameStack[i] = frames_[index].frameStack[i];
+    }
+    return true;
 }
 
 bool SamplesQueue::IsEmpty()

@@ -115,6 +115,10 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
+    if (heapProfile == nullptr) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshot: heapProfile is nullptr";
+        return;
+    }
 
 #if defined (ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #if defined (ENABLE_DUMP_IN_FAULTLOG)
