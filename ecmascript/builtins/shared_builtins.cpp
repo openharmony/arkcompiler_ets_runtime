@@ -27,6 +27,7 @@
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/containers/containers_bitvector.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
@@ -78,6 +79,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
     InitializeSharedArray(env, sObjPrototype, sFuncPrototype);
     InitializeSTypedArray(env, sObjPrototype, sFuncPrototype);
     InitializeSArrayBuffer(env, sObjPrototype, sFuncPrototype);
+    InitializeSharedBitVector(env, sObjPrototype, sFuncPrototype);
     InitializeSModuleNamespace(env, sObjIHClass);
     env->SetSObjectFunctionPrototype(thread_, sObjPrototype);
 }
@@ -1049,6 +1051,18 @@ void Builtins::InitializeSharedBitVector(const JSHandle<GlobalEnv> &env, const J
                  ContainersBitVector::GetIteratorObj, protoFieldIndex++, FunctionLength::ONE);
     env->SetBitVectorPrototype(thread_, bitVectorFuncPrototype);
     env->SetBitVectorFunction(thread_, bitVectorFunction);
+}
+
+void Builtins::InitializeSBitVectorIterator(const JSHandle<GlobalEnv> &env,
+                                            const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // BitVectorIterator.prototype
+    JSHandle<JSObject> bitVectorIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, bitVectorIteratorPrototype, "next", JSAPIBitVectorIterator::Next, FunctionLength::ONE);
+    SetStringTagSymbol(env, bitVectorIteratorPrototype, "BitVector Iterator");
+    env->SetBitVectorIteratorPrototype(thread_, bitVectorIteratorPrototype);
 }
 
 

@@ -49,18 +49,14 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    auto* newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
-    if (!length->IsZero()) {
-        int32_t capacity = std::max(0, (length->GetInt() / JSAPIBitVector::BIT_SET_LENGTH) + 1);
-
-        std::bitset<JSAPIBitVector::BIT_SET_LENGTH> initBitSet;
-        newBitSetVector->resize(capacity, initBitSet);
-    }
+    int32_t bitVectorLength = std::max(0, length->GetInt());
+    auto* newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>(
+        JSAPIBitVector::ComputeBitSetCount(static_cast<uint32_t>(bitVectorLength)));
     JSHandle<JSNativePointer> pointer = factory->NewSJSNativePointer(newBitSetVector,
                                                                      ContainersBitVector::FreeBitsetVectorPointer,
                                                                      newBitSetVector);
     obj->SetNativePointer(thread, pointer);
-    obj->SetLength(std::max(0, length->GetInt()));
+    obj->SetLength(bitVectorLength);
     return obj.GetTaggedValue();
 }
 

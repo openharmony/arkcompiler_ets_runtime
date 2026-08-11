@@ -433,8 +433,8 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
         JSHandle<JSTaggedValue>::Cast(bitVector));
     RETURN_IF_ABRUPT_COMPLETION(thread);
     int length = bitVector->GetLength();
-    uint32_t elementsLength = static_cast<uint32_t>((length - 1) / BIT_SET_LENGTH + 1);
-    uint32_t newElementsLength = static_cast<uint32_t>((newSize - 1) / BIT_SET_LENGTH + 1);
+    uint32_t elementsLength = ComputeBitSetCount(static_cast<uint32_t>(length));
+    uint32_t newElementsLength = ComputeBitSetCount(static_cast<uint32_t>(newSize));
 
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());

@@ -1992,6 +1992,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     InitializeForinIterator(env, iteratorFuncClass);
     InitializeSetIterator(env, iteratorFuncClass);
     InitializeSSetIterator(env, iteratorFuncClass);
+    InitializeSBitVectorIterator(env, iteratorFuncClass);
     InitializeMapIterator(env, iteratorFuncClass);
     InitializeSMapIterator(env, iteratorFuncClass);
     InitializeArrayIterator(env, iteratorFuncClass, iteratorPrototypeHClass);

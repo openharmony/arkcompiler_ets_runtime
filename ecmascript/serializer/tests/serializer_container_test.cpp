@@ -33,11 +33,14 @@
 #include "ecmascript/containers/tests/containers_test_helper.h"
 
 #include "ecmascript/containers/containers_arraylist.h"
+#include "ecmascript/containers/containers_bitvector.h"
 #include "ecmascript/containers/containers_hashmap.h"
 #include "ecmascript/containers/containers_hashset.h"
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_linked_list.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_api/js_api_list.h"
@@ -882,6 +885,40 @@ public:
         Destroy();
     }
 
+    void JSBitVectorTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ASSERT_FALSE(res.IsEmpty());
+        ASSERT_TRUE(res->IsJSAPIBitVector());
+
+        JSHandle<JSAPIBitVector> bitVector = JSHandle<JSAPIBitVector>::Cast(res);
+        JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+        EXPECT_EQ(JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(bitVector)),
+                  env->GetBitVectorPrototype().GetTaggedValue());
+
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(bitVector.GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSHandle<JSTaggedValue> iterator(thread, ContainersBitVector::GetIteratorObj(callInfo));
+        TestHelper::TearDownFrame(thread, prev);
+        ASSERT_TRUE(iterator->IsJSAPIBitVectorIterator());
+        EXPECT_EQ(JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(iterator)),
+                  env->GetBitVectorIteratorPrototype().GetTaggedValue());
+
+        auto nextCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        nextCallInfo->SetFunction(JSTaggedValue::Undefined());
+        nextCallInfo->SetThis(iterator.GetTaggedValue());
+        [[maybe_unused]] auto nextPrev = TestHelper::SetupFrame(thread, nextCallInfo);
+        JSHandle<JSTaggedValue> result(thread, JSAPIBitVectorIterator::Next(nextCallInfo));
+        TestHelper::TearDownFrame(thread, nextPrev);
+        EXPECT_EQ(JSIterator::IteratorValue(thread, result)->GetInt(), 1);
+
+        Destroy();
+    }
+
     JSThread *thread {nullptr};
     EcmaVM *ecmaVm {nullptr};
     EcmaHandleScope *scope {nullptr};
@@ -1337,4 +1374,23 @@ HWTEST_F_L0(JSSerializerContainerTest, SerializeJSLinkedList)
     t1.join();
     delete serializer;
 };
+
+HWTEST_F_L0(JSSerializerContainerTest, SerializeJSBitVectorWithoutArkPrivateLoad)
+{
+    JSHandle<JSAPIBitVector> bitVector = ecmaVm->GetFactory()->NewJSAPIBitVector(0);
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
+    EXPECT_TRUE(JSAPIBitVector::Push(thread, bitVector, value));
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(bitVector),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    ASSERT_TRUE(success) << "Serialize JSAPIBitVector failed";
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerContainerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerContainerTest::JSBitVectorTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope suspensionScope(thread);
+    t1.join();
+    delete serializer;
+}
 }  // namespace panda::test

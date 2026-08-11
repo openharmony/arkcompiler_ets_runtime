@@ -661,24 +661,15 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBitVector(JSThread* thread)
     auto vm = thread->GetEcmaVM();
     ObjectFactory* factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> bitVectorFunction = env->GetBitVectorFunction();
+    if (!bitVectorFunction->IsHole() && !bitVectorFunction->IsUndefined()) {
+        return bitVectorFunction;
+    }
     Builtins builtin(thread, factory, vm);
     JSHandle<JSObject> sObjPrototype = JSHandle<JSObject>::Cast(env->GetSObjectFunctionPrototype());
     JSHandle<JSFunction> sFuncPrototype = JSHandle<JSFunction>::Cast(env->GetSFunctionPrototype());
     builtin.InitializeSharedBitVector(env, sObjPrototype, sFuncPrototype);
-    InitializeBitVectorIterator(thread, env);
-    JSHandle<JSTaggedValue> bitVectorFunction = env->GetBitVectorFunction();
-    return bitVectorFunction;
-}
-
-void ContainersPrivate::InitializeBitVectorIterator(JSThread* thread, const JSHandle<GlobalEnv>& env)
-{
-    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> iteratorFuncClass = JSHandle<JSHClass>::Cast(env->GetIteratorFuncClass());
-    JSHandle<JSObject> bitVectorIteratorPrototype(factory->NewJSObjectWithInit(iteratorFuncClass));
-    // Iterator.prototype.next()
-    SetFrozenFunction(env, bitVectorIteratorPrototype, "next", JSAPIBitVectorIterator::Next, FuncLength::ONE);
-    SetStringTagSymbol(env, bitVectorIteratorPrototype, "BitVector Iterator");
-    env->SetBitVectorIteratorPrototype(thread, bitVectorIteratorPrototype);
+    return env->GetBitVectorFunction();
 }
 
 JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)

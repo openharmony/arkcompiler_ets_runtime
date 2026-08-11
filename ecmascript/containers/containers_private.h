@@ -100,7 +100,6 @@ private:
     static JSHandle<JSTaggedValue> InitializeVector(JSThread *thread);
     static void InitializeVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeBitVector(JSThread *thread);
-    static void InitializeBitVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeQueue(JSThread *thread);
     static void InitializeQueueIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeDeque(JSThread *thread);

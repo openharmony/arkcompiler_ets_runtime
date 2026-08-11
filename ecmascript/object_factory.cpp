@@ -5108,7 +5108,7 @@ JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
     NewObjectHook();
     JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBitVectorFunction());
     JSHandle<JSAPIBitVector> obj = JSHandle<JSAPIBitVector>(NewJSObjectByConstructor(builtinObj));
-    uint32_t taggedArrayCapacity = (capacity >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
+    uint32_t taggedArrayCapacity = JSAPIBitVector::ComputeBitSetCount(capacity);
     auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
     newBitSetVector->resize(taggedArrayCapacity, 0);
     auto deleter = []([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *data) {
