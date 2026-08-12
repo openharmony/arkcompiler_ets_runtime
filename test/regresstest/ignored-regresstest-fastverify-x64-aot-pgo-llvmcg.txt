@@ -1,26 +1,3 @@
 # Known failure list for regress test - fastverify-x64
-
-# Issue #17903
-regresstest/ark-regress/mjsunit/regress/regress-95113.js
-
-# Issue #19413
-regresstest/ark-regress/mjsunit/regress/regress-4595.js
-
-# Issue #17901
-regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
-regresstest/ark-regress/mjsunit/regress/regress-reflect-construct.js
-# --- end of Issue #17827
-
-# Compilation error: Issue #18551
-regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
-# --- end of #18551
-
-#21809
-regresstest/ark-regress/mjsunit/regress/regress-crbug-551287.js
-
-#20325
-regresstest/ark-regress/mjsunit/regress/regress-448711.js
-regresstest/ark-regress/mjsunit/es6/regress/regress-508074.js
-
-#32675
+#32675 
 regresstest/ark-regress/mjsunit/random-bit-correlations.js
