@@ -68,10 +68,6 @@ declare_args() {
 
   enable_litecg_emit = true
 
-  is_qemu_runtime = false
-
-  disable_hilog = false
-
   TARGET = "x86_64"
   HOST_ARCH = 64
 
@@ -121,10 +117,19 @@ if (!ark_standalone_build) {
   ark_third_party_root = "//third_party"
   import("$build_root/config/components/toolchain/build_type.gni")
   import("$build_root/ohos.gni")
+  import("//build/config/components/runtime_core/hilog_config.gni")
 } else {
   ark_third_party_root = "//build/third_party_gn"
   import("$build_root/ark.gni")
   import("$build_root/config/build_type.gni")
+
+  # is_qemu_runtime/disable_hilog are declared by hilog_config.gni in the OH
+  # build; declare them for the standalone build so args.gn overrides are
+  # consumed and the enable_* flags below stay referenceable.
+  declare_args() {
+    is_qemu_runtime = false
+    disable_hilog = false
+  }
 }
 if (!defined(build_variant)) {
   build_variant = "root"
@@ -176,9 +181,12 @@ sdk_libc_secshared_config =
     "$ark_third_party_root/bounds_checking_function:libsec_public_config"
 
 # ohos device, windows previewer, mac previewer
-enable_hilog =
-    !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) &&
-    (is_ohos || is_mingw || is_mac) && !is_qemu_runtime && !disable_hilog
+if (!ark_standalone_build) {
+  enable_hilog = enable_hilog_broad
+} else {
+  # Standalone build: hilog is never enabled (!ark_standalone_build gates it off).
+  enable_hilog = false
+}
 enable_hisysevent =
     !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system && !is_qemu_runtime
