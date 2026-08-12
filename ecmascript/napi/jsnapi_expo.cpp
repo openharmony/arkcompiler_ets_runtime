@@ -2728,7 +2728,7 @@ LocalScope::~LocalScope()
         } else {
             // report backtrace via restraceExt
 #ifdef HOOK_ENABLE
-            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, sizeof(JSTaggedType),
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, 1,
                         TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
         }
