@@ -42,6 +42,7 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
+#include "common_components/taskpool/task.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
@@ -473,6 +474,11 @@ public:
         return currentHandleStorageIndex_;
     }
 
+    size_t GetHandleStorageNodesSize() const
+    {
+        return handleStorageNodes_.size();
+    }
+
     JSTaggedType *GetPrimitiveScopeStorageNext() const
     {
         return primitiveScopeStorageNext_;
@@ -496,6 +502,11 @@ public:
     int GetCurrentPrimitiveStorageIndex() const
     {
         return currentPrimitiveStorageIndex_;
+    }
+
+    size_t GetPrimitiveStorageNodesSize() const
+    {
+        return primitiveStorageNodes_.size();
     }
 
     uintptr_t *ExpandHandleStorage();
@@ -1940,8 +1951,30 @@ private:
     // HandleScope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
+    using StorageNode = std::array<JSTaggedType, NODE_BLOCK_SIZE>;
     static constexpr uint32_t SO_LOAD_FAILURE_CAPACITY = 20;
     static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
+    // Retain SHRINK_HEADROOM_FACTOR * active usage nodes after a shrink.
+    static constexpr int32_t SHRINK_HEADROOM_FACTOR = 2;
+    // Only shrink when at least total / SHRINK_HYSTERESIS_DIVISOR nodes would be freed.
+    static constexpr int32_t SHRINK_HYSTERESIS_DIVISOR = 4;
+    // Never shrink for fewer than this many nodes to avoid trivial churn on small storages.
+    static constexpr int32_t SHRINK_MIN_FREE_NODES = 4;
+    // On the main thread, freeing more than this many nodes is offloaded to the taskpool.
+    static constexpr int32_t ASYNC_SHRINK_NODE_THRESHOLD = 1000;
+    void FreeStorageNodes(std::vector<StorageNode *> &nodes, int32_t toDelete);
+    // Detached storage nodes freed asynchronously by the taskpool (see FreeStorageNodes).
+    class FreeStorageNodesTask : public common::Task {
+    public:
+        explicit FreeStorageNodesTask(std::vector<StorageNode *> nodes)
+            : common::Task(common::GLOBAL_TASK_ID), nodes_(std::move(nodes)) {}
+        ~FreeStorageNodesTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+        NO_COPY_SEMANTIC(FreeStorageNodesTask);
+        NO_MOVE_SEMANTIC(FreeStorageNodesTask);
+    private:
+        std::vector<StorageNode *> nodes_;
+    };
     JSTaggedType *handleScopeStorageNext_ {nullptr};
     JSTaggedType *handleScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};

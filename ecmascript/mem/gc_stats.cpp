@@ -173,9 +173,19 @@ void GCStats::PrintGCStatistic()
         }
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
+        PrintStorageStatistic();
     }
     GCFinishTrace();
     InitializeRecordList();
+}
+
+void GCStats::PrintStorageStatistic()
+{
+    LOG_GC(INFO) << "HandleStorage currentUsage:" << (heap_->GetEcmaVM()->GetCurrentHandleStorageIndex() + 1)
+                 << " totalNodes:" << heap_->GetEcmaVM()->GetHandleStorageNodesSize()
+                 << " PrimitiveStorage currentUsage:"
+                 << (heap_->GetEcmaVM()->GetCurrentPrimitiveStorageIndex() + 1)
+                 << " totalNodes:" << heap_->GetEcmaVM()->GetPrimitiveStorageNodesSize();
 }
 
 const char *GCStats::GCReasonToString()

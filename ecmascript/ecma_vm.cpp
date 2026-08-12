@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_vm.h"
 
+#include <algorithm>
 #include <cmath>
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/base/config.h"
@@ -85,6 +86,7 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
+
 constexpr const char* HEAP_MEM_PRESSURE_PROCESS = "ProcessHeapMemPressure";
 constexpr const char* HEAP_MEM_PRESSURE_LOCAL = "LocalHeapMemPressure";
 constexpr const char* HEAP_MEM_PRESSURE_SHARED = "SharedHeapMemPressure";
@@ -1265,6 +1267,40 @@ void EcmaVM::DeleteHandleStorage()
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 }
 
+bool EcmaVM::FreeStorageNodesTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    std::string traceName =
+        "EcmaVM::FreeStorageNodesTask::Run freed " + std::to_string(nodes_.size()) + " nodes";
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceName.c_str(), "");
+    for (auto *node : nodes_) {
+        delete node;
+    }
+    return true;
+}
+
+void EcmaVM::FreeStorageNodes(std::vector<StorageNode *> &nodes, int32_t toDelete)
+{
+    // The caller (mutator thread) owns `nodes`, so detaching via pop_back here is
+    // race-free. Only the heap free of detached nodes is posted to the taskpool,
+    // which never touches `nodes` afterwards, avoiding vector races with the caller.
+    auto *taskpool = common::Taskpool::GetCurrentTaskpool();
+    bool asyncFree = thread_->IsMainThreadFast() && toDelete > ASYNC_SHRINK_NODE_THRESHOLD && taskpool != nullptr;
+    if (asyncFree) {
+        std::vector<StorageNode *> toFree;
+        toFree.reserve(toDelete);
+        for (int32_t i = 0; i < toDelete; i++) {
+            toFree.push_back(nodes.back());
+            nodes.pop_back();
+        }
+        taskpool->PostTask(std::make_unique<FreeStorageNodesTask>(std::move(toFree)));
+    } else {
+        for (int32_t i = 0; i < toDelete; i++) {
+            delete nodes.back();
+            nodes.pop_back();
+        }
+    }
+}
+
 void EcmaVM::ShrinkHandleStorage(int prevIndex)
 {
     currentHandleStorageIndex_ = prevIndex;
@@ -1288,11 +1324,16 @@ void EcmaVM::ShrinkHandleStorage(int prevIndex)
     }
 #endif
 
-    if (lastIndex > MIN_HANDLE_STORAGE_SIZE && currentHandleStorageIndex_ < MIN_HANDLE_STORAGE_SIZE) {
-        for (int i = MIN_HANDLE_STORAGE_SIZE; i < lastIndex; i++) {
-            auto node = handleStorageNodes_.back();
-            delete node;
-            handleStorageNodes_.pop_back();
+    if (lastIndex > MIN_HANDLE_STORAGE_SIZE) {
+        int32_t totalNodes = lastIndex + 1;
+        int32_t currentUsage = currentHandleStorageIndex_ + 1;
+        int32_t targetNodes = std::max(MIN_HANDLE_STORAGE_SIZE, currentUsage * SHRINK_HEADROOM_FACTOR);
+        int32_t toDelete = totalNodes - targetNodes;
+        // Only shrink when at least a quarter of the nodes would be freed, to avoid churn.
+        if (toDelete >= std::max(totalNodes / SHRINK_HYSTERESIS_DIVISOR, SHRINK_MIN_FREE_NODES)) {
+            LOG_ECMA(DEBUG) << "ShrinkHandleStorage currentUsage:" << currentUsage
+                            << " totalNodes:" << totalNodes << " targetNodes:" << targetNodes;
+            FreeStorageNodes(handleStorageNodes_, toDelete);
         }
     }
 }
@@ -1415,11 +1456,16 @@ void EcmaVM::ShrinkPrimitiveStorage(int prevIndex)
     }
 #endif
 
-    if (lastIndex > MIN_PRIMITIVE_STORAGE_SIZE && currentPrimitiveStorageIndex_ < MIN_PRIMITIVE_STORAGE_SIZE) {
-        for (int i = MIN_PRIMITIVE_STORAGE_SIZE; i < lastIndex; i++) {
-            auto node = primitiveStorageNodes_.back();
-            delete node;
-            primitiveStorageNodes_.pop_back();
+    if (lastIndex > MIN_PRIMITIVE_STORAGE_SIZE) {
+        int32_t totalNodes = lastIndex + 1;
+        int32_t currentUsage = currentPrimitiveStorageIndex_ + 1;
+        int32_t targetNodes = std::max(MIN_PRIMITIVE_STORAGE_SIZE, currentUsage * SHRINK_HEADROOM_FACTOR);
+        int32_t toDelete = totalNodes - targetNodes;
+        // Only shrink when at least a quarter of the nodes would be freed, to avoid churn.
+        if (toDelete >= std::max(totalNodes / SHRINK_HYSTERESIS_DIVISOR, SHRINK_MIN_FREE_NODES)) {
+            LOG_ECMA(DEBUG) << "ShrinkPrimitiveStorage currentUsage:" << currentUsage
+                            << " totalNodes:" << totalNodes << " targetNodes:" << targetNodes;
+            FreeStorageNodes(primitiveStorageNodes_, toDelete);
         }
     }
 }

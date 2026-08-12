@@ -284,6 +284,7 @@ public:
 protected:
     bool CheckIfNeedPrint(GCType type);
     void PrintVerboseGCStatistic();
+    void PrintStorageStatistic();
     void PrintGCDurationStatistic();
     void PrintGCSummaryStatistic(GCType type = GCType::START);
     void InitializeRecordList();

@@ -1505,6 +1505,33 @@ host_unittest_action("JS_EcmaHandleScope_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JS_EcmaVMStorageShrink_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "ecma_vm_storage_shrink_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("JS_MapIterator_Test") {
   module_out_path = module_output_path
 
@@ -4098,6 +4125,7 @@ group("unittest") {
     ":JS_GlueRegs_Test",
     ":JS_Handle_Test",
     ":JS_EcmaHandleScope_Test",
+    ":JS_EcmaVMStorageShrink_Test",
     ":JS_Hclass_Test",
     ":JS_Iterator_Test",
     ":JS_LayoutInfo_Test",
@@ -4297,6 +4325,7 @@ group("host_unittest") {
     ":JS_GlueRegs_TestAction",
     ":JS_Handle_TestAction",
     ":JS_EcmaHandleScope_TestAction",
+    ":JS_EcmaVMStorageShrink_TestAction",
     ":JS_Hclass_TestAction",
     ":JS_Iterator_TestAction",
     ":JS_LayoutInfo_TestAction",
