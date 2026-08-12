@@ -268,12 +268,12 @@ public:
 
     void Push(ArkSteedRegister reg);
     void Pop(ArkSteedRegister reg);
-#if defined(PANDA_TARGET_ARM64)
-    void Push(ArkSteedRegister reg1, ArkSteedRegister reg2);
-    void Pop(ArkSteedRegister reg1, ArkSteedRegister reg2);
-#endif
     void Push(ArkSteedDoubleRegister reg);
     void Pop(ArkSteedDoubleRegister reg);
+    void PushAll(const ArkSteedRegList &registers);
+    void PopAll(const ArkSteedRegList &registers);
+    void PushAll(const ArkDoubleRegList &registers);
+    void PopAll(const ArkDoubleRegList &registers);
 
     // =========================================================================
     // Function Prologue/Epilogue
@@ -338,6 +338,10 @@ private:
     aarch64::MemoryOperand MaterializeAddress(const aarch64::MemoryOperand &operand);
     void LoadRegisterWithOperand(const aarch64::Register &dst, const aarch64::MemoryOperand &src);
     void StoreRegisterWithOperand(const aarch64::Register &src, const aarch64::MemoryOperand &dst);
+    void PushPair(ArkSteedRegister reg1, ArkSteedRegister reg2);
+    void PopPair(ArkSteedRegister reg1, ArkSteedRegister reg2);
+    void PushPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
+    void PopPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
     static constexpr uint32_t VENEER_INSTRUCTION_SIZE = sizeof(uint32_t);  // One ARM64 instruction is 4 bytes.
     static constexpr uint32_t VENEER_DISTANCE_MARGIN = 4U * 1024U;  // Check 4 KiB before the encoding limit.
     static bool IsVeneerBranchOrCall(uint32_t instruction);

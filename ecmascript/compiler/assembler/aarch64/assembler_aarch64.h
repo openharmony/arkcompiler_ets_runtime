@@ -360,6 +360,8 @@ private:
     int32_t ImmBranch(uint32_t branchCode);
     void SetRealOffsetToBranchInst(uint32_t linkPos, int32_t disp);
     void Ldr(const Register &rt, const MemoryOperand &operand, Scale scale);
+    void EmitLoadStoreD(const VRegister &vt, const MemoryOperand &operand, uint32_t offsetOpcode,
+                        uint32_t preIndexOpcode, uint32_t postIndexOpcode);
     uint64_t GetImmOfLdr(const MemoryOperand &operand, Scale scale, bool isRegX);
     uint64_t GetOpcodeOfLdr(const MemoryOperand &operand, Scale scale);
     uint32_t GetShiftOfLdr(const MemoryOperand &operand, Scale scale, bool isRegX);

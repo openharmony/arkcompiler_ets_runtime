@@ -1452,38 +1452,57 @@ bool AssemblerAarch64::TryFmov(const VRegister &vd, double immediate)
     return true;
 }
 
-void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
+void AssemblerAarch64::EmitLoadStoreD(const VRegister &vt, const MemoryOperand &operand, uint32_t offsetOpcode,
+                                      uint32_t preIndexOpcode, uint32_t postIndexOpcode)
 {
-    // LDR Dt, [Xn, #imm] - Load SIMD&FP Register (64-bit)
-    // Encoding: size/opc for 64-bit SIMD&FP register, unsigned scaled immediate.
-    // imm12 = offset / 8 (must be aligned)
+    constexpr int64_t D_REGISTER_SIZE_IN_BYTES = D_REG_SIZE / B_REG_SIZE;
+    constexpr int64_t SIGNED_IMMEDIATE_BOUND = static_cast<int64_t>(1U << (LDR_STR_Imm9_WIDTH - 1U));
+    constexpr int64_t UNSIGNED_IMMEDIATE_MAX = static_cast<int64_t>((1U << LDR_STR_Imm12_WIDTH) - 1U);
+
     ASSERT(operand.IsImmediateOffset());
     ASSERT(operand.GetRegBase().IsX());
+    ASSERT(vt.IsD());
 
-    int64_t offset = operand.GetImmediate().Value();
-    ASSERT((offset % 8) == 0 && offset >= 0 && offset <= 32760);  // 8, 32760: max offset for 12-bit imm scaled by 8
-    uint32_t imm12 = static_cast<uint32_t>(offset / 8);  // 8: bytes per 64-bit register
+    int64_t immediate = operand.GetImmediate().Value();
+    const AddrMode addrMode = operand.GetAddrMode();
+    const bool isSignedImmediate = addrMode != AddrMode::OFFSET;
+    if (isSignedImmediate) {
+        ASSERT(immediate >= -SIGNED_IMMEDIATE_BOUND && immediate < SIGNED_IMMEDIATE_BOUND);
+    } else {
+        ASSERT(immediate >= 0 && (immediate % D_REGISTER_SIZE_IN_BYTES) == 0);
+        immediate /= D_REGISTER_SIZE_IN_BYTES;
+        ASSERT(immediate <= UNSIGNED_IMMEDIATE_MAX);
+    }
 
-    uint32_t encoding = 0xFD400000;
-    encoding |= (imm12 << 10);                          // 10: imm12 field position
-    encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
-    encoding |= static_cast<uint32_t>(vt.Code());       // Rt (Dt)
-    EmitU32(encoding);
+    uint32_t opcode = 0;
+    switch (addrMode) {
+        case AddrMode::OFFSET:
+            opcode = offsetOpcode;
+            break;
+        case AddrMode::PREINDEX:
+            opcode = preIndexOpcode;
+            break;
+        case AddrMode::POSTINDEX:
+            opcode = postIndexOpcode;
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    uint32_t instructionCode = opcode | LoadAndStoreImm(static_cast<uint32_t>(immediate), isSignedImmediate) |
+                               Rn(operand.GetRegBase().GetId()) | Rt(vt.GetId());
+    EmitU32(instructionCode);
+}
+
+void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
+{
+    EmitLoadStoreD(vt, operand, LoadStoreOpCode::LDR_D_Offset, LoadStoreOpCode::LDR_D_Pre,
+                   LoadStoreOpCode::LDR_D_Post);
 }
 
 void AssemblerAarch64::Str(const VRegister &vt, const MemoryOperand &operand)
 {
-    ASSERT(operand.IsImmediateOffset());
-    ASSERT(operand.GetRegBase().IsX());
-
-    int64_t offset = operand.GetImmediate().Value();
-    ASSERT((offset % 8) == 0 && offset >= 0 && offset <= 32760);  // 8, 32760: max offset for 12-bit imm scaled by 8
-    uint32_t imm12 = static_cast<uint32_t>(offset / 8);  // 8: bytes per 64-bit register
-
-    uint32_t encoding = 0xFD000000;
-    encoding |= (imm12 << 10);                                      // 10: imm12 field position
-    encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
-    encoding |= static_cast<uint32_t>(vt.Code());                   // Rt (Dt)
-    EmitU32(encoding);
+    EmitLoadStoreD(vt, operand, LoadStoreOpCode::STR_D_Offset, LoadStoreOpCode::STR_D_Pre,
+                   LoadStoreOpCode::STR_D_Post);
 }
 }   // namespace panda::ecmascript::aarch64

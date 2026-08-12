@@ -731,6 +731,48 @@ void ArkSteedAssembler::Pop(ArkSteedDoubleRegister reg)
     assembler_.Addq(x64::Immediate(FRAME_SLOT_SIZE), x64::rsp);
 }
 
+void ArkSteedAssembler::PushAll(const ArkSteedRegList &registerList)
+{
+    for (ArkSteedRegister reg : registerList) {
+        Push(reg);
+    }
+    if ((registerList.Count() & 1U) != 0) {
+        ReserveCallArgSlots(1);
+    }
+}
+
+void ArkSteedAssembler::PopAll(const ArkSteedRegList &registerList)
+{
+    if ((registerList.Count() & 1U) != 0) {
+        FreeCallArgSlots(1);
+    }
+    ArkSteedRegList registers = registerList;
+    while (!registers.IsEmpty()) {
+        Pop(registers.PopLast());
+    }
+}
+
+void ArkSteedAssembler::PushAll(const ArkDoubleRegList &registerList)
+{
+    for (ArkSteedDoubleRegister reg : registerList) {
+        Push(reg);
+    }
+    if ((registerList.Count() & 1U) != 0) {
+        ReserveCallArgSlots(1);
+    }
+}
+
+void ArkSteedAssembler::PopAll(const ArkDoubleRegList &registerList)
+{
+    if ((registerList.Count() & 1U) != 0) {
+        FreeCallArgSlots(1);
+    }
+    ArkDoubleRegList registers = registerList;
+    while (!registers.IsEmpty()) {
+        Pop(registers.PopLast());
+    }
+}
+
 void ArkSteedAssembler::ReserveCallArgSlots(int32_t slotCount)
 {
     if (slotCount > 0) {

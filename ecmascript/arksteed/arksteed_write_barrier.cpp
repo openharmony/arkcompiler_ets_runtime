@@ -85,19 +85,8 @@ public:
         ArkDoubleRegList liveDoubleRegisters = registerSnapshot_.liveDoubleRegisters;
         liveDoubleRegisters &= clobberedDoubleRegisters;
 
-        for (ArkSteedRegister reg : liveRegisters) {
-            assembler->Push(reg);
-        }
-        for (ArkSteedDoubleRegister reg : liveDoubleRegisters) {
-            assembler->Push(reg);
-        }
-
-#if defined(PANDA_TARGET_AMD64)
-        bool needsAlignmentSlot = ((liveRegisters.Count() + liveDoubleRegisters.Count()) & 1U) != 0;
-        if (needsAlignmentSlot) {
-            assembler->ReserveCallArgSlots(1);
-        }
-#endif
+        assembler->PushAll(liveRegisters);
+        assembler->PushAll(liveDoubleRegisters);
 
         constexpr int32_t GLUE_SLOT = 0;
         constexpr int32_t OBJECT_SLOT = 1;
@@ -123,24 +112,8 @@ public:
         assembler->CallNGCRuntime(runtimeId_);
         assembler->FreeCallArgSlots(ABI_ARG_SLOT_COUNT);
 
-#if defined(PANDA_TARGET_AMD64)
-        if (needsAlignmentSlot) {
-            assembler->FreeCallArgSlots(1);
-        }
-#endif
-
-        for (int code = ArkSteedDoubleRegister::NUM_REGISTERS - 1; code >= 0; --code) {
-            ArkSteedDoubleRegister reg = ArkSteedDoubleRegister::FromCode(code);
-            if (liveDoubleRegisters.Has(reg)) {
-                assembler->Pop(reg);
-            }
-        }
-        for (int code = ArkSteedRegister::NUM_REGISTERS - 1; code >= 0; --code) {
-            ArkSteedRegister reg = ArkSteedRegister::FromCode(code);
-            if (liveRegisters.Has(reg)) {
-                assembler->Pop(reg);
-            }
-        }
+        assembler->PopAll(liveDoubleRegisters);
+        assembler->PopAll(liveRegisters);
         assembler->Jump(&returnLabel_);
     }
 

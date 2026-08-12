@@ -1003,12 +1003,12 @@ void ArkSteedAssembler::BranchIfNoPendingException(Label* target)
 {
     TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
-    Push(aarch64::xzr, aarch64::x0);
+    PushPair(aarch64::xzr, aarch64::x0);
     Move(aarch64::x0, static_cast<uint64_t>(entryThread_->GetGlueAddr()));
     LoadField(scratch, aarch64::x0, static_cast<int32_t>(JSThread::GlueData::GetExceptionOffset(false)));
     Move(aarch64::x0, JSTaggedValue::Hole().GetRawData());
     Compare(scratch, aarch64::x0);
-    Pop(aarch64::xzr, aarch64::x0);
+    PopPair(aarch64::xzr, aarch64::x0);
     JumpIf(Condition::COND_EQUAL, target);
 }
 
@@ -1074,15 +1074,15 @@ void ArkSteedAssembler::Return()
 
 void ArkSteedAssembler::Push(ArkSteedRegister reg)
 {
-    Push(reg, aarch64::xzr);
+    PushPair(reg, aarch64::xzr);
 }
 
 void ArkSteedAssembler::Pop(ArkSteedRegister reg)
 {
-    Pop(reg, aarch64::xzr);
+    PopPair(reg, aarch64::xzr);
 }
 
-void ArkSteedAssembler::Push(ArkSteedRegister reg1, ArkSteedRegister reg2)
+void ArkSteedAssembler::PushPair(ArkSteedRegister reg1, ArkSteedRegister reg2)
 {
     // -16: space for two 64-bit registers (16 bytes)
     aarch64::MemoryOperand operand(aarch64::sp, -16, aarch64::AddrMode::PREINDEX);
@@ -1090,10 +1090,22 @@ void ArkSteedAssembler::Push(ArkSteedRegister reg1, ArkSteedRegister reg2)
     assembler_.Stp(reg2, reg1, operand);
 }
 
-void ArkSteedAssembler::Pop(ArkSteedRegister reg1, ArkSteedRegister reg2)
+void ArkSteedAssembler::PopPair(ArkSteedRegister reg1, ArkSteedRegister reg2)
 {
     // 16: space for two 64-bit registers (16 bytes)
     aarch64::MemoryOperand operand(aarch64::sp, 16, aarch64::AddrMode::POSTINDEX);
+    assembler_.Ldp(reg2, reg1, operand);
+}
+
+void ArkSteedAssembler::PushPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2)
+{
+    aarch64::MemoryOperand operand(aarch64::sp, -2 * FRAME_SLOT_SIZE, aarch64::AddrMode::PREINDEX);
+    assembler_.Stp(reg2, reg1, operand);
+}
+
+void ArkSteedAssembler::PopPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2)
+{
+    aarch64::MemoryOperand operand(aarch64::sp, 2 * FRAME_SLOT_SIZE, aarch64::AddrMode::POSTINDEX);
     assembler_.Ldp(reg2, reg1, operand);
 }
 
@@ -1107,6 +1119,58 @@ void ArkSteedAssembler::Pop(ArkSteedDoubleRegister reg)
 {
     aarch64::MemoryOperand operand(aarch64::sp, 2 * FRAME_SLOT_SIZE, aarch64::AddrMode::POSTINDEX);
     assembler_.Ldr(reg, operand);
+}
+
+void ArkSteedAssembler::PushAll(const ArkSteedRegList &registerList)
+{
+    ArkSteedRegList registers = registerList;
+    while (registers.Count() > 1U) {
+        ArkSteedRegister reg1 = registers.PopFirst();
+        ArkSteedRegister reg2 = registers.PopFirst();
+        PushPair(reg1, reg2);
+    }
+    if (!registers.IsEmpty()) {
+        Push(registers.PopFirst());
+    }
+}
+
+void ArkSteedAssembler::PopAll(const ArkSteedRegList &registerList)
+{
+    ArkSteedRegList registers = registerList;
+    if ((registers.Count() & 1U) != 0) {
+        Pop(registers.PopLast());
+    }
+    while (!registers.IsEmpty()) {
+        ArkSteedRegister reg2 = registers.PopLast();
+        ArkSteedRegister reg1 = registers.PopLast();
+        PopPair(reg1, reg2);
+    }
+}
+
+void ArkSteedAssembler::PushAll(const ArkDoubleRegList &registerList)
+{
+    ArkDoubleRegList registers = registerList;
+    while (registers.Count() > 1U) {
+        ArkSteedDoubleRegister reg1 = registers.PopFirst();
+        ArkSteedDoubleRegister reg2 = registers.PopFirst();
+        PushPair(reg1, reg2);
+    }
+    if (!registers.IsEmpty()) {
+        Push(registers.PopFirst());
+    }
+}
+
+void ArkSteedAssembler::PopAll(const ArkDoubleRegList &registerList)
+{
+    ArkDoubleRegList registers = registerList;
+    if ((registers.Count() & 1U) != 0) {
+        Pop(registers.PopLast());
+    }
+    while (!registers.IsEmpty()) {
+        ArkSteedDoubleRegister reg2 = registers.PopLast();
+        ArkSteedDoubleRegister reg1 = registers.PopLast();
+        PopPair(reg1, reg2);
+    }
 }
 
 void ArkSteedAssembler::ReserveCallArgSlots(int32_t slotCount)
@@ -1200,11 +1264,11 @@ void ArkSteedAssembler::Prologue(Graph *graph)
     uint32_t untaggedSlots = graph->GetUntaggedStackSlots();
     // 3. Build the SteedFunctionFrame fixed header in push order.
     assembler_.Mov(tmp, aarch64::Immediate(static_cast<int>(FrameType::STEED_FUNCTION_FRAME)));
-    Push(tmp, x20);
+    PushPair(tmp, x20);
     assembler_.Mov(tmp, aarch64::Immediate(JSTaggedValue::VALUE_UNDEFINED));
-    Push(x19, tmp);
+    PushPair(x19, tmp);
     for (size_t i = 0; i < taggedSlots / 2; i++) {  // 2: push two slots at a time
-        Push(tmp, tmp);
+        PushPair(tmp, tmp);
     }
 
     if (untaggedSlots > 0) {

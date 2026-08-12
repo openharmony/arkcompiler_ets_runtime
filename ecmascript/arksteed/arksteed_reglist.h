@@ -168,13 +168,20 @@ public:
     constexpr RegisterT Last() const
     {
         ASSERT(!IsEmpty());
-        int lastCode = 8 * sizeof(bits_) - 1 - __builtin_clzll(bits_);  // 8: bits per byte
+        int lastCode = 8 * sizeof(uint64_t) - 1 - __builtin_clzll(bits_);  // 8: bits per byte
         return RegListRegisterTraits<RegisterT>::FromCode(lastCode);
     }
 
     constexpr RegisterT PopFirst()
     {
         RegisterT reg = First();
+        Clear(reg);
+        return reg;
+    }
+
+    constexpr RegisterT PopLast()
+    {
+        RegisterT reg = Last();
         Clear(reg);
         return reg;
     }
