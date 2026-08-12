@@ -114,6 +114,29 @@ void *NativeAreaAllocator::AllocateBuffer(size_t size)
     return ptr;
 }
 
+void *NativeAreaAllocator::AllocateZeroBuffer(size_t size)
+{
+    if (size == 0) { // LOCV_EXCL_BR_LINE
+        LOG_ECMA_MEM(FATAL) << "size must have a size bigger than 0";
+        UNREACHABLE();
+    }
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+    void *ptr = calloc(1, size);
+    if (ptr == nullptr) { // LOCV_EXCL_BR_LINE
+        LOG_ECMA_MEM(FATAL) << "calloc failed, current alloc size = " << size
+                            << ", total allocated size = " << nativeMemoryUsage_.load(std::memory_order_relaxed);
+        UNREACHABLE();
+    }
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+    if (memset_s(ptr, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+#endif
+    IncreaseNativeMemoryUsage(MallocUsableSize(ptr));
+    return ptr;
+}
+
 void NativeAreaAllocator::FreeBuffer(void *mem)
 {
     if (mem == nullptr) {
