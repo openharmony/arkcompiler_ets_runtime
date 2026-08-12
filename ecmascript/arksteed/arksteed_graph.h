@@ -41,6 +41,7 @@ public:
           int64Constants_(chunk),
           float64Constants_(chunk),
           taggedConstants_(chunk),
+          heapConstants_(chunk),
           maxCallStackArgs_(0),
           taggedStackSlots_(0),
           untaggedStackSlots_(0),
@@ -77,6 +78,18 @@ public:
         return GetOrAddNewConstantVertex(taggedConstants_, value);
     }
 
+    ValueVertex *GetHeapConstant(uint32_t handleIndex, uint16_t staticNodeType)
+    {
+        auto it = heapConstants_.find(handleIndex);
+        if (it != heapConstants_.end()) {
+            ASSERT(it->second->GetStaticNodeType() == staticNodeType);
+            return it->second;
+        }
+        HeapConstantVertex *vertex = Vertex::New<HeapConstantVertex>(chunk_, 0, handleIndex, staticNodeType);
+        heapConstants_.emplace(handleIndex, vertex);
+        return vertex;
+    }
+
     const ChunkMap<int32_t, Int32ConstantVertex *> &GetInt32Constants() const
     {
         return int32Constants_;
@@ -101,6 +114,11 @@ public:
     const ChunkMap<uint64_t, TaggedConstantVertex *> &GetTaggedConstants() const
     {
         return taggedConstants_;
+    }
+
+    const ChunkMap<uint32_t, HeapConstantVertex *> &GetHeapConstants() const
+    {
+        return heapConstants_;
     }
 
     BB *operator[](uint32_t i)
@@ -273,6 +291,7 @@ private:
     ChunkMap<int64_t, Int64ConstantVertex *> int64Constants_;
     ChunkMap<double, Float64ConstantVertex *> float64Constants_;
     ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
+    ChunkMap<uint32_t, HeapConstantVertex *> heapConstants_;
     uint32_t maxCallStackArgs_ = 0;
     uint32_t taggedStackSlots_ = 0;
     uint32_t untaggedStackSlots_ = 0;

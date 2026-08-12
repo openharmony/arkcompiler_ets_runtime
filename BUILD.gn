@@ -1183,6 +1183,7 @@ ecma_source = [
   "ecmascript/mem/cms_mem/sticky_sweep_gc.cpp",
   "ecmascript/mem/cms_mem/sweep_gc.cpp",
   "ecmascript/mem/dyn_chunk.cpp",
+  "ecmascript/mem/embedded_code_ref_set.cpp",
   "ecmascript/mem/full_gc.cpp",
   "ecmascript/mem/concurrent_marker.cpp",
   "ecmascript/mem/concurrent_sweeper.cpp",

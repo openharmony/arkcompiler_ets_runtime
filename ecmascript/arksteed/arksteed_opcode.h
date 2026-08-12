@@ -560,6 +560,36 @@ private:
     uint64_t value_;
 };
 
+class HeapConstantVertex : public FixedInputVertexMixin<ValueVertex, HeapConstantVertex> {
+public:
+    using OutputRegister = ArkSteedRegister;
+    static constexpr uint32_t NUM_INPUTS = 0;
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
+    static constexpr VertexPropertyFlag PROPERTIES = {};
+
+    HeapConstantVertex(uint32_t handleIndex, uint16_t staticNodeType)
+        : FixedInputVertexMixin(), handleIndex_(handleIndex), staticNodeType_(staticNodeType)
+    {
+    }
+
+    uint32_t GetHandleIndex() const
+    {
+        return handleIndex_;
+    }
+
+    uint16_t GetStaticNodeType() const
+    {
+        return staticNodeType_;
+    }
+
+    void DoLoadToRegister(ArkSteedAssembler *, OutputRegister) const;
+    void SetValueLocationConstraints();
+
+private:
+    uint32_t handleIndex_;
+    uint16_t staticNodeType_;
+};
+
 class InitialValueVertex : public FixedInputVertexMixin<ValueVertex, InitialValueVertex> {
 public:
     static constexpr uint32_t NUM_INPUTS = 0;

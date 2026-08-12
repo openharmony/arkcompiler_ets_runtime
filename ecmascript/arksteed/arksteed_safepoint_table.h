@@ -29,6 +29,19 @@ enum class ExceptionHandlerKind : uint16_t {
     LAZY_DEOPT = 2,
 };
 
+enum class ArkSteedDeoptValueKind : uint8_t {
+    CONSTANT = 0,
+    STACK_SLOT = 1,
+    HEAP_LITERAL = 2,
+};
+
+struct ArkSteedDeoptValue {
+    kungfu::LLVMStackMapType::VRegId id;
+    ArkSteedDeoptValueKind kind;
+    int64_t value;
+    kungfu::LLVMStackMapType::DwarfRegType reg {kungfu::LLVMStackMapType::INVALID_DWARF_REG};
+};
+
 // ArkSteed-style safepoint table
 //
 // Binary layout:
@@ -36,13 +49,13 @@ enum class ExceptionHandlerKind : uint16_t {
 //     uint32_t numEntries
 //     uint32_t numTaggedSlots      (function-level, same for all safepoints)
 //     uint32_t numUntaggedSlots
-//     uint32_t reserved            (must be zero)
+//     uint32_t deoptLiteralCount   (exact number of entries in MachineCode's deopt literal table)
 //   Entry[] (12 bytes each, sorted by pcOffset ascending):
 //     uint32_t pcOffset            (return address offset from code start)
 //     uint16_t extraSpillSlotsAndFlags
 //                              (low 13 bits: pushed stack slots; bits 13-14: exception handler kind)
 //     uint32_t deoptOffset         (relative to the table start; 0 if absent)
-//     uint16_t deoptNum            (encoded pairs: <id, value>)
+//     uint16_t deoptNum            (legacy logical count: two units per vreg entry)
 // GC scanning:
 //   1. All tagged stack slots (FP-relative) are roots at every safepoint
 //   2. Per-safepoint: outgoing stack arguments are roots until the call returns
@@ -51,7 +64,7 @@ struct ArkSteedSafepointHeader {
     uint32_t numEntries;
     uint32_t numTaggedSlots;
     uint32_t numUntaggedSlots;
-    uint32_t reserved;
+    uint32_t deoptLiteralCount;
 };
 
 struct ArkSteedSafepointEntry {
@@ -109,9 +122,13 @@ public:
     };
 
     Safepoint DefineSafepoint(uint32_t pcOffset);
-    void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts,
+    void DefineDeoptSafepoint(uint32_t pcOffset, std::vector<ArkSteedDeoptValue> deopts,
                               ExceptionHandlerKind exceptionHandlerKind = ExceptionHandlerKind::NONE);
     void SetFrameSlots(uint32_t tagged, uint32_t untagged);
+    void SetDeoptLiteralCount(uint32_t count)
+    {
+        deoptLiteralCount_ = count;
+    }
 
     size_t GetTableSize() const;
     void Emit(uint8_t *buffer) const;
@@ -128,6 +145,7 @@ private:
     Chunk *chunk_;
     uint32_t numTaggedSlots_ = 0;
     uint32_t numUntaggedSlots_ = 0;
+    uint32_t deoptLiteralCount_ = 0;
     ChunkVector<ArkSteedSafepointEntry> entries_;
     ChunkVector<ChunkVector<uint8_t>> encodedDeoptData_;
 };
@@ -153,8 +171,14 @@ public:
         return header_->numEntries;
     }
 
+    uint32_t GetDeoptLiteralCount() const
+    {
+        return header_->deoptLiteralCount;
+    }
+
     const ArkSteedSafepointEntry *FindEntry(uint32_t pcOffset) const;
-    void GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const;
+    bool GetDeoptInfo(uint32_t pcOffset, const uint64_t *deoptLiterals, uint32_t deoptLiteralCount,
+                      std::vector<kungfu::ARKDeopt> &deopts) const;
     ExceptionHandlerKind GetExceptionHandlerKind(uint32_t pcOffset) const;
 
     bool IsValid() const

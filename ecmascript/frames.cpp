@@ -1048,7 +1048,16 @@ void SteedFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it,
         LOG_ECMA(ERROR) << "ArkSteedSafepointTable is invalid";
         return;
     }
-    safepointTable.GetDeoptInfo(static_cast<uint32_t>(it.GetOptimizedReturnAddr()), deopts);
+    uint32_t literalCount = safepointTable.GetDeoptLiteralCount();
+    if (static_cast<size_t>(literalCount) * sizeof(uint64_t) > machineCode->GetHeapConstantTableSize()) {
+        LOG_ECMA(ERROR) << "ArkSteed deopt literal table exceeds MachineCode storage";
+        return;
+    }
+    auto *deoptLiterals = reinterpret_cast<const uint64_t *>(machineCode->GetHeapConstantTableAddress());
+    if (!safepointTable.GetDeoptInfo(static_cast<uint32_t>(it.GetOptimizedReturnAddr()),
+                                     deoptLiterals, literalCount, deopts)) {
+        LOG_ECMA(ERROR) << "ArkSteed deopt literal metadata is invalid";
+    }
 #endif
 }
 

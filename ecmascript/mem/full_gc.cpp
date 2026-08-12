@@ -148,6 +148,7 @@ void FullGC::Mark()
     heap_->WaitRunningMarkTaskFinished();
 
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+    marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningMarkTaskFinished();
 
@@ -155,6 +156,10 @@ void FullGC::Mark()
     heap_->SetParallelGCEnabled(false);
     MarkUntilFixPoint();
     heap_->SetParallelGCEnabled(prev);
+
+    if (!heap_->GetEmbeddedCodeRefSet()->UpdateMarkedLocalTargets()) {
+        LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
+    }
 
     if (heap_->GetEvacuateNonMovableSpace()) {
         heap_->GetNonMovableSpace()->PrepareForIterate();
@@ -193,6 +198,7 @@ void FullGC::MarkUntilFixPointImpl()
         }
         marker->ProcessMarkStack(MAIN_THREAD_INDEX);
         marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+        marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
 
         while (holder->PopFreshWeakAggregate(&weakAggregate)) {
             if (!runner.HandleWeakAggregate(weakAggregate)) {

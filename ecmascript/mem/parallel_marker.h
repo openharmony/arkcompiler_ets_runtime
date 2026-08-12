@@ -46,6 +46,11 @@ public:
         LOG_GC(FATAL) << "can not call this method";
     }
 
+    virtual void MarkEmbeddedCodeRefs([[maybe_unused]] uint32_t threadId)
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
+
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {
         LOG_GC(FATAL) << "can not call this method";
@@ -78,6 +83,7 @@ public:
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
     void MarkJitCodeMap(uint32_t threadId) override;
+    void MarkEmbeddedCodeRefs(uint32_t threadId) override;
 private:
     template <bool cmsGC>
     void ProcessYoungGCMarkStack(uint32_t threadId);
@@ -99,6 +105,7 @@ public:
 
 protected:
     void MarkJitCodeMap(uint32_t threadId) override;
+    void MarkEmbeddedCodeRefs(uint32_t threadId) override;
     void ProcessMarkStack(uint32_t threadId) override;
 
 private:

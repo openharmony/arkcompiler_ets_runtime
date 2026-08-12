@@ -25,41 +25,31 @@
 
 namespace panda::ecmascript::arksteed {
 namespace {
-constexpr size_t DEOPT_ENTRY_SIZE = 2;  // <id, value>
+constexpr size_t DEOPT_LOGICAL_PAIR_SIZE = 2;
 
-#if defined(PANDA_TARGET_AMD64)
-constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AMD64;
-#elif defined(PANDA_TARGET_ARM64)
-constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AARCH64;
-#else
-constexpr Triple TARGET_TRIPLE = Triple::TRIPLE_AMD64;
-#endif
-
-void EncodeDeoptValue(ChunkVector<uint8_t> *out, const kungfu::ARKDeopt &deopt)
+void EncodeSignedValue(ChunkVector<uint8_t> *out, int64_t value)
 {
     std::vector<uint8_t> bytes;
     size_t byteSize = 0;
-    kungfu::LLVMStackMapType::EncodeVRegsInfo(bytes, byteSize, deopt.id, deopt.kind);
-    out->insert(out->end(), bytes.begin(), bytes.begin() + byteSize);
-
-    bytes.clear();
-    byteSize = 0;
-    if (std::holds_alternative<kungfu::LLVMStackMapType::DwarfRegAndOffsetType>(deopt.value)) {
-        auto [reg, offset] = std::get<kungfu::LLVMStackMapType::DwarfRegAndOffsetType>(deopt.value);
-        kungfu::LLVMStackMapType::EncodeRegAndOffset(bytes, byteSize, reg, offset, TARGET_TRIPLE);
-    } else if (std::holds_alternative<kungfu::LLVMStackMapType::LargeInt>(deopt.value)) {
-        kungfu::LLVMStackMapType::EncodeData(bytes, byteSize,
-                                             static_cast<kungfu::LLVMStackMapType::LargeInt>(
-                                                 std::get<kungfu::LLVMStackMapType::LargeInt>(deopt.value)));
-    } else {
-        kungfu::LLVMStackMapType::EncodeData(bytes, byteSize,
-                                             static_cast<kungfu::LLVMStackMapType::IntType>(
-                                                 std::get<kungfu::LLVMStackMapType::IntType>(deopt.value)));
-    }
+    kungfu::LLVMStackMapType::EncodeData(bytes, byteSize, value);
     out->insert(out->end(), bytes.begin(), bytes.begin() + byteSize);
 }
 
-ChunkVector<uint8_t> EncodeDeopts(Chunk *chunk, const std::vector<kungfu::ARKDeopt> &deopts)
+void EncodeDeoptValue(ChunkVector<uint8_t> *out, const ArkSteedDeoptValue &deopt)
+{
+    constexpr int64_t kindCount = 4;
+    int64_t vregAndKind = static_cast<int64_t>(deopt.id) * kindCount + static_cast<uint8_t>(deopt.kind);
+    EncodeSignedValue(out, vregAndKind);
+
+    if (deopt.kind == ArkSteedDeoptValueKind::STACK_SLOT) {
+        EncodeSignedValue(out, deopt.reg);
+        EncodeSignedValue(out, deopt.value);
+        return;
+    }
+    EncodeSignedValue(out, deopt.value);
+}
+
+ChunkVector<uint8_t> EncodeDeopts(Chunk *chunk, const std::vector<ArkSteedDeoptValue> &deopts)
 {
     ChunkVector<uint8_t> out(chunk);
     for (const auto &deopt : deopts) {
@@ -99,17 +89,17 @@ ArkSteedSafepointTableBuilder::Safepoint ArkSteedSafepointTableBuilder::DefineSa
 }
 
 void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(
-    uint32_t pcOffset, std::vector<kungfu::ARKDeopt> deopts, ExceptionHandlerKind exceptionHandlerKind)
+    uint32_t pcOffset, std::vector<ArkSteedDeoptValue> deopts, ExceptionHandlerKind exceptionHandlerKind)
 {
     if (entries_.empty()) {
         encodedDeoptData_.clear();
     }
-    std::sort(deopts.begin(), deopts.end(), [](const kungfu::ARKDeopt &lhs, const kungfu::ARKDeopt &rhs) {
+    std::sort(deopts.begin(), deopts.end(), [](const ArkSteedDeoptValue &lhs, const ArkSteedDeoptValue &rhs) {
         return lhs.id < rhs.id;
     });
-    ASSERT(deopts.size() <= UINT16_MAX / DEOPT_ENTRY_SIZE);
+    ASSERT(deopts.size() <= UINT16_MAX / DEOPT_LOGICAL_PAIR_SIZE);
     entries_.push_back(NewEntry(pcOffset));
-    entries_.back().deoptNum = static_cast<uint16_t>(deopts.size() * DEOPT_ENTRY_SIZE);
+    entries_.back().deoptNum = static_cast<uint16_t>(deopts.size() * DEOPT_LOGICAL_PAIR_SIZE);
     uint16_t kind = static_cast<uint16_t>(exceptionHandlerKind);
     ASSERT(kind <= static_cast<uint16_t>(ExceptionHandlerKind::LAZY_DEOPT));
     entries_.back().extraSpillSlotsAndFlags |=
@@ -143,7 +133,7 @@ void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
     header->numEntries = static_cast<uint32_t>(entries_.size());
     header->numTaggedSlots = numTaggedSlots_;
     header->numUntaggedSlots = numUntaggedSlots_;
-    header->reserved = 0;
+    header->deoptLiteralCount = deoptLiteralCount_;
 
     auto *entryBuffer = reinterpret_cast<ArkSteedSafepointEntry *>(buffer + sizeof(ArkSteedSafepointHeader));
 
@@ -216,7 +206,7 @@ ArkSteedSafepointTable::ArkSteedSafepointTable(const uint8_t *data, size_t size)
     }
     auto *header = reinterpret_cast<const ArkSteedSafepointHeader *>(data);
     size_t entriesCapacity = (size - sizeof(ArkSteedSafepointHeader)) / sizeof(ArkSteedSafepointEntry);
-    if (header->reserved != 0 || header->numEntries > entriesCapacity) {
+    if (header->numEntries > entriesCapacity) {
         return;
     }
     data_ = data;
@@ -249,35 +239,54 @@ const ArkSteedSafepointEntry *ArkSteedSafepointTable::FindEntry(uint32_t pcOffse
     return &entries_[lo - 1];
 }
 
-void ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu::ARKDeopt> &deopts) const
+bool ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, const uint64_t *deoptLiterals,
+                                         uint32_t deoptLiteralCount, std::vector<kungfu::ARKDeopt> &deopts) const
 {
     const ArkSteedSafepointEntry *entry = FindEntry(pcOffset);
     if (entry == nullptr || entry->pcOffset != pcOffset || entry->deoptNum == 0) {
-        return;
+        return true;
+    }
+    if (deoptLiteralCount != header_->deoptLiteralCount ||
+        (deoptLiteralCount != 0 && deoptLiterals == nullptr)) {
+        return false;
     }
 
     uint32_t offset = entry->deoptOffset;
     size_t entriesEnd = sizeof(ArkSteedSafepointHeader) + header_->numEntries * sizeof(ArkSteedSafepointEntry);
     ASSERT(offset >= entriesEnd && offset < size_);
-    ASSERT(entry->deoptNum % DEOPT_ENTRY_SIZE == 0);
-    for (uint32_t i = 0; i < entry->deoptNum; i += DEOPT_ENTRY_SIZE) {
+    ASSERT(entry->deoptNum % DEOPT_LOGICAL_PAIR_SIZE == 0);
+    std::vector<kungfu::ARKDeopt> decodedDeopts;
+    decodedDeopts.reserve(entry->deoptNum / DEOPT_LOGICAL_PAIR_SIZE);
+    for (uint32_t i = 0; i < entry->deoptNum; i += DEOPT_LOGICAL_PAIR_SIZE) {
         ASSERT(offset < size_);
         auto [vregsInfo, vregsInfoSize, infoIsFull] =
             panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
         (void)infoIsFull;
         ASSERT(vregsInfoSize > 0 && vregsInfoSize <= size_ - offset);
-        kungfu::LLVMStackMapType::KindType kindType;
+        constexpr int64_t kindCount = 4;
+        auto kind = static_cast<ArkSteedDeoptValueKind>(static_cast<uint64_t>(vregsInfo) & (kindCount - 1));
+        int64_t vreg = (vregsInfo - static_cast<uint8_t>(kind)) / kindCount;
+        if (kind > ArkSteedDeoptValueKind::HEAP_LITERAL ||
+            vreg < std::numeric_limits<kungfu::LLVMStackMapType::VRegId>::min() ||
+            vreg > std::numeric_limits<kungfu::LLVMStackMapType::VRegId>::max()) {
+            return false;
+        }
         kungfu::ARKDeopt deopt;
-        kungfu::LLVMStackMapType::DecodeVRegsInfo(vregsInfo, deopt.id, kindType);
+        deopt.id = static_cast<kungfu::LLVMStackMapType::VRegId>(vreg);
         offset += vregsInfoSize;
-        ASSERT(kindType == kungfu::LLVMStackMapType::CONSTANT_TYPE ||
-               kindType == kungfu::LLVMStackMapType::OFFSET_TYPE);
-        if (kindType == kungfu::LLVMStackMapType::CONSTANT_TYPE) {
+        if (kind == ArkSteedDeoptValueKind::CONSTANT || kind == ArkSteedDeoptValueKind::HEAP_LITERAL) {
             ASSERT(offset < size_);
-            auto [constant, constantSize, constIsFull] =
+            auto [encodedValue, encodedSize, valueIsFull] =
                 panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
-            (void)constIsFull;
-            ASSERT(constantSize > 0 && constantSize <= size_ - offset);
+            (void)valueIsFull;
+            ASSERT(encodedSize > 0 && encodedSize <= size_ - offset);
+            int64_t constant = encodedValue;
+            if (kind == ArkSteedDeoptValueKind::HEAP_LITERAL) {
+                if (encodedValue < 0 || static_cast<uint64_t>(encodedValue) >= deoptLiteralCount) {
+                    return false;
+                }
+                constant = static_cast<int64_t>(deoptLiterals[static_cast<uint32_t>(encodedValue)]);
+            }
             if (constant > INT32_MAX || constant < INT32_MIN) {
                 deopt.kind = kungfu::LocationTy::Kind::CONSTANTNDEX;
                 deopt.value = static_cast<kungfu::LLVMStackMapType::LargeInt>(constant);
@@ -285,22 +294,36 @@ void ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, std::vector<kungfu:
                 deopt.kind = kungfu::LocationTy::Kind::CONSTANT;
                 deopt.value = static_cast<kungfu::LLVMStackMapType::IntType>(constant);
             }
-            offset += constantSize;
+            offset += encodedSize;
         } else {
             ASSERT(offset < size_);
-            auto [regOffset, regOffsetSize, regOffIsFull] =
+            auto [encodedReg, encodedRegSize, regIsFull] =
                 panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
-            (void)regOffIsFull;
-            ASSERT(regOffsetSize > 0 && regOffsetSize <= size_ - offset);
-            kungfu::LLVMStackMapType::DwarfRegType reg;
-            kungfu::LLVMStackMapType::OffsetType stackOffset;
-            kungfu::LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, stackOffset);
+            (void)regIsFull;
+            ASSERT(encodedRegSize > 0 && encodedRegSize <= size_ - offset);
+            offset += encodedRegSize;
+            if ((encodedReg != GCStackMapRegisters::FP && encodedReg != GCStackMapRegisters::SP) ||
+                offset >= size_) {
+                return false;
+            }
+            auto [encodedOffset, encodedOffsetSize, offsetIsFull] =
+                panda::leb128::DecodeSigned<kungfu::LLVMStackMapType::SLeb128Type>(data_ + offset);
+            (void)offsetIsFull;
+            ASSERT(encodedOffsetSize > 0 && encodedOffsetSize <= size_ - offset);
+            if (encodedOffset < std::numeric_limits<kungfu::LLVMStackMapType::OffsetType>::min() ||
+                encodedOffset > std::numeric_limits<kungfu::LLVMStackMapType::OffsetType>::max()) {
+                return false;
+            }
             deopt.kind = kungfu::LocationTy::Kind::INDIRECT;
-            deopt.value = std::make_pair(reg, stackOffset);
-            offset += regOffsetSize;
+            deopt.value = std::make_pair(
+                static_cast<kungfu::LLVMStackMapType::DwarfRegType>(encodedReg),
+                static_cast<kungfu::LLVMStackMapType::OffsetType>(encodedOffset));
+            offset += encodedOffsetSize;
         }
-        deopts.emplace_back(deopt);
+        decodedDeopts.emplace_back(deopt);
     }
+    deopts.insert(deopts.end(), decodedDeopts.begin(), decodedDeopts.end());
+    return true;
 }
 
 ExceptionHandlerKind ArkSteedSafepointTable::GetExceptionHandlerKind(uint32_t pcOffset) const

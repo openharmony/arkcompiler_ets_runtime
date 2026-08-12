@@ -152,12 +152,14 @@ void GraphPrinter::PrintConstants(Graph *graph)
     PrintIntPtrConstants(graph);
     PrintFloat64Constants(graph);
     PrintTaggedConstants(graph);
+    PrintHeapConstants(graph);
 }
 
 bool GraphPrinter::HasConstantsToPrint(Graph *graph) const
 {
     return !graph->GetInt32Constants().empty() ||
-           !graph->GetFloat64Constants().empty() || !graph->GetTaggedConstants().empty();
+           !graph->GetFloat64Constants().empty() || !graph->GetTaggedConstants().empty() ||
+           !graph->GetHeapConstants().empty();
 }
 
 void GraphPrinter::PrintInt32Constants(Graph *graph)
@@ -199,6 +201,16 @@ void GraphPrinter::PrintTaggedConstants(Graph *graph)
         hexStream << std::hex << value;
         line += hexStream.str();
         line += DecodeTaggedValue(value);
+        LOG_COMPILER(INFO) << line;
+    }
+}
+
+void GraphPrinter::PrintHeapConstants(Graph *graph)
+{
+    for (const auto &[handleIndex, vertex] : graph->GetHeapConstants()) {
+        std::string line = "  ";
+        line += FormatVertexLabel(vertex) + ": ";
+        line += "HeapConstant handle=" + std::to_string(handleIndex);
         LOG_COMPILER(INFO) << line;
     }
 }

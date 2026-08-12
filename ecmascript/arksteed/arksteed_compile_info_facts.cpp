@@ -661,6 +661,9 @@ NodeInfo::NodeType CompileInfoFacts::GetStaticNodeType(ValueVertex *node) const
     if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
         return NodeTypeFromJSTaggedValue(JSTaggedValue(constant->GetValue()));
     }
+    if (auto *constant = node->TryCast<HeapConstantVertex>()) {
+        return static_cast<NodeInfo::NodeType>(constant->GetStaticNodeType());
+    }
     if (node->Is<Int32ConstantVertex>() || node->IsAnyInt32()) {
         return NodeInfo::NodeType::INT;
     }
@@ -788,7 +791,7 @@ void CompileInfoFacts::UpdateEnvSlotAliasMode(ValueVertex *env)
     EnvSlotAliasMode mode = EnvSlotAliasMode::MAY_ALIAS;
     if (env != nullptr && env->Is<InitialValueVertex>()) {
         mode = EnvSlotAliasMode::CURRENT_ENV_ONLY;
-    } else if (env != nullptr && env->Is<TaggedConstantVertex>()) {
+    } else if (env != nullptr && (env->Is<TaggedConstantVertex>() || env->Is<HeapConstantVertex>())) {
         mode = EnvSlotAliasMode::CONSTANT_ENV_ONLY;
     }
     envSlotAliasMode_ = MergeEnvSlotAliasMode(envSlotAliasMode_, mode);

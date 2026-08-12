@@ -288,6 +288,13 @@ void AssemblerAarch64::Ldr(const Register &rt, const MemoryOperand &operand)
     Ldr(rt, operand, Scale::Q);
 }
 
+void AssemblerAarch64::Ldr(const Register &rt, Label *label)
+{
+    int32_t offsetImm = LinkAndGetInstOffsetToLabel(label);
+    offsetImm >>= 2U;
+    EmitU32(LDR_LITERAL_X | BranchImm19(offsetImm) | rt.GetId());
+}
+
 void AssemblerAarch64::Ldrh(const Register &rt, const MemoryOperand &operand)
 {
     ASSERT(rt.IsW());
@@ -1183,7 +1190,7 @@ void AssemblerAarch64::Bind(Label *target)
     ASSERT(!target->IsBound());
     if (target->IsLinked()) {
         uint32_t linkPos = target->GetLinkedPos();
-        while (linkPos != 0) {
+        while (true) {
             int32_t offset = GetLinkOffsetFromBranchInst(linkPos);
             int32_t disp = static_cast<int32_t>(pos - linkPos);
             SetRealOffsetToBranchInst(linkPos, disp);
@@ -1233,6 +1240,11 @@ int32_t AssemblerAarch64::ImmBranch(uint32_t branchCode)
         }
     } else if ((branchCode & AdrOpCode::AdrMask) == AdrOpCode::Adr) {
         immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
+    } else if ((branchCode & LDR_LITERAL_MASK) == LDR_LITERAL_X) {
+        immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
+        if ((immOffset & (1 << (BRANCH_Imm19_WIDTH - 1))) != 0) {
+            immOffset |= static_cast<int32_t>(~((1U << BRANCH_Imm19_WIDTH) - 1U));
+        }
     } else {
         UNREACHABLE();
     }
@@ -1258,6 +1270,9 @@ void AssemblerAarch64::SetRealOffsetToBranchInst(uint32_t linkPos, int32_t disp)
         branchCode &= ~BRANCH_Imm14_MASK;
         branchCode |= (immOffset << BRANCH_Imm14_LOWBITS) & BRANCH_Imm14_MASK;
     } else if ((branchCode & AdrOpCode::AdrMask) == AdrOpCode::Adr) {
+        branchCode &= ~BRANCH_Imm19_MASK;
+        branchCode |= (immOffset << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK;
+    } else if ((branchCode & LDR_LITERAL_MASK) == LDR_LITERAL_X) {
         branchCode &= ~BRANCH_Imm19_MASK;
         branchCode |= (immOffset << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK;
     }

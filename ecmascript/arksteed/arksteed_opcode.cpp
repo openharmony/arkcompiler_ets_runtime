@@ -114,6 +114,16 @@ void TaggedConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedReg
     __ Move(reg, GetValue());
 }
 
+void HeapConstantVertex::SetValueLocationConstraints()
+{
+    DefineAsConstant(this);
+}
+
+void HeapConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
+{
+    masm->MoveEmbeddedTagged(reg, GetHandleIndex());
+}
+
 void InitialValueVertex::SetValueLocationConstraints()
 {
     // Convert fp-slot index (word units from fp) to tagged-slot index.

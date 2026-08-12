@@ -211,6 +211,7 @@ public:
     void Ldp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Stp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Ldr(const Register &rt, const MemoryOperand &operand);
+    void Ldr(const Register &rt, Label *label);
     void Ldr(const VRegister &vt, const MemoryOperand &operand);  // Load SIMD&FP from memory
     void Ldrh(const Register &rt, const MemoryOperand &operand);
     void Ldrb(const Register &rt, const MemoryOperand &operand);

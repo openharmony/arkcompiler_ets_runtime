@@ -62,6 +62,7 @@ void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm,
         heap->GetSweeper()->EnsureAllTaskFinished();
     }
     ObjectXRay::VisitVMRoots(localVm, visitor);
+    heap->GetEmbeddedCodeRefSet()->VisitSharedTargets(visitor);
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 

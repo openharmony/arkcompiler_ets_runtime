@@ -69,6 +69,20 @@ enum class DeoptSourceKind : uint8_t {
     STACK_SLOT = 1,
     GP_REGISTER = 2,
     FP_REGISTER = 3,
+    HEAP_LITERAL = 4,
+};
+
+class DeoptLiteralTableBuilder {
+public:
+    uint32_t GetOrAdd(uint32_t handleIndex);
+
+    const std::vector<uint32_t> &GetHandleIndices() const
+    {
+        return handleIndexByLiteralIndex_;
+    }
+
+private:
+    std::vector<uint32_t> handleIndexByLiteralIndex_;
 };
 
 /*
@@ -98,6 +112,7 @@ enum class DeoptSourceKind : uint8_t {
  *   BEGIN                    bytecodeOffset:ULEB, inputCount:ULEB
  *   TAGGED_REGISTER          vreg:SLEB, registerCode:ULEB
  *   TAGGED_STACK_SLOT        vreg:SLEB, stackOffset:SLEB
+ *   TAGGED_HEAP_LITERAL      vreg:SLEB, literalIndex:ULEB
  *   TAGGED_SPECIAL           vreg:SLEB, specialKind:ULEB
  *   TAGGED_INT_CONSTANT      vreg:SLEB, value:SLEB
  *   TAGGED_DOUBLE_BITS       vreg:SLEB, rawBits:uint64
@@ -120,6 +135,7 @@ enum class DeoptTranslationOpcode : uint8_t {
     BEGIN = 0,
     TAGGED_REGISTER,
     TAGGED_STACK_SLOT,
+    TAGGED_HEAP_LITERAL,
     TAGGED_SPECIAL,
     TAGGED_INT_CONSTANT,
     TAGGED_DOUBLE_BITS,
@@ -223,9 +239,10 @@ private:
 int64_t GetFloat64RawBits(double value);
 int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTranslationKind valueKind);
 DeoptTranslationInput BuildDeoptTranslationInput(ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
-                                                 uint32_t index);
+                                                 uint32_t index, DeoptLiteralTableBuilder *literalTableBuilder);
 std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(ArkSteedAssembler *assembler,
-                                                               const EagerDeoptimizableMixin *vertex);
+                                                               const EagerDeoptimizableMixin *vertex,
+                                                               DeoptLiteralTableBuilder *literalTableBuilder);
 
 bool WouldStackOverflow(JSThread *thread, const JSTaggedType *sp);
 bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp,

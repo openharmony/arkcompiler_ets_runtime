@@ -17,7 +17,6 @@
 #define ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_H
 
 #include <cstdint>
-
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"

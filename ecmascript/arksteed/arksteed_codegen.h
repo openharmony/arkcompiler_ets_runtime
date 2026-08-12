@@ -27,6 +27,7 @@
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedSafepointTableBuilder;
+class DeoptLiteralTableBuilder;
 class DeoptTranslationBuilder;
 class GapMoveResolver;
 
@@ -35,11 +36,13 @@ public:
     ArkSteedCodeGenerator(ArkSteedAssembler *assembler, Graph *graph,
                           ArkSteedSafepointTableBuilder *safepointBuilder = nullptr,
                           DeoptTranslationBuilder *translationBuilder = nullptr,
+                          DeoptLiteralTableBuilder *deoptLiteralTableBuilder = nullptr,
                           bool withColors = false)
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
           translationBuilder_(translationBuilder),
+          deoptLiteralTableBuilder_(deoptLiteralTableBuilder),
           eagerDeoptTargetsById_(graph->GetChunk()),
           blockColorAssignment_(graph->GetChunk()),
           deferredCode_(graph->GetChunk()),
@@ -138,6 +141,7 @@ private:
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
     DeoptTranslationBuilder *translationBuilder_;
+    DeoptLiteralTableBuilder *deoptLiteralTableBuilder_;
     ChunkVector<EagerDeoptTarget *> eagerDeoptTargetsById_;
     int currentBlockColorIndex_ = 0;
     BB *currentLayoutNextBlock_ = nullptr;

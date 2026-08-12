@@ -53,6 +53,25 @@ void ArkSteedAssembler::Move(ArkSteedRegister dst, uint64_t immediate)
     assembler_.Movabs(immediate, dst);
 }
 
+void ArkSteedAssembler::MoveEmbeddedTagged(ArkSteedRegister dst, uint32_t handleIndex)
+{
+    constexpr uint32_t MOVABS_IMMEDIATE_OFFSET = 2;
+    constexpr uint32_t MOVABS_SIZE = 10;
+    constexpr uint8_t RELOC_WIDTH = sizeof(JSTaggedType);
+
+    uint32_t instructionOffset = GetPcOffset();
+    assembler_.Movabs(JSTaggedValue::VALUE_HOLE, dst);
+    ASSERT(GetPcOffset() - instructionOffset == MOVABS_SIZE);
+    embeddedRefRelocations_.push_back({instructionOffset + MOVABS_IMMEDIATE_OFFSET,
+                                      handleIndex,
+                                      EmbeddedCodeRefRelocKind::X64_MOVABS_IMM64,
+                                      RELOC_WIDTH});
+}
+
+void ArkSteedAssembler::FinalizeEmbeddedRefs()
+{
+}
+
 void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
 {
     assembler_.Movsd(dst, src);

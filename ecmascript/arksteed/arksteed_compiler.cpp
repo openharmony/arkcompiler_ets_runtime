@@ -15,6 +15,10 @@
 
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
+#include <limits>
+#include <utility>
+#include <vector>
+
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_graph_builder.h"
@@ -105,6 +109,10 @@ ArkSteedCompilerTask::~ArkSteedCompilerTask()
     if (translationBuilder_ != nullptr) {
         delete translationBuilder_;
         translationBuilder_ = nullptr;
+    }
+    if (deoptLiteralTableBuilder_ != nullptr) {
+        delete deoptLiteralTableBuilder_;
+        deoptLiteralTableBuilder_ = nullptr;
     }
 }
 
@@ -248,8 +256,10 @@ bool ArkSteedCompilerTask::Compile()
 #endif
     safepointTableBuilder_ = new ArkSteedSafepointTableBuilder(chunk_.get());
     translationBuilder_ = new DeoptTranslationBuilder();
+    deoptLiteralTableBuilder_ = new DeoptLiteralTableBuilder();
     bool withColors = arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintWithColors();
-    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_, withColors);
+    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_,
+                                  deoptLiteralTableBuilder_, withColors);
     codegen.Generate();
     if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintCode()) {
         LogAsm(assembler_);
@@ -279,6 +289,18 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
 
     codeDesc.codeType = MachineCodeType::ARKSTEED_CODE;
 
+    const auto &heapConstantHandles = jitCompilationEnv_->GetHeapConstantTable();
+    std::vector<JSHandle<JSTaggedValue>> deoptLiteralHandles;
+    const auto &deoptLiteralHandleIndices = deoptLiteralTableBuilder_->GetHandleIndices();
+    deoptLiteralHandles.reserve(deoptLiteralHandleIndices.size());
+    for (uint32_t handleIndex : deoptLiteralHandleIndices) {
+        CHECK(handleIndex < heapConstantHandles.size());
+        deoptLiteralHandles.push_back(heapConstantHandles[handleIndex]);
+    }
+    CHECK(deoptLiteralHandles.size() <= std::numeric_limits<uint32_t>::max());
+    safepointTableBuilder_->SetDeoptLiteralCount(static_cast<uint32_t>(deoptLiteralHandles.size()));
+    arkSteedTask_->SetDeoptLiteralData(std::move(deoptLiteralHandles));
+
     // Safepoint table
     safepointTableBuilder_->SetFrameSlots(graph_->GetTaggedStackSlots(), graph_->GetUntaggedStackSlots());
     size_t safepointSize = safepointTableBuilder_->GetTableSize();
@@ -296,9 +318,8 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
     arkSteedTask_->SetDeoptTranslationData(translationBuilder_->Encode());
 #endif
 
-    // Heap constant table (empty for now, to be filled from JitCompilationEnv)
-    codeDesc.heapConstantTableAddr = 0;
-    codeDesc.heapConstantTableSize = 0;
+    arkSteedTask_->SetEmbeddedRefData(assembler_->GetEmbeddedRefRelocations(),
+                                      heapConstantHandles);
 
     // Frame info - fill FuncEntryDes
     // Set funcEntry to point to heap-allocated FuncEntryDes

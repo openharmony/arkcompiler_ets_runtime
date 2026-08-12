@@ -127,6 +127,11 @@ enum AdrOpCode {
     AdrMask     = 0xff000000,
 };
 
+enum LoadLiteralOpCode {
+    LDR_LITERAL_X = 0x58000000,
+    LDR_LITERAL_MASK = 0xff000000,
+};
+
 // brk code
 enum BrkOpCode {
     BRKImm      = 0xd4200000,

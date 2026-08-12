@@ -194,6 +194,9 @@ void ArkSteedRegisterAllocator::SetupConstantLocations()
     for (const auto &[value, constant] : graph_->GetTaggedConstants()) {
         constant->GetRegallocInfo()->SetConstantLocation(constant->GetId());
     }
+    for (const auto &[handleIndex, constant] : graph_->GetHeapConstants()) {
+        constant->GetRegallocInfo()->SetConstantLocation(constant->GetId());
+    }
 }
 
 void ArkSteedRegisterAllocator::InitializeBlockState(BB *block)

@@ -155,6 +155,43 @@ public:
         return name->IsSafeForCompile();
     }
 
+    bool TryGetMethodFromConstantPool(uint16_t cpIdx, ArkSteedObjectRef *method) const
+    {
+        ASSERT(method != nullptr);
+        if (!SerializingAllowed() || env_->GetMethodLiteral() == nullptr) {
+            return false;
+        }
+        uint32_t methodOffset = env_->GetMethodLiteral()->GetMethodId().GetOffset();
+        JSTaggedValue constpool = env_->GetConstantPoolByMethodOffset(methodOffset);
+        if (!constpool.IsConstantPool()) {
+            return false;
+        }
+        JSTaggedValue methodValue = env_->GetMethodFromCache(constpool, cpIdx);
+        if (!methodValue.IsMethod()) {
+            return false;
+        }
+        *method = MakeObjectRef(methodValue);
+        return method->IsSafeForCompile();
+    }
+
+    bool TryRecordHeapConstant(const ArkSteedHeapRef &ref, uint32_t *handleIndex,
+                               JSTaggedValue *currentValue) const
+    {
+        ASSERT(handleIndex != nullptr);
+        ASSERT(currentValue != nullptr);
+        if (!SerializingAllowed() || !ref.IsSafeForCompile()) {
+            return false;
+        }
+        JSTaggedValue value = ref.ValueAllowHandleDeref();
+        if (!value.IsHeapObject()) {
+            return false;
+        }
+        JSHandle<JSTaggedValue> handle = ref.HasHandle() ? ref.handle_ : env_->NewJSHandle(value);
+        *handleIndex = env_->RecordHeapConstant(handle);
+        *currentValue = value;
+        return true;
+    }
+
     bool TryResolveRef(const ArkSteedHeapRef &ref, JSTaggedValue *value) const
     {
         if (!ref.IsSafeForCompile() || value == nullptr) {

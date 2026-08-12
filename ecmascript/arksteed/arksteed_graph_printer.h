@@ -76,6 +76,7 @@ private:
     void PrintIntPtrConstants(Graph *graph);
     void PrintFloat64Constants(Graph *graph);
     void PrintTaggedConstants(Graph *graph);
+    void PrintHeapConstants(Graph *graph);
     std::string DecodeTaggedValue(uint64_t value) const;
 
     size_t AddTarget(BB *target, BB *currentBlock);

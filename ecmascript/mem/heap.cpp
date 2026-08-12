@@ -1575,6 +1575,7 @@ void Heap::Destroy()
         delete snapshotSpace_;
         snapshotSpace_ = nullptr;
     }
+    embeddedCodeRefSet_.Clear();
     if (machineCodeSpace_ != nullptr) {
         machineCodeSpace_->Reset();
         delete machineCodeSpace_;

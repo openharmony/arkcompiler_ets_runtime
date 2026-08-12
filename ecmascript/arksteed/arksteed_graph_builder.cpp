@@ -339,6 +339,7 @@ constexpr bool CseIsExcludedAvailableExpressionOpcode(VertexOpcode opcode)
         case VertexOpcode::Int64Constant:
         case VertexOpcode::Float64Constant:
         case VertexOpcode::TaggedConstant:
+        case VertexOpcode::HeapConstant:
         case VertexOpcode::InitialValue:
         case VertexOpcode::ActualArgc:
         case VertexOpcode::Call:
@@ -5506,12 +5507,21 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
     {
-        JSTaggedValue value = JSTaggedValue::Undefined();
-        if (!TryResolveHeapRef(ref, &value) || !value.IsHeapObject()) {
+        if (g_isEnableCMCGC) {
             return nullptr;
         }
-        // TODO(ArkSteed): Replace raw tagged heap constants with heap-constant table support.
-        return self->graph_->GetTaggedConstant(value.GetRawData());
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return nullptr;
+        }
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::GetHeapConstant");
+        uint32_t handleIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!broker->TryRecordHeapConstant(ref, &handleIndex, &value)) {
+            return nullptr;
+        }
+        uint16_t staticNodeType = static_cast<uint16_t>(NodeTypeFromJSTaggedValue(value));
+        return self->graph_->GetHeapConstant(handleIndex, staticNodeType);
     }
 
     JSHClass *TryGetKnownHClass(ValueVertex *receiver) const
@@ -5718,6 +5728,10 @@ struct GraphBuilder::BytecodeVisitor {
             access.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) {
             return false;
         }
+        ValueVertex *transitionHClassValue = GetHeapConstant(access.transitionHClass);
+        if (transitionHClassValue == nullptr) {
+            return false;
+        }
         if (receiverHClass->IsPrototype()) {
             return false;
         }
@@ -5733,9 +5747,6 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
 
-        // TODO(ArkSteed): Use heap-constant table support for transition HClass constants.
-        ValueVertex *transitionHClassValue =
-            self->graph_->GetTaggedConstant(JSTaggedValue(transitionHClass).GetRawData());
         self->NewVertex<TransitionHClassWithBarrierVertex>(
             compileInfoFacts_, currentBlock, {glue, receiver, transitionHClassValue});
 
@@ -6431,8 +6442,41 @@ struct GraphBuilder::BytecodeVisitor {
         return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, moduleOffset);
     }
 
+    bool TryGetConstPoolIndex(ValueVertex *indexVertex, uint32_t *index) const
+    {
+        ASSERT(index != nullptr);
+        if (auto *constant = indexVertex->TryCast<Int32ConstantVertex>()) {
+            if (constant->GetValue() < 0) {
+                return false;
+            }
+            *index = static_cast<uint32_t>(constant->GetValue());
+            return true;
+        }
+        if (auto *constant = indexVertex->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue value(constant->GetValue());
+            if (!value.IsInt() || value.GetInt() < 0) {
+                return false;
+            }
+            *index = static_cast<uint32_t>(value.GetInt());
+            return true;
+        }
+        return false;
+    }
+
     ValueVertex *StringFromConstPool(ValueVertex *stringId)
     {
+        uint32_t index = 0;
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (TryGetConstPoolIndex(stringId, &index) && index <= std::numeric_limits<uint16_t>::max() &&
+            broker != nullptr) {
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::StringFromConstPool");
+            ArkSteedNameRef stringRef;
+            if (broker->TryGetNameFromConstantPool(static_cast<uint16_t>(index), &stringRef)) {
+                if (ValueVertex *constant = GetHeapConstant(stringRef); constant != nullptr) {
+                    return constant;
+                }
+            }
+        }
         ValueVertex *constpool = SharedConstPool();
         return CommonStubCall({glue, constpool, stringId}, CommonStubID::GetStringFromConstPool);
     }
@@ -6446,6 +6490,18 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *MethodFromConstPool(ValueVertex *index)
     {
+        uint32_t methodIndex = 0;
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (TryGetConstPoolIndex(index, &methodIndex) && methodIndex <= std::numeric_limits<uint16_t>::max() &&
+            broker != nullptr) {
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::MethodFromConstPool");
+            ArkSteedObjectRef methodRef;
+            if (broker->TryGetMethodFromConstantPool(static_cast<uint16_t>(methodIndex), &methodRef)) {
+                if (ValueVertex *constant = GetHeapConstant(methodRef); constant != nullptr) {
+                    return constant;
+                }
+            }
+        }
         ValueVertex *constpool = SharedConstPool();
         return RuntimeCall({constpool, index}, RTSTUB_ID(GetMethodFromCache));
     }

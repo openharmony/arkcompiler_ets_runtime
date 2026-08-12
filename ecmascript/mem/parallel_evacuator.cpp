@@ -506,6 +506,17 @@ void ParallelEvacuator::UpdateRoot()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateRoot", "");
 
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_);
+    bool refsUpdated = false;
+    if (heap_->IsYoungMark()) {
+        heap_->GetEmbeddedCodeRefSet()->VisitYoungTargets(updateRootVisitor_);
+        refsUpdated = heap_->GetEmbeddedCodeRefSet()->UpdateYoungTargets();
+    } else {
+        heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(updateRootVisitor_);
+        refsUpdated = heap_->GetEmbeddedCodeRefSet()->UpdateMarkedLocalTargets();
+    }
+    if (!refsUpdated) {
+        LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
+    }
 }
 
 template <TriggerGCType gcType, bool cmsGC>

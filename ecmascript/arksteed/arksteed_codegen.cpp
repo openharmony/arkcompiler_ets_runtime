@@ -459,18 +459,13 @@ bool EagerDeoptUsesRegister(const EagerDeoptimizableMixin *vertex, ArkSteedRegis
 }
 #endif
 
-kungfu::ARKDeopt MakeConstantDeopt(int32_t id, int64_t value)
+ArkSteedDeoptValue MakeConstantDeopt(int32_t id, int64_t value)
 {
-    kungfu::ARKDeopt deopt;
-    deopt.id = static_cast<kungfu::LLVMStackMapType::VRegId>(id);
-    if (value > INT32_MAX || value < INT32_MIN) {
-        deopt.kind = kungfu::LocationTy::Kind::CONSTANTNDEX;
-        deopt.value = static_cast<kungfu::LLVMStackMapType::LargeInt>(value);
-    } else {
-        deopt.kind = kungfu::LocationTy::Kind::CONSTANT;
-        deopt.value = static_cast<kungfu::LLVMStackMapType::IntType>(value);
-    }
-    return deopt;
+    return {
+        static_cast<kungfu::LLVMStackMapType::VRegId>(id),
+        ArkSteedDeoptValueKind::CONSTANT,
+        value,
+    };
 }
 
 int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
@@ -493,68 +488,61 @@ int64_t GetConstantForDeopt(const ValueVertex *value, int32_t vregId)
             int64_t rawValue = value->Cast<Int64ConstantVertex>()->GetValue();
             return static_cast<int64_t>(JSTaggedValue(static_cast<int>(rawValue)).GetRawData());
         }
+        case VertexOpcode::Float64Constant: {
+            ASSERT(vregId != static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX));
+            ASSERT(vregId != static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH));
+            uint64_t raw = static_cast<uint64_t>(
+                GetFloat64RawBits(value->Cast<Float64ConstantVertex>()->GetValue()));
+            if (raw >= static_cast<uint64_t>(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET)) {
+                return static_cast<int64_t>(JSTaggedValue(base::NAN_VALUE).GetRawData());
+            }
+            return static_cast<int64_t>(raw + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+        }
         default:
             UNREACHABLE();
     }
 }
 
-void AppendDeoptInput(std::vector<kungfu::ARKDeopt> *deopts, const Vertex *vertex, int inputIndex,
-                      int32_t vregId, ArkSteedAssembler *assembler)
-{
-    const InputLocation *location = vertex->GetInputLocation(inputIndex);
-    const InstructionOperand &operand = location->GetOperand();
-    if (operand.IsConstant()) {
-        deopts->emplace_back(MakeConstantDeopt(vregId, GetConstantForDeopt(vertex->GetInput(inputIndex), vregId)));
-        return;
-    }
-
-    ASSERT(operand.IsAnyStackSlot());
-    auto stackSlot = AllocatedState::Cast(operand);
-    kungfu::ARKDeopt deoptValue;
-    deoptValue.id = static_cast<kungfu::LLVMStackMapType::VRegId>(vregId);
-    deoptValue.kind = kungfu::LocationTy::Kind::INDIRECT;
-    int32_t offset =
-        assembler->GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
-    deoptValue.value = std::make_pair(static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GCStackMapRegisters::FP),
-                                      static_cast<kungfu::LLVMStackMapType::OffsetType>(offset));
-    deopts->emplace_back(deoptValue);
-}
-
-void AppendDeoptSource(std::vector<kungfu::ARKDeopt> *deopts,
+void AppendDeoptSource(std::vector<ArkSteedDeoptValue> *deopts,
                        const LazyDeoptimizableMixin::LazyDeoptFrameValue &frameValue,
-                       ArkSteedAssembler *assembler)
+                       ArkSteedAssembler *assembler, DeoptLiteralTableBuilder *literalTableBuilder)
 {
     const InstructionOperand &operand = frameValue.sourceLocation.GetOperand();
     if (operand.IsConstant()) {
-        kungfu::ARKDeopt deopt = MakeConstantDeopt(
-            frameValue.vreg, GetConstantForDeopt(frameValue.value, frameValue.vreg));
-        deopts->emplace_back(std::move(deopt));
+        if (auto *heapConstant = frameValue.value->TryCast<HeapConstantVertex>()) {
+            ASSERT(literalTableBuilder != nullptr);
+            deopts->push_back({
+                static_cast<kungfu::LLVMStackMapType::VRegId>(frameValue.vreg),
+                ArkSteedDeoptValueKind::HEAP_LITERAL,
+                literalTableBuilder->GetOrAdd(heapConstant->GetHandleIndex()),
+            });
+        } else {
+            deopts->push_back(MakeConstantDeopt(
+                frameValue.vreg, GetConstantForDeopt(frameValue.value, frameValue.vreg)));
+        }
         return;
     }
 
     ASSERT(operand.IsAnyStackSlot());
     auto stackSlot = AllocatedState::Cast(operand);
-    kungfu::ARKDeopt deoptValue;
-    deoptValue.id = static_cast<kungfu::LLVMStackMapType::VRegId>(frameValue.vreg);
-    deoptValue.kind = kungfu::LocationTy::Kind::INDIRECT;
     int32_t offset = assembler->GetFramePointerOffsetForStackSlot(stackSlot.GetIndex(), stackSlot.GetRepresentation());
-    // Embed DeoptTranslationKind in offset LSBs so the lazy-deopt trampoline can reconstruct
-    // the JSTaggedValue without upfront normalization nodes on the hot path.
-    deoptValue.value = std::make_pair(
+    deopts->push_back({
+        static_cast<kungfu::LLVMStackMapType::VRegId>(frameValue.vreg),
+        ArkSteedDeoptValueKind::STACK_SLOT,
+        EncodeLazyDeoptOffset(offset, frameValue.valueKind),
         static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GCStackMapRegisters::FP),
-        static_cast<kungfu::LLVMStackMapType::OffsetType>(EncodeLazyDeoptOffset(offset, frameValue.valueKind)));
-    deopts->emplace_back(deoptValue);
+    });
 }
 
-void AppendDeoptSources(std::vector<kungfu::ARKDeopt> *deopts,
+void AppendDeoptSources(std::vector<ArkSteedDeoptValue> *deopts,
                         const LazyDeoptimizableMixin *lazy,
-                        ArkSteedAssembler *assembler)
+                        ArkSteedAssembler *assembler, DeoptLiteralTableBuilder *literalTableBuilder)
 {
     if (lazy == nullptr || !lazy->HasLazyDeoptFrameState()) {
         return;
     }
     for (const auto &frameValue : lazy->GetLazyDeoptFrameState()) {
-        AppendDeoptSource(deopts, frameValue, assembler);
+        AppendDeoptSource(deopts, frameValue, assembler, literalTableBuilder);
     }
 }
 
@@ -583,16 +571,16 @@ bool HasLazyDeoptSafepoint(const Vertex *vertex)
 template <class NodeT>
 void EmitLazyDeoptSafepoint(ArkSteedAssembler *assembler,
                             ArkSteedSafepointTableBuilder *safepointBuilder,
-                            const NodeT *vertex)
+                            DeoptLiteralTableBuilder *literalTableBuilder, const NodeT *vertex)
 {
     static_assert(std::is_base_of_v<LazyDeoptimizableMixin, NodeT>);
     ASSERT(safepointBuilder != nullptr);
     const auto *lazy = static_cast<const LazyDeoptimizableMixin *>(vertex);
     ASSERT(lazy->HasLazyDeoptFrameState());
 
-    std::vector<kungfu::ARKDeopt> deopts;
+    std::vector<ArkSteedDeoptValue> deopts;
     deopts.emplace_back(MakeConstantDeopt(static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH), 0));
-    AppendDeoptSources(&deopts, lazy, assembler);
+    AppendDeoptSources(&deopts, lazy, assembler, literalTableBuilder);
 
     ExceptionHandlerKind exceptionHandlerKind = ExceptionHandlerKind::NONE;
     if constexpr (std::is_base_of_v<ThrowableMixin, NodeT>) {
@@ -679,7 +667,7 @@ Label *ArkSteedCodeGenerator::RecordEagerDeoptTarget(
     ASSERT(translationBuilder_ != nullptr);
 
     uint32_t bytecodeOffset = vertex->GetBytecodeOffset();
-    auto translationInputs = BuildDeoptTranslationInputs(assembler_, vertex);
+    auto translationInputs = BuildDeoptTranslationInputs(assembler_, vertex, deoptLiteralTableBuilder_);
     DeoptId deoptId = translationBuilder_->AddTranslation(bytecodeOffset, type, std::move(translationInputs));
 
     if (deoptId.value >= eagerDeoptTargetsById_.size()) {
@@ -748,10 +736,8 @@ void ArkSteedCodeGenerator::EmitQueuedEagerDeoptExits()
     uint32_t exitClusterSize =
         static_cast<uint32_t>(eagerDeoptTargetsById_.size() * exitSize);
 #if defined(PANDA_TARGET_ARM64)
-    // ArkSteed materializes immediates directly and has no literal pool. Flush
-    // any branch veneers that could otherwise become due before the far side
-    // of the protected fixed-exit range.
-    __ CheckVeneerPool(false, exitClusterSize);
+    // No pool may be emitted inside the fixed-size exit cluster.
+    __ CheckCodePools(false, exitClusterSize);
 #endif
 
     uint32_t exitStartOffset = __ GetPcOffset();
@@ -796,6 +782,9 @@ void ArkSteedCodeGenerator::LoadConstantToRegister(const ValueVertex *constVerte
             break;
         case VertexOpcode::TaggedConstant:
             constVertex->Cast<TaggedConstantVertex>()->DoLoadToRegister(assembler_, reg);
+            break;
+        case VertexOpcode::HeapConstant:
+            constVertex->Cast<HeapConstantVertex>()->DoLoadToRegister(assembler_, reg);
             break;
         default:
             UNREACHABLE();
@@ -939,7 +928,7 @@ void ArkSteedCodeGenerator::EmitCallArkSteed(CallVertex *call, ArkSteedRegister 
     __ PrepareSteedCalleeContext(target, codeEntry);
     __ Call(codeEntry);
     if (HasLazyDeoptSafepoint(call)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, call);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, call);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -952,7 +941,7 @@ void ArkSteedCodeGenerator::EmitCallGeneric(CallVertex *call, ArkSteedRegister s
     int stackArgCount = PrepareTrampolineArguments(call, scratch);
     __ CallTrampoline(RTSTUB_ID(JSCall));
     if (HasLazyDeoptSafepoint(call)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, call);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, call);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -1029,7 +1018,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallRuntimeVertex>(CallRuntime
         callRuntime, callRuntime->GetArgCount(), static_cast<int>(callRuntime->GetRuntimeStubID()));
     __ CallRuntime(callRuntime->GetRuntimeStubID());
     if (HasLazyDeoptSafepoint(callRuntime)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, callRuntime);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, callRuntime);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -1673,7 +1662,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>
         prepareField, 1, RTSTUB_ID(SlowSharedObjectStoreBarrier));
     __ CallRuntime(RTSTUB_ID(SlowSharedObjectStoreBarrier));
     if (HasLazyDeoptSafepoint(prepareField)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, prepareField);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, prepareField);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -1694,7 +1683,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>
     __ MoveRepr(MachineRepresentation::Tagged, __ GetCallArgSlot(CALL_ARG2), scratch);
     __ CallRuntime(RTSTUB_ID(ThrowTypeError));
     if (HasLazyDeoptSafepoint(prepareField)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, prepareField);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, prepareField);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -1835,7 +1824,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<EnsurePropertiesCapacityVertex
     int stackArgCount = PrepareCommonStubStackArguments(ensureCapacity, ensureCapacity->GetArgCount());
     __ CallCommonStub(kungfu::CommonStubCSigns::EnsurePropertiesCapacity);
     if (HasLazyDeoptSafepoint(ensureCapacity)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, ensureCapacity);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, ensureCapacity);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -2732,7 +2721,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallComm
     int stackArgCount = PrepareCommonStubStackArguments(callCommonStub, callCommonStub->GetArgCount());
     __ CallCommonStub(callCommonStub->GetCommonStubID());
     if (HasLazyDeoptSafepoint(callCommonStub)) {
-        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, callCommonStub);
+        EmitLazyDeoptSafepoint(assembler_, safepointBuilder_, deoptLiteralTableBuilder_, callCommonStub);
     } else {
         safepointBuilder_->DefineSafepoint(__ GetPcOffset());
     }
@@ -3010,7 +2999,7 @@ void ArkSteedCodeGenerator::Generate()
 
     __ Prologue(graph_);
 #if defined(PANDA_TARGET_ARM64)
-    __ CheckVeneerPool(true);
+    __ CheckCodePools(true);
 #endif
 
     for (uint32_t i = 0, numBlocks = graph_->NumBlocks(); i < numBlocks; ++i) {
@@ -3024,14 +3013,14 @@ void ArkSteedCodeGenerator::Generate()
             for (PhiVertex *phi : curBlock->GetPhis()) {
                 ProcessNonControlVertex(phi);
 #if defined(PANDA_TARGET_ARM64)
-                __ CheckVeneerPool(true);
+                __ CheckCodePools(true);
 #endif
             }
         }
         for (NonControlVertex *vertex : curBlock->GetVertices()) {
             ProcessNonControlVertex(vertex);
 #if defined(PANDA_TARGET_ARM64)
-            __ CheckVeneerPool(true);
+            __ CheckCodePools(true);
 #endif
         }
         ControlVertex *controlVertex = curBlock->GetControlVertex();
@@ -3044,10 +3033,13 @@ void ArkSteedCodeGenerator::Generate()
 
         ProcessControlVertex(controlVertex);
 #if defined(PANDA_TARGET_ARM64)
-        __ CheckVeneerPool(true);
+        __ CheckCodePools(true);
 #endif
     }
     EmitDeferredCode();
+    // Eager-deopt exit decoding relies on the fixed-size exit cluster being the
+    // final bytes of the function. Flush ARM64 embedded literals before it.
+    __ FinalizeEmbeddedRefs();
     EmitQueuedEagerDeoptExits();
 #if defined(PANDA_TARGET_ARM64)
     __ FinalizeVeneers();
@@ -3061,6 +3053,9 @@ void ArkSteedCodeGenerator::EmitDeferredCode()
         __ RecordComment("Deferred block");
         __ Bind(deferred->GetEntryLabel());
         deferred->Generate(assembler_);
+#if defined(PANDA_TARGET_ARM64)
+        __ CheckCodePools(true);
+#endif
     }
 }
 
@@ -3334,6 +3329,10 @@ void ArkSteedCodeGenerator::ExecuteConstantMove(const AllocatedState &dest, Valu
     };
 
     auto loadConstant = [&](ArkSteedRegister reg) {
+        if (constVertex->Is<HeapConstantVertex>()) {
+            LoadConstantToRegister(constVertex, reg);
+            return;
+        }
         if (dest.GetRepresentation() == MachineRepresentation::Tagged) {
             __ Move(reg, GetConstantForDeopt(constVertex, 0));
             return;

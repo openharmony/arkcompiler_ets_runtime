@@ -137,6 +137,9 @@ void ConcurrentMarker::ReMark()
     heap_->WaitRunningMarkTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+    marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+    marker->ProcessMarkStack(MAIN_THREAD_INDEX);
+    heap_->WaitRunningMarkTaskFinished();
 }
 
 void ConcurrentMarker::HandleMarkingFinished(GCReason gcReason)  // js-thread wait for sweep

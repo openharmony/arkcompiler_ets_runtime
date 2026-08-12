@@ -21,6 +21,7 @@
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
+#include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/base/hash_combine.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
@@ -33,6 +34,19 @@
 #include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript::arksteed {
+
+uint32_t DeoptLiteralTableBuilder::GetOrAdd(uint32_t handleIndex)
+{
+    auto existing = std::find(handleIndexByLiteralIndex_.begin(), handleIndexByLiteralIndex_.end(), handleIndex);
+    if (existing != handleIndexByLiteralIndex_.end()) {
+        return static_cast<uint32_t>(std::distance(handleIndexByLiteralIndex_.begin(), existing));
+    }
+    ASSERT(handleIndexByLiteralIndex_.size() < std::numeric_limits<uint32_t>::max());
+    uint32_t literalIndex = static_cast<uint32_t>(handleIndexByLiteralIndex_.size());
+    handleIndexByLiteralIndex_.push_back(handleIndex);
+    return literalIndex;
+}
+
 namespace {
 constexpr uint8_t LEB128_PAYLOAD_MASK = 0x7FU;
 constexpr uint8_t LEB128_CONTINUATION_BIT = 0x80U;
@@ -275,7 +289,13 @@ void ValidateTaggedConstant(int64_t source)
 void ValidateTranslationInput(const DeoptTranslationInput &input)
 {
     CHECK(static_cast<uint8_t>(input.valueKind) <= static_cast<uint8_t>(DeoptTranslationKind::RAW_INT32));
-    CHECK(static_cast<uint8_t>(input.sourceKind) <= static_cast<uint8_t>(DeoptSourceKind::FP_REGISTER));
+    CHECK(static_cast<uint8_t>(input.sourceKind) <= static_cast<uint8_t>(DeoptSourceKind::HEAP_LITERAL));
+    if (input.sourceKind == DeoptSourceKind::HEAP_LITERAL) {
+        CHECK(input.valueKind == DeoptTranslationKind::TAGGED);
+        CHECK(input.source >= 0);
+        CHECK(static_cast<uint64_t>(input.source) <= std::numeric_limits<uint32_t>::max());
+        return;
+    }
     if (input.sourceKind == DeoptSourceKind::GP_REGISTER) {
         CHECK(input.source >= 0);
         CHECK(static_cast<uint64_t>(input.source) <= std::numeric_limits<uint32_t>::max());
@@ -332,6 +352,15 @@ void WriteRegisterInput(DeoptTranslationOpcode opcode, const DeoptTranslationInp
     WriteULEB128(static_cast<uint64_t>(input.source), output);
 }
 
+void WriteUnsignedInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input,
+                        std::vector<uint8_t> &output)
+{
+    ASSERT(input.source >= 0);
+    WriteOpcode(opcode, output);
+    WriteSLEB128(input.vreg, output);
+    WriteULEB128(static_cast<uint64_t>(input.source), output);
+}
+
 void EncodeTaggedConstant(const DeoptTranslationInput &input, std::vector<uint8_t> &output)
 {
     JSTaggedValue value(static_cast<JSTaggedType>(input.source));
@@ -360,6 +389,8 @@ void EncodeExplicitInput(const DeoptTranslationInput &input, std::vector<uint8_t
         case DeoptTranslationKind::TAGGED:
             if (input.sourceKind == DeoptSourceKind::CONSTANT) {
                 EncodeTaggedConstant(input, output);
+            } else if (input.sourceKind == DeoptSourceKind::HEAP_LITERAL) {
+                WriteUnsignedInput(DeoptTranslationOpcode::TAGGED_HEAP_LITERAL, input, output);
             } else if (input.sourceKind == DeoptSourceKind::STACK_SLOT) {
                 WriteSignedInput(DeoptTranslationOpcode::TAGGED_STACK_SLOT, input, output);
             } else {
@@ -545,6 +576,15 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
         input->valueKind = DeoptTranslationKind::TAGGED;
         input->sourceKind = opcode == DeoptTranslationOpcode::TAGGED_REGISTER ? DeoptSourceKind::GP_REGISTER
                                                                               : DeoptSourceKind::STACK_SLOT;
+    } else if (opcode == DeoptTranslationOpcode::TAGGED_HEAP_LITERAL) {
+        uint32_t literalIndex = 0;
+        input->valueKind = DeoptTranslationKind::TAGGED;
+        input->sourceKind = DeoptSourceKind::HEAP_LITERAL;
+        if (!ReadUint32ULEB(cursor, end, &literalIndex)) {
+            return false;
+        }
+        input->source = literalIndex;
+        return true;
     } else if (opcode >= DeoptTranslationOpcode::TAGGED_SPECIAL &&
                opcode <= DeoptTranslationOpcode::TAGGED_DOUBLE_BITS) {
         input->valueKind = DeoptTranslationKind::TAGGED;
@@ -879,7 +919,8 @@ int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTran
 }
 
 DeoptTranslationInput BuildDeoptTranslationInput(
-    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex, uint32_t index)
+    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex, uint32_t index,
+    DeoptLiteralTableBuilder *literalTableBuilder)
 {
     DeoptTranslationInput input {
         vertex->GetDeoptVReg(index),
@@ -889,7 +930,15 @@ DeoptTranslationInput BuildDeoptTranslationInput(
     };
     const InstructionOperand &operand = vertex->GetDeoptSourceLocation(index)->GetOperand();
     if (operand.IsConstant()) {
-        input.source = GetConstantSourceForDeoptTranslation(vertex->GetDeoptFrameValue(index), input.valueKind);
+        ValueVertex *value = vertex->GetDeoptFrameValue(index);
+        if (auto *heapConstant = value->TryCast<HeapConstantVertex>()) {
+            ASSERT(input.valueKind == DeoptTranslationKind::TAGGED);
+            ASSERT(literalTableBuilder != nullptr);
+            input.sourceKind = DeoptSourceKind::HEAP_LITERAL;
+            input.source = literalTableBuilder->GetOrAdd(heapConstant->GetHandleIndex());
+        } else {
+            input.source = GetConstantSourceForDeoptTranslation(value, input.valueKind);
+        }
         return input;
     }
 
@@ -913,7 +962,8 @@ DeoptTranslationInput BuildDeoptTranslationInput(
 }
 
 std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(
-    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex)
+    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
+    DeoptLiteralTableBuilder *literalTableBuilder)
 {
     std::vector<DeoptTranslationInput> inputs;
     inputs.reserve(vertex->GetDeoptFrameValueCount() + 1);
@@ -924,7 +974,7 @@ std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(
         ARKSTEED_SUPPORTED_INLINE_DEPTH,
     });
     for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
-        inputs.push_back(BuildDeoptTranslationInput(assembler, vertex, index));
+        inputs.push_back(BuildDeoptTranslationInput(assembler, vertex, index, literalTableBuilder));
     }
     std::sort(inputs.begin(), inputs.end(),
               [](const DeoptTranslationInput &lhs, const DeoptTranslationInput &rhs) { return lhs.vreg < rhs.vreg; });
@@ -954,51 +1004,89 @@ bool ReadTranslationFromMachineCode(const MachineCode *machineCode, DeoptId deop
     return reader.GetHeader(deoptId, header) && reader.GetBody(header->bodyId, translation);
 }
 
-uint64_t ReadDeoptInputRaw(const DeoptTranslationInput &input, uintptr_t callsiteFp, uintptr_t snapshot)
+bool ReadDeoptLiteral(const MachineCode *machineCode, uint32_t literalIndex, uint64_t *raw)
 {
+    if (machineCode == nullptr || raw == nullptr) {
+        return false;
+    }
+    ArkSteedSafepointTable safepointTable(machineCode->GetStackMapOrOffsetTableAddress(),
+                                          machineCode->GetStackMapOrOffsetTableSize());
+    uint32_t literalCount = safepointTable.IsValid() ? safepointTable.GetDeoptLiteralCount() : 0;
+    if (literalIndex >= literalCount ||
+        static_cast<size_t>(literalCount) * sizeof(uint64_t) > machineCode->GetHeapConstantTableSize()) {
+        return false;
+    }
+    auto *literals = reinterpret_cast<const uint64_t *>(machineCode->GetHeapConstantTableAddress());
+    *raw = literals[literalIndex];
+    return true;
+}
+
+bool ReadDeoptInputRaw(const DeoptTranslationInput &input, const MachineCode *machineCode,
+                       uintptr_t callsiteFp, uintptr_t snapshot, uint64_t *raw)
+{
+    ASSERT(raw != nullptr);
     switch (input.sourceKind) {
         case DeoptSourceKind::CONSTANT:
-            return static_cast<uint64_t>(input.source);
+            *raw = static_cast<uint64_t>(input.source);
+            return true;
         case DeoptSourceKind::STACK_SLOT: {
             uintptr_t addr = callsiteFp + static_cast<intptr_t>(input.source);
             if (input.valueKind == DeoptTranslationKind::RAW_INT32 ||
                 input.valueKind == DeoptTranslationKind::INT32_TO_TAGGED) {
-                return static_cast<uint64_t>(*reinterpret_cast<int32_t *>(addr));
+                *raw = static_cast<uint64_t>(*reinterpret_cast<int32_t *>(addr));
+                return true;
             }
             if (input.valueKind == DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE) {
-                return *reinterpret_cast<uint64_t *>(addr);
+                *raw = *reinterpret_cast<uint64_t *>(addr);
+                return true;
             }
-            return *reinterpret_cast<JSTaggedType *>(addr);
+            *raw = *reinterpret_cast<JSTaggedType *>(addr);
+            return true;
         }
         case DeoptSourceKind::GP_REGISTER:
-            return ReadArkSteedDeoptGeneralRegister(snapshot, static_cast<uint32_t>(input.source));
+            *raw = ReadArkSteedDeoptGeneralRegister(snapshot, static_cast<uint32_t>(input.source));
+            return true;
         case DeoptSourceKind::FP_REGISTER:
-            return ReadArkSteedDeoptFloatingRegisterBits(snapshot, static_cast<uint32_t>(input.source));
+            *raw = ReadArkSteedDeoptFloatingRegisterBits(snapshot, static_cast<uint32_t>(input.source));
+            return true;
+        case DeoptSourceKind::HEAP_LITERAL:
+            return ReadDeoptLiteral(machineCode, static_cast<uint32_t>(input.source), raw);
     }
     UNREACHABLE();
 }
 
-JSTaggedType MaterializeDeoptInput(const DeoptTranslationInput &input, uintptr_t callsiteFp, uintptr_t snapshot)
+bool MaterializeDeoptInput(const DeoptTranslationInput &input, const MachineCode *machineCode,
+                           uintptr_t callsiteFp, uintptr_t snapshot, JSTaggedType *value)
 {
-    uint64_t raw = ReadDeoptInputRaw(input, callsiteFp, snapshot);
+    ASSERT(value != nullptr);
+    uint64_t raw = 0;
+    if (!ReadDeoptInputRaw(input, machineCode, callsiteFp, snapshot, &raw)) {
+        return false;
+    }
     switch (input.valueKind) {
         case DeoptTranslationKind::TAGGED:
-            return static_cast<JSTaggedType>(raw);
+            *value = static_cast<JSTaggedType>(raw);
+            return true;
         case DeoptTranslationKind::RAW_INT32:
-            return static_cast<JSTaggedType>(static_cast<int32_t>(raw));
+            *value = static_cast<JSTaggedType>(static_cast<int32_t>(raw));
+            return true;
         case DeoptTranslationKind::INT32_TO_TAGGED:
-            return JSTaggedValue(static_cast<int32_t>(raw)).GetRawData();
+            *value = JSTaggedValue(static_cast<int32_t>(raw)).GetRawData();
+            return true;
         case DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE: {
             if (raw >= static_cast<uint64_t>(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET)) {
-                return JSTaggedValue(base::NAN_VALUE).GetRawData();
+                *value = JSTaggedValue(base::NAN_VALUE).GetRawData();
+                return true;
             }
-            return static_cast<JSTaggedType>(raw + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+            *value = static_cast<JSTaggedType>(raw + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+            return true;
         }
     }
     UNREACHABLE();
 }
 
-bool MaterializeTranslation(const DeoptTranslation &translation, uintptr_t callsiteFp, uintptr_t snapshot,
+bool MaterializeTranslation(const DeoptTranslation &translation, const MachineCode *machineCode,
+                            uintptr_t callsiteFp, uintptr_t snapshot,
                             MaterializedArkSteedDeoptFrame *frame)
 {
     ASSERT(frame != nullptr);
@@ -1012,7 +1100,10 @@ bool MaterializeTranslation(const DeoptTranslation &translation, uintptr_t calls
                 input.sourceKind != DeoptSourceKind::CONSTANT) {
                 return false;
             }
-            JSTaggedType value = MaterializeDeoptInput(input, callsiteFp, snapshot);
+            JSTaggedType value = 0;
+            if (!MaterializeDeoptInput(input, machineCode, callsiteFp, snapshot, &value)) {
+                return false;
+            }
             int32_t inlineDepth = static_cast<int32_t>(value);
             if (inlineDepth < 0) {
                 return false;
@@ -1021,7 +1112,10 @@ bool MaterializeTranslation(const DeoptTranslation &translation, uintptr_t calls
             hasInlineDepth = true;
             continue;
         }
-        JSTaggedType value = MaterializeDeoptInput(input, callsiteFp, snapshot);
+        JSTaggedType value = 0;
+        if (!MaterializeDeoptInput(input, machineCode, callsiteFp, snapshot, &value)) {
+            return false;
+        }
         frame->values.emplace_back(input.vreg, value);
     }
     return hasInlineDepth;
@@ -1149,7 +1243,7 @@ bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inp
         return false;
     }
     MaterializedArkSteedDeoptFrame materialized;
-    if (!MaterializeTranslation(translation, inputFp, snapshot, &materialized) ||
+    if (!MaterializeTranslation(translation, machineCode, inputFp, snapshot, &materialized) ||
         materialized.inlineDepth != static_cast<size_t>(ARKSTEED_SUPPORTED_INLINE_DEPTH)) {
         return false;
     }

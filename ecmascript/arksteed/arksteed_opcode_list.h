@@ -32,7 +32,8 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(Int32Constant)                  \
     V(Int64Constant)                  \
     V(Float64Constant)                \
-    V(TaggedConstant)
+    V(TaggedConstant)                 \
+    V(HeapConstant)
 
 #define VALUE_VERTEX_LIST(V)            \
     CONSTANT_VALUE_VERTEX_LIST(V)       \

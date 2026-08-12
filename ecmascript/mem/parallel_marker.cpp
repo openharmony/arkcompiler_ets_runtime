@@ -160,6 +160,18 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     heap_->WaitRunningMarkTaskFinished();
 }
 
+void NonMovableMarker::MarkEmbeddedCodeRefs(uint32_t threadId)
+{
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->IsYoungMark()) {
+        YoungGCMarkRootVisitor visitor(holder);
+        heap_->GetEmbeddedCodeRefSet()->VisitYoungTargets(visitor);
+        return;
+    }
+    OldGCMarkRootVisitor visitor(holder);
+    heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(visitor);
+}
+
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
     // fixme: refactor?
@@ -338,6 +350,20 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
         MarkJitCodeMapImpl<true>(threadId);
     } else {
         MarkJitCodeMapImpl<false>(threadId);
+    }
+}
+
+void CompressGCMarker::MarkEmbeddedCodeRefs(uint32_t threadId)
+{
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        FullGCRunner<true> runner(heap_, holder, isAppSpawn_);
+        FullGCMarkRootVisitor<true> &visitor = runner.GetMarkRootVisitor();
+        heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(visitor);
+    } else {
+        FullGCRunner<false> runner(heap_, holder, isAppSpawn_);
+        FullGCMarkRootVisitor<false> &visitor = runner.GetMarkRootVisitor();
+        heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(visitor);
     }
 }
 

@@ -22,6 +22,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/mem/embedded_code_ref.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -34,6 +35,9 @@ public:
     void Compile();
     void InstallCode() override;
     void SetDeoptTranslationData(std::vector<uint8_t> data);
+    void SetDeoptLiteralData(std::vector<JSHandle<JSTaggedValue>> literals);
+    void SetEmbeddedRefData(const std::vector<EmbeddedCodeRefReloc> &relocations,
+                            const std::vector<JSHandle<JSTaggedValue>> &handles);
 
     class AsyncTask : public common::Task {
     public:
@@ -47,6 +51,9 @@ public:
 
 private:
     std::vector<uint8_t> deoptTranslationData_;
+    std::vector<JSHandle<JSTaggedValue>> deoptLiteralHandles_;
+    std::vector<EmbeddedCodeRefReloc> embeddedRefRelocations_;
+    std::vector<JSHandle<JSTaggedValue>> embeddedRefHandles_;
 };
 
 class ArkSteedCompileTimeScope : public ClockScope {

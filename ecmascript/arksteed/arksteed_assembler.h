@@ -16,9 +16,14 @@
 #ifndef ECMASCRIPT_ARKSTEED_ASSEMBLER_H
 #define ECMASCRIPT_ARKSTEED_ASSEMBLER_H
 
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
 #include "ecmascript/arksteed/arksteed_comment.h"
 #include "ecmascript/arksteed/arksteed_condition_code.h"
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#include "ecmascript/mem/embedded_code_ref.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
@@ -121,6 +126,13 @@ public:
     inline void MoveRepr(MachineRepresentation repr, Dest dst, Source src);
 
     void LoadTaggedValue(ArkSteedRegister dst, uint64_t taggedValue);
+    void MoveEmbeddedTagged(ArkSteedRegister dst, uint32_t handleIndex);
+    void FinalizeEmbeddedRefs();
+
+    const std::vector<EmbeddedCodeRefReloc> &GetEmbeddedRefRelocations() const
+    {
+        return embeddedRefRelocations_;
+    }
 
     // =========================================================================
     // Memory Operations
@@ -226,7 +238,7 @@ public:
     void JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target);
     void Bind(Label *label);
 #if defined(PANDA_TARGET_ARM64)
-    void CheckVeneerPool(bool precedingCodeCanFallThrough, size_t protectedCodeSize = 0U);
+    void CheckCodePools(bool precedingCodeCanFallThrough, size_t protectedCodeSize = 0U);
     void FinalizeVeneers();
 #endif
     inline void Branch(Condition condition, Label *ifTrue, bool fallthroughWhenTrue, Label *ifFalse,
@@ -341,15 +353,25 @@ private:
     void PopPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
     static constexpr uint32_t VENEER_INSTRUCTION_SIZE = sizeof(uint32_t);  // One ARM64 instruction is 4 bytes.
     static constexpr uint32_t VENEER_DISTANCE_MARGIN = 4U * 1024U;  // Check 4 KiB before the encoding limit.
+    static constexpr uint32_t EMBEDDED_LITERAL_MAX_FORWARD_DISPLACEMENT =
+        ((1U << 18U) - 1U) * sizeof(uint32_t);
+    static constexpr uint32_t EMBEDDED_LITERAL_DISTANCE_MARGIN = 4U * 1024U;
+    static constexpr uint32_t EMBEDDED_LITERAL_SIZE = sizeof(JSTaggedType);
+    static constexpr uint32_t EMBEDDED_LITERAL_POOL_PREFIX_RESERVE = 2U * sizeof(uint32_t);
     static bool IsVeneerBranchOrCall(uint32_t instruction);
     static bool IsVeneerConditionOrCompareBranch(uint32_t instruction);
     static bool IsVeneerTestBranch(uint32_t instruction);
     bool IsVeneerBranchInRange(uint32_t instruction, int64_t displacement) const;
     uint32_t GetVeneerBranchDeadline(uint32_t branchPc, uint32_t instruction) const;
+    uint64_t GetPotentialVeneerPoolSize() const;
     void UpdateVeneerPoolCheck();
+    void CheckVeneerPool(bool precedingCodeCanFallThrough, size_t protectedCodeSize);
     void RecordVeneerBranch(uint32_t branchPc, Label *target);
     void PatchVeneerBranchTarget(uint32_t branchPc, uint32_t targetPc);
     void BindVeneerLabel(Label *label);
+    void UpdateEmbeddedLiteralPoolCheck(uint32_t loadOffset, size_t literalIndex);
+    uint64_t GetEmbeddedLiteralPoolMaxSize() const;
+    void EmitEmbeddedLiteralPool(bool precedingCodeCanFallThrough);
     void TestAndBranchIfZero(ArkSteedRegister value, int32_t bit, Label *target);
     void TestAndBranchIfNotZero(ArkSteedRegister value, int32_t bit, Label *target);
 #endif
@@ -359,8 +381,19 @@ private:
     Chunk *chunk_;
     ChunkMap<Label *, ChunkVector<uint32_t>> veneerBranches_;
     uint32_t nextVeneerPoolCheck_ {UINT32_MAX};  // UINT32_MAX means that no pool check is pending.
+    uint32_t nextEmbeddedLiteralPoolCheck_ {UINT32_MAX};
     bool emittingVeneerPool_ {false};
+    bool emittingEmbeddedLiteralPool_ {false};
+
+    struct PendingEmbeddedLiteral {
+        Label label {};
+        uint32_t handleIndex {0};
+        std::vector<uint32_t> loadOffsets {};
+    };
+    std::vector<std::unique_ptr<PendingEmbeddedLiteral>> pendingEmbeddedLiterals_ {};
+    std::unordered_map<uint32_t, size_t> embeddedLiteralIndexByHandle_ {};
 #endif
+    std::vector<EmbeddedCodeRefReloc> embeddedRefRelocations_ {};
     bool enableComments_ = false;
     bool hasFrame_ = false;
     uint32_t taggedStackSlots_ = 0;

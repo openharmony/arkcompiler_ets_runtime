@@ -18,6 +18,7 @@
 #include "common_components/heap/heap.h"
 #include "heap/heap_allocator.h"
 #include "ecmascript/js_tagged_value_wrapper-inl.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/platform/os.h"
@@ -285,6 +286,14 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, Allocat
 void HugeMachineCodeSpace::Sweep()
 {
     ASSERT(!g_isEnableCMCGC);
+    EnumerateRegions([this](Region *region) {
+        bool isMarked = false;
+        region->IterateAllMarkedBits([&isMarked]([[maybe_unused]] void *mem) { isMarked = true; });
+        if (!isMarked) {
+            localHeap_->GetEmbeddedCodeRefSet()->RemoveOwner(
+                MachineCode::Cast(reinterpret_cast<TaggedObject *>(region->GetBegin())));
+        }
+    });
     HugeObjectSpace::Sweep();
     if (jitFort_) {
         jitFort_->Sweep(true);

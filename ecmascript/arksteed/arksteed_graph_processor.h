@@ -137,6 +137,10 @@ private:
         for (const auto &[value, vertex] : graph->GetTaggedConstants()) {
             derivedProcessor_.ProcessVertex(vertex, state);
         }
+
+        for (const auto &[handleIndex, vertex] : graph->GetHeapConstants()) {
+            derivedProcessor_.ProcessVertex(vertex, state);
+        }
     }
 
     // Opcode-based dispatch to ensure template deduction uses concrete vertex types.

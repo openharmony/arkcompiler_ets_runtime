@@ -46,6 +46,9 @@ ArkSteedWriteBarrierValueKind ClassifyDirectWriteBarrierValueKind(ValueVertex *v
         }
         return ArkSteedWriteBarrierValueKind::Unknown;
     }
+    if (value->Is<HeapConstantVertex>()) {
+        return ArkSteedWriteBarrierValueKind::HeapObject;
+    }
     if (value->Is<I32ToTaggedIntVertex>()) {
         return ArkSteedWriteBarrierValueKind::NonHeap;
     }

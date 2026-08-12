@@ -108,6 +108,35 @@ void ArkSteedAssembler::Move(ArkSteedRegister dst, uint64_t immediate)
     Move(dst, static_cast<int64_t>(immediate));
 }
 
+void ArkSteedAssembler::MoveEmbeddedTagged(ArkSteedRegister dst, uint32_t handleIndex)
+{
+    // Keep both the final literal displacement and the unresolved-label link chain within imm19 range.
+    CheckCodePools(true);
+
+    size_t literalIndex = 0;
+    auto it = embeddedLiteralIndexByHandle_.find(handleIndex);
+    if (it == embeddedLiteralIndexByHandle_.end()) {
+        literalIndex = pendingEmbeddedLiterals_.size();
+        auto literal = std::make_unique<PendingEmbeddedLiteral>();
+        literal->handleIndex = handleIndex;
+        pendingEmbeddedLiterals_.push_back(std::move(literal));
+        embeddedLiteralIndexByHandle_.emplace(handleIndex, literalIndex);
+    } else {
+        literalIndex = it->second;
+    }
+
+    PendingEmbeddedLiteral *literal = pendingEmbeddedLiterals_[literalIndex].get();
+    uint32_t loadOffset = GetPcOffset();
+    literal->loadOffsets.push_back(loadOffset);
+    UpdateEmbeddedLiteralPoolCheck(loadOffset, literalIndex);
+    assembler_.Ldr(dst, &literal->label);
+}
+
+void ArkSteedAssembler::FinalizeEmbeddedRefs()
+{
+    EmitEmbeddedLiteralPool(true);
+}
+
 void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
 {
     assembler_.Mov(dst, src);
@@ -738,6 +767,103 @@ uint32_t ArkSteedAssembler::GetVeneerBranchDeadline(uint32_t branchPc, uint32_t 
     }
     uint64_t deadline = static_cast<uint64_t>(branchPc) + maxForwardDisplacement - reservedDisplacement;
     return static_cast<uint32_t>(std::min(deadline, static_cast<uint64_t>(UINT32_MAX)));
+}
+
+uint64_t ArkSteedAssembler::GetPotentialVeneerPoolSize() const
+{
+    if (veneerBranches_.empty()) {
+        return 0;
+    }
+    uint64_t entryCount = static_cast<uint64_t>(veneerBranches_.size()) + 1U;  // 1: optional guard branch.
+    return entryCount * VENEER_INSTRUCTION_SIZE;
+}
+
+void ArkSteedAssembler::UpdateEmbeddedLiteralPoolCheck(uint32_t loadOffset, size_t literalIndex)
+{
+    // A literal's position is the pool prefix followed by its index in the current pool.
+    uint64_t literalOffsetInPool = static_cast<uint64_t>(literalIndex) * EMBEDDED_LITERAL_SIZE;
+    uint64_t reserve = EMBEDDED_LITERAL_DISTANCE_MARGIN + EMBEDDED_LITERAL_POOL_PREFIX_RESERVE +
+                       literalOffsetInPool;
+    uint64_t maximumPoolPosition = static_cast<uint64_t>(loadOffset) +
+                                   EMBEDDED_LITERAL_MAX_FORWARD_DISPLACEMENT;
+    uint64_t deadline = maximumPoolPosition > reserve ? maximumPoolPosition - reserve : 0;
+    nextEmbeddedLiteralPoolCheck_ = std::min(
+        nextEmbeddedLiteralPoolCheck_,
+        static_cast<uint32_t>(std::min(deadline, static_cast<uint64_t>(UINT32_MAX))));
+}
+
+uint64_t ArkSteedAssembler::GetEmbeddedLiteralPoolMaxSize() const
+{
+    return EMBEDDED_LITERAL_POOL_PREFIX_RESERVE +
+           static_cast<uint64_t>(pendingEmbeddedLiterals_.size()) * EMBEDDED_LITERAL_SIZE;
+}
+
+void ArkSteedAssembler::EmitEmbeddedLiteralPool(bool precedingCodeCanFallThrough)
+{
+    ASSERT(!emittingEmbeddedLiteralPool_);
+    if (pendingEmbeddedLiterals_.empty()) {
+        nextEmbeddedLiteralPoolCheck_ = UINT32_MAX;
+        return;
+    }
+
+    emittingEmbeddedLiteralPool_ = true;
+    uint32_t guardPc = UINT32_MAX;
+    if (precedingCodeCanFallThrough) {
+        guardPc = GetPcOffset();
+        assembler_.B(0);  // 0: placeholder branch displacement.
+    }
+
+    while ((GetPcOffset() % EMBEDDED_LITERAL_SIZE) != 0) {
+        assembler_.EmitU32(aarch64::Nop);
+    }
+
+    constexpr uint8_t RELOC_WIDTH = sizeof(JSTaggedType);
+    for (const auto &literal : pendingEmbeddedLiterals_) {
+        uint32_t literalOffset = GetPcOffset();
+        ASSERT(literalOffset % EMBEDDED_LITERAL_SIZE == 0);
+        ASSERT(std::all_of(literal->loadOffsets.begin(), literal->loadOffsets.end(),
+                           [literalOffset](uint32_t loadOffset) {
+                               int64_t displacement =
+                                   static_cast<int64_t>(literalOffset) - static_cast<int64_t>(loadOffset);
+                               return displacement >= 0 &&
+                                      displacement <= EMBEDDED_LITERAL_MAX_FORWARD_DISPLACEMENT &&
+                                      displacement % sizeof(uint32_t) == 0;
+                           }));
+        assembler_.Bind(&literal->label);
+        embeddedRefRelocations_.push_back({literalOffset,
+                                          literal->handleIndex,
+                                          EmbeddedCodeRefRelocKind::ARM64_LITERAL64,
+                                          RELOC_WIDTH});
+        assembler_.EmitU64(JSTaggedValue::VALUE_HOLE);
+    }
+
+    if (precedingCodeCanFallThrough) {
+        PatchVeneerBranchTarget(guardPc, GetPcOffset());
+    }
+    pendingEmbeddedLiterals_.clear();
+    embeddedLiteralIndexByHandle_.clear();
+    nextEmbeddedLiteralPoolCheck_ = UINT32_MAX;
+    emittingEmbeddedLiteralPool_ = false;
+}
+
+void ArkSteedAssembler::CheckCodePools(bool precedingCodeCanFallThrough, size_t protectedCodeSize)
+{
+    ASSERT(!emittingVeneerPool_);
+    ASSERT(!emittingEmbeddedLiteralPool_);
+
+    uint64_t protectedCodeEnd = static_cast<uint64_t>(GetPcOffset()) + protectedCodeSize;
+    uint64_t potentialVeneerPoolSize = GetPotentialVeneerPoolSize();
+    bool emitLiteralPool = !pendingEmbeddedLiterals_.empty() &&
+        protectedCodeEnd + potentialVeneerPoolSize >= nextEmbeddedLiteralPoolCheck_;
+    if (emitLiteralPool) {
+        // Veneers emitted before this pool also consume displacement from pending literal loads.
+        uint64_t literalPoolSize = GetEmbeddedLiteralPoolMaxSize();
+        ASSERT(literalPoolSize <= std::numeric_limits<size_t>::max() - protectedCodeSize);
+        CheckVeneerPool(precedingCodeCanFallThrough,
+                        protectedCodeSize + static_cast<size_t>(literalPoolSize));
+        EmitEmbeddedLiteralPool(precedingCodeCanFallThrough);
+    }
+    CheckVeneerPool(precedingCodeCanFallThrough, protectedCodeSize);
 }
 
 void ArkSteedAssembler::UpdateVeneerPoolCheck()
