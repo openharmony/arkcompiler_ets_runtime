@@ -16,6 +16,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/mem/hole_memory.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
@@ -135,6 +136,14 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
     auto allocateBase = region->GetAllocateBase();
     bool shouldPageTag = FreeRegionShouldPageTag(region);
     DecreaseAnnoMemoryUsage(size);
+    // Put anonymous memory back before the range returns to the mem-map pool:
+    // a recycled region must not still be backed by the hole template, or its
+    // next user would see holes instead of zeroes (and PageRelease would keep
+    // restoring them). Not gated on IsEnabled(): a process that disabled the
+    // mechanism after fork still has to release what it mapped before that.
+    if (HoleMemory::IsMappableRegion(region)) {
+        HoleMemory::ReleaseHoleRange(region);
+    }
     region->Invalidate();
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(ToVoidPtr(allocateBase), size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE

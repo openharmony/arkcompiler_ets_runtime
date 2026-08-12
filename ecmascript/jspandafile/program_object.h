@@ -27,6 +27,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/mem/hole_memory.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/patch/quick_fix_manager.h"
@@ -328,9 +329,30 @@ public:
         size_t cacheLength = numOfCache / CACHE_NUM_TO_SIZE_FACTOR;
         SetLength(cacheLength + EXTEND_DATA_NUM + RESERVED_POOL_LENGTH);
         SetExtraLength(extraLength);
-        for (uint32_t i = 0; i < numOfCache; i++) {
-            size_t offset = CompressedJSTaggedValue::CompressedTaggedTypeSize() * i;
-            Barriers::SetPrimitive<CompressedJSTaggedType>(GetData(), offset, initValue.GetCompressedRawData());
+        // A large pool is allocated onto the shared hole template, so most of it
+        // already reads as Hole. Writing those elements would copy-on-write every
+        // page; only the partial pages at either end still need to be written.
+        // Cache slots are compressed: CompressedTaggedTypeSize() wide, written
+        // through SetPrimitive<CompressedJSTaggedType>. Using JSTaggedType here
+        // would stride and store 8 bytes over 4-byte slots.
+        constexpr size_t ELEM = CompressedJSTaggedValue::CompressedTaggedTypeSize();
+        uintptr_t data = reinterpret_cast<uintptr_t>(GetData());
+        uint32_t skipFrom = numOfCache;
+        uint32_t skipTo = numOfCache;
+        uintptr_t skipBegin = 0;
+        uintptr_t skipEnd = 0;
+        if (HoleMemory::SkipRange(data, static_cast<size_t>(numOfCache) * ELEM, ELEM, skipBegin,
+                                  skipEnd)) {
+            skipFrom = static_cast<uint32_t>((skipBegin - data) / ELEM);
+            skipTo = static_cast<uint32_t>((skipEnd - data) / ELEM);
+        }
+        for (uint32_t i = 0; i < skipFrom; i++) {
+            Barriers::SetPrimitive<CompressedJSTaggedType>(GetData(), ELEM * i,
+                                                           initValue.GetCompressedRawData());
+        }
+        for (uint32_t i = skipTo; i < numOfCache; i++) {
+            Barriers::SetPrimitive<CompressedJSTaggedType>(GetData(), ELEM * i,
+                                                           initValue.GetCompressedRawData());
         }
         InitializeWithSpecialValue(thread);
     }

@@ -2518,6 +2518,18 @@ public:
         return enableEvacuateNonMovableSpace_;
     }
 
+    // Back large hole-initialised objects with a shared, copy-on-write template
+    // instead of writing JSTaggedValue::Hole into every page. On by default;
+    bool IsEnableHoleMemory() const
+    {
+        return enableHoleMemory_;
+    }
+
+    void SetEnableHoleMemory(bool value)
+    {
+        enableHoleMemory_ = value;
+    }
+
     static bool ParseBool(const std::string &arg, bool* argBool);
     static bool ParseInt(const std::string &arg, int* argInt);
     static bool ParseUint32(const std::string &arg, uint32_t* argUInt32);
@@ -2855,6 +2867,7 @@ private:
     bool enableGCTimeoutCheck_ {true};
     ArkTSMode arkTSMode_ {ArkTSMode::DYNAMIC};
     bool enableEvacuateNonMovableSpace_ {true};
+    bool enableHoleMemory_ {true};
 };
 } // namespace panda::ecmascript
 

@@ -30,4 +30,9 @@ namespace panda::ecmascript {
     {
         return defaultValue;
     }
+
+    bool IsDisableHoleMemory(bool defaultValue)
+    {
+        return defaultValue;
+    }
 }  // namespace panda::ecmascript

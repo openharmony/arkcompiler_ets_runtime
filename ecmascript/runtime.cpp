@@ -31,6 +31,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/dynamic_object_operator.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/hole_memory.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/parameters.h"
@@ -101,6 +102,13 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         common::Log::Initialize(options.GetLogOptions());
         EcmaVM::InitializeIcuData(options);
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE, options.GetLargeHeap());
+        // Must happen before appspawn forks: the memfd is then inherited by
+        // every application process, which all share its physical pages. It is
+        // created conditionally;
+        // either from this option or, after fork, from the system parameter.
+        if (options.IsEnableHoleMemory()) {
+            HoleMemory::Initialize();
+        }
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
                                                       options.GetPGOHotnessThreshold());
         ASSERT(instance_ == nullptr);
@@ -263,6 +271,8 @@ void Runtime::DestroyIfLastVm()
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
         MemMapAllocator::GetInstance()->Finalize();
+        // After the heap is gone: closes the template fd and logs the totals.
+        HoleMemory::Destroy();
         PGOProfilerManager::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->Destroy();
         if (g_isEnableCMCGC) {
@@ -821,6 +831,12 @@ void Runtime::PostFork(bool enableWarmStartup)
 {
     if (g_isEnableCMCGC) {
         baseInstance_->PostFork(enableWarmStartup);
+    }
+    // Per-application opt-out. The template was created before the fork, so all
+    // this does is stop using it in this process; anything already mapped stays
+    // valid and is still released normally.
+    if (IsDisableHoleMemory(false)) {
+        HoleMemory::Disable("persist.ark.disable.hole.memory");
     }
 }
 
