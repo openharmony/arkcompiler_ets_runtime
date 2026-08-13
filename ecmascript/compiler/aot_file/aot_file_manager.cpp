@@ -593,7 +593,6 @@ void AOTFileManager::InitializeStubEntries(const StubFileInfo &stubInfo)
             // Update runtime map for BC Stub Entries
             stubFileInfo->AddIndexMapping(des.indexInKindOrMethodId_, i);
 #endif
-            thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
             if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
                 LoadingByteCodeStubsLog(des.indexInKindOrMethodId_, codeAddr);
             }
