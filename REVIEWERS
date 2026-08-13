@@ -47,7 +47,7 @@ ecmascript/jobs/             @weng-changcheng @yingguofeng
 ecmascript/js_api/           @huanghello @xliu-huanwei
 ecmascript/jspandafile/      @shilei123 @weng-changcheng ^yingguofeng
 ecmascript/mem/              @dwhuawei @chentianyuu @lukai25 @xiongluo96 @yingguofeng @wanghuan2022
-ecmascript/module/           @yao_dashuai ^weng-changcheng @shilei123
+ecmascript/module/           @yao_dashuai ^weng-changcheng @shilei123 @li-jiangfeng
 ecmascript/napi/             @huanghello @xliu-huanwei ^weng-changcheng @shilei123
 ecmascript/patch/            @wanghuan2022 @lijiamin2019 ^weng-changcheng
 ecmascript/pgo_profiler/     @yingguofeng
