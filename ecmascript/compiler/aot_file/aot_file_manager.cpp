@@ -562,7 +562,6 @@ void AOTFileManager::InitializeStubEntries(const StubFileInfo &stubInfo)
             }
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
-            thread->SetBCStubEntry(des.indexInKindOrMethodId_, codeAddr);
             if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
                 LoadingByteCodeStubsLog(des.indexInKindOrMethodId_, codeAddr);
             }
