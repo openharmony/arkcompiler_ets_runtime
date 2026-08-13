@@ -416,6 +416,7 @@ public:
     static constexpr int FAST_ELEMENTS_FACTOR = 3;
     static constexpr int MIN_GAP = 256;
     static constexpr int MAX_GAP = 1_KB;
+    static constexpr uint32_t LARGE_ARRAY_DELETE_EAGER_LENGTH = 20000;
     static constexpr uint32_t MAX_ELEMENT_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr int MIN_ELEMENTS_HINT_LENGTH = 1_KB;
     static constexpr int MAX_ELEMENTS_HINT_LENGTH = 2_MB;
