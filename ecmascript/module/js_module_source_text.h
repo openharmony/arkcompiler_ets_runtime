@@ -332,11 +332,14 @@ public:
         SetEcmaModuleRecordName(ToUintPtr(ptr));
     }
 
-    inline void DestroyModuleCNativeFields()
+    //keepRecordName is a temporary workaround to preserve ModuleRecordName for the target app, needs proper fix
+    inline void DestroyModuleCNativeFields(bool keepRecordName = false)
     {
         DestroyLazyImportArray();
         DestroyEcmaModuleFilenameString();
-        DestroyEcmaModuleRecordNameString();
+        if (LIKELY(!keepRecordName)) {
+            DestroyEcmaModuleRecordNameString();
+        }
     }
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;

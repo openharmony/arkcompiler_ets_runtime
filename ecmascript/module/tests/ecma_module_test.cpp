@@ -6379,7 +6379,6 @@ HWTEST_F_L0(EcmaModuleTest, ModuleManager_NativeObjDestroy_SendableModules)
     JSHandle<JSTaggedValue> afterDestroy = moduleManager->TryGetSendableModule(recordName);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(afterDestroy);
     EXPECT_EQ(module->GetEcmaModuleFilenameString(), "");
-    EXPECT_EQ(module->GetEcmaModuleRecordNameString(), "");
 }
 
 HWTEST_F_L0(EcmaModuleTest, AddSendableModuleToCache_DuplicateName)
