@@ -252,4 +252,33 @@ HWTEST_F_L0(RuntimeTest, ConcurrentLoadStubFileRace)
         }
     }
 }
+
+HWTEST_F_L0(RuntimeTest, AdjustBCStubAndDebuggerStubEntriesTest)
+{
+    using BytecodeStubCSigns = ecmascript::kungfu::BytecodeStubCSigns;
+    std::thread t1([]() {
+        RuntimeOption option;
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        option.SetEnableAsmInterpreter(true);  // ensures LoadStubFile() -> InitializeStubEntries() runs
+        EcmaVM *vm = JSNApi::CreateJSVM(option);
+        ASSERT_TRUE(vm != nullptr);
+        JSThread *thread = vm->GetJSThread();
+        // Verify every BC debug entry got patched to the debugger stub addr,
+        // except the exception handler slot, which should hold the exception addr.
+        uint64_t debuggerAddr = thread->GetBCDebugStubEntry(0);
+        ASSERT_NE(debuggerAddr, 0u);
+        for (size_t i = 0; i < BCStubEntries::EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT; i++) {
+            if (i == BytecodeStubCSigns::ID_ExceptionHandler) {
+                EXPECT_NE(thread->GetBCDebugStubEntry(i), debuggerAddr);
+            } else {
+                EXPECT_EQ(thread->GetBCDebugStubEntry(i), debuggerAddr);
+            }
+        }
+        JSNApi::DestroyJSVM(vm);
+    });
+    {
+        ecmascript::ThreadSuspensionScope scope(thread);
+        t1.join();
+    }
+}
 }

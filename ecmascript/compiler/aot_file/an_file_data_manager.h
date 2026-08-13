@@ -94,15 +94,15 @@ private:
     std::string UnSafeGetAnFileNameNoSuffix(uint32_t index);
 
     RWLock lock_ {};
-#if defined(STUB_FUNCTION_REORDERING)
-    std::once_flag stubEntriesInitFlag_;
-#endif
     std::vector<std::string> anFileNameVector_ {};
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};  // keep the same order with anFileNameVector_
     std::unordered_map<CString, uint32_t> fullFileNameToChecksumMap_ {};
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
     std::string anDir_;
     bool anEnable_ {false};
+#if defined(STUB_FUNCTION_REORDERING)
+    bool stubEntriesInitFlag_ {false};
+#endif
     NO_COPY_SEMANTIC(AnFileDataManager);
     NO_MOVE_SEMANTIC(AnFileDataManager);
 };
