@@ -37,6 +37,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/profile_type_info_cell.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/string/base_string.h"
@@ -6419,6 +6420,41 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
+    bool TryBuildTypedArrayElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                       const ElementLoadAccessInfo &accessInfo)
+    {
+        if (accessInfo.kind != ElementLoadKind::TYPED_ARRAY ||
+            HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+            return false;
+        }
+
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
+            !receiverHClass->IsTypedArray()) {
+            return false;
+        }
+        JSType objectType = receiverHClass->GetObjectType();
+        if (objectType <= JSType::JS_TYPED_ARRAY_FIRST || objectType > JSType::JS_FLOAT64_ARRAY ||
+            HandlerBase::IsOnHeap(accessInfo.handlerInfo) != receiverHClass->IsOnHeapFromBitField() ||
+            !BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
+            return false;
+        }
+
+        ValueVertex *index = BuildCheckedTaggedIntToI32(key);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        BuildDeoptIfInt32Condition(
+            index, zero, IntConditionKind::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
+
+        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
+            currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(
+            index, length, IntConditionKind::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        CommonStubCallToAccWithLazyDeopt(
+            {glue, receiver, index, GlobalEnv()}, CommonStubID::GetPropertyByIndex);
+        return true;
+    }
+
     bool TryBuildElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
                              const ValueLoadAccessSet &access)
     {
@@ -6431,6 +6467,8 @@ struct GraphBuilder::BytecodeVisitor {
                 return TryBuildNormalElementLoad(bcIndex, receiver, key, accessInfo);
             case ElementLoadKind::STRING:
                 return TryBuildStringElementLoad(bcIndex, receiver, key, accessInfo);
+            case ElementLoadKind::TYPED_ARRAY:
+                return TryBuildTypedArrayElementLoad(bcIndex, receiver, key, accessInfo);
             default:
                 return false;
         }

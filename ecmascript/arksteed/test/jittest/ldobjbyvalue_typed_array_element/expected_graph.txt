@@ -1,0 +1,5 @@
+CallCommonStub [COStub_GetPropertyByIndex]
+DeoptIfHClassMismatch
+LoadInt32Field [Int32]
+DeoptIfInt32Condition
+CallCommonStub [COStub_GetPropertyByValue]
