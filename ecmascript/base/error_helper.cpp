@@ -20,7 +20,6 @@
 #include "ecmascript/platform/log.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
-#include "ecmascript/extractortool/src/source_map.h"
 
 namespace panda::ecmascript::base {
 JSTaggedValue ErrorHelper::ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType)
@@ -194,9 +193,9 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     std::string stackTrace = BuildStackTraceWithLimit(thread, nativeInstanceObj);
     JSHandle<EcmaString> stackTraceStr = factory->NewFromStdString(stackTrace);
     JSHandle<EcmaString> cbStackTraceStr;
-    if (!stackTrace.empty()) {
-        std::string translated = SourceMap::GetInstance().TranslateBySourceMap(stackTrace);
-        cbStackTraceStr = factory->NewFromStdString(translated);
+    auto sourceMapcb = ecmaVm->GetSourceMapCallback();
+    if (sourceMapcb != nullptr && !stackTrace.empty()) {
+        cbStackTraceStr = factory->NewFromStdString(sourceMapcb(stackTrace.c_str()));
     } else {
         cbStackTraceStr = stackTraceStr;
     }

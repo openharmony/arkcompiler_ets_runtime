@@ -906,6 +906,23 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SetMockModuleList)
 }
 
 /**
+ * @tc.number: ffi_interface_api_092
+ * @tc.name: SetSourceMapTranslateCallback
+ * @tc.desc: Whether the source mapping translation callback function used to verify the settings.
+ * was successfully set
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNAPI_SetSourceMapTranslateCallback)
+{
+    LocalScope scope(vm_);
+    SourceMapTranslateCallback tag { nullptr };
+    JSNApi::SetSourceMapTranslateCallback(vm_, tag);
+    SourceMapTranslateCallback cur = vm_->GetSourceMapTranslateCallback();
+    ASSERT_EQ(nullptr, cur);
+}
+
+/**
  * @tc.number: ffi_interface_api_093
  * @tc.name: ExecutePendingJob
  * @tc.desc: Used to verify whether the pending task has been successfully executed.
@@ -1723,6 +1740,25 @@ HWTEST_F_L0(JSNApiTests, JSNApiInitForConcurrentFunction)
     void *taskInfo = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     Local<JSValueRef> function = FunctionRef::New(vm_, FunctionCallback);
     EXPECT_FALSE(JSNApi::InitForConcurrentFunction(vm_, function, taskInfo));
+}
+
+/**
+ * @tc.number: ffi_interface_api_131
+ * @tc.name: GetStackBeforeCallNapiSuccess
+ * @tc.desc: Used to verify whether the function of setting the map container module was successful.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetStackBeforeCallNapiSuccess)
+{
+    LocalScope scope(vm_);
+    SourceMapCallback callback { nullptr };
+    JSNApi::SetSourceMapCallback(vm_, callback);
+    vm_->GetJSThread()->SetIsProfiling(false);
+    bool getStackBeforeCallNapiSuccess = false;
+    JSNApi::GetStackBeforeCallNapiSuccess(vm_, getStackBeforeCallNapiSuccess);
+    JSNApi::GetStackAfterCallNapi(vm_);
+    EXPECT_FALSE(getStackBeforeCallNapiSuccess);
 }
 
 /**
