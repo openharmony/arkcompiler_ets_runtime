@@ -384,7 +384,6 @@ public:
     {
         DestroyLazyImportArray();
         DestroyEcmaSharedModuleFilenameString();
-        DestroyEcmaModuleRecordNameString();
     }
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;

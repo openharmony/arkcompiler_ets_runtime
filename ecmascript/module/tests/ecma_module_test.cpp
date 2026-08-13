@@ -364,7 +364,6 @@ HWTEST_F_L0(EcmaModuleTest, SharedNativeObjDestroyReleasesModuleFilename)
     sharedModuleManager->SharedNativeObjDestroy();
 
     EXPECT_EQ(sharedModule->GetEcmaModuleFilename(), 0U);
-    EXPECT_EQ(sharedModule->GetEcmaModuleRecordNameString(), "");
 #if ENABLE_MODULE_MEMORY_OPTIMIZATION
     EXPECT_EQ(sharedModuleManager->GetModuleFilenameStorageSizeForTest(), storageSize);
 #endif
@@ -422,7 +421,6 @@ HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithSendableModule)
     EXPECT_EQ(localModule->GetEcmaModuleFilename(), 0U);
     EXPECT_EQ(sendableModule->GetEcmaModuleFilename(), 0U);
     EXPECT_EQ(localModule->GetEcmaModuleRecordNameString(), "");
-    EXPECT_EQ(sendableModule->GetEcmaModuleRecordNameString(), "");
 #if ENABLE_MODULE_MEMORY_OPTIMIZATION
     EXPECT_EQ(moduleManager->GetModuleFilenameStorageSizeForTest(), localStorageSize);
     EXPECT_EQ(sharedModuleManager->GetModuleFilenameStorageSizeForTest(), sharedStorageSize);
@@ -6911,7 +6909,6 @@ HWTEST_F_L0(EcmaModuleTest, ModuleManager_NativeObjDestroy_SendableModules)
     JSHandle<JSTaggedValue> afterDestroy = moduleManager->TryGetSendableModule(recordName);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(afterDestroy);
     EXPECT_EQ(module->GetEcmaModuleFilenameString(), "");
-    EXPECT_EQ(module->GetEcmaModuleRecordNameString(), "");
 }
 
 HWTEST_F_L0(EcmaModuleTest, AddSendableModuleToCache_DuplicateName)
