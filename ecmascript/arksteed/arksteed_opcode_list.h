@@ -42,6 +42,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(Call)                             \
     V(CallRuntime)                      \
     V(CallCommonStub)                   \
+    V(StringLoadElement)                \
     V(Phi)                              \
     V(LoadTaggedFromAddress)            \
     V(LoadI32FromAddress)               \

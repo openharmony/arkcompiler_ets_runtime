@@ -2755,6 +2755,15 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallComm
     __ FreeCallArgSlots(stackArgCount);
 }
 
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<StringLoadElementVertex>(StringLoadElementVertex *load)
+{
+    int stackArgCount = PrepareCommonStubStackArguments(load, load->GetInputCount());
+    __ CallCommonStub(CommonStubID::StringLoadElement);
+    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
+    __ FreeCallArgSlots(stackArgCount);
+}
+
 bool ArkSteedCodeGenerator::AllPredecessorsDeferred(BB *block) const
 {
     bool allDeferred = true;

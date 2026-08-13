@@ -1627,6 +1627,30 @@ private:
     SideEffectKind sideEffectKind_;
 };
 
+class StringLoadElementVertex : public FixedInputVertexMixin<ValueVertex, StringLoadElementVertex> {
+public:
+    enum Indices : uint32_t {
+        GLUE_INDEX = 0,
+        STRING_INDEX = 1,
+        ELEMENT_INDEX = 2,
+        GLOBAL_ENV_INDEX = 3,
+        NUM_INPUTS = 4,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::INT64,
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES =
+        VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ;
+
+    explicit StringLoadElementVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
 class TaggedIntToI32Vertex : public FixedInputVertexMixin<ValueVertex, TaggedIntToI32Vertex> {
 public:
     enum Indices : uint32_t {

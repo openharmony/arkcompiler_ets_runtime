@@ -1,0 +1,7 @@
+StringLoadElement [COStub_StringLoadElement]
+CallCommonStub [COStub_CreateStringBySingleCharCode]
+DeoptIfHClassMismatch
+LoadInt32Field [Int32]
+I32BitwiseBinary [Int32]
+DeoptIfInt32Condition
+CallCommonStub [COStub_GetPropertyByValue]

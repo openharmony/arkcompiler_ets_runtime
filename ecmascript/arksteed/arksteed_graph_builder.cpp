@@ -39,6 +39,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
+#include "ecmascript/string/base_string.h"
 
 namespace panda::ecmascript::arksteed {
 namespace {
@@ -6382,13 +6383,57 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
+    bool TryBuildStringElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                   const ElementLoadAccessInfo &accessInfo)
+    {
+        if (accessInfo.kind != ElementLoadKind::STRING ||
+            HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+            return false;
+        }
+
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
+            !receiverHClass->IsString() || receiverHClass->GetObjectType() == JSType::TREE_STRING ||
+            !BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
+            return false;
+        }
+
+        ValueVertex *index = BuildCheckedTaggedIntToI32(key);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        BuildDeoptIfInt32Condition(
+            index, zero, Condition::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
+
+        ValueVertex *lengthAndFlags = self->NewVertex<LoadInt32FieldVertex>(
+            currentBlock, {receiver}, static_cast<int32_t>(BaseString::LENGTH_AND_FLAGS_OFFSET));
+        ValueVertex *lengthShift =
+            self->graph_->GetInt32Constant(static_cast<int32_t>(BaseString::LengthBits::START_BIT));
+        ValueVertex *length = self->NewVertex<I32BitwiseBinaryVertex>(
+            currentBlock, {lengthAndFlags, lengthShift}, IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
+        BuildDeoptIfInt32Condition(
+            index, length, Condition::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        ValueVertex *charCode = self->NewVertex<StringLoadElementVertex>(
+            compileInfoFacts_, currentBlock, {glue, receiver, index, GlobalEnv()});
+        CommonStubCallToAccWithLazyDeopt(
+            {glue, charCode, GlobalEnv()}, CommonStubID::CreateStringBySingleCharCode);
+        return true;
+    }
+
     bool TryBuildElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
                              const ValueLoadAccessSet &access)
     {
         if (access.kind != ValueLoadAccessKind::ELEMENT || access.feedback.isPoly || access.elementCount != 1) {
             return false;
         }
-        return TryBuildNormalElementLoad(bcIndex, receiver, key, access.elements[0]);
+        const ElementLoadAccessInfo &accessInfo = access.elements[0];
+        switch (accessInfo.kind) {
+            case ElementLoadKind::NORMAL:
+                return TryBuildNormalElementLoad(bcIndex, receiver, key, accessInfo);
+            case ElementLoadKind::STRING:
+                return TryBuildStringElementLoad(bcIndex, receiver, key, accessInfo);
+            default:
+                return false;
+        }
     }
 
     bool TryBuildLoadPropertyByValue(

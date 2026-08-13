@@ -177,6 +177,12 @@ void CallCommonStubVertex::SetValueLocationConstraints()
     UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
+void StringLoadElementVertex::SetValueLocationConstraints()
+{
+    DefineAsFixed(this, 0);
+    SetStubValueLocationConstraints(this, GetInputCount());
+}
+
 void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
