@@ -210,6 +210,8 @@ public:
     bool GetFeedbackForNamedAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
                                    NamedAccessFeedback *feedback) const;
 
+    bool GetFeedbackForValueAccess(const ArkSteedFeedbackReader &reader, ValueAccessFeedback *feedback) const;
+
     bool GetFeedbackForOperation(const ArkSteedFeedbackReader &reader, OperationFeedback *feedback) const;
 
     bool TryGetCachedNamedAccessFeedback(AccessFeedbackSource source, NamedAccessFeedback *feedback) const
@@ -229,6 +231,22 @@ public:
         namedAccessFeedbackCache_[index] = {true, feedback.base.source, feedback};
     }
 
+    bool TryGetCachedValueAccessFeedback(uint32_t slotId, ValueAccessFeedback *feedback) const
+    {
+        const auto &entry = valueAccessFeedbackCache_[slotId % FEEDBACK_CACHE_SIZE];
+        if (!entry.valid || entry.source.slotId != slotId) {
+            return false;
+        }
+        *feedback = entry.feedback;
+        return true;
+    }
+
+    void CacheValueAccessFeedback(const ValueAccessFeedback &feedback) const
+    {
+        uint32_t index = feedback.base.source.slotId % FEEDBACK_CACHE_SIZE;
+        valueAccessFeedbackCache_[index] = {true, feedback.base.source, feedback};
+    }
+
 private:
     static constexpr uint32_t FEEDBACK_CACHE_SIZE = 16;
 
@@ -236,6 +254,12 @@ private:
         bool valid {false};
         AccessFeedbackSource source {};
         NamedAccessFeedback feedback {};
+    };
+
+    struct ValueAccessFeedbackCacheEntry {
+        bool valid {false};
+        AccessFeedbackSource source {};
+        ValueAccessFeedback feedback {};
     };
 
     static bool IsSameFeedbackSource(AccessFeedbackSource left, AccessFeedbackSource right)
@@ -268,6 +292,7 @@ private:
     JitCompilationEnv *env_ {nullptr};
     mutable ArkSteedBrokerMode mode_ {ArkSteedBrokerMode::SERIALIZED};
     mutable std::array<NamedAccessFeedbackCacheEntry, FEEDBACK_CACHE_SIZE> namedAccessFeedbackCache_ {};
+    mutable std::array<ValueAccessFeedbackCacheEntry, FEEDBACK_CACHE_SIZE> valueAccessFeedbackCache_ {};
 };
 
 }  // namespace panda::ecmascript::arksteed

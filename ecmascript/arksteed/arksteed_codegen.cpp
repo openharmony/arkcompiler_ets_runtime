@@ -1184,6 +1184,16 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfPrototypeChangedVertex>
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfTaggedConditionVertex>(
+    DeoptIfTaggedConditionVertex *check)
+{
+    auto left = GetInputRegister(check, DeoptIfTaggedConditionVertex::LEFT_INDEX);
+    auto right = GetInputRegister(check, DeoptIfTaggedConditionVertex::RIGHT_INDEX);
+    __ Compare(left, right);
+    BranchToEagerDeoptTarget(check->GetCondition(), check, check->GetDeoptType());
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(DeoptIfInt32ConditionVertex *check)
 {
     auto left = GetInputRegister(check, DeoptIfInt32ConditionVertex::LEFT_INDEX);
@@ -1288,6 +1298,23 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedFieldVertex>(LoadTag
     auto dst = GetResultRegister(loadField);
     auto obj = GetInputRegister(loadField, LoadTaggedFieldVertex::OBJECT_INDEX);
     __ LoadField(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadInt32FieldVertex>(LoadInt32FieldVertex *loadField)
+{
+    auto dst = GetResultRegister(loadField);
+    auto obj = GetInputRegister(loadField, LoadInt32FieldVertex::OBJECT_INDEX);
+    __ LoadInt32Field(dst, obj, loadField->GetOffset());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedElementVertex>(LoadTaggedElementVertex *loadElement)
+{
+    auto dst = GetResultRegister(loadElement);
+    auto elements = GetInputRegister(loadElement, LoadTaggedElementVertex::ELEMENTS_INDEX);
+    auto index = GetInputRegister(loadElement, LoadTaggedElementVertex::INDEX_INDEX);
+    __ LoadTaggedElement(dst, elements, index);
 }
 
 template <>

@@ -26,6 +26,7 @@
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/method.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::arksteed {
 #if defined(PANDA_TARGET_AMD64)
@@ -125,6 +126,12 @@ void ArkSteedAssembler::LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister ba
 {
     x64::Operand operand(base, offset);
     assembler_.Movl(operand, dst);
+}
+
+void ArkSteedAssembler::LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister elements, ArkSteedRegister index)
+{
+    x64::Operand operand(elements, index, x64::Scale::Times8, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
+    assembler_.Movq(operand, dst);
 }
 
 void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)

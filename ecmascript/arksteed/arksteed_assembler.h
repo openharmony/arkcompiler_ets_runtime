@@ -140,6 +140,7 @@ public:
 
     void LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
+    void LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister elements, ArkSteedRegister index);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);

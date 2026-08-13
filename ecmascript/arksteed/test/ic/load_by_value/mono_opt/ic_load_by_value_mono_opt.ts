@@ -14,6 +14,12 @@
  */
 
 // @ts-nocheck
+//! PARAMS --compiler-jit-hotness-threshold=10000
+//! METHOD foo
+//! HAS DeoptIfTaggedCondition
+//! HAS DeoptIfHClassMismatch
+//! HAS LoadTaggedField
+//! HAS_NOT CallCommonStub GetPropertyByValue
 declare function print(arg: any): string;
 
 let a = {x:1, y:2};

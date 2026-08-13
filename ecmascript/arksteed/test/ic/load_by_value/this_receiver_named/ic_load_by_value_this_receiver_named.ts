@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,24 +15,27 @@
 
 // @ts-nocheck
 //! PARAMS --compiler-jit-hotness-threshold=10000
-//! METHOD foo
+//! METHOD load
 //! HAS DeoptIfTaggedCondition
 //! HAS DeoptIfHClassMismatch
 //! HAS LoadTaggedField
 //! HAS_NOT CallCommonStub GetPropertyByValue
 declare function print(arg: any): string;
 
-let a = {x:1, y:2};
+class Box {
+    x = 81;
+    y = 64;
 
-function foo(obj, key) {
-    return obj[key];
+    load(key) {
+        return this[key];
+    }
 }
 
+const box = new Box();
 for (let i = 0; i < 1000; i++) {
-    foo(a, "x");
+    box.load("x");
 }
-ArkTools.arkSteedCompileSync(foo);
-print(true);
-print(foo(a, "y"));
-ArkTools.printTypedOpProfiler("INTERN_STRING_KEY_CHECK");
-ArkTools.clearTypedOpProfiler();
+
+ArkTools.arkSteedCompileSync(Box.prototype.load);
+print(box.load("x"));
+print(box.load("y"));

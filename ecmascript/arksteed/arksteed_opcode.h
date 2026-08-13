@@ -830,6 +830,44 @@ public:
     void SetValueLocationConstraints();
 };
 
+class LoadInt32FieldVertex : public FixedInputVertexMixin<ValueVertex, LoadInt32FieldVertex>,
+                             public OffsetMixin {
+public:
+    enum Indices : uint32_t {
+        OBJECT_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+
+    explicit LoadInt32FieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset)
+    {}
+
+    void SetValueLocationConstraints();
+};
+
+class LoadTaggedElementVertex : public FixedInputVertexMixin<ValueVertex, LoadTaggedElementVertex> {
+public:
+    enum Indices : uint32_t {
+        ELEMENTS_INDEX = 0,
+        INDEX_INDEX = 1,
+        NUM_INPUTS = 2,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+
+    explicit LoadTaggedElementVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
 class LoadPrototypeFromObjectVertex : public FixedInputVertexMixin<ValueVertex, LoadPrototypeFromObjectVertex> {
 public:
     enum Indices : uint32_t {
@@ -2470,6 +2508,46 @@ public:
 private:
     bool checkProtoChangeMarker_ {false};
     bool checkNotPrototype_ {false};
+};
+
+class DeoptIfTaggedConditionVertex : public VertexMixin<NonControlVertex, DeoptIfTaggedConditionVertex>,
+                                     public EagerDeoptimizableMixin,
+                                     public ConditionMixin {
+public:
+    enum Indices : uint32_t {
+        LEFT_INDEX = 0,
+        RIGHT_INDEX = 1,
+        NUM_INPUTS = 2,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
+
+    explicit DeoptIfTaggedConditionVertex(Chunk *chunk, uint32_t bytecodeOffset,
+                                          Condition condition, kungfu::DeoptType deoptType)
+        : VertexMixin(),
+          EagerDeoptimizableMixin(chunk, bytecodeOffset),
+          ConditionMixin(condition),
+          deoptType_(deoptType)
+    {
+        ASSERT(condition == Condition::EQUAL || condition == Condition::NOT_EQUAL);
+    }
+
+    kungfu::DeoptType GetDeoptType() const
+    {
+        return deoptType_;
+    }
+
+    void SetValueLocationConstraints();
+
+    void VerifyInputs() const
+    {
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+        ASSERT(GetInput(RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
+    }
+
+private:
+    kungfu::DeoptType deoptType_;
 };
 
 class DeoptIfInt32ConditionVertex : public VertexMixin<NonControlVertex, DeoptIfInt32ConditionVertex>,

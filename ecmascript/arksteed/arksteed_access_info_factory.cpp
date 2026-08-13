@@ -54,6 +54,14 @@ bool IsNamedLoadBytecode(kungfu::EcmaOpcode opcode)
         opcode == kungfu::EcmaOpcode::LDOBJBYNAME_IMM16_ID16;
 }
 
+bool IsValueLoadBytecode(kungfu::EcmaOpcode opcode)
+{
+    return opcode == kungfu::EcmaOpcode::LDOBJBYVALUE_IMM8_V8 ||
+        opcode == kungfu::EcmaOpcode::LDOBJBYVALUE_IMM16_V8 ||
+        opcode == kungfu::EcmaOpcode::LDTHISBYVALUE_IMM8 ||
+        opcode == kungfu::EcmaOpcode::LDTHISBYVALUE_IMM16;
+}
+
 bool IsNamedStoreInputShape(const kungfu::BytecodeInfo &bytecodeInfo)
 {
     return bytecodeInfo.inputs.size() == NAMED_STORE_INPUT_COUNT &&
@@ -497,17 +505,18 @@ bool ArkSteedAccessInfoFactory::TryBuildNamedLoadAccessInfo(int slotIndex, Named
         return false;
     }
     ArkSteedHeapBroker::SerializingScope scope(broker_, "ArkSteedAccessInfoFactory::TryBuildNamedLoadAccessInfo");
-    return ComputeNamedLoadAccessInfo(feedback, access);
+    return ComputeNamedLoadAccessInfo(feedback, AccessFeedbackSlotKind::NAMED_LOAD, access);
 }
 
 bool ArkSteedAccessInfoFactory::ComputeNamedLoadAccessInfo(const NamedAccessFeedback &feedback,
+                                                           AccessFeedbackSlotKind slotKind,
                                                            NamedLoadAccessSet *access) const
 {
     *access = {};
     access->slotId = feedback.base.source.slotId;
     access->isPoly = feedback.base.source.isPoly;
     access->feedback = feedback.base.source;
-    access->feedback.slotKind = AccessFeedbackSlotKind::NAMED_LOAD;
+    access->feedback.slotKind = slotKind;
 
     for (uint32_t i = 0; i < feedback.caseCount && access->caseCount < MAX_NAMED_IC_POLY_CASES; ++i) {
         NamedLoadAccessInfo info;
@@ -528,6 +537,72 @@ bool ArkSteedAccessInfoFactory::ComputeNamedLoadAccessInfo(const NamedAccessFeed
         *access = {};
         return false;
     }
+    return true;
+}
+
+bool ArkSteedAccessInfoFactory::TryBuildValueLoadAccessInfo(ValueLoadAccessSet *access) const
+{
+    *access = {};
+    if (!IsValueLoadBytecode(bytecodeInfo_.GetOpcode())) {
+        return false;
+    }
+
+    ValueAccessFeedback feedback;
+    if (!broker_->GetFeedbackForValueAccess(feedbackReader_, &feedback)) {
+        return false;
+    }
+
+    access->feedback = feedback.base.source;
+    access->feedback.slotKind = AccessFeedbackSlotKind::VALUE_LOAD;
+    ArkSteedHeapBroker::SerializingScope scope(broker_, "ArkSteedAccessInfoFactory::TryBuildValueLoadAccessInfo");
+    if (feedback.kind == ValueAccessFeedbackKind::NAMED) {
+        NamedAccessFeedback namedFeedback;
+        namedFeedback.base = feedback.base;
+        namedFeedback.name = feedback.key;
+        namedFeedback.cases = feedback.cases;
+        namedFeedback.caseCount = feedback.caseCount;
+        if (!ComputeNamedLoadAccessInfo(namedFeedback, AccessFeedbackSlotKind::VALUE_LOAD, &access->named)) {
+            *access = {};
+            return false;
+        }
+        access->kind = ValueLoadAccessKind::NAMED;
+        access->key = feedback.key;
+        return true;
+    }
+
+    if (feedback.kind != ValueAccessFeedbackKind::ELEMENT) {
+        *access = {};
+        return false;
+    }
+    for (uint32_t index = 0; index < feedback.caseCount; ++index) {
+        JSTaggedValue handler;
+        if (!broker_->TryResolveRef(feedback.cases[index].handler, &handler) || !handler.IsInt()) {
+            *access = {};
+            return false;
+        }
+        uint64_t handlerInfo = handler.GetLargeUInt();
+        ElementLoadKind kind = ElementLoadKind::UNSUPPORTED;
+        if (HandlerBase::IsNormalElement(handlerInfo)) {
+            kind = ElementLoadKind::NORMAL;
+        } else if (HandlerBase::IsStringElement(handlerInfo)) {
+            kind = ElementLoadKind::STRING;
+        } else if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
+            kind = ElementLoadKind::TYPED_ARRAY;
+        } else {
+            *access = {};
+            return false;
+        }
+        access->elements[access->elementCount++] = {
+            .expectedHClass = feedback.cases[index].expectedHClass,
+            .handlerInfo = handlerInfo,
+            .kind = kind,
+        };
+    }
+    if (access->elementCount == 0) {
+        *access = {};
+        return false;
+    }
+    access->kind = ValueLoadAccessKind::ELEMENT;
     return true;
 }
 

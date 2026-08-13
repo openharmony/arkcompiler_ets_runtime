@@ -35,6 +35,7 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/ic/profile_type_info_cell.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
@@ -1178,7 +1179,7 @@ struct GraphBuilder::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
             case kungfu::EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
-                LowerLdObjByValue(bcInfo);
+                LowerLdObjByValue(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
             case kungfu::EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
@@ -1199,7 +1200,7 @@ struct GraphBuilder::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::LDTHISBYVALUE_IMM8:
             case kungfu::EcmaOpcode::LDTHISBYVALUE_IMM16:
-                LowerLdThisByValue(bcInfo);
+                LowerLdThisByValue(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::STTHISBYVALUE_IMM8_V8:
             case kungfu::EcmaOpcode::STTHISBYVALUE_IMM16_V8:
@@ -2001,10 +2002,13 @@ struct GraphBuilder::BytecodeVisitor {
         CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
     }
 
-    void LowerLdObjByValue(const BytecodeInfo *bcInfo)
+    void LowerLdObjByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = frameState.GetAcc();
+        if (TryBuildLoadPropertyByValue(bcInfo, bcIndex, receiver, key)) {
+            return;
+        }
         CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
     }
 
@@ -2031,10 +2035,13 @@ struct GraphBuilder::BytecodeVisitor {
         CommonStubCallWithLazyDeopt({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StObjByIndex);
     }
 
-    void LowerLdThisByValue(const BytecodeInfo *bcInfo)
+    void LowerLdThisByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *key = frameState.GetAcc();
+        if (TryBuildLoadPropertyByValue(bcInfo, bcIndex, receiver, key)) {
+            return;
+        }
         CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
     }
 
@@ -3677,7 +3684,8 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
         JSTaggedValue name = JSTaggedValue::Undefined();
-        if (hclass == nullptr || broker == nullptr || !broker->TryResolveRef(nameRef, &name) || !name.IsString()) {
+        if (hclass == nullptr || broker == nullptr || !broker->TryResolveRef(nameRef, &name) ||
+            (!name.IsString() && !name.IsSymbol())) {
             return std::nullopt;
         }
         return JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, hclass, name);
@@ -3706,13 +3714,9 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(
-        const PropertyAccessInfo &accessInfo, JSHClass *holderHClass, uint16_t constDataId) const
+        const PropertyAccessInfo &accessInfo, JSHClass *holderHClass, const ArkSteedNameRef &nameRef) const
     {
-        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
-        if (!nameRef.has_value()) {
-            return std::nullopt;
-        }
-        std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(holderHClass, nameRef.value());
+        std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(holderHClass, nameRef);
         if (!maybePlr.has_value()) {
             return std::nullopt;
         }
@@ -3730,8 +3734,18 @@ struct GraphBuilder::BytecodeVisitor {
         return plr;
     }
 
+    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(
+        const PropertyAccessInfo &accessInfo, JSHClass *holderHClass, uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        return TryMakePropertyLookupResultFromAccessInfo(accessInfo, holderHClass, nameRef.value());
+    }
+
     NamedLoadAccessInfoOpt TryConvertNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo,
-                                                         uint16_t constDataId) const
+                                                         const ArkSteedNameRef &nameRef) const
     {
         if (!IsSupportedNamedLoadAccessInfo(accessInfo)) {
             return std::nullopt;
@@ -3773,7 +3787,7 @@ struct GraphBuilder::BytecodeVisitor {
             }
         }
         std::optional<PropertyLookupResult> plr =
-            TryMakePropertyLookupResultFromAccessInfo(accessInfo, holderHClass, constDataId);
+            TryMakePropertyLookupResultFromAccessInfo(accessInfo, holderHClass, nameRef);
         if (!plr.has_value()) {
             return std::nullopt;
         }
@@ -3791,6 +3805,16 @@ struct GraphBuilder::BytecodeVisitor {
             .hasStableProtoChain = hasStableProtoChain,
         };
         return result;
+    }
+
+    NamedLoadAccessInfoOpt TryConvertNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                         uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        return TryConvertNamedLoadAccessInfo(accessInfo, nameRef.value());
     }
 
     static bool HasSameLoadFieldAccess(const NamedLoadAccessInfo &lhs, const NamedLoadAccessInfo &rhs)
@@ -3815,11 +3839,11 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const PropertyAccessSet &accessSet,
-                                                           uint16_t constDataId) const
+                                                           const ArkSteedNameRef &nameRef) const
     {
         std::vector<NamedLoadAccessInfo> result;
         for (uint32_t i = 0; i < accessSet.caseCount && i < accessSet.cases.size(); ++i) {
-            NamedLoadAccessInfoOpt accessInfo = TryConvertNamedLoadAccessInfo(accessSet.cases[i], constDataId);
+            NamedLoadAccessInfoOpt accessInfo = TryConvertNamedLoadAccessInfo(accessSet.cases[i], nameRef);
             if (!accessInfo.has_value()) {
                 return std::nullopt;
             }
@@ -3849,6 +3873,15 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const PropertyAccessSet &accessSet,
+                                                           uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        return TryGetLoadObjByNameAccessInfos(accessSet, nameRef.value());
+    }
     std::optional<int32_t> TryGetInt32Value(ValueVertex *value) const
     {
         if (value == nullptr) {
@@ -6111,10 +6144,9 @@ struct GraphBuilder::BytecodeVisitor {
             TryLowerMixedPolyNamedStores(bcIndex, access, receiver, value);
     }
 
-    ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, uint16_t constDataId,
+    ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, const LoadedPropertyKey &key,
                                       const NamedLoadAccessInfo &accessInfo)
     {
-        LoadedPropertyKey key = LoadedPropertyKey::ConstDataId(object, constDataId, accessInfo.plr);
         ValueVertex *cached = compileInfoFacts_->LookupLoadedProperty(key);
         if (cached == nullptr) {
             cached = compileInfoFacts_->LookupLoadedConstantProperty(key);
@@ -6216,7 +6248,8 @@ struct GraphBuilder::BytecodeVisitor {
                                 accessInfo.canAssumeStableHClasses)) {
             return false;
         }
-        ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, constDataId, accessInfo);
+        LoadedPropertyKey propertyKey = LoadedPropertyKey::ConstDataId(receiver, constDataId, accessInfo.plr);
+        ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, propertyKey, accessInfo);
         if (result == nullptr) {
             return false;
         }
@@ -6241,6 +6274,159 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
         return true;
+    }
+
+    ValueVertex *LoadValueFeedbackKey(uint32_t slotId)
+    {
+        ValueVertex *function = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *profileCell = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {function}, static_cast<int32_t>(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+        ValueVertex *profile = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {profileCell}, static_cast<int32_t>(ProfileTypeInfoCell::VALUE_OFFSET));
+        int32_t slotOffset = static_cast<int32_t>(
+            ProfileTypeInfo::DATA_OFFSET + slotId * JSTaggedValue::TaggedTypeSize());
+        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {profile}, slotOffset);
+    }
+
+    void BuildCheckValueKey(uint32_t bcIndex, ValueVertex *key, uint32_t slotId)
+    {
+        ValueVertex *cachedKey = LoadValueFeedbackKey(slotId);
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        auto *check = self->NewVertex<DeoptIfTaggedConditionVertex>(
+            currentBlock, {key, cachedKey}, self->chunk_, self->preproc_->GetBytecodeOffset(bcIndex),
+            Condition::NOT_EQUAL, kungfu::DeoptType::KEYMISSMATCH);
+        check->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    bool TryBuildNamedAccessByValue(uint32_t bcIndex, ValueVertex *receiver, JSTaggedValue propertyKey,
+                                    const std::vector<NamedLoadAccessInfo> &accessInfos)
+    {
+        if (accessInfos.empty()) {
+            return false;
+        }
+        if (accessInfos.size() > 1) {
+            return TryBuildPolymorphicNamedAccess(bcIndex, receiver, accessInfos);
+        }
+
+        const NamedLoadAccessInfo &accessInfo = accessInfos.front();
+        const std::vector<JSHClass *> &hclasses = accessInfo.lookupStartObjectHClasses;
+        bool hasStringHClass = std::any_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
+            return hclass != nullptr && hclass->IsString();
+        });
+        if (hasStringHClass ||
+            !BuildCheckHClasses(bcIndex, receiver, hclasses, false, accessInfo.canAssumeStableHClasses)) {
+            return false;
+        }
+
+        LoadedPropertyKey key = LoadedPropertyKey::TaggedValue(receiver, propertyKey, accessInfo.plr);
+        ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, key, accessInfo);
+        if (result == nullptr) {
+            return false;
+        }
+        frameState.SetAcc(result);
+        return true;
+    }
+
+    void BuildCheckTaggedCondition(uint32_t bcIndex, ValueVertex *left, ValueVertex *right,
+                                   Condition condition, kungfu::DeoptType deoptType)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        auto *check = self->NewVertex<DeoptIfTaggedConditionVertex>(
+            currentBlock, {left, right}, self->chunk_, self->preproc_->GetBytecodeOffset(bcIndex),
+            condition, deoptType);
+        check->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    bool TryBuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                   const ElementLoadAccessInfo &accessInfo)
+    {
+        if (accessInfo.kind != ElementLoadKind::NORMAL ||
+            HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+            return false;
+        }
+
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
+            (receiverHClass->GetObjectType() != JSType::JS_OBJECT && !receiverHClass->IsJSArray()) ||
+            receiverHClass->IsDictionaryElement() ||
+            HandlerBase::IsJSArray(accessInfo.handlerInfo) != receiverHClass->IsJSArray()) {
+            return false;
+        }
+        if (self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray()) {
+            ElementsKind kind = receiverHClass->GetElementsKind();
+            if (Elements::IsIntOrHoleInt(kind) || Elements::IsNumberOrHoleNumber(kind)) {
+                return false;
+            }
+        }
+        if (!BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
+            return false;
+        }
+
+        ValueVertex *index = BuildCheckedTaggedIntToI32(key);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        BuildDeoptIfInt32Condition(
+            index, zero, Condition::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
+
+        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+        ValueVertex *capacity = self->NewVertex<LoadInt32FieldVertex>(
+            currentBlock, {elements}, static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(
+            index, capacity, Condition::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        ValueVertex *result = self->NewVertex<LoadTaggedElementVertex>(currentBlock, {elements, index});
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        BuildCheckTaggedCondition(
+            bcIndex, result, hole, Condition::EQUAL, kungfu::DeoptType::BUILTINISHOLE1);
+        frameState.SetAcc(result);
+        return true;
+    }
+
+    bool TryBuildElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                             const ValueLoadAccessSet &access)
+    {
+        if (access.kind != ValueLoadAccessKind::ELEMENT || access.feedback.isPoly || access.elementCount != 1) {
+            return false;
+        }
+        return TryBuildNormalElementLoad(bcIndex, receiver, key, access.elements[0]);
+    }
+
+    bool TryBuildLoadPropertyByValue(
+        const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key)
+    {
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        ValueLoadAccessSet access;
+        if (!factory.TryBuildValueLoadAccessInfo(&access)) {
+            return false;
+        }
+        if (access.kind == ValueLoadAccessKind::ELEMENT) {
+            return TryBuildElementLoad(bcIndex, receiver, key, access);
+        }
+        if (access.kind != ValueLoadAccessKind::NAMED) {
+            return false;
+        }
+
+        JSTaggedValue propertyKey = JSTaggedValue::Undefined();
+        if (!TryResolveHeapRef(access.key, &propertyKey) ||
+            (!propertyKey.IsString() && !propertyKey.IsSymbol())) {
+            return false;
+        }
+        NamedLoadAccessInfosOpt accessInfos = TryGetLoadObjByNameAccessInfos(access.named, access.key);
+        if (!accessInfos.has_value()) {
+            return false;
+        }
+        bool hasStringHClass = std::any_of(accessInfos->begin(), accessInfos->end(), [](const auto &accessInfo) {
+            return std::any_of(accessInfo.lookupStartObjectHClasses.begin(),
+                               accessInfo.lookupStartObjectHClasses.end(), [](JSHClass *hclass) {
+                return hclass != nullptr && hclass->IsString();
+            });
+        });
+        if (hasStringHClass) {
+            return false;
+        }
+
+        BuildCheckValueKey(bcIndex, key, access.feedback.slotId);
+        return TryBuildNamedAccessByValue(bcIndex, receiver, propertyKey, accessInfos.value());
     }
 
     bool TryBuildStoreNamedProperty(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,

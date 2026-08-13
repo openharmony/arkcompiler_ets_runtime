@@ -50,4 +50,25 @@ bool ArkSteedHeapBroker::GetFeedbackForOperation(const ArkSteedFeedbackReader &r
     return reader.ReadOperationFeedback(feedback);
 }
 
+bool ArkSteedHeapBroker::GetFeedbackForValueAccess(const ArkSteedFeedbackReader &reader,
+                                                   ValueAccessFeedback *feedback) const
+{
+    *feedback = {};
+    uint32_t slotId = 0;
+    if (!reader.TryGetFeedbackSlotId(&slotId)) {
+        return false;
+    }
+    if (TryGetCachedValueAccessFeedback(slotId, feedback)) {
+        return true;
+    }
+
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForValueAccess");
+    if (!reader.ReadValueAccessFeedback(feedback)) {
+        *feedback = {};
+        return false;
+    }
+    CacheValueAccessFeedback(*feedback);
+    return true;
+}
+
 }  // namespace panda::ecmascript::arksteed

@@ -23,6 +23,9 @@ constexpr int NAMED_ACCESS_SLOT_INPUT = 0;
 
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const
 {
+    if (slotId == nullptr) {
+        return false;
+    }
     if (index == NAMED_ACCESS_SLOT_INPUT && !allowImmediate &&
         bytecodeInfo_.slotId.GetId() != kungfu::ICSlotId::INVALID_ID) {
         *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
@@ -47,12 +50,7 @@ bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate
 
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(uint32_t *slotId) const
 {
-    if (slotId == nullptr ||
-        bytecodeInfo_.slotId.GetId() == kungfu::ICSlotId::INVALID_ID) {
-        return false;
-    }
-    *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
-    return true;
+    return TryGetFeedbackSlotId(NAMED_ACCESS_SLOT_INPUT, false, slotId);
 }
 
 bool ArkSteedFeedbackReader::TryGetConstDataId(int index, uint16_t *constDataId) const
@@ -221,6 +219,83 @@ bool ArkSteedFeedbackReader::ReadNamedAccessFeedback(int slotIndex, NamedAccessF
         *feedback = {};
         return false;
     }
+    return true;
+}
+
+bool ArkSteedFeedbackReader::ReadValueAccessFeedback(ValueAccessFeedback *feedback) const
+{
+    *feedback = {};
+
+    uint32_t slotId = 0;
+    if (!TryGetFeedbackSlotId(&slotId)) {
+        return false;
+    }
+
+    ProfileTypeInfo *profileTypeArray = nullptr;
+    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) ||
+        slotId >= profileTypeArray->GetLength() || profileTypeArray->GetLength() - slotId <= 1) {
+        return false;
+    }
+
+    JSTaggedValue first = profileTypeArray->GetICSlot(compilerThread_, slotId);
+    JSTaggedValue second = profileTypeArray->GetICSlot(compilerThread_, slotId + 1);
+    TaggedArray *caseArray = nullptr;
+    bool isPoly = false;
+
+    if (first.IsWeak()) {
+        feedback->kind = ValueAccessFeedbackKind::ELEMENT;
+        feedback->cases[0] = MakeNamedAccessCaseFeedback(broker_->MakeWeakHClassRef(first), second);
+        if (!feedback->cases[0].expectedHClass.IsSafeForCompile() ||
+            !feedback->cases[0].handler.IsSafeForCompile()) {
+            *feedback = {};
+            return false;
+        }
+        feedback->caseCount = 1;
+    } else if (first.IsTaggedArray() && second.IsHole()) {
+        feedback->kind = ValueAccessFeedbackKind::ELEMENT;
+        caseArray = TaggedArray::Cast(first.GetTaggedObject());
+        isPoly = true;
+    } else if ((first.IsString() || first.IsSymbol()) && second.IsTaggedArray()) {
+        feedback->kind = ValueAccessFeedbackKind::NAMED;
+        feedback->key = broker_->MakeNameRef(first);
+        if (!feedback->key.IsSafeForCompile()) {
+            *feedback = {};
+            return false;
+        }
+        caseArray = TaggedArray::Cast(second.GetTaggedObject());
+    } else {
+        return false;
+    }
+
+    if (caseArray != nullptr) {
+        uint32_t length = caseArray->GetLength();
+        if (length == 0 || (length % NAMED_IC_POLY_CASE_WIDTH) != 0 ||
+            length / NAMED_IC_POLY_CASE_WIDTH > MAX_NAMED_IC_POLY_CASES) {
+            *feedback = {};
+            return false;
+        }
+        for (uint32_t index = 0; index < length; index += NAMED_IC_POLY_CASE_WIDTH) {
+            JSTaggedValue cachedHClass = caseArray->Get(compilerThread_, index);
+            if (!cachedHClass.IsWeak()) {
+                *feedback = {};
+                return false;
+            }
+            NamedAccessCaseFeedback icCase = MakeNamedAccessCaseFeedback(
+                broker_->MakeWeakHClassRef(cachedHClass), caseArray->Get(compilerThread_, index + 1));
+            if (!icCase.expectedHClass.IsSafeForCompile() || !icCase.handler.IsSafeForCompile()) {
+                *feedback = {};
+                return false;
+            }
+            feedback->cases[feedback->caseCount++] = icCase;
+        }
+    }
+
+    if (feedback->caseCount == 0) {
+        *feedback = {};
+        return false;
+    }
+    feedback->base.kind = ProcessedFeedbackKind::VALUE_ACCESS;
+    feedback->base.source = {slotId, isPoly || feedback->caseCount > 1, AccessFeedbackSlotKind::VALUE_LOAD};
     return true;
 }
 

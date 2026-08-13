@@ -26,6 +26,13 @@ namespace panda::ecmascript::arksteed {
 enum class ProcessedFeedbackKind : uint8_t {
     INSUFFICIENT,
     NAMED_ACCESS,
+    VALUE_ACCESS,
+};
+
+enum class ValueAccessFeedbackKind : uint8_t {
+    INSUFFICIENT,
+    NAMED,
+    ELEMENT,
 };
 
 enum class ArkSteedOperationHint : uint8_t {
@@ -68,6 +75,14 @@ struct NamedAccessCaseFeedback {
 struct NamedAccessFeedback {
     ProcessedFeedbackBase base {};
     ArkSteedNameRef name {};
+    std::array<NamedAccessCaseFeedback, MAX_NAMED_IC_POLY_CASES> cases {};
+    uint32_t caseCount {0};
+};
+
+struct ValueAccessFeedback {
+    ProcessedFeedbackBase base {};
+    ValueAccessFeedbackKind kind {ValueAccessFeedbackKind::INSUFFICIENT};
+    ArkSteedNameRef key {};
     std::array<NamedAccessCaseFeedback, MAX_NAMED_IC_POLY_CASES> cases {};
     uint32_t caseCount {0};
 };

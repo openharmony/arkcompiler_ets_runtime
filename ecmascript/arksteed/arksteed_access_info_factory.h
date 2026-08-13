@@ -41,10 +41,12 @@ public:
 
     bool TryBuildNamedStoreAccessInfo(int slotIndex, NamedStoreAccessSet *access) const;
     bool TryBuildNamedLoadAccessInfo(int slotIndex, NamedLoadAccessSet *access) const;
+    bool TryBuildValueLoadAccessInfo(ValueLoadAccessSet *access) const;
 
 private:
     bool ComputeNamedStoreAccessInfo(const NamedAccessFeedback &feedback, NamedStoreAccessSet *access) const;
-    bool ComputeNamedLoadAccessInfo(const NamedAccessFeedback &feedback, NamedLoadAccessSet *access) const;
+    bool ComputeNamedLoadAccessInfo(const NamedAccessFeedback &feedback, AccessFeedbackSlotKind slotKind,
+                                    NamedLoadAccessSet *access) const;
     bool TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback, ArkSteedNameRef name,
                                      NamedStoreAccessInfo *info) const;
     bool TryMakeNamedLoadAccessInfo(const NamedAccessCaseFeedback &caseFeedback, NamedLoadAccessInfo *info) const;

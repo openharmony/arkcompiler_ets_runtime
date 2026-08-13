@@ -63,6 +63,20 @@ enum class AccessFeedbackSlotKind : uint8_t {
     UNKNOWN,
     NAMED_LOAD,
     NAMED_STORE,
+    VALUE_LOAD,
+};
+
+enum class ValueLoadAccessKind : uint8_t {
+    UNSUPPORTED,
+    NAMED,
+    ELEMENT,
+};
+
+enum class ElementLoadKind : uint8_t {
+    UNSUPPORTED,
+    NORMAL,
+    STRING,
+    TYPED_ARRAY,
 };
 
 enum class AccessFieldRepresentation : uint8_t {
@@ -232,6 +246,21 @@ struct PropertyAccessSet {
 
 using NamedStoreAccessSet = PropertyAccessSet;
 using NamedLoadAccessSet = PropertyAccessSet;
+
+struct ElementLoadAccessInfo {
+    ArkSteedHClassRef expectedHClass {};
+    uint64_t handlerInfo {0};
+    ElementLoadKind kind {ElementLoadKind::UNSUPPORTED};
+};
+
+struct ValueLoadAccessSet {
+    ValueLoadAccessKind kind {ValueLoadAccessKind::UNSUPPORTED};
+    AccessFeedbackSource feedback {};
+    ArkSteedNameRef key {};
+    NamedLoadAccessSet named {};
+    std::array<ElementLoadAccessInfo, MAX_NAMED_IC_POLY_CASES> elements {};
+    uint32_t elementCount {0};
+};
 
 }  // namespace panda::ecmascript::arksteed
 

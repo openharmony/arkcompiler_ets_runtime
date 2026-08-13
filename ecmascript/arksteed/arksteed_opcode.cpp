@@ -196,6 +196,13 @@ void DeoptIfPrototypeChangedVertex::SetValueLocationConstraints()
     UseEagerDeoptFrameSlots(this);
 }
 
+void DeoptIfTaggedConditionVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(LEFT_INDEX));
+    UseRegister(Arg(RIGHT_INDEX));
+    UseEagerDeoptFrameSlots(this);
+}
+
 void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
@@ -252,6 +259,19 @@ void LoadTaggedFieldVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(OBJECT_INDEX));
+}
+
+void LoadInt32FieldVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(OBJECT_INDEX));
+}
+
+void LoadTaggedElementVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(ELEMENTS_INDEX));
+    UseRegister(Arg(INDEX_INDEX));
 }
 
 void LoadPrototypeFromObjectVertex::SetValueLocationConstraints()
