@@ -19,7 +19,6 @@
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
 #include "class_data_accessor-inl.h"
-
 #define private public
 #define protected public
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -50,12 +49,25 @@ public:
     {
         return JSPandaFileSnapshot::WriteDataToFile(thread, jsPandaFile, path, version);
     }
+
+    static CString GetSnapshotFileName(const CString &fileName, const CString &path)
+    {
+        return JSPandaFileSnapshot::GetJSPandaFileFileName(fileName, path);
+    }
+
+    static bool ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+                                 const CString &version)
+    {
+        return JSPandaFileSnapshot::ReadDataFromFile(thread, jsPandaFile, path, version);
+    }
 };
 class JSPandaFileSnapshotTest : public testing::Test {
 public:
     static void SetUpTestCase()
     {
         GTEST_LOG_(INFO) << "SetUpTestCase";
+        ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
+        ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
     }
 
     static void TearDownTestCase()
@@ -66,14 +78,18 @@ public:
     void SetUp() override
     {
         CString path = GetSnapshotPath();
-        CString fileName = path + "entry" + JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME.data();
-        if (FileExist(fileName.c_str()) && remove(fileName.c_str()) != 0) {
-            GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
-        }
+        Iterdir(path.c_str(), [&path](const std::string_view &fileName, FileType) {
+            if (fileName.find("_Pandafile.ams") == std::string_view::npos) {
+                return;
+            }
+            CString fullPath = path;
+            fullPath += fileName;
+            Unlink(fullPath.c_str());
+        });
         CString stateFilePath = path + ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME.data();
         if (FileExist(stateFilePath.c_str())) {
-            if (remove(stateFilePath.c_str()) != 0) {
-                GTEST_LOG_(ERROR) << "remove '" << stateFilePath << "' failed when setup";
+            if (Unlink(stateFilePath.c_str()) != 0) {
+                GTEST_LOG_(ERROR) << "Unlink '" << stateFilePath << "' failed when setup";
             }
         }
         disabledFeature = ModulesSnapshotHelper::g_featureState_;
@@ -84,10 +100,14 @@ public:
     void TearDown() override
     {
         CString path = GetSnapshotPath();
-        CString fileName = path + "entry" + JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME.data();
-        if (FileExist(fileName.c_str()) && remove(fileName.c_str()) != 0) {
-            GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
-        }
+        Iterdir(path.c_str(), [&path](const std::string_view &fileName, FileType) {
+            if (fileName.find("_Pandafile.ams") == std::string_view::npos) {
+                return;
+            }
+            CString fullPath = path;
+            fullPath += fileName;
+            Unlink(fullPath.c_str());
+        });
         ModulesSnapshotHelper::g_featureState_ = disabledFeature;
         ModulesSnapshotHelper::g_featureLoaded_ = loadedFeature;
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
@@ -120,6 +140,17 @@ public:
         return pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     }
 
+    std::shared_ptr<JSPandaFile> CreateJSPandaFile(const char *source, const CString filename)
+    {
+        Parser parser;
+        const std::string fn = "SRC.pa";
+        auto res = parser.Parse(source, fn);
+        EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+        std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+        std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+        return pf;
+    }
     std::shared_ptr<JSPandaFile> NewMockJSPandaFileWithSnapshotLoad() const
     {
         Parser parser;
@@ -757,8 +788,8 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, UseSnapshotSuccessTest)
          std::string_view(snapshotNpmEntry.second.c_str(), snapshotNpmEntry.second.size())});
     CString fileName = JSPandaFileSnapshot::GetJSPandaFileFileName(serializePf->GetJSPandaFileDesc(), path);
     CString stateFilePath = path + ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME.data();
-    remove(fileName.c_str());
-    remove(stateFilePath.c_str());
+    Unlink(fileName.c_str());
+    Unlink(stateFilePath.c_str());
     if (memset_s(ModulesSnapshotHelper::g_stateFilePathBuffer_, PATH_MAX, 0, PATH_MAX) != EOK) {
         return;
     }
@@ -779,8 +810,8 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, UseSnapshotSuccessTest)
     ASSERT_EQ(deserializeRecordInfo->npmPackageName, "@ohos/testpkg");
     ASSERT_EQ(it->second, "testEntry");
     options.SetArkProperties(arkProperties);
-    remove(fileName.c_str());
-    remove(stateFilePath.c_str());
+    Unlink(fileName.c_str());
+    Unlink(stateFilePath.c_str());
 }
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, ResetAfterSnapshotFailTest)
@@ -807,5 +838,50 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ResetAfterSnapshotFailTest)
     ASSERT_EQ(pf->GetMethodLiterals(), nullptr);
     ASSERT_EQ(pf->numMethods_, 0U);
     ASSERT_EQ(pf->numClasses_, 0U);
+}
+
+/**
+ * @tc.name: ConstructorWithThread_SnapshotReadSuccess
+ * @tc.desc: Test JSPandaFile(thread, pf, desc, entryPoint) constructor when snapshot read succeeds (line 59 return)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileSnapshotTest, ConstructorWithThread_SnapshotReadSuccess)
+{
+    CString path = GetSnapshotPath();
+    const char *abcFilename = "/data/storage/el1/bundle/entry/ets/main/modules.abc";
+    const char *source = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    std::shared_ptr<JSPandaFile> serializePf = CreateJSPandaFile(source, CString(abcFilename));
+    NormalTranslateJSPandaFile(serializePf);
+    bool bundlePackSave = serializePf->IsBundlePack();
+    serializePf->SetBundlePack(false);
+    serializePf->ownedNpmEntries_.emplace_back("testRecord", "testEntry");
+    const auto &npmEntry = serializePf->ownedNpmEntries_.back();
+    serializePf->npmEntries_.insert(
+        {std::string_view(npmEntry.first.c_str(), npmEntry.first.size()),
+         std::string_view(npmEntry.second.c_str(), npmEntry.second.size())});
+    CString snapshotFileName =
+        MockJSPandaFileSnapshot::GetSnapshotFileName(serializePf->GetJSPandaFileDesc(), path);
+    Unlink(snapshotFileName.c_str());
+    CString version = "test_version";
+    EXPECT_TRUE(MockJSPandaFileSnapshot::WriteDataToFile(
+        thread, serializePf.get(), path, version));
+    serializePf->SetBundlePack(bundlePackSave);
+    ASSERT_TRUE(FileExist(snapshotFileName.c_str()));
+
+    std::shared_ptr<JSPandaFile> deserializePf = CreateJSPandaFile(source, CString(abcFilename));
+    EXPECT_TRUE(MockJSPandaFileSnapshot::ReadDataFromFile(
+        thread, deserializePf.get(), path, version));
+    EXPECT_NE(deserializePf, nullptr);
+
+    auto it = deserializePf->npmEntries_.find("testRecord");
+    EXPECT_NE(it, deserializePf->npmEntries_.end());
+    EXPECT_EQ(it->second, "testEntry");
+
+    Unlink(snapshotFileName.c_str());
 }
 }
