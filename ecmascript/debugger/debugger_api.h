@@ -125,6 +125,8 @@ public:
                                                     std::string &name);
     static bool SetExportVariableValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
                                        std::string &name, Local<JSValueRef> value);
+    static Local<JSValueRef> GetImportVariableValue(const EcmaVM *ecmaVm,
+                                                    const JSHandle<JSTaggedValue> &currentModule, std::string &name);
     static Local<JSValueRef> GetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
                                             std::string &name);
     static bool SetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,

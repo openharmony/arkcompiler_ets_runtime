@@ -635,6 +635,57 @@ bool DebuggerApi::SetExportVariableValue(const EcmaVM *ecmaVm, const JSHandle<JS
     return false;
 }
 
+static int32_t FindImportEntryIndex(JSThread *thread, const JSHandle<JSTaggedValue> &currentModule,
+                                    const std::string &name)
+{
+    JSTaggedValue importEntries = SourceTextModule::Cast(currentModule->GetTaggedObject())->GetImportEntries(thread);
+    if (importEntries.IsUndefined()) {
+        return -1;
+    }
+    JSHandle<TaggedArray> importArray(thread, TaggedArray::Cast(importEntries.GetTaggedObject()));
+    size_t importEntriesLen = importArray->GetLength();
+    JSHandle<JSTaggedValue> starString = thread->GlobalConstants()->GetHandledStarString();
+    JSMutableHandle<ImportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+    for (size_t idx = 0; idx < importEntriesLen; idx++) {
+        ee.Update(importArray->Get(thread, idx));
+        JSTaggedValue localName = ee->GetLocalName(thread);
+        JSTaggedValue importName = ee->GetImportName(thread);
+        if (localName.IsString() && !JSTaggedValue::SameValue(thread, importName, starString.GetTaggedValue())) {
+            std::string varName = EcmaStringAccessor(localName).ToStdString(thread);
+            if (varName == name) {
+                return static_cast<int32_t>(idx);
+            }
+        }
+    }
+    return -1;
+}
+
+Local<JSValueRef> DebuggerApi::GetImportVariableValue(const EcmaVM *ecmaVm,
+                                                      const JSHandle<JSTaggedValue> &currentModule, std::string &name)
+{
+    Local<JSValueRef> result;
+    if (!currentModule->IsSourceTextModule()) {
+        return result;
+    }
+    JSThread *thread = ecmaVm->GetJSThread();
+    int32_t importIdx = FindImportEntryIndex(thread, currentModule, name);
+    if (importIdx < 0) {
+        LOG_DEBUGGER(ERROR) << "GetImportVariableValue: not found variable " << name;
+        return result;
+    }
+    // Get variable from import module via binding index(same mechanism as GetImportModuleVariables)
+    JSTaggedValue moduleValue = ModuleValueAccessor::GetModuleValueOuter(
+        thread, importIdx, currentModule);
+    if (moduleValue.IsHole()) {
+        return result;
+    }
+    if (!moduleValue.IsUndefined()) {
+        result = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
+        return result;
+    }
+    return result;
+}
+
 Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
                                               std::string &name)
 {
@@ -648,8 +699,7 @@ Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *ecmaVm, const JSHand
         return result;
     }
     // Get variable from import module
-    JSHandle<JSTaggedValue> importModule = GetImportModule(ecmaVm, currentModule, name);
-    result = GetExportVariableValue(ecmaVm, importModule, name);
+    result = GetImportVariableValue(ecmaVm, currentModule, name);
     return result;
 }
 
