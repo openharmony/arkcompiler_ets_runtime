@@ -168,11 +168,10 @@ bool HybridHeapProfiler::BuildAndSerializeSnapshot(EcmaVM *vm, Stream *stream, c
         ? vm->GetNativeAreaAllocator()
         : mainVm_->GetNativeAreaAllocator();
     auto *snapshot = new HybridHeapSnapshot(vm, stsInterface_, &entryIdMap_, &stringTable_,
-                                            dumpOption.isSimplify, dumpOption.dumpDynamicHeap,
-                                            dumpOption.dumpStaticHeap, allocator);
+                                            dumpOption, allocator);
     bool result = snapshot->BuildHybridSnapshot();
     LOG_ECMA(INFO) << "[HybridHeapDump] HybridHeapProfiler::BuildHybridSnapshot, result = " << result
-                   << ", nodeCount = " << snapshot->GetNodeCount();
+                   << ", nodeCount = " << snapshot->GetNodeCount() << ", edgeCount = " << snapshot->GetEdgeCount();
     if (result && dumpOption.isSync) {
         UpdateEntryIdMap(snapshot);
     }
@@ -212,8 +211,10 @@ bool HybridHeapProfiler::Dump(EcmaVM *vm, Stream *stream, DumpSnapShotOption &du
     dumpOption.dumpDynamicHeap = vm != nullptr;
     dumpOption.dumpStaticHeap = stsInterface_->IsCurrentThreadAttached();
     LOG_ECMA(INFO) << "[HybridHeapDump] HybridHeapProfiler::Dump: "
-                   << " dumpDynamic = " << dumpOption.dumpDynamicHeap
-                   << ", dumpStatic = " << dumpOption.dumpStaticHeap;
+                   << " dumpDynamic = " << dumpOption.dumpDynamicHeap << ", dumpStatic = " << dumpOption.dumpStaticHeap
+                   << ", isSimplify = " << dumpOption.isSimplify
+                   << ", captureNumericValue = " << dumpOption.captureNumericValue << ", isSync = " << dumpOption.isSync
+                   << ", isBeforeFill = " << dumpOption.isBeforeFill;
     if (!dumpOption.dumpDynamicHeap && !dumpOption.dumpStaticHeap) {
         return false;
     }
@@ -332,12 +333,13 @@ bool HybridHeapProfiler::SetAppFreezeFilter()
 void HybridHeapProfiler::UpdateEntryIdMap(HybridHeapSnapshot *snapshot)
 {
     EntryIdMap newIdMap;
+    const auto *idMap = entryIdMap_.GetIdMap();
     auto nodes = snapshot->GetNodes();
     for (auto node : *nodes) {
         auto addr = node->GetAddress();
-        auto [idExist, sequenceId] = entryIdMap_.FindId(addr);
-        if (idExist) {
-            newIdMap.InsertId(addr, sequenceId);
+        auto existingId = idMap->find(addr);
+        if (existingId != idMap->end()) {
+            newIdMap.InsertId(addr, existingId->second);
         }
     }
     entryIdMap_.GetIdMap()->swap(*newIdMap.GetIdMap());

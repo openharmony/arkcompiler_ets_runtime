@@ -57,13 +57,13 @@ EdgeType HybridHeapSnapshot::MapStaticEdgeType(arkplatform::StaticEdgeType type)
 }
 
 HybridHeapSnapshot::HybridHeapSnapshot(EcmaVM *vm, arkplatform::STSVMInterface *stsInterface,
-                                       EntryIdMap *entryIdMap, StringHashMap *stringTable, bool isSimplify,
-                                       bool dumpDynamicHeap, bool dumpStaticHeap, NativeAreaAllocator *allocator)
-    : HeapSnapshot(vm, stringTable, DumpSnapShotOption{DumpFormat::JSON, true}, false, entryIdMap, allocator),
+                                       EntryIdMap *entryIdMap, StringHashMap *stringTable,
+                                       const DumpSnapShotOption &dumpOption, NativeAreaAllocator *allocator)
+    : HeapSnapshot(vm, stringTable, dumpOption, false, entryIdMap, allocator),
       stsInterface_(stsInterface),
-      dumpDynamicHeap_(dumpDynamicHeap),
-      dumpStaticHeap_(dumpStaticHeap),
-      isSimplify_(isSimplify)
+      dumpDynamicHeap_(dumpOption.dumpDynamicHeap),
+      dumpStaticHeap_(dumpOption.dumpStaticHeap),
+      isSimplify_(dumpOption.isSimplify)
 {
 }
 
@@ -91,6 +91,36 @@ HprofNode *HybridHeapSnapshot::GetOrCreateStaticNode(uint64_t addr)
     HprofNode *node = CreateStaticNode(info);
     entryMap_.InsertEntry(node);
     InsertNodeUnique(node);
+    return node;
+}
+
+HprofNode *HybridHeapSnapshot::GetOrCreateStaticPrimitiveNode(const arkplatform::EdgeInfo &edgeInfo)
+{
+    std::string primitiveValue = edgeInfo.primitiveValue;
+    if (IsPrivate() && edgeInfo.primitiveType == arkplatform::StaticPrimitiveType::NUMBER) {
+        const size_t delimiter = primitiveValue.find(':');
+        if (delimiter == std::string::npos ||
+            (primitiveValue.compare(0, delimiter, "Int") != 0 &&
+             primitiveValue.compare(0, delimiter, "Double") != 0)) {
+            LOG_ECMA(ERROR) << "Invalid static numeric primitive format";
+            return nullptr;
+        }
+        primitiveValue.resize(delimiter + 1);
+    }
+    CString *primitiveName = GetString(primitiveValue.c_str());
+    auto existing = staticPrimitiveNodes_.find(primitiveName);
+    if (existing != staticPrimitiveNodes_.end()) {
+        return existing->second;
+    }
+
+    // Primitive values are snapshot-local nodes without an object address or stable identity across snapshots.
+    // Allocate a unique serialization ID, but do not insert address 0 into entryIdMap_ or entryMap_.
+    // staticPrimitiveNodes_ is the only lookup table for primitive values within this snapshot.
+    HprofNode *node = HprofNode::NewNode(chunk_, entryIdMap_->GetNextId(), nodeCount_,
+                                         primitiveName, NodeType::HEAPNUMBER, 0, 0, 0);
+    node->SetDynamic(false);
+    InsertNodeUnique(node);
+    staticPrimitiveNodes_.emplace(primitiveName, node);
     return node;
 }
 
@@ -227,10 +257,22 @@ void HybridHeapSnapshot::DumpRefForDynamicNode(HprofNode *entryFrom)
 void HybridHeapSnapshot::DumpRefForStaticNode(HprofNode *entryFrom)
 {
     std::vector<arkplatform::EdgeInfo> staticEdges;
-    stsInterface_->GetEtsNodeEdges(entryFrom->GetAddress(), staticEdges);
+    stsInterface_->GetEtsNodeEdges(entryFrom->GetAddress(), staticEdges, isSimplify_, captureNumericValue_);
 
     for (auto &edgeInfo : staticEdges) {
-        HprofNode *entryTo = GetOrCreateStaticNode(edgeInfo.toAddr);
+        HprofNode *entryTo = nullptr;
+        if (edgeInfo.primitiveType != arkplatform::StaticPrimitiveType::NONE) {
+            if (isSimplify_ || (edgeInfo.primitiveType == arkplatform::StaticPrimitiveType::NUMBER &&
+                                !captureNumericValue_)) {
+                continue;
+            }
+            entryTo = GetOrCreateStaticPrimitiveNode(edgeInfo);
+            if (entryTo == nullptr) {
+                continue;
+            }
+        } else {
+            entryTo = GetOrCreateStaticNode(edgeInfo.toAddr);
+        }
 
         if (edgeInfo.edgeType == arkplatform::StaticEdgeType::ELEMENT) {
             InsertEdgeUnique(Edge::NewEdge(chunk_, EdgeType::ELEMENT, entryFrom, entryTo, edgeInfo.index));
@@ -291,6 +333,9 @@ void HybridHeapSnapshot::DumpReferences()
     for (uint32_t i = GetActualRootStartIndex(); i < nodeCount_; i++) {
         HprofNode *node = nodes_[i];
         ASSERT(node != nullptr);
+        if (!node->IsDynamic() && node->GetType() == NodeType::HEAPNUMBER) {
+            continue;
+        }
         if (node->IsDynamic()) {
             DumpRefForDynamicNode(node);
         } else {
