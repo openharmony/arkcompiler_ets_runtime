@@ -104,14 +104,15 @@ public:
 
     void NativeObjDestroy()
     {
+        bool keepSendableRecordName = IsPreserveSendableRecordName();
 #if ENABLE_LATEST_OPTIMIZATION
         resolvedModules_.ForEach([](const CString& key, GCRoot& root) {
             ASSERT(!key.empty());
             SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
         });
-        resolvedSendableModules_.ForEach([](const CString& key, GCRoot& root) {
+        resolvedSendableModules_.ForEach([keepSendableRecordName](const CString& key, GCRoot& root) {
             ASSERT(!key.empty());
-            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(keepSendableRecordName);
         });
 #else
         resolvedModules_.ForEach([](auto it) {
@@ -120,11 +121,11 @@ public:
             GCRoot &root = it->second;
             SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
         });
-        resolvedSendableModules_.ForEach([](auto it) {
+        resolvedSendableModules_.ForEach([keepSendableRecordName](auto it) {
             CString key = it->first;
             ASSERT(!key.empty());
             GCRoot &root = it->second;
-            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(keepSendableRecordName);
         });
 #endif
     }
@@ -207,7 +208,14 @@ private:
 
     void RemoveModuleNameFromList(const CString &recordName);
 
+    inline bool IsPreserveSendableRecordName() const
+    {
+        return vm_->GetBundleName() == TARGET_BUNDLE_NAME;
+    }
+
     static constexpr uint32_t DEFAULT_DICTIONARY_CAPACITY = 4;
+
+    static constexpr const char *TARGET_BUNDLE_NAME = "com.ohos.photos";
 
     uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};
 

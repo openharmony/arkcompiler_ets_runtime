@@ -397,7 +397,7 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
     if (!sendableModule) {
         return;
     }
-    SourceTextModule::Cast(sendableModule.value())->DestroyModuleCNativeFields();
+    SourceTextModule::Cast(sendableModule.value())->DestroyModuleCNativeFields(IsPreserveSendableRecordName());
     resolvedSendableModules_.Erase(recordName);
 }
 
