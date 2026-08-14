@@ -175,6 +175,7 @@ using HeapProfilerInterface = ecmascript::HeapProfilerInterface;
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
+constexpr size_t LOCAL_SCOPE_MARKER = 1;
 }
 
 bool JSNApi::isForked_ = false;
@@ -2728,7 +2729,7 @@ LocalScope::~LocalScope()
         } else {
             // report backtrace via restraceExt
 #ifdef HOOK_ENABLE
-            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, 1,
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, LOCAL_SCOPE_MARKER,
                         TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
         }
