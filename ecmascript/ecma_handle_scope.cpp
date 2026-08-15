@@ -28,6 +28,10 @@
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 
 namespace panda::ecmascript {
+namespace {
+constexpr size_t LOCAL_SCOPE_MARKER = 1;
+}
+
 EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
 {
     auto vm = thread_->GetEcmaVM();
@@ -79,7 +83,7 @@ EcmaHandleScope::~EcmaHandleScope()
         } else {
             // report backtrace via restraceExt
 #ifdef HOOK_ENABLE
-            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, 1,
+            restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, LOCAL_SCOPE_MARKER,
                         TAG_RES_ARK_LOCAL_HANDLE, true, false);
 #endif // HOOK_ENABLE
         }
