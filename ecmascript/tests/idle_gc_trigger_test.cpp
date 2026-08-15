@@ -1243,11 +1243,15 @@ HWTEST_F_L0(IdleGCTriggerTest, HintGCTest001)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
-    
+
+    // Trigger a GC to set heapAliveSizeAfterGC baseline so the threshold is
+    // meaningful and the test does not depend on the initial heap size.
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+
     bool lowResult = trigger->HintGCInLowDegree(heap);
     bool middleResult = trigger->HintGCInMiddleDegree(heap);
     bool highResult = trigger->HintGCInHighDegree(heap);
-    
+
     EXPECT_FALSE(lowResult);
     EXPECT_FALSE(middleResult);
     EXPECT_FALSE(highResult);
