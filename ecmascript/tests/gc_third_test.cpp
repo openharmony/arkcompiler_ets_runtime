@@ -304,6 +304,9 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    // Trigger a local GC to set heapAliveSizeAfterGC baseline so the threshold
+    // is meaningful and the test does not depend on the initial heap size.
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
     ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::HIGH, GCReason::HINT_GC), false);
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
