@@ -2434,11 +2434,25 @@ JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByIndexBinding(JSThread* 
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByRecordIndexBinding(JSThread* thread,
-    JSHandle<ResolvedRecordIndexBinding> binding)
+    JSHandle<ResolvedRecordIndexBinding> binding, bool isMergedAbc)
 {
     const CString *moduleRecordName = binding->GetModuleRecordName();
-    ASSERT(moduleRecordName != nullptr);
-    JSHandle<SourceTextModule> resolvedModule = thread->GetModuleManager()->HostGetImportedModule(*moduleRecordName);
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    ASSERT(moduleRecordName != nullptr && moduleManager != nullptr);
+    if (!moduleManager->IsLocalModuleLoaded(*moduleRecordName)) {
+        CString fileName = binding->GetAbcFileNameString();
+        if (!JSPandaFileExecutor::LazyExecuteModule(
+            thread, *moduleRecordName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
+            // LCOV_EXCL_START
+            if (thread->HasPendingException()) { // LCOV_EXCL_BR_LINE
+                LOG_ECMA(ERROR) << thread->GetException();
+            }
+            LOG_ECMA(FATAL) << "LazyExecuteModule failed, fileName: " << fileName
+                            << ", moduleRecordName: " << *moduleRecordName;
+            // LCOV_EXCL_STOP
+        }
+    }
+    JSHandle<SourceTextModule> resolvedModule = moduleManager->HostGetImportedModule(*moduleRecordName);
     JSHandle<JSTaggedValue> bindingName = GetBindingNameByIndex(thread, resolvedModule, binding->GetIndex());
     return JSHandle<JSTaggedValue>::Cast(
         thread->GetEcmaVM()->GetFactory()->NewSResolvedRecordBindingRecord(*moduleRecordName, bindingName));

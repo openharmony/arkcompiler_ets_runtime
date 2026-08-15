@@ -979,6 +979,46 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithUpdatedRecordIndexBindi
     EXPECT_EQ(restoredBinding->GetModuleRecordNameString(), nativeRecordName);
     CString bindingName = EcmaStringAccessor(restoredBinding->GetBindingName(thread)).Utf8ConvertToString(thread);
     EXPECT_EQ(bindingName, "recordIndexValue");
+    EXPECT_TRUE(thread->GetModuleManager()->IsLocalModuleLoaded(nativeRecordName));
+}
+
+HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingLoadsAndKeepsTemporaryCjsModule)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    CString cjsFileName = MODULE_ABC_PATH "module_unexecute_C.abc";
+    CString cjsRecordName = "module_unexecute_C";
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    CString moduleRecordName = "snapshotModuleWithTemporaryCjsBinding";
+    module->SetEcmaModuleFilenameString(thread, cjsFileName);
+    module->SetEcmaModuleRecordNameString(moduleRecordName);
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    JSHandle<TaggedArray> environment = factory->NewTaggedArray(1);
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding = factory->NewSResolvedRecordIndexBindingRecord(
+        cjsRecordName, cjsFileName, SourceTextModule::UNDEFINED_INDEX);
+    recordIndexBinding->SetIsUpdatedFromResolvedRecordBinding(true);
+    environment->Set(thread, index0, recordIndexBinding.GetTaggedValue());
+    module->SetEnvironment(thread, environment);
+    moduleManager->AddResolveImportedModule(moduleRecordName, module.GetTaggedValue());
+
+    uint32_t resolvedModuleCount = moduleManager->GetResolvedModulesSize();
+    ASSERT_FALSE(moduleManager->IsLocalModuleLoaded(cjsRecordName));
+    JSHandle<TaggedArray> serializeArray = factory->NewTaggedArray(1);
+    serializeArray->Set(thread, index0, module.GetTaggedValue());
+
+    MockModuleSnapshot::MockRestoreUpdatedBinding(thread, serializeArray);
+
+    ASSERT_TRUE(environment->Get(thread, index0).IsResolvedRecordBinding());
+    JSHandle<ResolvedRecordBinding> restoredBinding(thread, environment->Get(thread, index0));
+    EXPECT_EQ(restoredBinding->GetModuleRecordNameString(), cjsRecordName);
+    EXPECT_EQ(restoredBinding->GetBindingName(thread),
+        thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue());
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(cjsRecordName));
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(moduleRecordName));
+    EXPECT_EQ(moduleManager->GetResolvedModulesSize(), resolvedModuleCount + 1);
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingMixedEnvEntries)

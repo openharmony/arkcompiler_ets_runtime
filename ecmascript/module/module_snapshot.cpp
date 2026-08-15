@@ -27,6 +27,30 @@
 #include "zlib.h"
 
 namespace panda::ecmascript {
+namespace {
+void RestoreEnvironmentBinding(JSThread *thread, const JSHandle<SourceTextModule> &module,
+    const JSHandle<TaggedArray> &environment, uint32_t bindingIdx)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSTaggedValue binding = environment->Get(thread, bindingIdx);
+    if (binding.IsResolvedIndexBinding() &&
+        ResolvedIndexBinding::Cast(binding)->GetIsUpdatedFromResolvedBinding()) {
+        JSHandle<ResolvedIndexBinding> indexBinding(thread, binding);
+        bool isShared = SourceTextModule::IsSharedModule(module);
+        JSHandle<JSTaggedValue> nameBinding =
+            SourceTextModule::CreateBindingByIndexBinding(thread, indexBinding, isShared);
+        environment->Set(thread, bindingIdx, nameBinding);
+    } else if (binding.IsResolvedRecordIndexBinding() &&
+        ResolvedRecordIndexBinding::Cast(binding)->GetIsUpdatedFromResolvedRecordBinding()) {
+        JSHandle<ResolvedRecordIndexBinding> recordIndexBinding(thread, binding);
+        bool isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
+        JSHandle<JSTaggedValue> nameBinding =
+            SourceTextModule::CreateBindingByRecordIndexBinding(thread, recordIndexBinding, isMergedAbc);
+        environment->Set(thread, bindingIdx, nameBinding);
+    }
+}
+}  // namespace
+
 void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path, const CString &version)
 {
     LOG_ECMA(DEBUG) << "ModuleSnapshot::SerializeDataAndPostSavingJob " << path;
@@ -102,8 +126,6 @@ void ModuleSnapshot::RestoreUpdatedBinding(JSThread* thread, JSHandle<TaggedArra
 {
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<SourceTextModule> module(thread, globalConstants->GetUndefined());
-    JSMutableHandle<ResolvedIndexBinding> indexBinding(thread, globalConstants->GetUndefined());
-    JSMutableHandle<ResolvedRecordIndexBinding> recordIndexBinding(thread, globalConstants->GetUndefined());
     JSMutableHandle<TaggedArray> environment(thread, globalConstants->GetUndefined());
     for (uint32_t moduleIdx = 0; moduleIdx < serializeArray->GetLength(); ++moduleIdx) {
         module.Update(serializeArray->Get(thread, moduleIdx));
@@ -112,23 +134,9 @@ void ModuleSnapshot::RestoreUpdatedBinding(JSThread* thread, JSHandle<TaggedArra
             continue;
         }
         environment.Update(moduleEnvironment);
-        bool isShared = SourceTextModule::IsSharedModule(module);
         // check every binding and transfer from ResolvedIndexBinding to ResolvedBinding if binding updated.
         for (uint32_t bindingIdx = 0; bindingIdx < environment->GetLength(); bindingIdx++) {
-            JSTaggedValue binding = environment->Get(thread, bindingIdx);
-            if (binding.IsResolvedIndexBinding() &&
-                ResolvedIndexBinding::Cast(binding)->GetIsUpdatedFromResolvedBinding()) {
-                indexBinding.Update(binding);
-                JSHandle<JSTaggedValue> nameBinding =
-                    SourceTextModule::CreateBindingByIndexBinding(thread, indexBinding, isShared);
-                environment->Set(thread, bindingIdx, nameBinding);
-            } else if (binding.IsResolvedRecordIndexBinding() &&
-                ResolvedRecordIndexBinding::Cast(binding)->GetIsUpdatedFromResolvedRecordBinding()) {
-                recordIndexBinding.Update(binding);
-                JSHandle<JSTaggedValue> nameBinding =
-                    SourceTextModule::CreateBindingByRecordIndexBinding(thread, recordIndexBinding);
-                environment->Set(thread, bindingIdx, nameBinding);
-            }
+            RestoreEnvironmentBinding(thread, module, environment, bindingIdx);
         }
     }
 }

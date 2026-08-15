@@ -506,7 +506,8 @@ public:
                                                                JSHandle<ResolvedIndexBinding> binding,
                                                                bool isShared);
     static JSHandle<JSTaggedValue> CreateBindingByRecordIndexBinding(JSThread* thread,
-                                                                     JSHandle<ResolvedRecordIndexBinding> binding);
+                                                                     JSHandle<ResolvedRecordIndexBinding> binding,
+                                                                     bool isMergedAbc);
 
     static JSHandle<SourceTextModule> LoadJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                      const CString &filename, CString recordName);

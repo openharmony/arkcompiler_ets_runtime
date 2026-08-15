@@ -244,6 +244,7 @@ private:
     friend class EcmaVM;
     friend class PatchLoader;
     friend class ModuleDeregister;
+    friend class ModuleSnapshot;
     friend class SharedModuleManager;
     friend class ModuleImportStackScope;
 };
