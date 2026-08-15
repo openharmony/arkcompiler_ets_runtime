@@ -426,13 +426,15 @@ public:
     NO_COPY_SEMANTIC(HeapSnapshot);
     HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const DumpSnapShotOption &dumpOption,
                  const bool trackAllocations, EntryIdMap *entryIdMap)
-        : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
-          captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
+        : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode),
+          captureNumericValue_(dumpOption.captureNumericValue), isPrivate_(dumpOption.isPrivate),
+          trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()) {}
     HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const DumpSnapShotOption &dumpOption,
                  const bool trackAllocations, EntryIdMap *entryIdMap, NativeAreaAllocator *allocator)
-        : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
-          captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
+        : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode),
+          captureNumericValue_(dumpOption.captureNumericValue), isPrivate_(dumpOption.isPrivate),
+          trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(allocator) {}
     virtual ~HeapSnapshot();
     bool BuildUp(bool isSimplify = false);
@@ -577,10 +579,10 @@ protected:
     const EcmaVM *vm_;
     StringHashMap *stringTable_ {nullptr};
     bool isVmMode_ {true};
+    bool captureNumericValue_ {false};
 
 private:
     bool isPrivate_ {false};
-    bool captureNumericValue_ {false};
     bool trackAllocations_ {false};
 
 protected:

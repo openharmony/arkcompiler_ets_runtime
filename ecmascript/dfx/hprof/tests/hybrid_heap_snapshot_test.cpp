@@ -33,6 +33,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <algorithm>
 #include <unordered_map>
 #include <unistd.h>
 
@@ -64,6 +65,10 @@ public:
     bool dumpRequested_ = false;
     bool dynamicDumpRequested_ = false;
     bool staticDumpRequested_ = false;
+    DumpRequest lastDumpRequest_;
+    std::vector<uint64_t> edgeRequests_;
+    bool isSimplify_ = false;
+    bool captureNumericValue_ = false;
 
     void MarkFromObject(void *obj) override
     {
@@ -147,11 +152,15 @@ public:
         return roots_;
     }
 
-    void GetEtsNodeEdges(uint64_t etsAddr, std::vector<arkplatform::EdgeInfo> &edges) override
+    void GetEtsNodeEdges(uint64_t etsAddr, std::vector<arkplatform::EdgeInfo> &edges, bool isSimplify,
+                         bool captureNumericValue) override
     {
+        edgeRequests_.push_back(etsAddr);
+        isSimplify_ = isSimplify;
+        captureNumericValue_ = captureNumericValue;
         auto it = edgeMap_.find(etsAddr);
         if (it != edgeMap_.end()) {
-            edges = it->second;
+            edges.insert(edges.end(), it->second.begin(), it->second.end());
         }
     }
 
@@ -230,6 +239,20 @@ public:
         edgeMap_[from].push_back({type, from, to, "", index});
     }
 
+    void AddStaticPrimitiveEdge(uint64_t from, const std::string &name,
+                                arkplatform::StaticPrimitiveType primitiveType,
+                                const std::string &primitiveValue)
+    {
+        edgeMap_[from].push_back({arkplatform::StaticEdgeType::PROPERTY, from, 0, name, 0,
+                                  primitiveType, primitiveValue});
+    }
+
+    bool HasEdgeRequest(uint64_t etsAddr, bool isSimplify, bool captureNumericValue) const
+    {
+        return std::find(edgeRequests_.begin(), edgeRequests_.end(), etsAddr) != edgeRequests_.end() &&
+            isSimplify_ == isSimplify && captureNumericValue_ == captureNumericValue;
+    }
+
     void SetupCycleEdges()
     {
         for (auto &[addr, info] : nodeInfoMap_) {
@@ -286,6 +309,11 @@ public:
     static EntryIdMap &GetEntryIdMapRef(HybridHeapProfiler &profiler)
     {
         return profiler.entryIdMap_;
+    }
+
+    static void UpdateEntryIdMap(HybridHeapProfiler &profiler, HybridHeapSnapshot *snapshot)
+    {
+        profiler.UpdateEntryIdMap(snapshot);
     }
 
     static void TestJSSuspendAllScopeDisabled(EcmaVM *vm)
@@ -419,6 +447,17 @@ static HprofNode *FindNodeByName(const HybridHeapSnapshot &snapshot, const CStri
         }
     }
     return nullptr;
+}
+
+static size_t CountNodesByName(const HybridHeapSnapshot &snapshot, const CString &name)
+{
+    size_t count = 0;
+    for (auto node : *snapshot.GetNodes()) {
+        if (node->GetName() != nullptr && *node->GetName() == name) {
+            count++;
+        }
+    }
+    return count;
 }
 
 static Edge *FindEdgeByName(const HybridHeapSnapshot &snapshot, const CString &name)
@@ -726,14 +765,33 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EmptyModeSnapshot)
 {
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption emptyOption{DumpFormat::JSON, true};
+    emptyOption.dumpDynamicHeap = false;
+    emptyOption.dumpStaticHeap = false;
     HybridHeapSnapshot snapshot(ecmaVm_, nullptr, &entryIdMap, &stringTable,
-                                false, false, false, ecmaVm_->GetNativeAreaAllocator());
+                                emptyOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_FALSE(snapshot.BuildHybridSnapshot());
     ASSERT_EQ(snapshot.GetNodeCount(), 1U);
     const auto &nodes = *snapshot.GetNodes();
     ASSERT_EQ(nodes[0]->GetType(), NodeType::SYNTHETIC);
     ASSERT_NE(nodes[0]->GetName(), nullptr);
     ASSERT_EQ(*nodes[0]->GetName(), CString("Synthetic"));
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, ConstructorPreservesDumpOptions)
+{
+    EntryIdMap entryIdMap;
+    StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isVmMode = false;
+    dumpOption.isPrivate = true;
+    dumpOption.dumpDynamicHeap = false;
+    dumpOption.dumpStaticHeap = false;
+    HybridHeapSnapshot snapshot(ecmaVm_, nullptr, &entryIdMap, &stringTable, dumpOption,
+                                ecmaVm_->GetNativeAreaAllocator());
+    EXPECT_FALSE(snapshot.IsInVmMode());
+    EXPECT_TRUE(snapshot.IsPrivate());
 }
 
 // ============================================================================
@@ -889,6 +947,62 @@ HWTEST_F_L0(HybridHeapSnapshotTest, BuildAndSerialize_StaticOnly)
     ASSERT_TRUE(profiler.GetEntryIdMap()->FindId(0x3000).first);
 }
 
+HWTEST_F_L0(HybridHeapSnapshotTest, BuildAndSerialize_CaptureNumericValue)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
+    mockSts->AddStaticPrimitiveEdge(0x1000, "enabled", arkplatform::StaticPrimitiveType::BOOLEAN,
+                                    "Boolean:true");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "count", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    TestHybridStream stream;
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpDynamicHeap = false;
+    dumpOption.dumpStaticHeap = true;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.captureNumericValue = true;
+    ASSERT_TRUE(HybridHeapProfilerTestHelper::BuildAndSerializeSnapshot(
+        profiler, ecmaVm_, &stream, dumpOption));
+
+    ASSERT_TRUE(mockSts->HasEdgeRequest(0x1000, false, true));
+    const std::string output = stream.GetOutput();
+    AssertOutputContains(output, "\"Boolean:true\"");
+    AssertOutputContains(output, "\"Int:42\"");
+    AssertOutputContains(output, "\"enabled\"");
+    AssertOutputContains(output, "\"count\"");
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BuildAndSerialize_PrivatePrimitiveValues)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
+    mockSts->AddStaticPrimitiveEdge(0x1000, "enabled", arkplatform::StaticPrimitiveType::BOOLEAN,
+                                    "Boolean:true");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "count", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "ratio", arkplatform::StaticPrimitiveType::NUMBER, "Double:3.14");
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    TestHybridStream stream;
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpDynamicHeap = false;
+    dumpOption.dumpStaticHeap = true;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = true;
+    ASSERT_TRUE(HybridHeapProfilerTestHelper::BuildAndSerializeSnapshot(
+        profiler, ecmaVm_, &stream, dumpOption));
+
+    const std::string output = stream.GetOutput();
+    AssertOutputContains(output, "\"Boolean:true\"");
+    AssertOutputContains(output, "\"Int:\"");
+    AssertOutputContains(output, "\"Double:\"");
+    ASSERT_EQ(output.find("\"Int:42\""), std::string::npos);
+    ASSERT_EQ(output.find("\"Double:3.14\""), std::string::npos);
+}
+
 HWTEST_F_L0(HybridHeapSnapshotTest, BuildAndSerialize_WithSync)
 {
     HybridHeapProfiler profiler(ecmaVm_);
@@ -925,8 +1039,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpDynamic_VerifyJSObjects)
     auto mockSts = std::make_unique<MockSTSVMInterface>();
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption dynOnlyOption{DumpFormat::JSON, true};
+    dynOnlyOption.dumpDynamicHeap = true;
+    dynOnlyOption.dumpStaticHeap = false;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, false, ecmaVm_->GetNativeAreaAllocator());
+                                dynOnlyOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     bool hasObject = false;
@@ -981,8 +1098,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpHybrid_VerifyBothHeaps)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     bool foundStatic = false;
@@ -1022,8 +1142,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpWithXRef_VerifyXRefEdges)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     ASSERT_GT(CountEdgesByType(snapshot, EdgeType::XREF), 0U)
@@ -1044,8 +1167,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpWithXRef_StaticToDynamic)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     ASSERT_GT(CountEdgesByType(snapshot, EdgeType::XREF), 0U)
@@ -1070,8 +1196,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DumpWithXRef_BidirectionalMapping)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     ASSERT_GE(CountEdgesByType(snapshot, EdgeType::XREF), 2U)
@@ -1088,8 +1217,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, StaticOnly_EmptyAndRootedNodes)
         auto mockSts = std::make_unique<MockSTSVMInterface>();
         EntryIdMap entryIdMap;
         StringHashMap stringTable(ecmaVm_);
+        DumpSnapShotOption staticOnlyOption{DumpFormat::JSON, true};
+        staticOnlyOption.dumpDynamicHeap = false;
+        staticOnlyOption.dumpStaticHeap = true;
         HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                    false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                    staticOnlyOption, ecmaVm_->GetNativeAreaAllocator());
         ASSERT_FALSE(snapshot.BuildHybridSnapshot());
         ASSERT_EQ(snapshot.GetNodeCount(), 1U);
     }
@@ -1099,8 +1231,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, StaticOnly_EmptyAndRootedNodes)
         SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
         EntryIdMap entryIdMap;
         StringHashMap stringTable(ecmaVm_);
+        DumpSnapShotOption staticOnlyOption{DumpFormat::JSON, true};
+        staticOnlyOption.dumpDynamicHeap = false;
+        staticOnlyOption.dumpStaticHeap = true;
         HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                    false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                    staticOnlyOption, ecmaVm_->GetNativeAreaAllocator());
         ASSERT_TRUE(snapshot.BuildHybridSnapshot());
         ASSERT_GT(snapshot.GetNodeCount(), 1U);
         ASSERT_NE(FindNodeByName(snapshot, "Obj4096"), nullptr);
@@ -1123,7 +1258,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, StaticOnly_NodeProperties)
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     HprofNode *obj1 = FindNodeByName(snapshot, "StaticRoot1");
@@ -1153,7 +1290,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, StaticOnly_NodeDetails)
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     HprofNode *array = FindNodeByName(snapshot, "MyArray");
@@ -1179,7 +1318,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, StaticOnly_PropertyEdges)
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     Edge *field1 = FindEdgeByName(snapshot, "field1");
@@ -1205,10 +1346,143 @@ HWTEST_F_L0(HybridHeapSnapshotTest, StaticOnly_ElementEdges)
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     ASSERT_EQ(CountEdgesByType(snapshot, EdgeType::ELEMENT), 2U);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, StaticPrimitiveNodes_CaptureNumericValue)
+{
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
+    mockSts->AddStaticPrimitiveEdge(0x1000, "enabled", arkplatform::StaticPrimitiveType::BOOLEAN,
+                                    "Boolean:true");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "count", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "countAgain", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "ratio", arkplatform::StaticPrimitiveType::NUMBER, "Double:3.5");
+
+    EntryIdMap entryIdMap;
+    StringHashMap stringTable(ecmaVm_);
+    HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .captureNumericValue = true, .dumpDynamicHeap = false,
+                                                    .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
+    ASSERT_TRUE(snapshot.BuildHybridSnapshot());
+
+    for (const CString &name : {CString("Boolean:true"), CString("Int:42"), CString("Double:3.5")}) {
+        HprofNode *node = FindNodeByName(snapshot, name);
+        ASSERT_NE(node, nullptr);
+        ASSERT_EQ(node->GetType(), NodeType::HEAPNUMBER);
+        ASSERT_FALSE(node->IsDynamic());
+    }
+    ASSERT_EQ(CountNodesByName(snapshot, "Int:42"), 1U);
+    ASSERT_NE(FindEdgeByName(snapshot, "enabled"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "count"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "countAgain"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "ratio"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "ref"), nullptr);
+    ASSERT_TRUE(mockSts->HasEdgeRequest(0x1000, false, true));
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, UpdateEntryIdMap_SkipsSnapshotLocalPrimitiveNodes)
+{
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    const std::vector<uint64_t> staticAddresses {0x1000, 0x2000, 0x3000};
+    SetupMockCycle(*mockSts, staticAddresses);
+    mockSts->AddStaticPrimitiveEdge(0x1000, "count", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+
+    HybridHeapProfiler profiler(ecmaVm_);
+    EntryIdMap &entryIdMap = HybridHeapProfilerTestHelper::GetEntryIdMapRef(profiler);
+    StringHashMap stringTable(ecmaVm_);
+    HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .captureNumericValue = true, .dumpDynamicHeap = false,
+                                                    .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
+    ASSERT_TRUE(snapshot.BuildHybridSnapshot());
+
+    const NodeId nextIdBeforeUpdate = entryIdMap.GetId();
+    HybridHeapProfilerTestHelper::UpdateEntryIdMap(profiler, &snapshot);
+
+    ASSERT_EQ(entryIdMap.GetId(), nextIdBeforeUpdate);
+    ASSERT_EQ(entryIdMap.GetIdMap()->find(0), entryIdMap.GetIdMap()->end());
+    ASSERT_EQ(entryIdMap.GetIdCount(), staticAddresses.size());
+    for (uint64_t addr : staticAddresses) {
+        ASSERT_NE(entryIdMap.GetIdMap()->find(addr), entryIdMap.GetIdMap()->end());
+    }
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, StaticPrimitiveNodes_PrivateMalformedNumberIsIgnored)
+{
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
+    mockSts->AddStaticPrimitiveEdge(0x1000, "invalid", arkplatform::StaticPrimitiveType::NUMBER, "42");
+
+    EntryIdMap entryIdMap;
+    StringHashMap stringTable(ecmaVm_);
+    HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .isPrivate = true, .captureNumericValue = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
+    ASSERT_TRUE(snapshot.BuildHybridSnapshot());
+
+    ASSERT_EQ(FindNodeByName(snapshot, "Number:"), nullptr);
+    ASSERT_EQ(FindEdgeByName(snapshot, "invalid"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "ref"), nullptr);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, StaticPrimitiveNodes_WithoutCaptureNumericValue)
+{
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
+    mockSts->AddStaticPrimitiveEdge(0x1000, "enabled", arkplatform::StaticPrimitiveType::BOOLEAN,
+                                    "Boolean:false");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "count", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+
+    EntryIdMap entryIdMap;
+    StringHashMap stringTable(ecmaVm_);
+    HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
+    ASSERT_TRUE(snapshot.BuildHybridSnapshot());
+
+    ASSERT_NE(FindNodeByName(snapshot, "Boolean:false"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "enabled"), nullptr);
+    ASSERT_EQ(FindNodeByName(snapshot, "Int:42"), nullptr);
+    ASSERT_EQ(FindEdgeByName(snapshot, "count"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "ref"), nullptr);
+    ASSERT_TRUE(mockSts->HasEdgeRequest(0x1000, false, false));
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, StaticPrimitiveNodes_Simplify)
+{
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    SetupMockCycle(*mockSts, {0x1000, 0x2000, 0x3000});
+    mockSts->AddStaticPrimitiveEdge(0x1000, "enabled", arkplatform::StaticPrimitiveType::BOOLEAN,
+                                    "Boolean:true");
+    mockSts->AddStaticPrimitiveEdge(0x1000, "count", arkplatform::StaticPrimitiveType::NUMBER, "Int:42");
+
+    EntryIdMap entryIdMap;
+    StringHashMap stringTable(ecmaVm_);
+    HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .captureNumericValue = true, .isSimplify = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
+    ASSERT_TRUE(snapshot.BuildHybridSnapshot());
+
+    ASSERT_EQ(FindNodeByName(snapshot, "Boolean:true"), nullptr);
+    ASSERT_EQ(FindNodeByName(snapshot, "Int:42"), nullptr);
+    ASSERT_EQ(FindEdgeByName(snapshot, "enabled"), nullptr);
+    ASSERT_EQ(FindEdgeByName(snapshot, "count"), nullptr);
+    ASSERT_NE(FindEdgeByName(snapshot, "ref"), nullptr);
+    ASSERT_TRUE(mockSts->HasEdgeRequest(0x1000, true, true));
 }
 
 // ============================================================================
@@ -1220,8 +1494,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DynamicOnly_BuildsSubRoots)
     auto mockSts = std::make_unique<MockSTSVMInterface>();
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption dynOnlyOption{DumpFormat::JSON, true};
+    dynOnlyOption.dumpDynamicHeap = true;
+    dynOnlyOption.dumpStaticHeap = false;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, false, ecmaVm_->GetNativeAreaAllocator());
+                                dynOnlyOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     ASSERT_GT(snapshot.GetNodeCount(), 1U);
 
@@ -1251,8 +1528,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Hybrid_FullBuild)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     ASSERT_GT(snapshot.GetNodeCount(), 5U);
     HprofNode *staticObj = FindNodeByName(snapshot, "StaticObj");
@@ -1269,8 +1549,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Hybrid_StaticNodesPresent)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     HprofNode *staticObj = FindNodeByName(snapshot, "HybridStaticObj");
@@ -1291,8 +1574,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Hybrid_NodeAndEdgeCounts)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     ASSERT_GT(snapshot.GetNodeCount(), 0U);
     ASSERT_GT(snapshot.GetEdgeCount(), 0U);
@@ -1309,8 +1595,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Hybrid_SyntheticRootEdges)
     auto mockSts = std::make_unique<MockSTSVMInterface>();
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     const auto &nodes = *snapshot.GetNodes();
@@ -1329,8 +1618,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Hybrid_NoXRefWhenMapsEmpty)
 
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption hybridOption{DumpFormat::JSON, true};
+    hybridOption.dumpDynamicHeap = true;
+    hybridOption.dumpStaticHeap = true;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, true, ecmaVm_->GetNativeAreaAllocator());
+                                hybridOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     for (auto edge : *snapshot.GetEdges()) {
         ASSERT_NE(edge->GetType(), EdgeType::XREF);
@@ -1349,8 +1641,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_StaticMappingPersistsAcrossSnapsh
 
     {
         StringHashMap stringTable(ecmaVm_);
+        DumpSnapShotOption staticOnlyOption{DumpFormat::JSON, true};
+        staticOnlyOption.dumpDynamicHeap = false;
+        staticOnlyOption.dumpStaticHeap = true;
         HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                    false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                    staticOnlyOption, ecmaVm_->GetNativeAreaAllocator());
         ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     }
 
@@ -1360,8 +1655,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_StaticMappingPersistsAcrossSnapsh
 
     {
         StringHashMap stringTable(ecmaVm_);
+        DumpSnapShotOption staticOnlyOption{DumpFormat::JSON, true};
+        staticOnlyOption.dumpDynamicHeap = false;
+        staticOnlyOption.dumpStaticHeap = true;
         HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                    false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                    staticOnlyOption, ecmaVm_->GetNativeAreaAllocator());
         ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     }
     auto [found2, id2] = entryIdMap.FindId(0x1000);
@@ -1381,8 +1679,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_UniqueNewID)
     {
         mockSts->roots_.push_back(mockSts->nodeInfoMap_[0x1000]);
         StringHashMap stringTable(ecmaVm_);
+        DumpSnapShotOption staticOnlyOption{DumpFormat::JSON, true};
+        staticOnlyOption.dumpDynamicHeap = false;
+        staticOnlyOption.dumpStaticHeap = true;
         HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                    false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                    staticOnlyOption, ecmaVm_->GetNativeAreaAllocator());
         ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     }
     auto [found1, id1] = entryIdMap.FindId(0x1000);
@@ -1391,8 +1692,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_UniqueNewID)
     {
         mockSts->roots_.push_back(mockSts->nodeInfoMap_[0x2000]);
         StringHashMap stringTable(ecmaVm_);
+        DumpSnapShotOption staticOnlyOption{DumpFormat::JSON, true};
+        staticOnlyOption.dumpDynamicHeap = false;
+        staticOnlyOption.dumpStaticHeap = true;
         HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                    false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                    staticOnlyOption, ecmaVm_->GetNativeAreaAllocator());
         ASSERT_TRUE(snapshot.BuildHybridSnapshot());
     }
     auto [found2, id2] = entryIdMap.FindId(0x2000);
@@ -1408,7 +1712,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_ObjectMovement)
 
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     auto [found1, id1] = entryIdMap.FindId(0x1000);
@@ -1435,7 +1741,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_EraseId)
 
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     [[maybe_unused]] auto [found1, id1] = entryIdMap.FindId(0x1000);
@@ -1466,7 +1774,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, EntryIdMap_RemoveUnmarkedObjects)
 
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     // Both objects should be present
@@ -1491,8 +1801,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Serialization_DynamicOnlyContainsSnapshotFie
     auto mockSts = std::make_unique<MockSTSVMInterface>();
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
+    DumpSnapShotOption dynOnlyOption{DumpFormat::JSON, true};
+    dynOnlyOption.dumpDynamicHeap = true;
+    dynOnlyOption.dumpStaticHeap = false;
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, true, false, ecmaVm_->GetNativeAreaAllocator());
+                                dynOnlyOption, ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     TestHybridStream stream;
@@ -1512,7 +1825,9 @@ HWTEST_F_L0(HybridHeapSnapshotTest, Serialization_ValidateJSONStructure)
     EntryIdMap entryIdMap;
     StringHashMap stringTable(ecmaVm_);
     HybridHeapSnapshot snapshot(ecmaVm_, mockSts.get(), &entryIdMap, &stringTable,
-                                false, false, true, ecmaVm_->GetNativeAreaAllocator());
+                                DumpSnapShotOption {.dumpFormat = DumpFormat::JSON, .isVmMode = true,
+                                                    .dumpDynamicHeap = false, .dumpStaticHeap = true},
+                                ecmaVm_->GetNativeAreaAllocator());
     ASSERT_TRUE(snapshot.BuildHybridSnapshot());
 
     TestHybridStream stream;

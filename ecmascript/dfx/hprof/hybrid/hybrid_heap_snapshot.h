@@ -27,8 +27,8 @@ namespace panda::ecmascript {
 class HybridHeapSnapshot : public HeapSnapshot {
 public:
     HybridHeapSnapshot(EcmaVM *vm, arkplatform::STSVMInterface *stsInterface,
-                       EntryIdMap *entryIdMap, StringHashMap *stringTable, bool isSimplify,
-                       bool dumpDynamicHeap, bool dumpStaticHeap, NativeAreaAllocator *allocator);
+                       EntryIdMap *entryIdMap, StringHashMap *stringTable,
+                       const DumpSnapShotOption &dumpOption, NativeAreaAllocator *allocator);
     ~HybridHeapSnapshot() override = default;
 
     NO_COPY_SEMANTIC(HybridHeapSnapshot);
@@ -72,6 +72,7 @@ private:
 
     HprofNode *CreateStaticNode(const arkplatform::NodeInfo &nodeInfo);
     HprofNode *GetOrCreateStaticNode(uint64_t addr);
+    HprofNode *GetOrCreateStaticPrimitiveNode(const arkplatform::EdgeInfo &edgeInfo);
 
     arkplatform::STSVMInterface *stsInterface_ {nullptr};
     bool dumpDynamicHeap_ {false};
@@ -81,6 +82,7 @@ private:
     // xref maps (populated in BuildUp, used in FillEdges)
     arkplatform::STSVMInterface::XRefMap jsToEts_;
     arkplatform::STSVMInterface::XRefMap etsToJs_;
+    std::unordered_map<const CString *, HprofNode *> staticPrimitiveNodes_;
 };
 
 }  // namespace panda::ecmascript
