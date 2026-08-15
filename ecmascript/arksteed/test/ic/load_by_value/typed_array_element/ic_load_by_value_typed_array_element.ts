@@ -14,6 +14,13 @@
  */
 
 // @ts-nocheck
+//! PARAMS --compiler-jit-hotness-threshold=10000
+//! METHOD loadUint8Element
+//! HAS TypedArrayIntLoadElement
+//! HAS CheckedTaggedIntToI32
+//! HAS DeoptIfHClassMismatch
+//! HAS LoadInt32Field
+//! HAS DeoptIfInt32Condition
 declare function print(arg: any): string;
 
 function loadUint8Element(value, index) {
@@ -118,6 +125,8 @@ for (let i = 0; i < 1000; i++) {
 ArkTools.arkSteedCompileSync(loadFloat32Element);
 print(loadFloat32Element(float32, 1));
 
+//! METHOD loadFloat64Element
+//! HAS TypedArrayDoubleLoadElement
 function loadFloat64Element(value, index) {
     return value[index];
 }
@@ -130,6 +139,9 @@ for (let i = 0; i < 1000; i++) {
 ArkTools.arkSteedCompileSync(loadFloat64Element);
 print(loadFloat64Element(float64, 1));
 
+//! METHOD loadPolymorphicTypedElement
+//! HAS DeoptIfHClassNotIn
+//! HAS BranchIfHClassIn
 function loadPolymorphicTypedElement(value, index) {
     return value[index];
 }
@@ -175,6 +187,8 @@ try {
     print(error instanceof TypeError);
 }
 
+//! METHOD loadBigInt64Element
+//! HAS CallCommonStub GetPropertyByValue
 function loadBigInt64Element(value, index) {
     return value[index];
 }

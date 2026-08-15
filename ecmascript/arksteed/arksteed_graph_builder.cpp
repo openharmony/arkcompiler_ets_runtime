@@ -6378,46 +6378,52 @@ struct GraphBuilder::BytecodeVisitor {
         check->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
-    bool TryBuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
-                                   const ElementLoadAccessInfo &accessInfo)
+    bool TryResolveNormalElementLoadHClass(const ElementLoadAccessInfo &accessInfo, JSHClass **receiverHClass)
     {
         if (accessInfo.kind != ElementLoadKind::NORMAL ||
             HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
             return false;
         }
 
-        JSHClass *receiverHClass = nullptr;
-        if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
-            (receiverHClass->GetObjectType() != JSType::JS_OBJECT && !receiverHClass->IsJSArray()) ||
-            receiverHClass->IsDictionaryElement() ||
-            HandlerBase::IsJSArray(accessInfo.handlerInfo) != receiverHClass->IsJSArray()) {
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, receiverHClass) || *receiverHClass == nullptr ||
+            ((*receiverHClass)->GetObjectType() != JSType::JS_OBJECT && !(*receiverHClass)->IsJSArray()) ||
+            (*receiverHClass)->IsDictionaryElement() ||
+            HandlerBase::IsJSArray(accessInfo.handlerInfo) != (*receiverHClass)->IsJSArray()) {
             return false;
         }
         bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
         if (isMutantArrayEnabled) {
-            ElementsKind kind = receiverHClass->GetElementsKind();
+            ElementsKind kind = (*receiverHClass)->GetElementsKind();
             if (Elements::IsIntOrHoleInt(kind) || Elements::IsNumberOrHoleNumber(kind)) {
                 return false;
             }
         }
+        return true;
+    }
 
-        std::vector<JSHClass *> receiverHClasses {receiverHClass};
+    void AppendCompatibleNormalElementHClasses(JSHClass *receiverHClass, bool isMutantArrayEnabled,
+                                                std::vector<JSHClass *> *receiverHClasses)
+    {
+        if (std::find(receiverHClasses->begin(), receiverHClasses->end(), receiverHClass) ==
+            receiverHClasses->end()) {
+            receiverHClasses->push_back(receiverHClass);
+        }
+
         // Large array literals currently use a specialized initial HClass in the interpreter but the generic
         // initial HClass after their creator tiers up. When mutant arrays are disabled, both layouts store tagged
         // elements, so accepting the generic companion avoids repeated deopts without weakening the element load.
         if (!isMutantArrayEnabled) {
             JSHClass *genericHClass = TryGetGenericInitialArrayHClass(receiverHClass);
-            if (genericHClass != nullptr && genericHClass != receiverHClass) {
-                receiverHClasses.push_back(genericHClass);
+            if (genericHClass != nullptr &&
+                std::find(receiverHClasses->begin(), receiverHClasses->end(), genericHClass) ==
+                    receiverHClasses->end()) {
+                receiverHClasses->push_back(genericHClass);
             }
         }
-        bool hasHClassCheck = receiverHClasses.size() == 1
-            ? BuildCheckHClass(bcIndex, receiver, receiverHClass)
-            : BuildCheckHClasses(bcIndex, receiver, receiverHClasses, false, false);
-        if (!hasHClassCheck) {
-            return false;
-        }
+    }
 
+    void BuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key)
+    {
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
         ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
@@ -6431,6 +6437,27 @@ struct GraphBuilder::BytecodeVisitor {
         BuildCheckTaggedCondition(
             bcIndex, result, hole, Condition::EQUAL, kungfu::DeoptType::BUILTINISHOLE1);
         frameState.SetAcc(result);
+    }
+
+    bool TryBuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                   const ElementLoadAccessInfo &accessInfo)
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveNormalElementLoadHClass(accessInfo, &receiverHClass)) {
+            return false;
+        }
+
+        bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
+        std::vector<JSHClass *> receiverHClasses;
+        AppendCompatibleNormalElementHClasses(receiverHClass, isMutantArrayEnabled, &receiverHClasses);
+        bool hasHClassCheck = receiverHClasses.size() == 1
+            ? BuildCheckHClass(bcIndex, receiver, receiverHClass)
+            : BuildCheckHClasses(bcIndex, receiver, receiverHClasses, false, false);
+        if (!hasHClassCheck) {
+            return false;
+        }
+
+        BuildNormalElementLoad(bcIndex, receiver, key);
         return true;
     }
 
@@ -6664,6 +6691,40 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
+    bool TryBuildPolymorphicNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                              const ValueLoadAccessSet &access)
+    {
+        if (access.elementCount < 2) {
+            return false;
+        }
+
+        bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
+        std::vector<JSHClass *> expectedHClasses;
+        std::vector<JSHClass *> compatibleHClasses;
+        expectedHClasses.reserve(access.elementCount);
+        compatibleHClasses.reserve(access.elementCount + 1);
+        std::optional<bool> isJSArray;
+        for (uint32_t i = 0; i < access.elementCount; ++i) {
+            JSHClass *hclass = nullptr;
+            if (!TryResolveNormalElementLoadHClass(access.elements[i], &hclass) ||
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), hclass) != expectedHClasses.end()) {
+                return false;
+            }
+            if (isJSArray.has_value() && *isJSArray != hclass->IsJSArray()) {
+                return false;
+            }
+            isJSArray = hclass->IsJSArray();
+            expectedHClasses.push_back(hclass);
+            AppendCompatibleNormalElementHClasses(hclass, isMutantArrayEnabled, &compatibleHClasses);
+        }
+
+        if (!BuildCheckHClasses(bcIndex, receiver, compatibleHClasses, false, false)) {
+            return false;
+        }
+        BuildNormalElementLoad(bcIndex, receiver, key);
+        return true;
+    }
+
     bool TryBuildElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
                              const ValueLoadAccessSet &access)
     {
@@ -6671,7 +6732,14 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
         if (access.elementCount > 1) {
-            return TryBuildPolymorphicTypedArrayElementLoad(bcIndex, receiver, key, access);
+            switch (access.elements[0].kind) {
+                case ElementLoadKind::NORMAL:
+                    return TryBuildPolymorphicNormalElementLoad(bcIndex, receiver, key, access);
+                case ElementLoadKind::TYPED_ARRAY:
+                    return TryBuildPolymorphicTypedArrayElementLoad(bcIndex, receiver, key, access);
+                default:
+                    return false;
+            }
         }
         const ElementLoadAccessInfo &accessInfo = access.elements[0];
         switch (accessInfo.kind) {

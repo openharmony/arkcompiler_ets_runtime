@@ -1,9 +1,0 @@
-TypedArrayIntLoadElement [Int32]
-TypedArrayDoubleLoadElement [Float64]
-DeoptIfTaggedCondition
-DeoptIfHClassMismatch
-DeoptIfHClassNotIn [DeoptIfHClassNotIn]
-BranchIfHClassIn
-LoadInt32Field [Int32]
-DeoptIfInt32Condition
-CallCommonStub [COStub_GetPropertyByValue]

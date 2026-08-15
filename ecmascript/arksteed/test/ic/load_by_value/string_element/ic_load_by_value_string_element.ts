@@ -14,6 +14,15 @@
  */
 
 // @ts-nocheck
+//! PARAMS --compiler-jit-hotness-threshold=10000
+//! METHOD loadStringElement
+//! HAS LineStringLoadElement
+//! HAS LoadSingleCharTableElement
+//! HAS CallCommonStub CreateStringBySingleCharCode
+//! HAS DeoptIfHClassMismatch
+//! HAS LoadInt32Field
+//! HAS I32BitwiseBinary
+//! HAS DeoptIfInt32Condition
 declare function print(arg: any): string;
 
 function loadStringElement(value, index) {
@@ -34,6 +43,10 @@ print(loadStringElement("abc", 3) === undefined);
 print(loadStringElement("abc", -1) === undefined);
 print(loadStringElement("abc", "1"));
 
+//! METHOD loadConstantStringElement
+//! HAS LoadSingleCharTableElement
+//! HAS_NOT LineStringLoadElement
+//! HAS_NOT CallCommonStub CreateStringBySingleCharCode
 function loadConstantStringElement() {
     let index = 1;
     return "abc"[index];
@@ -53,6 +66,8 @@ const left = "tree-prefix-";
 const right = "string-suffix";
 const tree = left + right;
 print(ArkTools.isTreeString(tree));
+//! METHOD loadTreeStringElement
+//! HAS CallCommonStub GetPropertyByValue
 for (let i = 0; i < 1000; i++) {
     loadTreeStringElement(tree, i % tree.length);
 }

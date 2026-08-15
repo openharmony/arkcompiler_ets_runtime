@@ -574,6 +574,10 @@ bool ArkSteedAccessInfoFactory::TryBuildValueLoadAccessInfo(ValueLoadAccessSet *
         *access = {};
         return false;
     }
+    if (feedback.caseCount == 0 || feedback.caseCount > access->elements.size()) {
+        *access = {};
+        return false;
+    }
     for (uint32_t index = 0; index < feedback.caseCount; ++index) {
         JSTaggedValue handler;
         if (!broker_->TryResolveRef(feedback.cases[index].handler, &handler) || !handler.IsInt()) {
