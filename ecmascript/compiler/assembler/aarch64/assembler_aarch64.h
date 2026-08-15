@@ -259,6 +259,7 @@ public:
     void Sdiv(const Register &rd, const Register &rn, const Register &rm);
     void Msub(const Register &rd, const Register &rn, const Register &rm, const Register &ra);
     void Scvtf(const VRegister &vd, const Register &rn);
+    void Fcvt(const VRegister &vd, const VRegister &vn);
     void Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm);
     void Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm);

@@ -30,12 +30,14 @@
 #include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
-#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/profile_type_info_cell.h"
+#include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -2008,6 +2010,9 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 1);
         ValueVertex *key = frameState.GetAcc();
+        if (TryFoldConstantStringElement(receiver, key)) {
+            return;
+        }
         if (TryBuildLoadPropertyByValue(bcInfo, bcIndex, receiver, key)) {
             return;
         }
@@ -3602,12 +3607,19 @@ struct GraphBuilder::BytecodeVisitor {
             return std::nullopt;
         }
 
-        auto *constant = node->TryCast<TaggedConstantVertex>();
-        if (constant == nullptr) {
-            return std::nullopt;
+        if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue value(constant->GetValue());
+            return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
         }
-        JSTaggedValue value(constant->GetValue());
-        return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
+        if (auto *constant = node->TryCast<HeapConstantVertex>()) {
+            JitCompilationEnv *env = self->preproc_->GetEnv();
+            if (env == nullptr || constant->GetHandleIndex() >= env->GetHeapConstantTable().size()) {
+                return std::nullopt;
+            }
+            JSTaggedValue value = env->GetHeapConstantHandle(constant->GetHandleIndex()).GetTaggedValue();
+            return value.IsHole() || value.IsHeapObject() ? std::optional<JSTaggedValue>(value) : std::nullopt;
+        }
+        return std::nullopt;
     }
 
     // LDA_STR "" is currently represented by GetStringFromConstPool.
@@ -5540,6 +5552,33 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
+    JSHClass *TryGetGenericInitialArrayHClass(JSHClass *receiverHClass) const
+    {
+        if (receiverHClass == nullptr || !receiverHClass->IsJSArray() ||
+            receiverHClass->GetElementsKind() == ElementsKind::GENERIC) {
+            return nullptr;
+        }
+
+        JitCompilationEnv *env = self->preproc_->GetEnv();
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        JSThread *hostThread = env == nullptr ? nullptr : env->GetHostThread();
+        if (hostThread == nullptr || broker == nullptr) {
+            return nullptr;
+        }
+
+        ArkSteedHeapBroker::SerializingScope scope(
+            broker, "GraphBuilder::TryGetGenericInitialArrayHClass");
+        auto globalEnv = env->GetGlobalEnv();
+        bool isPrototype = receiverHClass->IsPrototype();
+        JSHClass *initialHClass = hostThread->GetArrayInstanceHClass(
+            globalEnv, receiverHClass->GetElementsKind(), isPrototype, JSThread::ThreadKind::JitThread);
+        if (initialHClass != receiverHClass) {
+            return nullptr;
+        }
+        return hostThread->GetArrayInstanceHClass(
+            globalEnv, ElementsKind::GENERIC, isPrototype, JSThread::ThreadKind::JitThread);
+    }
+
     ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
     {
         if (g_isEnableCMCGC) {
@@ -6354,27 +6393,38 @@ struct GraphBuilder::BytecodeVisitor {
             HandlerBase::IsJSArray(accessInfo.handlerInfo) != receiverHClass->IsJSArray()) {
             return false;
         }
-        if (self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray()) {
+        bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
+        if (isMutantArrayEnabled) {
             ElementsKind kind = receiverHClass->GetElementsKind();
             if (Elements::IsIntOrHoleInt(kind) || Elements::IsNumberOrHoleNumber(kind)) {
                 return false;
             }
         }
-        if (!BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
+
+        std::vector<JSHClass *> receiverHClasses {receiverHClass};
+        // Large array literals currently use a specialized initial HClass in the interpreter but the generic
+        // initial HClass after their creator tiers up. When mutant arrays are disabled, both layouts store tagged
+        // elements, so accepting the generic companion avoids repeated deopts without weakening the element load.
+        if (!isMutantArrayEnabled) {
+            JSHClass *genericHClass = TryGetGenericInitialArrayHClass(receiverHClass);
+            if (genericHClass != nullptr && genericHClass != receiverHClass) {
+                receiverHClasses.push_back(genericHClass);
+            }
+        }
+        bool hasHClassCheck = receiverHClasses.size() == 1
+            ? BuildCheckHClass(bcIndex, receiver, receiverHClass)
+            : BuildCheckHClasses(bcIndex, receiver, receiverHClasses, false, false);
+        if (!hasHClassCheck) {
             return false;
         }
 
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
-        ValueVertex *zero = self->graph_->GetInt32Constant(0);
-        BuildDeoptIfInt32Condition(
-            index, zero, Condition::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
-
         ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
         ValueVertex *capacity = self->NewVertex<LoadInt32FieldVertex>(
             currentBlock, {elements}, static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
         BuildDeoptIfInt32Condition(
-            index, capacity, Condition::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+            index, capacity, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
         ValueVertex *result = self->NewVertex<LoadTaggedElementVertex>(currentBlock, {elements, index});
         ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
@@ -6394,16 +6444,11 @@ struct GraphBuilder::BytecodeVisitor {
 
         JSHClass *receiverHClass = nullptr;
         if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
-            !receiverHClass->IsString() || receiverHClass->GetObjectType() == JSType::TREE_STRING ||
-            !BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
+            !receiverHClass->IsLineString() || !BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
             return false;
         }
 
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
-        ValueVertex *zero = self->graph_->GetInt32Constant(0);
-        BuildDeoptIfInt32Condition(
-            index, zero, Condition::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
-
         ValueVertex *lengthAndFlags = self->NewVertex<LoadInt32FieldVertex>(
             currentBlock, {receiver}, static_cast<int32_t>(BaseString::LENGTH_AND_FLAGS_OFFSET));
         ValueVertex *lengthShift =
@@ -6411,55 +6456,222 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *length = self->NewVertex<I32BitwiseBinaryVertex>(
             currentBlock, {lengthAndFlags, lengthShift}, IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
         BuildDeoptIfInt32Condition(
-            index, length, Condition::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+            index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
-        ValueVertex *charCode = self->NewVertex<StringLoadElementVertex>(
-            compileInfoFacts_, currentBlock, {glue, receiver, index, GlobalEnv()});
-        CommonStubCallToAccWithLazyDeopt(
+        ValueVertex *charCode = self->NewVertex<LineStringLoadElementVertex>(
+            compileInfoFacts_, currentBlock, {receiver, index, lengthAndFlags});
+
+        // SingleCharTable caches one-character strings for codes [1, 0x7f].
+        ValueVertex *one = self->graph_->GetInt32Constant(LoadSingleCharTableElementVertex::MIN_CHAR_CODE);
+        ValueVertex *cachedRange = self->graph_->GetInt32Constant(LoadSingleCharTableElementVertex::MAX_CHAR_CODE -
+                                                                  LoadSingleCharTableElementVertex::MIN_CHAR_CODE);
+        ValueVertex *adjustedCharCode = self->NewVertex<I32SubVertex>(compileInfoFacts_, currentBlock, {charCode, one});
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        BB *cachedCharBlock = self->NewBlock();
+        BB *createCharBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        createCharBlock->SetDeferred(true);
+        self->FinishBlockWithBranch<BranchIfInt32CompareVertex>(currentBlock, {adjustedCharCode, cachedRange},
+                                                                cachedCharBlock, createCharBlock,
+                                                                Condition::BELOW_OR_EQUAL);
+
+        currentBlock = cachedCharBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        ValueVertex *cachedChar =
+            self->NewVertex<LoadSingleCharTableElementVertex>(compileInfoFacts_, currentBlock, {glue, charCode});
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = createCharBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        ValueVertex *createdChar =
+            CommonStubCallToAccWithLazyDeopt(
             {glue, charCode, GlobalEnv()}, CommonStubID::CreateStringBySingleCharCode);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        compileInfoFacts_->OnSideEffect();
+        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, {cachedChar, createdChar}, self->AccIndex()));
         return true;
     }
 
-    bool TryBuildTypedArrayElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
-                                       const ElementLoadAccessInfo &accessInfo)
+    bool TryFoldConstantStringElement(ValueVertex *receiver, ValueVertex *key)
+    {
+        std::optional<int32_t> index = TryGetInt32Value(key);
+        if (!index.has_value() || *index < 0) {
+            return false;
+        }
+
+        std::optional<JSTaggedValue> string = TryGetConstantHeapObject(receiver);
+        if (!string.has_value()) {
+            auto *loadString = receiver->TryCast<CallCommonStubVertex>();
+            if (loadString == nullptr ||
+                loadString->GetCommonStubID() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
+                return false;
+            }
+            auto *stringId = loadString->GetInput(2)->TryCast<Int32ConstantVertex>();
+            if (stringId == nullptr || stringId->GetValue() < 0 ||
+                stringId->GetValue() > std::numeric_limits<uint16_t>::max()) {
+                return false;
+            }
+            string = TryGetNameFromConstDataId(static_cast<uint16_t>(stringId->GetValue()));
+        }
+        JitCompilationEnv *env = self->preproc_->GetEnv();
+        JSThread *thread = env == nullptr ? nullptr : env->GetJSThread();
+        if (!string.has_value() || !string->IsString() || thread == nullptr) {
+            return false;
+        }
+
+        ALLOW_DEREF_HANDLE;
+        EcmaStringAccessor accessor(*string);
+        if (static_cast<uint32_t>(*index) >= accessor.GetLength()) {
+            return false;
+        }
+        uint16_t charCode = accessor.Get(thread, static_cast<uint32_t>(*index));
+        if (charCode < LoadSingleCharTableElementVertex::MIN_CHAR_CODE ||
+            charCode > LoadSingleCharTableElementVertex::MAX_CHAR_CODE) {
+            return false;
+        }
+
+        ValueVertex *charCodeConstant = self->graph_->GetInt32Constant(static_cast<int32_t>(charCode));
+        frameState.SetAcc(self->NewVertex<LoadSingleCharTableElementVertex>(compileInfoFacts_, currentBlock,
+                                                                            {glue, charCodeConstant}));
+        return true;
+    }
+
+    bool TryResolveTypedArrayElementLoadHClass(const ElementLoadAccessInfo &accessInfo, JSHClass **receiverHClass)
     {
         if (accessInfo.kind != ElementLoadKind::TYPED_ARRAY ||
             HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
             return false;
         }
 
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, receiverHClass) || *receiverHClass == nullptr ||
+            !(*receiverHClass)->IsTypedArray()) {
+            return false;
+        }
+        JSType objectType = (*receiverHClass)->GetObjectType();
+        if (objectType <= JSType::JS_TYPED_ARRAY_FIRST || objectType > JSType::JS_FLOAT64_ARRAY ||
+            HandlerBase::IsOnHeap(accessInfo.handlerInfo) != (*receiverHClass)->IsOnHeapFromBitField()) {
+            return false;
+        }
+        return true;
+    }
+
+    bool TryBuildTypedArrayElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                       const ElementLoadAccessInfo &accessInfo, ValueVertex *checkedIndex = nullptr,
+                                       bool buildHClassCheck = true)
+    {
         JSHClass *receiverHClass = nullptr;
-        if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
-            !receiverHClass->IsTypedArray()) {
+        if (!TryResolveTypedArrayElementLoadHClass(accessInfo, &receiverHClass) ||
+            (buildHClassCheck && !BuildCheckHClass(bcIndex, receiver, receiverHClass))) {
             return false;
         }
         JSType objectType = receiverHClass->GetObjectType();
-        if (objectType <= JSType::JS_TYPED_ARRAY_FIRST || objectType > JSType::JS_FLOAT64_ARRAY ||
-            HandlerBase::IsOnHeap(accessInfo.handlerInfo) != receiverHClass->IsOnHeapFromBitField() ||
-            !BuildCheckHClass(bcIndex, receiver, receiverHClass)) {
+
+        ValueVertex *index = checkedIndex == nullptr ? BuildCheckedTaggedIntToI32(key) : checkedIndex;
+        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
+            currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(
+            index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        bool isOnHeap = receiverHClass->IsOnHeapFromBitField();
+        ValueVertex *storage = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
+        if (!isOnHeap) {
+            storage = self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {storage},
+                                                             static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
+            ValueVertex *null = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_NULL);
+            BuildCheckTaggedCondition(
+                bcIndex, storage, null, Condition::EQUAL, kungfu::DeoptType::ARRAYBUFFERISDETACHED);
+        }
+
+        switch (objectType) {
+            case JSType::JS_INT8_ARRAY:
+            case JSType::JS_UINT8_ARRAY:
+            case JSType::JS_UINT8_CLAMPED_ARRAY:
+            case JSType::JS_INT16_ARRAY:
+            case JSType::JS_UINT16_ARRAY:
+            case JSType::JS_INT32_ARRAY: {
+                ValueVertex *raw = self->NewVertex<TypedArrayIntLoadElementVertex>(
+                    compileInfoFacts_, currentBlock, {receiver, index, storage}, objectType, isOnHeap);
+                frameState.SetAcc(self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {raw}));
+                break;
+            }
+            case JSType::JS_UINT32_ARRAY:
+            case JSType::JS_FLOAT32_ARRAY:
+            case JSType::JS_FLOAT64_ARRAY: {
+                ValueVertex *raw = self->NewVertex<TypedArrayDoubleLoadElementVertex>(
+                    compileInfoFacts_, currentBlock, {receiver, index, storage}, objectType, isOnHeap);
+                frameState.SetAcc(self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {raw}));
+                break;
+            }
+            default:
+                UNREACHABLE();
+        }
+        return true;
+    }
+
+    bool TryBuildPolymorphicTypedArrayElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                                  const ValueLoadAccessSet &access)
+    {
+        if (access.elementCount < 2) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        expectedHClasses.reserve(access.elementCount);
+        for (uint32_t i = 0; i < access.elementCount; ++i) {
+            JSHClass *hclass = nullptr;
+            if (!TryResolveTypedArrayElementLoadHClass(access.elements[i], &hclass) ||
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), hclass) != expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(hclass);
+        }
+        if (!BuildEagerCheckHClassesWithoutDependencies(bcIndex, receiver, expectedHClasses)) {
             return false;
         }
 
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
-        ValueVertex *zero = self->graph_->GetInt32Constant(0);
-        BuildDeoptIfInt32Condition(
-            index, zero, IntConditionKind::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
+        BB *doneBlock = self->NewBlock();
+        std::vector<ValueVertex *> results;
+        results.reserve(access.elementCount);
+        for (uint32_t i = 0; i + 1 < access.elementCount; ++i) {
+            BB *caseBlock = self->NewBlock();
+            BB *nextCaseBlock = self->NewBlock();
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(currentBlock, {receiver}, caseBlock, nextCaseBlock,
+                                                                std::vector<JSHClass *> {expectedHClasses[i]});
 
-        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
-            currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
-        BuildDeoptIfInt32Condition(
-            index, length, IntConditionKind::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+            currentBlock = caseBlock;
+            if (!TryBuildTypedArrayElementLoad(bcIndex, receiver, key, access.elements[i], index, false)) {
+                return false;
+            }
+            results.push_back(frameState.GetAcc());
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+            currentBlock = nextCaseBlock;
+        }
 
-        CommonStubCallToAccWithLazyDeopt(
-            {glue, receiver, index, GlobalEnv()}, CommonStubID::GetPropertyByIndex);
+        if (!TryBuildTypedArrayElementLoad(bcIndex, receiver, key, access.elements[access.elementCount - 1], index,
+                                           false)) {
+            return false;
+        }
+        results.push_back(frameState.GetAcc());
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+        currentBlock = doneBlock;
+        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, results, self->AccIndex()));
         return true;
     }
 
     bool TryBuildElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
                              const ValueLoadAccessSet &access)
     {
-        if (access.kind != ValueLoadAccessKind::ELEMENT || access.feedback.isPoly || access.elementCount != 1) {
+        if (access.kind != ValueLoadAccessKind::ELEMENT || access.elementCount == 0) {
             return false;
+        }
+        if (access.elementCount > 1) {
+            return TryBuildPolymorphicTypedArrayElementLoad(bcIndex, receiver, key, access);
         }
         const ElementLoadAccessInfo &accessInfo = access.elements[0];
         switch (accessInfo.kind) {

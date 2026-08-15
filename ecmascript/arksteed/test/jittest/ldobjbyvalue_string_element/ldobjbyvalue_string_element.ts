@@ -27,9 +27,23 @@ for (let i = 0; i < 1000; i++) {
 ArkTools.arkSteedCompileSync(loadStringElement);
 print(loadStringElement("abc", 1));
 print(loadStringElement("A\u4E2DC", 1));
+print(loadStringElement("\u0000", 0) === "\u0000");
+print(loadStringElement("\u007F", 0).charCodeAt(0) === 0x7F);
+print(loadStringElement("\u0080", 0).charCodeAt(0) === 0x80);
 print(loadStringElement("abc", 3) === undefined);
 print(loadStringElement("abc", -1) === undefined);
 print(loadStringElement("abc", "1"));
+
+function loadConstantStringElement() {
+    let index = 1;
+    return "abc"[index];
+}
+
+for (let i = 0; i < 1000; i++) {
+    loadConstantStringElement();
+}
+ArkTools.arkSteedCompileSync(loadConstantStringElement);
+print(loadConstantStringElement());
 
 function loadTreeStringElement(value, index) {
     return value[index];

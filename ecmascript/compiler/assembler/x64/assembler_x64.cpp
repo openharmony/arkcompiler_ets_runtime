@@ -1823,6 +1823,30 @@ void AssemblerX64::Movsd(XMMRegister dst, const Operand &src)
     EmitOperand(dst.LowBits(), src);
 }
 
+void AssemblerX64::Movss(XMMRegister dst, const Operand &src)
+{
+    // movss xmm_dst, m32_src: F3 0F 10 /r
+    EmitU8(0xF3);
+    if (dst.HighBit() || src.rex_) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.rex_);  // 2: REX.R bit position
+    }
+    EmitU8(0x0F);
+    EmitU8(0x10);
+    EmitOperand(dst.LowBits(), src);
+}
+
+void AssemblerX64::Cvtss2sd(XMMRegister src, XMMRegister dst)
+{
+    // cvtss2sd xmm_dst, xmm_src: F3 0F 5A /r
+    EmitU8(0xF3);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());  // 2: REX.R bit position
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());  // 3: ModR/M reg field position
+}
+
 void AssemblerX64::Movq(XMMRegister dst, Register src)
 {
     // movq xmm_dst, r64_src

@@ -24,12 +24,16 @@
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/base/bit_helper.h"
+#include "ecmascript/byte_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/method.h"
+#include "ecmascript/string/line_string.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::arksteed {
@@ -204,6 +208,91 @@ void ArkSteedAssembler::LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister
     constexpr uint8_t TAGGED_SIZE_SHIFT = 3;
     assembler_.Add(dst, elements, aarch64::Operand(index, aarch64::UXTW, TAGGED_SIZE_SHIFT));
     LoadField(dst, dst, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
+}
+
+void ArkSteedAssembler::LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
+                                               ArkSteedRegister lengthAndFlags)
+{
+    TemporaryRegisterScope scope(this);
+    ArkSteedRegister data = scope.AcquireScratch();
+    Move(data, string);
+    Add(data, static_cast<int32_t>(LineString::DATA_OFFSET));
+
+    Label utf16;
+    Label done;
+    TestAndBranchIfNotZero(lengthAndFlags, BaseString::CompressedStatusBit::START_BIT, &utf16);
+    assembler_.Ldrb(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 0));
+    Jump(&done);
+    Bind(&utf16);
+    assembler_.Ldrh(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 1));
+    Bind(&done);
+}
+
+void ArkSteedAssembler::LoadTypedArrayDataPointer(ArkSteedRegister dst, ArkSteedRegister receiver,
+                                                  ArkSteedRegister storage, ArkSteedRegister scratch, bool isOnHeap)
+{
+    if (isOnHeap) {
+        Move(dst, storage);
+        Add(dst, static_cast<int32_t>(ByteArray::DATA_OFFSET));
+        return;
+    }
+    LoadInt32Field(scratch, receiver, static_cast<int32_t>(JSTypedArray::BYTE_OFFSET_OFFSET));
+    LoadField(dst, storage, static_cast<int32_t>(JSNativePointer::POINTER_OFFSET));
+    Add(dst, scratch);
+}
+
+void ArkSteedAssembler::LoadTypedArrayIntElement(ArkSteedRegister dst, ArkSteedRegister data, ArkSteedRegister index,
+                                                 JSType elementType)
+{
+    switch (elementType) {
+        case JSType::JS_INT8_ARRAY:
+            assembler_.Ldrb(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 0));
+            Int32ShiftLeft(dst, 24U);
+            Int32ShiftRightArithmetic(dst, 24U);
+            break;
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            assembler_.Ldrb(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 0));
+            break;
+        case JSType::JS_INT16_ARRAY:
+            assembler_.Ldrh(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 1));
+            Int32ShiftLeft(dst, 16U);
+            Int32ShiftRightArithmetic(dst, 16U);
+            break;
+        case JSType::JS_UINT16_ARRAY:
+            assembler_.Ldrh(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 1));
+            break;
+        case JSType::JS_INT32_ARRAY:
+            assembler_.Ldr(dst.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 2));
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void ArkSteedAssembler::LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, ArkSteedRegister data,
+                                                    ArkSteedRegister index, ArkSteedRegister scratch,
+                                                    JSType elementType)
+{
+    switch (elementType) {
+        case JSType::JS_UINT32_ARRAY:
+            assembler_.Ldr(scratch.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 2));
+            assembler_.Scvtf(dst, scratch.X());
+            break;
+        case JSType::JS_FLOAT32_ARRAY: {
+            assembler_.Add(scratch, data, aarch64::Operand(index, aarch64::UXTW, 2));
+            auto single = aarch64::VRegister::Create(dst.Code(), aarch64::S_REG_SIZE);
+            assembler_.Ldr(single, aarch64::MemoryOperand(scratch, 0));
+            assembler_.Fcvt(dst, single);
+            break;
+        }
+        case JSType::JS_FLOAT64_ARRAY:
+            assembler_.Add(scratch, data, aarch64::Operand(index, aarch64::UXTW, 3));
+            assembler_.Ldr(dst, aarch64::MemoryOperand(scratch, 0));
+            break;
+        default:
+            UNREACHABLE();
+    }
 }
 
 void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)

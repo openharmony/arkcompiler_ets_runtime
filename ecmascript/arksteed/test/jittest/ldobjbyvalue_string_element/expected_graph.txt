@@ -1,4 +1,5 @@
-StringLoadElement [COStub_StringLoadElement]
+LineStringLoadElement [Int32]
+LoadSingleCharTableElement [Tagged]
 CallCommonStub [COStub_CreateStringBySingleCharCode]
 DeoptIfHClassMismatch
 LoadInt32Field [Int32]

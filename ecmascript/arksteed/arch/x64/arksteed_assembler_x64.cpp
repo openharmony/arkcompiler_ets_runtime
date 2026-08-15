@@ -20,12 +20,16 @@
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/base/bit_helper.h"
+#include "ecmascript/byte_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/method.h"
+#include "ecmascript/string/line_string.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::arksteed {
@@ -132,6 +136,85 @@ void ArkSteedAssembler::LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister
 {
     x64::Operand operand(elements, index, x64::Scale::Times8, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
     assembler_.Movq(operand, dst);
+}
+
+void ArkSteedAssembler::LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
+                                               ArkSteedRegister lengthAndFlags)
+{
+    Label utf16;
+    Label done;
+    assembler_.Btl(x64::Immediate(BaseString::CompressedStatusBit::START_BIT), lengthAndFlags);
+    JumpIf(Condition::BELOW, &utf16);
+    assembler_.Movzbq(x64::Operand(string, index, x64::Scale::Times1, static_cast<int32_t>(LineString::DATA_OFFSET)),
+                      dst);
+    Jump(&done);
+    Bind(&utf16);
+    assembler_.Movzwq(x64::Operand(string, index, x64::Scale::Times2, static_cast<int32_t>(LineString::DATA_OFFSET)),
+                      dst);
+    Bind(&done);
+}
+
+void ArkSteedAssembler::LoadTypedArrayDataPointer(ArkSteedRegister dst, ArkSteedRegister receiver,
+                                                  ArkSteedRegister storage, ArkSteedRegister scratch, bool isOnHeap)
+{
+    if (isOnHeap) {
+        Move(dst, storage);
+        Add(dst, static_cast<int32_t>(ByteArray::DATA_OFFSET));
+        return;
+    }
+    LoadInt32Field(scratch, receiver, static_cast<int32_t>(JSTypedArray::BYTE_OFFSET_OFFSET));
+    LoadField(dst, storage, static_cast<int32_t>(JSNativePointer::POINTER_OFFSET));
+    Add(dst, scratch);
+}
+
+void ArkSteedAssembler::LoadTypedArrayIntElement(ArkSteedRegister dst, ArkSteedRegister data, ArkSteedRegister index,
+                                                 JSType elementType)
+{
+    switch (elementType) {
+        case JSType::JS_INT8_ARRAY:
+            assembler_.Movzbl(x64::Operand(data, index, x64::Scale::Times1, 0), dst);
+            Int32ShiftLeft(dst, 24U);
+            Int32ShiftRightArithmetic(dst, 24U);
+            break;
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            assembler_.Movzbl(x64::Operand(data, index, x64::Scale::Times1, 0), dst);
+            break;
+        case JSType::JS_INT16_ARRAY:
+            assembler_.Movzwq(x64::Operand(data, index, x64::Scale::Times2, 0), dst);
+            Int32ShiftLeft(dst, 16U);
+            Int32ShiftRightArithmetic(dst, 16U);
+            break;
+        case JSType::JS_UINT16_ARRAY:
+            assembler_.Movzwq(x64::Operand(data, index, x64::Scale::Times2, 0), dst);
+            break;
+        case JSType::JS_INT32_ARRAY:
+            assembler_.Movl(x64::Operand(data, index, x64::Scale::Times4, 0), dst);
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void ArkSteedAssembler::LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, ArkSteedRegister data,
+                                                    ArkSteedRegister index, ArkSteedRegister scratch,
+                                                    JSType elementType)
+{
+    switch (elementType) {
+        case JSType::JS_UINT32_ARRAY:
+            assembler_.Movl(x64::Operand(data, index, x64::Scale::Times4, 0), scratch);
+            assembler_.Cvtsi2sd(scratch, dst);
+            break;
+        case JSType::JS_FLOAT32_ARRAY:
+            assembler_.Movss(dst, x64::Operand(data, index, x64::Scale::Times4, 0));
+            assembler_.Cvtss2sd(dst, dst);
+            break;
+        case JSType::JS_FLOAT64_ARRAY:
+            assembler_.Movsd(dst, x64::Operand(data, index, x64::Scale::Times8, 0));
+            break;
+        default:
+            UNREACHABLE();
+    }
 }
 
 void ArkSteedAssembler::StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset)

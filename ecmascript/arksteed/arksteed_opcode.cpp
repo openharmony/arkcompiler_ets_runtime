@@ -177,10 +177,12 @@ void CallCommonStubVertex::SetValueLocationConstraints()
     UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
-void StringLoadElementVertex::SetValueLocationConstraints()
+void LineStringLoadElementVertex::SetValueLocationConstraints()
 {
-    DefineAsFixed(this, 0);
-    SetStubValueLocationConstraints(this, GetInputCount());
+    DefineAsRegister(this);
+    UseRegister(Arg(STRING_INDEX));
+    UseRegister(Arg(ELEMENT_INDEX));
+    UseRegister(Arg(LENGTH_AND_FLAGS_INDEX));
 }
 
 void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
@@ -278,6 +280,32 @@ void LoadTaggedElementVertex::SetValueLocationConstraints()
     DefineAsRegister(this);
     UseRegister(Arg(ELEMENTS_INDEX));
     UseRegister(Arg(INDEX_INDEX));
+}
+
+void LoadSingleCharTableElementVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(GLUE_INDEX));
+    UseRegister(Arg(CHAR_CODE_INDEX));
+    SetTemporariesNeeded(1);
+}
+
+void TypedArrayIntLoadElementVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseRegister(Arg(ELEMENT_INDEX));
+    UseRegister(Arg(STORAGE_INDEX));
+    SetTemporariesNeeded(2);
+}
+
+void TypedArrayDoubleLoadElementVertex::SetValueLocationConstraints()
+{
+    DefineAsRegister(this);
+    UseRegister(Arg(RECEIVER_INDEX));
+    UseRegister(Arg(ELEMENT_INDEX));
+    UseRegister(Arg(STORAGE_INDEX));
+    SetTemporariesNeeded(2);
 }
 
 void LoadPrototypeFromObjectVertex::SetValueLocationConstraints()

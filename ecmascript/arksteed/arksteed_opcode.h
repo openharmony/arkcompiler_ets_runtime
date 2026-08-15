@@ -868,6 +868,105 @@ public:
     void SetValueLocationConstraints();
 };
 
+class LoadSingleCharTableElementVertex
+    : public FixedInputVertexMixin<ValueVertex, LoadSingleCharTableElementVertex> {
+public:
+    enum Indices : uint32_t {
+        GLUE_INDEX = 0,
+        CHAR_CODE_INDEX = 1,
+        NUM_INPUTS = 2,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::INT_PTR,
+        ValueRepresentation::INT32,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+    static constexpr int32_t MIN_CHAR_CODE = 1;
+    static constexpr int32_t MAX_CHAR_CODE = 0x7F;
+
+    explicit LoadSingleCharTableElementVertex() : FixedInputVertexMixin() {}
+
+    void SetValueLocationConstraints();
+};
+
+class TypedArrayIntLoadElementVertex : public FixedInputVertexMixin<ValueVertex, TypedArrayIntLoadElementVertex> {
+public:
+    enum Indices : uint32_t {
+        RECEIVER_INDEX = 0,
+        ELEMENT_INDEX = 1,
+        STORAGE_INDEX = 2,
+        NUM_INPUTS = 3,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+
+    TypedArrayIntLoadElementVertex(JSType elementType, bool isOnHeap)
+        : FixedInputVertexMixin(), elementType_(elementType), isOnHeap_(isOnHeap)
+    {
+    }
+
+    JSType GetElementType() const
+    {
+        return elementType_;
+    }
+
+    bool IsOnHeap() const
+    {
+        return isOnHeap_;
+    }
+
+    void SetValueLocationConstraints();
+
+private:
+    JSType elementType_;
+    bool isOnHeap_;
+};
+
+class TypedArrayDoubleLoadElementVertex
+    : public FixedInputVertexMixin<ValueVertex, TypedArrayDoubleLoadElementVertex> {
+public:
+    enum Indices : uint32_t {
+        RECEIVER_INDEX = 0,
+        ELEMENT_INDEX = 1,
+        STORAGE_INDEX = 2,
+        NUM_INPUTS = 3,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::FLOAT64;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+
+    TypedArrayDoubleLoadElementVertex(JSType elementType, bool isOnHeap)
+        : FixedInputVertexMixin(), elementType_(elementType), isOnHeap_(isOnHeap)
+    {
+    }
+
+    JSType GetElementType() const
+    {
+        return elementType_;
+    }
+
+    bool IsOnHeap() const
+    {
+        return isOnHeap_;
+    }
+
+    void SetValueLocationConstraints();
+
+private:
+    JSType elementType_;
+    bool isOnHeap_;
+};
+
 class LoadPrototypeFromObjectVertex : public FixedInputVertexMixin<ValueVertex, LoadPrototypeFromObjectVertex> {
 public:
     enum Indices : uint32_t {
@@ -1627,26 +1726,23 @@ private:
     SideEffectKind sideEffectKind_;
 };
 
-class StringLoadElementVertex : public FixedInputVertexMixin<ValueVertex, StringLoadElementVertex> {
+class LineStringLoadElementVertex : public FixedInputVertexMixin<ValueVertex, LineStringLoadElementVertex> {
 public:
     enum Indices : uint32_t {
-        GLUE_INDEX = 0,
-        STRING_INDEX = 1,
-        ELEMENT_INDEX = 2,
-        GLOBAL_ENV_INDEX = 3,
-        NUM_INPUTS = 4,
+        STRING_INDEX = 0,
+        ELEMENT_INDEX = 1,
+        LENGTH_AND_FLAGS_INDEX = 2,
+        NUM_INPUTS = 3,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
-        ValueRepresentation::INT64,
         ValueRepresentation::TAGGED,
         ValueRepresentation::INT32,
-        ValueRepresentation::TAGGED,
+        ValueRepresentation::INT32,
     };
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit StringLoadElementVertex() : FixedInputVertexMixin() {}
+    explicit LineStringLoadElementVertex() : FixedInputVertexMixin() {}
 
     void SetValueLocationConstraints();
 };

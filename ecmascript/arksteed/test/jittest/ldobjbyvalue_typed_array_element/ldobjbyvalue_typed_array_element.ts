@@ -34,6 +34,66 @@ print(loadUint8Element(uint8, "2"));
 const uint16 = new Uint16Array([100, 200, 500, 800]);
 print(loadUint8Element(uint16, 2));
 
+function loadInt8Element(value, index) {
+    return value[index];
+}
+
+const int8 = new Int8Array([-128, -7, 127]);
+for (let i = 0; i < 1000; i++) {
+    loadInt8Element(int8, i % int8.length);
+}
+
+ArkTools.arkSteedCompileSync(loadInt8Element);
+print(loadInt8Element(int8, 1));
+
+function loadUint8ClampedElement(value, index) {
+    return value[index];
+}
+
+const uint8Clamped = new Uint8ClampedArray([0, 129, 255]);
+for (let i = 0; i < 1000; i++) {
+    loadUint8ClampedElement(uint8Clamped, i % uint8Clamped.length);
+}
+
+ArkTools.arkSteedCompileSync(loadUint8ClampedElement);
+print(loadUint8ClampedElement(uint8Clamped, 1));
+
+function loadInt16Element(value, index) {
+    return value[index];
+}
+
+const int16 = new Int16Array([-32768, -1234, 32767]);
+for (let i = 0; i < 1000; i++) {
+    loadInt16Element(int16, i % int16.length);
+}
+
+ArkTools.arkSteedCompileSync(loadInt16Element);
+print(loadInt16Element(int16, 1));
+
+function loadUint16Element(value, index) {
+    return value[index];
+}
+
+const directUint16 = new Uint16Array([0, 60000, 65535]);
+for (let i = 0; i < 1000; i++) {
+    loadUint16Element(directUint16, i % directUint16.length);
+}
+
+ArkTools.arkSteedCompileSync(loadUint16Element);
+print(loadUint16Element(directUint16, 1));
+
+function loadInt32Element(value, index) {
+    return value[index];
+}
+
+const int32 = new Int32Array([0, -2000000000, 2147483647]);
+for (let i = 0; i < 1000; i++) {
+    loadInt32Element(int32, i % int32.length);
+}
+
+ArkTools.arkSteedCompileSync(loadInt32Element);
+print(loadInt32Element(int32, 1));
+
 function loadUint32Element(value, index) {
     return value[index];
 }
@@ -46,6 +106,18 @@ for (let i = 0; i < 1000; i++) {
 ArkTools.arkSteedCompileSync(loadUint32Element);
 print(loadUint32Element(uint32, 1));
 
+function loadFloat32Element(value, index) {
+    return value[index];
+}
+
+const float32 = new Float32Array([1.5, -2.25, 9.75]);
+for (let i = 0; i < 1000; i++) {
+    loadFloat32Element(float32, i % float32.length);
+}
+
+ArkTools.arkSteedCompileSync(loadFloat32Element);
+print(loadFloat32Element(float32, 1));
+
 function loadFloat64Element(value, index) {
     return value[index];
 }
@@ -57,6 +129,20 @@ for (let i = 0; i < 1000; i++) {
 
 ArkTools.arkSteedCompileSync(loadFloat64Element);
 print(loadFloat64Element(float64, 1));
+
+function loadPolymorphicTypedElement(value, index) {
+    return value[index];
+}
+
+const polyUint8 = new Uint8Array([21, 42]);
+const polyFloat64 = new Float64Array([1.5, 6.25]);
+for (let i = 0; i < 1000; i++) {
+    loadPolymorphicTypedElement(i % 2 === 0 ? polyUint8 : polyFloat64, 1);
+}
+
+ArkTools.arkSteedCompileSync(loadPolymorphicTypedElement);
+print(loadPolymorphicTypedElement(polyUint8, 1));
+print(loadPolymorphicTypedElement(polyFloat64, 1));
 
 function loadOffHeapUint8Element(value, index) {
     return value[index];

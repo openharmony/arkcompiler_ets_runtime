@@ -27,6 +27,7 @@
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
 #include "libpandabase/macros.h"
 
@@ -141,6 +142,14 @@ public:
     void LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister elements, ArkSteedRegister index);
+    void LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
+                                ArkSteedRegister lengthAndFlags);
+    void LoadTypedArrayDataPointer(ArkSteedRegister dst, ArkSteedRegister receiver, ArkSteedRegister storage,
+                                   ArkSteedRegister scratch, bool isOnHeap);
+    void LoadTypedArrayIntElement(ArkSteedRegister dst, ArkSteedRegister data, ArkSteedRegister index,
+                                  JSType elementType);
+    void LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, ArkSteedRegister data, ArkSteedRegister index,
+                                     ArkSteedRegister scratch, JSType elementType);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);

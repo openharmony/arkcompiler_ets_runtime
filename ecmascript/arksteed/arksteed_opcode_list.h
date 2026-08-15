@@ -42,7 +42,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(Call)                             \
     V(CallRuntime)                      \
     V(CallCommonStub)                   \
-    V(StringLoadElement)                \
+    V(LineStringLoadElement)            \
     V(Phi)                              \
     V(LoadTaggedFromAddress)            \
     V(LoadI32FromAddress)               \
@@ -51,6 +51,9 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(LoadTaggedField)                  \
     V(LoadInt32Field)                   \
     V(LoadTaggedElement)                \
+    V(LoadSingleCharTableElement)       \
+    V(TypedArrayIntLoadElement)         \
+    V(TypedArrayDoubleLoadElement)      \
     V(LoadPrototypeFromObject)          \
     V(LoadPrototypeHolderByHClass)      \
     V(ConvertHoleToUndefined)           \

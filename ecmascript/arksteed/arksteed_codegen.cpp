@@ -28,6 +28,7 @@
 #include "ecmascript/arksteed/arksteed_write_barrier.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_function.h"
@@ -1318,6 +1319,23 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadTaggedElementVertex>(LoadT
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<LoadSingleCharTableElementVertex>(
+    LoadSingleCharTableElementVertex *loadElement)
+{
+    auto dst = GetResultRegister(loadElement);
+    auto glue = GetInputRegister(loadElement, LoadSingleCharTableElementVertex::GLUE_INDEX);
+    auto charCode = GetInputRegister(loadElement, LoadSingleCharTableElementVertex::CHAR_CODE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister singleCharTable = scope.Acquire();
+
+    constexpr int32_t singleCharTableOffset = static_cast<int32_t>(ConstantIndex::SINGLE_CHAR_TABLE_INDEX) *
+                                              static_cast<int32_t>(JSTaggedValue::TaggedTypeSize());
+    __ LoadField(singleCharTable, glue, static_cast<int32_t>(JSThread::GlueData::GetGlobalConstOffset(false)));
+    __ LoadField(singleCharTable, singleCharTable, singleCharTableOffset);
+    __ LoadTaggedElement(dst, singleCharTable, charCode);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeFromObjectVertex>(
     LoadPrototypeFromObjectVertex *loadPrototype)
 {
@@ -2221,6 +2239,29 @@ DEFINE_I32_WITH_OVERFLOW_CODEGEN(Add, Int32Add)
 DEFINE_I32_WITH_OVERFLOW_CODEGEN(Sub, Int32Sub)
 #undef DEFINE_I32_WITH_OVERFLOW_CODEGEN
 
+#define DEFINE_I32_CODEGEN(Name, Op)                                                          \
+    template <>                                                                               \
+    void ArkSteedCodeGenerator::VisitNonControlVertex<I32##Name##Vertex>(I32##Name##Vertex *op) \
+    {                                                                                         \
+        auto dst = GetResultRegister(op);                                                     \
+        auto left = GetInputRegister(op, I32##Name##Vertex::LEFT_INDEX);                      \
+        auto right = GetInputRegister(op, I32##Name##Vertex::RIGHT_INDEX);                    \
+        __ Op(dst, left, right);                                                              \
+    }
+
+DEFINE_I32_CODEGEN(Add, Int32Add)
+DEFINE_I32_CODEGEN(Sub, Int32Sub)
+#undef DEFINE_I32_CODEGEN
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulVertex>(I32MulVertex *op)
+{
+    auto dst = GetResultRegister(op);
+    auto right = GetInputRegister(op, I32MulVertex::RIGHT_INDEX);
+    ASSERT(dst == GetInputRegister(op, I32MulVertex::LEFT_INDEX));
+    __ Int32Mul(dst, right);
+}
+
 template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32MulWithOverflowVertex *op)
 {
@@ -2756,12 +2797,42 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallCommonStubVertex>(CallComm
 }
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<StringLoadElementVertex>(StringLoadElementVertex *load)
+void ArkSteedCodeGenerator::VisitNonControlVertex<LineStringLoadElementVertex>(LineStringLoadElementVertex *load)
 {
-    int stackArgCount = PrepareCommonStubStackArguments(load, load->GetInputCount());
-    __ CallCommonStub(CommonStubID::StringLoadElement);
-    safepointBuilder_->DefineSafepoint(__ GetPcOffset());
-    __ FreeCallArgSlots(stackArgCount);
+    auto dst = GetResultRegister(load);
+    auto string = GetInputRegister(load, LineStringLoadElementVertex::STRING_INDEX);
+    auto index = GetInputRegister(load, LineStringLoadElementVertex::ELEMENT_INDEX);
+    auto lengthAndFlags = GetInputRegister(load, LineStringLoadElementVertex::LENGTH_AND_FLAGS_INDEX);
+    __ LoadLineStringCharCode(dst, string, index, lengthAndFlags);
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TypedArrayIntLoadElementVertex>(TypedArrayIntLoadElementVertex *load)
+{
+    auto dst = GetResultRegister(load);
+    auto receiver = GetInputRegister(load, TypedArrayIntLoadElementVertex::RECEIVER_INDEX);
+    auto index = GetInputRegister(load, TypedArrayIntLoadElementVertex::ELEMENT_INDEX);
+    auto storage = GetInputRegister(load, TypedArrayIntLoadElementVertex::STORAGE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    auto data = scope.Acquire();
+    auto scratch = scope.Acquire();
+    __ LoadTypedArrayDataPointer(data, receiver, storage, scratch, load->IsOnHeap());
+    __ LoadTypedArrayIntElement(dst, data, index, load->GetElementType());
+}
+
+template <>
+void ArkSteedCodeGenerator::VisitNonControlVertex<TypedArrayDoubleLoadElementVertex>(
+    TypedArrayDoubleLoadElementVertex *load)
+{
+    auto dst = GetResultDoubleRegister(load);
+    auto receiver = GetInputRegister(load, TypedArrayDoubleLoadElementVertex::RECEIVER_INDEX);
+    auto index = GetInputRegister(load, TypedArrayDoubleLoadElementVertex::ELEMENT_INDEX);
+    auto storage = GetInputRegister(load, TypedArrayDoubleLoadElementVertex::STORAGE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    auto data = scope.Acquire();
+    auto scratch = scope.Acquire();
+    __ LoadTypedArrayDataPointer(data, receiver, storage, scratch, load->IsOnHeap());
+    __ LoadTypedArrayDoubleElement(dst, data, index, scratch, load->GetElementType());
 }
 
 bool ArkSteedCodeGenerator::AllPredecessorsDeferred(BB *block) const

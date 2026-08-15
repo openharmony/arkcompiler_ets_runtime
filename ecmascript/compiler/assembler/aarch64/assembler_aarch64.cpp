@@ -933,6 +933,13 @@ void AssemblerAarch64::Scvtf(const VRegister &vd, const Register &rn)
     EmitU32(code);
 }
 
+void AssemblerAarch64::Fcvt(const VRegister &vd, const VRegister &vn)
+{
+    ASSERT(vd.IsD() && vn.IsS());
+    constexpr uint32_t FCVT_DS = 0x1E22C000U;
+    EmitU32(FCVT_DS | Rn(vn.GetId()) | Rd(vd.GetId()));
+}
+
 void AssemblerAarch64::Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm)
 {
     uint32_t code = FPType(vd) | FADD | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
@@ -1511,8 +1518,27 @@ void AssemblerAarch64::EmitLoadStoreD(const VRegister &vt, const MemoryOperand &
 
 void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
 {
-    EmitLoadStoreD(vt, operand, LoadStoreOpCode::LDR_D_Offset, LoadStoreOpCode::LDR_D_Pre,
-                   LoadStoreOpCode::LDR_D_Post);
+    if (vt.IsD()) {
+        EmitLoadStoreD(vt, operand, LoadStoreOpCode::LDR_D_Offset, LoadStoreOpCode::LDR_D_Pre,
+                       LoadStoreOpCode::LDR_D_Post);
+        return;
+    }
+
+    ASSERT(operand.IsImmediateOffset());
+    ASSERT(operand.GetRegBase().IsX());
+    ASSERT(operand.GetAddrMode() == AddrMode::OFFSET);
+    ASSERT(vt.IsS());
+
+    int64_t offset = operand.GetImmediate().Value();
+    constexpr int64_t scale = S_REG_SIZE / B_REG_SIZE;
+    ASSERT((offset % scale) == 0 && offset >= 0 && offset <= 4095 * scale);
+    uint32_t imm12 = static_cast<uint32_t>(offset / scale);
+
+    uint32_t encoding = 0xBD400000U;
+    encoding |= (imm12 << 10);  // 10: imm12 field position
+    encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
+    encoding |= static_cast<uint32_t>(vt.Code());  // Rt (St)
+    EmitU32(encoding);
 }
 
 void AssemblerAarch64::Str(const VRegister &vt, const MemoryOperand &operand)
