@@ -100,7 +100,7 @@ private:
     void ProcessWeakReference();
 
     // Preparation
-    void PrepareAllThreads();
+    void PrepareMainThread();
     void WaitMainThreadReady();
     void PrepareForCopy();
     void CollectUpdateRegions();

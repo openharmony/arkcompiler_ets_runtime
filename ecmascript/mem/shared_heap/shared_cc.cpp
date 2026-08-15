@@ -59,7 +59,7 @@ void SharedCC::RunPhases(GCReason gcReason)
     // TotalGC is finalized in FinalizeAndReclaim; see totalGcTimer_ and the TRACE_GC note in gc_stats.h.
     totalGcTimer_.Reset();
 
-    PrepareAllThreads();
+    PrepareMainThread();
 
     {
         WriteLockHolder gcWriteLock(BaseHeap::gcExclusiveRWLock_);
@@ -98,6 +98,11 @@ void SharedCC::ReMarkAndPrepare(GCReason gcReason)
     marker_->ReMark();
     SuspendIdleThreads();
     LogThreadStatesBeforeCopy();
+    // ResetTlab must precede PostTask, else it races with the concurrent sweeper.
+    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+        auto *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+        heap->ResetTlab();
+    });
     sHeap_->GetSweeper()->Sweep(true);
     sHeap_->GetSweeper()->PostTask(true);
     PrepareForCopy();
@@ -174,12 +179,14 @@ void SharedCC::ExitSharedGCScope()
     });
 }
 
-void SharedCC::PrepareAllThreads()
+void SharedCC::PrepareMainThread()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::PrepareAllThreads", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::PrepareMainThread", "");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, sHeap_->GetEcmaGCStats());
+    // Other threads are posted in CCMarkFlipFunction during ConcurrentMark.
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        if (!thread->HasPostTaskToThreadCallback()) {
+        if (thread != Runtime::GetInstance()->GetMainThread() ||
+            !thread->HasPostTaskToThreadCallback()) {
             return;
         }
         if (thread->TryMarkCCTaskPending()) {
@@ -232,8 +239,6 @@ void SharedCC::PrepareForCopy()
     });
 
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        auto *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        heap->ResetTlab();
         thread->SetReadBarrierState(true);
     });
 
@@ -395,7 +400,7 @@ void SharedCC::ParallelCopy()
 
     ASSERT(runningTaskCount_ == 0);
     int workerCount = CalculateCopyThreadNum();
-    if (workerCount == 0 && copyTasks_.empty()) {
+    if (copyTasks_.empty()) {
         LOG_GC(DEBUG) << "SharedCC: ParallelCopy skipped, no FROM regions";
         return;
     }
