@@ -2158,8 +2158,8 @@ DEF_RUNTIME_STUBS(HandleResolutionIsNullOrString)
                   ModulePathHelper::Utf8ConvertToString(thread, bindingName) + "' which imported by '" + recordStr +
                   "'";
 
-    // Print hmsModules content only if requestMod starts with "hms:"
-    if (StringHelper::StringStartWith(requestMod, ModulePathHelper::PREFIX_HMS)) {
+    // Print hmsModules content only if requestMod contains "hms"
+    if (requestMod.find(ModulePathHelper::PREFIX_HMS) != CString::npos) {
         const auto& hmsModuleList = thread->GetEcmaVM()->GetHmsModuleList();
         LOG_ECMA(ERROR) << "HMS Module List contents:";
         for (const auto& [key, hmsMap] : hmsModuleList) {
