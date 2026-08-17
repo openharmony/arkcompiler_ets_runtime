@@ -453,7 +453,20 @@ void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject *root,
     ObjectSlotBase<refType> start, ObjectSlotBase<refType> end)
 {
     ASSERT(JSTaggedValue(root).IsConstantPool());
-    if constexpr (ReferenceIsCompressed<refType>) {
+    ConstantPool *constpool = ConstantPool::Cast(root);
+    // Match the cache region by its exact range, not by refType: with compressed pointers off,
+    // ReferenceType::COMPRESSED equals ReferenceType::NORMAL and ReferenceIsCompressed is always
+    // false, so refType can no longer tell the cache region apart from the extend-data region.
+    // The body visitor hands the two regions in as precise ranges, so [start, end) is exactly
+    // [dataAddr, cacheRegionEnd) when the cache region is being visited.
+    uintptr_t dataAddr = ToUintPtr(constpool->GetData());
+    size_t cacheRegionEnd = dataAddr +
+        static_cast<size_t>(constpool->GetLengthOfCacheElement()) * JSTaggedValue::TaggedTypeSize();
+    // [start, end) must be either exactly the cache region or completely disjoint from it -- the
+    // body visitor never hands in a partially overlapping range.
+    ASSERT((start.SlotAddress() == dataAddr && end.SlotAddress() == cacheRegionEnd) ||
+           start.SlotAddress() >= cacheRegionEnd || end.SlotAddress() <= dataAddr);
+    if (start.SlotAddress() == dataAddr && end.SlotAddress() == cacheRegionEnd) {
         // constpool size is always less than 65536
         uint64_t seqHole = 0;
         // Write sequential holes to serialization data
@@ -467,7 +480,7 @@ void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject *root,
             data_->WriteUint32(static_cast<uint32_t>(seqHole));
             seqHole = 0;
         };
-        for (CompressedObjectSlot slot = start; slot < end; slot++) {
+        for (ObjectSlotBase<refType> slot = start; slot < end; slot++) {
             TemporaryJSTaggedValue value = Barriers::GetFromCompressedTaggedValue(thread_, slot.SlotAddress());
             if (!value.IsHeapObject()) {
                 seqHole++;
@@ -486,9 +499,8 @@ void BaseSerializer::SerializeConstantPoolFieldIndividually(TaggedObject *root,
         }
         writeCompressedHoles();
     } else {
-        ConstantPool *constpool = ConstantPool::Cast(root);
         size_t sharedConstPoolIdOffset = constpool->GetSharedConstpoolIdOffset();
-        for (ObjectSlot slot = start; slot < end; slot++) {
+        for (ObjectSlotBase<refType> slot = start; slot < end; slot++) {
             size_t fieldOffset = slot.SlotAddress() - ToUintPtr(constpool->GetData());
             if (fieldOffset == sharedConstPoolIdOffset) {
                 SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));

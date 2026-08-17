@@ -98,13 +98,13 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, bool i
     if (shouldPageTag) {
         PageTag(mem, size, PageTagType::HEAP);
     }
-    if (!skipCache && isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
+    if (!skipCache && isRegular && !isCompress && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
         // Cache regions to accelerate allocation.
         memMapPool_.AddMemToCommittedCache(mem, size);
         return;
     }
     Free(mem, size, isRegular, isCompress);
-    if (!skipCache && isRegular && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
+    if (!skipCache && isRegular && !isCompress && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
         int freeNum = memMapPool_.ShouldFreeMore(cachedSize);
         for (int i = 0; i < freeNum; i++) {
             void *freeMem = memMapPool_.GetRegularMemFromCommitted(size).GetMem();
