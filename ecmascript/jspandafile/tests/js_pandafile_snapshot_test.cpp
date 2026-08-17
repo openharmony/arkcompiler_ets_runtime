@@ -260,6 +260,9 @@ public:
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, SerializeAndDeserializeTest)
 {
+    // Reset global snapshot state: earlier tests may have triggered
+    // UpdateFromStateFile with non-existent paths, leaving featureState=disableAll.
+    ModulesSnapshotHelper::ResetStateForTest();
     // construct JSPandaFile
     CString path = GetSnapshotPath();
     CString version = "version 205.0.1.120(SP20)";
@@ -471,6 +474,9 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ShouldDeSerializeFailedWhenModuleNameIsNotM
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, WriteAndReadRecordInfoSectionWithMergedPF)
 {
+    // Reset global snapshot state: earlier tests may have triggered
+    // UpdateFromStateFile with non-existent paths, leaving featureState=disableAll.
+    ModulesSnapshotHelper::ResetStateForTest();
     // serialize
     CString path = GetSnapshotPath();
     CString version = "version 205.0.1.120(SP20)";

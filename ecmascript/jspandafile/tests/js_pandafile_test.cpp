@@ -800,6 +800,9 @@ HWTEST_F_L0(JSPandaFileTest, GetClassAndMethodIndexes_UseMinCount)
  */
 HWTEST_F_L0(JSPandaFileTest, ConstructorWithThread_SnapshotReadSuccess)
 {
+    // Reset global snapshot state: earlier tests may have triggered
+    // UpdateFromStateFile with non-existent paths, leaving featureState=disableAll.
+    ModulesSnapshotHelper::ResetStateForTest();
     CString path = GetCurrentDirPath();
     const char *abcFilename = "/data/storage/el1/bundle/entry/ets/main/modules.abc";
     const char *source = R"(

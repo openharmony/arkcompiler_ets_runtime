@@ -25,7 +25,9 @@
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/module_tools.h"
@@ -643,7 +645,7 @@ void SourceTextModule::DFSModuleInstantiation(JSThread *thread, JSHandle<SourceT
             // iii. Set requiredModule.[[Status]] to "instantiated".
             requiredModule->SetStatus(ModuleStatus::INSTANTIATED);
 #if ENABLE_MODULE_MEMORY_OPTIMIZATION
-            ClearInstantiationFieldsIfNeeded(thread, requiredModule);
+            ClearImportEntriesIfNeeded(thread, requiredModule);
 #endif
             // iv. If requiredModule and module are the same Module Record, set done to true.
             if (JSTaggedValue::SameValue(thread, module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
@@ -1165,8 +1167,9 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
 #if ENABLE_MODULE_MEMORY_OPTIMIZATION
                 ClearTopLevelCapabilityIfNeeded(thread, requiredModule);
+                ClearModuleRequestsIfNeeded(thread, requiredModule);
 #else
-                ClearInstantiationFieldsIfNeeded(thread, requiredModule);
+                ClearImportEntriesIfNeeded(thread, requiredModule);
 #endif
             } else {
                 requiredModule->SetStatus(ModuleStatus::EVALUATING_ASYNC);
@@ -1184,7 +1187,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
     return index;
 }
 
-void SourceTextModule::ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
+void SourceTextModule::ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
 {
 #if ENABLE_MODULE_MEMORY_OPTIMIZATION
     ASSERT(module->GetStatus() >= ModuleStatus::INSTANTIATED);
@@ -1197,14 +1200,6 @@ void SourceTextModule::ClearInstantiationFieldsIfNeeded(JSThread *thread, JSHand
         if (thread->GetModuleLogger() == nullptr) {
             module->SetImportEntries(thread, undefinedValue);
         }
-#if ENABLE_MODULE_MEMORY_OPTIMIZATION
-        // ModuleRequests is only cleared for non-shared modules.
-        // Shared modules need ModuleRequests for cross-thread fallback resolve.
-        if (!IsSharedModule(module) &&
-            (!vm->GetJSOptions().EnableSnapshotSerialize() || module->GetLazyImportStatusArray() == nullptr)) {
-            module->SetModuleRequests(thread, undefinedValue);
-        }
-#endif
     }
 }
 
@@ -1218,6 +1213,47 @@ void SourceTextModule::ClearTopLevelCapabilityIfNeeded(JSThread *thread, const J
     if (!vm->GetJsDebuggerManager()->IsDebugApp()) {
         JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
         module->SetTopLevelCapability(thread, undefinedValue);
+    }
+}
+
+bool CanClearModuleRequests(EcmaVM *vm)
+{
+    auto state = vm->GetModuleRequestsClearState();
+    if (state == ModuleRequestsClearState::UNINITIALIZED) {
+        if (vm->GetJSOptions().DisableModuleSnapshot() ||
+            ModulesSnapshotHelper::IsModuleSnapshotDisabled(
+                ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR)) {
+            vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+            return true;
+        }
+        if (ModulesSnapshotHelper::GetFeatureLoaded() & static_cast<int>(SnapshotFeatureState::MODULE)) {
+            vm->SetModuleRequestsClearState(ModuleRequestsClearState::CAN_CLEAR);
+            return true;
+        }
+        vm->SetModuleRequestsClearState(ModuleRequestsClearState::CANNOT_CLEAR);
+        return false;
+    } else if (state == ModuleRequestsClearState::CAN_CLEAR) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+void SourceTextModule::ClearModuleRequestsIfNeeded(JSThread *thread, const JSHandle<SourceTextModule> &module)
+{
+    ASSERT(module->GetStatus() >= ModuleStatus::EVALUATED);
+    if (module->GetModuleRequests(thread).IsUndefined() || IsSharedModule(module) ||
+    module->GetLazyImportStatusArray() != nullptr) {
+        return;
+    }
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->GetJsDebuggerManager()->IsDebugApp()) {
+        return;
+    }
+    if (CanClearModuleRequests(vm)) {
+        JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+        module->SetModuleRequests(thread, undefinedValue);
     }
 }
 
@@ -2025,6 +2061,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
 #endif
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+    ClearModuleRequestsIfNeeded(thread, module);
+#endif
     // 8. Let execList be a new empty List.
     AsyncParentCompletionSet execList;
     // 9. Perform GatherAvailableAncestors(module, execList).
@@ -2070,6 +2109,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
 #endif
                     RETURN_IF_ABRUPT_COMPLETION(thread);
                 }
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+                ClearModuleRequestsIfNeeded(thread, m);
+#endif
             }
         }
     }
@@ -2175,7 +2217,7 @@ void SourceTextModule::SearchCircularImport(JSThread *thread, const CString &cir
                                             CString &requiredModuleName, bool printOtherCircular)
 {
     // Use RequestedModules instead of ModuleRequests, because ModuleRequests may be
-    // cleared by ClearInstantiationFieldsIfNeeded after instantiation.
+    // cleared after evaluation.
     if (module->GetRequestedModules(thread).IsUndefined()) {
         return;
     }

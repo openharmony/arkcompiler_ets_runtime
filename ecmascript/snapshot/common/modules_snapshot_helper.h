@@ -156,6 +156,19 @@ public:
     static bool WriteFileHeader(FileMemMapWriter& writer, const SnapshotVersionInfo::UniquePtr &header);
     static std::string ReadFileHeader(FileMemMapReader& reader, const SnapshotVersionInfo::UniquePtr &header);
 
+    static int GetFeatureLoaded()
+    {
+        return g_featureLoaded_;
+    }
+
+    // For unit tests ONLY — avoids cross-test contamination from paths that
+    // trigger UpdateFromStateFile. Do NOT call in production code: it resets
+    // the global snapshot feature state.
+    static void ResetStateForTest()
+    {
+        g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
+    }
+
 private:
     struct alignas(sizeof(uint64_t)) SerializeDataInfo {
         uint32_t dataIndex_;
