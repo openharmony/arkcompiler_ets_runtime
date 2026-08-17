@@ -47,13 +47,13 @@ ecmascript/jobs/             @weng-changcheng @yingguofeng
 ecmascript/js_api/           @huanghello @xliu-huanwei
 ecmascript/jspandafile/      @shilei123 @weng-changcheng ^yingguofeng
 ecmascript/mem/              @dwhuawei @chentianyuu @lukai25 @xiongluo96 @yingguofeng @wanghuan2022
-ecmascript/module/           @yao_dashuai ^weng-changcheng @shilei123 @li-jiangfeng
+ecmascript/module/           @gong_19901 ^weng-changcheng @shilei123 @li-jiangfeng
 ecmascript/napi/             @huanghello @xliu-huanwei ^weng-changcheng @shilei123
 ecmascript/patch/            @wanghuan2022 @lijiamin2019 ^weng-changcheng
 ecmascript/pgo_profiler/     @yingguofeng
 ecmascript/quick_fix/        @wanghuan2022 @lijiamin2019 ^weng-changcheng
 ecmascript/regexp/           @xwcai98  @chenjx-huawei @hecunmao
-ecmascript/require/          @yao_dashuai ^weng-changcheng
+ecmascript/require/          @gong_19901 ^weng-changcheng
 ecmascript/serializer/       @dwhuawei @chentianyuu @lukai25 ^weng-changcheng
 ecmascript/shared_mm/        @dwhuawei @chentianyuu @lukai25 @xiongluo96 @weng-changcheng
 ecmascript/shared_objects/   @chentianyuu @lukai25 @lijiamin2019 @weng-changcheng
