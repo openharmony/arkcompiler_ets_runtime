@@ -17,7 +17,15 @@
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_bb.h"
+#include "ecmascript/arksteed/arksteed_condition_code.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
+#include "ecmascript/arksteed/arksteed_opcode_list.h"
+#include "ecmascript/arksteed/arksteed_vertex.h"
+#include "ecmascript/compiler/common_stub_csigns.h"
+#include "ecmascript/compiler/rt_call_signature.h"
+#include <ios>
+#include <sstream>
+#include <type_traits>
 
 namespace panda::ecmascript::arksteed {
 
@@ -63,20 +71,6 @@ void SetStubValueLocationConstraints(Vertex *vertex, size_t inputCount)
     }
 }
 
-inline ArkSteedRegister GetInputRegister(const Vertex *vertex, int index)
-{
-    const InputLocation *loc = vertex->GetInputLocation(index);
-    ASSERT(loc->IsRegister());
-    return loc->GetAssignedGeneralRegister();
-}
-
-inline ArkSteedRegister GetResultRegister(const ValueVertex *vertex)
-{
-    const ValueLocation &loc = vertex->Result();
-    ASSERT(loc.IsRegister());
-    return loc.GetAssignedGeneralRegister();
-}
-
 // ========================================= Common Value Opcode =========================================
 
 void Int32ConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
@@ -89,11 +83,6 @@ void Int32ConstantVertex::SetValueLocationConstraints()
     DefineAsConstant(this);
 }
 
-void Int32ConstantVertex::Dump(std::ostream &output) const
-{
-    output << "  Int32Constant: " << GetValue();
-}
-
 void Int64ConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
 {
     __ Move(reg, static_cast<int64_t>(GetValue()));
@@ -102,11 +91,6 @@ void Int64ConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegi
 void Int64ConstantVertex::SetValueLocationConstraints()
 {
     DefineAsConstant(this);
-}
-
-void Int64ConstantVertex::Dump(std::ostream &output) const
-{
-    output << "  Int64Constant: " << GetValue();
 }
 
 void Float64ConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedDoubleRegister reg) const
@@ -119,11 +103,6 @@ void Float64ConstantVertex::SetValueLocationConstraints()
     DefineAsConstant(this);
 }
 
-void Float64ConstantVertex::Dump(std::ostream &output) const
-{
-    output << "  Float64Constant: " << GetValue();
-}
-
 void TaggedConstantVertex::SetValueLocationConstraints()
 {
     DefineAsConstant(this);
@@ -132,11 +111,6 @@ void TaggedConstantVertex::SetValueLocationConstraints()
 void TaggedConstantVertex::DoLoadToRegister(ArkSteedAssembler *masm, ArkSteedRegister reg) const
 {
     __ Move(reg, GetValue());
-}
-
-void TaggedConstantVertex::Dump(std::ostream &output) const
-{
-    output << "  TaggedConstant: 0x" << std::hex << GetValue() << std::dec;
 }
 
 void InitialValueVertex::SetValueLocationConstraints()
@@ -148,19 +122,9 @@ void InitialValueVertex::SetValueLocationConstraints()
     Result().SetUnallocated(UnallocatedState::BasicPolicy::FIXED_SLOT, taggedSlotIndex);
 }
 
-void InitialValueVertex::Dump(std::ostream &output) const
-{
-    output << "  InitialValue frameSlot: " << frameSlotIndex_;
-}
-
 void ActualArgcVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
-}
-
-void ActualArgcVertex::Dump(std::ostream &output) const
-{
-    output << "  ActualArgc";
 }
 
 void CallRuntimeVertex::SetValueLocationConstraints()
@@ -171,11 +135,6 @@ void CallRuntimeVertex::SetValueLocationConstraints()
     // Set parameter location constraints using helper function
     SetStubValueLocationConstraints(this, GetArgCount());
     UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
-}
-
-void CallRuntimeVertex::Dump(std::ostream &output) const
-{
-    output << "  CallRuntime (id=" << static_cast<int>(GetRuntimeStubID()) << ") with " << GetArgCount() << " args";
 }
 
 void CallVertex::SetValueLocationConstraints()
@@ -197,11 +156,6 @@ void CallVertex::SetValueLocationConstraints()
     UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
-void CallVertex::Dump(std::ostream &output) const
-{
-    output << "  Call actualArgc=" << actualArgc_;
-}
-
 void CallCommonStubVertex::SetValueLocationConstraints()
 {
     // Define return value in x0/rax (C calling convention)
@@ -212,40 +166,16 @@ void CallCommonStubVertex::SetValueLocationConstraints()
     UseLazyDeoptFrameSlots(static_cast<LazyDeoptimizableMixin *>(this));
 }
 
-void CallCommonStubVertex::Dump(std::ostream &output) const
-{
-    output << "  CallCommonStub (id=" << GetCommonStubID() << ") with " << GetArgCount() << " args";
-}
-
 void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
     UseRegister(Arg(RECEIVER_INDEX));
 }
 
-void DeoptIfHClassMismatchVertex::Dump(std::ostream &output) const
-{
-    output << "  DeoptIfHClassMismatch: expected=0x"
-           << std::hex << reinterpret_cast<uintptr_t>(expectedHClass_) << std::dec
-           << ", pc=" << GetBytecodeOffset();
-}
-
 void DeoptIfHClassNotInVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
     UseRegister(Arg(RECEIVER_INDEX));
-}
-
-void DeoptIfHClassNotInVertex::Dump(std::ostream &output) const
-{
-    output << "  DeoptIfHClassNotIn: expected=[";
-    for (size_t i = 0; i < expectedHClasses_.size(); ++i) {
-        if (i != 0) {
-            output << ", ";
-        }
-        output << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses_[i]) << std::dec;
-    }
-    output << "], pc=" << GetBytecodeOffset();
 }
 
 void DeoptIfPrototypeChangedVertex::SetValueLocationConstraints()
@@ -255,33 +185,16 @@ void DeoptIfPrototypeChangedVertex::SetValueLocationConstraints()
     UseEagerDeoptFrameSlots(this);
 }
 
-void DeoptIfPrototypeChangedVertex::Dump(std::ostream &output) const
-{
-    output << "  DeoptIfPrototypeChanged: proto_marker=" << checkProtoChangeMarker_
-           << ", not_prototype=" << checkNotPrototype_ << ", pc=" << GetBytecodeOffset();
-}
-
 void DeoptIfInt32ConditionVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
 }
 
-void DeoptIfInt32ConditionVertex::Dump(std::ostream &output) const
-{
-    output << "  DeoptIfInt32Condition: condition=" << static_cast<uint32_t>(condition_)
-           << ", type=" << static_cast<int>(deoptType_) << ", pc=" << GetBytecodeOffset();
-}
-
 void DeoptIfNotNumberVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
     SetTemporariesNeeded(1);
-}
-
-void DeoptIfNotNumberVertex::Dump(std::ostream &output) const
-{
-    output << "  DeoptIfNotNumber: pc=" << GetBytecodeOffset();
 }
 
 void DeoptVertex::SetValueLocationConstraints()
@@ -292,11 +205,6 @@ void DeoptVertex::SetValueLocationConstraints()
     UseEagerDeoptFrameSlots(this);
 }
 
-void DeoptVertex::Dump(std::ostream &output) const
-{
-    output << "  Deopt (type=" << static_cast<int>(deoptType_) << ", pc=" << GetBytecodeOffset() << ")";
-}
-
 // ========================================= Slow Value Opcode =========================================
 
 void LoadTaggedFromAddressVertex::SetValueLocationConstraints()
@@ -305,20 +213,10 @@ void LoadTaggedFromAddressVertex::SetValueLocationConstraints()
     UseRegister(Arg(OBJECT_INDEX));
 }
 
-void LoadTaggedFromAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadTaggedFromAddress: offset=" << offset_;
-}
-
 void LoadI32FromAddressVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(OBJECT_INDEX));
-}
-
-void LoadI32FromAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadI32FromAddress: offset=" << offset_;
 }
 
 void LoadI64FromAddressVertex::SetValueLocationConstraints()
@@ -327,20 +225,10 @@ void LoadI64FromAddressVertex::SetValueLocationConstraints()
     UseRegister(Arg(OBJECT_INDEX));
 }
 
-void LoadI64FromAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadI64FromAddress: offset=" << offset_;
-}
-
 void LoadF64FromAddressVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(OBJECT_INDEX));
-}
-
-void LoadF64FromAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadF64FromAddress: offset=" << offset_;
 }
 
 void LoadExceptionVertex::SetValueLocationConstraints()
@@ -349,31 +237,16 @@ void LoadExceptionVertex::SetValueLocationConstraints()
     UseRegister(Arg(GLUE_INDEX));
 }
 
-void LoadExceptionVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadException";
-}
-
 void LoadTaggedFieldVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(OBJECT_INDEX));
 }
 
-void LoadTaggedFieldVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadTaggedField: offset=" << offset_;
-}
-
 void LoadPrototypeFromObjectVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(OBJECT_INDEX));
-}
-
-void LoadPrototypeFromObjectVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadPrototypeFromObject";
 }
 
 void LoadPrototypeHolderByHClassVertex::SetValueLocationConstraints()
@@ -383,32 +256,10 @@ void LoadPrototypeHolderByHClassVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(2);  // 2: current hclass and expected hclass
 }
 
-void LoadPrototypeHolderByHClassVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadPrototypeHolderByHClass: holderHClass=0x"
-           << std::hex << reinterpret_cast<uintptr_t>(GetHolderHClass()) << std::dec
-           << ", holderDepth=" << GetHolderDepth()
-           << ", expectedPrototypeHClasses=[";
-    const auto &expectedHClasses = GetExpectedPrototypeHClasses();
-    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
-        if (i != 0) {
-            output << ", ";
-        }
-        output << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses[i]) << std::dec;
-    }
-    output << "]"
-           << ", pc=" << GetBytecodeOffset();
-}
-
 void ConvertHoleToUndefinedVertex::SetValueLocationConstraints()
 {
     DefineSameAsFirst(this);
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void ConvertHoleToUndefinedVertex::Dump(std::ostream &output) const
-{
-    output << "  ConvertHoleToUndefined";
 }
 
 void LoadHClassAddressVertex::SetValueLocationConstraints()
@@ -416,11 +267,6 @@ void LoadHClassAddressVertex::SetValueLocationConstraints()
     DefineAsRegister(this);
     UseRegister(Arg(OBJECT_INDEX));
     SetTemporariesNeeded(1);
-}
-
-void LoadHClassAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  LoadHClassAddress";
 }
 
 void FindPrototypeHolderVertex::SetValueLocationConstraints()
@@ -431,22 +277,10 @@ void FindPrototypeHolderVertex::SetValueLocationConstraints()
     UseEagerDeoptFrameSlots(this);
 }
 
-void FindPrototypeHolderVertex::Dump(std::ostream &output) const
-{
-    output << "  FindPrototypeHolder: expected_hclass=0x" << std::hex
-           << reinterpret_cast<uintptr_t>(expectedHolderHClass_) << std::dec
-           << ", pc=" << GetBytecodeOffset();
-}
-
 void StoreTaggedToAddressVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(OBJECT_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void StoreTaggedToAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreTaggedToAddress: offset=" << offset_;
 }
 
 void StoreI32ToAddressVertex::SetValueLocationConstraints()
@@ -455,20 +289,10 @@ void StoreI32ToAddressVertex::SetValueLocationConstraints()
     UseRegister(Arg(VALUE_INDEX));
 }
 
-void StoreI32ToAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreI32ToAddress: offset=" << offset_;
-}
-
 void StoreI64ToAddressVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(OBJECT_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void StoreI64ToAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreI64ToAddress: offset=" << offset_;
 }
 
 void StoreF64ToAddressVertex::SetValueLocationConstraints()
@@ -477,20 +301,10 @@ void StoreF64ToAddressVertex::SetValueLocationConstraints()
     UseRegister(Arg(VALUE_INDEX));
 }
 
-void StoreF64ToAddressVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreF64ToAddress: offset=" << offset_;
-}
-
 void StoreTaggedFieldVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(OBJECT_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void StoreTaggedFieldVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreTaggedField: offset=" << offset_;
 }
 
 void StoreTaggedFieldWithBarrierVertex::SetValueLocationConstraints()
@@ -501,22 +315,12 @@ void StoreTaggedFieldWithBarrierVertex::SetValueLocationConstraints()
     UseRegister(Arg(VALUE_INDEX));
 }
 
-void StoreTaggedFieldWithBarrierVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreTaggedFieldWithBarrier";
-}
-
 void StoreSharedFieldWithBarrierVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: object and value region scratch registers
     UseRegister(Arg(GLUE_INDEX));
     UseRegister(Arg(OBJECT_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void StoreSharedFieldWithBarrierVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreSharedFieldWithBarrier";
 }
 
 void TransitionHClassWithBarrierVertex::SetValueLocationConstraints()
@@ -527,22 +331,12 @@ void TransitionHClassWithBarrierVertex::SetValueLocationConstraints()
     UseRegister(Arg(HCLASS_INDEX));
 }
 
-void TransitionHClassWithBarrierVertex::Dump(std::ostream &output) const
-{
-    output << "  TransitionHClassWithBarrier";
-}
-
 void PrepareSharedStoreFieldVertex::SetValueLocationConstraints()
 {
     DefineAsFixed(this, 0);
     SetTemporariesNeeded(1);
     SetStubValueLocationConstraints(this, GetArgCount());
     UseLazyDeoptFrameSlots(this);
-}
-
-void PrepareSharedStoreFieldVertex::Dump(std::ostream &output) const
-{
-    output << "  PrepareSharedStoreField handler_info=0x" << std::hex << GetHandlerInfo() << std::dec;
 }
 
 void EnsurePropertiesCapacityVertex::SetValueLocationConstraints()
@@ -553,31 +347,16 @@ void EnsurePropertiesCapacityVertex::SetValueLocationConstraints()
     UseLazyDeoptFrameSlots(this);
 }
 
-void EnsurePropertiesCapacityVertex::Dump(std::ostream &output) const
-{
-    output << "  EnsurePropertiesCapacity fieldIndex=" << fieldIndex_;
-}
-
 void StoreInt32FieldVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(STORE_TARGET_INDEX));
     UseRegister(Arg(VALUE_INDEX));
 }
 
-void StoreInt32FieldVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreInt32Field offset=" << offset_;
-}
-
 void StoreDoubleFieldVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(STORE_TARGET_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void StoreDoubleFieldVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreDoubleField offset=" << offset_;
 }
 
 void StoreInt32FieldWithRepVertex::SetValueLocationConstraints()
@@ -588,22 +367,12 @@ void StoreInt32FieldWithRepVertex::SetValueLocationConstraints()
     UseEagerDeoptFrameSlots(this);
 }
 
-void StoreInt32FieldWithRepVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreInt32FieldWithRep offset=" << offset_;
-}
-
 void StoreDoubleFieldWithRepVertex::SetValueLocationConstraints()
 {
     SetTemporariesNeeded(2);  // 2: tag and expected tag
     UseRegister(Arg(STORE_TARGET_INDEX));
     UseRegister(Arg(VALUE_INDEX));
     UseEagerDeoptFrameSlots(this);
-}
-
-void StoreDoubleFieldWithRepVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreDoubleFieldWithRep offset=" << offset_;
 }
 
 void StoreTaggedFieldByHClassVertex::SetValueLocationConstraints()
@@ -615,20 +384,10 @@ void StoreTaggedFieldByHClassVertex::SetValueLocationConstraints()
     UseEagerDeoptFrameSlots(this);
 }
 
-void StoreTaggedFieldByHClassVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreTaggedFieldByHClass count=" << cases_.size() << ", pc=" << GetBytecodeOffset();
-}
-
 void StoreEnvSlotVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(ENV_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-}
-
-void StoreEnvSlotVertex::Dump(std::ostream &output) const
-{
-    output << "  StoreEnvSlot: offset=" << offset_;
 }
 
 void SetValueWithBarrierVertex::SetValueLocationConstraints()
@@ -638,20 +397,10 @@ void SetValueWithBarrierVertex::SetValueLocationConstraints()
     UseFixed(Arg(VALUE_INDEX), static_cast<uint32_t>(ArkSteedAssembler::GetParameterRegister(3).Code()));
 }
 
-void SetValueWithBarrierVertex::Dump(std::ostream &output) const
-{
-    output << "  SetValueWithBarrier: offset=" << offset_;
-}
-
 void TaggedIntToI32Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-}
-
-void TaggedIntToI32Vertex::Dump(std::ostream &output) const
-{
-    output << "  TaggedIntToI32";
 }
 
 void CheckedTaggedIntToI32Vertex::SetValueLocationConstraints()
@@ -661,21 +410,11 @@ void CheckedTaggedIntToI32Vertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 }
 
-void CheckedTaggedIntToI32Vertex::Dump(std::ostream &output) const
-{
-    output << "  CheckedTaggedIntToI32";
-}
-
 void CheckedTaggedStringVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(INPUT_INDEX));
     DefineSameAsFirst(this);
     SetTemporariesNeeded(2);
-}
-
-void CheckedTaggedStringVertex::Dump(std::ostream &output) const
-{
-    output << "  CheckedTaggedString";
 }
 
 void I32ConditionCheckVertex::SetValueLocationConstraints()
@@ -685,21 +424,11 @@ void I32ConditionCheckVertex::SetValueLocationConstraints()
     UseRegister(Arg(RIGHT_INDEX));
 }
 
-void I32ConditionCheckVertex::Dump(std::ostream &output) const
-{
-    output << "  I32ConditionCheck: condition=" << static_cast<uint32_t>(condition_);
-}
-
 void F64ConditionCheckVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
-}
-
-void F64ConditionCheckVertex::Dump(std::ostream &output) const
-{
-    output << "  F64ConditionCheck: condition=" << static_cast<uint32_t>(condition_);
 }
 
 void TaggedEqualVertex::SetValueLocationConstraints()
@@ -709,21 +438,11 @@ void TaggedEqualVertex::SetValueLocationConstraints()
     UseRegister(Arg(RIGHT_INDEX));
 }
 
-void TaggedEqualVertex::Dump(std::ostream &output) const
-{
-    output << "  TaggedEqual";
-}
-
 void TaggedNotEqualVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
-}
-
-void TaggedNotEqualVertex::Dump(std::ostream &output) const
-{
-    output << "  TaggedNotEqual";
 }
 
 void StringEqualVertex::SetValueLocationConstraints()
@@ -732,15 +451,10 @@ void StringEqualVertex::SetValueLocationConstraints()
     SetStubValueLocationConstraints(this, GetInputCount());
 }
 
-void StringEqualVertex::Dump(std::ostream &output) const
-{
-    output << "  StringEqual";
-}
-
 template <class VertexT>
 void VerifyI32BinaryDeoptInputs(const VertexT *vertex)
 {
-    ASSERT(vertex->GetInputCount() == VertexT::INPUT_COUNT);
+    ASSERT(vertex->GetInputCount() == VertexT::NUM_INPUTS);
     ASSERT(vertex->GetInput(VertexT::LEFT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
     ASSERT(vertex->GetInput(VertexT::RIGHT_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
 }
@@ -761,21 +475,16 @@ void I32SubWithOverflowVertex::VerifyI32BinOpInputs() const
 #define DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT() DefineAsRegister(this)
 #endif
 
-#define DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Name, DumpName)           \
+#define DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Name)                     \
     void I32##Name##WithOverflowVertex::SetValueLocationConstraints()  \
     {                                                                  \
         UseRegister(Arg(LEFT_INDEX));                                  \
         UseRegister(Arg(RIGHT_INDEX));                                 \
         DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT();                   \
-    }                                                                  \
-                                                                       \
-    void I32##Name##WithOverflowVertex::Dump(std::ostream &output) const \
-    {                                                                  \
-        output << "  I32" DumpName "WithOverflow";                     \
     }
 
-DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Add, "Add")
-DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Sub, "Sub")
+DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Add)
+DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS(Sub)
 #undef DEFINE_I32_WITH_OVERFLOW_CONSTRAINTS
 #undef DEFINE_I32_WITH_OVERFLOW_RESULT_CONSTRAINT
 
@@ -801,11 +510,6 @@ void I32MulWithOverflowVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 }
 
-void I32MulWithOverflowVertex::Dump(std::ostream &output) const
-{
-    output << "  I32MulWithOverflow";
-}
-
 void I32DivWithOverflowVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
@@ -819,11 +523,6 @@ void I32DivWithOverflowVertex::SetValueLocationConstraints()
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
 #endif
-}
-
-void I32DivWithOverflowVertex::Dump(std::ostream &output) const
-{
-    output << "  I32DivWithOverflow";
 }
 
 void I32DivByConstWithCheckVertex::SetValueLocationConstraints()
@@ -842,21 +541,11 @@ void I32DivByConstWithCheckVertex::SetValueLocationConstraints()
 #endif
 }
 
-void I32DivByConstWithCheckVertex::Dump(std::ostream &output) const
-{
-    output << "  I32DivByConstWithCheck: divisor=" << divisor_ << ", magic=" << magic_ << ", shift=" << shift_;
-}
-
 void I32AddVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
     DefineSameAsFirst(this);
-}
-
-void I32AddVertex::Dump(std::ostream &output) const
-{
-    output << "  I32Add";
 }
 
 void I32SubVertex::SetValueLocationConstraints()
@@ -866,21 +555,11 @@ void I32SubVertex::SetValueLocationConstraints()
     DefineSameAsFirst(this);
 }
 
-void I32SubVertex::Dump(std::ostream &output) const
-{
-    output << "  I32Sub";
-}
-
 void I32MulVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
     DefineSameAsFirst(this);
-}
-
-void I32MulVertex::Dump(std::ostream &output) const
-{
-    output << "  I32Mul";
 }
 
 void I32DivVertex::SetValueLocationConstraints()
@@ -898,11 +577,6 @@ void I32DivVertex::SetValueLocationConstraints()
 #endif
 }
 
-void I32DivVertex::Dump(std::ostream &output) const
-{
-    output << "  I32Div";
-}
-
 void CheckedI32ModVertex::SetValueLocationConstraints()
 {
 #if defined(PANDA_TARGET_AMD64)
@@ -916,11 +590,6 @@ void CheckedI32ModVertex::SetValueLocationConstraints()
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
 #endif
-}
-
-void CheckedI32ModVertex::Dump(std::ostream &output) const
-{
-    output << "  CheckedI32Mod";
 }
 
 void I32BitwiseBinaryVertex::SetValueLocationConstraints()
@@ -940,20 +609,10 @@ void I32BitwiseBinaryVertex::SetValueLocationConstraints()
     DefineSameAsFirst(this);
 }
 
-void I32BitwiseBinaryVertex::Dump(std::ostream &output) const
-{
-    output << "  I32BitwiseBinary: kind=" << static_cast<uint32_t>(kind_);
-}
-
 void CheckedNonNegativeI32ToTaggedIntVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-}
-
-void CheckedNonNegativeI32ToTaggedIntVertex::Dump(std::ostream &output) const
-{
-    output << "  CheckedNonNegativeI32ToTaggedInt";
 }
 
 void I32BNotVertex::SetValueLocationConstraints()
@@ -962,15 +621,10 @@ void I32BNotVertex::SetValueLocationConstraints()
     DefineSameAsFirst(this);
 }
 
-void I32BNotVertex::Dump(std::ostream &output) const
-{
-    output << "  I32BNot";
-}
-
 template <class VertexT>
 void VerifyI32UnaryDeoptInputs(const VertexT *vertex)
 {
-    ASSERT(vertex->GetInputCount() == VertexT::INPUT_COUNT);
+    ASSERT(vertex->GetInputCount() == VertexT::NUM_INPUTS);
     ASSERT(vertex->GetInput(VertexT::VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT32);
 }
 
@@ -1000,11 +654,6 @@ void I32DecWithOverflowVertex::VerifyI32UnaryOpInputs() const
     {                                                         \
         UseRegister(Arg(VALUE_INDEX));                       \
         DEFINE_I32_UNARY_WITH_OVERFLOW_RESULT_CONSTRAINT();  \
-    }                                                         \
-                                                              \
-    void I32##Name##WithOverflowVertex::Dump(std::ostream &output) const \
-    {                                                         \
-        output << "  I32" #Name "WithOverflow";              \
     }
 
 DEFINE_I32_UNARY_WITH_OVERFLOW_CONSTRAINTS(Neg)
@@ -1019,21 +668,11 @@ void I32ToF64Vertex::SetValueLocationConstraints()
     UseRegister(Arg(INPUT_INDEX));
 }
 
-void I32ToF64Vertex::Dump(std::ostream &output) const
-{
-    output << "  I32ToF64";
-}
-
 void CheckedNumberToF64Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
     SetTemporariesNeeded(2);
-}
-
-void CheckedNumberToF64Vertex::Dump(std::ostream &output) const
-{
-    output << "  CheckedNumberToF64";
 }
 
 void F64ToI32TruncVertex::SetValueLocationConstraints()
@@ -1042,20 +681,10 @@ void F64ToI32TruncVertex::SetValueLocationConstraints()
     UseRegister(Arg(INPUT_INDEX));
 }
 
-void F64ToI32TruncVertex::Dump(std::ostream &output) const
-{
-    output << "  F64ToI32Trunc";
-}
-
 void F64ToTaggedDoubleVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-}
-
-void F64ToTaggedDoubleVertex::Dump(std::ostream &output) const
-{
-    output << "  F64ToTaggedDouble";
 }
 
 void F64NegVertex::SetValueLocationConstraints()
@@ -1068,22 +697,12 @@ void F64NegVertex::SetValueLocationConstraints()
 #endif
 }
 
-void F64NegVertex::Dump(std::ostream &output) const
-{
-    output << "  F64Neg";
-}
-
 #define DEFINE_F64_BINOP_CONSTRAINTS(Name)       \
     void F64##Name##Vertex::SetValueLocationConstraints() \
     {                                           \
         UseRegister(Arg(LEFT_INDEX));           \
         UseRegister(Arg(RIGHT_INDEX));          \
         DefineSameAsFirst(this);                \
-    }                                           \
-                                                \
-    void F64##Name##Vertex::Dump(std::ostream &output) const \
-    {                                           \
-        output << "  F64" #Name;                \
     }
 
 DEFINE_F64_BINOP_CONSTRAINTS(Add)
@@ -1103,20 +722,10 @@ void BranchIfTrueVertex::SetValueLocationConstraints()
     UseRegister(Arg(0));
 }
 
-void BranchIfTrueVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfTrue";
-}
-
 void BranchIfTaggedStringVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
     SetTemporariesNeeded(2);
-}
-
-void BranchIfTaggedStringVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfTaggedString";
 }
 
 void BranchIfHClassInVertex::SetValueLocationConstraints()
@@ -1126,27 +735,10 @@ void BranchIfHClassInVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(3);
 }
 
-void BranchIfHClassInVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfHClassIn: expected=[";
-    for (size_t i = 0; i < expectedHClasses_.size(); ++i) {
-        if (i != 0) {
-            output << ", ";
-        }
-        output << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses_[i]) << std::dec;
-    }
-    output << "]";
-}
-
 void BranchIfInt32CompareVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
-}
-
-void BranchIfInt32CompareVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfInt32Compare: condition=" << static_cast<uint32_t>(condition_);
 }
 
 void BranchIfInt64CompareVertex::SetValueLocationConstraints()
@@ -1155,20 +747,10 @@ void BranchIfInt64CompareVertex::SetValueLocationConstraints()
     UseRegister(Arg(RIGHT_INDEX));
 }
 
-void BranchIfInt64CompareVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfInt64Compare";
-}
-
 void BranchIfFloat64CompareVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(LEFT_INDEX));
     UseRegister(Arg(RIGHT_INDEX));
-}
-
-void BranchIfFloat64CompareVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfFloat64Compare: condition=" << static_cast<uint32_t>(condition_);
 }
 
 void BranchIfReferenceEqualVertex::SetValueLocationConstraints()
@@ -1177,20 +759,10 @@ void BranchIfReferenceEqualVertex::SetValueLocationConstraints()
     UseRegister(Arg(RIGHT_INDEX));
 }
 
-void BranchIfReferenceEqualVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfReferenceEqual";
-}
-
 void BranchIfObjectTypeVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(VALUE_INDEX));
     SetTemporariesNeeded(1);
-}
-
-void BranchIfObjectTypeVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfObjectType: expected=" << static_cast<uint32_t>(expectedType_);
 }
 
 void ReturnVertex::SetValueLocationConstraints()
@@ -1198,19 +770,9 @@ void ReturnVertex::SetValueLocationConstraints()
     UseFixed(Arg(0), 0);
 }
 
-void ReturnVertex::Dump(std::ostream &output) const
-{
-    output << "  Return";
-}
-
 void ThrowVertex::SetValueLocationConstraints()
 {
     SetStubValueLocationConstraints(this, GetArgCount());
-}
-
-void ThrowVertex::Dump(std::ostream &output) const
-{
-    output << "  Throw (id=" << static_cast<int>(GetRuntimeStubID()) << ")";
 }
 
 // ========================================= Non-Value Opcode =========================================
@@ -1221,29 +783,14 @@ void BranchIfTaggedHeapObjectVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 }
 
-void BranchIfTaggedHeapObjectVertex::Dump(std::ostream &output) const
-{
-    output << "  BranchIfTaggedHeapObject";
-}
-
 void GapMoveVertex::SetValueLocationConstraints()
 {
     UNREACHABLE();
 }
 
-void GapMoveVertex::Dump(std::ostream &output) const
-{
-    output << "  GapMove -> " << GetTarget().GetRegisterCode();
-}
-
 void ConstantGapMoveVertex::SetValueLocationConstraints()
 {
     UNREACHABLE();
-}
-
-void ConstantGapMoveVertex::Dump(std::ostream &output) const
-{
-    output << "  ConstantGapMove -> " << GetTarget().GetRegisterCode();
 }
 
 void PhiVertex::SetValueLocationConstraints()
@@ -1257,31 +804,16 @@ void I32ToTaggedIntVertex::SetValueLocationConstraints()
     UseRegister(Arg(INPUT_INDEX));
 }
 
-void I32ToTaggedIntVertex::Dump(std::ostream &output) const
-{
-    output << "  I32ToTaggedInt";
-}
-
 void RawI64ToTaggedVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
 }
 
-void RawI64ToTaggedVertex::Dump(std::ostream &output) const
-{
-    output << "  RawI64ToTagged";
-}
-
 void TaggedToRawI64Vertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(INPUT_INDEX));
-}
-
-void TaggedToRawI64Vertex::Dump(std::ostream &output) const
-{
-    output << "  TaggedToRawI64";
 }
 
 void I64BitwiseBinaryVertex::SetValueLocationConstraints()
@@ -1291,9 +823,321 @@ void I64BitwiseBinaryVertex::SetValueLocationConstraints()
     UseRegister(Arg(RIGHT_INDEX));
 }
 
-void I64BitwiseBinaryVertex::Dump(std::ostream &output) const
+namespace {
+#define HAS_COMMON_MIXIN(Field, _) +std::is_base_of_v<Field##Mixin, VertexT>
+
+template <class VertexT>
+struct DumpCommonHelper {
+    static constexpr int COMMON_COUNT = COMMON_MIXINS_LIST(HAS_COMMON_MIXIN)
+        + std::is_base_of_v<EagerDeoptimizableMixin, VertexT>
+        + std::is_base_of_v<LazyDeoptimizableMixin, VertexT>;
+
+    static constexpr bool HAS_COMMON = static_cast<bool>(COMMON_COUNT);
+
+    static void Dump(std::ostream &out, const VertexT *vertex)
+    {
+        if constexpr (std::is_base_of_v<CommonStubIDMixin, VertexT>) {
+            out << "; stub = " << kungfu::CommonStubCSigns::GetName(vertex->GetCommonStubID());
+        }
+        if constexpr (std::is_base_of_v<RuntimeStubIDMixin, VertexT>) {
+            out << "; rtstub = " << kungfu::RuntimeStubCSigns::GetRTName(vertex->GetRuntimeStubID());
+        }
+        if constexpr (std::is_base_of_v<ConditionMixin, VertexT>) {
+            out << "; cc = " << ConditionName(vertex->GetCondition());
+        }
+        if constexpr (std::is_base_of_v<OffsetMixin, VertexT>) {
+            out << "; offset = " << vertex->GetOffset();
+        }
+        if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, VertexT>) {
+            out << "; bpc = " << vertex->GetBytecodeOffset();
+        }
+        if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
+            if (vertex->HasLazyDeoptFrameState()) {
+                out << "; bpc = " << vertex->GetBytecodeOffset();
+            }
+        }
+    }
+};
+
+#undef HAS_COMMON_MIXIN
+
+template <class VertexT>
+struct DumpExtraHelper {
+    static constexpr bool HAS_EXTRA = false;
+};
+
+#define DUMP_EXTRA(Type)                                                                        \
+    template <>                                                                                 \
+    struct DumpExtraHelper<Type##Vertex> {                                                      \
+        static constexpr bool HAS_EXTRA = true;                                                 \
+        static void Dump(std::ostream &out, const Type##Vertex *vertex);                        \
+    };                                                                                          \
+    void DumpExtraHelper<Type##Vertex>::Dump(std::ostream &out, const Type##Vertex *vertex)
+
+DUMP_EXTRA(Int32Constant)
 {
-    output << "  I64BitwiseBinary";
+    int32_t value = vertex->GetValue();
+    uint32_t uValue = static_cast<uint32_t>(value);
+    out << "; value = " << value << " (0x" << std::hex << uValue << ')' << std::dec;
+}
+
+DUMP_EXTRA(Int64Constant)
+{
+    int64_t value = vertex->GetValue();
+    uint64_t uValue = static_cast<uint64_t>(value);
+    out << "; value = " << value << " (0x" << std::hex << uValue << ')' << std::dec;
+}
+
+DUMP_EXTRA(Float64Constant)
+{
+    double value = vertex->GetValue();
+    out << "; value = " << value << " (0x" << std::hex << value << ')' << std::dec;
+}
+
+DUMP_EXTRA(TaggedConstant)
+{
+    JSTaggedType rawValue = vertex->GetValue();
+    JSTaggedValue value(rawValue);
+    out << "; value = 0x" << std::hex << rawValue << std::dec << " (";
+
+    if (value.IsInt()) {
+        out << "tagged int: " << value.GetInt() << ')';
+        return;
+    }
+    if (value.IsDouble()) {
+        out << "tagged double: " << value.GetDouble() << ')';
+        return;
+    }
+    switch (rawValue) {
+        case JSTaggedValue::VALUE_UNDEFINED:
+            out << "tagged undefined)";
+            return;
+        case JSTaggedValue::VALUE_NULL:
+            out << "tagged null)";
+            return;
+        case JSTaggedValue::VALUE_TRUE:
+            out << "tagged true)";
+            return;
+        case JSTaggedValue::VALUE_FALSE:
+            out << "tagged false)";
+            return;
+        case JSTaggedValue::VALUE_HOLE:
+            out << "tagged hole)";
+            return;
+        case JSTaggedValue::VALUE_EXCEPTION:
+            out << "tagged exception)";
+            return;
+        default:
+            break;
+    }
+    if (value.IsObject()) {
+        out << "tagged heap object)";
+        return;
+    }
+    out << "unknown)";
+}
+
+DUMP_EXTRA(InitialValue)
+{
+    out << "; frameSlot = " << vertex->GetFrameSlotIndex();
+}
+
+DUMP_EXTRA(Call)
+{
+    out << "; actualArgc = " << vertex->GetActualArgc();
+}
+
+DUMP_EXTRA(DeoptIfHClassMismatch)
+{
+    uintptr_t expected = reinterpret_cast<uintptr_t>(vertex->GetExpectedHClass());
+    out << "; expected = 0x" << std::hex << expected << std::dec;
+}
+
+DUMP_EXTRA(DeoptIfHClassNotIn)
+{
+    out << "; expected = [";
+    const auto &expectedHClasses = vertex->GetExpectedHClasses();
+    out << std::hex;
+    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
+        if (i != 0) out << ", ";
+        out << "0x" << reinterpret_cast<uintptr_t>(expectedHClasses[i]);
+    }
+    out << std::dec;
+    out << ']';
+}
+
+DUMP_EXTRA(DeoptIfPrototypeChanged)
+{
+    out << std::boolalpha;
+    out << "; checkProtoChangeMarker = " << vertex->ShouldCheckProtoChangeMarker()
+        << ", checkNotPrototype = " << vertex->ShouldCheckNotPrototype();
+    out << std::noboolalpha;
+}
+
+DUMP_EXTRA(DeoptIfInt32Condition)
+{
+    out << "; type = " << static_cast<int>(vertex->GetDeoptType());
+}
+
+DUMP_EXTRA(Deopt)
+{
+    out << "; type = " << static_cast<int>(vertex->GetDeoptType());
+}
+
+DUMP_EXTRA(LoadPrototypeHolderByHClass)
+{
+    uintptr_t holderHClass = reinterpret_cast<uintptr_t>(vertex->GetHolderHClass());
+    out << "; hclass = 0x" << std::hex << holderHClass << std::dec
+        << "; depth = " << vertex->GetHolderDepth()
+        << "; prototypes = [";
+    const auto &expectedHClasses = vertex->GetExpectedPrototypeHClasses();
+    out << std::hex;
+    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
+        if (i != 0) out << ", ";
+        out << "0x" << reinterpret_cast<uintptr_t>(expectedHClasses[i]);
+    }
+    out << std::dec;
+    out << "]";
+}
+
+DUMP_EXTRA(FindPrototypeHolder)
+{
+    uintptr_t holderHClass = reinterpret_cast<uintptr_t>(vertex->GetExpectedHolderHClass());
+    out << "; expected = 0x" << std::hex << holderHClass << std::dec;
+}
+
+DUMP_EXTRA(PrepareSharedStoreField)
+{
+    out << "; handlerInfo = 0x" << std::hex << vertex->GetHandlerInfo() << std::dec;
+}
+
+DUMP_EXTRA(EnsurePropertiesCapacity)
+{
+    out << "; fieldIndex = " << vertex->GetFieldIndex();
+}
+
+DUMP_EXTRA(StoreTaggedFieldByHClass)
+{
+    out << "; numCases = " << vertex->GetCases().size()
+        << "; value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+}
+
+DUMP_EXTRA(StoreTaggedFieldWithBarrier)
+{
+    out << "; value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+}
+
+DUMP_EXTRA(StoreSharedFieldWithBarrier)
+{
+    out << "; value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+}
+
+DUMP_EXTRA(I32DivByConstWithCheck)
+{
+    out << "; divisor = " << vertex->GetDivisor()
+        << "; magic = " << vertex->GetMagic()
+        << "; shift = " << vertex->GetShift();
+}
+
+DUMP_EXTRA(I32BitwiseBinary)
+{
+    out << "; kind = " << IntBitwiseKindName(vertex->GetKind());
+}
+
+DUMP_EXTRA(BranchIfHClassIn)
+{
+    out << "; expected = [";
+    const auto &expectedHClasses = vertex->GetExpectedHClasses();
+    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
+        if (i != 0) {
+            out << ", ";
+        }
+        out << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses[i]) << std::dec;
+    }
+    out << "]";
+}
+
+DUMP_EXTRA(BranchIfObjectType)
+{
+    CString name = JSHClass::DumpJSType(vertex->GetExpectedType());
+    out << "; expected = " << name;
+}
+
+DUMP_EXTRA(GapMove)
+{
+    out << "-> " << vertex->GetTarget().GetRegisterCode();
+}
+
+DUMP_EXTRA(ConstantGapMove)
+{
+    out << "-> " << vertex->GetTarget().GetRegisterCode();
+}
+
+#undef DUMP_EXTRA
+}  // namespace
+
+void Vertex::Dump(std::ostream &out, bool withColors) const
+{
+    out << FormatVertexLabel(this) << ":  ";
+    if (withColors) {
+        out << "\033[31m";  // red: opcode
+    }
+    out << OpcodeToString(GetOpcode());
+    if (withColors) {
+        out << "\033[0m";
+    }
+    ValueRepresentation repr = GetValueRepresentation();
+    if (repr != ValueRepresentation::NONE) {
+        out << " [";
+        if (withColors) {
+            out << "\033[31m";  // red: value representation
+        }
+        out << ValueRepresentationName(repr);
+        if (withColors) {
+            out << "\033[0m";
+        }
+        out << ']';
+    }
+    uint32_t n = GetInputCount();
+    if (n > 0) {
+        out << " (";
+        for (uint32_t i = 0; i < n; i++) {
+            if (i != 0) out << ", ";
+            out << FormatVertexLabel(GetInput(i));
+        }
+        out << ")";
+    }
+    if (withColors) {
+        out << "\033[32m";  // green: node property annotations
+    }
+    auto doDumpFields = [&out](const auto *self) {
+        using VertexT = std::remove_const_t<std::remove_pointer_t<decltype(self)>>;
+        if constexpr (DumpCommonHelper<VertexT>::HAS_COMMON) {
+            DumpCommonHelper<VertexT>::Dump(out, self);
+        }
+        if constexpr (DumpExtraHelper<VertexT>::HAS_EXTRA) {
+            DumpExtraHelper<VertexT>::Dump(out, self);
+        }
+    };
+#define CASE(Type)                              \
+        case VertexOpcode::Type:                \
+            doDumpFields(Cast<Type##Vertex>()); \
+            break;
+    switch (GetOpcode()) {
+ALL_VERTEX_LIST(CASE)
+        default: break;  // No-op otherwise
+#undef CASE
+    }
+    if (withColors) {
+        out << "\033[0m";
+    }
+}
+
+std::string Vertex::Dump(bool withColors) const
+{
+    std::ostringstream out;
+    Dump(out, withColors);
+    return out.str();
 }
 
 }  // namespace panda::ecmascript::arksteed

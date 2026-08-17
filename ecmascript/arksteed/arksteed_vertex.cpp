@@ -17,39 +17,61 @@
 
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
+#include "ecmascript/arksteed/arksteed_opcode_list.h"
 #include "ecmascript/arksteed/arksteed_regalloc_vertex_info.h"
 
 namespace panda::ecmascript::arksteed {
 
-void Vertex::Print() const
+#if !defined(NDEBUG)
+namespace {
+struct VertexDebugLabelState {
+    bool compiling = false;
+    uint32_t nextLabel = 1;
+};
+thread_local VertexDebugLabelState gVertexDebugLabelState;
+}  // namespace
+
+uint32_t NextVertexLabel()
 {
-    std::cout << "Vertex[" << GetId() << "]: " << OpcodeToString(GetOpcode());
-    std::cout << " (inputs: " << GetInputCount() << ")";
-
-    if (HasInputs()) {
-        std::cout << " [";
-        for (uint32_t i = 0, n = GetInputCount(); i < n; ++i) {
-            const ValueVertex *input = GetInput(i);
-            if (input != nullptr) {
-                std::cout << input->GetId();
-            } else {
-                std::cout << "null";
-            }
-            if (i < GetInputCount() - 1) {
-                std::cout << ", ";
-            }
-        }
-        std::cout << "]";
-    }
-
-    std::cout << std::endl;
+    return gVertexDebugLabelState.nextLabel++;
 }
 
-void Vertex::ReduceInputCount(uint32_t num)
+VertexLabelScope::VertexLabelScope()
 {
-    ASSERT(GetOpcode() == VertexOpcode::Phi);
-    ASSERT(GetInputCount() >= num);
-    bitfield_ = InputCountField::Update(bitfield_, GetInputCount() - num);
+    ASSERT(!gVertexDebugLabelState.compiling);
+    gVertexDebugLabelState.compiling = true;
+    gVertexDebugLabelState.nextLabel = 1;
+}
+
+VertexLabelScope::~VertexLabelScope()
+{
+    gVertexDebugLabelState.compiling = false;
+}
+#else
+VertexLabelScope::VertexLabelScope() = default;
+VertexLabelScope::~VertexLabelScope() = default;
+#endif
+
+std::string FormatVertexLabel(const Vertex *vertex)
+{
+    if (vertex == nullptr) {
+        return "<null>";
+    }
+#if !defined(NDEBUG)
+    std::string label = "n" + std::to_string(vertex->label_);
+    if (vertex->HasId()) {
+        return label = "v" + std::to_string(vertex->GetId());
+    }
+    if (vertex->label_ != INVALID_VERTEX_ID) {
+        return "n" + std::to_string(vertex->label_);
+    }
+    return "<unregistered>";
+#else
+    if (vertex->HasId()) {
+        return "v" + std::to_string(vertex->GetId());
+    }
+    return "v?";
+#endif
 }
 
 ValueLocation &ValueVertex::Result()

@@ -20,19 +20,18 @@
 #include "ecmascript/arksteed/arksteed_pgo_dependency_recorder.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedAccessInfoFactory {
 public:
-    ArkSteedAccessInfoFactory(JSThread *compilerThread, const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo,
+    ArkSteedAccessInfoFactory(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                               JitCompilationEnv *env)
         : ArkSteedAccessInfoFactory(compilerThread, bytecodeInfo, env, nullptr)
     {}
 
-    ArkSteedAccessInfoFactory(JSThread *compilerThread, const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo,
+    ArkSteedAccessInfoFactory(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                               JitCompilationEnv *env, ArkSteedHeapBroker *broker)
         : compilerThread_(compilerThread), bytecodeInfo_(bytecodeInfo), env_(env),
           broker_(broker == nullptr ? &ownedBroker_ : broker),
@@ -52,7 +51,7 @@ private:
     bool RegisterDependencies(PropertyAccessSet *access) const;
 
     JSThread *compilerThread_ {nullptr};
-    panda::ecmascript::kungfu::BytecodeInfo bytecodeInfo_;
+    kungfu::BytecodeInfo bytecodeInfo_;
     JitCompilationEnv *env_ {nullptr};
     ArkSteedHeapBroker ownedBroker_ {compilerThread_, env_};
     ArkSteedHeapBroker *broker_ {nullptr};

@@ -16,7 +16,7 @@
 #include "ecmascript/arksteed/arksteed_access_info_factory.h"
 
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_object-inl.h"
+#include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/tagged_array.h"
 

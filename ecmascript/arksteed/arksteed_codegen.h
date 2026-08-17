@@ -19,7 +19,6 @@
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_deferred_code.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 
 #include <utility>
@@ -35,14 +34,16 @@ class ArkSteedCodeGenerator {
 public:
     ArkSteedCodeGenerator(ArkSteedAssembler *assembler, Graph *graph,
                           ArkSteedSafepointTableBuilder *safepointBuilder = nullptr,
-                          DeoptTranslationBuilder *translationBuilder = nullptr)
+                          DeoptTranslationBuilder *translationBuilder = nullptr,
+                          bool withColors = false)
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
           translationBuilder_(translationBuilder),
           eagerDeoptTargetsById_(graph->GetChunk()),
           blockColorAssignment_(graph->GetChunk()),
-          deferredCode_(graph->GetChunk())
+          deferredCode_(graph->GetChunk()),
+          withColors_(withColors)
     {}
 
     void Generate();
@@ -116,7 +117,6 @@ private:
     void RecordComment(const char *msg);
     void RecordBlockComment(BB *block);
     void RecordVertexComment(Vertex *vertex);
-    void AppendVertexInputInfo(std::ostringstream *ss, Vertex *vertex);
     void AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex);
     void RecordGapMoveComment(const InstructionOperand &src, const InstructionOperand &dest, PhiVertex *phi);
     void RecordSpillComment();
@@ -174,6 +174,7 @@ private:
     ChunkVector<int> blockColorAssignment_;
     ArkSteedDeferredCodeList deferredCode_;
     bool blockColorsComputed_ = false;
+    bool withColors_;
 };
 
 }  // namespace panda::ecmascript::arksteed

@@ -163,43 +163,6 @@ private:
     DerivedProcessor derivedProcessor_;
 };
 
-// ============================================================================
-// Example processors (for reference only - can be removed)
-// ============================================================================
-
-// Example: A simple debug printer processor
-class DebugPrintProcessor {
-public:
-    void PreProcessGraph(Graph *graph)
-    {
-        std::cout << "=== Processing Graph ===" << std::endl;
-    }
-
-    void PreProcessBlock(BB *block)
-    {
-        std::cout << "Block " << block->GetId() << ":" << std::endl;
-    }
-
-    void ProcessVertex(ControlVertex *vertex, [[maybe_unused]] const ArkSteedState &state)
-    {
-        std::cout << "  Control Vertex (opcode: " << OpcodeToString(vertex->GetOpcode()) << ")" << std::endl;
-    }
-
-    void PostPhiProcessing() {}
-
-    void ProcessVertex(NonControlVertex *vertex, [[maybe_unused]] const ArkSteedState &state)
-    {
-        std::cout << "  NonControl Vertex (opcode: " << OpcodeToString(vertex->GetOpcode()) << ")" << std::endl;
-    }
-
-    void PostProcessBlock(BB *block) {}
-
-    void PostProcessGraph(Graph *graph)
-    {
-        std::cout << "=== Finished Processing Graph ===" << std::endl;
-    }
-};
-
 }  // namespace panda::ecmascript::arksteed
 
 #endif  // ECMASCRIPT_ARKSTEED_GRAPH_PROCESSOR_H

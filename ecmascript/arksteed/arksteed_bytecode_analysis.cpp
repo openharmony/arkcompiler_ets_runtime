@@ -275,12 +275,6 @@ std::string BytecodeAnalysis::Dump() const
         out << "\n     LiveIn:  " << DumpBitset(blockLiveIn_[rpoIndex]);
         out << "\n     LiveOut: " << DumpBitset(blockLiveOut_[rpoIndex]);
     }
-    out << "Liveness of Bytecodes:";
-    uint32_t numBytecodes = parent_->GetNumBytecodes();
-    for (uint32_t bcIndex = 0; bcIndex < numBytecodes; bcIndex++) {
-        out << "\n[" << std::setw(3) << bcIndex << "] LiveIn:  " << DumpBitset(bcLiveIn_[bcIndex]);
-        out << "\n      LiveOut: " << DumpBitset(bcLiveOut_[bcIndex]);
-    }
     return out.str();
 }
 

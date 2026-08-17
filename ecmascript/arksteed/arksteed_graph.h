@@ -17,7 +17,6 @@
 #define ECMASCRIPT_ARKSTEED_GRAPH_H
 
 #include "ecmascript/arksteed/arksteed_bb.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -254,9 +253,6 @@ public:
         return reuseStackSlots_;
     }
 
-    // Debugging
-    void Print() const;
-
 private:
     template <typename VertexT, typename T>
     VertexT *GetOrAddNewConstantVertex(ChunkMap<T, VertexT *> &container, T constant)
@@ -266,10 +262,6 @@ private:
             return it->second;
         }
         VertexT *vertex = Vertex::New<VertexT>(chunk_, 0, constant);
-        ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
-        if (labeller != nullptr) {
-            labeller->RegisterVertex(vertex);
-        }
         container.emplace(constant, vertex);
         return vertex;
     }

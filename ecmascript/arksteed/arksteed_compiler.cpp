@@ -13,15 +13,12 @@
  * limitations under the License.
  */
 
-#define ARKSTEED_REFACTORED
-
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_graph_builder.h"
 #include "ecmascript/arksteed/arksteed_codegen.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_graph_printer.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 #include "ecmascript/arksteed/arksteed_graph_verifier.h"
@@ -33,6 +30,7 @@
 #include "ecmascript/compiler/jit_compiler.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/jit_profiler.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/machine_code.h"
 
 #ifdef JIT_ENABLE_CODE_SIGN
@@ -73,10 +71,6 @@ static void LogAsm(ArkSteedAssembler *assembler)
     }
     LOG_COMPILER(INFO) << "================================================";
 
-    std::ostringstream commentOut;
-    for (const auto &entry : comments.GetComments()) {
-        commentOut << "0x" << std::hex << entry.pcOffset << std::dec << " " << entry.comment << "\n";
-    }
 }
 
 ArkSteedCompilationOptions::ArkSteedCompilationOptions(JSRuntimeOptions runtimeOptions)
@@ -121,34 +115,30 @@ ArkSteedCompilerTask *ArkSteedCompilerTask::CreateJitCompilerTask(ArkSteedTask *
 
 void ArkSteedCompilerTask::DebugLogOnCompilationStart()
 {
-    if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
+    if (!common::Log::LogIsLoggable(Level::INFO, Component::COMPILER)) {
         return;
     }
     JitCompilationEnv *env = jitCompilationEnv_.get();
     MethodLiteral *method = env->GetMethodLiteral();
-    const char *recordName = method->GetRecordNameWithSymbol(env->GetJSPandaFile(), method->GetMethodId());
-    const char *methodName = method->GetMethodName(env->GetJSPandaFile(), method->GetMethodId());
-
-    LOG_COMPILER(DEBUG) << "ArkSteedCompilerTask: Starts compiling " << recordName << " :: " << methodName;
+    LOG_COMPILER(INFO) << "======== ArkSteedCompilerTask: Starts compiling: "
+                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId())
+                       << " ========";
 }
 
 void ArkSteedCompilerTask::DebugLogOnCompilationDone()
 {
-    if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
+    if (!common::Log::LogIsLoggable(Level::INFO, Component::COMPILER)) {
         return;
     }
     JitCompilationEnv *env = jitCompilationEnv_.get();
     MethodLiteral *method = env->GetMethodLiteral();
-    const char *recordName = method->GetRecordNameWithSymbol(env->GetJSPandaFile(), method->GetMethodId());
-    const char *methodName = method->GetMethodName(env->GetJSPandaFile(), method->GetMethodId());
-
-    LOG_COMPILER(DEBUG) << "ArkSteedCompilerTask: Finishes compiling " << recordName << " :: " << methodName;
+    LOG_COMPILER(INFO) << "======== ArkSteedCompilerTask: Finished compiling: "
+                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId())
+                       << " ========";
 }
 
 bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr)
 {
-    (void)compilerThread;  // Unused
-
     JitCompilationEnv *env = jitCompilationEnv_.get();
     if (env->GetJSOptions().IsEnableJITPGO()) {
         auto jitProfiler = env->GetPGOProfiler()->GetJITProfile();
@@ -213,9 +203,8 @@ bool ArkSteedCompilerTask::Compile()
     // Allocate FuncEntryDes from chunk (persists until ArkSteedCompilerTask destroyed)
     funcEntryDes_ = chunk_->New<FuncEntryDes>();
 
-    // Create graph labeller for debugging - scoped for entire compilation
-    ArkSteedGraphLabeller graphLabeller;
-    ArkSteedGraphLabellerScope labellerScope(&graphLabeller);
+    // Debug vertex labels are scoped for the entire compilation
+    VertexLabelScope vertexLabelScope;
 
     // Graph building phase
     auto *compilerThread = arkSteedTask_->GetCompilerThread();
@@ -237,9 +226,11 @@ bool ArkSteedCompilerTask::Compile()
 
     // Print graph with labeller if option is enabled
     if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintGraph()) {
-        LOG_COMPILER(INFO) << "===== After register allocation pre-processing =====";
-        GraphProcessor<GraphPrinter> graphPrinterProcessor(chunk_.get(), true);
+        LOG_COMPILER(INFO) << "===== Starts Graph Dump =====";
+        bool withColors = arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintWithColors();
+        GraphProcessor<GraphPrinter> graphPrinterProcessor(chunk_.get(), withColors);
         graphPrinterProcessor.Run(graph_);
+        LOG_COMPILER(INFO) << "===== Finishes Graph Dump =====";
     }
 
     // Register allocation
@@ -257,7 +248,8 @@ bool ArkSteedCompilerTask::Compile()
 #endif
     safepointTableBuilder_ = new ArkSteedSafepointTableBuilder(chunk_.get());
     translationBuilder_ = new DeoptTranslationBuilder();
-    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_);
+    bool withColors = arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintWithColors();
+    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_, withColors);
     codegen.Generate();
     if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintCode()) {
         LogAsm(assembler_);

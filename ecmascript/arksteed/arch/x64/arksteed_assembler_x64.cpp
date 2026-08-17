@@ -540,53 +540,53 @@ void ArkSteedAssembler::Jump(ArkSteedRegister target)
 void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
 {
     switch (condition) {
-        case Condition::COND_EQUAL:
+        case Condition::EQUAL:
             assembler_.Je(target);
             break;
-        case Condition::COND_NOT_EQUAL:
+        case Condition::NOT_EQUAL:
             assembler_.Jne(target);
             break;
-        case Condition::COND_LESS_THAN:
+        case Condition::LESS_THAN:
             // COND_LESS_THAN is signed; unsigned comparisons must use a separate condition.
             assembler_.Jl(target);
             break;
-        case Condition::COND_LESS_THAN_OR_EQUAL:
+        case Condition::LESS_THAN_OR_EQUAL:
             assembler_.Jle(target);
             break;
-        case Condition::COND_GREATER_THAN:
+        case Condition::GREATER_THAN:
             assembler_.Jg(target);
             break;
-        case Condition::COND_GREATER_THAN_OR_EQUAL:
+        case Condition::GREATER_THAN_OR_EQUAL:
             assembler_.Jge(target);
             break;
-        case Condition::COND_ZERO:
+        case Condition::ZERO:
             assembler_.Jz(target);
             break;
-        case Condition::COND_NOT_ZERO:
+        case Condition::NOT_ZERO:
             assembler_.Jnz(target);
             break;
-        case Condition::COND_ABOVE:
+        case Condition::ABOVE:
             assembler_.Ja(target);
             break;
-        case Condition::COND_BELOW:
+        case Condition::BELOW:
             assembler_.Jb(target);
             break;
-        case Condition::COND_ABOVE_OR_EQUAL:
+        case Condition::ABOVE_OR_EQUAL:
             assembler_.Jae(target);
             break;
-        case Condition::COND_BELOW_OR_EQUAL:
+        case Condition::BELOW_OR_EQUAL:
             assembler_.Jbe(target);
             break;
-        case Condition::COND_OVERFLOW:
+        case Condition::OVERFLOW:
             assembler_.Jo(target);
             break;
-        case Condition::COND_NOT_OVERFLOW:
+        case Condition::NOT_OVERFLOW:
             assembler_.Jno(target);
             break;
-        case Condition::COND_PARITY:
+        case Condition::PARITY:
             assembler_.Jp(target);
             break;
-        case Condition::COND_NOT_PARITY:
+        case Condition::NOT_PARITY:
             assembler_.Jnp(target);
             break;
         default:
@@ -601,7 +601,7 @@ void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label 
     Move(scratch, value);
     And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     Compare(scratch, 0);
-    JumpIf(Condition::COND_NOT_EQUAL, target);
+    JumpIf(Condition::NOT_EQUAL, target);
 }
 
 void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *target)
@@ -613,9 +613,9 @@ void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *targe
     LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
     And(scratch, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
     Compare(scratch, static_cast<int32_t>(JSType::JS_FUNCTION_FIRST));
-    JumpIf(Condition::COND_LESS_THAN, target);
+    JumpIf(Condition::LESS_THAN, target);
     Compare(scratch, static_cast<int32_t>(JSType::JS_FUNCTION_LAST));
-    JumpIf(Condition::COND_GREATER_THAN, target);
+    JumpIf(Condition::GREATER_THAN, target);
 }
 
 void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target)
@@ -817,7 +817,7 @@ void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount
     Label fillUndefined;
     Label fillDone;
     Compare(fillSlotCount, 0);
-    JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &fillDone);
+    JumpIf(Condition::LESS_THAN_OR_EQUAL, &fillDone);
 
     assembler_.Bind(&fillUndefined);
     constexpr int32_t SLOT_BEFORE_FIRST_OPTIONAL_ARG = NUM_MANDATORY_JSFUNC_ARGS;
@@ -827,7 +827,7 @@ void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount
                     x64::Operand(x64::rsp, fillSlotCount, x64::Scale::Times8, firstUndefinedArgBaseOffset));
     Sub(fillSlotCount, 1);
     Compare(fillSlotCount, 0);
-    JumpIf(Condition::COND_GREATER_THAN, &fillUndefined);
+    JumpIf(Condition::GREATER_THAN, &fillUndefined);
     assembler_.Bind(&fillDone);
 }
 

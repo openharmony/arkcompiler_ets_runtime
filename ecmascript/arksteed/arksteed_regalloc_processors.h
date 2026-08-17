@@ -120,11 +120,11 @@ public:
     template <typename T>
     void ProcessVertex(T *vertex, const ArkSteedState &state)
     {
-        constexpr bool isCall = T::PROPERTIES.IsCall();
-        constexpr bool needsRegSnapshot = T::PROPERTIES.NeedsRegisterSnapshot();
-        if constexpr (isCall || needsRegSnapshot) {
+        constexpr bool isCall = IsCall(T::PROPERTIES);
+        constexpr bool isDeferredCall = IsDeferredCall(T::PROPERTIES);
+        if constexpr (isCall || isDeferredCall) {
             uint32_t vertexStackArgs = vertex->GetInputCount();
-            if constexpr (needsRegSnapshot) {
+            if constexpr (isDeferredCall) {
                 // Pessimistically assume that we'll push all registers in deferred calls.
                 vertexStackArgs += ALLOCATABLE_GENERAL_REGISTER_COUNT + ALLOCATABLE_DOUBLE_REGISTER_COUNT;
             }
@@ -181,7 +181,7 @@ public:
     {
         vertex->GetRegallocInfo()->SetId(nextVertexId_++);
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
-        if (loopUsedVertices != nullptr && vertex->GetProperties().IsCall()) {
+        if (loopUsedVertices != nullptr && vertex->IsCall()) {
             if (loopUsedVertices->firstCall == INVALID_VERTEX_ID) {
                 loopUsedVertices->firstCall = vertex->GetId();
             }
@@ -258,7 +258,7 @@ private:
     template <typename T>
     void MarkEagerDeoptUses(T *vertex)
     {
-        if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, T> && T::PROPERTIES.CanEagerDeopt()) {
+        if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, T>) {
             LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
             for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
                 MarkUse(vertex->GetDeoptFrameValue(index), vertex->GetId(), vertex->GetDeoptSourceLocation(index),

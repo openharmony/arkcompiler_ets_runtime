@@ -28,13 +28,11 @@
 namespace panda::ecmascript::arksteed {
 
 class Graph;
-class ArkSteedGraphLabeller;
 class BB;
 class Vertex;
 class ValueVertex;
 class PhiVertex;
 class ControlVertex;
-class VertexInput;
 class InputLocation;
 class RegallocValueVertexInfo;
 class InstructionOperand;
@@ -385,7 +383,6 @@ private:
     void Spill(ValueVertex *vertex);
     void SpillRegisters();
     void SpillAndClearRegisters();
-    void SpillAndClearASMBarrierClobbers();
     void SpillCatchPhiInputsOfIndex(BB *catchBlock, uint32_t index);
     void SaveDeferredRegisterSnapshot(Vertex *vertex);
 

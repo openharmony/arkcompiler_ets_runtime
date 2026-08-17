@@ -24,7 +24,7 @@ constexpr int NAMED_ACCESS_SLOT_INPUT = 0;
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const
 {
     if (index == NAMED_ACCESS_SLOT_INPUT && !allowImmediate &&
-        bytecodeInfo_.slotId.GetId() != panda::ecmascript::kungfu::ICSlotId::INVALID_ID) {
+        bytecodeInfo_.slotId.GetId() != kungfu::ICSlotId::INVALID_ID) {
         *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
         return true;
     }
@@ -34,12 +34,12 @@ bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate
     }
 
     const auto &input = bytecodeInfo_.inputs[index];
-    if (std::holds_alternative<panda::ecmascript::kungfu::ICSlotId>(input)) {
-        *slotId = static_cast<uint32_t>(std::get<panda::ecmascript::kungfu::ICSlotId>(input).GetId());
+    if (std::holds_alternative<kungfu::ICSlotId>(input)) {
+        *slotId = static_cast<uint32_t>(std::get<kungfu::ICSlotId>(input).GetId());
         return true;
     }
-    if (allowImmediate && std::holds_alternative<panda::ecmascript::kungfu::Immediate>(input)) {
-        *slotId = static_cast<uint32_t>(std::get<panda::ecmascript::kungfu::Immediate>(input).GetValue());
+    if (allowImmediate && std::holds_alternative<kungfu::Immediate>(input)) {
+        *slotId = static_cast<uint32_t>(std::get<kungfu::Immediate>(input).GetValue());
         return true;
     }
     return false;
@@ -48,7 +48,7 @@ bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate
 bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(uint32_t *slotId) const
 {
     if (slotId == nullptr ||
-        bytecodeInfo_.slotId.GetId() == panda::ecmascript::kungfu::ICSlotId::INVALID_ID) {
+        bytecodeInfo_.slotId.GetId() == kungfu::ICSlotId::INVALID_ID) {
         return false;
     }
     *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
@@ -62,10 +62,10 @@ bool ArkSteedFeedbackReader::TryGetConstDataId(int index, uint16_t *constDataId)
     }
 
     const auto &input = bytecodeInfo_.inputs[index];
-    if (!std::holds_alternative<panda::ecmascript::kungfu::ConstDataId>(input)) {
+    if (!std::holds_alternative<kungfu::ConstDataId>(input)) {
         return false;
     }
-    *constDataId = std::get<panda::ecmascript::kungfu::ConstDataId>(input).GetId();
+    *constDataId = std::get<kungfu::ConstDataId>(input).GetId();
     return true;
 }
 

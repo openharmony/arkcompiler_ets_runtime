@@ -39,14 +39,6 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
 
-#define REGISTER_VERTEX_TO_LABELLER(vertex)                             \
-    do {                                                                \
-        ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();    \
-        if (labeller != nullptr) {                                      \
-            labeller->RegisterVertex(vertex);                           \
-        }                                                               \
-    } while (false)
-
 namespace panda::ecmascript::arksteed {
 namespace {
 constexpr uint32_t CALL_ARG0 = 0;
@@ -79,7 +71,7 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
         case kungfu::MachineType::I8:
         case kungfu::MachineType::I16:
         case kungfu::MachineType::I32:
-            return value->IsInt32() || value->IsUint32() || value->IsInt64();
+            return value->IsInt32() || value->IsUInt32() || value->IsInt64();
         case kungfu::MachineType::F32:
         case kungfu::MachineType::F64:
             return value->IsAnyFloat64();
@@ -153,20 +145,20 @@ bool SupportsF64BinOp(BinaryOpKind kind)
     }
 }
 
-bool IsEqualityCompare(CompareOpKind kind)
+bool IsEqualityCompare(JSCondition kind)
 {
-    return kind == CompareOpKind::EQUAL || kind == CompareOpKind::NOT_EQUAL ||
-           kind == CompareOpKind::STRICT_EQUAL || kind == CompareOpKind::STRICT_NOT_EQUAL;
+    return kind == JSCondition::EQUAL || kind == JSCondition::NOT_EQUAL ||
+           kind == JSCondition::STRICT_EQUAL || kind == JSCondition::STRICT_NOT_EQUAL;
 }
 
-bool IsStrictEqualityCompare(CompareOpKind kind)
+bool IsStrictEqualityCompare(JSCondition kind)
 {
-    return kind == CompareOpKind::STRICT_EQUAL || kind == CompareOpKind::STRICT_NOT_EQUAL;
+    return kind == JSCondition::STRICT_EQUAL || kind == JSCondition::STRICT_NOT_EQUAL;
 }
 
-bool IsEqualCompare(CompareOpKind kind)
+bool IsEqualCompare(JSCondition kind)
 {
-    return kind == CompareOpKind::EQUAL || kind == CompareOpKind::STRICT_EQUAL;
+    return kind == JSCondition::EQUAL || kind == JSCondition::STRICT_EQUAL;
 }
 
 bool IsReferenceComparableRootValue(ValueVertex *node)
@@ -200,81 +192,81 @@ bool StrictTypesCanBeEqual(NodeInfo::NodeType leftType, NodeInfo::NodeType right
            NodeInfo::NodeTypeCanBe(rightType, NodeInfo::NodeType::NUMBER);
 }
 
-bool EvaluateInt32Compare(CompareOpKind kind, int32_t left, int32_t right)
+bool EvaluateInt32Compare(JSCondition kind, int32_t left, int32_t right)
 {
     switch (kind) {
-        case CompareOpKind::EQUAL:
-        case CompareOpKind::STRICT_EQUAL:
+        case JSCondition::EQUAL:
+        case JSCondition::STRICT_EQUAL:
             return left == right;
-        case CompareOpKind::NOT_EQUAL:
-        case CompareOpKind::STRICT_NOT_EQUAL:
+        case JSCondition::NOT_EQUAL:
+        case JSCondition::STRICT_NOT_EQUAL:
             return left != right;
-        case CompareOpKind::LESS_THAN:
+        case JSCondition::LESS_THAN:
             return left < right;
-        case CompareOpKind::LESS_THAN_OR_EQUAL:
+        case JSCondition::LESS_THAN_OR_EQUAL:
             return left <= right;
-        case CompareOpKind::GREATER_THAN:
+        case JSCondition::GREATER_THAN:
             return left > right;
-        case CompareOpKind::GREATER_THAN_OR_EQUAL:
+        case JSCondition::GREATER_THAN_OR_EQUAL:
             return left >= right;
     }
     UNREACHABLE();
 }
 
-bool EvaluateFloat64Compare(CompareOpKind kind, double left, double right)
+bool EvaluateFloat64Compare(JSCondition kind, double left, double right)
 {
     bool unordered = std::isnan(left) || std::isnan(right);
     switch (kind) {
-        case CompareOpKind::EQUAL:
-        case CompareOpKind::STRICT_EQUAL:
+        case JSCondition::EQUAL:
+        case JSCondition::STRICT_EQUAL:
             return !unordered && left == right;
-        case CompareOpKind::NOT_EQUAL:
-        case CompareOpKind::STRICT_NOT_EQUAL:
+        case JSCondition::NOT_EQUAL:
+        case JSCondition::STRICT_NOT_EQUAL:
             return unordered || left != right;
-        case CompareOpKind::LESS_THAN:
+        case JSCondition::LESS_THAN:
             return !unordered && left < right;
-        case CompareOpKind::LESS_THAN_OR_EQUAL:
+        case JSCondition::LESS_THAN_OR_EQUAL:
             return !unordered && left <= right;
-        case CompareOpKind::GREATER_THAN:
+        case JSCondition::GREATER_THAN:
             return !unordered && left > right;
-        case CompareOpKind::GREATER_THAN_OR_EQUAL:
+        case JSCondition::GREATER_THAN_OR_EQUAL:
             return !unordered && left >= right;
     }
     UNREACHABLE();
 }
 
-IntConditionKind Int32ConditionFromCompare(CompareOpKind kind)
+Condition Int32ConditionFromCompare(JSCondition kind)
 {
     switch (kind) {
-        case CompareOpKind::EQUAL:
-        case CompareOpKind::STRICT_EQUAL:
-            return IntConditionKind::EQUAL;
-        case CompareOpKind::NOT_EQUAL:
-        case CompareOpKind::STRICT_NOT_EQUAL:
-            return IntConditionKind::NOT_EQUAL;
-        case CompareOpKind::LESS_THAN:
-            return IntConditionKind::LESS_THAN;
-        case CompareOpKind::LESS_THAN_OR_EQUAL:
-            return IntConditionKind::LESS_THAN_OR_EQUAL;
-        case CompareOpKind::GREATER_THAN:
-            return IntConditionKind::GREATER_THAN;
-        case CompareOpKind::GREATER_THAN_OR_EQUAL:
-            return IntConditionKind::GREATER_THAN_OR_EQUAL;
+        case JSCondition::EQUAL:
+        case JSCondition::STRICT_EQUAL:
+            return Condition::EQUAL;
+        case JSCondition::NOT_EQUAL:
+        case JSCondition::STRICT_NOT_EQUAL:
+            return Condition::NOT_EQUAL;
+        case JSCondition::LESS_THAN:
+            return Condition::LESS_THAN;
+        case JSCondition::LESS_THAN_OR_EQUAL:
+            return Condition::LESS_THAN_OR_EQUAL;
+        case JSCondition::GREATER_THAN:
+            return Condition::GREATER_THAN;
+        case JSCondition::GREATER_THAN_OR_EQUAL:
+            return Condition::GREATER_THAN_OR_EQUAL;
     }
     UNREACHABLE();
 }
 
-CompareOpKind InvertCompare(CompareOpKind kind)
+JSCondition InvertCompare(JSCondition kind)
 {
     switch (kind) {
-        case CompareOpKind::EQUAL:
-            return CompareOpKind::NOT_EQUAL;
-        case CompareOpKind::NOT_EQUAL:
-            return CompareOpKind::EQUAL;
-        case CompareOpKind::STRICT_EQUAL:
-            return CompareOpKind::STRICT_NOT_EQUAL;
-        case CompareOpKind::STRICT_NOT_EQUAL:
-            return CompareOpKind::STRICT_EQUAL;
+        case JSCondition::EQUAL:
+            return JSCondition::NOT_EQUAL;
+        case JSCondition::NOT_EQUAL:
+            return JSCondition::EQUAL;
+        case JSCondition::STRICT_EQUAL:
+            return JSCondition::STRICT_NOT_EQUAL;
+        case JSCondition::STRICT_NOT_EQUAL:
+            return JSCondition::STRICT_EQUAL;
         default:
             UNREACHABLE();
     }
@@ -366,10 +358,8 @@ constexpr bool CseCanUseAvailableExpression()
     if constexpr (!std::is_base_of_v<ValueVertex, VertexT>) {
         return false;
     } else {
-        constexpr VertexOpcode opcode = Vertex::opcode_of<VertexT>();
-        constexpr VertexProperties props = VertexT::PROPERTIES;
-        return !CseIsExcludedAvailableExpressionOpcode(opcode) && props.CanParticipateInCSE() &&
-               !props.CanRead() && !props.IsAnyCall() && !props.CanAllocate() && !props.CanThrow();
+        return !CseIsExcludedAvailableExpressionOpcode(OpcodeOf<VertexT>) &&
+                CanParticipateInCSE(VertexT::PROPERTIES);
     }
 }
 }  // namespace
@@ -791,7 +781,6 @@ PhiVertex *GraphBuilder::NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegI
     PhiVertex *phi = PhiVertex::New(chunk_, numPredecessors, VirtualRegister(vreg));
     phi->SetOwner(owner);
     owner->AddPhiVertex(phi);
-    REGISTER_VERTEX_TO_LABELLER(phi);
     return phi;
 }
 
@@ -815,11 +804,8 @@ VertexT *GraphBuilder::NewVertex(BB *owner, const InputRange &inputs, Args &&...
     VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
     vertex->SetOwner(owner);
     owner->AddVertex(vertex);
-    REGISTER_VERTEX_TO_LABELLER(vertex);
-
-    constexpr VertexProperties props = VertexT::PROPERTIES;
-    // At most one of: deopt_checkpoint, eager_deopt, lazy_deopt
-    static_assert(props.IsDeoptCheckpoint() + props.CanEagerDeopt() + props.CanLazyDeopt() <= 1);
+    // At most one of: eager_deopt, lazy_deopt
+    static_assert(CanEagerDeopt(VertexT::PROPERTIES) + CanLazyDeopt(VertexT::PROPERTIES) <= 1);
 
     return vertex;
 }
@@ -836,10 +822,10 @@ VertexT *GraphBuilder::NewVertex(
 
         CompileInfoFacts::ExpressionOptions options(chunk_);
         CseBuildExpressionOptions(options, args...);
-        uint32_t hash = CseHashExpression(Vertex::opcode_of<VertexT>(), expressionInputs, options);
-        bool needsEpochCheck = VertexT::PROPERTIES.CanRead();
+        uint32_t hash = CseHashExpression(OpcodeOf<VertexT>, expressionInputs, options);
+        bool needsEpochCheck = CanRead(VertexT::PROPERTIES);
         ValueVertex *cached = compileInfoFacts->FindExpression(
-            hash, Vertex::opcode_of<VertexT>(), expressionInputs, options, needsEpochCheck);
+            hash, OpcodeOf<VertexT>, expressionInputs, options, needsEpochCheck);
         if (cached != nullptr) {
             return cached->Cast<VertexT>();
         }
@@ -847,12 +833,11 @@ VertexT *GraphBuilder::NewVertex(
         VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
         vertex->SetOwner(owner);
         owner->AddVertex(vertex);
-        REGISTER_VERTEX_TO_LABELLER(vertex);
         compileInfoFacts->AddExpression(hash, vertex, expressionInputs, options, needsEpochCheck);
         return vertex;
     }
     VertexT *vertex = NewVertex<VertexT>(owner, inputs, std::forward<Args>(args)...);
-    if constexpr (VertexT::PROPERTIES.CanWrite()) {
+    if constexpr (CanWrite(VertexT::PROPERTIES)) {
         compileInfoFacts->MarkPossibleSideEffect(ArkSteedSideEffectClassifier::Classify(vertex));
     }
     return vertex;
@@ -933,12 +918,9 @@ VertexT *GraphBuilder::FinishBlockWith(BB *owner, std::initializer_list<ValueVer
     vertex->SetOwner(owner);
     owner->SetControlVertex(vertex);
     graph_->Add(owner);
-    REGISTER_VERTEX_TO_LABELLER(vertex);
-
-    constexpr VertexProperties props = VertexT::PROPERTIES;
     // Control vertices cannot have lazy deopt, throw, or write side effects
     // Note: ThrowVertex is a special case that can throw
-    static_assert(!props.CanLazyDeopt() && !props.CanWrite());
+    static_assert(!CanLazyDeopt(VertexT::PROPERTIES) && !CanWrite(VertexT::PROPERTIES));
 
     return vertex;
 }
@@ -1835,7 +1817,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::EQ)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::EQUAL);
+        ValueVertex *result = BuildCompareOperation(JSCondition::EQUAL);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1845,7 +1827,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::NOT_EQ)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::NOT_EQUAL);
+        ValueVertex *result = BuildCompareOperation(JSCondition::NOT_EQUAL);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1855,7 +1837,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::LESS_THAN);
+        ValueVertex *result = BuildCompareOperation(JSCondition::LESS_THAN);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1865,7 +1847,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS_EQ)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::LESS_THAN_OR_EQUAL);
+        ValueVertex *result = BuildCompareOperation(JSCondition::LESS_THAN_OR_EQUAL);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1875,7 +1857,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::GREATER_THAN);
+        ValueVertex *result = BuildCompareOperation(JSCondition::GREATER_THAN);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1885,7 +1867,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER_EQ)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::GREATER_THAN_OR_EQUAL);
+        ValueVertex *result = BuildCompareOperation(JSCondition::GREATER_THAN_OR_EQUAL);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1895,7 +1877,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_NOT_EQ)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::STRICT_NOT_EQUAL);
+        ValueVertex *result = BuildCompareOperation(JSCondition::STRICT_NOT_EQUAL);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -1905,7 +1887,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_EQ)) {
             return;
         }
-        ValueVertex *result = BuildCompareOperation(CompareOpKind::STRICT_EQUAL);
+        ValueVertex *result = BuildCompareOperation(JSCondition::STRICT_EQUAL);
         frameState.SetAcc(result);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
     }
@@ -3009,13 +2991,13 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *firstType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST));
         self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
             currentBlock, {typeBits, firstType},
-            checkLowerDoneBlock, checkLowerFailedBlock, IntConditionKind::GREATER_THAN_OR_EQUAL);
+            checkLowerDoneBlock, checkLowerFailedBlock, Condition::GREATER_THAN_OR_EQUAL);
 
         currentBlock = checkLowerDoneBlock;
         ValueVertex *lastType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST));
         self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
             currentBlock, {typeBits, lastType},
-            checkUpperDoneBlock, checkUpperFailedBlock, IntConditionKind::LESS_THAN_OR_EQUAL);
+            checkUpperDoneBlock, checkUpperFailedBlock, Condition::LESS_THAN_OR_EQUAL);
 
         for (BB *exceptionBlock : {notHeapObjectBlock, checkLowerFailedBlock, checkUpperFailedBlock}) {
             currentBlock = exceptionBlock;
@@ -3458,7 +3440,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (!self->IsLazyDeoptEnabled()) {
             return;
         }
-        LazyDeoptimizableMixin *deoptMixin = LazyDeoptMixinOf(vertex);
+        LazyDeoptimizableMixin *deoptMixin = LazyDeoptimizableMixinOf(vertex);
         if (deoptMixin == nullptr) {
             return;
         }
@@ -4132,7 +4114,7 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildTaggedI32Result(rawResult);
     }
 
-    void BuildDeoptIfInt32Condition(ValueVertex *leftI32, ValueVertex *rightI32, IntConditionKind condition,
+    void BuildDeoptIfInt32Condition(ValueVertex *leftI32, ValueVertex *rightI32, Condition condition,
                                     kungfu::DeoptType deoptType)
     {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
@@ -4160,7 +4142,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
-        BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), IntConditionKind::LESS_THAN,
+        BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), Condition::LESS_THAN,
                                    kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
         return BuildTaggedIntConstant(0);
     }
@@ -4175,7 +4157,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
         ValueVertex *zeroI32 = self->graph_->GetInt32Constant(0);
         if (!constant.has_value()) {
-            BuildDeoptIfInt32Condition(valueI32, zeroI32, IntConditionKind::EQUAL, kungfu::DeoptType::DIVZERO2);
+            BuildDeoptIfInt32Condition(valueI32, zeroI32, Condition::EQUAL, kungfu::DeoptType::DIVZERO2);
         }
         ValueVertex *rawResult = BuildI32BinOpWithOverflow(BinaryOpKind::SUB, zeroI32, valueI32);
         return BuildTaggedI32Result(rawResult);
@@ -4196,9 +4178,9 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
         if (divisor == -1) {
             BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(std::numeric_limits<int32_t>::min()),
-                                       IntConditionKind::EQUAL, kungfu::DeoptType::INT32OVERFLOW1);
+                                       Condition::EQUAL, kungfu::DeoptType::INT32OVERFLOW1);
         }
-        BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(0), IntConditionKind::LESS_THAN,
+        BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(0), Condition::LESS_THAN,
                                    kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
         return BuildTaggedIntConstant(0);
     }
@@ -4741,39 +4723,39 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *valueI32 = BuildTaggedIntToI32(value);
         ValueVertex *zero = self->graph_->GetInt32Constant(0);
-        IntConditionKind condition = trueIfNonZero ? IntConditionKind::NOT_EQUAL : IntConditionKind::EQUAL;
+        Condition condition = trueIfNonZero ? Condition::NOT_EQUAL : Condition::EQUAL;
         ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
             compileInfoFacts_, currentBlock, {valueI32, zero}, condition);
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
 
-    ValueVertex *BuildGenericCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *BuildGenericCompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
         CommonStubID stubId;
         switch (kind) {
-            case CompareOpKind::EQUAL:
+            case JSCondition::EQUAL:
                 stubId = CommonStubID::Equal;
                 break;
-            case CompareOpKind::NOT_EQUAL:
+            case JSCondition::NOT_EQUAL:
                 stubId = CommonStubID::NotEqual;
                 break;
-            case CompareOpKind::LESS_THAN:
+            case JSCondition::LESS_THAN:
                 stubId = CommonStubID::Less;
                 break;
-            case CompareOpKind::LESS_THAN_OR_EQUAL:
+            case JSCondition::LESS_THAN_OR_EQUAL:
                 stubId = CommonStubID::LessEq;
                 break;
-            case CompareOpKind::GREATER_THAN:
+            case JSCondition::GREATER_THAN:
                 stubId = CommonStubID::Greater;
                 break;
-            case CompareOpKind::GREATER_THAN_OR_EQUAL:
+            case JSCondition::GREATER_THAN_OR_EQUAL:
                 stubId = CommonStubID::GreaterEq;
                 break;
-            case CompareOpKind::STRICT_EQUAL:
+            case JSCondition::STRICT_EQUAL:
                 stubId = CommonStubID::StrictEqual;
                 break;
-            case CompareOpKind::STRICT_NOT_EQUAL:
+            case JSCondition::STRICT_NOT_EQUAL:
                 stubId = CommonStubID::StrictNotEqual;
                 break;
             default:
@@ -4798,7 +4780,7 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
-    ValueVertex *TryReduceCompareEqualAgainstConstant(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *TryReduceCompareEqualAgainstConstant(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
         if (left == right && IsEqualityCompare(kind) &&
             compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT)) {
@@ -4830,7 +4812,7 @@ struct GraphBuilder::BytecodeVisitor {
         return nullptr;
     }
 
-    ValueVertex *BuildI32CompareTaggedValue(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *BuildI32CompareTaggedValue(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
         std::optional<int32_t> leftValue = TryGetInt32Value(left);
         std::optional<int32_t> rightValue = TryGetInt32Value(right);
@@ -4846,7 +4828,7 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
-    ValueVertex *BuildI32CompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right,
+    ValueVertex *BuildI32CompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right,
                                    bool leftKnownInt, bool rightKnownInt)
     {
         if (leftKnownInt && rightKnownInt) {
@@ -4861,7 +4843,7 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
-    ValueVertex *BuildF64CompareTaggedValue(CompareOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
+    ValueVertex *BuildF64CompareTaggedValue(JSCondition kind, ValueVertex *leftF64, ValueVertex *rightF64)
     {
         if (auto *leftConst = leftF64->TryCast<Float64ConstantVertex>()) {
             if (auto *rightConst = rightF64->TryCast<Float64ConstantVertex>()) {
@@ -4875,21 +4857,21 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
-    ValueVertex *BuildF64CompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *BuildF64CompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
         ValueVertex *leftF64 = BuildCheckedNumberToF64(left);
         ValueVertex *rightF64 = BuildCheckedNumberToF64(right);
         return BuildF64CompareTaggedValue(kind, leftF64, rightF64);
     }
 
-    ValueVertex *BuildStringCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *BuildStringCompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
-        if (kind == CompareOpKind::EQUAL || kind == CompareOpKind::STRICT_EQUAL) {
+        if (kind == JSCondition::EQUAL || kind == JSCondition::STRICT_EQUAL) {
             ValueVertex *result = self->NewVertex<StringEqualVertex>(currentBlock, {glue, left, right, GlobalEnv()});
             compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
             return result;
         }
-        if (kind == CompareOpKind::NOT_EQUAL || kind == CompareOpKind::STRICT_NOT_EQUAL) {
+        if (kind == JSCondition::NOT_EQUAL || kind == JSCondition::STRICT_NOT_EQUAL) {
             // NOT_EQUAL = !EQUAL: build StringEqual then negate the boolean.
             ValueVertex *equal = BuildStringCompareOp(InvertCompare(kind), left, right);
             return BuildTaggedNotEqual(equal, GetBooleanConstant(true));
@@ -4897,7 +4879,7 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildGenericCompareOp(kind, left, right);
     }
 
-    ValueVertex *TryBuildStringCompareOp(CompareOpKind kind, ValueVertex *left, ValueVertex *right,
+    ValueVertex *TryBuildStringCompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right,
                                          const OperationFeedback &feedback)
     {
         bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
@@ -4914,7 +4896,7 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildStringCompareOp(kind, checkedLeft, checkedRight);
     }
 
-    ValueVertex *TryFoldUint32ComparedToNonPositive(CompareOpKind kind, ValueVertex *left, ValueVertex *right)
+    ValueVertex *TryFoldUint32ComparedToNonPositive(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
         if (left == nullptr || !left->Is<CheckedNonNegativeI32ToTaggedIntVertex>()) {
             return nullptr;
@@ -4924,11 +4906,11 @@ struct GraphBuilder::BytecodeVisitor {
             return nullptr;
         }
         switch (kind) {
-            case CompareOpKind::GREATER_THAN_OR_EQUAL:
+            case JSCondition::GREATER_THAN_OR_EQUAL:
                 return GetBooleanConstant(true);   // uint32 >= 0 >= right
-            case CompareOpKind::LESS_THAN:
+            case JSCondition::LESS_THAN:
                 return GetBooleanConstant(false);  // uint32 >= 0, cannot be < right (<=0)
-            case CompareOpKind::GREATER_THAN:
+            case JSCondition::GREATER_THAN:
                 if (*rightValue < 0) {
                     return GetBooleanConstant(true);  // uint32 >= 0 > right
                 }
@@ -4938,7 +4920,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    ValueVertex *BuildCompareOperation(CompareOpKind kind)
+    ValueVertex *BuildCompareOperation(JSCondition kind)
     {
         ValueVertex *left = LoadRegister(currentBcInfo, 0);
         ValueVertex *right = frameState.GetAcc();
@@ -6048,7 +6030,7 @@ struct GraphBuilder::BytecodeVisitor {
                 reinterpret_cast<uint64_t>(expectedHClasses[i]) & TaggedStateWord::ADDRESS_MASK);
             BB *nextBlock = i + 1 < access.caseCount ? checkBlocks[i + 1] : hclassMissDeoptBlock;
             self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
-                currentBlock, {actualHClass, expectedHClass}, caseBlocks[i], nextBlock, IntConditionKind::EQUAL);
+                currentBlock, {actualHClass, expectedHClass}, caseBlocks[i], nextBlock, Condition::EQUAL);
 
             currentBlock = caseBlocks[i];
             compileInfoFacts_ = entryFacts->Clone();

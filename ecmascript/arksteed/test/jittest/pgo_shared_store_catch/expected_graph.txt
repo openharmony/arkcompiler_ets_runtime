@@ -1,3 +1,0 @@
-DeoptIfHClassMismatch
-PrepareSharedStoreField [PrepareSharedStoreField]
-StoreSharedFieldWithBarrier [StoreSharedFieldWithBarrier]

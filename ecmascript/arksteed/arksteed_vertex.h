@@ -16,7 +16,10 @@
 #ifndef ECMASCRIPT_ARKSTEED_VERTEX_H
 #define ECMASCRIPT_ARKSTEED_VERTEX_H
 
+#include <array>
 #include <cstdint>
+#include <string>
+#include <type_traits>
 
 #include "common_interfaces/base/bit_field.h"
 #include "ecmascript/arksteed/arksteed_opcode_list.h"
@@ -37,6 +40,22 @@ class InputLocation;
 class Input;
 class ConstInput;
 
+// Accesses the internal thread-local vertex label counter.
+#if !defined(NDEBUG)
+uint32_t NextVertexLabel();
+#endif
+
+std::string FormatVertexLabel(const Vertex *vertex);
+
+// RAII scope to guard the internal vertex label counter.
+class VertexLabelScope {
+public:
+    VertexLabelScope();
+    ~VertexLabelScope();
+    NO_COPY_SEMANTIC(VertexLabelScope);
+    NO_MOVE_SEMANTIC(VertexLabelScope);
+};
+
 enum class SideEffectKind : uint8_t {
     NO_SIDE_EFFECT,
     FIELD_WRITE,
@@ -47,412 +66,151 @@ enum class SideEffectKind : uint8_t {
     SAFE_CALL,
 };
 
+#define VERTEX_VALUE_REPRESENTATIONS(V) \
+    V(Tagged,       TAGGED)             \
+    V(Int32,        INT32)              \
+    V(UInt32,       UINT32)             \
+    V(Int64,        INT64)              \
+    V(Float64,      FLOAT64)            \
+    V(HoleyFloat64, HOLEY_FLOAT64)
+
+#define VERTEX_VALUE_COMPOUND_REPRESENTATIONS(V)    \
+    V(IntPtr)                                       \
+    V(AnyInt32)                                     \
+    V(AnyFloat64)
+
 // ValueRepresentation describes the machine representation of a value
 enum class ValueRepresentation : uint8_t {
-    TAGGED,          // Tagged pointer to JS objects
-    INT32,           // 32-bit signed integer
-    UINT32,          // 32-bit unsigned integer
-    INT64,           // 64-bit integer
-    INT_PTR = INT64, // TODO: adaptation for 32-bit platform — aliases INT64 for now
-    FLOAT64,         // 64-bit floating point (non-NaN values)
-    HOLEY_FLOAT64,   // 64-bit floating point (may contain NaN/holes)
-    NONE,            // No specific representation
+    NONE = 0,
+
+#define DEFINE_VALUE_REPRESENTATION(_, NAME) NAME,
+    VERTEX_VALUE_REPRESENTATIONS(DEFINE_VALUE_REPRESENTATION)
+#undef DEFINE_VALUE_REPRESENTATION
+
+    // TODO: Adaptation to 32-bit platform
+    INT_PTR = INT64,
 };
+
+#define VALUE_REPRESENTATION_PREDICATE(Name, NAME)      \
+    constexpr bool Is##Name(ValueRepresentation repr)   \
+    {                                                   \
+        return repr == ValueRepresentation::NAME;       \
+    }
+VERTEX_VALUE_REPRESENTATIONS(VALUE_REPRESENTATION_PREDICATE)
+#undef VALUE_REPRESENTATION_PREDICATE
+
+constexpr bool IsIntPtr(ValueRepresentation repr)
+{
+    return repr == ValueRepresentation::INT_PTR;
+}
+
+constexpr bool IsAnyInt32(ValueRepresentation repr)
+{
+    return repr == ValueRepresentation::INT32 || repr == ValueRepresentation::UINT32;
+}
+
+constexpr bool IsAnyFloat64(ValueRepresentation repr)
+{
+    return repr == ValueRepresentation::FLOAT64 || repr == ValueRepresentation::HOLEY_FLOAT64;
+}
+
+template <size_t N>
+using ValueRepresentationArray = std::array<ValueRepresentation, N>;
 
 constexpr const char *ValueRepresentationName(ValueRepresentation repr)
 {
     switch (repr) {
-        case ValueRepresentation::TAGGED:
-            return "tagged";
-        case ValueRepresentation::INT32:
-            return "int32";
-        case ValueRepresentation::UINT32:
-            return "uint32";
-        case ValueRepresentation::INT64:
-            return "int64";
-        case ValueRepresentation::FLOAT64:
-            return "float64";
-        case ValueRepresentation::HOLEY_FLOAT64:
-            return "holey_float64";
-        case ValueRepresentation::NONE:
-            return "none";
+#define CASE(Name, NAME)                    \
+        case (ValueRepresentation::NAME):   \
+            return #Name;
+        VERTEX_VALUE_REPRESENTATIONS(CASE)
+#undef CASE
+        default:
+            return "unknown";
     }
-    return "unknown";
 }
 
-namespace detail {
-template <size_t Size>
-class InputTypes {
-public:
-    constexpr InputTypes() : data_() {}
-
-    template <typename... Args>
-    constexpr explicit InputTypes(ValueRepresentation first, Args... rest) : data_()
-    {
-        FillArray<0>(data_, first, rest...);
-        static_assert(1 + sizeof...(rest) == Size);
-    }
-
-    constexpr ValueRepresentation operator[](size_t index) const
-    {
-        return data_[index];
-    }
-
-    constexpr size_t size() const
-    {
-        return Size;
-    }
-
-private:
-    ValueRepresentation data_[Size];
-
-    template <size_t Index>
-    constexpr void FillArray(ValueRepresentation *arr, ValueRepresentation value) const
-    {
-        arr[Index] = value;
-    }
-
-    template <size_t Index, typename... Rest>
-    constexpr void FillArray(ValueRepresentation *arr, ValueRepresentation first, Rest... rest) const
-    {
-        arr[Index] = first;
-        FillArray<Index + 1>(arr, rest...);
-    }
-};
-}  // namespace detail
-
-enum class DeoptInfo : uint8_t { NONE = 0, EAGER = 1, LAZY = 2, CHECKPOINT = 3 };
-
-// Vertex operation properties using common::BitField
-class VertexProperties {
-public:
-    using DeoptInfoBit = common::BitField<DeoptInfo, 0, 2>;  // 2: DeoptInfo bit width
-    using CanThrowBit = DeoptInfoBit::NextField<bool, 1>;
-    using CanReadBit = CanThrowBit::NextField<bool, 1>;
-    using CanWriteBit = CanReadBit::NextField<bool, 1>;
-    using CanAllocateBit = CanWriteBit::NextField<bool, 1>;
-    using NotIdempotentBit = CanAllocateBit::NextField<bool, 1>;
-    // 3: ValueRepresentation bit width
-    using ValueRepresentationBit = NotIdempotentBit::NextField<ValueRepresentation, 3>;
-    using IsConversionBit = ValueRepresentationBit::NextField<bool, 1>;
-    using NeedsRegSnapshotBit = IsConversionBit::NextField<bool, 1>;
-    using IsCallBit = NeedsRegSnapshotBit::NextField<bool, 1>;
-    using IsDeferredCallBit = IsCallBit::NextField<bool, 1>;
-    using IsASMBarrierCallBit = IsDeferredCallBit::NextField<bool, 1>;
-
-    constexpr bool IsDeoptCheckpoint() const
-    {
-        return DeoptInfoBit::Decode(bitfield_) == DeoptInfo::CHECKPOINT;
-    }
-
-    constexpr bool CanEagerDeopt() const
-    {
-        return DeoptInfoBit::Decode(bitfield_) == DeoptInfo::EAGER;
-    }
-
-    constexpr bool CanLazyDeopt() const
-    {
-        return DeoptInfoBit::Decode(bitfield_) == DeoptInfo::LAZY;
-    }
-
-    constexpr bool CanDeopt() const
-    {
-        DeoptInfo info = DeoptInfoBit::Decode(bitfield_);
-        return info == DeoptInfo::EAGER || info == DeoptInfo::LAZY;
-    }
-
-    constexpr bool CanThrow() const
-    {
-        return CanThrowBit::Decode(bitfield_);
-    }
-
-    constexpr bool IsCall() const
-    {
-        return IsCallBit::Decode(bitfield_);
-    }
-
-    constexpr bool IsDeferredCall() const
-    {
-        return IsDeferredCallBit::Decode(bitfield_);
-    }
-
-    constexpr bool IsASMBarrierCall() const
-    {
-        return IsASMBarrierCallBit::Decode(bitfield_);
-    }
-
-    constexpr bool IsAnyCall() const
-    {
-        return IsCall() || IsDeferredCall();
-    }
-
-    constexpr bool CanRead() const
-    {
-        return CanReadBit::Decode(bitfield_);
-    }
-
-    constexpr bool CanWrite() const
-    {
-        return CanWriteBit::Decode(bitfield_);
-    }
-
-    constexpr bool CanAllocate() const
-    {
-        return CanAllocateBit::Decode(bitfield_);
-    }
-
-    constexpr bool IsNotIdempotent() const
-    {
-        return NotIdempotentBit::Decode(bitfield_);
-    }
-
-    constexpr bool CanParticipateInCSE() const
-    {
-        return !CanWrite() && !IsNotIdempotent();
-    }
-
-    constexpr bool MayHasSideEffect() const
-    {
-        uint32_t mask = static_cast<uint32_t>(CanReadBit::Mask() | CanWriteBit::Mask() | CanAllocateBit::Mask());
-        return (bitfield_ & mask) != 0;
-    }
-
-    constexpr bool IsConversion() const
-    {
-        return IsConversionBit::Decode(bitfield_);
-    }
-
-    constexpr ValueRepresentation GetValueRepresentation() const
-    {
-        return ValueRepresentationBit::Decode(bitfield_);
-    }
-
-    constexpr bool NeedsRegisterSnapshot() const
-    {
-        return NeedsRegSnapshotBit::Decode(bitfield_);
-    }
-
-    // Factory methods for creating properties
-    static constexpr VertexProperties Pure()
-    {
-        return VertexProperties(0);
-    }
-
-    static constexpr VertexProperties EagerDeopt()
-    {
-        return VertexProperties(DeoptInfoBit::Encode(DeoptInfo::EAGER));
-    }
-
-    static constexpr VertexProperties LazyDeopt()
-    {
-        return VertexProperties(DeoptInfoBit::Encode(DeoptInfo::LAZY));
-    }
-
-    static constexpr VertexProperties DeoptCheckpoint()
-    {
-        return VertexProperties(DeoptInfoBit::Encode(DeoptInfo::CHECKPOINT));
-    }
-
-    static constexpr VertexProperties CanThrowProp()
-    {
-        return VertexProperties(CanThrowBit::Encode(true));
-    }
-
-    static constexpr VertexProperties CanReadProp()
-    {
-        return VertexProperties(CanReadBit::Encode(true));
-    }
-
-    static constexpr VertexProperties CanWriteProp()
-    {
-        return VertexProperties(CanWriteBit::Encode(true));
-    }
-
-    static constexpr VertexProperties CanAllocateProp()
-    {
-        return VertexProperties(CanAllocateBit::Encode(true));
-    }
-
-    static constexpr VertexProperties NotIdempotent()
-    {
-        return VertexProperties(NotIdempotentBit::Encode(true));
-    }
-
-    static constexpr VertexProperties TaggedValue()
-    {
-        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::TAGGED));
-    }
-
-    static constexpr VertexProperties Int32()
-    {
-        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::INT32));
-    }
-
-    static constexpr VertexProperties Uint32()
-    {
-        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::UINT32));
-    }
-
-    static constexpr VertexProperties Int64()
-    {
-        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::INT64));
-    }
-
-    // TODO: adaptation for 32-bit platform — forwards to Int64 for now
-    static constexpr VertexProperties IntPtr()
-    {
-        return Int64();
-    }
-
-    static constexpr VertexProperties Float64()
-    {
-        return VertexProperties(ValueRepresentationBit::Encode(ValueRepresentation::FLOAT64));
-    }
-
-    static constexpr VertexProperties ConversionVertex()
-    {
-        return VertexProperties(IsConversionBit::Encode(true));
-    }
-
-    static constexpr VertexProperties AnySideEffects()
-    {
-        return CanReadProp() | CanWriteProp() | CanAllocateProp();
-    }
-
-    static constexpr VertexProperties DeferredCall()
-    {
-        return VertexProperties(NeedsRegSnapshotBit::Encode(true));
-    }
-
-    static constexpr VertexProperties Call()
-    {
-        return VertexProperties(IsCallBit::Encode(true));
-    }
-
-    static constexpr VertexProperties ASMBarrierCall()
-    {
-        return VertexProperties(IsASMBarrierCallBit::Encode(true));
-    }
-
-    static constexpr VertexProperties CanCallUserCode()
-    {
-        return AnySideEffects() | LazyDeopt() | VertexProperties(CanThrowBit::Encode(true));
-    }
-
-    static constexpr VertexProperties JsCall()
-    {
-        return Call() | CanCallUserCode();
-    }
-
-    constexpr VertexProperties WithNewValueRepresentation(ValueRepresentation newRepr) const
-    {
-        return VertexProperties(ValueRepresentationBit::Update(bitfield_, newRepr));
-    }
-
-    constexpr VertexProperties WithoutDeopt() const
-    {
-        uint16_t newBitfield = DeoptInfoBit::Update(bitfield_, DeoptInfo::NONE);
-        return VertexProperties(newBitfield);
-    }
-
-    constexpr VertexProperties operator|(VertexProperties other) const
-    {
-        return VertexProperties(bitfield_ | other.bitfield_);
-    }
-
-    constexpr explicit VertexProperties(uint16_t bitfield) : bitfield_(bitfield) {}
-
-    constexpr operator uint16_t() const
-    {
-        return bitfield_;
-    }
-
-private:
-    uint16_t bitfield_;
+enum class VertexPropertyFlag : uint16_t {
+    NONE                = 0,
+    CAN_EAGER_DEOPT     = 1u << 0,
+    CAN_LAZY_DEOPT      = 1u << 1,
+    CAN_THROW           = 1u << 2,
+    CAN_READ            = 1u << 3,
+    CAN_WRITE           = 1u << 4,
+    CAN_ALLOCATE        = 1u << 5,
+    IS_NOT_IDEMPOTENT   = 1u << 6,
+    IS_CALL             = 1u << 7,
+    IS_DEFERRED_CALL    = 1u << 8,
 };
 
-// Check if opcode is a value vertex
-inline constexpr bool IsValueVertex(VertexOpcode opcode)
+constexpr VertexPropertyFlag operator|(VertexPropertyFlag lhs, VertexPropertyFlag rhs)
 {
-    switch (opcode) {
-#define CASE(type) case VertexOpcode::type:
-        VALUE_VERTEX_LIST(CASE)
-#undef CASE
-        return true;
-        default:
-            return false;
-    }
+    unsigned u = static_cast<unsigned>(lhs);
+    unsigned v = static_cast<unsigned>(rhs);
+    return static_cast<VertexPropertyFlag>(u | v);
 }
 
-// Check if opcode is a control vertex
-inline constexpr bool IsControlVertex(VertexOpcode opcode)
-{
-    switch (opcode) {
-#define CASE(type) case VertexOpcode::type:
-        CONTROL_VERTEX_LIST(CASE)
-#undef CASE
-        return true;
-        default:
-            return false;
+#define VERTEX_PROPERTY_FLAGS(V)            \
+    V(CanEagerDeopt,    CAN_EAGER_DEOPT)    \
+    V(CanLazyDeopt,     CAN_LAZY_DEOPT)     \
+    V(CanThrow,         CAN_THROW)          \
+    V(CanRead,          CAN_READ)           \
+    V(CanWrite,         CAN_WRITE)          \
+    V(CanAllocate,      CAN_ALLOCATE)       \
+    V(IsNotIdempotent,  IS_NOT_IDEMPOTENT)  \
+    V(IsCall,           IS_CALL)            \
+    V(IsDeferredCall,   IS_DEFERRED_CALL)
+
+#define VERTEX_PROPERTY_COMPOUND_FLAGS(V)   \
+    V(CanDeopt)                             \
+    V(CanParticipateInCSE)                  \
+    V(MayHaveSideEffects)
+
+#define VERTEX_PROPERTY_FLAGS_PREDICATE(Name, FLAG)                     \
+    constexpr bool Name(VertexPropertyFlag flag)                        \
+    {                                                                   \
+        uint32_t u = static_cast<uint32_t>(flag);                       \
+        uint32_t v = static_cast<uint32_t>(VertexPropertyFlag::FLAG);   \
+        return (u & v) != 0;                                            \
     }
+    VERTEX_PROPERTY_FLAGS(VERTEX_PROPERTY_FLAGS_PREDICATE)
+#undef VERTEX_PROPERTY_FLAGS_PREDICATE
+
+constexpr bool CanDeopt(VertexPropertyFlag flag)
+{
+    return CanEagerDeopt(flag) || CanLazyDeopt(flag);
 }
 
-inline constexpr bool IsUnconditionalControlVertex(VertexOpcode opcode)
+constexpr bool CanParticipateInCSE(VertexPropertyFlag flag)
 {
-    return opcode >= FIRST_UNCONDITIONAL_CONTROL_VERTEX_OPCODE && opcode <= LAST_UNCONDITIONAL_CONTROL_VERTEX_OPCODE;
+    return !IsNotIdempotent(flag) &&
+           !CanRead(flag) &&
+           !CanWrite(flag) &&
+           !CanAllocate(flag) &&
+           !CanThrow(flag) &&
+           !IsCall(flag);
 }
 
-inline constexpr bool IsBranchControlVertex(VertexOpcode opcode)
+constexpr bool MayHaveSideEffects(VertexPropertyFlag flag)
 {
-    switch (opcode) {
-#define CASE(type) case VertexOpcode::type:
-        BRANCH_CONTROL_VERTEX_LIST(CASE)
-#undef CASE
-        return true;
-        default:
-            return false;
-    }
+    return CanRead(flag) || CanWrite(flag) || CanAllocate(flag);
 }
-
-// Input to a vertex
-// to do: The operand index currently serves as a placeholder.
-//        When register allocator is implemented, indices will map to physical registers and GraphLabeller will display
-//        them as "n<label>:<operand>".
-class VertexInput {
-public:
-    VertexInput(ValueVertex *vertex, uint32_t index) : vertex_(vertex), index_(index) {}
-
-    inline ValueVertex *GetVertex() const;
-    uint32_t GetIndex() const
-    {
-        return index_;
-    }
-
-    bool operator==(const VertexInput &other) const
-    {
-        return GetVertex() == other.GetVertex() && index_ == other.index_;
-    }
-
-private:
-    ValueVertex *vertex_;
-    uint32_t index_;
-};
 
 class Vertex {
 public:
     NO_COPY_SEMANTIC(Vertex);
     NO_MOVE_SEMANTIC(Vertex);
 
-    static constexpr int MAX_INPUTS = (1 << 16) - 1;  // 16: input count field bit width
+    friend std::string FormatVertexLabel(const Vertex *vertex);
 
-    using OpcodeField = common::BitField<VertexOpcode, 0, 16>;  // 16: opcode field bit width
-    using InputCountField = OpcodeField::NextField<uint32_t, 16>;  // 16: input count field bit width
-    using PropertiesField = InputCountField::NextField<uint32_t, 16>;  // 16: properties field bit width
-    using NumTempField = PropertiesField::NextField<uint32_t, 2>;  // 2: NumTemp bit width
+    static constexpr size_t MAX_INPUTS = (1u << 16) - 1;  // 16: input count field bit width
+
+    using OpcodeField = common::BitField<VertexOpcode, 0, 16>;                    // 16: opcode field bit width
+    using InputCountField = OpcodeField::NextField<uint32_t, 16>;                 // 16: input count field bit width
+    using PropertyFlagsField = InputCountField::NextField<uint32_t, 16>;          // 16: properties field bit width
+    using ValueRepresentationField = PropertyFlagsField::NextField<uint32_t, 3>;  // 3 : Value repr field width
+    using NumTempField = ValueRepresentationField::NextField<uint32_t, 2>;        // 2: NumTemp bit width
     using NumDoubleTempField = NumTempField::NextField<uint32_t, 1>;
-
-    template <typename T>
-    static constexpr VertexOpcode opcode_of();
 
     // Get opcode of this vertex
     constexpr VertexOpcode GetOpcode() const
@@ -460,22 +218,13 @@ public:
         return OpcodeField::Decode(bitfield_);
     }
 
-    // Get properties of this vertex
-    constexpr VertexProperties GetProperties() const
-    {
-        uint32_t props = PropertiesField::Decode(bitfield_);
-        return VertexProperties(props);
+#define DEFINE_OPCODE_PREDICATE(CUR_OPCODE_LIST, FunctionName)  \
+    constexpr bool FunctionName() const                         \
+    {                                                           \
+        return arksteed::FunctionName(GetOpcode());             \
     }
-
-    void SetProperties(VertexProperties properties)
-    {
-        bitfield_ = PropertiesField::Update(bitfield_, static_cast<uint32_t>(properties));
-    }
-
-    constexpr bool IsConversion() const
-    {
-        return GetProperties().IsConversion();
-    }
+    VERTEX_LISTS_FOR_EACH(DEFINE_OPCODE_PREDICATE)
+#undef DEFINE_OPCODE_PREDICATE
 
     template <class T>
     constexpr bool Is() const;
@@ -506,7 +255,6 @@ public:
         return Is<T>() ? static_cast<const T *>(this) : nullptr;
     }
 
-    // Input management
     constexpr bool HasInputs() const
     {
         return GetInputCount() > 0;
@@ -520,7 +268,6 @@ public:
     void SetInput(uint32_t index, ValueVertex *vertex);
     ValueVertex *GetInput(uint32_t index);
     const ValueVertex *GetInput(uint32_t index) const;
-    void ClearInput(uint32_t index);
 
     Input Arg(uint32_t index);
     ConstInput Arg(uint32_t index) const;
@@ -552,6 +299,28 @@ public:
     {
         ASSERT(regallocInfo_ != nullptr);
         regallocInfo_->SetId(id);
+    }
+
+#define VERTEX_PROPERTY_FLAGS_GETTER(Name, ...)                             \
+    constexpr bool Name() const                                             \
+    {                                                                       \
+        uint32_t underlying = PropertyFlagsField::Decode(bitfield_);        \
+        return arksteed::Name(static_cast<VertexPropertyFlag>(underlying)); \
+    }
+    VERTEX_PROPERTY_FLAGS(VERTEX_PROPERTY_FLAGS_GETTER)
+    VERTEX_PROPERTY_COMPOUND_FLAGS(VERTEX_PROPERTY_FLAGS_GETTER)
+#undef VERTEX_PROPERTY_FLAGS_GETTER
+
+    constexpr VertexPropertyFlag GetPropertyFlags() const
+    {
+        uint32_t underlying = PropertyFlagsField::Decode(bitfield_);
+        return static_cast<VertexPropertyFlag>(underlying);
+    }
+
+    constexpr ValueRepresentation GetValueRepresentation() const
+    {
+        uint32_t underlying = ValueRepresentationField::Decode(bitfield_);
+        return static_cast<ValueRepresentation>(underlying);
     }
 
     // Temporaries needed for register allocation
@@ -586,8 +355,8 @@ public:
         return owner_;
     }
 
-    // Print for debugging
-    void Print() const;
+    void Dump(std::ostream &out, bool withColors = false) const;
+    std::string Dump(bool withColors = false) const;
 
     // Factory method to create vertices
     template <class Derived, typename... Args>
@@ -596,9 +365,6 @@ public:
     template <class Derived, typename Container, typename... Args,
               typename std::enable_if<!std::is_integral<Container>::value, int>::type = 0>
     static Derived *New(Chunk *chunk, const Container &inputs, Args &&...args);
-
-    // Reduce input count (used by Phi when merging dead control flow)
-    void ReduceInputCount(uint32_t num = 1);
 
     RegallocVertexInfo *GetRegallocInfo() const
     {
@@ -616,19 +382,9 @@ public:
     }
 
 protected:
-    explicit Vertex(uint64_t bitfield) : bitfield_(bitfield) {}
+    Vertex() = default;
 
     // Allow updating bits from subclasses
-    constexpr uint64_t GetBitfield() const
-    {
-        return bitfield_;
-    }
-
-    void SetBitfield(uint64_t newBitfield)
-    {
-        bitfield_ = newBitfield;
-    }
-
     void SetTemporariesNeeded(uint8_t value)
     {
         bitfield_ = NumTempField::Update(bitfield_, value);
@@ -665,21 +421,22 @@ private:
         return GetInputBase() - index;
     }
 
-    uint64_t bitfield_;
+    uint64_t bitfield_ {0};
     BB *owner_ = nullptr;
     RegallocVertexInfo *regallocInfo_ = nullptr;
+#if !defined(NDEBUG)
+    VertexId label_ = INVALID_VERTEX_ID;
+#endif
 };
 
 class NonControlVertex : public Vertex {
 protected:
-    using Vertex::Vertex;
+    NonControlVertex() = default;
 };
 
 // ValueVertex is a vertex that produces a value
 class ValueVertex : public NonControlVertex {
 public:
-    static constexpr VertexProperties DEFAULT_PROPERTIES = VertexProperties::Pure() | VertexProperties::TaggedValue();
-
     constexpr MachineRepresentation GetMachineRepresentation() const
     {
         switch (GetValueRepresentation()) {
@@ -699,58 +456,14 @@ public:
         return MachineRepresentation::None;
     }
 
-    constexpr ValueRepresentation GetValueRepresentation() const
-    {
-        return GetProperties().GetValueRepresentation();
+#define VALUE_REPRESENTATION_PREDICATE(Name, ...)               \
+    constexpr bool Is##Name() const                             \
+    {                                                           \
+        return arksteed::Is##Name(GetValueRepresentation());    \
     }
-
-    bool IsTagged() const
-    {
-        return GetValueRepresentation() == ValueRepresentation::TAGGED;
-    }
-
-    bool IsInt32() const
-    {
-        return GetValueRepresentation() == ValueRepresentation::INT32;
-    }
-
-    bool IsUint32() const
-    {
-        return GetValueRepresentation() == ValueRepresentation::UINT32;
-    }
-
-    bool IsInt64() const
-    {
-        return GetValueRepresentation() == ValueRepresentation::INT64;
-    }
-
-    // TODO: adaptation for 32-bit platform — forwards to IsInt64 for now
-    bool IsIntPtr() const
-    {
-        return IsInt64();
-    }
-
-    bool IsFloat64() const
-    {
-        return GetValueRepresentation() == ValueRepresentation::FLOAT64;
-    }
-
-    bool IsHoleyFloat64() const
-    {
-        return GetValueRepresentation() == ValueRepresentation::HOLEY_FLOAT64;
-    }
-
-    bool IsAnyFloat64() const
-    {
-        auto repr = GetValueRepresentation();
-        return repr == ValueRepresentation::FLOAT64 || repr == ValueRepresentation::HOLEY_FLOAT64;
-    }
-
-    bool IsAnyInt32() const
-    {
-        auto repr = GetValueRepresentation();
-        return repr == ValueRepresentation::INT32 || repr == ValueRepresentation::UINT32;
-    }
+    VERTEX_VALUE_REPRESENTATIONS(VALUE_REPRESENTATION_PREDICATE)
+    VERTEX_VALUE_COMPOUND_REPRESENTATIONS(VALUE_REPRESENTATION_PREDICATE)
+#undef VALUE_REPRESENTATION_PREDICATE
 
     ValueLocation &Result();
     const ValueLocation &Result() const;
@@ -763,16 +476,13 @@ public:
     void SetHint(InstructionOperand hint);
 
 protected:
-    explicit ValueVertex(uint64_t bitfield) : NonControlVertex(bitfield) {}
+    ValueVertex() = default;
 };
 
 // ControlVertex is a vertex that affects control flow
 class ControlVertex : public Vertex {
-public:
-    static constexpr VertexProperties DEFAULT_PROPERTIES = VertexProperties::Pure();
-
 protected:
-    explicit ControlVertex(uint64_t bitfield) : Vertex(bitfield) {}
+    ControlVertex() = default;
 };
 
 class Input {
@@ -782,11 +492,6 @@ public:
     ValueVertex *vertex() const
     {
         return base_->GetInput(index_);
-    }
-
-    void clear()
-    {
-        base_->ClearInput(index_);
     }
 
     InputLocation *GetLocation() const;
@@ -836,42 +541,25 @@ inline ConstInput Vertex::Arg(uint32_t index) const
     return ConstInput(this, index);
 }
 
-#define DEF_FORWARD_DECLARATION(type) class type##Vertex;
-ALL_VERTEX_LIST(DEF_FORWARD_DECLARATION)
-#undef DEF_FORWARD_DECLARATION
-
-namespace detail {
-template <typename T>
-struct OpcodeOfHelper;
-
-#define DEF_OPCODE_HELPER(type)                                   \
-    template <>                                                   \
-    struct OpcodeOfHelper<type##Vertex> {                         \
-        static constexpr VertexOpcode value = VertexOpcode::type; \
-    };
-ALL_VERTEX_LIST(DEF_OPCODE_HELPER)
-#undef DEF_OPCODE_HELPER
-}  // namespace detail
-
 // Implement generic Is<T> for specific vertex types
 template <class T>
 constexpr bool Vertex::Is() const
 {
-    return GetOpcode() == detail::OpcodeOfHelper<T>::value;
+    return GetOpcode() == OpcodeOf<T>;
 }
 
 // Specialized Is<ValueVertex>
 template <>
 constexpr bool Vertex::Is<ValueVertex>() const
 {
-    return IsValueVertex(GetOpcode());
+    return IsValueVertex();
 }
 
 // Specialized Is<ControlVertex>
 template <>
 constexpr bool Vertex::Is<ControlVertex>() const
 {
-    return IsControlVertex(GetOpcode());
+    return IsControlVertex();
 }
 
 // Specialized Is<UnconditionalControlVertex>
@@ -879,20 +567,20 @@ constexpr bool Vertex::Is<ControlVertex>() const
 template <>
 constexpr bool Vertex::Is<UnconditionalControlVertex>() const
 {
-    return IsUnconditionalControlVertex(GetOpcode());
+    return IsUnconditionalControlVertex();
 }
 
 template <>
 constexpr bool Vertex::Is<BranchControlVertex>() const
 {
-    return IsBranchControlVertex(GetOpcode());
+    return IsBranchControlVertex();
 }
 
 // Factory method implementation
 template <class Derived, typename... Args>
 Derived *Vertex::New(Chunk *chunk, size_t inputCount, Args &&...args)
 {
-    ASSERT(inputCount <= static_cast<size_t>(MAX_INPUTS));
+    ASSERT(inputCount <= MAX_INPUTS);
 
     // Allocate memory: inputs stored before the vertex object
     size_t sizeBeforeVertex = inputCount * sizeof(ValueVertex *);
@@ -905,12 +593,22 @@ Derived *Vertex::New(Chunk *chunk, size_t inputCount, Args &&...args)
     }
 
     uint8_t *vertexBuffer = rawBuffer + sizeBeforeVertex;
+    Derived *vertex = new (vertexBuffer) Derived(std::forward<Args>(args)...);
+    Vertex *base = vertex;
+    base->bitfield_ =  OpcodeField::Encode(OpcodeOf<Derived>);
+    base->bitfield_ |= InputCountField::Encode(inputCount);
+    base->bitfield_ |= PropertyFlagsField::Encode(static_cast<uint32_t>(Derived::PROPERTIES));
+    base->bitfield_ |= ValueRepresentationField::Encode(static_cast<uint32_t>(Derived::VALUE_TYPE));
 
-    uint64_t bitfield = OpcodeField::Encode(detail::OpcodeOfHelper<Derived>::value) |
-                        InputCountField::Encode(inputCount) |
-                        PropertiesField::Encode(static_cast<uint32_t>(Derived::PROPERTIES));
+#if !defined(NDEBUG)
+    vertex->label_ = NextVertexLabel();
+#endif
 
-    return new (vertexBuffer) Derived(bitfield, std::forward<Args>(args)...);
+    ASSERT(vertex->GetOpcode() == OpcodeOf<Derived>);
+    ASSERT(vertex->GetPropertyFlags() == Derived::PROPERTIES);
+    ASSERT(vertex->GetValueRepresentation() == Derived::VALUE_TYPE);
+    ASSERT(vertex->GetInputCount() == inputCount);
+    return vertex;
 }
 
 template <class Derived, typename Container, typename... Args,
@@ -918,7 +616,7 @@ template <class Derived, typename Container, typename... Args,
 Derived *Vertex::New(Chunk *chunk, const Container &inputs, Args &&...args)
 {
     Derived *vertex = New<Derived>(chunk, inputs.size(), std::forward<Args>(args)...);
-    int i = 0;
+    uint32_t i = 0;
     for (ValueVertex *input : inputs) {
         vertex->SetInput(i++, input);
     }
@@ -942,23 +640,6 @@ inline const ValueVertex *Vertex::GetInput(uint32_t index) const
 {
     ASSERT(index < GetInputCount());
     return *GetInputPtr(index);
-}
-
-inline void Vertex::ClearInput(uint32_t index)
-{
-    ASSERT(index < GetInputCount());
-    *GetInputPtr(index) = nullptr;
-}
-
-inline ValueVertex *VertexInput::GetVertex() const
-{
-    return vertex_;
-}
-
-template <typename T>
-inline constexpr VertexOpcode Vertex::opcode_of()
-{
-    return detail::OpcodeOfHelper<T>::value;
 }
 
 template <typename Function>

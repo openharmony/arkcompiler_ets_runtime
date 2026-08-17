@@ -55,7 +55,6 @@ private:
     StoreTaggedFieldVertex *NewStoreWithoutBarrier(
         BB *owner, ValueVertex *object, ValueVertex *value, int32_t offset);
     bool TryGetIntPtrConstant(ValueVertex *value, int32_t *result) const;
-    void RegisterVertex(Vertex *vertex) const;
 
     static ArkSteedWriteBarrierValueKind ToValueKind(TargetKind target);
 

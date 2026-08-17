@@ -69,6 +69,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-arksteed-print-method-name: Enable printing method name via ArkSteed runtime stub. "
     "Default: 'true'\n"
     "--compiler-arksteed-print-code:       Enable printing ArkSteed generated code. Default: 'false'\n"
+    "--compiler-arksteed-print-with-colors: Enable ANSI colors in ArkSteed graph dump. Default: 'false'\n"
     "--compiler-arksteed-reuse-stack-slots: Enable stack slot reuse in ArkSteed regalloc. Default: 'true'\n"
     "--compiler-arksteed-deopt-on-insufficient-profile: Enable ArkSteed eager deopt for insufficient profile. "
     "Default: 'true'\n"
@@ -264,6 +265,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-arksteed-enable-code-comment", required_argument, nullptr,
          OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT},
         {"compiler-arksteed-print-code", required_argument, nullptr, OPTION_COMPILER_ARKSTEED_PRINT_CODE},
+        {"compiler-arksteed-print-with-colors", required_argument, nullptr,
+         OPTION_COMPILER_ARKSTEED_PRINT_WITH_COLORS},
         {"compiler-arksteed-reuse-stack-slots", required_argument, nullptr,
          OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS},
         {"compiler-arksteed-deopt-on-insufficient-profile", required_argument, nullptr,
@@ -914,6 +917,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerArkSteedPrintCode(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_PRINT_WITH_COLORS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedPrintWithColors(argBool);
                 } else {
                     return false;
                 }

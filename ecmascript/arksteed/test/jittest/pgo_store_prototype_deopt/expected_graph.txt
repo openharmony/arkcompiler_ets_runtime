@@ -1,4 +1,0 @@
-DeoptIfHClassMismatch
-NOT: DeoptIfPrototypeChanged
-TransitionHClassWithBarrier [TransitionHClassWithBarrier]
-StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

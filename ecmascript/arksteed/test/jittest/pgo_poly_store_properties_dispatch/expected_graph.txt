@@ -1,4 +1,0 @@
-StoreTaggedFieldByHClass [StoreTaggedFieldByHClass]
-DeoptIfHClassNotIn [DeoptIfHClassNotIn]
-BranchIfHClassIn
-NOT: CallCommonStub [COStub_SetPropertyByName]

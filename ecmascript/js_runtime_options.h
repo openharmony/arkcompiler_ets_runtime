@@ -134,6 +134,7 @@ enum CommandValues {
     OPTION_COMPILER_ARKSTEED_PRINT_METHOD_NAME,
     OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT,
     OPTION_COMPILER_ARKSTEED_PRINT_CODE,
+    OPTION_COMPILER_ARKSTEED_PRINT_WITH_COLORS,
     OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS,
     OPTION_COMPILER_ARKSTEED_DEOPT_ON_INSUFFICIENT_PROFILE,
     OPTION_COMPILER_TYPE_THRESHOLD,
@@ -976,6 +977,16 @@ public:
     bool GetCompilerArkSteedPrintCode() const
     {
         return compilerArkSteedPrintCode_;
+    }
+
+    void SetCompilerArkSteedPrintWithColors(bool value)
+    {
+        compilerArkSteedPrintWithColors_ = value;
+    }
+
+    bool GetCompilerArkSteedPrintWithColors() const
+    {
+        return compilerArkSteedPrintWithColors_;
     }
 
     void SetCompilerArkSteedReuseStackSlots(bool value)
@@ -2764,6 +2775,7 @@ private:
     bool compilerArkSteedPrintMethodName_ {false};
     bool compilerArkSteedEnableCodeComment_ {false};
     bool compilerArkSteedPrintCode_ {false};
+    bool compilerArkSteedPrintWithColors_ {false};
     bool compilerArkSteedReuseStackSlots_ {true};
     bool compilerArkSteedDeoptOnInsufficientProfile_ {true};
     bool compilerLogSnapshot_ {false};

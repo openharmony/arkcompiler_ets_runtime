@@ -1,4 +1,0 @@
-DeoptIfHClassMismatch
-Loop Header
-StoreTaggedField(
-NOT: StoreTaggedFieldWithBarrier [StoreTaggedFieldWithBarrier]

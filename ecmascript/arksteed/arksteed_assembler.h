@@ -36,9 +36,6 @@ namespace panda::ecmascript::arksteed {
 
 class ArkSteedDisassembler;
 class Graph;
-
-using Label = panda::ecmascript::Label;
-
 class ArkSteedAssembler;
 class TemporaryRegisterScope;
 

@@ -16,14 +16,9 @@
 #ifndef ECMASCRIPT_ARKSTEED_FEEDBACK_READER_H
 #define ECMASCRIPT_ARKSTEED_FEEDBACK_READER_H
 
-#include <variant>
-
 #include "ecmascript/arksteed/arksteed_heap_broker.h"
 #include "ecmascript/arksteed/arksteed_processed_feedback.h"
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 
@@ -31,7 +26,7 @@ namespace panda::ecmascript::arksteed {
 
 class ArkSteedFeedbackReader {
 public:
-    ArkSteedFeedbackReader(JSThread *compilerThread, const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo,
+    ArkSteedFeedbackReader(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                            ArkSteedHeapBroker *broker)
         : compilerThread_(compilerThread), bytecodeInfo_(bytecodeInfo), broker_(broker)
     {}
@@ -71,7 +66,7 @@ private:
     ArkSteedOperationHint MakeOperationHint(uint32_t rawBits) const;
 
     JSThread *compilerThread_ {nullptr};
-    panda::ecmascript::kungfu::BytecodeInfo bytecodeInfo_;
+    kungfu::BytecodeInfo bytecodeInfo_;
     ArkSteedHeapBroker *broker_ {nullptr};
 };
 

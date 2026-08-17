@@ -18,7 +18,6 @@
 #include <initializer_list>
 #include <limits>
 
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::arksteed {
@@ -247,7 +246,6 @@ StoreTaggedFieldVertex *WriteBarrierValueKindPass::NewStoreWithoutBarrier(
     std::initializer_list<ValueVertex *> inputs {object, value};
     auto *store = Vertex::New<StoreTaggedFieldVertex>(chunk_, inputs, offset);
     store->SetOwner(owner);
-    RegisterVertex(store);
     return store;
 }
 
@@ -266,14 +264,6 @@ bool WriteBarrierValueKindPass::TryGetIntPtrConstant(ValueVertex *value, int32_t
     }
     *result = static_cast<int32_t>(raw);
     return true;
-}
-
-void WriteBarrierValueKindPass::RegisterVertex(Vertex *vertex) const
-{
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
-    if (labeller != nullptr) {
-        labeller->RegisterVertex(vertex);
-    }
 }
 
 ArkSteedWriteBarrierValueKind WriteBarrierValueKindPass::ToValueKind(TargetKind target)

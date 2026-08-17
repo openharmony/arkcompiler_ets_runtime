@@ -134,7 +134,7 @@ public:
     template <typename VertexT>
     static SideEffectDescriptor Classify(VertexT *vertex)
     {
-        static_assert(VertexT::PROPERTIES.CanWrite());
+        static_assert(CanWrite(VertexT::PROPERTIES));
         LOG_COMPILER(WARN) << "ArkSteed side-effect classifier fallback for " << OpcodeToString(vertex->GetOpcode());
         return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
     }

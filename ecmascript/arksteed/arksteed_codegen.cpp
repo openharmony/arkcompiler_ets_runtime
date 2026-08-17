@@ -603,26 +603,6 @@ void EmitLazyDeoptSafepoint(ArkSteedAssembler *assembler,
     safepointBuilder->DefineDeoptSafepoint(assembler->GetPcOffset(), std::move(deopts), exceptionHandlerKind);
 }
 
-Condition ConditionFromIntCondition(IntConditionKind condition)
-{
-    switch (condition) {
-        case IntConditionKind::EQUAL:
-            return Condition::COND_EQUAL;
-        case IntConditionKind::NOT_EQUAL:
-            return Condition::COND_NOT_EQUAL;
-        case IntConditionKind::LESS_THAN:
-            return Condition::COND_LESS_THAN;
-        case IntConditionKind::LESS_THAN_OR_EQUAL:
-            return Condition::COND_LESS_THAN_OR_EQUAL;
-        case IntConditionKind::GREATER_THAN:
-            return Condition::COND_GREATER_THAN;
-        case IntConditionKind::GREATER_THAN_OR_EQUAL:
-            return Condition::COND_GREATER_THAN_OR_EQUAL;
-        default:
-            UNREACHABLE();
-    }
-}
-
 void EmitTaggedBooleanFromCondition(ArkSteedAssembler *assembler_, ArkSteedRegister dst, Condition trueCondition)
 {
     Label trueLabel;
@@ -635,39 +615,39 @@ void EmitTaggedBooleanFromCondition(ArkSteedAssembler *assembler_, ArkSteedRegis
     __ Bind(&done);
 }
 
-Condition OrderedFloat64ConditionFromInt32Condition(IntConditionKind condition)
+Condition OrderedFloat64Condition(Condition condition)
 {
     switch (condition) {
-        case IntConditionKind::EQUAL:
-            return Condition::COND_EQUAL;
-        case IntConditionKind::NOT_EQUAL:
-            return Condition::COND_NOT_EQUAL;
-        case IntConditionKind::LESS_THAN:
-            return Condition::COND_BELOW;
-        case IntConditionKind::LESS_THAN_OR_EQUAL:
-            return Condition::COND_BELOW_OR_EQUAL;
-        case IntConditionKind::GREATER_THAN:
-            return Condition::COND_ABOVE;
-        case IntConditionKind::GREATER_THAN_OR_EQUAL:
-            return Condition::COND_ABOVE_OR_EQUAL;
+        case Condition::EQUAL:
+            return Condition::EQUAL;
+        case Condition::NOT_EQUAL:
+            return Condition::NOT_EQUAL;
+        case Condition::LESS_THAN:
+            return Condition::BELOW;
+        case Condition::LESS_THAN_OR_EQUAL:
+            return Condition::BELOW_OR_EQUAL;
+        case Condition::GREATER_THAN:
+            return Condition::ABOVE;
+        case Condition::GREATER_THAN_OR_EQUAL:
+            return Condition::ABOVE_OR_EQUAL;
         default:
             UNREACHABLE();
     }
 }
 
 void EmitTaggedBooleanFromFloat64Compare(ArkSteedAssembler *assembler_, ArkSteedRegister dst,
-                                         IntConditionKind condition)
+                                         Condition condition)
 {
     Label trueLabel;
     Label falseLabel;
     Label done;
-    if (condition == IntConditionKind::NOT_EQUAL) {
-        __ JumpIf(Condition::COND_PARITY, &trueLabel);
-        __ JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), &trueLabel);
+    if (condition == Condition::NOT_EQUAL) {
+        __ JumpIf(Condition::PARITY, &trueLabel);
+        __ JumpIf(OrderedFloat64Condition(condition), &trueLabel);
         __ Jump(&falseLabel);
     } else {
-        __ JumpIf(Condition::COND_PARITY, &falseLabel);
-        __ JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), &trueLabel);
+        __ JumpIf(Condition::PARITY, &falseLabel);
+        __ JumpIf(OrderedFloat64Condition(condition), &trueLabel);
         __ Jump(&falseLabel);
     }
     __ Bind(&trueLabel);
@@ -678,16 +658,16 @@ void EmitTaggedBooleanFromFloat64Compare(ArkSteedAssembler *assembler_, ArkSteed
     __ Bind(&done);
 }
 
-void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, IntConditionKind condition, Label *ifTrue, Label *ifFalse)
+void BranchOnFloat64Compare(ArkSteedAssembler *assembler_, Condition condition, Label *ifTrue, Label *ifFalse)
 {
-    if (condition == IntConditionKind::NOT_EQUAL) {
-        __ JumpIf(Condition::COND_PARITY, ifTrue);
-        __ JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), ifTrue);
+    if (condition == Condition::NOT_EQUAL) {
+        __ JumpIf(Condition::PARITY, ifTrue);
+        __ JumpIf(OrderedFloat64Condition(condition), ifTrue);
         __ Jump(ifFalse);
         return;
     }
-    __ JumpIf(Condition::COND_PARITY, ifFalse);
-    __ JumpIf(OrderedFloat64ConditionFromInt32Condition(condition), ifTrue);
+    __ JumpIf(Condition::PARITY, ifFalse);
+    __ JumpIf(OrderedFloat64Condition(condition), ifTrue);
     __ Jump(ifFalse);
 }
 }  // namespace
@@ -903,7 +883,7 @@ void ArkSteedCodeGenerator::ComputeSteedCallSlotCount(CallVertex *call, ArkSteed
 
     Label countDone;
     __ Compare(slotCount, static_cast<int32_t>(userArgc));
-    __ JumpIf(Condition::COND_GREATER_THAN, &countDone);
+    __ JumpIf(Condition::GREATER_THAN, &countDone);
     __ Move(slotCount, static_cast<int32_t>(userArgc));
 
     __ Bind(&countDone);
@@ -1094,7 +1074,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     __ And(actualHClass, expectedHClass);
     __ Compare(actualHClass, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, deopt);
+    __ JumpIf(Condition::NOT_EQUAL, deopt);
 
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
@@ -1103,9 +1083,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
                                     TaggedStateWord::ADDRESS_MASK);
     __ Compare(actualHClass, expectedHClass);
 #if defined(PANDA_TARGET_AMD64)
-    __ JumpIf(Condition::COND_NOT_EQUAL, deopt);
+    __ JumpIf(Condition::NOT_EQUAL, deopt);
 #else
-    __ JumpIf(Condition::COND_EQUAL, &pass);
+    __ JumpIf(Condition::EQUAL, &pass);
     __ Bind(deopt);
     EmitEagerDeoptExit(checkHClass, kungfu::DeoptType::KEYMISSMATCH);
     __ Bind(&pass);
@@ -1130,7 +1110,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(Deop
     __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     __ And(actualHClass, expectedHClass);
     __ Compare(actualHClass, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    __ JumpIf(Condition::NOT_EQUAL, &deopt);
 
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
@@ -1138,7 +1118,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(Deop
     for (JSHClass *hclass : checkHClass->GetExpectedHClasses()) {
         __ Move(expectedHClass, reinterpret_cast<uint64_t>(hclass) & TaggedStateWord::ADDRESS_MASK);
         __ Compare(actualHClass, expectedHClass);
-        __ JumpIf(Condition::COND_EQUAL, &pass);
+        __ JumpIf(Condition::EQUAL, &pass);
     }
 
     __ Bind(&deopt);
@@ -1175,7 +1155,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfPrototypeChangedVertex>
         constexpr int32_t isPrototypeMask = 1U << JSHClass::IsPrototypeBit::START_BIT;
         __ And(current, isPrototypeMask);
         __ Compare(current, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &prototypeHClassDeopt);
+        __ JumpIf(Condition::NOT_EQUAL, &prototypeHClassDeopt);
     }
 
     if (checkPrototype->ShouldCheckProtoChangeMarker()) {
@@ -1184,14 +1164,14 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfPrototypeChangedVertex>
         __ Move(scratch, current);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &protoMarkerDeopt);
+        __ JumpIf(Condition::NOT_EQUAL, &protoMarkerDeopt);
 
         loadHClassAddress(current, current);
         __ LoadField(current, current, static_cast<int32_t>(JSHClass::PROTO_CHANGE_MARKER_OFFSET));
         __ Move(scratch, current);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &protoMarkerDeopt);
+        __ JumpIf(Condition::NOT_EQUAL, &protoMarkerDeopt);
 
         __ LoadInt32Field(current, current, static_cast<int32_t>(ProtoChangeMarker::BIT_FIELD_OFFSET));
         constexpr int32_t invalidatingChangeMask =
@@ -1199,7 +1179,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfPrototypeChangedVertex>
             (1U << ProtoChangeMarker::AccessorHasChangedBits::START_BIT);
         __ And(current, invalidatingChangeMask);
         __ Compare(current, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &protoMarkerDeopt);
+        __ JumpIf(Condition::NOT_EQUAL, &protoMarkerDeopt);
     }
     __ Jump(&pass);
 
@@ -1220,7 +1200,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfInt32ConditionVertex>(D
     auto left = GetInputRegister(check, DeoptIfInt32ConditionVertex::LEFT_INDEX);
     auto right = GetInputRegister(check, DeoptIfInt32ConditionVertex::RIGHT_INDEX);
     __ CompareInt32(left, right);
-    BranchToEagerDeoptTarget(ConditionFromIntCondition(check->GetCondition()), check, check->GetDeoptType());
+    BranchToEagerDeoptTarget(check->GetCondition(), check, check->GetDeoptType());
 }
 
 template <>
@@ -1233,7 +1213,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfNotNumberVertex>(DeoptI
     __ Move(bits, value);
     __ And(bits, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
     __ Compare(bits, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
-    __ JumpIf(Condition::COND_EQUAL, &done);
+    __ JumpIf(Condition::EQUAL, &done);
 
 #if defined(PANDA_TARGET_AMD64)
     Label *deopt = RecordEagerDeoptTarget(check, kungfu::DeoptType::NOTNUMBER1);
@@ -1242,10 +1222,10 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfNotNumberVertex>(DeoptI
     Label *deopt = &deoptLabel;
 #endif
     __ Compare(value, static_cast<int64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
-    __ JumpIf(Condition::COND_BELOW, deopt);
+    __ JumpIf(Condition::BELOW, deopt);
     __ Compare(value, static_cast<int64_t>(JSTaggedValue::TAG_INT));
-    __ JumpIf(Condition::COND_BELOW, &done);
-    __ JumpIf(Condition::COND_ABOVE_OR_EQUAL, deopt);
+    __ JumpIf(Condition::BELOW, &done);
+    __ JumpIf(Condition::ABOVE_OR_EQUAL, deopt);
 #if !defined(PANDA_TARGET_AMD64)
     __ Bind(deopt);
     EmitEagerDeoptExit(check, kungfu::DeoptType::NOTNUMBER1);
@@ -1362,31 +1342,31 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVer
 
     __ Move(expectedHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
     __ Compare(holder, expectedHClass);
-    __ JumpIf(Condition::COND_EQUAL, &deopt);
+    __ JumpIf(Condition::EQUAL, &deopt);
     __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
     __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
     __ LoadField(expectedHClass, currentHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     __ Move(currentHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
     __ Compare(expectedHClass, currentHClass);
-    __ JumpIf(Condition::COND_EQUAL, &protoChanged);
+    __ JumpIf(Condition::EQUAL, &protoChanged);
     __ And(expectedHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
     __ LoadField(currentHClass, expectedHClass, ProtoChangeMarker::BIT_FIELD_OFFSET);
     __ And(currentHClass, static_cast<int64_t>((1LLU << (ProtoChangeMarker::HAS_CHANGED_BITS - 1))));
     __ Compare(currentHClass, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &protoChanged);
+    __ JumpIf(Condition::NOT_EQUAL, &protoChanged);
 
     for (size_t i = 0; i < expectedPrototypeHClasses.size(); ++i) {
         JSHClass *expectedPrototypeHClass = expectedPrototypeHClasses[i];
         ASSERT(expectedPrototypeHClass != nullptr);
         __ Move(expectedHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
         __ Compare(holder, expectedHClass);
-        __ JumpIf(Condition::COND_EQUAL, &deopt);
+        __ JumpIf(Condition::EQUAL, &deopt);
         __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
         __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
         __ Move(expectedHClass,
                 reinterpret_cast<uint64_t>(expectedPrototypeHClass) & TaggedStateWord::ADDRESS_MASK);
         __ Compare(currentHClass, expectedHClass);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &protoChanged);
+        __ JumpIf(Condition::NOT_EQUAL, &protoChanged);
         if (i + 1 < expectedPrototypeHClasses.size()) {
             __ LoadField(holder, currentHClass, JSHClass::PROTOTYPE_OFFSET);
         }
@@ -1413,7 +1393,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<ConvertHoleToUndefinedVertex>(
     Label done;
     __ Move(dst, value);
     __ Compare(dst, static_cast<int64_t>(JSTaggedValue::Hole().GetRawData()));
-    __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+    __ JumpIf(Condition::NOT_EQUAL, &done);
     __ Move(dst, static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED));
     __ Bind(&done);
 }
@@ -1463,14 +1443,14 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<FindPrototypeHolderVertex>(
     __ Move(scratch, holder);
     __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     __ Compare(scratch, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    __ JumpIf(Condition::NOT_EQUAL, &deopt);
 
     loadHClassAddress(currentHClass, holder);
     // TODO: HClass immediates should use ArkSteed heap constant/relocation support when available.
     __ Move(scratch, reinterpret_cast<uint64_t>(findHolder->GetExpectedHolderHClass()) &
                          TaggedStateWord::ADDRESS_MASK);
     __ Compare(currentHClass, scratch);
-    __ JumpIf(Condition::COND_EQUAL, &found);
+    __ JumpIf(Condition::EQUAL, &found);
     __ LoadField(holder, currentHClass, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
     __ Jump(&loop);
 
@@ -1596,14 +1576,14 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>
     __ Move(result, value);
     __ LoadTaggedValue(scratch, JSTaggedValue::Undefined().GetRawData());
     __ Compare(value, scratch);
-    __ JumpIf(Condition::COND_EQUAL, &done);
+    __ JumpIf(Condition::EQUAL, &done);
 
     if ((fieldType & static_cast<uint32_t>(SharedFieldType::NUMBER)) != 0) {
         Label checkNext;
         __ Move(scratch, value);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
         __ Compare(scratch, static_cast<int32_t>(JSTaggedValue::TAG_OBJECT));
-        __ JumpIf(Condition::COND_EQUAL, &checkNext);
+        __ JumpIf(Condition::EQUAL, &checkNext);
         __ Jump(&done);
         __ Bind(&checkNext);
     }
@@ -1612,36 +1592,36 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>
         __ Move(scratch, value);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, static_cast<int32_t>(JSTaggedValue::TAG_BOOLEAN_MASK));
-        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        __ JumpIf(Condition::NOT_EQUAL, &checkNext);
         __ Jump(&done);
         __ Bind(&checkNext);
     }
     if ((fieldType & static_cast<uint32_t>(SharedFieldType::NULL_TYPE)) != 0) {
         __ LoadTaggedValue(scratch, JSTaggedValue::Null().GetRawData());
         __ Compare(value, scratch);
-        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ JumpIf(Condition::EQUAL, &done);
     }
     if ((fieldType & static_cast<uint32_t>(SharedFieldType::UNDEFINED)) != 0) {
         __ LoadTaggedValue(scratch, JSTaggedValue::Undefined().GetRawData());
         __ Compare(value, scratch);
-        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ JumpIf(Condition::EQUAL, &done);
     }
     if ((fieldType & static_cast<uint32_t>(SharedFieldType::STRING)) != 0) {
         Label checkNext;
         __ LoadTaggedValue(scratch, JSTaggedValue::Null().GetRawData());
         __ Compare(value, scratch);
-        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ JumpIf(Condition::EQUAL, &done);
         __ Move(scratch, value);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        __ JumpIf(Condition::NOT_EQUAL, &checkNext);
         LoadObjectType(assembler_, scratch, value);
         __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
-        __ JumpIf(Condition::COND_LESS_THAN, &checkNext);
+        __ JumpIf(Condition::LESS_THAN, &checkNext);
         __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
-        __ JumpIf(Condition::COND_GREATER_THAN, &checkNext);
+        __ JumpIf(Condition::GREATER_THAN, &checkNext);
         __ Compare(scratch, static_cast<int32_t>(JSType::TREE_STRING));
-        __ JumpIf(Condition::COND_EQUAL, &publishTreeString);
+        __ JumpIf(Condition::EQUAL, &publishTreeString);
         __ Jump(&done);
         __ Bind(&checkNext);
     }
@@ -1650,25 +1630,25 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>
         __ Move(scratch, value);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        __ JumpIf(Condition::NOT_EQUAL, &checkNext);
         LoadObjectType(assembler_, scratch, value);
         __ Compare(scratch, static_cast<int32_t>(JSType::BIGINT));
-        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ JumpIf(Condition::EQUAL, &done);
         __ Bind(&checkNext);
     }
     if ((fieldType & static_cast<uint32_t>(SharedFieldType::SENDABLE)) != 0) {
         Label checkNext;
         __ LoadTaggedValue(scratch, JSTaggedValue::Null().GetRawData());
         __ Compare(value, scratch);
-        __ JumpIf(Condition::COND_EQUAL, &done);
+        __ JumpIf(Condition::EQUAL, &done);
         __ Move(scratch, value);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &checkNext);
+        __ JumpIf(Condition::NOT_EQUAL, &checkNext);
         LoadHClassBitField(assembler_, scratch, value);
         __ And(scratch, static_cast<int64_t>(1U << JSHClass::IsJSSharedBit::START_BIT));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+        __ JumpIf(Condition::NOT_EQUAL, &done);
         __ Bind(&checkNext);
     }
     if (fieldType == static_cast<uint32_t>(SharedFieldType::NONE) ||
@@ -1677,13 +1657,13 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<PrepareSharedStoreFieldVertex>
         __ Move(scratch, value);
         __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+        __ JumpIf(Condition::NOT_EQUAL, &done);
         __ Jump(&checkShared);
         __ Bind(&checkShared);
         LoadHClassBitField(assembler_, scratch, value);
         __ And(scratch, static_cast<int64_t>(1U << JSHClass::IsJSSharedBit::START_BIT));
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+        __ JumpIf(Condition::NOT_EQUAL, &done);
     }
 
     __ Jump(&typeMismatch);
@@ -1767,7 +1747,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreInt32FieldWithRepVertex>(
 
     Label deopt;
     Label done;
-    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    __ JumpIf(Condition::NOT_EQUAL, &deopt);
     __ StoreInt32Field(value, storeTarget, storeField->GetOffset());
     __ Jump(&done);
 
@@ -1800,10 +1780,10 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreDoubleFieldWithRepVertex>
     Label done;
     __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_INT));
     __ Compare(tag, expectedTag);
-    __ JumpIf(Condition::COND_EQUAL, &intValue);
+    __ JumpIf(Condition::EQUAL, &intValue);
     __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::TAG_OBJECT));
     __ Compare(tag, expectedTag);
-    __ JumpIf(Condition::COND_EQUAL, &deopt);
+    __ JumpIf(Condition::EQUAL, &deopt);
 
     __ Move(tag, value);
     __ Move(expectedTag, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
@@ -1847,7 +1827,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<EnsurePropertiesCapacityVertex
     __ LoadField(length, properties, TaggedArray::LENGTH_OFFSET);
     __ And(length, static_cast<int64_t>(0xFFFFFFFF));
     __ Compare(length, ensureCapacity->GetFieldIndex());
-    __ JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &grow);
+    __ JumpIf(Condition::LESS_THAN_OR_EQUAL, &grow);
     __ Move(result, properties);
     __ Jump(&done);
 
@@ -1890,7 +1870,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldByHClassVertex
     __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     __ And(actualHClass, expectedHClass);
     __ Compare(actualHClass, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &deopt);
+    __ JumpIf(Condition::NOT_EQUAL, &deopt);
 
     __ LoadField(actualHClass, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
@@ -1900,7 +1880,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldByHClassVertex
         __ Move(expectedHClass, reinterpret_cast<uint64_t>(storeByHClass->GetCases()[i].expectedHClass) &
                                 TaggedStateWord::ADDRESS_MASK);
         __ Compare(actualHClass, expectedHClass);
-        __ JumpIf(Condition::COND_EQUAL, &caseLabels[i]);
+        __ JumpIf(Condition::EQUAL, &caseLabels[i]);
     }
     __ Jump(&deopt);
 
@@ -1945,7 +1925,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<SetValueWithBarrierVertex>(
         __ Move(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
         __ And(scratch, value);
         __ Compare(scratch, 0);
-        __ JumpIf(Condition::COND_NOT_ZERO, &done);
+        __ JumpIf(Condition::NOT_ZERO, &done);
     }
     __ Move(ArkSteedAssembler::GetParameterRegister(2), static_cast<int64_t>(setValueWithBarrier->GetOffset()));
     __ CallCommonStub(kungfu::CommonStubCSigns::SetValueWithBarrier);
@@ -2056,7 +2036,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedIntToI32Vertex>(C
     __ Move(scratch, src);
     __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
     __ Compare(scratch, static_cast<int64_t>(JSTaggedValue::TAG_MARK));
-    BranchToEagerDeoptTarget(Condition::COND_NOT_EQUAL, convert, kungfu::DeoptType::NOTINT1);
+    BranchToEagerDeoptTarget(Condition::NOT_EQUAL, convert, kungfu::DeoptType::NOTINT1);
     __ SignExtendInt32ToInt64(dst, src);
 }
 
@@ -2075,9 +2055,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
     __ LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
     __ And(scratch, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
-    __ JumpIf(Condition::COND_LESS_THAN, deopt);
+    __ JumpIf(Condition::LESS_THAN, deopt);
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
-    __ JumpIf(Condition::COND_GREATER_THAN, deopt);
+    __ JumpIf(Condition::GREATER_THAN, deopt);
 #else
     Label deopt;
     Label done;
@@ -2088,9 +2068,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedTaggedStringVertex>(Che
     __ LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
     __ And(scratch, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
-    __ JumpIf(Condition::COND_LESS_THAN, &deopt);
+    __ JumpIf(Condition::LESS_THAN, &deopt);
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
-    __ JumpIf(Condition::COND_GREATER_THAN, &deopt);
+    __ JumpIf(Condition::GREATER_THAN, &deopt);
     __ Jump(&done);
 
     __ Bind(&deopt);
@@ -2114,9 +2094,9 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTaggedStringVertex>(Branc
     __ LoadField(scratch, scratch, JSHClass::BIT_FIELD_OFFSET);
     __ And(scratch, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_FIRST));
-    __ JumpIf(Condition::COND_LESS_THAN, ifFalse->GetLabel());
+    __ JumpIf(Condition::LESS_THAN, ifFalse->GetLabel());
     __ Compare(scratch, static_cast<int32_t>(JSType::STRING_LAST));
-    __ JumpIf(Condition::COND_GREATER_THAN, ifFalse->GetLabel());
+    __ JumpIf(Condition::GREATER_THAN, ifFalse->GetLabel());
     __ Jump(ifTrue->GetLabel());
 }
 
@@ -2142,7 +2122,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfHClassInVertex>(BranchIfH
     for (JSHClass *hclass : jumpIf->GetExpectedHClasses()) {
         __ Move(expectedHClass, reinterpret_cast<uint64_t>(hclass) & TaggedStateWord::ADDRESS_MASK);
         __ Compare(actualHClass, expectedHClass);
-        __ JumpIf(Condition::COND_EQUAL, ifTrue->GetLabel());
+        __ JumpIf(Condition::EQUAL, ifTrue->GetLabel());
     }
     __ Jump(ifFalse->GetLabel());
 }
@@ -2154,7 +2134,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32ConditionCheckVertex>(I32Co
     auto left = GetInputRegister(check, I32ConditionCheckVertex::LEFT_INDEX);
     auto right = GetInputRegister(check, I32ConditionCheckVertex::RIGHT_INDEX);
     __ CompareInt32(left, right);
-    EmitTaggedBooleanFromCondition(assembler_, dst, ConditionFromIntCondition(check->GetCondition()));
+    EmitTaggedBooleanFromCondition(assembler_, dst, check->GetCondition());
 }
 
 template <>
@@ -2174,7 +2154,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<TaggedEqualVertex>(TaggedEqual
     auto left = GetInputRegister(op, TaggedEqualVertex::LEFT_INDEX);
     auto right = GetInputRegister(op, TaggedEqualVertex::RIGHT_INDEX);
     __ Compare(left, right);
-    EmitTaggedBooleanFromCondition(assembler_, dst, Condition::COND_EQUAL);
+    EmitTaggedBooleanFromCondition(assembler_, dst, Condition::EQUAL);
 }
 
 template <>
@@ -2184,7 +2164,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<TaggedNotEqualVertex>(TaggedNo
     auto left = GetInputRegister(op, TaggedNotEqualVertex::LEFT_INDEX);
     auto right = GetInputRegister(op, TaggedNotEqualVertex::RIGHT_INDEX);
     __ Compare(left, right);
-    EmitTaggedBooleanFromCondition(assembler_, dst, Condition::COND_NOT_EQUAL);
+    EmitTaggedBooleanFromCondition(assembler_, dst, Condition::NOT_EQUAL);
 }
 
 template <>
@@ -2200,7 +2180,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
     Label falseLabel;
     Label done;
     __ Compare(dst, 0);
-    __ JumpIf(Condition::COND_EQUAL, &falseLabel);
+    __ JumpIf(Condition::EQUAL, &falseLabel);
     __ LoadTaggedValue(dst, JSTaggedValue::True().GetRawData());
     __ Jump(&done);
     __ Bind(&falseLabel);
@@ -2218,7 +2198,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
         auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                  \
         __ Op(dst, left, right);                                                                        \
         ASSERT(!EagerDeoptUsesRegister(op, dst));                                                       \
-        BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);      \
+        BranchToEagerDeoptTarget(Condition::OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);      \
     }
 
 DEFINE_I32_WITH_OVERFLOW_CODEGEN(Add, Int32Add)
@@ -2252,21 +2232,21 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
         __ Int32MulWide(product, left, right);
         __ SignExtendInt32ToInt64(truncatedProduct, product);
         __ Compare(product, truncatedProduct);
-        __ JumpIf(Condition::COND_NOT_EQUAL, &overflow);
+        __ JumpIf(Condition::NOT_EQUAL, &overflow);
         __ SignExtendInt32ToInt64(dst, product);
     }
     ASSERT(!EagerDeoptUsesRegister(op, dst));
 #else
     __ Int32Mul(dst, right);
     ASSERT(!EagerDeoptUsesRegister(op, dst));
-    BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);
+    BranchToEagerDeoptTarget(Condition::OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);
 #endif
     __ CompareInt32(dst, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &success);
+    __ JumpIf(Condition::NOT_EQUAL, &success);
     __ Int32Or(savedLeft, right);
     __ CompareInt32(savedLeft, 0);
 #if defined(PANDA_TARGET_ARM64)
-    __ JumpIf(Condition::COND_LESS_THAN, &negativeZero);
+    __ JumpIf(Condition::LESS_THAN, &negativeZero);
     __ Bind(&success);
     __ Jump(&done);
     __ Bind(&overflow);
@@ -2276,7 +2256,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
     EmitEagerDeoptExit(op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
     __ Bind(&done);
 #else
-    BranchToEagerDeoptTarget(Condition::COND_LESS_THAN, op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
+    BranchToEagerDeoptTarget(Condition::LESS_THAN, op, kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
     __ Bind(&success);
 #endif
 }
@@ -2298,17 +2278,17 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32D
 
     __ CompareInt32(right, 0);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, kungfu::DeoptType::DIVZERO1);
+    BranchToEagerDeoptTarget(Condition::EQUAL, op, kungfu::DeoptType::DIVZERO1);
 #else
-    __ JumpIf(Condition::COND_EQUAL, &divideZero);
+    __ JumpIf(Condition::EQUAL, &divideZero);
 #endif
     __ CompareInt32(left, std::numeric_limits<int32_t>::min());
-    __ JumpIf(Condition::COND_NOT_EQUAL, &divisorReady);
+    __ JumpIf(Condition::NOT_EQUAL, &divisorReady);
     __ CompareInt32(right, -1);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, kungfu::DeoptType::INT32OVERFLOW1);
+    BranchToEagerDeoptTarget(Condition::EQUAL, op, kungfu::DeoptType::INT32OVERFLOW1);
 #else
-    __ JumpIf(Condition::COND_EQUAL, &overflow);
+    __ JumpIf(Condition::EQUAL, &overflow);
 #endif
     __ Bind(&divisorReady);
 #if defined(PANDA_TARGET_AMD64)
@@ -2324,17 +2304,17 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivWithOverflowVertex>(I32D
 #endif
     __ CompareInt32(remainder, 0);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_NOT_EQUAL, op, kungfu::DeoptType::NOTINT5);
+    BranchToEagerDeoptTarget(Condition::NOT_EQUAL, op, kungfu::DeoptType::NOTINT5);
 #else
-    __ JumpIf(Condition::COND_NOT_EQUAL, &notInt);
+    __ JumpIf(Condition::NOT_EQUAL, &notInt);
 #endif
     __ CompareInt32(dst, 0);
-    __ JumpIf(Condition::COND_NOT_EQUAL, &done);
+    __ JumpIf(Condition::NOT_EQUAL, &done);
     __ CompareInt32(right, 0);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_LESS_THAN, op, kungfu::DeoptType::DIVZERO2);
+    BranchToEagerDeoptTarget(Condition::LESS_THAN, op, kungfu::DeoptType::DIVZERO2);
 #else
-    __ JumpIf(Condition::COND_LESS_THAN, &negativeZero);
+    __ JumpIf(Condition::LESS_THAN, &negativeZero);
     __ Jump(&done);
     __ Bind(&divideZero);
     EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO1);
@@ -2380,9 +2360,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
     if (op->GetDivisor() < 0) {
         __ CompareInt32(original, 0);
 #if defined(PANDA_TARGET_AMD64)
-        BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, kungfu::DeoptType::DIVZERO2);
+        BranchToEagerDeoptTarget(Condition::EQUAL, op, kungfu::DeoptType::DIVZERO2);
 #else
-        __ JumpIf(Condition::COND_EQUAL, &negativeZero);
+        __ JumpIf(Condition::EQUAL, &negativeZero);
 #endif
     }
 
@@ -2412,9 +2392,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32DivByConstWithCheckVertex>(
 #endif
     __ CompareInt32(work, original);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_NOT_EQUAL, op, kungfu::DeoptType::NOTINT5);
+    BranchToEagerDeoptTarget(Condition::NOT_EQUAL, op, kungfu::DeoptType::NOTINT5);
 #else
-    __ JumpIf(Condition::COND_NOT_EQUAL, &notInt);
+    __ JumpIf(Condition::NOT_EQUAL, &notInt);
     __ Jump(&done);
     __ Bind(&negativeZero);
     EmitEagerDeoptExit(op, kungfu::DeoptType::DIVZERO2);
@@ -2464,24 +2444,24 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
     // divisor == 0 -> NaN (a double), deopt.
     __ CompareInt32(right, 0);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_EQUAL, mod, kungfu::DeoptType::MODZERO1);
+    BranchToEagerDeoptTarget(Condition::EQUAL, mod, kungfu::DeoptType::MODZERO1);
 #else
-    __ JumpIf(Condition::COND_EQUAL, &divideZero);
+    __ JumpIf(Condition::EQUAL, &divideZero);
 #endif
     // INT_MIN % -1 traps idiv (#DE); deopt to the interpreter (mathematically 0).
     __ CompareInt32(left, std::numeric_limits<int32_t>::min());
-    __ JumpIf(Condition::COND_NOT_EQUAL, &divisorReady);
+    __ JumpIf(Condition::NOT_EQUAL, &divisorReady);
     __ CompareInt32(right, -1);
 #if defined(PANDA_TARGET_AMD64)
-    BranchToEagerDeoptTarget(Condition::COND_EQUAL, mod, kungfu::DeoptType::INT32OVERFLOW1);
+    BranchToEagerDeoptTarget(Condition::EQUAL, mod, kungfu::DeoptType::INT32OVERFLOW1);
 #else
-    __ JumpIf(Condition::COND_EQUAL, &overflow);
+    __ JumpIf(Condition::EQUAL, &overflow);
 #endif
     __ Bind(&divisorReady);
     // Read the dividend sign before PositiveInt32Mod, which clobbers the left input
     // register. remainder == 0 with a negative dividend is JS -0.0 (not Int32) -> deopt.
     __ CompareInt32(left, 0);
-    __ JumpIf(Condition::COND_LESS_THAN, &leftNeg);
+    __ JumpIf(Condition::LESS_THAN, &leftNeg);
 #if defined(PANDA_TARGET_AMD64)
     __ Int32DivAndRemainder(quotient, remainder, left, right);
     __ Move(dst, remainder);
@@ -2500,9 +2480,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedI32ModVertex>(CheckedI3
     __ CompareInt32(dst, 0);
 #if defined(PANDA_TARGET_AMD64)
     BranchToEagerDeoptTarget(
-        Condition::COND_EQUAL, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+        Condition::EQUAL, mod, kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
 #else
-    __ JumpIf(Condition::COND_EQUAL, &negativeZero);
+    __ JumpIf(Condition::EQUAL, &negativeZero);
     __ Jump(&done);
     __ Bind(&divideZero);
     EmitEagerDeoptExit(mod, kungfu::DeoptType::MODZERO1);
@@ -2524,7 +2504,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNonNegativeI32ToTaggedI
     auto src = GetInputRegister(convert, CheckedNonNegativeI32ToTaggedIntVertex::INPUT_INDEX);
 
     __ CompareInt32(src, 0);
-    BranchToEagerDeoptTarget(Condition::COND_LESS_THAN, convert, kungfu::DeoptType::NOTINT5);
+    BranchToEagerDeoptTarget(Condition::LESS_THAN, convert, kungfu::DeoptType::NOTINT5);
     __ SignExtendInt32ToInt64(dst, src);
     __ Or(dst, static_cast<int64_t>(JSTaggedValue::TAG_INT));
 }
@@ -2626,9 +2606,9 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CheckedNumberToF64Vertex>(Chec
     __ Move(scratch, JSTaggedValue::TAG_MARK);
     __ Word64And(bits, scratch);
     __ Compare(bits, scratch);
-    __ JumpIf(Condition::COND_EQUAL, &intCase);
+    __ JumpIf(Condition::EQUAL, &intCase);
     __ Compare(bits, static_cast<int64_t>(JSTaggedValue::TAG_OBJECT));
-    BranchToEagerDeoptTarget(Condition::COND_EQUAL, convert, kungfu::DeoptType::NOTNUMBER1);
+    BranchToEagerDeoptTarget(Condition::EQUAL, convert, kungfu::DeoptType::NOTNUMBER1);
 
     __ Move(bits, input);
     __ Move(scratch, static_cast<uint64_t>(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
@@ -2661,11 +2641,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         auto input = GetInputRegister(op, I32##Name##WithOverflowVertex::VALUE_INDEX);                \
         if constexpr (NeedZeroCheck) {                                                                \
             __ CompareInt32(input, 0);                                                                \
-            BranchToEagerDeoptTarget(Condition::COND_EQUAL, op, DeoptType);                           \
+            BranchToEagerDeoptTarget(Condition::EQUAL, op, DeoptType);                           \
         }                                                                                             \
         __ AsmOp(dst, input);                                                                         \
         ASSERT(!EagerDeoptUsesRegister(op, dst));                                                     \
-        BranchToEagerDeoptTarget(Condition::COND_OVERFLOW, op, DeoptType);                            \
+        BranchToEagerDeoptTarget(Condition::OVERFLOW, op, DeoptType);                            \
     }
 #else
 #define DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Name, AsmOp, DeoptType, NeedZeroCheck)                 \
@@ -2679,11 +2659,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToI32TruncVertex>(F64ToI32T
         Label done;                                                                                   \
         if constexpr (NeedZeroCheck) {                                                                \
             __ CompareInt32(input, 0);                                                                \
-            __ JumpIf(Condition::COND_EQUAL, &deopt);                                                 \
+            __ JumpIf(Condition::EQUAL, &deopt);                                                 \
         }                                                                                             \
         __ AsmOp(dst, input);                                                                         \
         ASSERT(!EagerDeoptUsesRegister(op, dst));                                                     \
-        __ JumpIf(Condition::COND_OVERFLOW, &deopt);                                                  \
+        __ JumpIf(Condition::OVERFLOW, &deopt);                                                  \
         __ Jump(&done);                                                                               \
         __ Bind(&deopt);                                                                              \
         EmitEagerDeoptExit(op, DeoptType);                                                            \
@@ -2722,7 +2702,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<F64ToTaggedDoubleVertex>(F64To
 
     __ Move(dst, input);
     __ Compare(dst, static_cast<int64_t>(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET));
-    __ JumpIf(Condition::COND_BELOW, &pureDouble);
+    __ JumpIf(Condition::BELOW, &pureDouble);
     __ LoadTaggedValue(dst, JSTaggedValue(base::NAN_VALUE).GetRawData());
     __ Jump(&done);
     __ Bind(&pureDouble);
@@ -2872,7 +2852,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTrueVertex>(BranchIfTrueV
     __ LoadTaggedValue(scratch, JSTaggedValue::True().GetRawData());
     __ Compare(cond, scratch);
 
-    __ Branch(Condition::COND_ZERO,
+    __ Branch(Condition::ZERO,
                        ifTrue->GetLabel(),
                        trueBranchIsFallthrough,
                        ifFalse->GetLabel(),
@@ -2890,7 +2870,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfInt32CompareVertex>(Branc
     auto left = GetInputRegister(jumpIf, BranchIfInt32CompareVertex::LEFT_INDEX);
     auto right = GetInputRegister(jumpIf, BranchIfInt32CompareVertex::RIGHT_INDEX);
     __ CompareInt32(left, right);
-    __ Branch(ConditionFromIntCondition(jumpIf->GetCondition()),
+    __ Branch(jumpIf->GetCondition(),
                        ifTrue->GetLabel(),
                        trueBranchIsFallthrough,
                        ifFalse->GetLabel(),
@@ -2908,7 +2888,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfInt64CompareVertex>(Branc
     auto left = GetInputRegister(jumpIf, BranchIfInt64CompareVertex::LEFT_INDEX);
     auto right = GetInputRegister(jumpIf, BranchIfInt64CompareVertex::RIGHT_INDEX);
     __ Compare(left, right);
-    __ Branch(ConditionFromIntCondition(jumpIf->GetCondition()),
+    __ Branch(jumpIf->GetCondition(),
                        ifTrue->GetLabel(),
                        trueBranchIsFallthrough,
                        ifFalse->GetLabel(),
@@ -2941,7 +2921,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfTaggedHeapObjectVertex>(B
     __ Move(scratch, value);
     __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     __ Compare(scratch, 0);
-    __ Branch(Condition::COND_EQUAL, ifTrue->GetLabel(), trueBranchIsFallthrough, ifFalse->GetLabel(),
+    __ Branch(Condition::EQUAL, ifTrue->GetLabel(), trueBranchIsFallthrough, ifFalse->GetLabel(),
               falseBranchIsFallthrough);
 }
 
@@ -2956,7 +2936,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfReferenceEqualVertex>(Bra
     auto left = GetInputRegister(jumpIf, BranchIfReferenceEqualVertex::LEFT_INDEX);
     auto right = GetInputRegister(jumpIf, BranchIfReferenceEqualVertex::RIGHT_INDEX);
     __ Compare(left, right);
-    __ Branch(Condition::COND_EQUAL,
+    __ Branch(Condition::EQUAL,
                        ifTrue->GetLabel(),
                        trueBranchIsFallthrough,
                        ifFalse->GetLabel(),
@@ -2980,7 +2960,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfObjectTypeVertex>(BranchI
     static_assert(JSHClass::ObjectTypeBits::START_BIT == 0);
     __ And(objectType, static_cast<int32_t>((1U << JSHClass::ObjectTypeBits::SIZE) - 1));
     __ Compare(objectType, static_cast<int32_t>(jumpIf->GetExpectedType()));
-    __ Branch(Condition::COND_EQUAL, ifTrue->GetLabel(), trueBranchIsFallthrough,
+    __ Branch(Condition::EQUAL, ifTrue->GetLabel(), trueBranchIsFallthrough,
               ifFalse->GetLabel(), falseBranchIsFallthrough);
 }
 
@@ -3138,7 +3118,7 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
         ProcessValueVertex(valueVertex);
     }
 
-    if (vertex->GetProperties().CanThrow() || vertex->GetProperties().IsAnyCall()) {
+    if (vertex->CanThrow() || vertex->IsCall()) {
         if (HasExceptionLazyDeopt(vertex)) {
             ASSERT(CatchBlockOf(vertex) == nullptr);
             return;
@@ -3484,48 +3464,13 @@ void ArkSteedCodeGenerator::RecordVertexComment(Vertex *vertex)
     if (!__ IsCommentEnabled()) {
         return;
     }
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
     std::ostringstream ss;
     ss << GetCurrentBlockColor() << "--   ";
-    if (labeller != nullptr) {
-        std::string label = labeller->GetVertexLabel(vertex);
-        // All vertices should be registered before code generation
-        ASSERT(label != "<unregistered>");
-        ss << label;
-    } else {
-        ss << "v" << vertex->GetId();
-    }
-    ss << ": " << OpcodeToString(vertex->GetOpcode());
-
-    AppendVertexInputInfo(&ss, vertex);
+    ss << vertex->Dump(withColors_);
     AppendVertexSuccessorInfo(&ss, vertex);
     ss << COLOR_RESET;
 
     RecordComment(ss.str().c_str());
-}
-
-void ArkSteedCodeGenerator::AppendVertexInputInfo(std::ostringstream *ss, Vertex *vertex)
-{
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
-    int inputCount = vertex->GetInputCount();
-    if (inputCount > 0) {
-        *ss << " [";
-        for (int i = 0; i < inputCount; i++) {
-            if (i > 0) {
-                *ss << ", ";
-            }
-            ValueVertex *input = vertex->GetInput(i);
-            if (labeller != nullptr) {
-                std::string inputLabel = labeller->GetVertexLabel(input);
-                // All input vertices should also be registered
-                ASSERT(inputLabel != "<unregistered>");
-                *ss << inputLabel;
-            } else {
-                *ss << "v" << input->GetId();
-            }
-        }
-        *ss << "]";
-    }
 }
 
 void ArkSteedCodeGenerator::AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex)
@@ -3560,12 +3505,11 @@ void ArkSteedCodeGenerator::RecordGapMoveComment(const InstructionOperand &src, 
     if (!__ IsCommentEnabled()) {
         return;
     }
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
     std::ostringstream ss;
     ss << GetCurrentBlockColor() << "--   * " << src.Description() << " -> " << dest.Description();
-    if (labeller != nullptr && phi != nullptr) {
-        std::string label = labeller->GetVertexLabel(phi);
-        // Phi vertices should be registered during graph building
+    if (phi != nullptr) {
+        std::string label = FormatVertexLabel(phi);
+        // Phi vertices should be labelled during graph building
         ASSERT(label != "<unregistered>");
         ss << " (" << label << ")";
     }

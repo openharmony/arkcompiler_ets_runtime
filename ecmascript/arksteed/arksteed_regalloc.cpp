@@ -20,7 +20,6 @@
 
 #include "ecmascript/arksteed/arksteed_compiler.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 
 namespace panda::ecmascript::arksteed {
@@ -28,10 +27,10 @@ namespace panda::ecmascript::arksteed {
 namespace {
 void VerifyLazyDeoptInputLocations(const Vertex *vertex)
 {
-    if (!vertex->GetProperties().CanLazyDeopt()) {
+    if (!vertex->CanLazyDeopt()) {
         return;
     }
-    const LazyDeoptimizableMixin *deopt = LazyDeoptMixinOf(vertex);
+    const LazyDeoptimizableMixin *deopt = LazyDeoptimizableMixinOf(vertex);
     ASSERT(deopt != nullptr);
     for (uint32_t index = 0, valueCount = deopt->GetDeoptFrameValueCount(); index < valueCount; ++index) {
         const InputLocation *location = deopt->GetDeoptSourceLocation(index);
@@ -45,7 +44,7 @@ namespace {
 template <typename VertexT, typename Function>
 void ForEachEagerDeoptFrameValue(VertexT *vertex, Function &&function)
 {
-    if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, VertexT> && VertexT::PROPERTIES.CanEagerDeopt()) {
+    if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, VertexT>) {
         for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
             function(vertex->GetDeoptFrameValue(index), vertex->GetDeoptSourceLocation(index));
         }
@@ -131,12 +130,6 @@ void ArkSteedRegisterAllocator::AddMoveBeforeCurrentVertex(ValueVertex *vertex, 
     // Set up the regalloc info for the gap move
     gapMove->SetRegallocInfo(
         chunk->New<RegallocValueVertexInfo>(chunk, gapMove->GetInputCount(), vertex->GetMachineRepresentation()));
-
-    // Register the gap move vertex with the graph labeller if available
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
-    if (labeller != nullptr) {
-        labeller->RegisterVertex(gapMove);
-    }
 
     // Record the patch: insert gapMove before currentVertex_'s id
     VertexId beforeId = currentVertex_->GetId();
@@ -263,13 +256,11 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
     AssignInputs(vertex);
 
     // Spill registers if this is a call
-    if (vertex->GetProperties().IsCall()) {
+    if (vertex->IsCall()) {
         SpillAndClearRegisters();
-    } else if (vertex->GetProperties().IsASMBarrierCall()) {
-        SpillAndClearASMBarrierClobbers();
     }
     // Save after inputs and temporaries have their physical locations.
-    if (vertex->GetProperties().NeedsRegisterSnapshot()) {
+    if (vertex->IsDeferredCall()) {
         SaveDeferredRegisterSnapshot(vertex);
     }
 
@@ -278,11 +269,11 @@ void ArkSteedRegisterAllocator::AllocateVertex(Vertex *vertex)
         AllocateVertexResult(static_cast<ValueVertex *>(vertex));
     }
 
-    if (vertex->GetProperties().CanEagerDeopt()) {
+    if (vertex->CanEagerDeopt()) {
         AssignEagerDeoptFrameSourceLocations(vertex);
     }
 
-    if (vertex->GetProperties().CanLazyDeopt()) {
+    if (vertex->CanLazyDeopt()) {
         VerifyLazyDeoptInputLocations(vertex);
     }
 
@@ -311,10 +302,10 @@ void ArkSteedRegisterAllocator::ProcessUnconditionalControl(UnconditionalControl
     ASSERT(currentVertex_->GetTemporariesNeeded() == 0);
     ASSERT(currentVertex_->GetDoubleTemporariesNeeded() == 0);
     ASSERT(currentVertex_->GetInputCount() == 0);
-    ASSERT(!currentVertex_->GetProperties().CanEagerDeopt());
-    ASSERT(!currentVertex_->GetProperties().CanLazyDeopt());
-    ASSERT(!currentVertex_->GetProperties().NeedsRegisterSnapshot());
-    ASSERT(!currentVertex_->GetProperties().IsCall());
+    ASSERT(!currentVertex_->CanEagerDeopt());
+    ASSERT(!currentVertex_->CanLazyDeopt());
+    ASSERT(!currentVertex_->IsDeferredCall());
+    ASSERT(!currentVertex_->IsCall());
 
     auto predecessorId = block->GetPredecessorId();
     auto *target = unconditional->Target();
@@ -359,15 +350,15 @@ void ArkSteedRegisterAllocator::ProcessConditionalOrReturn(ControlVertex *vertex
     // Assign inputs
     AssignInputs(vertex);
 
-    ASSERT(!vertex->GetProperties().CanEagerDeopt());
-    ASSERT(!vertex->GetProperties().CanLazyDeopt());
+    ASSERT(!vertex->CanEagerDeopt());
+    ASSERT(!vertex->CanLazyDeopt());
 
     // Spill registers if this is a call
-    if (vertex->GetProperties().IsCall()) {
+    if (vertex->IsCall()) {
         SpillAndClearRegisters();
     }
 
-    ASSERT(!vertex->GetProperties().NeedsRegisterSnapshot());
+    ASSERT(!vertex->IsDeferredCall());
 
     // Verify register allocation state
     ASSERT((generalRegisters_.Free() | vertex->GetRegallocInfo()->GetGeneralTemporaries()) ==
@@ -728,7 +719,7 @@ void ArkSteedRegisterAllocator::AssignDeoptFrameSourceLocation(
 
 void ArkSteedRegisterAllocator::AssignEagerDeoptFrameSourceLocations(Vertex *vertex)
 {
-    ASSERT(vertex->GetProperties().CanEagerDeopt());
+    ASSERT(vertex->CanEagerDeopt());
     auto assignLocation = [this](ValueVertex *value, InputLocation *sourceLocation) {
         AssignDeoptFrameSourceLocation(value, sourceLocation);
     };
@@ -927,23 +918,6 @@ void ArkSteedRegisterAllocator::SpillAndClearRegisters(RegisterSnapshot<Register
         ASSERT(!registers.Used().Has(reg));
         usedClobbered = registers.Used() & clobbered;
     }
-}
-
-void ArkSteedRegisterAllocator::SpillAndClearASMBarrierClobbers()
-{
-#if defined(PANDA_TARGET_AMD64)
-    SpillAndClearRegisters(generalRegisters_, ArkSteedRegList{x64::r11});
-    SpillAndClearRegisters(doubleRegisters_, GetAllocatableDoubleRegisters());
-#elif defined(PANDA_TARGET_ARM64)
-    SpillAndClearRegisters(generalRegisters_, ArkSteedRegList{aarch64::x15});
-    SpillAndClearRegisters(doubleRegisters_,
-        ArkDoubleRegList{aarch64::d0,  aarch64::d1,  aarch64::d2,  aarch64::d3,
-                         aarch64::d4,  aarch64::d5,  aarch64::d6,  aarch64::d7,
-                         aarch64::d16, aarch64::d17, aarch64::d18, aarch64::d19,
-                         aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23,
-                         aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27,
-                         aarch64::d28, aarch64::d29});
-#endif
 }
 
 void ArkSteedRegisterAllocator::SaveDeferredRegisterSnapshot(Vertex *vertex)

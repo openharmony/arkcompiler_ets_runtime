@@ -425,12 +425,15 @@ def _collect_source_inputs(test: TestCase) -> List[Path]:
 
 
 def _is_up_to_date(target: Path, inputs: List[Path]) -> bool:
-    """Return True when target exists and is newer than every input."""
+    """Return True when target exists, is non-empty, and is newer than every input."""
     if not target.exists():
         return False
 
     try:
-        target_mtime = target.stat().st_mtime
+        target_stat = target.stat()
+        if target_stat.st_size == 0:
+            return False
+        target_mtime = target_stat.st_mtime
     except FileNotFoundError:
         return False
 
@@ -468,6 +471,7 @@ class RunContext:
     log_components: Optional[str] = None
     print_graph: bool = False
     print_asm_code: bool = False
+    colored: bool = False
     check_live_range_flag: bool = False
     hotness_threshold: int = 1
     enable_heap_verify: bool = False
@@ -604,6 +608,13 @@ def parse_args() -> argparse.Namespace:
         "--print-asm-code",
         action="store_true",
         help="Enable ArkSteed print compiled code (assembly) with code comments during test execution",
+    )
+    parser.add_argument(
+        "-c",
+        "--colored",
+        action="store_true",
+        default=False,
+        help="Enable ANSI colors in ArkSteed graph printing",
     )
     parser.add_argument(
         "--check-live-range",
@@ -1369,6 +1380,8 @@ def run_ark_vm(
     if ctx.print_asm_code:
         cmd.append("--compiler-arksteed-print-code=true")
         cmd.append("--compiler-arksteed-enable-code-comment=true")
+    if ctx.colored:
+        cmd.append("--compiler-arksteed-print-with-colors=true")
     cmd.append("--compiler-arksteed-print-method-name=false")
     cmd.append("--open-ark-tools=true")
     if ctx.enable_heap_verify:
@@ -2576,6 +2589,7 @@ def main() -> None:
         log_components=args.log_components,
         print_graph=print_graph,
         print_asm_code=args.print_asm_code,
+        colored=args.colored,
         check_live_range_flag=check_live_range_flag,
         hotness_threshold=args.hotness_threshold,
         enable_heap_verify=args.enable_heap_verify,

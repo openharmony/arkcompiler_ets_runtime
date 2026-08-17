@@ -959,7 +959,7 @@ void ArkSteedAssembler::JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label 
     Move(scratch, value);
     And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
     Compare(scratch, 0);
-    JumpIf(Condition::COND_NOT_EQUAL, target);
+    JumpIf(Condition::NOT_EQUAL, target);
 }
 
 void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *target)
@@ -972,9 +972,9 @@ void ArkSteedAssembler::JumpIfNotJSFunction(ArkSteedRegister value, Label *targe
     LoadField(objectType, hclass, JSHClass::BIT_FIELD_OFFSET);
     And(objectType, static_cast<int32_t>((1U << JSHClass::TYPE_BITFIELD_NUM) - 1));
     Compare(objectType, static_cast<int32_t>(JSType::JS_FUNCTION_FIRST));
-    JumpIf(Condition::COND_LESS_THAN, target);
+    JumpIf(Condition::LESS_THAN, target);
     Compare(objectType, static_cast<int32_t>(JSType::JS_FUNCTION_LAST));
-    JumpIf(Condition::COND_GREATER_THAN, target);
+    JumpIf(Condition::GREATER_THAN, target);
 }
 
 void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target)
@@ -1009,7 +1009,7 @@ void ArkSteedAssembler::BranchIfNoPendingException(Label* target)
     Move(aarch64::x0, JSTaggedValue::Hole().GetRawData());
     Compare(scratch, aarch64::x0);
     PopPair(aarch64::xzr, aarch64::x0);
-    JumpIf(Condition::COND_EQUAL, target);
+    JumpIf(Condition::EQUAL, target);
 }
 
 void ArkSteedAssembler::ReturnWithPendingException()
@@ -1217,7 +1217,7 @@ void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount
     Label fillUndefined;
     Label fillDone;
     Compare(fillSlotCount, 0);
-    JumpIf(Condition::COND_LESS_THAN_OR_EQUAL, &fillDone);
+    JumpIf(Condition::LESS_THAN_OR_EQUAL, &fillDone);
 
     TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
@@ -1229,7 +1229,7 @@ void ArkSteedAssembler::PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount
     assembler_.Str(scratch, MemoryOperand(aarch64::sp, fillSlotCount, aarch64::UXTW, SLOT_INDEX_SHIFT));
     Sub(fillSlotCount, 1);
     Compare(fillSlotCount, firstUndefinedArgBaseSlot);
-    JumpIf(Condition::COND_GREATER_THAN, &fillUndefined);
+    JumpIf(Condition::GREATER_THAN, &fillUndefined);
     Bind(&fillDone);
 }
 
@@ -1314,37 +1314,37 @@ size_t ArkSteedAssembler::GetCodeSize()
 aarch64::Condition ArkSteedAssembler::ToPhysicalCondition(Condition condition) const
 {
     switch (condition) {
-        case Condition::COND_EQUAL:
+        case Condition::EQUAL:
             return aarch64::Condition::EQ;
-        case Condition::COND_NOT_EQUAL:
+        case Condition::NOT_EQUAL:
             return aarch64::Condition::NE;
-        case Condition::COND_LESS_THAN:
+        case Condition::LESS_THAN:
             return aarch64::Condition::LT;
-        case Condition::COND_LESS_THAN_OR_EQUAL:
+        case Condition::LESS_THAN_OR_EQUAL:
             return aarch64::Condition::LE;
-        case Condition::COND_GREATER_THAN:
+        case Condition::GREATER_THAN:
             return aarch64::Condition::GT;
-        case Condition::COND_GREATER_THAN_OR_EQUAL:
+        case Condition::GREATER_THAN_OR_EQUAL:
             return aarch64::Condition::GE;
-        case Condition::COND_ABOVE:
+        case Condition::ABOVE:
             return aarch64::Condition::HI;
-        case Condition::COND_BELOW:
+        case Condition::BELOW:
             return aarch64::Condition::LO;
-        case Condition::COND_ABOVE_OR_EQUAL:
+        case Condition::ABOVE_OR_EQUAL:
             return aarch64::Condition::HS;
-        case Condition::COND_BELOW_OR_EQUAL:
+        case Condition::BELOW_OR_EQUAL:
             return aarch64::Condition::LS;
-        case Condition::COND_ZERO:
+        case Condition::ZERO:
             return aarch64::Condition::EQ;
-        case Condition::COND_NOT_ZERO:
+        case Condition::NOT_ZERO:
             return aarch64::Condition::NE;
-        case Condition::COND_OVERFLOW:
+        case Condition::OVERFLOW:
             return aarch64::Condition::VS;
-        case Condition::COND_NOT_OVERFLOW:
+        case Condition::NOT_OVERFLOW:
             return aarch64::Condition::VC;
-        case Condition::COND_PARITY:
+        case Condition::PARITY:
             return aarch64::Condition::VS;
-        case Condition::COND_NOT_PARITY:
+        case Condition::NOT_PARITY:
             return aarch64::Condition::VC;
         default:
             UNREACHABLE();
