@@ -93,7 +93,7 @@ void SharedCC::ReMarkAndPrepare(GCReason gcReason)
     ThreadManagedScope runningScope(dThread_);
     SuspendAllScope scope(dThread_);
     EnterSharedGCScope();
-    sHeap_->CheckInHeapProfiler();
+    sHeap_->CheckProfilerEnabled();
     sHeap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::SHARED_CC, gcReason);
     marker_->ReMark();
     SuspendIdleThreads();

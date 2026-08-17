@@ -349,6 +349,9 @@ private:
     CString moduleFileName_ {};
     CString moduleRecordName_ {};
     bool* moduleLazyArray_ {nullptr};
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    bool profilerEnabled_ {false};
+#endif
 };
 }
 

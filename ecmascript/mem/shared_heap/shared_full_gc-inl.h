@@ -138,7 +138,7 @@ void SharedFullGCRunner::UpdateForwardAddressIfSuccess(ObjectSlotBase<refType> s
 {
     sWorkNodeHolder_->IncreaseAliveSize(size);
 
-    if (UNLIKELY(sHeap_->InHeapProfiler())) {
+    if (UNLIKELY(sHeap_->IsProfilerEnabled())) {
         sHeap_->OnMoveEvent(ToUintPtr(object), toObject, size);
     }
     if (klass->HasReferenceField()) {

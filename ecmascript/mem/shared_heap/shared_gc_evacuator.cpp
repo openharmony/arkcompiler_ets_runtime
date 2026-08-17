@@ -39,7 +39,7 @@ void SharedGCEvacuator::EvacuateRegionWorkload::Process(uint32_t threadIndex)
             LOG_ECMA_MEM(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
-        if (UNLIKELY(inHeapProfiler_)) {
+        if (UNLIKELY(profilerEnabled_)) {
             sHeap_->OnMoveEvent(reinterpret_cast<intptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
         }
         Region *toRegion = Region::ObjectAddressToRange(address);
@@ -53,11 +53,11 @@ void SharedGCEvacuator::EvacuateRegions()
     TRACE_GC(GCStats::Scope::ScopeId::Evacuate,  sHeap_->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedGCEvacuator::EvacuateRegions;cset count: "
         + std::to_string(sHeap_->GetOldSpace()->GetCollectSetRegionCount())).c_str(), "");
-    bool inHeapProfiler = sHeap_->InHeapProfiler();
-    sHeap_->GetOldSpace()->EnumerateCollectRegionSet([this, inHeapProfiler](Region *region) {
+    bool profilerEnabled = sHeap_->IsProfilerEnabled();
+    sHeap_->GetOldSpace()->EnumerateCollectRegionSet([this, profilerEnabled](Region *region) {
         ASSERT(region->InSCollectSet());
         region->SetRegionTypeFlag(RegionTypeFlag::FROM);
-        AddWorkload(std::make_unique<EvacuateRegionWorkload>(this, region, sHeap_, inHeapProfiler));
+        AddWorkload(std::make_unique<EvacuateRegionWorkload>(this, region, sHeap_, profilerEnabled));
     });
     PostParallelTasks();
     ProcessWorkloads(MAIN_THREAD_INDEX);

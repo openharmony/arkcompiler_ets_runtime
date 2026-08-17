@@ -415,10 +415,11 @@ void Heap::MergeToOldSpaceSync(LocalSpace *localSpace)
     oldSpace_->Merge(localSpace);
 }
 
-bool Heap::InHeapProfiler()
+bool Heap::IsProfilerEnabled()
 {
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    return GetEcmaVM()->GetHeapProfile() != nullptr;
+    return Runtime::GetInstance()->IsHiProfilerEnabled() ||
+        GetEcmaVM()->GetHeapProfile() != nullptr;
 #else
     return false;
 #endif
@@ -446,10 +447,10 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHandle<JSHClass> hclass, size_t
 #if USE_STICKY_CMS_GC
         object->SetObjectState(ObjectState::YOUNG);
 #endif
-    }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
+        OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
+    }
     return object;
 }
 
@@ -518,9 +519,6 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHandle<JSHClass> hclass)
 {
     size_t size = hclass->GetObjectSize();
     TaggedObject *object = AllocateReadOnlyOrHugeObject(hclass, size);
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
-#endif
     return object;
 }
 
@@ -541,10 +539,10 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHandle<JSHClass> hclass, size
 #if USE_STICKY_CMS_GC
         object->SetObjectState(ObjectState::OLD);
 #endif
-    }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
+        OnAllocateEvent(GetEcmaVM(), object, size);
 #endif
+    }
     return object;
 }
 
@@ -564,9 +562,6 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHandle<JSHClass> hclass)
     if (object == nullptr) {
         LOG_ECMA(FATAL) << "Heap::AllocateNonMovableOrHugeObject:object is nullptr";
     }
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
-#endif
     return object;
 }
 
@@ -592,11 +587,11 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHandle<JSHClass> hclass, si
             // Object in nonmovalble space will be regarded as old object.
             object->SetObjectState(ObjectState::OLD);
 #endif
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+            OnAllocateEvent(GetEcmaVM(), object, size);
+#endif
         }
     }
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
-#endif
     return object;
 }
 
@@ -776,9 +771,6 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     // Object in snapshot space will be regarded as old object.
     reinterpret_cast<TaggedObject *>(object)->SetObjectState(ObjectState::OLD);
 #endif
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject *>(object), size);
-#endif
     return object;
 }
 
@@ -906,8 +898,10 @@ void Heap::SwapOldSpace()
 void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
                        [[maybe_unused]] size_t size)
 {
-    MEMORY_TRACE_MOVE(address, forwardAddress, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    if (Runtime::GetInstance()->IsHiProfilerEnabled()) {
+        MEMORY_TRACE_MOVE(address, forwardAddress, size);
+    }
     HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
     if (profiler != nullptr) {
         base::BlockHookScope blockScope;
@@ -919,8 +913,10 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
 void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
                              [[maybe_unused]] size_t size)
 {
-    MEMORY_TRACE_MOVE(address, forwardAddress, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    if (Runtime::GetInstance()->IsHiProfilerEnabled()) {
+        MEMORY_TRACE_MOVE(address, forwardAddress, size);
+    }
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();
         if (profiler != nullptr) {
@@ -1212,9 +1208,6 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
                 "SharedHeap::AllocateNonMovableOrHugeObject, shared heap oom");
             TryTriggerConcurrentMarking(thread);
         }
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-        OnAllocateEvent(thread->GetEcmaVM(), object, size);
-#endif
     }
     return object;
 }
@@ -1404,6 +1397,9 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHandl
     }
     ASSERT(object != nullptr);
     object->SetClass(thread, *hclass);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
+#endif
     return object;
 }
 

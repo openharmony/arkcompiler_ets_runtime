@@ -391,6 +391,7 @@ public:
 
     void SetIsStartHeapSampling(bool isStart)
     {
+        std::atomic_thread_fence(std::memory_order_release);
         glueData_.isStartHeapSampling_ = isStart ? JSTaggedValue::True() : JSTaggedValue::False();
     }
 

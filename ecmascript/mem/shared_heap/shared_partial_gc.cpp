@@ -66,7 +66,7 @@ public:
         ASSERT(thread->IsDaemonThread());
         SharedHeap *sHeap = SharedHeap::GetInstance();
         TriggerGCType type = TriggerGCType::SHARED_PARTIAL_GC;
-        sHeap->CheckInHeapProfiler();
+        sHeap->CheckProfilerEnabled();
         sHeap->SetGCType(type);
         sHeap->GetEcmaGCStats()->RecordStatisticBeforeGC(type, gcReason_);
         sHeap->GetSharedPartialGC()->PreProcessLocalThread();

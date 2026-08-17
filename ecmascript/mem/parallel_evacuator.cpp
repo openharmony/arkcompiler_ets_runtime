@@ -335,11 +335,11 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
     bool isInOldGen = region->InOldSpace();
     bool isBelowAgeMark = region->BelowAgeMark();
     bool pgoEnabled = heap_->GetJSThread()->IsPGOProfilerEnable();
-    bool inHeapProfiler = heap_->InHeapProfiler();
+    bool profilerEnabled = heap_->IsProfilerEnabled();
     size_t promotedSize = 0;
     auto thread = heap_->GetJSThread();
     region->IterateAllMarkedBits([this, &region, &isInOldGen, &isBelowAgeMark, &pgoEnabled,
-                                  &promotedSize, &allocator, &trackSet, inHeapProfiler, &thread](void *mem) {
+                                  &promotedSize, &allocator, &trackSet, profilerEnabled, &thread](void *mem) {
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         auto klass = header->GetClass();
@@ -368,7 +368,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
-        if (inHeapProfiler) {
+        if (profilerEnabled) {
             heap_->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
         }
         if (pgoEnabled) {
@@ -394,10 +394,10 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
 
 void ParallelEvacuator::EvacuateNonMovableSpaceRegion(TlabAllocator *allocator, Region *region)
 {
-    bool inHeapProfiler = heap_->InHeapProfiler();
+    bool profilerEnabled = heap_->IsProfilerEnabled();
     ASSERT(region->InNonMovableSpace());
     Heap *heap = heap_;
-    region->IterateAllMarkedBits([inHeapProfiler, allocator, heap](void *mem) {
+    region->IterateAllMarkedBits([profilerEnabled, allocator, heap](void *mem) {
         auto header = reinterpret_cast<TaggedObject *>(mem);
         auto klass = header->GetClass();
         auto size = header->GetSize();
@@ -408,7 +408,7 @@ void ParallelEvacuator::EvacuateNonMovableSpaceRegion(TlabAllocator *allocator, 
         if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
-        if (inHeapProfiler) {
+        if (profilerEnabled) {
             heap->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
         }
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
