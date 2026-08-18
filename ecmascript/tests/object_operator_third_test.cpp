@@ -626,6 +626,16 @@ HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_NonArrayWithLiveTail)
     EXPECT_EQ(JSObject::GetProperty(thread, sparseObject, survivingKey).GetValue()->GetInt(),
               static_cast<int32_t>(length - 1));
 }
+
+HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_EagerConvertAboveLengthGate)
+{
+    JSHandle<JSArray> array = CreateArrayWithElements(thread, 64);
+    JSHandle<JSObject> object(array);
+    array->SetArrayLength(thread, JSObject::LARGE_ARRAY_DELETE_EAGER_LENGTH + 1);
+    thread->ResetElementsDeletionCounter();
+    EXPECT_TRUE(JSObject::ShouldNormalizeElementsOnDeletion(thread, object, 0));
+    EXPECT_EQ(thread->GetElementsDeletionCounter(), 0U);
+}
 #endif
 
 HWTEST_F_L0(ObjectOperatorTest, ShouldNormalize_NonArrayTrailingHoles_Trim)

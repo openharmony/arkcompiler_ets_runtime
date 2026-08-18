@@ -345,6 +345,9 @@ bool JSObject::ShouldNormalizeElementsOnDeletion(JSThread *thread, JSHandle<JSOb
     }
 
     uint32_t length = obj->IsJSArray() ? JSArray::Cast(*obj)->GetArrayLength() : capacity;
+    if (length > LARGE_ARRAY_DELETE_EAGER_LENGTH) {
+        return true;
+    }
     constexpr uint32_t kLengthFraction = 16;
     // capacity may be >= 64 while JSArray length < 16, making length/16 zero; keep at least one
     // throttle step so we do not O(n)-scan on every delete in that window.
