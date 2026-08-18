@@ -367,7 +367,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         LazyInitializePluralRules(env);
         LazyInitializeDisplayNames(env);
         LazyInitializeListFormat(env);
-        LazyInitializeSegments(env);
+        // this function only initialize Segments in globalEnv
+        InitializeSegments(env);
         LazyInitializeSegmenter(env);
     } else {
         InitializeLocale(env);
