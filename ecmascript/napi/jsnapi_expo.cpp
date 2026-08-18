@@ -4826,6 +4826,7 @@ void JSNApi::SetTriggerGCTaskCallback(EcmaVM *vm, const TriggerGCTaskCallback& c
 
 void JSNApi::SetPostTaskToThreadCallback(EcmaVM *vm, PostTaskToThreadCallback callback)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     vm->GetJSThread()->SetPostTaskToThreadCallback(std::move(callback));
 }
 

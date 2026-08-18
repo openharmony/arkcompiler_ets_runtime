@@ -129,10 +129,15 @@ public:
     void Run(JSThread *thread) override
     {
         ASSERT(!thread->IsConcurrentCopying());
-        if (thread->GetSharedCCStatus() != SharedCCStatus::READY) {
+        if (thread != Runtime::GetInstance()->GetMainThread() &&
+            thread->GetSharedCCStatus() != SharedCCStatus::READY) {
             if (thread->GetLastLeaveFrame() == nullptr) {
                 thread->SwitchAllStub(false);
                 thread->SetSharedCCStatus(SharedCCStatus::READY);
+            } else if (thread->HasPostTaskToThreadCallback() && thread->TryMarkCCTaskPending()) {
+                thread->PostTaskToThread([thread]() {
+                    thread->ExecuteSharedCCStubSwitch();
+                });
             }
         }
         MarkRoots(thread);
