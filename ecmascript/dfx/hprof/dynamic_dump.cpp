@@ -193,7 +193,11 @@ DynamicDump::~DynamicDump()
     // Order: rawHeapDump (uses stream) -> close fd -> snapshot/stringTable.
     delete rawHeapDump_;
     rawHeapDump_ = nullptr;
-    fdStream_.reset();
+    outputStream_.reset();
+    if (outputFd_ >= 0) {
+        close(outputFd_);
+        outputFd_ = -1;
+    }
     snapshot_.reset();
     stringTable_.reset();
     if (heapProfilerOwnership_ == HeapProfilerOwnership::STANDALONE) {
@@ -275,7 +279,16 @@ bool DynamicDump::InitializeHeapProfiler()
 
 bool DynamicDump::AcquireOutput()
 {
-    if (fdStream_ != nullptr) {
+    if (outputStream_ != nullptr || outputFd_ >= 0) {
+        return true;
+    }
+    if (!request_.output.dynamicPath.empty()) {
+        outputStream_ = std::make_unique<FileStream>(request_.output.dynamicPath);
+        if (!outputStream_->Good()) {
+            outputStream_.reset();
+            LOG_ECMA(ERROR) << "[HybDump][Dyn] Output file open failed";
+            return false;
+        }
         return true;
     }
     if (!request_.identity.IsValid()) {
@@ -299,7 +312,20 @@ bool DynamicDump::AcquireOutput()
         return false;
     }
     LOG_ECMA(INFO) << "[HybDump][Dyn] Output fd acquired: fd=" << fd;
-    fdStream_ = std::make_unique<FileDescriptorStream>(fd);
+    outputFd_ = fd;
+    return true;
+}
+
+bool DynamicDump::CreateOutputStream()
+{
+    if (outputStream_ != nullptr) {
+        return true;
+    }
+    if (outputFd_ < 0) {
+        return false;
+    }
+    outputStream_ = std::make_unique<FileDescriptorStream>(outputFd_);
+    outputFd_ = -1;
     return true;
 }
 
@@ -333,7 +359,7 @@ bool DynamicDump::CreateRawHeapDump()
         LOG_ECMA(ERROR) << "[HybDump][Dyn] Raw heap dumper creation failed: heap profiler unavailable";
         return false;
     }
-    if (fdStream_ == nullptr) {
+    if (!CreateOutputStream()) {
         LOG_ECMA(ERROR) << "[HybDump][Dyn] Raw heap dumper creation failed: output unavailable";
         return false;
     }
@@ -344,9 +370,9 @@ bool DynamicDump::CreateRawHeapDump()
     snapshot_ = std::make_unique<HeapSnapshot>(vm_, stringTable_.get(), option, false, entryIdMap);
     RawHeapDumpCropLevel cropLevel = Runtime::GetInstance()->GetRawHeapDumpCropLevel();
     if (cropLevel == RawHeapDumpCropLevel::LEVEL_V2) {
-        rawHeapDump_ = new RawHeapDumpV2(vm_, fdStream_.get(), snapshot_.get(), entryIdMap, option);
+        rawHeapDump_ = new RawHeapDumpV2(vm_, outputStream_.get(), snapshot_.get(), entryIdMap, option);
     } else {
-        rawHeapDump_ = new RawHeapDumpV1(vm_, fdStream_.get(), snapshot_.get(), entryIdMap, option);
+        rawHeapDump_ = new RawHeapDumpV1(vm_, outputStream_.get(), snapshot_.get(), entryIdMap, option);
     }
     return true;
 }

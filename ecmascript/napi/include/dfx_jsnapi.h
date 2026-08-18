@@ -82,17 +82,20 @@ class PUBLIC_API DFXJSNApi {
 public:
     // progress pointer is used to report the object number for IDE.
     // isVmMode means the internal class in vm is visible. isPrivate means the number and string is not visible.
+    static bool DumpHybridHeapSnapshot(const std::string &path, const DumpSnapShotOption &dumpOption);
     static void DumpHeapSnapshot(const EcmaVM *vm, const std::string &path, const DumpSnapShotOption &dumpOption,
                                  const std::function<void(uint8_t)> &callback = nullptr);
     static void DumpHeapSnapshot(const EcmaVM *vm, Stream *stream, const DumpSnapShotOption &dumpOption,
                                  Progress *progress = nullptr,
                                  std::function<void(uint8_t)> callback = [] (uint8_t) {});
+    static bool DumpHybridRawHeapSnapshot(const std::string &dynamicPath, const std::string &staticPath,
+                                          const DumpSnapShotOption &dumpOption,
+                                          std::function<void(uint8_t)> callback = nullptr);
     static void DumpCpuProfile(const EcmaVM *vm);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static bool PerformHybridHeapDump(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
-    static bool PerformHybridHeapDump(const EcmaVM *vm, Stream *stream, const DumpSnapShotOption &dumpOption);
     static void ScheduleHybridHeapDump(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void ScheduleHybridDumpOnLoop(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);

@@ -42,7 +42,9 @@ public:
 
     bool Dump(EcmaVM *vm, Stream *stream, DumpSnapShotOption &dumpOption);
 
-    bool BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption);
+    bool BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption, const std::string &dynamicFileName = "",
+                    const std::string &staticFileName = "",
+                    const std::function<void(uint8_t)> &callback = {});
 
     EntryIdMap *GetEntryIdMap()
     {

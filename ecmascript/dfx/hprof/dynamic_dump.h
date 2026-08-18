@@ -32,6 +32,8 @@ using common::dump::AbstractDumper;
 using common::dump::DumpRequest;
 using common::dump::DumpResult;
 
+class DynamicDumpTestHelper;
+
 /**
  * @brief Owns the dynamic side of a hybrid binary heap dump.
  *
@@ -71,6 +73,10 @@ public:
 
     void PrepareSession() override;
     bool AcquireOutput() override;
+    int GetOutputFd() const override
+    {
+        return outputFd_;
+    }
     DumpResult Dump() override;
 
     /**
@@ -106,19 +112,23 @@ private:
     bool InitializeHeapProfiler();
     bool IsDynamicOOM() const;
     DumpSnapShotOption CreateDumpOption() const;
+    bool CreateOutputStream();
     bool CreateRawHeapDump();
     bool Execute();
 
     HeapDumpSession dumpSession_;
     EcmaVM                    *vm_;
     RawHeapDump               *rawHeapDump_ {nullptr};  // owned, deleted before its dependencies
-    std::unique_ptr<FileDescriptorStream> fdStream_;  // owns fd; reset after rawHeapDump_
+    std::unique_ptr<Stream> outputStream_;  // owns fd/path stream; reset after rawHeapDump_
+    int outputFd_ {-1};
     std::unique_ptr<StringHashMap> stringTable_;  // owned, destroyed after rawHeapDump_
     std::unique_ptr<HeapSnapshot>  snapshot_;      // owned, destroyed after rawHeapDump_
     HeapProfiler *heapProfiler_ {nullptr};
     HeapProfilerOwnership heapProfilerOwnership_ {HeapProfilerOwnership::NONE};
     DumpRequest request_ {};
     std::unique_ptr<RuntimeScope> runtimeScope_;
+
+    friend class DynamicDumpTestHelper;
 };
 
 }  // namespace panda::ecmascript

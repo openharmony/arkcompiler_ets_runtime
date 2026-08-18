@@ -638,7 +638,7 @@ EcmaVM::~EcmaVM()
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 #ifdef ECMASCRIPT_SUPPORT_HEAPPROFILER
-    DeleteHybridHeapProfile();
+    DeleteHybridHeapProfiler();
 #endif  // ECMASCRIPT_SUPPORT_HEAPPROFILER
     if (Runtime::GetInstance()->IsHybridVm() && crossVMOperator_ != nullptr) {
         delete crossVMOperator_;
@@ -1509,7 +1509,7 @@ HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-void EcmaVM::DeleteHybridHeapProfile()
+void EcmaVM::DeleteHybridHeapProfiler()
 {
     if (hybridHeapProfiler_ == nullptr) {
         return;

@@ -881,7 +881,7 @@ public:
     void  SetHeapProfile(HeapProfilerInterface *heapProfile) { heapProfile_ = heapProfile; }
     HeapProfilerInterface *GetOrNewHeapProfile();
 #if defined(PANDA_JS_ETS_HYBRID_MODE)
-    void DeleteHybridHeapProfile();
+    void DeleteHybridHeapProfiler();
     HybridHeapProfiler *GetOrNewHybridHeapProfiler();
 #endif // PANDA_JS_ETS_HYBRID_MODE
     void StartHeapTracking();
