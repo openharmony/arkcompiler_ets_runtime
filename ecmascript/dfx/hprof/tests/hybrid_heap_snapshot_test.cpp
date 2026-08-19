@@ -647,10 +647,91 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DynamicProcessDumpCanSuspendFromExternalThre
             return prepared;
         });
         EXPECT_TRUE(thread_->HasSuspendRequest());
+        EXPECT_FALSE(thread_->IsCrossThreadExecutionEnable());
         release = true;
     }
     condition.notify_one();
     worker.join();
+    EXPECT_FALSE(thread_->IsCrossThreadExecutionEnable());
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicProcessDumpPreservesCrossThreadExecution)
+{
+    DumpRequest request;
+    request.policy.executionMode = DumpExecutionMode::IN_PROCESS;
+    request.policy.scope = DumpScope::PROCESS;
+    request.policy.triggerGC = false;
+
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool prepared = false;
+    bool release = false;
+
+    thread_->SetCrossThreadExecution(true);
+    ThreadSuspensionScope suspensionScope(thread_);
+    std::thread worker([this, &request, &mutex, &prepared, &condition, &release]() {
+        DynamicDump dumper(ecmaVm_, request);
+        dumper.PrepareSession();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            prepared = true;
+        }
+        condition.notify_one();
+
+        std::unique_lock<std::mutex> lock(mutex);
+        condition.wait(lock, [&release]() {
+            return release;
+        });
+    });
+
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        condition.wait(lock, [&prepared]() {
+            return prepared;
+        });
+        EXPECT_TRUE(thread_->HasSuspendRequest());
+        EXPECT_TRUE(thread_->IsCrossThreadExecutionEnable());
+        release = true;
+    }
+    condition.notify_one();
+    worker.join();
+    EXPECT_TRUE(thread_->IsCrossThreadExecutionEnable());
+    thread_->SetCrossThreadExecution(false);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpReleasesProfilerCreatedForNormalDump)
+{
+    ASSERT_EQ(ecmaVm_->GetHeapProfile(), nullptr);
+    DumpRequest request;
+    request.policy.executionMode = DumpExecutionMode::IN_PROCESS;
+    request.policy.scope = DumpScope::VM;
+    request.policy.triggerGC = false;
+
+    {
+        DynamicDump dumper(ecmaVm_, request);
+        dumper.PrepareSession();
+        ASSERT_NE(ecmaVm_->GetHeapProfile(), nullptr);
+    }
+    EXPECT_EQ(ecmaVm_->GetHeapProfile(), nullptr);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpPreservesExternallyOwnedProfiler)
+{
+    ASSERT_EQ(ecmaVm_->GetHeapProfile(), nullptr);
+    auto *ownedProfiler = HeapProfilerInterface::GetInstance(ecmaVm_);
+    ASSERT_NE(ownedProfiler, nullptr);
+
+    DumpRequest request;
+    request.policy.executionMode = DumpExecutionMode::IN_PROCESS;
+    request.policy.scope = DumpScope::VM;
+    request.policy.triggerGC = false;
+    {
+        DynamicDump dumper(ecmaVm_, request);
+        dumper.PrepareSession();
+        EXPECT_EQ(ecmaVm_->GetHeapProfile(), ownedProfiler);
+    }
+    EXPECT_EQ(ecmaVm_->GetHeapProfile(), ownedProfiler);
+    HeapProfilerInterface::Destroy(ecmaVm_);
 }
 
 HWTEST_F_L0(HybridHeapSnapshotTest, HeapDumpSessionWaitDoesNotBlockSharedGC)
@@ -668,8 +749,11 @@ HWTEST_F_L0(HybridHeapSnapshotTest, HeapDumpSessionWaitDoesNotBlockSharedGC)
     std::thread worker(WaitForHeapDumpSession, std::ref(contender), std::ref(ready),
                        std::ref(start), std::ref(acquired));
 
-    while (!ready.load(std::memory_order_acquire)) {
-        std::this_thread::yield();
+    {
+        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> waitScope(thread_);
+        while (!ready.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
     }
     JSThread *workerThread = contender.load(std::memory_order_acquire);
     if (workerThread == nullptr) {
@@ -695,7 +779,10 @@ HWTEST_F_L0(HybridHeapSnapshotTest, HeapDumpSessionWaitDoesNotBlockSharedGC)
     }
 
     owner.reset();
-    worker.join();
+    {
+        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> waitScope(thread_);
+        worker.join();
+    }
     EXPECT_TRUE(acquired.load(std::memory_order_acquire));
 }
 

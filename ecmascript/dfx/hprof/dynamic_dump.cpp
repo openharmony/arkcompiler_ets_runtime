@@ -24,6 +24,7 @@
 #endif
 
 #include <unistd.h>
+#include <vector>
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
@@ -37,6 +38,53 @@ using common::dump::DumpExecutionMode;
 using common::dump::DumpIdentity;
 using common::dump::DumpReason;
 using common::dump::DumpScope;
+
+class DynamicDump::CrossThreadExecutionScope final {
+public:
+    explicit CrossThreadExecutionScope(JSThread *thread) : thread_(thread)
+    {
+        ASSERT(thread_ != nullptr);
+        enabledByScope_ = thread_->CheckMultiThread();
+        if (enabledByScope_) {
+            thread_->SetCrossThreadExecution(true);
+        }
+    }
+
+    ~CrossThreadExecutionScope()
+    {
+        if (enabledByScope_) {
+            thread_->SetCrossThreadExecution(false);
+        }
+    }
+
+    NO_COPY_SEMANTIC(CrossThreadExecutionScope);
+    NO_MOVE_SEMANTIC(CrossThreadExecutionScope);
+
+private:
+    JSThread *thread_;
+    bool enabledByScope_ {false};
+};
+
+class DynamicDump::CrossThreadExecutionScopes final {
+public:
+    CrossThreadExecutionScopes(EcmaVM *vm, bool isProcessDump)
+    {
+        ASSERT(vm != nullptr);
+        if (!isProcessDump) {
+            scopes_.emplace_back(std::make_unique<CrossThreadExecutionScope>(vm->GetAssociatedJSThread()));
+            return;
+        }
+        Runtime::GetInstance()->GCIterateThreadList([this](JSThread *thread) {
+            scopes_.emplace_back(std::make_unique<CrossThreadExecutionScope>(thread));
+        });
+    }
+
+    NO_COPY_SEMANTIC(CrossThreadExecutionScopes);
+    NO_MOVE_SEMANTIC(CrossThreadExecutionScopes);
+
+private:
+    std::vector<std::unique_ptr<CrossThreadExecutionScope>> scopes_;
+};
 
 class DynamicDump::RuntimeScope final {
 public:
@@ -91,6 +139,7 @@ private:
             return;
         }
 
+        CrossThreadExecutionScopes executionScopes(vm, isProcessDump);
         auto prepareLocalHeaps = [vm, isProcessDump]() {
             if (!isProcessDump) {
                 vm->GetHeap()->Prepare();
@@ -137,32 +186,6 @@ private:
     std::unique_ptr<SuspendAllScopeFromExternal> externalSuspendGuard_;
 };
 
-class DynamicDump::CrossThreadExecutionScope final {
-public:
-    explicit CrossThreadExecutionScope(JSThread *thread) : thread_(thread)
-    {
-        ASSERT(thread_ != nullptr);
-        enabledByScope_ = thread_->CheckMultiThread();
-        if (enabledByScope_) {
-            thread_->SetCrossThreadExecution(true);
-        }
-    }
-
-    ~CrossThreadExecutionScope()
-    {
-        if (enabledByScope_) {
-            thread_->SetCrossThreadExecution(false);
-        }
-    }
-
-    NO_COPY_SEMANTIC(CrossThreadExecutionScope);
-    NO_MOVE_SEMANTIC(CrossThreadExecutionScope);
-
-private:
-    JSThread *thread_;
-    bool enabledByScope_ {false};
-};
-
 DynamicDump::DynamicDump(EcmaVM *vm, const DumpRequest &request)
     : vm_(vm), request_(request)
 {
@@ -188,9 +211,10 @@ std::unique_ptr<AbstractDumper> DynamicDump::Create(EcmaVM *vm, const DumpReques
 
 DynamicDump::~DynamicDump()
 {
-    // Resume the dynamic runtime before releasing any dump resources.
-    runtimeScope_.reset();
-    // Order: rawHeapDump (uses stream) -> close fd -> snapshot/stringTable.
+    // Keep the runtime suspended until the VM no longer exposes a profiler
+    // owned by this dump. Resuming first would let allocation or GC paths race
+    // with HeapProfilerInterface::Destroy(vm_).
+    // Order: rawHeapDump (uses stream) -> close fd -> snapshot/stringTable -> profiler.
     delete rawHeapDump_;
     rawHeapDump_ = nullptr;
     fdStream_.reset();
@@ -202,6 +226,7 @@ DynamicDump::~DynamicDump()
         HeapProfilerInterface::Destroy(vm_);
     }
     heapProfiler_ = nullptr;
+    runtimeScope_.reset();
     LOG_ECMA(INFO) << "[HybDump][Dyn] Dumper destroyed";
 }
 
@@ -366,7 +391,7 @@ bool DynamicDump::Execute()
 
 DumpResult DynamicDump::Dump()
 {
-    CrossThreadExecutionScope executionScope(vm_->GetAssociatedJSThread());
+    CrossThreadExecutionScopes executionScopes(vm_, request_.policy.scope == DumpScope::PROCESS);
     if (!AcquireOutput() || !CreateRawHeapDump()) {
         return {{0, 0}, false};
     }
