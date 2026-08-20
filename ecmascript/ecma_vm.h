@@ -136,6 +136,9 @@ struct CJSInfo;
 enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
+using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
+using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
+    std::string &packageName)>;
 using ResolveBufferCallback =
     std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
 using TimerCallbackFunc = void (*)(void *data);
@@ -616,6 +619,26 @@ public:
     NativePtrGetter GetNativePtrGetter() const
     {
         return nativePtrGetter_;
+    }
+
+    void SetSourceMapCallback(SourceMapCallback cb)
+    {
+        sourceMapCallback_ = cb;
+    }
+
+    SourceMapCallback GetSourceMapCallback() const
+    {
+        return sourceMapCallback_;
+    }
+
+    void SetSourceMapTranslateCallback(SourceMapTranslateCallback cb)
+    {
+        sourceMapTranslateCallback_ = cb;
+    }
+
+    SourceMapTranslateCallback GetSourceMapTranslateCallback() const
+    {
+        return sourceMapTranslateCallback_;
     }
 
     void SetResolveBufferCallback(ResolveBufferCallback cb)
@@ -1887,6 +1910,8 @@ private:
 
     CVector<StopPreLoadSoCallback> stopPreLoadCallbacks_;
     NativePtrGetter nativePtrGetter_ {nullptr};
+    SourceMapCallback sourceMapCallback_ {nullptr};
+    SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     NativeReferenceDataCallbackGetter nativeReferenceDataGetter_ {nullptr};
     void *loop_ {nullptr};
 
