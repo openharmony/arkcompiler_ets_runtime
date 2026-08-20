@@ -41,7 +41,7 @@ public:
     static inline void PrintNativeModuleLoadFailure(JSThread *thread, const CString &moduleName)
     {
         std::optional<CString> reason = thread->GetEcmaVM()->GetSoLoadFailureByModuleName(moduleName);
-        LOG_ECMA(WARN) << "Load native module failed, ModuleName: " << moduleName
+        LOG_ECMA(DEBUG) << "Load native module failed, ModuleName: " << moduleName
             << (reason.has_value() ? ", Reason: " + *reason : "");
     }
 
