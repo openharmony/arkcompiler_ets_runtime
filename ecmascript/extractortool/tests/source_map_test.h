@@ -285,16 +285,6 @@ public:
         return sourceMap_->TranslateUrlPositionBySourceMap(url, line, column, packageName);
     }
 
-    InitStatus GetInitStatus() const
-    {
-        return sourceMap_->GetInitStatus();
-    }
-
-    void SetInitStatus(InitStatus status)
-    {
-        sourceMap_->SetInitStatus(status);
-    }
-
 private:
     std::shared_ptr<SourceMap> sourceMap_ {nullptr};
 };

@@ -56,6 +56,16 @@ public:
         samples_record.NapiFrameInfoTempToMap();
     }
 
+    void TranslateUrlPositionBySourceMapTest(struct FrameInfo &codeEntry)
+    {
+        samples_record.TranslateUrlPositionBySourceMap(codeEntry);
+    }
+
+    void sourceMapTranslateCallbackTest(SourceMapTranslateCallback sourceMapTranslateCallback_)
+    {
+        samples_record.sourceMapTranslateCallback_ = sourceMapTranslateCallback_;
+    }
+
     std::unique_ptr<ProfileInfo> GetProfileInfoTest()
     {
         return std::move(samples_record.profileInfo_);
@@ -280,6 +290,57 @@ HWTEST_F_L0(SamplesRecordTest, NapiFrameInfoTempToMapTest)
     frameInfoTemp.lineNumber = static_cast<int>(5);
     samplesRecord.PushNapiStackInfoTest(frameInfoTemp);
     samplesRecord.NapiFrameInfoTempToMapTest();
+}
+
+HWTEST_F_L0(SamplesRecordTest, TranslateUrlPositionBySourceMapTest)
+{
+    SamplesRecordFriendTest samplesRecord;
+    FrameInfo entry1;
+    SourceMapTranslateCallback sourceMapTranslateCallback_ = [](const std::string&, int, int,
+                                                                std::string) { return true; };
+    samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
+    samplesRecord.TranslateUrlPositionBySourceMapTest(entry1);
+    EXPECT_EQ(entry1.url, "");
+
+    FrameInfo entry2;
+    entry2.url = "some_url.js";
+    entry2.packageName = "name";
+    sourceMapTranslateCallback_ = [](const std::string&, int, int, std::string) { return true; };
+    samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
+    samplesRecord.TranslateUrlPositionBySourceMapTest(entry2);
+    EXPECT_EQ(entry2.url, "some_url.js");
+
+    FrameInfo entry3;
+    entry3.url = "path/to/_.js";
+    entry3.packageName = "name";
+    sourceMapTranslateCallback_ = [](const std::string&, int, int, std::string) { return false; };
+    samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
+    samplesRecord.TranslateUrlPositionBySourceMapTest(entry3);
+    EXPECT_EQ(entry3.url, "path/to/_.js");
+
+    FrameInfo entry4;
+    entry4.url = "entry/some_key.ets";
+    entry4.packageName = "name";
+    sourceMapTranslateCallback_ = [](const std::string&, int, int, std::string) { return false; };
+    samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
+    samplesRecord.TranslateUrlPositionBySourceMapTest(entry4);
+    EXPECT_EQ(entry4.url, "entry/build/default/cache/default/default@CompileArkTS/esmodule/debug/some_key.js");
+
+    FrameInfo entry5;
+    entry5.url = "entry/some_key.other";
+    entry5.packageName = "name";
+    sourceMapTranslateCallback_ = [](const std::string&, int, int, std::string) { return false; };
+    samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
+    samplesRecord.TranslateUrlPositionBySourceMapTest(entry5);
+    EXPECT_EQ(entry5.url, "entry/some_key.other");
+
+    FrameInfo entry6;
+    entry6.url = "other/path.js";
+    entry6.packageName = "name";
+    sourceMapTranslateCallback_ = [](const std::string&, int, int, std::string) { return false; };
+    samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
+    samplesRecord.TranslateUrlPositionBySourceMapTest(entry6);
+    EXPECT_EQ(entry6.url, "other/path.js");
 }
 
 /**

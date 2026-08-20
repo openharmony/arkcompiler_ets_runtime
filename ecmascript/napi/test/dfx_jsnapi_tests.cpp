@@ -722,6 +722,38 @@ HWTEST_F_L0(DFXJSNApiTests, StopTracing)
 #endif
 }
 
+HWTEST_F_L0(DFXJSNApiTests, TranslateJSStackInfo)
+{
+    std::string resultUrl = "";
+    auto cb = [&resultUrl](std::string& url, int& line, int& column, std::string& packageName) -> bool {
+        line = 0;
+        column = 0;
+        packageName = "name";
+        if (url.find("TranslateJSStackInfo", 0) != std::string::npos) {
+            resultUrl = "true";
+            return true;
+        }
+        resultUrl = "false";
+        return false;
+    };
+
+    vm_->SetSourceMapTranslateCallback(nullptr);
+    std::string url = "TranslateJSStackInfo";
+    int32_t line = 0;
+    int32_t column = 0;
+    std::string packageName = "";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
+
+    vm_->SetSourceMapTranslateCallback(cb);
+    url = "Translate";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
+    ASSERT_STREQ(resultUrl.c_str(), "false");
+
+    url = "TranslateJSStackInfo";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
+    ASSERT_STREQ(resultUrl.c_str(), "true");
+}
+
 HWTEST_F_L0(DFXJSNApiTests, GetCurrentThreadId)
 {
     ASSERT_EQ(DFXJSNApi::GetCurrentThreadId(), JSThread::GetCurrentThreadId());

@@ -144,10 +144,13 @@ using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
+using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using TimerCallbackFunc = void (*)(void *data);
 using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
 using CancelTimerCallback = void (*)(void *timerCallbackInfo);
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
+using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
+    std::string& packageName)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using QueueType = ecmascript::job::QueueType;
 using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
@@ -2018,6 +2021,8 @@ public:
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetNativeReferenceDataGetter(EcmaVM *vm, void* cb);
+    static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
+    static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb,
                                 QueueType queueType = QueueType::QUEUE_PROMISE);
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
