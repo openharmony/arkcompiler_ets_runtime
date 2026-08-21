@@ -80,6 +80,43 @@ using HybridHeapProfiler = ecmascript::HybridHeapProfiler;
 #endif
 sem_t g_heapdumpCnt;
 
+bool DFXJSNApi::DumpHybridHeapSnapshot([[maybe_unused]] const std::string &path,
+                                       [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
+    ecmascript::JSThread *thread = ecmascript::JSThread::GetCurrent();
+    EcmaVM *vm = thread == nullptr ? nullptr : thread->GetEcmaVM();
+    // A pure ArkTS-Sta thread has no current JSThread. Pass nullptr through so
+    // HybridHeapProfiler can select the static-only dump path.
+    auto *hybridProfiler = HybridHeapProfiler::GetInstance();
+    if (hybridProfiler == nullptr) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DumpHybridHeapSnapshot: HybridHeapProfiler not available";
+        return false;
+    }
+    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DumpHybridHeapSnapshot: binary dump is not supported";
+        return false;
+    }
+    FileStream stream(path);
+    if (!stream.Good()) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DumpHybridHeapSnapshot: failed to open output path";
+        return false;
+    }
+    DumpSnapShotOption mutableOption = dumpOption;
+    bool result = hybridProfiler->Dump(vm, &stream, mutableOption);
+    if (dumpOption.isClearNodeIdCache) {
+        EcmaVM *mainVm = Runtime::GetInstance()->GetMainThread()->GetEcmaVM();
+        if (mainVm != nullptr) {
+            mainVm->DeleteHybridHeapProfiler();
+        }
+    }
+    return result;
+#else
+    LOG_ECMA(ERROR) << "[HybridHeapDump] Not support arkcompiler heap snapshot";
+    return false;
+#endif
+}
+
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
                                  [[maybe_unused]] const DumpSnapShotOption &dumpOption,
                                  const std::function<void(uint8_t)> &callback)
@@ -93,16 +130,40 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
         return;
     }
     FileStream stream(path);
-    if (dumpOption.languageEnv == LanguageEnv::DYNAMIC) {
-        DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
-    } else {
-        PerformHybridHeapDump(vm, &stream, dumpOption);
-    }
+    DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
 #else
     if (callback) {
         callback(static_cast<uint8_t>(ecmascript::DumpHeapSnapshotStatus::FORK_FAILED));
     }
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
+}
+
+bool DFXJSNApi::DumpHybridRawHeapSnapshot([[maybe_unused]] const std::string &dynamicPath,
+                                          [[maybe_unused]] const std::string &staticPath,
+                                          [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                          [[maybe_unused]] std::function<void(uint8_t)> callback)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
+    if (dumpOption.dumpFormat != DumpFormat::BINARY || dumpOption.languageEnv == LanguageEnv::DYNAMIC ||
+        dynamicPath.empty() || staticPath.empty()) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DumpHybridRawHeapSnapshot: invalid dump option or output path";
+        return false;
+    }
+    ecmascript::JSThread *thread = ecmascript::JSThread::GetCurrent();
+    EcmaVM *vm = thread == nullptr ? nullptr : thread->GetEcmaVM();
+    // A pure ArkTS-Sta thread has no current JSThread. BinaryDump treats a null
+    // EcmaVM as a static-only request when the current thread is attached to STS.
+    auto *hybridProfiler = HybridHeapProfiler::GetInstance();
+    if (hybridProfiler == nullptr) {
+        LOG_ECMA(ERROR) << "[HybridHeapDump] DumpHybridRawHeapSnapshot: HybridHeapProfiler not available";
+        return false;
+    }
+    DumpSnapShotOption mutableOption = dumpOption;
+    return hybridProfiler->BinaryDump(vm, mutableOption, dynamicPath, staticPath, callback);
+#else
+    LOG_ECMA(ERROR) << "[HybridHeapDump] Not support arkcompiler hybrid rawheap snapshot";
+    return false;
 #endif
 }
 
@@ -299,35 +360,22 @@ bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
     auto *hybridProfiler = HybridHeapProfiler::GetInstance();
     if (hybridProfiler == nullptr) {
-        LOG_ECMA(ERROR) << "PerformHybridHeapDump: HybridHeapProfiler not available";
+        LOG_ECMA(ERROR) << "[HybridHeapDump] PerformHybridHeapDump: HybridHeapProfiler not available";
         return false;
     }
     if (dumpOption.dumpFormat == DumpFormat::BINARY) {
         return hybridProfiler->BinaryDump(const_cast<EcmaVM *>(vm),
                                           const_cast<DumpSnapShotOption &>(dumpOption));
     }
-    return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), nullptr,
-                                const_cast<DumpSnapShotOption &>(dumpOption));
-#endif
-    return false;
-}
-
-bool DFXJSNApi::PerformHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
-                                      [[maybe_unused]] Stream *stream,
-                                      [[maybe_unused]] const DumpSnapShotOption &dumpOption)
-{
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
-    auto *hybridProfiler = HybridHeapProfiler::GetInstance();
-    if (hybridProfiler == nullptr) {
-        LOG_ECMA(ERROR) << "PerformHybridHeapDump: HybridHeapProfiler not available";
-        return false;
+    bool result = hybridProfiler->Dump(const_cast<EcmaVM *>(vm), nullptr,
+                                       const_cast<DumpSnapShotOption &>(dumpOption));
+    if (dumpOption.isClearNodeIdCache) {
+        EcmaVM *mainVm = Runtime::GetInstance()->GetMainThread()->GetEcmaVM();
+        if (mainVm != nullptr) {
+            mainVm->DeleteHybridHeapProfiler();
+        }
     }
-    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
-        LOG_ECMA(ERROR) << "PerformHybridHeapDump: hybrid binary dump with external stream is not supported yet";
-        return false;
-    }
-    return hybridProfiler->Dump(const_cast<EcmaVM *>(vm), stream,
-                                const_cast<DumpSnapShotOption &>(dumpOption));
+    return result;
 #endif
     return false;
 }
@@ -336,10 +384,6 @@ void DFXJSNApi::ScheduleHybridHeapDump([[maybe_unused]] const EcmaVM *vm,
                                        [[maybe_unused]] const DumpSnapShotOption &dumpOption,
                                        [[maybe_unused]] uint32_t tid)
 {
-    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
-        LOG_ECMA(ERROR) << "ScheduleHybridHeapDump: hybrid binary dump is not supported yet";
-        return;
-    }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER) && defined(PANDA_JS_ETS_HYBRID_MODE)
     uint32_t mainTid = vm->GetTid();
 

@@ -66,7 +66,7 @@ std::pair<bool, std::string> FileStream::FilePathValid(const std::string &fileNa
     }
     char resolvedPath[PATH_MAX] = {0};
     auto result = realpath(fileName.c_str(), resolvedPath);
-    if (result == resolvedPath || errno == ENOENT) {
+    if (result == resolvedPath) {
         return std::make_pair(true, std::string(resolvedPath));
     }
     return std::make_pair(false, "");

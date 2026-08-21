@@ -281,15 +281,17 @@ int32_t HybridHeapProfiler::AcquireDumpStream(const DumpSnapShotOption &dumpOpti
 #endif
 }
 
-bool HybridHeapProfiler::BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption)
+bool HybridHeapProfiler::BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption,
+                                    const std::string &dynamicFileName, const std::string &staticFileName,
+                                    const std::function<void(uint8_t)> &callback)
 {
     if (!HasSTSInterface()) {
-        LOG_ECMA(ERROR) << "[HybDump][Dyn] Request rejected: static interface unavailable";
+        LOG_ECMA(ERROR) << "[HybridHeapDump] Request rejected: static interface unavailable";
         return false;
     }
     dumpOption.dumpDynamicHeap = vm != nullptr;
     dumpOption.dumpStaticHeap = stsInterface_->IsCurrentThreadAttached();
-    LOG_ECMA(INFO) << "[HybDump][Dyn] Request ready: dynamic="
+    LOG_ECMA(INFO) << "[HybridHeapDump] Request ready: dynamic="
                    << (dumpOption.dumpDynamicHeap ? "true" : "false")
                    << ", static=" << (dumpOption.dumpStaticHeap ? "true" : "false")
                    << ", gc=" << (dumpOption.isFullGC ? "true" : "false")
@@ -303,6 +305,9 @@ bool HybridHeapProfiler::BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption)
     request.policy.triggerGC = dumpOption.isFullGC;
     request.policy.scope = dumpOption.isProcDump ? DumpScope::PROCESS : DumpScope::VM;
     request.policy.executionMode = dumpOption.isSync ? DumpExecutionMode::IN_PROCESS : DumpExecutionMode::FORK_ONCE;
+    request.output.dynamicPath = dumpOption.dumpDynamicHeap ? dynamicFileName : "";
+    request.output.staticPath = dumpOption.dumpStaticHeap ? staticFileName : "";
+    request.completionCallback = callback;
     request.identity = {static_cast<int32_t>(getpid()), static_cast<int32_t>(JSThread::GetCurrentThreadId()),
                         panda::time::GetCurrentTimeInMillis(true)};
     arkplatform::EcmaVMInterface *ecmaInterface = nullptr;
@@ -310,7 +315,7 @@ bool HybridHeapProfiler::BinaryDump(EcmaVM *vm, DumpSnapShotOption &dumpOption)
         auto *crossVMOperator = vm->GetCrossVMOperator();
         ecmaInterface = crossVMOperator == nullptr ? nullptr : crossVMOperator->GetEcmaVMInterface();
         if (ecmaInterface == nullptr) {
-            LOG_ECMA(ERROR) << "[HybDump][Dyn] Request rejected: dynamic interface unavailable";
+            LOG_ECMA(ERROR) << "[HybridHeapDump] Request rejected: dynamic interface unavailable";
             return false;
         }
     }

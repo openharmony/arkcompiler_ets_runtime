@@ -29,6 +29,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -196,12 +197,13 @@ public:
         etsToJs = etsToJs_;
     }
 
-    bool ExecuteHeapDump(const DumpRequest &, arkplatform::EcmaVMInterface *ecmaInterface,
+    bool ExecuteHeapDump(const DumpRequest &request, arkplatform::EcmaVMInterface *ecmaInterface,
                          bool dumpStaticHeap) override
     {
         dumpRequested_ = true;
         dynamicDumpRequested_ = ecmaInterface != nullptr;
         staticDumpRequested_ = dumpStaticHeap;
+        lastDumpRequest_ = request;
         return true;
     }
 
@@ -272,6 +274,19 @@ public:
 }  // close panda::test temporarily
 
 namespace panda::ecmascript {
+class DynamicDumpTestHelper {
+public:
+    static bool InitializeHeapProfiler(DynamicDump &dumper)
+    {
+        return dumper.InitializeHeapProfiler();
+    }
+
+    static bool CreateRawHeapDump(DynamicDump &dumper)
+    {
+        return dumper.CreateRawHeapDump();
+    }
+};
+
 class HybridHeapProfilerTestHelper {
 public:
     static void SetSTSInterface(HybridHeapProfiler &profiler, arkplatform::STSVMInterface *sts)
@@ -346,14 +361,8 @@ public:
     {
         profiler.FillIdMap(vm, dumpOption);
     }
-
-    static bool BinaryDump(HybridHeapProfiler &profiler, EcmaVM *vm,
-                           DumpSnapShotOption &dumpOption)
-    {
-        return profiler.BinaryDump(vm, dumpOption);
-    }
 };
-}  // namespace panda::ecmascript
+} // namespace panda::ecmascript
 
 namespace panda::test {
 
@@ -653,6 +662,78 @@ HWTEST_F_L0(HybridHeapSnapshotTest, DynamicProcessDumpCanSuspendFromExternalThre
     worker.join();
 }
 
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpAcquireOutputByPath)
+{
+    char outputPath[] = "dynamic_dump_output_XXXXXX";
+    int outputFd = mkstemp(outputPath);
+    ASSERT_GE(outputFd, 0);
+    close(outputFd);
+    {
+        DumpRequest request;
+        request.output.dynamicPath = outputPath;
+        DynamicDump dumper(ecmaVm_, request);
+        EXPECT_TRUE(dumper.AcquireOutput());
+        EXPECT_TRUE(dumper.AcquireOutput());
+    }
+    EXPECT_EQ(unlink(outputPath), 0);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpAcquireOutputWithInvalidPath)
+{
+    DumpRequest request;
+    request.output.dynamicPath = "/";
+    DynamicDump dumper(ecmaVm_, request);
+    EXPECT_FALSE(dumper.AcquireOutput());
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpAcquireOutputFromFaultlogger)
+{
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    DumpRequest request;
+    request.identity = {static_cast<int32_t>(getpid()),
+                        static_cast<int32_t>(JSThread::GetCurrentThreadId()), 1};
+    DynamicDump dumper(ecmaVm_, request);
+    (void)dumper.AcquireOutput();
+#else
+    SUCCEED();
+#endif
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpCreateRawHeapDumpRequiresOutput)
+{
+    DumpRequest request;
+    DynamicDump dumper(ecmaVm_, request);
+    ASSERT_TRUE(DynamicDumpTestHelper::InitializeHeapProfiler(dumper));
+    EXPECT_FALSE(DynamicDumpTestHelper::CreateRawHeapDump(dumper));
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, DynamicDumpCreatesV1AndV2RawHeapDump)
+{
+    Runtime *runtime = Runtime::GetInstance();
+    RawHeapDumpCropLevel originalLevel = runtime->GetRawHeapDumpCropLevel();
+    char outputPath[] = "dynamic_rawheap_output_XXXXXX";
+    int outputFd = mkstemp(outputPath);
+    ASSERT_GE(outputFd, 0);
+    close(outputFd);
+    auto createRawHeapDump = [this, runtime, originalLevel, &outputPath](RawHeapDumpCropLevel level) {
+        DumpRequest request;
+        request.output.dynamicPath = outputPath;
+        DynamicDump dumper(ecmaVm_, request);
+        if (!DynamicDumpTestHelper::InitializeHeapProfiler(dumper) || !dumper.AcquireOutput()) {
+            return false;
+        }
+        runtime->SetRawHeapDumpCropLevel(level);
+        bool result = DynamicDumpTestHelper::CreateRawHeapDump(dumper);
+        runtime->SetRawHeapDumpCropLevel(originalLevel);
+        return result;
+    };
+
+    EXPECT_TRUE(createRawHeapDump(RawHeapDumpCropLevel::LEVEL_V1));
+    EXPECT_TRUE(createRawHeapDump(RawHeapDumpCropLevel::LEVEL_V2));
+    runtime->SetRawHeapDumpCropLevel(originalLevel);
+    EXPECT_EQ(unlink(outputPath), 0);
+}
+
 HWTEST_F_L0(HybridHeapSnapshotTest, HeapDumpSessionWaitDoesNotBlockSharedGC)
 {
     if (g_isEnableCMCGC) {
@@ -713,6 +794,7 @@ HWTEST_F_L0(HybridHeapSnapshotTest, ProfilerBasicBehavior)
     TestHybridStream stream;
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isClearNodeIdCache = true;
     ASSERT_FALSE(profiler.Dump(ecmaVm_, &stream, dumpOption));
     ASSERT_TRUE(HybridHeapProfilerTestHelper::SetAppFreezeFilter(profiler));
 }
@@ -1863,7 +1945,7 @@ HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_NoSTSInterface_ReturnsFalse)
 
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
-    ASSERT_FALSE(HybridHeapProfilerTestHelper::BinaryDump(profiler, ecmaVm_, dumpOption));
+    ASSERT_FALSE(profiler.BinaryDump(ecmaVm_, dumpOption));
 }
 
 HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_DynamicOnly_SetsFlagsCorrectly)
@@ -1879,10 +1961,54 @@ HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_DynamicOnly_SetsFlagsCorrectly)
     dumpOption.isSync = true;
 
     // BinaryDump sets dumpDynamicHeap=true (vm!=null), dumpStaticHeap=false (not attached)
-    ASSERT_TRUE(HybridHeapProfilerTestHelper::BinaryDump(profiler, ecmaVm_, dumpOption));
+    ASSERT_TRUE(profiler.BinaryDump(ecmaVm_, dumpOption));
     ASSERT_TRUE(mockSts->dumpRequested_);
     ASSERT_TRUE(mockSts->dynamicDumpRequested_);
     ASSERT_FALSE(mockSts->staticDumpRequested_);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_DynamicInterfaceUnavailable_ReturnsFalse)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    mockSts->isAttached_ = false;
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    std::atomic<EcmaVM *> workerVm {nullptr};
+    std::atomic<bool> ready {false};
+    std::atomic<bool> release {false};
+    Runtime::GetInstance()->SetHybridVm(false);
+    std::thread worker([&workerVm, &ready, &release]() {
+        RuntimeOption option;
+        option.SetIsWorker();
+        EcmaVM *vm = JSNApi::CreateJSVM(option);
+        workerVm.store(vm, std::memory_order_release);
+        ready.store(true, std::memory_order_release);
+        while (!release.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+        if (vm != nullptr) {
+            JSNApi::DestroyJSVM(vm);
+        }
+    });
+    while (!ready.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+    Runtime::GetInstance()->SetHybridVm(true);
+
+    EcmaVM *vm = workerVm.load(std::memory_order_acquire);
+    bool result = false;
+    if (vm != nullptr) {
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = DumpFormat::BINARY;
+        result = profiler.BinaryDump(vm, dumpOption);
+    }
+    release.store(true, std::memory_order_release);
+    worker.join();
+
+    ASSERT_NE(vm, nullptr);
+    EXPECT_FALSE(result);
+    EXPECT_FALSE(mockSts->dumpRequested_);
 }
 
 HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_NeitherHeapAvailable_ReturnsFalse)
@@ -1895,7 +2021,7 @@ HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_NeitherHeapAvailable_ReturnsFalse
     // Pass vm=nullptr → dynamic heap not available, STS not attached → static not available
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
-    ASSERT_FALSE(HybridHeapProfilerTestHelper::BinaryDump(profiler, nullptr, dumpOption));
+    ASSERT_FALSE(profiler.BinaryDump(nullptr, dumpOption));
     ASSERT_FALSE(mockSts->dumpRequested_);
 }
 
@@ -1912,7 +2038,7 @@ HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_StaticOnly_SetsFlagsCorrectly)
     dumpOption.isFullGC = false;
     dumpOption.isSync = true;
 
-    ASSERT_TRUE(HybridHeapProfilerTestHelper::BinaryDump(profiler, nullptr, dumpOption));
+    ASSERT_TRUE(profiler.BinaryDump(nullptr, dumpOption));
     ASSERT_FALSE(dumpOption.dumpDynamicHeap) << "vm=nullptr should mean dynamic=false";
     ASSERT_TRUE(dumpOption.dumpStaticHeap) << "STS attached should mean static=true";
     ASSERT_TRUE(mockSts->dumpRequested_);
@@ -1932,12 +2058,35 @@ HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_HybridFlags)
     dumpOption.isFullGC = false;
     dumpOption.isSync = true;
 
-    ASSERT_TRUE(HybridHeapProfilerTestHelper::BinaryDump(profiler, ecmaVm_, dumpOption));
+    ASSERT_TRUE(profiler.BinaryDump(ecmaVm_, dumpOption));
     ASSERT_TRUE(dumpOption.dumpDynamicHeap) << "vm!=nullptr should mean dynamic=true";
     ASSERT_TRUE(dumpOption.dumpStaticHeap) << "STS attached should mean static=true";
     ASSERT_TRUE(mockSts->dumpRequested_);
     ASSERT_TRUE(mockSts->dynamicDumpRequested_);
     ASSERT_TRUE(mockSts->staticDumpRequested_);
+}
+
+HWTEST_F_L0(HybridHeapSnapshotTest, BinaryDump_PropagatesHidebugRequest)
+{
+    HybridHeapProfiler profiler(ecmaVm_);
+    auto mockSts = std::make_unique<MockSTSVMInterface>();
+    mockSts->isAttached_ = true;
+    HybridHeapProfilerTestHelper::SetSTSInterface(profiler, mockSts.get());
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isFullGC = false;
+    dumpOption.isSync = false;
+    dumpOption.isProcDump = true;
+    auto callback = [](uint8_t) {};
+
+    ASSERT_TRUE(profiler.BinaryDump(
+        nullptr, dumpOption, "unused-dynamic.rawheap", "hidebug-static.rawheap", callback));
+    EXPECT_EQ(mockSts->lastDumpRequest_.policy.executionMode, DumpExecutionMode::FORK_ONCE);
+    EXPECT_EQ(mockSts->lastDumpRequest_.policy.scope, DumpScope::PROCESS);
+    EXPECT_TRUE(mockSts->lastDumpRequest_.output.dynamicPath.empty());
+    EXPECT_EQ(mockSts->lastDumpRequest_.output.staticPath, "hidebug-static.rawheap");
+    EXPECT_TRUE(static_cast<bool>(mockSts->lastDumpRequest_.completionCallback));
 }
 
 }  // namespace panda::test
