@@ -24,6 +24,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/platform/map.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/string/base_string_table.h"
@@ -87,7 +88,7 @@ private:
 
     static inline bool ReduceCountAndCheckFinish(EcmaStringTableCleaner *cleaner)
     {
-        return (cleaner->PendingTaskCount_.fetch_sub(1U, std::memory_order_relaxed) == 1U);
+        return (cleaner->PendingTaskCount_.fetch_sub(1U, std::memory_order_acq_rel) == 1U);
     }
 
     class SweepWeakRefTask : public common::Task {
@@ -340,21 +341,29 @@ public:
             cleaner_ = new EcmaStringTableCleaner(this);
         }
 #else
-        cleaner_ = new EcmaStringTableCleaner(this);
+        cleanerMap_ = PageMap(AlignUp(sizeof(EcmaStringTableCleaner), PageSize()), PAGE_PROT_READWRITE);
+        ASSERT(cleanerMap_.GetMem() != nullptr);
+        cleaner_ = new (cleanerMap_.GetMem()) EcmaStringTableCleaner(this);
 #endif
     }
 
     ~EcmaStringTable()
     {
+#ifdef USE_CMC_GC
         if (cleaner_ != nullptr) {
             delete cleaner_;
             cleaner_ = nullptr;
         }
-#ifdef USE_CMC_GC
         if (needDeleteChainedHashMap_) {
             ASSERT(!enableCMCGC_);
             delete reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(impl_.GetChainedHashMap());
         }
+#else
+    if (cleaner_ != nullptr) {
+        cleaner_->~EcmaStringTableCleaner();
+        PageUnmap(cleanerMap_);
+        cleaner_ = nullptr;
+    }
 #endif
     }
 
@@ -460,6 +469,7 @@ private:
 
     EcmaStringTableImpl impl_;
 
+    MemMap cleanerMap_;
     EcmaStringTableCleaner *cleaner_ = nullptr;
     bool enableCMCGC_ = false;
 #ifdef USE_CMC_GC
