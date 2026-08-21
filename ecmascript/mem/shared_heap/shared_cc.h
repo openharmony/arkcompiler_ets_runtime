@@ -48,15 +48,6 @@ private:
     SharedCCEvacuator *evacuator_;
 };
 
-struct ThreadWorkload {
-    JSThread *thread{nullptr};
-    std::vector<Region*> localRegions;
-    std::atomic<int> nextIndex_{-1};
-    int remainItems_{0};
-    Mutex mutex_;
-    ConditionVariable cv_;
-};
-
 class SharedCC {
 public:
     explicit SharedCC(SharedHeap *heap);
@@ -64,9 +55,6 @@ public:
 
     NO_COPY_SEMANTIC(SharedCC);
     NO_MOVE_SEMANTIC(SharedCC);
-
-    void Trigger(GCReason gcReason);
-    void RunPhases(GCReason gcReason);
 
     SharedHeap *GetHeap() const
     {
@@ -80,24 +68,26 @@ public:
 
     void NotifyMainThreadReady();
     void PrepareNewThread(JSThread *thread);
-    void SkipThreadWorkload(JSThread *thread);
+    void ProcessRSetFromBoundJSThread(RSetWorkListHandler *handler);
 
 private:
-    // GC Phases (called from RunPhases)
+    void ProcessRSetInternal(RSetWorkListHandler *handler, SharedCCEvacuator &evacuator);
+    void MergeBackAndResetRSetWorkListHandlers();
+
+    void RunConcurrentMarkPhase(GCReason gcReason);
+    void RunPhases(GCReason gcReason);
+
     void ConcurrentMark();
     void ReMarkAndPrepare(GCReason gcReason);
     void FinalizeAndReclaim();
-    void Finish();
-    void VerifyHeap();
-
+    void FinalizeAndReclaimInSTW(float previousStwDuration);
     // Copy & Reference Update
     void ParallelCopy();
     void UpdateReferences();
     void UpdateRoot();
-    void OnCopyFinished();
-    void OnUpdateFinished();
-    void WaitUpdateFinished();
+    void NotifyTasksFinished();
     void ProcessWeakReference();
+    void ProcessMainThreadRSet();
 
     // Preparation
     void PrepareMainThread();
@@ -142,7 +132,8 @@ private:
     // Start time for STW3 (FinalizeAndReclaim); finalized explicitly in FinalizeAndReclaim.
     ClockScope stw3Timer_;
 
-    bool ccRunning_{false};
+    // Tracks physical cleanup after logical completion.
+    bool ccRunning_ {false};
     std::vector<std::unique_ptr<SharedTlabAllocator>> tlabAllocators_;
     std::atomic<size_t> runningTaskCount_{0};
     Mutex waitMutex_;
@@ -151,15 +142,22 @@ private:
     std::vector<Region*> copyTasks_{};
     std::atomic<size_t> taskIter_{0};
 
-    std::vector<ThreadWorkload*> threadWorkloads_;
+    std::vector<RSetWorkListHandler*> rSetHandlers_;
+    // Cached while handlers remain bound to owner Heaps.
+    size_t localRSetRegionCount_ {0};
+    RSetWorkListHandler *mainThreadRSetHandler_ {nullptr};
+    size_t mainThreadRSetRegionCount_ {0};
     std::vector<Region*> sharedWorkloads_;
     std::atomic<size_t> sharedIter_{0};
 
     Mutex evacuatorsMutex_;
     std::vector<SharedCCEvacuator*> evacuators_;
+    bool concurrentProcessStringTable_ {false};
 
+    friend class SharedHeap;
     friend class SharedCCCopyTask;
     friend class SharedCCUpdateTask;
+    friend class SharedCCMainThreadRSetTask;
 };
 
 class SharedCCCopyTask : public common::Task {
@@ -197,6 +195,24 @@ public:
 
 private:
     SharedCC *cc_{nullptr};
+    std::atomic<size_t> &runningTaskCount_;
+};
+
+class SharedCCMainThreadRSetTask : public common::Task {
+public:
+    SharedCCMainThreadRSetTask(SharedCC *cc, RSetWorkListHandler *handler,
+                              std::atomic<size_t> &runningTaskCount)
+        : Task(0), cc_(cc), handler_(handler), runningTaskCount_(runningTaskCount) {}
+    ~SharedCCMainThreadRSetTask() override = default;
+
+    bool Run(uint32_t threadIndex) override;
+
+    NO_COPY_SEMANTIC(SharedCCMainThreadRSetTask);
+    NO_MOVE_SEMANTIC(SharedCCMainThreadRSetTask);
+
+private:
+    SharedCC *cc_{nullptr};
+    RSetWorkListHandler *handler_{nullptr};
     std::atomic<size_t> &runningTaskCount_;
 };
 }  // namespace panda::ecmascript

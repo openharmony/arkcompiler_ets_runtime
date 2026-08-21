@@ -79,7 +79,6 @@ static bool g_futVersion = OHOS::system::GetIntParameter("const.product.dfx.fans
 #endif
 
 namespace panda::ecmascript {
-RWLock BaseHeap::gcExclusiveRWLock_;
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 using common::dump::DumpExecutionMode;
@@ -555,7 +554,10 @@ void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
 
 void SharedHeap::TriggerSharedCC(GCReason gcReason)
 {
-    sharedCC_->Trigger(gcReason);
+    ASSERT(JSThread::GetCurrent() == dThread_);
+    // Initial mark runs before the daemon GC scope.
+    sharedCC_->RunConcurrentMarkPhase(gcReason);
+    DaemonCollectGarbage(TriggerGCType::SHARED_CC, gcReason);
 }
 
 void SharedHeap::RunSharedGC(TriggerGCType gcType, GCReason gcReason)
@@ -614,12 +616,22 @@ void SharedHeap::DaemonCollectGarbageWithFlip([[maybe_unused]]TriggerGCType gcTy
 void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
 {
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
-        gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC
+        gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC ||
+        gcType == TriggerGCType::SHARED_CC
     );
     ASSERT(JSThread::GetCurrent() == dThread_);
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
     RuntimeLock(dThread_, suspensionRequestMutex);
+    if (gcType == TriggerGCType::SHARED_CC) {
+        ASSERT(sConcurrentMarker_->IsTriggeredConcurrentMark());
+        SetGCThreadQosPriority(common::PriorityMode::STW);
+        sharedCC_->RunPhases(gcReason);
+        InvokeSharedNativePointerCallbacks();
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+        RuntimeUnLock(suspensionRequestMutex);
+        return;
+    }
     {
         ThreadManagedScope runningScope(dThread_);
         SetGCThreadQosPriority(common::PriorityMode::STW);
@@ -675,6 +687,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
 void SharedHeap::WaitAllTasksFinished(JSThread *thread)
 {
     WaitGCFinished(thread);
+    // This path does not drain SharedCC; its callers do not trigger SharedCC.
     sharedPartialGC_->WaitConcurrentUpdateFinished(thread);
     sSweeper_->WaitAllTaskFinished();
     Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
@@ -935,7 +948,6 @@ void SharedHeap::FinishGCStats(TriggerGCType gcType)
 
 void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
 {
-    // SharedCC calls FinishGCTask/FinishGCStats directly via friend access.
     if (inDaemon) {
         ASSERT(JSThread::GetCurrent() == dThread_);
 #ifndef NDEBUG
@@ -1408,7 +1420,10 @@ void Heap::ProcessSharedGCRSetWorkList()
 {
     if (sharedGCData_.rSetWorkListHandler_ != nullptr) {
         ASSERT(this == sharedGCData_.rSetWorkListHandler_->GetHeap());
-        if (sHeap_->GetSharedPartialGC()->IsConcurrentUpdating()) {
+        SharedCC *cc = sHeap_->GetSharedCC();
+        if (cc->IsRunning()) {
+            cc->ProcessRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        } else if (sHeap_->GetSharedPartialGC()->IsConcurrentUpdating()) {
             ASSERT(thread_->NeedReadBarrier());
             sHeap_->GetSharedGCEvacuator()
                 ->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
@@ -1433,11 +1448,6 @@ void Heap::Destroy()
 {
     ProcessSharedGCRSetWorkList();
     ProcessSharedGCMarkingLocalBuffer();
-    SharedCC *cc = sHeap_->GetSharedCC();
-    if (cc != nullptr && cc->IsRunning()) {
-        cc->SkipThreadWorkload(thread_);
-        thread_->InstallSharedCCEvacuator(nullptr);
-    }
     if (sOldTlab_ != nullptr) {
         sOldTlab_->Reset();
         delete sOldTlab_;
@@ -1759,12 +1769,6 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         }
     }
     ASSERT("CollectGarbageImpl should not be called" && !g_isEnableCMCGC);
-    // Read-lock prevents SharedCC from starting (it needs write-lock). Safe because:
-    // 1) Local GC never triggers SHARED_CC internally (only SHARED_GC via CheckAndTriggerSharedGC,
-    //    and RunSharedGC does not acquire write-lock).
-    // 2) If SharedCC holds write-lock, JS thread blocks here in WAIT state; SuspendAllScope
-    //    treats WAIT threads as suspended (IsSuspended() == true), so no deadlock.
-    RuntimeReadLockHolder gcReadLock(thread_, BaseHeap::gcExclusiveRWLock_);
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
@@ -2026,11 +2030,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         CheckOngoingConcurrentMarking();
         concurrentMarker_->Reset();
-        if (!SharedHeap::GetInstance()->GetSharedPartialGC()->IsConcurrentUpdating()) {
-            thread_->SetReadBarrierState(false);
-            thread_->SwitchAllStub(true);
-        }
-        markType_ = MarkType::MARK_YOUNG;
     }
     CollectGarbageImpl(gcType, reason);
     ProcessGCCallback();
@@ -2045,9 +2044,6 @@ void Heap::CollectGarbageFromCCMark(GCReason reason)
     if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
         return;
     }
-    // Acquire read-lock for the entire local CC lifecycle. Released by
-    // ConcurrentCopyGC::HandleUpdateFinished when LocalCC completes.
-    RuntimeReadLock(thread_, BaseHeap::gcExclusiveRWLock_);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     [[maybe_unused]] GcStateScope scope(thread_);
 #endif
@@ -2739,7 +2735,7 @@ bool Heap::TryTriggerCCMarking(MarkReason markReason)
         WaitAndHandleCCFinished();
         GetEcmaGCStats()->SetMarkReason(markReason);
         SetMarkType(MarkType::MARK_FOR_CC);
-        thread_->SwitchAllStub(false);
+        thread_->HoldReadBarrier(ReadBarrierOwner::LOCAL_CC);
         ASSERT(thread_->GetLastLeaveFrame() == nullptr);
         GetConcurrentMarker()->Mark();
         return true;
@@ -3246,6 +3242,8 @@ bool Heap::ParallelGCTask::Scheduable()
 
 bool Heap::ParallelGCTask::RunInternal(uint32_t threadIndex)
 {
+    // Register before any marker heap access.
+    uint64_t generation = heap_->RegisterRunningMarkTask();
     ASSERT(!monitor_->IsExpired(epoch_));
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     ASSERT(heap_->GetWorkManager()->HasInitialized());
@@ -3267,8 +3265,44 @@ bool Heap::ParallelGCTask::RunInternal(uint32_t threadIndex)
             LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
             UNREACHABLE();
     }
+    heap_->UnregisterRunningMarkTask(generation);
     monitor_->NotifyFinish();
     return true;
+}
+
+uint64_t Heap::RegisterRunningMarkTask()
+{
+    LockHolder lock(runningMarkTaskMutex_);
+    runningMarkTaskCount_++;
+    return runningMarkTaskGeneration_;
+}
+
+void Heap::UnregisterRunningMarkTask(uint64_t generation)
+{
+    std::shared_ptr<RunningMarkTaskSnapshot> snapshot;
+    {
+        LockHolder lock(runningMarkTaskMutex_);
+        if (generation == runningMarkTaskGeneration_) {
+            ASSERT(runningMarkTaskCount_ > 0);
+            runningMarkTaskCount_--;
+            return;
+        }
+        ASSERT(runningMarkTaskSnapshot_ != nullptr &&
+               generation == runningMarkTaskSnapshot_->generation_);
+        snapshot = runningMarkTaskSnapshot_;
+    }
+    snapshot->NotifyTaskFinished();
+}
+
+std::shared_ptr<RunningMarkTaskSnapshot> Heap::SnapshotRunningMarkTasks()
+{
+    LockHolder lock(runningMarkTaskMutex_);
+    ASSERT(runningMarkTaskSnapshot_ == nullptr || runningMarkTaskSnapshot_->IsFinished());
+    runningMarkTaskSnapshot_ = std::make_shared<RunningMarkTaskSnapshot>(
+        runningMarkTaskGeneration_, runningMarkTaskCount_);
+    runningMarkTaskGeneration_++;
+    runningMarkTaskCount_ = 0;
+    return runningMarkTaskSnapshot_;
 }
 
 bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)

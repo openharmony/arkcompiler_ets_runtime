@@ -1119,7 +1119,8 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     }
 #if ENABLE_MEMORY_OPTIMIZATION
     if (TryCompressHeap()) {
-        TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::ALLOCATION_LIMIT>(thread);
+        LOG_GC(DEBUG) << "Compress shared heap: trigger SharedCC";
+        CompressCollectGarbageNotWaiting<TriggerGCType::SHARED_CC, GCReason::ALLOCATION_LIMIT>(thread, false);
         return;
     }
 #endif
@@ -1511,7 +1512,7 @@ void SharedHeap::CollectGarbage(JSThread *thread)
 
 // This method is used only in the idle state and background switchover state.
 template<TriggerGCType gcType, GCReason gcReason>
-void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
+void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread, bool isForceGC)
 {
     // If should throw OOM, skip this GC to make next allocation fail, and throw OOM.
     if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
@@ -1534,7 +1535,9 @@ void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
         }
     }
     ASSERT(!gcFinished_);
-    SetForceGC(true);
+    if (isForceGC) {
+        SetForceGC(true);
+    }
 }
 
 template<TriggerGCType gcType, GCReason gcReason>

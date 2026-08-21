@@ -47,8 +47,10 @@ BaseString* ChainedHashMapOperation<Mutex, ThreadHolder, SlotBarrier>::FindInCha
                                                                                    uint32_t key,
                                                                                    Pred&& pred)
 {
+    // No safepoint is allowed during this traversal, so one phase snapshot is enough.
+    bool sweeping = chainedHashMap_->IsSweeping();
     for (Entry* current = head; current != nullptr; current = current->Overflow().load(std::memory_order_acquire)) {
-        auto oldValue = GetValue(current);
+        auto oldValue = GetValue(current, sweeping);
         if (IsNull(oldValue)) {
             continue;
         }

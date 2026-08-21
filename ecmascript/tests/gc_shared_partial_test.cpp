@@ -476,7 +476,8 @@ HWTEST_F_L0(SharedPartialGCTest, CheckSwitchRBStubTest)
     thread->SetSwitchRBStubRequest(true);
     thread->CheckSwitchRBStub();
     EXPECT_TRUE(!thread->HasSwitchedToStwStub());
-    thread->SwitchAllStub(true);
+    thread->ReleaseReadBarrier(ReadBarrierOwner::SHARED_PARTIAL_GC);
+    EXPECT_TRUE(thread->TryRestoreNormalStubs());
     thread->SetSwitchRBStubRequest(false);
     thread->CheckSwitchRBStub();
     EXPECT_TRUE(thread->HasSwitchedToStwStub());

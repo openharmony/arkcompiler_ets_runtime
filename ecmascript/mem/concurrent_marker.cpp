@@ -160,6 +160,7 @@ void ConcurrentMarker::WaitMarkingFinished()  // call in EcmaVm thread, wait for
 void ConcurrentMarker::Reset(bool revertCSet)
 {
     ASSERT(runningTaskCount_ == 0);
+    const bool discardCCMark = revertCSet && heap_->IsCCMark();
     Finish();
     thread_->SetMarkStatus(MarkStatus::READY_TO_MARK);
     isConcurrentMarking_ = false;
@@ -188,6 +189,11 @@ void ConcurrentMarker::Reset(bool revertCSet)
                 heap_->EnumerateRegions(callback);
             }
         }
+    }
+    if (discardCCMark) {
+        thread_->ReleaseReadBarrier(ReadBarrierOwner::LOCAL_CC);
+        thread_->TryRestoreNormalStubs();
+        heap_->SetMarkType(MarkType::MARK_YOUNG);
     }
 }
 

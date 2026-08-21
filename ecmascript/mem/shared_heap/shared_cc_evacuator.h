@@ -59,6 +59,9 @@ private:
     bool ownsAllocator_{false};
 };
 
+template <ReferenceType refType>
+void ProcessRSetSlot(ObjectSlotBase<refType> slot, SharedCCEvacuator &evacuator);
+
 class SharedCCUpdateVisitor final : public BaseObjectVisitor<SharedCCUpdateVisitor> {
 public:
     SharedCCUpdateVisitor() = default;

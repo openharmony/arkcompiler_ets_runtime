@@ -3758,6 +3758,32 @@ host_unittest_action("GC_SharedPartialGC_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GC_SharedCC_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "gc_shared_cc_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("Sendable_SharedObjectFactory_Test") {
   module_out_path = module_output_path
 
@@ -4060,6 +4086,7 @@ group("unittest") {
     ":GC_ReadOnlySpace_Test",
     ":GC_Second_Test",
     ":GC_SharedPartialGC_Test",
+    ":GC_SharedCC_Test",
     ":GC_Taskpool_Test",
     ":GC_Third_Test",
     ":GC_Daemon_Test",
@@ -4198,6 +4225,7 @@ group("unittest") {
       ":GC_ReadOnlySpace_Test",
       ":GC_Second_Test",
       ":GC_SharedPartialGC_Test",
+      ":GC_SharedCC_Test",
       ":GC_Third_Test",
       ":GC_Daemon_Test",
       ":GC_Verification_Test",
@@ -4261,6 +4289,7 @@ group("host_unittest") {
     ":GC_ReadOnlySpace_TestAction",
     ":GC_Second_TestAction",
     ":GC_SharedPartialGC_TestAction",
+    ":GC_SharedCC_TestAction",
     ":GC_Taskpool_TestAction",
     ":GC_Third_TestAction",
     ":GC_Verification_TestAction",
@@ -4411,6 +4440,7 @@ group("host_unittest") {
       ":GC_ReadOnlySpace_TestAction",
       ":GC_Second_TestAction",
       ":GC_SharedPartialGC_TestAction",
+      ":GC_SharedCC_TestAction",
       ":GC_Taskpool_TestAction",
       ":GC_Third_TestAction",
       ":GC_Verification_TestAction",
@@ -4540,6 +4570,7 @@ group("host_unittest") {
       ":GC_NewToOldPromotion_TestAction",
       ":GC_Second_TestAction",
       ":GC_SharedPartialGC_TestAction",
+      ":GC_SharedCC_TestAction",
       ":GC_KeyStats_TestAction",
       ":GC_Third_TestAction",
       ":GC_Verification_TestAction",

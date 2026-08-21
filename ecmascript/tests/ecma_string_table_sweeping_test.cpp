@@ -35,12 +35,13 @@ using namespace panda::ecmascript;
 
 namespace panda::test {
 
-using ChainedHashMapType = DisableCMCGCConcurrentSweepTrait::ChainedHashMapType;
+using ChainedHashMapType = DisableCMCGCNormalTrait::ChainedHashMapType;
 using ChainedHashMapTypeNormal = DisableCMCGCNormalTrait::ChainedHashMapType;
-using ChainedHashMapInUseScopeType = DisableCMCGCConcurrentSweepTrait::ChainedHashMapInUseScopeType;
+using ChainedHashMapInUseScopeType = DisableCMCGCNormalTrait::ChainedHashMapInUseScopeType;
 using ChainedHashMapInUseScopeTypeNormal = DisableCMCGCNormalTrait::ChainedHashMapInUseScopeType;
 using ChainedHashMapOperationNormalType = DisableCMCGCNormalTrait::ChainedHashMapOperationType;
-using ChainedHashMapOperationConcurrentSweepType = DisableCMCGCConcurrentSweepTrait::ChainedHashMapOperationType;
+using ChainedHashMapOperationConcurrentSweepType =
+    ChainedHashMapOperation<EcmaStringTableMutex, JSThread, ChainedHashMapConfig::NeedSlotBarrier>;
 
 class EcmaStringTableSweepingTest : public BaseTestWithScope<false> {
 public:
@@ -1551,9 +1552,9 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_Concurre
 
 /**
  * @tc.name: ChainedHashMap_ClearNodeFromGC_MixedInsertUtf8
- * @tc.desc: Test ClearNodeFromGC with mixed mode insertion for UTF8 strings. First use Normal mode
- *           (NoSlotBarrierDynamic) to insert UTF8 entries without ToSpace tag, then start sweeping and
- *           use ConcurrentSweep mode (NeedSlotBarrier) to insert UTF8 entries with ToSpace tag.
+ * @tc.desc: Test dynamic insertion for UTF8 strings. First use NoSlotBarrierDynamic to insert entries
+ *           without ToSpace tag, then start sweeping and reuse the same operation to insert entries
+ *           with ToSpace tag.
  *           Finally sweep entries with a keep-all visitor and clear their to-space tags.
  * @tc.type: FUNC
  * @tc.require:
@@ -1584,8 +1585,6 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_MixedIns
         ASSERT_NE(result, nullptr);
     }
 
-    ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
-
     chainedHashMap.StartSweeping();
 
     for (int i = 50; i < 100; ++i) {
@@ -1603,7 +1602,7 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_MixedIns
         }
         uint32_t utf8Len = strlen(nameBuf);
 
-        BaseString *result = LoadOrStoreUtf8String(concurrentSweepOp, utf8Data, utf8Len);
+        BaseString *result = LoadOrStoreUtf8String(normalOp, utf8Data, utf8Len);
         ASSERT_NE(result, nullptr);
     }
 
@@ -1680,9 +1679,9 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_Concurre
 
 /**
  * @tc.name: ChainedHashMap_ClearNodeFromGC_MixedInsertUtf16
- * @tc.desc: Test ClearNodeFromGC with mixed mode insertion for UTF16 strings. First use Normal mode
- *           (NoSlotBarrierDynamic) to insert UTF16 entries without ToSpace tag, then start sweeping and
- *           use ConcurrentSweep mode (NeedSlotBarrier) to insert UTF16 entries with ToSpace tag.
+ * @tc.desc: Test dynamic insertion for UTF16 strings. First use NoSlotBarrierDynamic to insert entries
+ *           without ToSpace tag, then start sweeping and reuse the same operation to insert entries
+ *           with ToSpace tag.
  *           Finally sweep entries with a keep-all visitor and clear their to-space tags.
  * @tc.type: FUNC
  * @tc.require:
@@ -1702,15 +1701,13 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ChainedHashMap_ClearNodeFromGC_MixedIns
         ASSERT_NE(result, nullptr);
     }
 
-    ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
-
     chainedHashMap.StartSweeping();
 
     for (int i = 50; i < 100; ++i) {
         uint16_t utf16Data[20];
         uint32_t utf16Len = MakeUtf16DataFromAsciiWithNumber(utf16Data, "concurrent_mix_", i);
 
-        BaseString *result = LoadOrStoreUtf16String(concurrentSweepOp, utf16Data, utf16Len);
+        BaseString *result = LoadOrStoreUtf16String(normalOp, utf16Data, utf16Len);
         ASSERT_NE(result, nullptr);
     }
 

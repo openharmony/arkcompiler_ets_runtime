@@ -74,8 +74,12 @@ public:
                 thread->SetSwitchRBStubRequest(true);
             }
         });
+        if (sHeap->GetConcurrentMarker()->IsCCMode()) {
+            sHeap->SetGCType(TriggerGCType::SHARED_CC);
+        }
         // fixme: support shared runtime state
         if (UNLIKELY(sHeap->ShouldVerifyHeap())) {
+            sHeap->GetSharedGCMarker()->MergeBackAndResetRSetWorkListHandler();
             SharedHeapVerification(sHeap, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
         }
         sHeap->GetConcurrentMarker()->InitializeMarking();
@@ -129,16 +133,11 @@ public:
     void Run(JSThread *thread) override
     {
         ASSERT(!thread->IsConcurrentCopying());
-        if (thread != Runtime::GetInstance()->GetMainThread() &&
-            thread->GetSharedCCStatus() != SharedCCStatus::READY) {
-            if (thread->GetLastLeaveFrame() == nullptr) {
-                thread->SwitchAllStub(false);
-                thread->SetSharedCCStatus(SharedCCStatus::READY);
-            } else if (thread->HasPostTaskToThreadCallback() && thread->TryMarkCCTaskPending()) {
-                thread->PostTaskToThread([thread]() {
-                    thread->ExecuteSharedCCStubSwitch();
-                });
-            }
+        if (!thread->TrySwitchSharedCCStub() && thread->HasPostTaskToThreadCallback() &&
+            thread->TryMarkCCTaskPending()) {
+            thread->PostTaskToThread([thread]() {
+                thread->ExecuteSharedCCStubSwitch();
+            });
         }
         MarkRoots(thread);
     }
@@ -148,7 +147,10 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
 {
     RecursionScope recurScope(this);
     gcType_ = gcType;
-    sHeap_->WaitSensitiveStatusFinished();
+    // SharedCC already waited before thread preparation.
+    if (!IsCCMode()) {
+        sHeap_->WaitSensitiveStatusFinished();
+    }
     {
         ThreadManagedScope runningScope(dThread_);
         InitialMarkSuspendCallback suspendCallback;

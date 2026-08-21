@@ -835,8 +835,7 @@ void JSThread::SetReadyForGCIterating(bool flag)
         if (cc != nullptr && cc->IsRunning()) {
             cc->PrepareNewThread(this);
         } else {
-            SetReadBarrierState(true);
-            SwitchAllStub(false);
+            AcquireReadBarrier(ReadBarrierOwner::SHARED_PARTIAL_GC);
         }
     }
 }
@@ -990,7 +989,7 @@ void JSThread::CheckOrSwitchPGOStubs()
 void JSThread::CheckSwitchRBStub()
 {
     if (switchRBStubRequest_ && GetLastLeaveFrame() == nullptr) {
-        SwitchAllStub(false);
+        HoldReadBarrier(ReadBarrierOwner::SHARED_PARTIAL_GC);
         switchRBStubRequest_ = false;
     }
 }
@@ -1139,11 +1138,11 @@ void JSThread::ExecuteSharedCCStubSwitch()
     {
         LockHolder lock(ccStatusMutex_);
         ccTaskPending_ = false;
-        if (ccStatus_ != SharedCCStatus::PENDING) {
+        if (ccStatus_ == SharedCCStatus::IDLE || ccStatus_ == SharedCCStatus::SUSPENDED) {
             return;
         }
         if (GetLastLeaveFrame() == nullptr) {
-            SwitchAllStub(false);
+            HoldReadBarrier(ReadBarrierOwner::SHARED_CC);
             ccStatus_ = SharedCCStatus::READY;
         } else {
             LOG_ECMA(FATAL) << "SharedCC: ExecuteSharedCCStubSwitch called with"

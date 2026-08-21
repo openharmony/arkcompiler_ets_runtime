@@ -108,16 +108,42 @@ void SharedPartialGC::RunFlip(GCReason reason)
     // run in daemon thread concurrently.
     sHeap_->GetSharedGCEvacuator()->ProcessLocalToShareRSet();
     sHeap_->GetSharedGCEvacuator()->ProcessAndWaitSRegionUpdateFinished();
-    SuspendAllScope scope(dThread_);
-    sHeap_->Reclaim(TriggerGCType::SHARED_PARTIAL_GC);
-    PostProcessLocalThread();
-    sHeap_->GetSharedGCEvacuator()->MergeBackAndResetRSetWorkListHandler();
-    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // post gc heap verify
-        LOG_ECMA(DEBUG) << "after gc shared heap verify";
-        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+
+    auto finalizeUpdate = [this]() {
+        sHeap_->Reclaim(TriggerGCType::SHARED_PARTIAL_GC);
+        PostProcessLocalThread();
+        sHeap_->GetSharedGCEvacuator()->MergeBackAndResetRSetWorkListHandler();
+        if (UNLIKELY(sHeap_->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // post gc heap verify
+            LOG_ECMA(DEBUG) << "after gc shared heap verify";
+            SharedHeapVerification(sHeap_, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+        }
+        SignalConcurrentUpdateFinished();
+    };
+
+    // Snapshot tasks that may have read FROM before reference update finished.
+    std::vector<std::shared_ptr<RunningMarkTaskSnapshot>> markTaskSnapshots;
+    {
+        SuspendAllScope scope(dThread_);
+        Runtime::GetInstance()->GCIterateThreadList([&markTaskSnapshots](JSThread *thread) {
+            auto snapshot = thread->GetEcmaVM()->GetHeap()->SnapshotRunningMarkTasks();
+            if (!snapshot->IsFinished()) {
+                markTaskSnapshots.emplace_back(snapshot);
+            }
+        });
+        if (markTaskSnapshots.empty()) {
+            finalizeUpdate();
+            return;
+        }
     }
-    SignalConcurrentUpdateFinished();
+    for (auto &snapshot : markTaskSnapshots) {
+        snapshot->Wait();
+    }
+
+    {
+        SuspendAllScope scope(dThread_);
+        finalizeUpdate();
+    }
 }
 
 void SharedPartialGC::PreSweep()
@@ -254,8 +280,7 @@ void SharedPartialGC::PreProcessLocalThread()
         thread->SetGcState(true);
 #endif
         if (!thread->HasSwitchedToStwStub() || thread->GetLastLeaveFrame() == nullptr) {
-            thread->SwitchAllStub(false);
-            thread->SetReadBarrierState(true);
+            thread->AcquireReadBarrier(ReadBarrierOwner::SHARED_PARTIAL_GC);
         } else {
             thread->SuspendThread(true, nullptr);
             thread->SetSuspendByConcurrentTask(true);
@@ -280,14 +305,11 @@ void SharedPartialGC::PostProcessLocalThread()
         if (thread->SuspendByConcurrentTask()) {
             thread->ResumeThread(true);
             thread->SetSuspendByConcurrentTask(false);
-        } else if (!thread->IsConcurrentCopying() && !heap->IsCCMark()) {
-            thread->SetReadBarrierState(false);
-            thread->SwitchAllStub(true);
-        } else {
-            return;
         }
+        thread->ReleaseReadBarrier(ReadBarrierOwner::SHARED_PARTIAL_GC);
+        thread->TryRestoreNormalStubs();
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
-        if (pgoProfiler != nullptr) {
+        if (pgoProfiler != nullptr && !thread->IsConcurrentCopying()) {
             pgoProfiler->ResumeByGC();
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

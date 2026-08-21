@@ -8,7 +8,7 @@
 ## 核心架构：双层堆
 
 ```
-BaseHeap                       ← Local/Shared GC 互斥（读写锁 / STW / 并发适配，详见线程模型章节）
+BaseHeap                       ← Local/Shared GC 协作（STW / 屏障 / RSet，详见线程模型章节）
   ├─ Heap (LocalHeap)          ← 每 VM 一个，JSThread 驱动 GC
   └─ SharedHeap (全局单例)     ← 跨 VM 共享，DaemonThread 驱动 GC
 ```
@@ -28,7 +28,7 @@ BaseHeap                       ← Local/Shared GC 互斥（读写锁 / STW / �
 | `SHARED_GC` | Shared | Mark-Sweep + 并发标记 + 并发 Sweep | 共享对象分配超限 |
 | `SHARED_PARTIAL_GC` | Shared | 部分 Mark-Sweep（仅 CSet 区域） | 碎片化触发 |
 | `SHARED_FULL_GC` | Shared | 全堆 Mark-Sweep-Compact | OOM 前最后尝试 |
-| `SHARED_CC` | Shared | 并发复制（实验性） | 配置开启 |
+| `SHARED_CC` | Shared | 并发复制（实验性） | 配置开启或冷启动后压缩 |
 | `APPSPAWN_FULL_GC` | Local | 压缩到 AppSpawn 空间 | Fork 前 |
 | `UNIFIED_GC` | 跨 VM | 统一多 VM GC | 跨 VM 引用清理 |
 
@@ -43,10 +43,10 @@ GC 从轻到重逐级升级，`ALLOCATION_FAILED` 是 OOM 前最后一次尝试�
   - **IS_SUSPENDED**：被 `SuspendAll` 挂起。
 - **STW 本质**：`SuspendAllScope`（`ecmascript/checkpoint/thread_state_transition.h`）发起 → `Runtime::SuspendAll` → `SuspendAllThreadsImpl` 对每个 JSThread 设 `SUSPEND_REQUEST` + `ACTIVE_BARRIER`。RUNNING 线程在 `CheckSafepoint()` 被阻塞；NATIVE 线程允许在 native 继续、切回 RUNNING 时先过 barrier 再被阻塞。即**阻止 JS 线程在 running 态运行（允许 native 态）以防止读写堆内存，保证 GC 安全**——并非"停所有线程"。
 
-### Local/Shared GC 互斥（多机制并存，非仅读写锁）
-- **读写锁 `gcExclusiveRWLock_`**（`BaseHeap` 静态 RWLock）：Local GC 取**读锁**（多个 VM 的 Local GC 可并发），SharedCC 取**写锁**独占。**不要绕过此锁**。
+### Local/Shared GC 协作（不同 Shared GC 机制不同）
 - **SharedFullGC 靠全程 STW**：`SharedFullGC::RunPhases` + `SetGCThreadQosPriority(STW)` + `SuspendAll`，STW 本身阻塞所有 JSThread（含 Local GC mutator），从而阻止 Local GC 运行。
-- **SharedPartialGC 靠并发安全适配**：`SharedPartialGC::RunPhases` + `CheckOngoingConcurrentMarking` + 并发 marker/sweeper + 屏障，不全程 STW，靠并发标记/清扫与屏障安全协调。
+- **SharedPartialGC 靠 flip/屏障/RSet 协作**：不全程 STW；回收 CSet 前以短 STW 截取存量 Local running mark task，存在存量任务时在非 STW 等待完成后再进入最终 STW reclaim。
+- **SharedCC 靠分阶段 STW + RSet 协作**：不再依赖 `gcExclusiveRWLock_` 全程阻塞 Local GC；Local Heap 通过 RSet handler 与 SharedCC 协作，owner Heap 析构前须处理自己的 handler。SharedCC 的并发收尾由 daemon 负责，`WaitAllTasksFinished(JSThread *)` 不承担 SharedCC 排空。
 
 ### SharedGC 线程分工与重入防护
 - **SharedGC 线程模型**：由 `DaemonThread` 驱动 GC，JSThread 通过 `SharedHeap::WaitGCFinished()` 等待，**不要在 JSThread 中直接执行 SharedGC 主体**。
@@ -96,7 +96,7 @@ GC 从轻到重逐级升级，`ALLOCATION_FAILED` 是 OOM 前最后一次尝试�
 | `ecmascript/mem/shared_heap/shared_gc.cpp` | SharedGC 实现 |
 | `ecmascript/mem/shared_heap/shared_full_gc.cpp` | SharedFullGC（全程 STW） |
 | `ecmascript/mem/shared_heap/shared_partial_gc.cpp` | SharedPartialGC（并发标记/清扫） |
-| `ecmascript/mem/shared_heap/shared_cc.h/cpp` | SharedCC（实验性，取写锁） |
+| `ecmascript/mem/shared_heap/shared_cc.h/cpp` | SharedCC（实验性，分阶段并发复制 + RSet 协作） |
 | `ecmascript/common_enum.h` | `TriggerGCType`, `GCReason`, `MarkType` 等枚举定义 |
 | `ecmascript/js_thread.h/cpp` | ThreadState 状态机、CheckSafepoint、SharedCCStatus |
 | `ecmascript/checkpoint/thread_state_transition.h` | `SuspendAllScope`/`SuspendAllAction`（STW 入口） |
@@ -125,7 +125,7 @@ GC 测试入口在 `ecmascript/tests/` 目录，关键测试目标：
 - 计算变长对象（String、Array）大小时，要使用 `SizeFromJSHClass()` 而非 `GetSize()`。
 - 触发 GC 前，要确认当前不在 SmartGC 敏感期或启动期，或 `forceGC_` 为 true。
 - 修改 SharedHeap 相关逻辑时，要确认跨 VM 的 SharedGC 生命周期未被破坏。
-- 修改 Local/Shared GC 互斥逻辑时，要确认所用机制（SharedFullGC 全程 STW / SharedPartialGC 并发适配 / SharedCC 写锁）与该 GC 类型一致，不要默认所有 SharedGC 都只靠 `gcExclusiveRWLock_`。
+- 修改 Local/Shared GC 协作逻辑时，要确认所用机制（SharedFullGC 全程 STW / SharedPartialGC flip+屏障+RSet / SharedCC 分阶段 STW+RSet 协作）与该 GC 类型一致。`gcExclusiveRWLock_` 已移除，不要为 SharedCC 重新引入全程 Local GC 互斥。
 - 修改对象布局或新增 GC visitor 时，要确认所有空间的 visitor 已同步更新。
 - 修改并发标记/并发 Sweep 逻辑时，要确认 MarkWord 标记位的修改使用了原子操作。
 - 修改 Region 标志位时，要确认不在并发标记期间修改，或已持有正确的锁。
