@@ -1,2 +1,0 @@
-SGGF:tail:GF
-catch:GT:SGGT:base

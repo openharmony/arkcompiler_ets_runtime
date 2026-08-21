@@ -1,8 +1,0 @@
-Before 1st call: isCompiled: false
-A complex: 6 23 9 47 6 53
-After 1st call: isCompiled: false
-----------------
-Before 2nd call: isCompiled: true
-A complex: 6 23 9 47 13 83
-After 2nd call: isCompiled: false
-----------------

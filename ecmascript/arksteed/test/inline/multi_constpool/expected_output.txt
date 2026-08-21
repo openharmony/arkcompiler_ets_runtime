@@ -1,0 +1,9 @@
+testing multiple const pool inlining
+iteration 1
+[object Object] 1,2,3
+test finished
+testing multiple const pool inlining
+iteration 1
+[object Object] 1,2,3
+test finished
+undefined

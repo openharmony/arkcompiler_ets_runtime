@@ -1,8 +1,0 @@
-Before call #1: isCompiled: false
-A deep: 7 31 7 45
-After call #1: isCompiled: false
-----------------
-Before call #2: isCompiled: true
-A deep: 7 31 17 55
-After call #2: isCompiled: false
-----------------

@@ -1,8 +1,0 @@
-Before call #1: isCompiled: false
-A values: 1 BCDEF 1
-After call #1: isCompiled: false
-----------------
-Before call #2: isCompiled: true
-A values: 1 BCDEF 2
-After call #2: isCompiled: false
-----------------
