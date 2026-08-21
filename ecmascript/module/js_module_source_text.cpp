@@ -497,6 +497,9 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThr
     RETURN_VALUE_IF_ABRUPT(thread, undefined);
     // Consistent with FunctionRef::Call
     JSHandle<JSTaggedValue> exportObject = LoadNativeModuleCallFunc(vm, info);
+    if (!exportObject->IsJSObject()) {
+        LOG_ECMA(WARN) << "Load native module " << moduleName << " is not a JSObject";
+    }
     RETURN_VALUE_IF_ABRUPT(thread, undefined);
     return exportObject;
 }
