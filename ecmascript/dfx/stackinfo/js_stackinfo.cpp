@@ -564,12 +564,12 @@ void SaveFuncName(EntityId entityId, const std::string &name)
 }
 
 template<typename T>
-void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
+bool ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
                       EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap)
 {
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "Parse jsFrame info failed, jsPandaFile is nullptr.";
-        return;
+        return false;
     }
     std::string name = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
     name = name.empty() ? "anonymous" : name;
@@ -598,17 +598,25 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
         sourceMap->TranslateUrlPositionBySourceMap(url, lineNumber, columnNumber, packageName);
     }
 
-    size_t urlSize = url.size() + 1;
-    size_t nameSize = name.size() + 1;
-    size_t packageNameSize = packageName.size() + 1;
-    if (strcpy_s(jsFrame.url, urlSize, url.c_str()) != EOK ||
-        strcpy_s(jsFrame.functionName, nameSize, name.c_str()) != EOK ||
-        strcpy_s(jsFrame.packageName, packageNameSize, packageName.c_str()) != EOK) {
-        LOG_ECMA(FATAL) << "jsFrame strcpy_s failed";
-        UNREACHABLE();
+    if (name.size() >= FUNCTIONNAME_MAX) {
+        name.resize(FUNCTIONNAME_MAX - 1);
+    }
+    if (url.size() >= URL_MAX) {
+        url.resize(URL_MAX - 1);
+    }
+    if (packageName.size() >= PACKAGENAME_MAX) {
+        packageName.resize(PACKAGENAME_MAX - 1);
+    }
+
+    if (strcpy_s(jsFrame.functionName, FUNCTIONNAME_MAX, name.c_str()) != EOK ||
+        strcpy_s(jsFrame.url, URL_MAX, url.c_str()) != EOK ||
+        strcpy_s(jsFrame.packageName, PACKAGENAME_MAX, packageName.c_str()) != EOK) {
+        LOG_ECMA(ERROR) << "jsFrame strcpy_s failed";
+        return false;
     }
     jsFrame.line = lineNumber;
     jsFrame.column = columnNumber;
+    return true;
 }
 
 #if defined(ENABLE_STATIC_BACKTRACE)
@@ -689,8 +697,10 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t load
         return false;
     }
     auto offset = codeInfo->offset;
-    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(codeInfo->methodId), offset,
-                     *jsFunction, extractor->GetSourceMap());
+    if (!ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(codeInfo->methodId), offset,
+                          *jsFunction, extractor->GetSourceMap())) {
+        return false;
+    }
     SaveFuncName(EntityId(codeInfo->methodId), jsFunction->functionName);
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
@@ -1489,7 +1499,9 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase,
     auto pandafile = FindJSpandaFile(mapBase);
     auto debugInfoExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(pandafile.get());
-    ParseJsFrameInfo(pandafile.get(), debugInfoExtractor, EntityId(codeInfo->methodId), offset, *jsFunction);
+    if (!ParseJsFrameInfo(pandafile.get(), debugInfoExtractor, EntityId(codeInfo->methodId), offset, *jsFunction)) {
+        return false;
+    }
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
     return true;

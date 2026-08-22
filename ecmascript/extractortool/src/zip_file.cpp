@@ -101,9 +101,16 @@ bool ZipFile::ParseEndDirectory()
     return CheckEndDir(endDir_);
 }
 
-bool ZipFile::ParseOneEntry(uint8_t* &entryPtr)
+bool ZipFile::ParseOneEntry(uint8_t* &entryPtr, const uint8_t *dataEnd)
 {
-    if (entryPtr == nullptr) {
+    if (entryPtr == nullptr || dataEnd == nullptr || entryPtr > dataEnd) {
+        return false;
+    }
+
+    // Bounds check: fixed-size CentralDirEntry header must fit.
+    // Subtract first — `entryPtr + sizeof(...)` would be UB if it exceeds the array.
+    size_t remaining = static_cast<size_t>(dataEnd - entryPtr);
+    if (remaining < sizeof(CentralDirEntry)) {
         return false;
     }
 
@@ -116,8 +123,21 @@ bool ZipFile::ParseOneEntry(uint8_t* &entryPtr)
         return false;
     }
 
+    // Bounds check: variable-length fields must fit.
+    // Sizes are untrusted — compare as integers, not via pointer arithmetic.
+    size_t variableSize = static_cast<size_t>(directoryEntry.nameSize) +
+        static_cast<size_t>(directoryEntry.extraSize) +
+        static_cast<size_t>(directoryEntry.commentSize);
+    if (variableSize > remaining - sizeof(CentralDirEntry)) {
+        return false;
+    }
+
     entryPtr += sizeof(CentralDirEntry);
-    size_t fileLength = (directoryEntry.nameSize >= MAX_FILE_NAME) ? (MAX_FILE_NAME - 1) : directoryEntry.nameSize;
+    if (directoryEntry.nameSize >= MAX_FILE_NAME) {
+        LOG_ECMA(ERROR) << "Entry name too long, size: " << directoryEntry.nameSize;
+        return false;
+    }
+    size_t fileLength = directoryEntry.nameSize;
     std::string fileName(fileLength, 0);
     if (memcpy_s(&(fileName[0]), fileLength, entryPtr, fileLength) != EOK) {
         return false;
@@ -173,8 +193,9 @@ bool ZipFile::ParseAllEntries()
 
     bool ret = true;
     uint8_t *entryPtr = reinterpret_cast<uint8_t *>(centralData.data());
+    const uint8_t *dataEnd = entryPtr + centralData.size();
     for (uint16_t i = 0; i < endDir_.totalEntries; i++) {
-        if (!ParseOneEntry(entryPtr)) {
+        if (!ParseOneEntry(entryPtr, dataEnd)) {
             ret = false;
             break;
         }
@@ -213,9 +234,13 @@ bool ZipFile::Open()
     if (result) {
         result = ParseAllEntries();
     }
+    if (!result) {
+        zipFileReader_.reset();
+        return false;
+    }
     // it means open file success.
     isOpen_ = true;
-    return result;
+    return true;
 }
 
 void ZipFile::Close()

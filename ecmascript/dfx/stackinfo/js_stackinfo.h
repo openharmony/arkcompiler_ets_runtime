@@ -39,7 +39,7 @@ bool IsFastJitFunctionFrame(const FrameType frameType);
 bool IsSteedFunctionFrame(uintptr_t frameType);
 bool IsSteedFunctionFrame(const FrameType frameType);
 template<typename T>
-void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
+bool ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
     EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap = nullptr);
 
 static constexpr uint16_t URL_MAX = 1024;

@@ -14,7 +14,9 @@
  */
 
 #include <cstdio>
+#include <cstring>
 
+#include "securec.h"
 #include "ecmascript/dfx/stackinfo/tests/js_stackinfo_test.h"
 
 #include "assembler/assembly-emitter.h"
@@ -329,7 +331,8 @@ HWTEST_F_L0(JsStackInfoTest, TestParseJsFrameInfo)
     auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
     uintptr_t offset = 0;
     JsFunction jsFunction;
-    ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(), EntityId(methods[0].methodId), offset, jsFunction);
+    EXPECT_TRUE(ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(),
+        EntityId(methods[0].methodId), offset, jsFunction));
     EXPECT_TRUE(std::string(jsFunction.functionName) == "foo");
     EXPECT_TRUE(JsStackInfo::nameMap.empty());
 }
@@ -1866,5 +1869,170 @@ HWTEST_F_L0(JsStackInfoTest, TestArkWriteJitCode)
 
     JsStackInfo::machineCodeMap.clear();
     JsStackInfo::nameMap.clear();
+}
+
+// Helper: build a pandasm source with a function whose name has the given length.
+static std::string BuildLongNameSource(size_t nameLen)
+{
+    std::string name(nameLen, 'A');  // valid identifier chars
+    return ".function void " + name + "() {\n    return\n}\n";
+}
+
+// Test: a function name shorter than FUNCTIONNAME_MAX is copied without truncation.
+HWTEST_F_L0(JsStackInfoTest, ParseJsFrameInfo_ShortName_NoTruncation)
+{
+    // "foo" is 3 chars, well under FUNCTIONNAME_MAX=1024
+    const char *filename = "__JsStackInfoShortName.pa";
+    const char *data = R"(
+        .function void foo() {
+            return
+        }
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(data);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    ASSERT_NE(file, nullptr);
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    ASSERT_FALSE(methods.empty());
+
+    JsFunction jsFunction;
+    (void)memset_s(&jsFunction, sizeof(jsFunction), 0, sizeof(jsFunction));
+    EXPECT_TRUE(ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(),
+        EntityId(methods[0].methodId), 0, jsFunction));
+
+    EXPECT_STREQ(jsFunction.functionName, "foo");
+    EXPECT_EQ(strlen(jsFunction.functionName), 3U);
+}
+
+// Test: a function name exactly FUNCTIONNAME_MAX-1 (1023) chars fits without truncation.
+HWTEST_F_L0(JsStackInfoTest, ParseJsFrameInfo_ExactMaxMinusOneName_NoTruncation)
+{
+    const size_t nameLen = FUNCTIONNAME_MAX - 1;  // 1023
+    std::string source = BuildLongNameSource(nameLen);
+    const char *filename = "__JsStackInfoExactMax.pa";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    ASSERT_TRUE(res);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    ASSERT_NE(file, nullptr);
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    ASSERT_FALSE(methods.empty());
+
+    JsFunction jsFunction;
+    (void)memset_s(&jsFunction, sizeof(jsFunction), 0, sizeof(jsFunction));
+    EXPECT_TRUE(ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(),
+        EntityId(methods[0].methodId), 0, jsFunction));
+
+    // Name is exactly 1023 chars, fits in char[1024] with null terminator
+    EXPECT_EQ(strlen(jsFunction.functionName), nameLen);
+    // Verify no overflow into packageName: packageName should still be empty
+    EXPECT_EQ(strlen(jsFunction.packageName), 0U);
+}
+
+// Test: a function name of FUNCTIONNAME_MAX (1024) chars is truncated to 1023.
+// Before the fix, this would overflow jsFrame.functionName[1024] via strcpy_s
+// with destMax=1025 (src.size()+1), writing 1025 bytes into 1024-byte buffer.
+HWTEST_F_L0(JsStackInfoTest, ParseJsFrameInfo_ExactlyMaxName_Truncated)
+{
+    const size_t nameLen = FUNCTIONNAME_MAX;  // 1024
+    std::string source = BuildLongNameSource(nameLen);
+    const char *filename = "__JsStackInfoMaxName.pa";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    ASSERT_TRUE(res);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    ASSERT_NE(file, nullptr);
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    ASSERT_FALSE(methods.empty());
+
+    JsFunction jsFunction;
+    (void)memset_s(&jsFunction, sizeof(jsFunction), 0, sizeof(jsFunction));
+    EXPECT_TRUE(ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(),
+        EntityId(methods[0].methodId), 0, jsFunction));
+
+    // After fix: name is truncated to FUNCTIONNAME_MAX-1 = 1023 chars
+    EXPECT_EQ(strlen(jsFunction.functionName), FUNCTIONNAME_MAX - 1);
+    // Verify no overflow: packageName and url should still be empty
+    EXPECT_EQ(strlen(jsFunction.packageName), 0U);
+    EXPECT_EQ(strlen(jsFunction.url), 0U);
+}
+
+// Test: a very long function name (8192 chars, simulating attacker-controlled ABC)
+// is truncated to FUNCTIONNAME_MAX-1 without stack buffer overflow.
+// Before the fix, this would write 8193 bytes into 1024-byte functionName buffer,
+// overflowing into packageName, url, line, column, codeBegin, codeSize,
+// canary, rbp, and return address.
+HWTEST_F_L0(JsStackInfoTest, ParseJsFrameInfo_OversizedName8192_TruncatedNoOverflow)
+{
+    const size_t nameLen = 8192;  // attacker-controlled oversized name
+    std::string source = BuildLongNameSource(nameLen);
+    const char *filename = "__JsStackInfoOversizedName.pa";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    ASSERT_TRUE(res);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    ASSERT_NE(file, nullptr);
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    ASSERT_FALSE(methods.empty());
+
+    JsFunction jsFunction;
+    // Fill with sentinel values to detect overflow
+    (void)memset_s(jsFunction.functionName, sizeof(jsFunction.functionName), 0xAA, sizeof(jsFunction.functionName));
+    (void)memset_s(jsFunction.packageName, sizeof(jsFunction.packageName), 0xBB, sizeof(jsFunction.packageName));
+    (void)memset_s(jsFunction.url, sizeof(jsFunction.url), 0xCC, sizeof(jsFunction.url));
+
+    EXPECT_TRUE(ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(),
+        EntityId(methods[0].methodId), 0, jsFunction));
+
+    // After fix: name is truncated to 1023 chars, null-terminated at position 1023
+    EXPECT_EQ(strlen(jsFunction.functionName), FUNCTIONNAME_MAX - 1);
+
+    // Critical: verify no overflow into packageName and url
+    // Before fix: 8193 bytes would spill into packageName and url
+    EXPECT_EQ(strlen(jsFunction.packageName), 0U)
+        << "packageName overflowed — stack buffer overflow detected!";
+    EXPECT_EQ(strlen(jsFunction.url), 0U)
+        << "url overflowed — stack buffer overflow detected!";
+
+    // Also verify that the sentinel bytes beyond the null terminator in
+    // functionName are intact (the buffer is 1024 bytes, name is 1023 + '\0')
+    // Position 1023 should be '\0', and the rest of the 1024-byte buffer
+    // may have been overwritten by strcpy_s, but nothing beyond the buffer.
+    EXPECT_EQ(jsFunction.functionName[FUNCTIONNAME_MAX - 1], '\0');
+}
+
+// Test: with a normal-length function name, verify that line, column,
+// and other JsFunction fields are set correctly (regression test).
+HWTEST_F_L0(JsStackInfoTest, ParseJsFrameInfo_NormalName_FieldsCorrect)
+{
+    const char *filename = "__JsStackInfoNormalFields.pa";
+    const char *data = R"(
+        .function void bar() {
+            return
+        }
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(data);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    ASSERT_NE(file, nullptr);
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    ASSERT_FALSE(methods.empty());
+
+    JsFunction jsFunction;
+    (void)memset_s(&jsFunction, sizeof(jsFunction), 0, sizeof(jsFunction));
+    EXPECT_TRUE(ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(),
+        EntityId(methods[0].methodId), 0, jsFunction));
+
+    EXPECT_STREQ(jsFunction.functionName, "bar");
 }
 }  // namespace panda::test

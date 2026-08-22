@@ -240,9 +240,11 @@ private:
     bool ParseEndDirectory();
     /**
      * @brief Parse one entry.
+     * @param entryPtr Indicates the pointer to current entry, updated to next entry on return.
+     * @param dataEnd Indicates the end of the central directory buffer for bounds checking.
      * @return Returns true if successfully parsed; returns false otherwise.
      */
-    bool ParseOneEntry(uint8_t* &entryPtr);
+    bool ParseOneEntry(uint8_t* &entryPtr, const uint8_t *dataEnd);
     void AddEntryToTree(const std::string &fileName);
     /**
      * @brief Parse all Entries.
