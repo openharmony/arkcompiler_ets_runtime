@@ -638,7 +638,8 @@ panda_file::PandaFileType JSSymbolExtractor::GetPandaFileType(const uint8_t *dat
     }
 
     auto header = reinterpret_cast<const panda_file::File::Header *>(data);
-    if (header->version == panda_file::File::STATIC_VERSION) {
+    if (header->version[panda_file::File::FILE_TYPE_OFFSET] == panda_file::File::FILE_TYPE_STATIC_FLAG ||
+        header->version == panda_file::File::OLD_STATIC_VERSION) {
         type_ = panda_file::PandaFileType::FILE_STATIC;
     } else {
         type_ = panda_file::PandaFileType::FILE_DYNAMIC;
