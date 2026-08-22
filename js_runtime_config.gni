@@ -98,6 +98,9 @@ declare_args() {
   enable_sticky_cms_gc = false
 
   ets_runtime_enable_compressed_pointer = false
+
+  # Control whether to include the C interpreter in arm64 builds.
+  enable_c_interpreter = false
 }
 
 if (defined(enable_cmc_gc)) {
