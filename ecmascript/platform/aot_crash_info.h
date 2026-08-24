@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_PLATFORM_AOT_RUNTIME_INFO_H
 #define ECMASCRIPT_PLATFORM_AOT_RUNTIME_INFO_H
 
-#include <signal.h>
 #include <string>
 
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
@@ -27,12 +26,6 @@
 #include "llvm/BinaryFormat/ELF.h"
 
 namespace panda::ecmascript {
-#ifdef ENABLE_OHOS_PARAMETER
-void GetSignalHandler(int signal, siginfo_t *info, void *context);
-void SignalReg(int signo);
-#endif
-void SignalAllReg();
-
 using AotCompilerPreprocessor = kungfu::AotCompilerPreprocessor;
 class AotCrashInfo {
 constexpr static const char *const AOT_ESCAPE_DISABLE = "ark.aot.escape.disable";

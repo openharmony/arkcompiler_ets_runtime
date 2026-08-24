@@ -16,24 +16,6 @@
 #include "ecmascript/platform/aot_crash_info.h"
 
 namespace panda::ecmascript {
-#ifdef ENABLE_OHOS_PARAMETER
-void GetSignalHandler(int signal, siginfo_t *info, void *context)
-{
-    (void)signal;
-    (void)info;
-    (void)context;
-}
-
-void SignalReg(int signo)
-{
-    (void)signo;
-}
-#endif
-
-void SignalAllReg()
-{
-}
-
 bool AotCrashInfo::IsAotEscapedOrNotInEnableList(EcmaVM *vm, const std::string &bundleName) const
 {
     (void)vm;
