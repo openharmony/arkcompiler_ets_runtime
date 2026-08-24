@@ -108,6 +108,7 @@ public:
 private:
     class RuntimeScope;
     class CrossThreadExecutionScope;
+    class CrossThreadExecutionScopes;
 
     bool InitializeHeapProfiler();
     bool IsDynamicOOM() const;
