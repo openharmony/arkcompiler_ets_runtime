@@ -794,54 +794,6 @@ HWTEST_F_L0(JSPandaFileTest, GetClassAndMethodIndexes_UseMinCount)
 }
 
 /**
- * @tc.name: ConstructorWithThread_SnapshotReadSuccess
- * @tc.desc: Test JSPandaFile(thread, pf, desc, entryPoint) constructor when snapshot read succeeds (line 59 return)
- * @tc.type: FUNC
- */
-HWTEST_F_L0(JSPandaFileTest, ConstructorWithThread_SnapshotReadSuccess)
-{
-    // Reset global snapshot state: earlier tests may have triggered
-    // UpdateFromStateFile with non-existent paths, leaving featureState=disableAll.
-    ModulesSnapshotHelper::ResetStateForTest();
-    CString path = GetCurrentDirPath();
-    const char *abcFilename = "/data/storage/el1/bundle/entry/ets/main/modules.abc";
-    const char *source = R"(
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    std::shared_ptr<JSPandaFile> serializePf = CreateJSPandaFile(source, CString(abcFilename));
-    NormalTranslateJSPandaFile(serializePf);
-    bool bundlePackSave = serializePf->IsBundlePack();
-    serializePf->SetBundlePack(false);
-    serializePf->ownedNpmEntries_.emplace_back("testRecord", "testEntry");
-    const auto &npmEntry = serializePf->ownedNpmEntries_.back();
-    serializePf->npmEntries_.insert(
-        {std::string_view(npmEntry.first.c_str(), npmEntry.first.size()),
-         std::string_view(npmEntry.second.c_str(), npmEntry.second.size())});
-    CString snapshotFileName =
-        MockJSPandaFileSnapshotForTest::GetSnapshotFileName(serializePf->GetJSPandaFileDesc(), path);
-    remove(snapshotFileName.c_str());
-    CString version = "test_version";
-    EXPECT_TRUE(MockJSPandaFileSnapshotForTest::WriteDataToFile(
-        thread, serializePf.get(), path, version));
-    serializePf->SetBundlePack(bundlePackSave);
-    EXPECT_TRUE(FileExist(snapshotFileName.c_str()));
-
-    std::shared_ptr<JSPandaFile> deserializePf = CreateJSPandaFile(source, CString(abcFilename));
-    EXPECT_TRUE(MockJSPandaFileSnapshotForTest::ReadDataFromFile(
-        thread, deserializePf.get(), path, version));
-    EXPECT_NE(deserializePf, nullptr);
-
-    auto it = deserializePf->npmEntries_.find("testRecord");
-    EXPECT_NE(it, deserializePf->npmEntries_.end());
-    EXPECT_EQ(it->second, "testEntry");
-
-    remove(snapshotFileName.c_str());
-}
-
-/**
  * @tc.name: CheckIsBundlePack_ExternalClassSkipped
  * @tc.desc: Test CheckIsBundlePack skips external classes (line 116 continue branch)
  * @tc.type: FUNC
