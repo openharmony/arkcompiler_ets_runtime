@@ -193,6 +193,11 @@ enable_hisysevent =
 enable_dump_in_faultlog =
     !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system && !is_qemu_runtime
+enable_handle_node_id_map_proto = enable_dump_in_faultlog
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.thirdparty_protobuf)) {
+  enable_handle_node_id_map_proto = false
+}
 enable_bytrace =
     !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system && !is_qemu_runtime
@@ -345,9 +350,9 @@ template("libark_jsruntime_common_set") {
       ]
     }
     deps = []
-    if (enable_dump_in_faultlog) {
+    if (enable_handle_node_id_map_proto) {
       deps += [ "$js_root:handle_node_id_map_proto" ]
-      external_deps += [ "protobuf:protobuf_lite_static" ]
+      external_deps += [ "protobuf:protobuf_lite" ]
     }
     if (!is_arkui_x) {
       external_deps += [ "runtime_core:arkfile_header_deps" ]
