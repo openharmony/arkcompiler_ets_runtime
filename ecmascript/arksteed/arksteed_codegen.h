@@ -129,45 +129,17 @@ private:
     bool AllPredecessorsDeferred(BB *block) const;
     bool AllSuccessorsDeferred(BB *block);
 
-    // Block color management for IR visualization
-    static constexpr const char *BLOCK_COLORS[] = {
-        "\033[33m",  // Yellow
-        "\033[36m",  // Cyan
-        "\033[35m",  // Magenta
-        "\033[32m",  // Green
-        "\033[31m",  // Red
-        "\033[34m",  // Blue
-    };
-    static constexpr int NUM_BLOCK_COLORS = 6;
-    static constexpr const char *COLOR_RESET = "\033[0m";
-
-    // Graph coloring for block colors - ensures adjacent blocks have different colors
     void ComputeBlockColors();
     void BuildBlockAdjacencyList(std::vector<std::vector<int>> *adjacentBlocks);
     void AssignBlockColors(const std::vector<std::vector<int>> &adjacentBlocks);
     int GetBlockColorIndex(int blockId) const;
-
-    const char *GetBlockColor(int blockId) const
-    {
-        return BLOCK_COLORS[GetBlockColorIndex(blockId)];
-    }
-
-    void SetCurrentBlockColor(int blockId)
-    {
-        currentBlockColor_ = GetBlockColor(blockId);
-    }
-
-    const char *GetCurrentBlockColor() const
-    {
-        return currentBlockColor_;
-    }
 
     ArkSteedAssembler *assembler_;
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
     DeoptTranslationBuilder *translationBuilder_;
     ChunkVector<EagerDeoptTarget *> eagerDeoptTargetsById_;
-    const char *currentBlockColor_ = "";
+    int currentBlockColorIndex_ = 0;
     BB *currentLayoutNextBlock_ = nullptr;
 
     // Block color assignment for CFG coloring (only computed when comments enabled)

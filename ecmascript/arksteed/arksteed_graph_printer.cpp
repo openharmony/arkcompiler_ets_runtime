@@ -17,6 +17,7 @@
 
 #include <sstream>
 
+#include "ecmascript/arksteed/arksteed_dump_helper.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_opcode_list.h"
@@ -490,20 +491,54 @@ bool GraphPrinter::AddTargetIfNotNext(BB *target, BB *nextBlock, BB *currentBloc
     return true;
 }
 
+namespace {
+constexpr size_t NULL_COLOR_INDEX = static_cast<size_t>(-1);
+struct ArrowRun {
+    size_t color;
+    std::string glyphs;
+};
+
+void AppendRun(std::vector<ArrowRun> *runs, size_t color, std::string glyphs)
+{
+    if (glyphs.empty()) {
+        return;
+    }
+    if (!runs->empty() && runs->back().color == color) {
+        runs->back().glyphs += std::move(glyphs);
+        return;
+    }
+    runs->push_back(ArrowRun {color, std::move(glyphs)});
+}
+
+std::string RenderArrowRuns(const std::vector<ArrowRun> &runs, bool withColors)
+{
+    std::ostringstream out;
+    for (const ArrowRun &run : runs) {
+        if (run.color == NULL_COLOR_INDEX) {
+            out << run.glyphs;
+            continue;
+        }
+        WITH_ANSI_COLOR_SCOPE(NthFaintColor(out, run.color, withColors)) {
+            out << run.glyphs;
+        }
+    }
+    return out.str();
+}
+}  // namespace
+
 std::string GraphPrinter::PrintBlockArrows(BB* block)
 {
     if (loopHeaders_.erase(block) > 0) {
         AddTarget(block, nullptr);
     }
 
-    std::string arrowLine;
+    std::vector<ArrowRun> runs;
     ChunkVector<size_t> terminitedIndices(chunk_);
-    int lineColor = -1;
-    int currentColor = -1;
+    size_t lineColor = NULL_COLOR_INDEX;
     bool sawEnd = false;
 
     for (size_t i = 0; i < targets_.size(); ++i) {
-        int desiredColor = lineColor;
+        size_t desiredColor = lineColor;
         Connection c;
 
         if (sawEnd) {
@@ -511,7 +546,7 @@ std::string GraphPrinter::PrintBlockArrows(BB* block)
         }
 
         if (targets_[i] == block) {
-            desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+            desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
             lineColor = desiredColor;
             c.Connect(RIGHT);
             if (targets_[i].isBackward) {
@@ -524,45 +559,33 @@ std::string GraphPrinter::PrintBlockArrows(BB* block)
             sawEnd = true;
         } else if (targets_[i] && activeArrows_.find(i) != activeArrows_.end()) {
             if (!targets_[i].isBackward) {
-                desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+                desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
                 c.AddVertical();
             }
         }
 
-        if (withColors_ && currentColor != desiredColor && desiredColor != -1) {
-            arrowLine += "\033[0;3";
-            arrowLine += std::to_string(desiredColor);
-            arrowLine += "m";
-            currentColor = desiredColor;
-        }
-
-        arrowLine += c.ToString();
+        AppendRun(&runs, desiredColor, c.ToString());
     }
 
     if (!terminitedIndices.empty()) {
-        arrowLine += "►";
-    }
-
-    if (withColors_ && currentColor != -1) {
-        arrowLine += "\033[0m";
+        AppendRun(&runs, lineColor, "►");
     }
 
     for (size_t idx : terminitedIndices) {
         targets_[idx] = ArrowTarget();
     }
 
-    return arrowLine;
+    return RenderArrowRuns(runs, withColors_);
 }
 
 std::string GraphPrinter::GetArrowColumn(ChunkSet<size_t> *arrowsStarting)
 {
-    std::string arrowColumn;
-    int lineColor = -1;
-    int currentColor = -1;
+    std::vector<ArrowRun> runs;
+    size_t lineColor = NULL_COLOR_INDEX;
     bool sawStart = false;
 
     for (size_t i = 0; i < targets_.size(); ++i) {
-        int desiredColor = lineColor;
+        size_t desiredColor = lineColor;
         Connection c;
 
         if (sawStart) {
@@ -570,7 +593,7 @@ std::string GraphPrinter::GetArrowColumn(ChunkSet<size_t> *arrowsStarting)
         }
 
         if (arrowsStarting != nullptr && arrowsStarting->find(i) != arrowsStarting->end()) {
-            desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+            desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
             lineColor = desiredColor;
             c.Connect(RIGHT);
             if (i < targets_.size() && targets_[i].isBackward) {
@@ -584,26 +607,15 @@ std::string GraphPrinter::GetArrowColumn(ChunkSet<size_t> *arrowsStarting)
 
         if (c.connected == 0 && targets_[i] && activeArrows_.find(i) != activeArrows_.end()) {
             if (!targets_[i].isBackward) {
-                desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+                desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
                 c.AddVertical();
             }
         }
 
-        if (withColors_ && currentColor != desiredColor && desiredColor != -1) {
-            arrowColumn += "\033[0;3";
-            arrowColumn += std::to_string(desiredColor);
-            arrowColumn += "m";
-            currentColor = desiredColor;
-        }
-
-        arrowColumn += c.ToString();
+        AppendRun(&runs, desiredColor, c.ToString());
     }
 
-    if (withColors_ && currentColor != -1) {
-        arrowColumn += "\033[0m";
-    }
-
-    return arrowColumn;
+    return RenderArrowRuns(runs, withColors_);
 }
 
 }  // namespace panda::ecmascript::arksteed

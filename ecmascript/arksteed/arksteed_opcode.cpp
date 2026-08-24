@@ -18,6 +18,7 @@
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_condition_code.h"
+#include "ecmascript/arksteed/arksteed_dump_helper.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 #include "ecmascript/arksteed/arksteed_opcode_list.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
@@ -837,23 +838,23 @@ struct DumpCommonHelper {
     static void Dump(std::ostream &out, const VertexT *vertex)
     {
         if constexpr (std::is_base_of_v<CommonStubIDMixin, VertexT>) {
-            out << "; stub = " << kungfu::CommonStubCSigns::GetName(vertex->GetCommonStubID());
+            out << "  " << kungfu::CommonStubCSigns::GetName(vertex->GetCommonStubID());
         }
         if constexpr (std::is_base_of_v<RuntimeStubIDMixin, VertexT>) {
-            out << "; rtstub = " << kungfu::RuntimeStubCSigns::GetRTName(vertex->GetRuntimeStubID());
+            out << "  " << kungfu::RuntimeStubCSigns::GetRTName(vertex->GetRuntimeStubID());
         }
         if constexpr (std::is_base_of_v<ConditionMixin, VertexT>) {
-            out << "; cc = " << ConditionName(vertex->GetCondition());
+            out << "  cc = " << ConditionName(vertex->GetCondition());
         }
         if constexpr (std::is_base_of_v<OffsetMixin, VertexT>) {
-            out << "; offset = " << vertex->GetOffset();
+            out << "  offset = " << vertex->GetOffset();
         }
         if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, VertexT>) {
-            out << "; bpc = " << vertex->GetBytecodeOffset();
+            out << "  bpc = " << vertex->GetBytecodeOffset();
         }
         if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
             if (vertex->HasLazyDeoptFrameState()) {
-                out << "; bpc = " << vertex->GetBytecodeOffset();
+                out << "  bpc = " << vertex->GetBytecodeOffset();
             }
         }
     }
@@ -878,27 +879,27 @@ DUMP_EXTRA(Int32Constant)
 {
     int32_t value = vertex->GetValue();
     uint32_t uValue = static_cast<uint32_t>(value);
-    out << "; value = " << value << " (0x" << std::hex << uValue << ')' << std::dec;
+    out << "  value = " << value << " (0x" << std::hex << uValue << ')' << std::dec;
 }
 
 DUMP_EXTRA(Int64Constant)
 {
     int64_t value = vertex->GetValue();
     uint64_t uValue = static_cast<uint64_t>(value);
-    out << "; value = " << value << " (0x" << std::hex << uValue << ')' << std::dec;
+    out << "  value = " << value << " (0x" << std::hex << uValue << ')' << std::dec;
 }
 
 DUMP_EXTRA(Float64Constant)
 {
     double value = vertex->GetValue();
-    out << "; value = " << value << " (0x" << std::hex << value << ')' << std::dec;
+    out << "  value = " << value << " (0x" << std::hex << value << ')' << std::dec;
 }
 
 DUMP_EXTRA(TaggedConstant)
 {
     JSTaggedType rawValue = vertex->GetValue();
     JSTaggedValue value(rawValue);
-    out << "; value = 0x" << std::hex << rawValue << std::dec << " (";
+    out << "  value = 0x" << std::hex << rawValue << std::dec << " (";
 
     if (value.IsInt()) {
         out << "tagged int: " << value.GetInt() << ')';
@@ -939,23 +940,23 @@ DUMP_EXTRA(TaggedConstant)
 
 DUMP_EXTRA(InitialValue)
 {
-    out << "; frameSlot = " << vertex->GetFrameSlotIndex();
+    out << "  frameSlot = " << vertex->GetFrameSlotIndex();
 }
 
 DUMP_EXTRA(Call)
 {
-    out << "; actualArgc = " << vertex->GetActualArgc();
+    out << "  actualArgc = " << vertex->GetActualArgc();
 }
 
 DUMP_EXTRA(DeoptIfHClassMismatch)
 {
     uintptr_t expected = reinterpret_cast<uintptr_t>(vertex->GetExpectedHClass());
-    out << "; expected = 0x" << std::hex << expected << std::dec;
+    out << "  expected = 0x" << std::hex << expected << std::dec;
 }
 
 DUMP_EXTRA(DeoptIfHClassNotIn)
 {
-    out << "; expected = [";
+    out << "  expected = [";
     const auto &expectedHClasses = vertex->GetExpectedHClasses();
     out << std::hex;
     for (size_t i = 0; i < expectedHClasses.size(); ++i) {
@@ -969,27 +970,27 @@ DUMP_EXTRA(DeoptIfHClassNotIn)
 DUMP_EXTRA(DeoptIfPrototypeChanged)
 {
     out << std::boolalpha;
-    out << "; checkProtoChangeMarker = " << vertex->ShouldCheckProtoChangeMarker()
+    out << "  checkProtoChangeMarker = " << vertex->ShouldCheckProtoChangeMarker()
         << ", checkNotPrototype = " << vertex->ShouldCheckNotPrototype();
     out << std::noboolalpha;
 }
 
 DUMP_EXTRA(DeoptIfInt32Condition)
 {
-    out << "; type = " << static_cast<int>(vertex->GetDeoptType());
+    out << "  type = " << static_cast<int>(vertex->GetDeoptType());
 }
 
 DUMP_EXTRA(Deopt)
 {
-    out << "; type = " << static_cast<int>(vertex->GetDeoptType());
+    out << "  type = " << static_cast<int>(vertex->GetDeoptType());
 }
 
 DUMP_EXTRA(LoadPrototypeHolderByHClass)
 {
     uintptr_t holderHClass = reinterpret_cast<uintptr_t>(vertex->GetHolderHClass());
-    out << "; hclass = 0x" << std::hex << holderHClass << std::dec
-        << "; depth = " << vertex->GetHolderDepth()
-        << "; prototypes = [";
+    out << "  hclass = 0x" << std::hex << holderHClass << std::dec
+        << "  depth = " << vertex->GetHolderDepth()
+        << "  prototypes = [";
     const auto &expectedHClasses = vertex->GetExpectedPrototypeHClasses();
     out << std::hex;
     for (size_t i = 0; i < expectedHClasses.size(); ++i) {
@@ -1003,50 +1004,50 @@ DUMP_EXTRA(LoadPrototypeHolderByHClass)
 DUMP_EXTRA(FindPrototypeHolder)
 {
     uintptr_t holderHClass = reinterpret_cast<uintptr_t>(vertex->GetExpectedHolderHClass());
-    out << "; expected = 0x" << std::hex << holderHClass << std::dec;
+    out << "  expected = 0x" << std::hex << holderHClass << std::dec;
 }
 
 DUMP_EXTRA(PrepareSharedStoreField)
 {
-    out << "; handlerInfo = 0x" << std::hex << vertex->GetHandlerInfo() << std::dec;
+    out << "  handlerInfo = 0x" << std::hex << vertex->GetHandlerInfo() << std::dec;
 }
 
 DUMP_EXTRA(EnsurePropertiesCapacity)
 {
-    out << "; fieldIndex = " << vertex->GetFieldIndex();
+    out << "  fieldIndex = " << vertex->GetFieldIndex();
 }
 
 DUMP_EXTRA(StoreTaggedFieldByHClass)
 {
-    out << "; numCases = " << vertex->GetCases().size()
-        << "; value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+    out << "  numCases = " << vertex->GetCases().size()
+        << "  value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
 }
 
 DUMP_EXTRA(StoreTaggedFieldWithBarrier)
 {
-    out << "; value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+    out << "  value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
 }
 
 DUMP_EXTRA(StoreSharedFieldWithBarrier)
 {
-    out << "; value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+    out << "  value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
 }
 
 DUMP_EXTRA(I32DivByConstWithCheck)
 {
-    out << "; divisor = " << vertex->GetDivisor()
-        << "; magic = " << vertex->GetMagic()
-        << "; shift = " << vertex->GetShift();
+    out << "  divisor = " << vertex->GetDivisor()
+        << "  magic = " << vertex->GetMagic()
+        << "  shift = " << vertex->GetShift();
 }
 
 DUMP_EXTRA(I32BitwiseBinary)
 {
-    out << "; kind = " << IntBitwiseKindName(vertex->GetKind());
+    out << "  kind = " << IntBitwiseKindName(vertex->GetKind());
 }
 
 DUMP_EXTRA(BranchIfHClassIn)
 {
-    out << "; expected = [";
+    out << "  expected = [";
     const auto &expectedHClasses = vertex->GetExpectedHClasses();
     for (size_t i = 0; i < expectedHClasses.size(); ++i) {
         if (i != 0) {
@@ -1060,7 +1061,7 @@ DUMP_EXTRA(BranchIfHClassIn)
 DUMP_EXTRA(BranchIfObjectType)
 {
     CString name = JSHClass::DumpJSType(vertex->GetExpectedType());
-    out << "; expected = " << name;
+    out << "  expected = " << name;
 }
 
 DUMP_EXTRA(GapMove)
@@ -1079,37 +1080,27 @@ DUMP_EXTRA(ConstantGapMove)
 void Vertex::Dump(std::ostream &out, bool withColors) const
 {
     out << FormatVertexLabel(this) << ":  ";
-    if (withColors) {
-        out << "\033[31m";  // red: opcode
-    }
-    out << OpcodeToString(GetOpcode());
-    if (withColors) {
-        out << "\033[0m";
+    WITH_ANSI_COLOR_SCOPE(BrightRed(out, withColors)) {
+        out << OpcodeToString(GetOpcode());
     }
     ValueRepresentation repr = GetValueRepresentation();
     if (repr != ValueRepresentation::NONE) {
         out << " [";
-        if (withColors) {
-            out << "\033[31m";  // red: value representation
-        }
-        out << ValueRepresentationName(repr);
-        if (withColors) {
-            out << "\033[0m";
+        WITH_ANSI_COLOR_SCOPE(BrightRed(out, withColors)) {
+            out << ValueRepresentationName(repr);
         }
         out << ']';
     }
     uint32_t n = GetInputCount();
     if (n > 0) {
-        out << " (";
+        out << "  (";
         for (uint32_t i = 0; i < n; i++) {
             if (i != 0) out << ", ";
             out << FormatVertexLabel(GetInput(i));
         }
         out << ")";
     }
-    if (withColors) {
-        out << "\033[32m";  // green: node property annotations
-    }
+
     auto doDumpFields = [&out](const auto *self) {
         using VertexT = std::remove_const_t<std::remove_pointer_t<decltype(self)>>;
         if constexpr (DumpCommonHelper<VertexT>::HAS_COMMON) {
@@ -1119,17 +1110,17 @@ void Vertex::Dump(std::ostream &out, bool withColors) const
             DumpExtraHelper<VertexT>::Dump(out, self);
         }
     };
-#define CASE(Type)                              \
-        case VertexOpcode::Type:                \
-            doDumpFields(Cast<Type##Vertex>()); \
-            break;
-    switch (GetOpcode()) {
-ALL_VERTEX_LIST(CASE)
-        default: break;  // No-op otherwise
+    WITH_ANSI_COLOR_SCOPE(BrightGreen(out, withColors)) {
+        switch (GetOpcode()) {
+#define CASE(Type)                                  \
+            case VertexOpcode::Type:                \
+                doDumpFields(Cast<Type##Vertex>()); \
+                break;
+            ALL_VERTEX_LIST(CASE)
 #undef CASE
-    }
-    if (withColors) {
-        out << "\033[0m";
+            default:
+                break;  // No-op otherwise
+        }
     }
 }
 

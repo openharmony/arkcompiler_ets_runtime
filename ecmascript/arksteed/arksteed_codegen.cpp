@@ -22,6 +22,7 @@
 
 #include "ecmascript/arksteed/arksteed_assembler-inl.h"  // IWYU pragma: keep
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#include "ecmascript/arksteed/arksteed_dump_helper.h"
 #include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/arksteed/arksteed_write_barrier.h"
@@ -32,7 +33,6 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/tagged_array.h"
@@ -3165,7 +3165,9 @@ void ArkSteedCodeGenerator::DeconstructPhisInSuccessor(BB *successor, uint32_t p
     // Gap moves are part of the current block's code (preparing for jump to successor)
     // so we use the current block color, not the successor's color
     std::ostringstream gapMovesSs;
-    gapMovesSs << GetCurrentBlockColor() << "--   Gap moves:" << COLOR_RESET;
+    WITH_ANSI_COLOR_SCOPE(NthBrightColor(gapMovesSs, currentBlockColorIndex_, withColors_)) {
+        gapMovesSs << "--   Gap moves:";
+    }
     RecordComment(gapMovesSs.str().c_str());
     TemporaryRegisterScope scope(assembler_);
     ArkSteedRegister scratchGPR = scope.AcquireScratch();
@@ -3434,28 +3436,31 @@ void ArkSteedCodeGenerator::RecordBlockComment(BB *block)
         return;
     }
     // Set current block color for subsequent IR lines
-    SetCurrentBlockColor(block->GetId());
+    currentBlockColorIndex_ = GetBlockColorIndex(block->GetId());
     std::ostringstream ss;
-    ss << GetCurrentBlockColor() << "-- Block b" << block->GetId();
-    if (block->IsDeferred()) {
-        ss << " (deferred)";
-    }
+    WITH_ANSI_COLOR_SCOPE(NthBrightColor(ss, currentBlockColorIndex_, withColors_)) {
+        ss << "-- Block b" << block->GetId();
+        if (block->IsDeferred()) {
+            ss << " (deferred)";
+        }
 
-    // Print predecessors for merge blocks with their colors
-    if (block->HasRegisterMergeState()) {
-        const auto &predecessors = block->GetPredecessors();
-        if (!predecessors.empty()) {
-            ss << " <-- [";
-            for (size_t i = 0; i < predecessors.size(); ++i) {
-                // Use predecessor's color for the block reference
-                ss << GetBlockColor(predecessors[i]->GetId()) << "b" << predecessors[i]->GetId()
-                   << GetCurrentBlockColor() << ", ";
+        // Print predecessors for merge blocks with their colors
+        if (block->HasRegisterMergeState()) {
+            const auto &predecessors = block->GetPredecessors();
+            if (!predecessors.empty()) {
+                ss << " <-- [";
+                for (size_t i = 0; i < predecessors.size(); ++i) {
+                    // Use predecessor's color for the block reference
+                    int colorIndex = GetBlockColorIndex(predecessors[i]->GetId());
+                    WITH_ANSI_COLOR_SCOPE(NthBrightColor(ss, colorIndex, withColors_)) {
+                        ss << "b" << predecessors[i]->GetId();
+                    }
+                    ss << ", ";
+                }
+                ss << "]";
             }
-            ss << "]";
         }
     }
-    ss << COLOR_RESET;
-
     RecordComment(ss.str().c_str());
 }
 
@@ -3465,12 +3470,11 @@ void ArkSteedCodeGenerator::RecordVertexComment(Vertex *vertex)
         return;
     }
     std::ostringstream ss;
-    ss << GetCurrentBlockColor() << "--   ";
+    WITH_ANSI_COLOR_SCOPE(NthBrightColor(ss, currentBlockColorIndex_, withColors_)) {
+        ss << "--   ";
+    }
     ss << vertex->Dump(withColors_);
     AppendVertexSuccessorInfo(&ss, vertex);
-    ss << COLOR_RESET;
-
-    RecordComment(ss.str().c_str());
 }
 
 void ArkSteedCodeGenerator::AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex)
@@ -3479,23 +3483,32 @@ void ArkSteedCodeGenerator::AppendVertexSuccessorInfo(std::ostringstream *ss, Ve
         return;
     }
     ControlVertex *control = vertex->Cast<ControlVertex>();
+    auto blockRef = [this, ss](BB *block) {
+        int colorIndex = GetBlockColorIndex(block->GetId());
+        WITH_ANSI_COLOR_SCOPE(NthBrightColor(*ss, colorIndex, withColors_)) {
+            *ss << "b" << block->GetId();
+        }
+    };
     if (auto *jump = control->TryCast<JumpVertex>(); jump != nullptr) {
-        *ss << " --> [" << GetBlockColor(jump->Target()->GetId()) << "b" << jump->Target()->GetId()
-            << GetCurrentBlockColor() << "]";
+        *ss << " --> [";
+        blockRef(jump->Target());
+        *ss << "]";
     } else if (auto *jumpLoop = control->TryCast<JumpLoopVertex>(); jumpLoop != nullptr) {
-        *ss << " --> [" << GetBlockColor(jumpLoop->Target()->GetId()) << "b" << jumpLoop->Target()->GetId()
-            << GetCurrentBlockColor() << "] (loop back)";
+        *ss << " --> [";
+        blockRef(jumpLoop->Target());
+        *ss << "] (loop back)";
     } else if (auto *branch = control->TryCast<BranchControlVertex>(); branch != nullptr) {
-        *ss << " --> [" << GetBlockColor(branch->IfTrue()->GetId()) << "b" << branch->IfTrue()->GetId();
+        *ss << " --> [";
+        blockRef(branch->IfTrue());
         if (IsNextBlockInLayout(branch->IfTrue())) {
             *ss << " (fallthrough)";
         }
-        *ss << GetCurrentBlockColor() << " if true, " << GetBlockColor(branch->IfFalse()->GetId()) << "b"
-            << branch->IfFalse()->GetId();
+        *ss << " if true, ";
+        blockRef(branch->IfFalse());
         if (IsNextBlockInLayout(branch->IfFalse())) {
             *ss << " (fallthrough)";
         }
-        *ss << GetCurrentBlockColor() << " if false]";
+        *ss << " if false]";
     }
 }
 
@@ -3506,14 +3519,15 @@ void ArkSteedCodeGenerator::RecordGapMoveComment(const InstructionOperand &src, 
         return;
     }
     std::ostringstream ss;
-    ss << GetCurrentBlockColor() << "--   * " << src.Description() << " -> " << dest.Description();
-    if (phi != nullptr) {
-        std::string label = FormatVertexLabel(phi);
-        // Phi vertices should be labelled during graph building
-        ASSERT(label != "<unregistered>");
-        ss << " (" << label << ")";
+    WITH_ANSI_COLOR_SCOPE(NthBrightColor(ss, currentBlockColorIndex_, withColors_)) {
+        ss << "--   * " << src.Description() << " -> " << dest.Description();
+        if (phi != nullptr) {
+            std::string label = FormatVertexLabel(phi);
+            // Phi vertices should be labelled during graph building
+            ASSERT(label != "<unregistered>");
+            ss << " (" << label << ")";
+        }
     }
-    ss << COLOR_RESET;
     RecordComment(ss.str().c_str());
 }
 
@@ -3521,19 +3535,21 @@ void ArkSteedCodeGenerator::RecordSpillComment()
 {
     if (__ IsCommentEnabled()) {
         std::ostringstream ss;
-        ss << GetCurrentBlockColor() << "--   Spill:" << COLOR_RESET;
+        WITH_ANSI_COLOR_SCOPE(NthBrightColor(ss, currentBlockColorIndex_, withColors_)) {
+            ss << "--   Spill:";
+        }
         RecordComment(ss.str().c_str());
     }
 }
 
-// Get color index for a block - uses graph coloring if computed, otherwise falls back to id % NUM_BLOCK_COLORS
+// Get color index for a block - uses graph coloring if computed, otherwise falls back to the raw block id.
 int ArkSteedCodeGenerator::GetBlockColorIndex(int blockId) const
 {
     if (blockColorsComputed_ && blockId >= 0 && static_cast<size_t>(blockId) < blockColorAssignment_.size()) {
         return blockColorAssignment_[blockId];
     }
     // Fallback to simple modulo when graph coloring is not computed
-    return blockId % NUM_BLOCK_COLORS;
+    return blockId;
 }
 
 // Compute graph coloring to ensure adjacent blocks have different colors
@@ -3611,7 +3627,7 @@ void ArkSteedCodeGenerator::AssignBlockColors(const std::vector<std::vector<int>
         BB *block = (*graph_)[i];
         int blockId = block->GetId();
 
-        bool usedColors[NUM_BLOCK_COLORS] = {false};
+        bool usedColors[AnsiColorScope::NUM_BRIGHT_COLORS] = {false};
         for (int adjId : adjacentBlocks[blockId]) {
             if (adjId >= 0 && static_cast<size_t>(adjId) < blockColorAssignment_.size() && adjId < blockId &&
                 blockColorAssignment_[adjId] >= 0) {
@@ -3619,15 +3635,12 @@ void ArkSteedCodeGenerator::AssignBlockColors(const std::vector<std::vector<int>
             }
         }
 
-        int color = 0;
-        while (color < NUM_BLOCK_COLORS && usedColors[color]) {
+        size_t color = 0;
+        while (color < AnsiColorScope::NUM_BRIGHT_COLORS && usedColors[color]) {
             ++color;
         }
-        if (color >= NUM_BLOCK_COLORS) {
-            color = color % NUM_BLOCK_COLORS;
-        }
 
-        blockColorAssignment_[blockId] = color;
+        blockColorAssignment_[blockId] = color % AnsiColorScope::NUM_BRIGHT_COLORS;
     }
 }
 

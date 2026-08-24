@@ -1,3 +1,4 @@
+**/__pycache__/
 **/compile_commands.json
 build
 .vscode
@@ -14,7 +15,6 @@ tags
 *.abc
 *.ll
 *.m
-test/regresstest/__pycache__/
 test/regresstest/ark-regress/
 .cursor
 .codecheck
