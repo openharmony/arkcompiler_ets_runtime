@@ -24,7 +24,7 @@ if (!ark_standalone_build && is_ohos) {
   import("//build/ohos.gni")
 }
 
-if (enable_dump_in_faultlog) {
+if (enable_handle_node_id_map_proto) {
   handle_node_id_map_proto_dir = "$js_root/ecmascript/dfx/hprof/proto"
   handle_node_id_map_proto =
       "$handle_node_id_map_proto_dir/handleNodeIdMap.proto"
@@ -83,7 +83,7 @@ if (enable_dump_in_faultlog) {
       handle_node_id_map_proto_source,
     ]
     deps = [ ":generate_handle_node_id_map_proto" ]
-    external_deps = [ "protobuf:protobuf_lite_static" ]
+    external_deps = [ "protobuf:protobuf_lite" ]
     public_configs = [ ":handle_node_id_map_proto_config" ]
     part_name = "ets_runtime"
     subsystem_name = "arkcompiler"
@@ -451,6 +451,9 @@ config("hiviewdfx_config") {
   defines = []
   if (enable_dump_in_faultlog) {
     defines += [ "ENABLE_DUMP_IN_FAULTLOG" ]
+  }
+  if (enable_handle_node_id_map_proto) {
+    defines += [ "ENABLE_HANDLE_NODE_ID_MAP_PROTO" ]
   }
   if (enable_bytrace) {
     defines += [ "ENABLE_BYTRACE" ]
@@ -1762,7 +1765,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   deps = []
-  if (enable_dump_in_faultlog) {
+  if (enable_handle_node_id_map_proto) {
     deps += [ ":handle_node_id_map_proto" ]
   }
   external_deps = [
@@ -1771,8 +1774,8 @@ ohos_source_set("libark_jsruntime_test_set") {
     "json:nlohmann_json_static"
   ]
 
-  if (enable_dump_in_faultlog) {
-    external_deps += [ "protobuf:protobuf_lite_static" ]
+  if (enable_handle_node_id_map_proto) {
+    external_deps += [ "protobuf:protobuf_lite" ]
   }
 
   if (enable_static_backtrace) {

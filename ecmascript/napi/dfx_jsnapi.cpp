@@ -48,8 +48,10 @@
 #endif
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
-#include "handleNodeIdMap.pb.h"
 #include "uv.h"
+#endif
+#if defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
+#include "handleNodeIdMap.pb.h"
 #endif
 
 namespace panda {
@@ -855,7 +857,7 @@ void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 
 bool DFXJSNApi::GetHandleNodeIdMap([[maybe_unused]] const EcmaVM *vm)
 {
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
     LOG_ECMA(DEBUG) << "GetHandleNodeIdMap: entry";
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
@@ -894,7 +896,7 @@ bool DFXJSNApi::GetHandleNodeIdMap([[maybe_unused]] const EcmaVM *vm)
     }
     return true;
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+    LOG_ECMA(ERROR) << "GetHandleNodeIdMap: not support arkcompiler handle node id map";
     return false;
 #endif
 }

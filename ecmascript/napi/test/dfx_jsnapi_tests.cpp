@@ -1812,7 +1812,7 @@ HWTEST_F_L0(DFXJSNApiTests, InsertSoLoadFailure_LongStrings)
 // No objects: function succeeds with header-only output.
 HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_NoObjects)
 {
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
     DumpSnapShotOption opt;
     opt.nativeAddrToNodeIdMap = 0;
     DFXJSNApi::DumpHeapSnapshot(vm_, "./dump_noobj.heapsnapshot", opt);
@@ -1827,7 +1827,7 @@ HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_NoObjects)
 // Dump with N objects: function succeeds.
 HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_WithObjects)
 {
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
     constexpr int N = 10;
     ObjectFactory *factory = vm_->GetFactory();
     Global<ObjectRef> globals[N];
@@ -1850,7 +1850,7 @@ HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_WithObjects)
 // Dump without nativeAddrToNodeIdMap flag: function still succeeds.
 HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_WithoutFlag)
 {
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
     Global<ObjectRef> g(vm_, Local<JSTaggedValue>(obj.GetAddress()));
@@ -1869,7 +1869,7 @@ HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_WithoutFlag)
 // Second dump after adding objects: function succeeds both times.
 HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_DataIsolation)
 {
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
     ObjectFactory *factory = vm_->GetFactory();
     DumpSnapShotOption opt;
     opt.nativeAddrToNodeIdMap = 1;
@@ -1900,7 +1900,7 @@ HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Dump_DataIsolation)
 // 100k objects: measure elapsed time.
 HWTEST_F_L0(DFXJSNApiTests, GetHandleNodeIdMap_Perf_100k)
 {
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_HANDLE_NODE_ID_MAP_PROTO)
     constexpr int kObjectCount = 100000;
     ObjectFactory *factory = vm_->GetFactory();
     std::vector<Global<ObjectRef>> globals;
