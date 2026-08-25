@@ -15,6 +15,7 @@
 
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/log_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/platform/log.h"
@@ -23,6 +24,33 @@
 #include "ecmascript/extractortool/src/source_map.h"
 
 namespace panda::ecmascript::base {
+namespace {
+constexpr size_t KEY_MAX = 256;
+
+LogManager& GetLogManager()
+{
+    static LogManager instance;
+    return instance;
+}
+
+uint64_t ComputeRateLimitKey(const CString &name, const CString &msg)
+{
+    std::string keyStr;
+    keyStr.reserve(KEY_MAX);
+    keyStr.append(panda::ecmascript::previewerTag);
+    size_t remaining = keyStr.size() < KEY_MAX ? KEY_MAX - keyStr.size() : 0;
+    size_t nameLen = std::min(name.size(), remaining);
+    keyStr.append(name.c_str(), nameLen);
+    remaining = keyStr.size() < KEY_MAX ? KEY_MAX - keyStr.size() : 0;
+    size_t sepLen = std::min(static_cast<size_t>(2), remaining);
+    keyStr.append(": ", sepLen);
+    remaining = keyStr.size() < KEY_MAX ? KEY_MAX - keyStr.size() : 0;
+    size_t msgLen = std::min(msg.size(), remaining);
+    keyStr.append(msg.c_str(), msgLen);
+    return std::hash<std::string>{}(keyStr);
+}
+} // namespace
+
 JSTaggedValue ErrorHelper::ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType)
 {
     ASSERT(argv);
@@ -252,10 +280,19 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
 }
 
 // static
-void ErrorHelper::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo)
+void ErrorHelper::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo,
+                                   bool enableRateLimit)
 {
     CString nameBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::NAME);
     CString msgBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::MESSAGE);
+
+    if (enableRateLimit) {
+        uint64_t hashKey = ComputeRateLimitKey(nameBuffer, msgBuffer);
+        if (!GetLogManager().ShouldPrintByRateLimit(hashKey)) {
+            return;
+        }
+    }
+
     CString stackBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::STACK);
     LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
                       << (panda::ecmascript::previewerTag.empty()
