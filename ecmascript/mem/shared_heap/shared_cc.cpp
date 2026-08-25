@@ -311,6 +311,7 @@ void SharedCC::ProcessWeakReference()
         thread->IterateWeakRoots(weakVisitor);
         thread->IterateWeakEcmaGlobalStorage(weakVisitor, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(weakVisitor);
+        thread->GetEcmaVM()->ProcessPendingRemovalModules(weakVisitor);
         thread->ClearVMCachedConstantPool();
     });
 }

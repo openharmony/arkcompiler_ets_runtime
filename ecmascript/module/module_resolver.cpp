@@ -98,6 +98,11 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
         if (!cachedModule->IsUndefined()) {
             return cachedModule;
         }
+        JSHandle<JSTaggedValue> pendingModule = moduleManager->TryGetPendingRemovalModule(moduleRequestName);
+        if (!pendingModule->IsUndefined()) {
+            ModuleDeregister::RestoreModuleFromPending(thread, pendingModule, executeType);
+            return pendingModule;
+        }
         return ResolveNativeModule(thread, moduleRequestName, baseFilename,
             SourceTextModule::GetNativeModuleType(moduleRequestName));
     }
@@ -232,6 +237,11 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
         ModuleDeregister::DisableMultiEntryDeregister(thread, JSHandle<SourceTextModule>::Cast(module), executeType);
         return module;
     }
+    JSHandle<JSTaggedValue> pendingModule = moduleManager->TryGetPendingRemovalModule(recordName);
+    if (!pendingModule->IsUndefined()) {
+        ModuleDeregister::RestoreModuleFromPending(thread, pendingModule, executeType);
+        return pendingModule;
+    }
     JSHandle<JSTaggedValue> moduleRecord =
         ResolveModuleWithMerge(thread, jsPandaFile, recordName, recordInfo, executeType);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -247,6 +257,11 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePackBuffe
     JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(referencingModule);
     if (!module->IsUndefined()) {
         return module;
+    }
+    JSHandle<JSTaggedValue> pendingModule = moduleManager->TryGetPendingRemovalModule(referencingModule);
+    if (!pendingModule->IsUndefined()) {
+        ModuleDeregister::RestoreModuleFromPending(thread, pendingModule, executeType);
+        return pendingModule;
     }
     return ResolveModuleBundlePack(thread, jsPandaFile, executeType);
 }
@@ -278,6 +293,11 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     if (!module->IsUndefined()) {
         ModuleDeregister::DisableMultiEntryDeregister(thread, JSHandle<SourceTextModule>::Cast(module), executeType);
         return module;
+    }
+    JSHandle<JSTaggedValue> pendingModule = moduleManager->TryGetPendingRemovalModule(moduleFileName);
+    if (!pendingModule->IsUndefined()) {
+        ModuleDeregister::RestoreModuleFromPending(thread, pendingModule, executeType);
+        return pendingModule;
     }
     std::shared_ptr<JSPandaFile> pandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION, false, executeType);

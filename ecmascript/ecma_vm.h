@@ -571,6 +571,7 @@ public:
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
     void ProcessSnapShotEnv(const WeakRootVisitor& visitor);
+    void ProcessPendingRemovalModules(const WeakRootVisitor &visitor);
     void IteratorSnapShotEnv(WeakVisitor& visitor);
 
     AsyncStackTrace *GetAsyncStackTrace() const
@@ -2082,6 +2083,7 @@ private:
 
     public:
         void Iterate(RootVisitor &v);
+        void ProcessPendingRemovalModules(const WeakRootVisitor &visitor);
 
         template <typename T>
         void PushBack(T moduleManager);

@@ -13,21 +13,31 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_tagged_value_wrapper-inl.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_manager_map.h"
+#include "ecmascript/module/module_tools.h"
+#include "ecmascript/napi/jsnapi_helper.h"
+#include "ecmascript/tagged_dictionary.h"
+
+#define private public
+#include "ecmascript/module/js_module_manager.h"
+#undef private
+
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
 #include "class_data_accessor-inl.h"
+#include "libpandafile/file.h"
 
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -38,7 +48,6 @@
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
-#include "ecmascript/module/module_tools.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_resolver.h"
@@ -74,6 +83,7 @@ static const char *RESOLVE_ENTRY_MODULE = "module";
 static const char *TEST_LOCAL_MODULE_NAME = "test_local_module";
 static const char *TEST_TAGGED_MODULE_NAME = "test_tagged_module";
 using FunctionCallbackInfo = JSHandle<JSTaggedValue>(*)(JsiRuntimeCallInfo *);
+
 class EcmaModuleTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -375,7 +385,7 @@ HWTEST_F_L0(EcmaModuleTest, SharedNativeObjDestroyReleasesModuleFilename)
 #endif
 }
 
-HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithoutSendableModule)
+HWTEST_F_L0(EcmaModuleTest, RemoveModuleWithoutSendableModule)
 {
     ModuleManager *moduleManager = thread->GetModuleManager();
     ObjectFactory *factory = instance->GetFactory();
@@ -387,9 +397,14 @@ HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithoutSendableModule)
 
     module->SetEcmaModuleFilenameString(thread, "remove_normal_module.abc");
     module->SetEcmaModuleRecordNameString(recordName);
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
     moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
 
     ModuleDeregister::RemoveModule(thread, module);
+    WeakRootVisitor deadVisitor = [](TaggedObject *) -> TaggedObject * {
+        return nullptr;
+    };
+    moduleManager->ProcessPendingRemovalModules(deadVisitor);
 
     EXPECT_FALSE(moduleManager->IsModuleLoaded(recordName));
     EXPECT_EQ(module->GetEcmaModuleFilename(), 0U);
@@ -399,7 +414,7 @@ HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithoutSendableModule)
 #endif
 }
 
-HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithSendableModule)
+HWTEST_F_L0(EcmaModuleTest, RemoveModuleWithSendableModule)
 {
     ModuleManager *moduleManager = thread->GetModuleManager();
     ObjectFactory *factory = instance->GetFactory();
@@ -414,6 +429,7 @@ HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithSendableModule)
 
     localModule->SetEcmaModuleFilenameString(thread, "remove_sendable_local_module.abc");
     localModule->SetEcmaModuleRecordNameString(recordName);
+    localModule->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
     sendableModule->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
     sendableModule->SetEcmaSharedModuleFilenameString("remove_sendable_module.abc");
     sendableModule->SetEcmaModuleRecordNameString(recordName);
@@ -421,6 +437,10 @@ HWTEST_F_L0(EcmaModuleTest, RemoveModuleFromCacheWithSendableModule)
     moduleManager->AddSendableModuleToCache(recordName, sendableModule.GetTaggedValue());
 
     ModuleDeregister::RemoveModule(thread, localModule);
+    WeakRootVisitor deadVisitor = [](TaggedObject *) -> TaggedObject * {
+        return nullptr;
+    };
+    moduleManager->ProcessPendingRemovalModules(deadVisitor);
 
     EXPECT_FALSE(moduleManager->IsModuleLoaded(recordName));
     EXPECT_TRUE(moduleManager->TryGetSendableModule(recordName)->IsUndefined());
@@ -1063,6 +1083,49 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleBundlePack2)
     JSHandle<JSTaggedValue> res2 =
         ModuleResolver::HostResolveImportedModule(thread, baseFileName, record, jsPandaFile.get(), false);
     EXPECT_NE(res2.GetTaggedValue(), JSTaggedValue::Undefined());
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleBundlePackFromPendingRemoval)
+{
+    CString baseFileName = MODULE_ABC_PATH "module_test_module_test_A.abc";
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    module->SetRegisterCounts(0);
+    moduleManager->AddResolveImportedModule(baseFileName, module.GetTaggedValue());
+    ModuleDeregister::RemoveModule(thread, module);
+
+    JSHandle<JSTaggedValue> result = ModuleResolver::HostResolveImportedModule(
+        thread, baseFileName, JSPandaFile::ENTRY_MAIN_FUNCTION, nullptr, ExecuteTypes::DYNAMIC);
+
+    EXPECT_EQ(result.GetTaggedValue(), module.GetTaggedValue());
+    EXPECT_EQ(module->GetLoadingTypes(), LoadingTypes::DYNAMITC_MODULE);
+    EXPECT_EQ(module->GetRegisterCounts(), 1);
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(baseFileName));
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleBundlePackBufferFromPendingRemoval)
+{
+    CString baseFileName = MODULE_ABC_PATH "module_test_module_test_A.abc";
+    std::unique_ptr<const panda_file::File> file = panda_file::File::Open(baseFileName.c_str());
+    ASSERT_NE(file, nullptr);
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    module->SetRegisterCounts(0);
+    moduleManager->AddResolveImportedModule(baseFileName, module.GetTaggedValue());
+    ModuleDeregister::RemoveModule(thread, module);
+
+    JSHandle<JSTaggedValue> result = ModuleResolver::HostResolveImportedModule(thread, baseFileName,
+        JSPandaFile::ENTRY_MAIN_FUNCTION, file->GetBase(), file->GetHeader()->file_size, ExecuteTypes::DYNAMIC);
+
+    EXPECT_EQ(result.GetTaggedValue(), module.GetTaggedValue());
+    EXPECT_EQ(module->GetRegisterCounts(), 1);
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(baseFileName));
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
 }
 
 HWTEST_F_L0(EcmaModuleTest, IsSharedModuleLoaded)
@@ -2273,34 +2336,6 @@ HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
     EXPECT_EQ(moduleName, "");
 }
 
-HWTEST_F_L0(EcmaModuleTest, ReviseLoadedModuleCount2) {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    CString recordName2 = "b";
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
-    module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-
-    ModuleDeregister::ReviseLoadedModuleCount(thread, recordName2);
-    EXPECT_EQ(module2->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
-}
-
-HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts2)
-{
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    std::set<CString> increaseModule;
-    increaseModule.insert("module_test_module_test_B");
-    increaseModule.insert("b");
-    module->SetSharedType(SharedTypes::SHARED_MODULE);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
-}
-
 HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
 {
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
@@ -2499,6 +2534,83 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMerge)
     JSHandle<JSTaggedValue> res2 =
         ModuleResolver::HostResolveImportedModule(thread, module1, nativeName);
     EXPECT_TRUE(res2->IsSourceTextModule());
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveNativeModuleFromPendingRemoval)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> referencingModule = factory->NewSourceTextModule();
+    referencingModule->SetEcmaModuleRecordNameString("referencing_module");
+    CString nativeRecordName = "@ohos:hilog";
+    JSHandle<SourceTextModule> nativeModule = factory->NewSourceTextModule();
+    nativeModule->SetEcmaModuleRecordNameString(nativeRecordName);
+    nativeModule->SetTypes(ModuleTypes::NATIVE_MODULE);
+    nativeModule->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    nativeModule->SetRegisterCounts(0);
+    moduleManager->AddResolveImportedModule(nativeRecordName, nativeModule.GetTaggedValue());
+    ModuleDeregister::RemoveModule(thread, nativeModule);
+    JSHandle<JSTaggedValue> nativeRequest = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(nativeRecordName));
+
+    JSHandle<JSTaggedValue> result = ModuleResolver::HostResolveImportedModule(
+        thread, referencingModule, nativeRequest, ExecuteTypes::DYNAMIC);
+
+    EXPECT_EQ(result.GetTaggedValue(), nativeModule.GetTaggedValue());
+    EXPECT_EQ(nativeModule->GetRegisterCounts(), 1);
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(nativeRecordName));
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMergeFromPendingRemoval)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordName = "A";
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, baseFileName, recordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    ASSERT_FALSE(jsPandaFile->IsBundlePack());
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    module->SetRegisterCounts(0);
+    moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    ModuleDeregister::RemoveModule(thread, module);
+
+    JSHandle<JSTaggedValue> result = ModuleResolver::HostResolveImportedModule(
+        thread, baseFileName, recordName, jsPandaFile.get(), ExecuteTypes::DYNAMIC);
+
+    EXPECT_EQ(result.GetTaggedValue(), module.GetTaggedValue());
+    EXPECT_EQ(module->GetRegisterCounts(), 1);
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(recordName));
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMergeFromPendingRemovalByStaticImport)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordName = "A";
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, baseFileName, recordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    ASSERT_FALSE(jsPandaFile->IsBundlePack());
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleFilenameString(thread, baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    module->SetRegisterCounts(0);
+    moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    ModuleDeregister::RemoveModule(thread, module);
+
+    JSHandle<JSTaggedValue> result = ModuleResolver::HostResolveImportedModule(
+        thread, baseFileName, recordName, jsPandaFile.get(), ExecuteTypes::STATIC);
+
+    EXPECT_EQ(result.GetTaggedValue(), module.GetTaggedValue());
+    EXPECT_EQ(module->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(recordName));
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ModuleResolverHostResolveImportedModule)
@@ -3389,43 +3501,6 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionInputWithEts)
     pf->InsertJSRecordInfo(expectRes);
     result = ModulePathHelper::TranslateExpressionInputWithEts(thread, pf.get(), baseFileName, requestName);
     EXPECT_EQ(result, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ReviseLoadedModuleCount1) {
-    CString moduleName = "testModule";
-    ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName);
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    bool res = moduleManager->IsLocalModuleLoaded(moduleName);
-    EXPECT_EQ(res, false);
-}
-
-HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts)
-{
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    std::set<CString> increaseModule;
-
-    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
-
-    module->SetRegisterCounts(INT8_MAX);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), true);
-
-    module2->SetRegisterCounts(INT8_MAX);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
-    EXPECT_EQ(module2->GetModuleRequests(thread).IsUndefined(), true);
-
-    module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
-    bool res = module2->GetLoadingTypes() == LoadingTypes::STABLE_MODULE;
-    EXPECT_EQ(res, true);
 }
 
 HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
@@ -5241,15 +5316,44 @@ HWTEST_F(EcmaModuleTest, Deregister, TestSize.Level0)
     builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
     normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
     EXPECT_EQ(normalModuleSize, 2);
+    EXPECT_EQ(thread->GetModuleManager()->pendingRemovalModules_.Size(), 2U);
+    JSHandle<SourceTextModule> retainedModuleA(thread, moduleA.GetTaggedValue());
 
     result = JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordName);
     EXPECT_TRUE(result);
     moduleA = thread->GetModuleManager()->GetImportedModule(recordNameA);
+    EXPECT_EQ(moduleA.GetTaggedValue(), retainedModuleA.GetTaggedValue());
     recordNameARecord = JSHandle<JSTaggedValue>::Cast(moduleA);
     val = ModuleValueAccessor::GetModuleValueInner(thread, 0, recordNameARecord);
     EXPECT_EQ(val, JSTaggedValue(20));
     normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
     EXPECT_EQ(normalModuleSize, 4);
+    EXPECT_EQ(thread->GetModuleManager()->pendingRemovalModules_.Size(), 0U);
+}
+
+HWTEST_F(EcmaModuleTest, PendingRemovalModuleReleasedByFullGC, TestSize.Level0)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    CString recordName = "unreachable_pending_module";
+    {
+        EcmaHandleScope innerScope(thread);
+        JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+        module->SetEcmaModuleFilenameString(thread, "unreachable_pending_module.abc");
+        module->SetEcmaModuleRecordNameString(recordName);
+        module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+        moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+        ModuleDeregister::RemoveModule(thread, module);
+        EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 1U);
+    }
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
+    EXPECT_TRUE(moduleManager->TryGetPendingRemovalModule(recordName)->IsUndefined());
+    builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+    EXPECT_EQ(moduleManager->pendingRemovalModules_.Size(), 0U);
 }
 
 HWTEST_F(EcmaModuleTest, DeregisterCircular, TestSize.Level0)

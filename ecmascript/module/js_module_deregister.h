@@ -62,10 +62,10 @@ public:
 
     static void RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module);
 
-    static void ReviseLoadedModuleCount(JSThread *thread, const CString &moduleName);
+    static void ResetRegisterCountsForDeregister(JSThread *thread, JSHandle<SourceTextModule> module);
 
-    static void IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
-        std::set<CString> &increaseModule);
+    static void RestoreModuleFromPending(JSThread *thread, const JSHandle<JSTaggedValue> &moduleRecord,
+                                         const ExecuteTypes &executeType);
 
     static void DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
         std::set<CString> &decreaseModule);
