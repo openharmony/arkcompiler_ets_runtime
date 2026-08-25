@@ -45,60 +45,6 @@ bool IsAotCompileSuccessOnce(const std::string &pgoRealPath)
 }
 }  // namespace
 
-#ifdef ENABLE_OHOS_PARAMETER
-static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
-void GetSignalHandler(int signal, siginfo_t *info, void *context)
-{
-    [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
-    [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
-    uintptr_t pc = 0;
-#if defined(PANDA_TARGET_AMD64)
-    pc = static_cast<uintptr_t>(mcontext.gregs[REG_RIP]);
-#elif defined(PANDA_TARGET_ARM64)
-    pc = static_cast<uintptr_t>(mcontext.pc);
-#endif
-    if (JsStackInfo::loader == nullptr) {
-        ecmascript::JsStackInfo::BuildCrashInfo(false);
-    } else if (!JsStackInfo::loader->InsideStub(pc) && !JsStackInfo::loader->InsideAOT(pc)) {
-        ecmascript::JsStackInfo::BuildCrashInfo(false);
-    } else {
-        ecmascript::JsStackInfo::BuildCrashInfo(false, pc);
-    }
-    sigaction(signal, &s_oldSa[signal], nullptr);
-    int rc = syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), info->si_signo, info);
-    if (rc != 0) {
-        LOG_ECMA(ERROR) << "GetSignalHandler() failed to resend signal during crash";
-    }
-}
-
-void SignalReg(int signo)
-{
-    sigaction(signo, nullptr, &s_oldSa[signo]);
-    struct sigaction newAction;
-    if (memset_s(&newAction, sizeof(newAction), 0, sizeof(newAction)) != EOK) {
-        LOG_ECMA(ERROR) << "memset_s newAction failed : " << strerror(errno);
-        return;
-    }
-    newAction.sa_flags = SA_RESTART | SA_SIGINFO;
-    newAction.sa_sigaction = GetSignalHandler;
-    sigaction(signo, &newAction, nullptr);
-}
-#endif
-
-void SignalAllReg()
-{
-#ifdef ENABLE_OHOS_PARAMETER
-    SignalReg(SIGABRT);
-    SignalReg(SIGBUS);
-    SignalReg(SIGSEGV);
-    SignalReg(SIGILL);
-    SignalReg(SIGKILL);
-    SignalReg(SIGSTKFLT);
-    SignalReg(SIGFPE);
-    SignalReg(SIGTRAP);
-#endif
-}
-
 bool AotCrashInfo::IsAotEscapedOrNotInEnableList(EcmaVM *vm, const std::string &bundleName) const
 {
     if (!vm->GetJSOptions().WasAOTOutputFileSet() &&

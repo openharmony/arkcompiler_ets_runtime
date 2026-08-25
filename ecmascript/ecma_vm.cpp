@@ -299,7 +299,6 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
     SetPostForked(true);
 
     LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
-    SignalAllReg();
     options_.SetPgoForceDump(false);
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     pgo::PGOTrace::GetInstance()->SetEnable(ohos::AotTools::GetPgoTraceEnable());
