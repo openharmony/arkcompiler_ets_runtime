@@ -183,6 +183,11 @@ void VisitDynamicWeakGlobalRootsOld(const common::WeakRefFieldVisitor &visitorFu
     CMCWeakVisitor visitor(visitorFunc);
 
     panda::ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);
+    // Reap dead sendable func modules.
+    panda::ecmascript::SharedHeap::GetInstance()->IteratorSendableModuleList(visitor,
+        [](panda::ecmascript::TaggedObject *dead) {
+            panda::ecmascript::Runtime::GetInstance()->QueueSendableModuleNativeFields(dead);
+        });
 
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
 
@@ -198,6 +203,8 @@ void InvokeSharedNativePointerCallbacks()
 {
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     runtime->InvokeSharedNativePointerCallbacks();
+    // Drain point of the sendable module cleanup queue.
+    runtime->InvokeSendableModuleCleanup();
 }
 
 void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)

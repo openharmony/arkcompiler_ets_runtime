@@ -162,6 +162,11 @@ public:
         resolvedModules_.Clear();
     }
 
+    void ClearSendableModulesForTest()
+    {
+        resolvedSendableModules_.Clear();
+    }
+
     void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
     void ResetConstPoolLiterals(const CString &recordName);
 

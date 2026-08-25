@@ -213,6 +213,52 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
     }
 }
 
+void SharedHeap::PushToSendableModuleList(JSTaggedValue module)
+{
+    ASSERT(module.IsHeapObject() && module.IsInSharedHeap());
+    std::lock_guard<std::mutex> lock(sSendableModuleListMutex_);
+    sendableModuleList_.emplace_back(module);
+}
+
+void SharedHeap::ProcessSendableModuleDelete(const WeakRootVisitor& visitor, DeadObjectHandler onDead)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedHeap::ProcessSendableModuleDelete", "");
+    auto iter = sendableModuleList_.begin();
+    while (iter != sendableModuleList_.end()) {
+        auto *object = (*iter).GetTaggedObject();
+        auto fwd = visitor(object);
+        if (fwd == nullptr) {
+            // Extract native fields now, release after GC.
+            onDead(object);
+            SwapBackAndPop(sendableModuleList_, iter);
+        } else {
+            if (fwd != object) {
+                *iter = JSTaggedValue(fwd);
+            }
+            ++iter;
+        }
+    }
+    ShrinkWithFactor(sendableModuleList_);
+}
+
+void SharedHeap::IteratorSendableModuleList(WeakVisitor &visitor, DeadObjectHandler onDead)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedHeap::IteratorSendableModuleList", "");
+    // CMC counterpart of ProcessSendableModuleDelete, using slot-based weak visiting.
+    auto iter = sendableModuleList_.begin();
+    while (iter != sendableModuleList_.end()) {
+        ObjectSlot slot(reinterpret_cast<uintptr_t>(&(*iter)));
+        bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
+        if (!isAlive) {
+            onDead((*iter).GetTaggedObject());
+            SwapBackAndPop(sendableModuleList_, iter);
+        } else {
+            ++iter;
+        }
+    }
+    ShrinkWithFactor(sendableModuleList_);
+}
+
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 {
     if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
@@ -942,6 +988,8 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         ASSERT(dThread_->HasLaunchedSuspendAll());
 #endif
         FinishGCTask();
+        // Release reaped modules' native fields.
+        Runtime::GetInstance()->InvokeSendableModuleCleanup();
         NotifyGCCompleted();
     }
     FinishGCStats(gcType);

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/global_env.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_data_extractor.h"
@@ -50,6 +51,8 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     sModule->SetEcmaModuleRecordNameString(recordName);
     sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     moduleManager->AddSendableModuleToCache(recordName, sModule.GetTaggedValue());
+    // Weak registration for post-GC native field release.
+    SharedHeap::GetInstance()->PushToSendableModuleList(sModule.GetTaggedValue());
     return JSHandle<JSTaggedValue>(sModule);
 }
 

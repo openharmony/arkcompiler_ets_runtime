@@ -90,6 +90,22 @@ void SourceTextModule::SetEcmaSharedModuleFilenameStringForDeserialize(const CSt
 }
 #endif
 
+void SourceTextModule::ReleaseSharedModuleNativeFields(const SourceTextModule::NativeFields &fields)
+{
+    if (fields.lazyImportArray != nullptr) {
+        delete[] fields.lazyImportArray;
+    }
+    if (fields.filename != nullptr) {
+#if ENABLE_MODULE_MEMORY_OPTIMIZATION
+        SharedModuleManager::GetInstance()->ReleaseModuleFilename(fields.filename);
+#else
+        delete fields.filename;
+#endif
+    }
+    // recordName is released only here.
+    delete fields.recordName;
+}
+
 CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                         const JSHandle<TaggedArray> &exportStarSet)
 {

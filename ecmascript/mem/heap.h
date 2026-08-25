@@ -1075,6 +1075,18 @@ public:
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
     inline void IteratorNativePointerList(WeakVisitor &visitor);
 
+    // Weak registry (not GC roots) of shared-heap sendable func modules. During SharedGC,
+    // each dead module is passed to onDead; its native fields are released after GC via
+    // Runtime::InvokeSendableModuleCleanup.
+    using DeadObjectHandler = void (*)(TaggedObject *dead);
+    void PushToSendableModuleList(JSTaggedValue module);
+    void ProcessSendableModuleDelete(const WeakRootVisitor& visitor, DeadObjectHandler onDead);
+    void IteratorSendableModuleList(WeakVisitor &visitor, DeadObjectHandler onDead);
+    size_t GetSendableModuleListSize() const
+    {
+        return sendableModuleList_.size();
+    }
+
     void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
 
     class SharedGCScope {
@@ -1184,6 +1196,9 @@ private:
     bool tryCompressHeapAfterStartup_ {false};
     NativePointerList sharedNativePointerList_;
     std::mutex sNativePointerListMutex_;
+    // Weak entries of sendable func modules, see PushToSendableModuleList.
+    NativePointerList sendableModuleList_;
+    std::mutex sSendableModuleListMutex_;
     // Memory reallocation helper
     SharedMemoryReallocator memoryReallocator_;
 
