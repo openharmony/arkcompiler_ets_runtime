@@ -367,7 +367,7 @@ void JSThread::HandleUncaughtException(JSTaggedValue exception)
     // if caught exceptionHandle type is JSError
     ClearException();
     if (exceptionHandle->IsJSError()) {
-        base::ErrorHelper::PrintJSErrorInfo(this, exceptionHandle);
+        base::ErrorHelper::PrintJSErrorInfo(this, exceptionHandle, !vm_->GetJSThread()->IsMainThread());
         return;
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(this, exceptionHandle);

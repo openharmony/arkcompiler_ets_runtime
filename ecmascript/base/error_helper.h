@@ -39,7 +39,8 @@ public:
 
     static JSTaggedValue ErrorCommonConstructor(EcmaRuntimeCallInfo *argv, const ErrorType &errorType);
 
-    static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo);
+    static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo,
+                                 bool enableRateLimit = false);
 
     static CString GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key);
 

@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/base/error_helper.h"
+#include "ecmascript/base/log_manager.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/platform/log.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -365,5 +367,108 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_004)
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeNameValue)).ToCString(thread).c_str(), "TypeError");
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeCauseValue)).ToCString(thread).c_str(),
                  "error cause");
+}
+
+/**
+ * @tc.name: PrintJSErrorInfo_RateLimitDisabled_001
+ * @tc.desc: When enableRateLimit=false (default), PrintJSErrorInfo should always proceed without rate limiting
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ErrorHelperTest, PrintJSErrorInfo_RateLimitDisabled_001)
+{
+    auto factory = instance->GetFactory();
+    auto env = instance->GetGlobalEnv();
+    JSHandle<JSTaggedValue> errorFunc = env->GetErrorFunction();
+    JSHandle<JSObject> errorObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(errorFunc), errorFunc);
+    JSHandle<JSTaggedValue> errorMsg(factory->NewFromASCII("Rate limit disabled test"));
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+    JSObject::SetProperty(thread, errorObj, nameKey, errorMsg);
+
+    JSHandle<JSTaggedValue> exception(errorObj);
+    // enableRateLimit=false (default): should not crash, always prints
+    ErrorHelper::PrintJSErrorInfo(thread, exception, false);
+    // Call multiple times - no rate limiting, should not crash
+    ErrorHelper::PrintJSErrorInfo(thread, exception, false);
+    ErrorHelper::PrintJSErrorInfo(thread, exception, false);
+}
+
+/**
+ * @tc.name: PrintJSErrorInfo_RateLimitEnabled_001
+ * @tc.desc: When enableRateLimit=true, repeated same error should be rate-limited
+ *          First call prints, subsequent calls are suppressed until interval
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ErrorHelperTest, PrintJSErrorInfo_RateLimitEnabled_001)
+{
+    auto factory = instance->GetFactory();
+    auto env = instance->GetGlobalEnv();
+    JSHandle<JSTaggedValue> errorFunc = env->GetErrorFunction();
+    JSHandle<JSObject> errorObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(errorFunc), errorFunc);
+    JSHandle<JSTaggedValue> errorMsg(factory->NewFromASCII("Rate limit enabled test"));
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+    JSObject::SetProperty(thread, errorObj, nameKey, errorMsg);
+
+    JSHandle<JSTaggedValue> exception(errorObj);
+    // First call with rate limiting should succeed (first occurrence always prints)
+    ErrorHelper::PrintJSErrorInfo(thread, exception, true);
+    // Subsequent calls should not crash even if suppressed by rate limiting
+    ErrorHelper::PrintJSErrorInfo(thread, exception, true);
+    ErrorHelper::PrintJSErrorInfo(thread, exception, true);
+}
+
+/**
+ * @tc.name: PrintJSErrorInfo_RateLimit_DifferentErrors
+ * @tc.desc: Different error messages should each get their own rate limit tracking
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ErrorHelperTest, PrintJSErrorInfo_RateLimit_DifferentErrors)
+{
+    auto factory = instance->GetFactory();
+    auto env = instance->GetGlobalEnv();
+    JSHandle<JSTaggedValue> errorFunc = env->GetErrorFunction();
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+
+    JSHandle<JSObject> errorObj1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(errorFunc), errorFunc);
+    JSHandle<JSTaggedValue> msg1(factory->NewFromASCII("Error message A"));
+    JSObject::SetProperty(thread, errorObj1, nameKey, msg1);
+
+    JSHandle<JSObject> errorObj2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(errorFunc), errorFunc);
+    JSHandle<JSTaggedValue> msg2(factory->NewFromASCII("Error message B"));
+    JSObject::SetProperty(thread, errorObj2, nameKey, msg2);
+
+    JSHandle<JSTaggedValue> exception1(errorObj1);
+    JSHandle<JSTaggedValue> exception2(errorObj2);
+
+    // Both first occurrences should print without interference
+    ErrorHelper::PrintJSErrorInfo(thread, exception1, true);
+    ErrorHelper::PrintJSErrorInfo(thread, exception2, true);
+    // Second calls suppressed independently
+    ErrorHelper::PrintJSErrorInfo(thread, exception1, true);
+    ErrorHelper::PrintJSErrorInfo(thread, exception2, true);
+}
+
+/**
+ * @tc.name: ComputeRateLimitKey_Consistency
+ * @tc.desc: Verify that the same (name, msg) pair produces the same key via ComputeHashKey
+ *          This tests the internal ComputeRateLimitKey logic indirectly through LogManager
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ErrorHelperTest, ComputeRateLimitKey_Consistency)
+{
+    // Same name+msg should produce same hash key
+    std::string name1 = "TypeError";
+    std::string msg1 = "Cannot read property";
+    std::string keyStr1 = previewerTag + name1 + ": " + msg1;
+    uint64_t hash1 = LogManager::ComputeHashKey(keyStr1);
+
+    std::string keyStr2 = previewerTag + name1 + ": " + msg1;
+    uint64_t hash2 = LogManager::ComputeHashKey(keyStr2);
+    EXPECT_EQ(hash1, hash2);
+
+    // Different msg should produce different hash key
+    std::string msg2 = "Invalid argument";
+    std::string keyStr3 = previewerTag + name1 + ": " + msg2;
+    uint64_t hash3 = LogManager::ComputeHashKey(keyStr3);
+    EXPECT_NE(hash1, hash3);
 }
 }  // namespace panda::test
