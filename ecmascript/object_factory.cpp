@@ -213,12 +213,8 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
     size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
-        auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
+        auto newData = vm_->GetNativeAreaAllocator()->AllocateZeroBuffer(size);
         heap_->IncNativeSizeAfterLastGC(size);
-        if (memset_s(newData, length, 0, length) != EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
         pointer->ResetExternalPointer(thread_, newData);
         if (g_isEnableCMCGC) {
             common::BaseRuntime::NotifyNativeReset(pointer->GetBindingSize(), size);
@@ -228,12 +224,8 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
         return;
     }
 
-    auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
+    auto newData = vm_->GetNativeAreaAllocator()->AllocateZeroBuffer(size);
     heap_->IncNativeSizeAfterLastGC(size);
-    if (memset_s(newData, length, 0, length) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
-    }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                            vm_->GetNativeAreaAllocator(), false, size, Concurrent::NO,
                                                            NativeFlag::ARRAY_BUFFER);
@@ -253,13 +245,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     NativeAreaAllocator *nativeAreaAllocator = sHeap_->GetNativeAreaAllocator();
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
-        auto newData = nativeAreaAllocator->AllocateBuffer(size);
+        auto newData = nativeAreaAllocator->AllocateZeroBuffer(size);
         if (newData == nullptr) {
             LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
-        }
-        if (memset_s(newData, length, 0, length) != EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
         }
         pointer->ResetExternalPointer(thread_, newData);
         if (g_isEnableCMCGC) {
@@ -270,13 +258,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
         return;
     }
 
-    auto newData = nativeAreaAllocator->AllocateBuffer(size);
+    auto newData = nativeAreaAllocator->AllocateZeroBuffer(size);
     if (newData == nullptr) {
         LOG_ECMA(FATAL) << "ObjectFactory::NewJSSendableArrayBufferData:newData is nullptr";
-    }
-    if (memset_s(newData, length, 0, length) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
     }
     JSHandle<JSNativePointer> pointer = NewSJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                             nativeAreaAllocator, false, size,
@@ -346,12 +330,8 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
     JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor));
     arrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
-        auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(length);
+        auto newData = vm_->GetNativeAreaAllocator()->AllocateZeroBuffer(length);
         heap_->IncNativeSizeAfterLastGC(length);
-        if (memset_s(newData, length, 0, length) != EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                                vm_->GetNativeAreaAllocator(), false, length,
                                                                Concurrent::NO, NativeFlag::ARRAY_BUFFER);

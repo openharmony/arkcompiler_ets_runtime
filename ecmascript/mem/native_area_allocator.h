@@ -48,6 +48,7 @@ public:
     void FreeArea(Area *area);
     void Free(void *mem, size_t size);
     void *AllocateBuffer(size_t size);
+    void *AllocateZeroBuffer(size_t size);
     void FreeBuffer(void *mem);
     void *NativeAreaPageMap(size_t size);
     void NativeAreaPageUnmap(void *mem, size_t size);
