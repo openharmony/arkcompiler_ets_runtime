@@ -1591,6 +1591,8 @@ void SharedHeap::InvokeSharedNativePointerCallbacks()
     if (!runtime->GetSharedNativePointerCallbacks().empty()) {
         runtime->InvokeSharedNativePointerCallbacks();
     }
+    // Release native fields of sendable modules reaped by this GC.
+    runtime->InvokeSendableModuleCleanup();
 }
 
 void SharedHeap::PushToSharedNativePointerList(JSNativePointer* pointer)

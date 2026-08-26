@@ -331,6 +331,27 @@ public:
     }
 #endif
 
+    struct NativeFields {
+        bool *lazyImportArray {nullptr};
+        CString *filename {nullptr};
+        CString *recordName {nullptr};
+    };
+
+    // Read out and null the raw native fields for later release.
+    inline NativeFields ExtractSharedModuleNativeFields()
+    {
+        NativeFields fields;
+        fields.lazyImportArray = GetLazyImportStatusArray();
+        SetLazyImportStatus(ToUintPtr(nullptr));
+        fields.filename = reinterpret_cast<CString *>(GetEcmaModuleFilename());
+        SetEcmaModuleFilename(ToUintPtr(nullptr));
+        fields.recordName = reinterpret_cast<CString *>(GetEcmaModuleRecordName());
+        SetEcmaModuleRecordName(ToUintPtr(nullptr));
+        return fields;
+    }
+
+    static void ReleaseSharedModuleNativeFields(const NativeFields &fields);
+
     inline void DestroyEcmaModuleRecordNameString()
     {
         CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleRecordName());

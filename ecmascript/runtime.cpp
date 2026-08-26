@@ -32,6 +32,7 @@
 #include "ecmascript/mem/dynamic_object_operator.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/slots.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/parameters.h"
 #include "ecmascript/string/string_table_internal.h"
 
@@ -756,6 +757,20 @@ void Runtime::ProcessSharedDelete(const WeakRootVisitor &visitor)
     ProcessNativeDeleteInSharedGC(visitor);
     sHeap->ProcessSharedNativeDelete(visitor);
     sHeap->ProcessSharedExternalStringDelete(visitor);
+    // Module-specific death handling.
+    sHeap->ProcessSendableModuleDelete(visitor,
+        [](TaggedObject *dead) { Runtime::GetInstance()->QueueSendableModuleNativeFields(dead); });
+}
+
+void Runtime::QueueSendableModuleNativeFields(TaggedObject *dead)
+{
+    // Extract native fields and queue them for post-GC release.
+    auto *module = SourceTextModule::Cast(dead);
+    auto fields = module->ExtractSharedModuleNativeFields();
+    if ((fields.lazyImportArray != nullptr) || (fields.filename != nullptr) ||
+        (fields.recordName != nullptr)) {
+        GetSendableModuleCleanupQueue().emplace_back(fields);
+    }
 }
 
 void Runtime::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
@@ -777,6 +792,21 @@ void Runtime::InvokeSharedNativePointerCallbacks()
         ASSERT(callbackPair.first != nullptr);
         auto callback = callbackPair.first;
         (*callback)(nullptr, callbackPair.second.first, callbackPair.second.second);
+    }
+}
+
+void Runtime::InvokeSendableModuleCleanup()
+{
+    auto &cleanupQueue = sendableModuleCleanupQueue_;
+    if (cleanupQueue.empty()) {
+        return;
+    }
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        ("SendableModuleNativeFieldsCleanup:" + std::to_string(cleanupQueue.size())).c_str(), "");
+    while (!cleanupQueue.empty()) {
+        auto fields = cleanupQueue.back();
+        cleanupQueue.pop_back();
+        SourceTextModule::ReleaseSharedModuleNativeFields(fields);
     }
 }
 

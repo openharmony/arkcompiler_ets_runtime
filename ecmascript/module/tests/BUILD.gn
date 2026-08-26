@@ -119,6 +119,7 @@ host_unittest_action("ModuleTest") {
     "js_module_namespace_test.cpp",
     "js_shared_module_test.cpp",
     "napi_module_loader_test.cpp",
+    "sendable_module_gc_test.cpp",
     "static_module_loader_test.cpp",
     "static_module_proxy_test.cpp"
   ]

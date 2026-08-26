@@ -26,6 +26,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/mutator_lock.h"
 #if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
@@ -247,6 +248,9 @@ public:
     void ProcessSharedDelete(const WeakRootVisitor &visitor);
     void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
     void InvokeSharedNativePointerCallbacks();
+    // Dead sendable func module handling: extract-and-queue during GC, release after GC.
+    void QueueSendableModuleNativeFields(TaggedObject *dead);
+    void InvokeSendableModuleCleanup();
     void PushToSharedNativePointerList(JSNativePointer *pointer);
 
     inline bool CreateStringCacheTable(uint32_t size)
@@ -542,6 +546,12 @@ private:
         return sharedNativePointerCallbacks_;
     }
 
+    // Native fields of dead sendable modules, released after GC.
+    std::vector<SourceTextModule::NativeFields> &GetSendableModuleCleanupQueue()
+    {
+        return sendableModuleCleanupQueue_;
+    }
+
     RecursiveMutex threadsLock_;
     ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
@@ -596,6 +606,7 @@ private:
 
     // for shared native pointer
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
+    std::vector<SourceTextModule::NativeFields> sendableModuleCleanupQueue_ {};
 
     // for appfreeze filter function
     AppFreezeFilterCallback appfreezeFilterCallback_ {nullptr};
