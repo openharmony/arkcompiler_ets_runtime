@@ -170,6 +170,8 @@ private:
     void BuildEdges(Node *node);
     void BuildGlobalEnvEdges(Node *node);
     void BuildArrayEdges(Node *node);
+    void BuildArrayFieldEdges(Node *node, const ArrayLayout &layout);
+    void BuildArrayElementEdges(Node *node, const ArrayLayout &layout);
     void BuildFieldEdges(Node *node);
     void BuildJSObjectEdges(Node *node);
     void BuildDictionaryModeEdges(Node *node, Node *properties);
@@ -237,6 +239,13 @@ public:
     bool Translate() override;
 
 private:
+    struct IndexedReference {
+        size_t index;
+        Node *node;
+    };
+
+    using IndexedReferences = std::vector<IndexedReference>;
+
     struct AddrTableItemV2 {
         uint32_t syntheticAddr;
         uint32_t size;
@@ -263,6 +272,11 @@ private:
     void FillNodes();
     void BuildEdges(Node *node);
     void BuildArrayEdges(Node *node);
+    IndexedReferences ReadArrayReferences(Node *node);
+    void BuildLegacyArrayEdges(Node *node, const IndexedReferences &refs);
+    void BuildArrayFieldEdges(Node *node, const ArrayLayout &layout, const IndexedReferences &refs);
+    void BuildArrayElementEdges(Node *node, const ArrayLayout &layout, const IndexedReferences &refs);
+    static Node *FindReferenceAt(const IndexedReferences &refs, size_t index);
     void BuildFieldEdges(Node *node, std::vector<Node *> &refs);
     void BuildJSObjectEdges(Node *node, std::vector<Node *> &refs, uint32_t endOffset);
     void CreateEdge(Node *node, Node *to, uint32_t nameOrIndex, EdgeType type);

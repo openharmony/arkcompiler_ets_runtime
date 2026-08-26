@@ -25,6 +25,19 @@
 #include "utils.h"
 
 namespace rawheap_translate {
+namespace {
+bool IsArrayFixedField(const Field &field, const ArrayLayout &layout)
+{
+    return field.size == sizeof(uint64_t) && field.offset % sizeof(uint64_t) == 0 &&
+        field.offset > layout.length.offset && field.offset < layout.data.offset;
+}
+
+bool IsFieldInNode(const Field &field, const Node *node)
+{
+    return field.offset <= node->size && field.size <= node->size - field.offset;
+}
+}  // namespace
+
 RawHeap::~RawHeap()
 {
     for (auto node : nodes_) {
@@ -1107,23 +1120,49 @@ void RawHeapTranslateV1::BuildGlobalEnvEdges(Node *node)
 
 void RawHeapTranslateV1::BuildArrayEdges(Node *node)
 {
-    BitField *bitField = metaParser_->GetBitField();
-    uint32_t lengthOffset = bitField->taggedArrayLengthField.offset;
-    uint32_t dataOffset = bitField->taggedArrayDataField.offset;
-    uint32_t step = bitField->taggedArrayDataField.size;
-
-    uint32_t len = ByteToU32(node->data + lengthOffset);
-    if (step != sizeof(uint64_t) || len <= 0) {
+    ArrayLayout layout;
+    if (!metaParser_->GetArrayLayout(node->jsType, layout) || !IsFieldInNode(layout.length, node)) {
         return;
     }
 
-    uint32_t offset = dataOffset;
-    uint32_t index = 0;
-    while (index < len && offset + step <= node->size) {
-        uint64_t addr = ByteToU64(node->data + offset);
-        offset += step;
+    BuildArrayFieldEdges(node, layout);
+    BuildArrayElementEdges(node, layout);
+}
+
+void RawHeapTranslateV1::BuildArrayFieldEdges(Node *node, const ArrayLayout &layout)
+{
+    MetaData *meta = metaParser_->GetMetaData(node->jsType);
+    if (meta == nullptr) {
+        return;
+    }
+
+    for (const auto &field : meta->fields) {
+        if (!IsArrayFixedField(field, layout) || !IsFieldInNode(field, node)) {
+            continue;
+        }
+        uint64_t addr = ByteToU64(node->data + field.offset);
         EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, addr);
-        CreateEdge(node, addr, index++, edgeType);
+        // Fixed fields are named properties; only their weak-reference marker is retained.
+        if (edgeType == EdgeType::ELEMENT) {
+            edgeType = EdgeType::DEFAULT;
+        }
+        CreateEdge(node, addr, InsertAndGetStringId(field.name), edgeType);
+    }
+}
+
+void RawHeapTranslateV1::BuildArrayElementEdges(Node *node, const ArrayLayout &layout)
+{
+    uint32_t len = ByteToU32(node->data + layout.length.offset);
+    if (node->size <= layout.data.offset) {
+        return;
+    }
+    uint32_t capacity = (node->size - layout.data.offset) / layout.data.size;
+    uint32_t elementCount = std::min(len, capacity);
+    for (uint32_t index = 0; index < elementCount; ++index) {
+        uint32_t offset = layout.data.offset + index * layout.data.size;
+        uint64_t addr = ByteToU64(node->data + offset);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, addr);
+        CreateEdge(node, addr, index, edgeType);
     }
 }
 
@@ -1922,14 +1961,91 @@ void RawHeapTranslateV2::BuildEdges(Node *node)
 
 void RawHeapTranslateV2::BuildArrayEdges(Node *node)
 {
-    uint32_t index = 0;
-    for (uint32_t offset = sizeof(uint64_t); offset < node->size; offset += sizeof(uint64_t)) {
+    IndexedReferences refs = ReadArrayReferences(node);
+
+    ArrayLayout layout;
+    if (!metaParser_->GetArrayLayout(node->jsType, layout)) {
+        BuildLegacyArrayEdges(node, refs);
+        return;
+    }
+
+    BuildArrayFieldEdges(node, layout, refs);
+    BuildArrayElementEdges(node, layout, refs);
+}
+
+RawHeapTranslateV2::IndexedReferences RawHeapTranslateV2::ReadArrayReferences(Node *node)
+{
+    IndexedReferences refs;
+    size_t physicalIndex = 0;
+    // Every physical tagged slot has an encoded token, even when it does not resolve to a node.
+    // Consume the whole object before classifying references so the next object starts at the correct position.
+    for (uint64_t offset = sizeof(uint64_t); offset < node->size; offset += sizeof(uint64_t)) {
+        uint32_t previousMemPos = memPos_;
         Node *ref = GetNextEdgeTo();
-        if (ref == nullptr) {
+        if (ref != nullptr) {
+            refs.push_back({physicalIndex, ref});
+        }
+        physicalIndex++;
+        if (memPos_ == previousMemPos) {
+            break;
+        }
+    }
+    return refs;
+}
+
+void RawHeapTranslateV2::BuildLegacyArrayEdges(Node *node, const IndexedReferences &refs)
+{
+    uint32_t index = 0;
+    for (const auto &ref : refs) {
+        CreateEdge(node, ref.node, index++, EdgeType::ELEMENT);
+    }
+}
+
+void RawHeapTranslateV2::BuildArrayFieldEdges(Node *node, const ArrayLayout &layout,
+                                              const IndexedReferences &refs)
+{
+    MetaData *meta = metaParser_->GetMetaData(node->jsType);
+    if (meta == nullptr) {
+        return;
+    }
+
+    for (const auto &field : meta->fields) {
+        if (!IsArrayFixedField(field, layout) || !IsFieldInNode(field, node)) {
             continue;
         }
-        CreateEdge(node, ref, index++, EdgeType::ELEMENT);
+        size_t refIndex = field.offset / sizeof(uint64_t) - 1;
+        Node *ref = FindReferenceAt(refs, refIndex);
+        if (ref != nullptr) {
+            // V2 cannot emit EdgeType::WEAK: the compressed dump collapses weak refs to ZERO_VALUE,
+            // unlike V1 which strips the weak tag and keeps WEAK. Defaults to strong (DEFAULT).
+            CreateEdge(node, ref, InsertAndGetStringId(field.name), EdgeType::DEFAULT);
+        }
     }
+}
+
+void RawHeapTranslateV2::BuildArrayElementEdges(Node *node, const ArrayLayout &layout,
+                                                const IndexedReferences &refs)
+{
+    // V2 cannot read the array length (compressed dump collapses non-reference slots to ZERO_VALUE),
+    // so element edges are not bounded by length, unlike V1.
+    size_t dataIndex = layout.data.offset / sizeof(uint64_t) - 1;
+    for (const auto &ref : refs) {
+        if (ref.index < dataIndex) {
+            continue;
+        }
+        CreateEdge(node, ref.node, static_cast<uint32_t>(ref.index - dataIndex), EdgeType::ELEMENT);
+    }
+}
+
+Node *RawHeapTranslateV2::FindReferenceAt(const IndexedReferences &refs, size_t index)
+{
+    auto it = std::find_if(refs.begin(), refs.end(), [index](const IndexedReference &ref) {
+        return ref.index == index;
+    });
+    if (it == refs.end()) {
+        return nullptr;
+    }
+    return it->node;
 }
 
 void RawHeapTranslateV2::BuildFieldEdges(Node *node, std::vector<Node *> &refs)

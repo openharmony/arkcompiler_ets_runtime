@@ -5198,7 +5198,9 @@ void ProfileTypeInfo::DumpForSnapshot(const JSThread *thread, std::vector<Refere
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = GetICSlotLength();
-    vec.reserve(vec.size() + len);
+    vec.reserve(vec.size() + len + HEADER_TAGGED_SLOTS);
+    vec.emplace_back(CString("ExtraInfoMap"), GetExtraInfoMap(thread));
+    vec.emplace_back(CString("JitOsr"), GetJitOsr(thread));
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(GetICSlot(thread, i));
         CString str = ToCString(i);
