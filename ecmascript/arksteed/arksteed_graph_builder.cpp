@@ -6010,6 +6010,11 @@ struct GraphBuilder::BytecodeVisitor {
         return HClassCheckResult::SUCCESS;
     }
 
+    bool IsHClassStableForFacts(JSHClass *hclass, bool hasExternalStableDependency) const
+    {
+        return JSTaggedValue(hclass).IsInSharedHeap() || (self->IsLazyDeoptEnabled() && hasExternalStableDependency);
+    }
+
     HClassCheckResult ResolveHClassStability(
         const NodeInfo::PossibleHClasses &hclasses, const KnownHClassesMerger &merger,
         bool installStableDependencies, NodeInfo::PossibleHClassInfos *resolvedHClasses)
@@ -6021,8 +6026,7 @@ struct GraphBuilder::BytecodeVisitor {
             const RequestedHClassInfo *requested = merger.FindRequestedInfo(hclass);
             ASSERT(requested != nullptr);
             bool isSharedHClass = JSTaggedValue(hclass).IsInSharedHeap();
-            bool isStable = isSharedHClass ||
-                (self->IsLazyDeoptEnabled() && requested->hasExternalStableDependency);
+            bool isStable = IsHClassStableForFacts(hclass, requested->hasExternalStableDependency);
             bool shouldInstallDependency = installStableDependencies && self->IsLazyDeoptEnabled() &&
                 kungfu::StableHClassDependency::IsValid(hclass) && !isSharedHClass && !isStable;
             if (shouldInstallDependency) {
@@ -6154,6 +6158,148 @@ struct GraphBuilder::BytecodeVisitor {
         }
         return BuildHClassCheck(bcIndex, object, requested, installStableDependencies);
     }
+
+    class HClassInference {
+    public:
+        enum class Mode : uint8_t {
+            FRESH_ONLY,
+            ALLOW_STALE,
+        };
+
+        HClassInference(BytecodeVisitor *builder, ValueVertex *object, Mode mode = Mode::FRESH_ONLY)
+            : builder_(builder), object_(object), facts_(builder->compileInfoFacts_),
+              effectEpoch_(facts_->GetEffectEpoch())
+        {
+            std::optional<NodeInfo::PossibleHClasses> hclasses =
+                mode == Mode::FRESH_ONLY ? facts_->TryGetPossibleHClasses(object_)
+                                         : facts_->TryGetPossibleHClassesForRevalidation(object_);
+            if (hclasses.has_value()) {
+                hclasses_ = std::move(hclasses.value());
+                allHClassesAreFresh_ = !facts_->PossibleHClassesAreStale(object_);
+                return;
+            }
+            if (mode == Mode::FRESH_ONLY) {
+                return;
+            }
+            std::optional<ArkSteedHeapRef> constantRef = builder_->TryGetConstantHeapRef(object_);
+            ArkSteedHeapBroker *broker = builder_->self->pgoContext_.GetBroker();
+            if (!constantRef.has_value() || broker == nullptr) {
+                return;
+            }
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::HClassInference");
+            JSTaggedValue constant = JSTaggedValue::Undefined();
+            if (broker->TryResolveRef(constantRef.value(), &constant) && constant.IsHeapObject()) {
+                hclasses_.push_back(constant.GetTaggedObject()->GetClass());
+                hclassesComeFromConstant_ = true;
+            }
+        }
+
+        bool HasHClasses() const
+        {
+            return !hclasses_.empty();
+        }
+
+        bool AllHClassesAreFresh() const
+        {
+            return HasHClasses() && allHClassesAreFresh_;
+        }
+
+        std::optional<NodeInfo::PossibleHClasses> TryGetPossibleHClasses() const
+        {
+            return HasHClasses() ? std::optional<NodeInfo::PossibleHClasses>(hclasses_) : std::nullopt;
+        }
+
+        HClassCheckResult EnsureHClassesFresh(uint32_t bcIndex)
+        {
+            if (!HasHClasses()) {
+                return HClassCheckResult::FAILURE;
+            }
+            ASSERT(facts_ == builder_->compileInfoFacts_);
+            ASSERT(effectEpoch_ == facts_->GetEffectEpoch());
+            std::optional<NodeInfo::PossibleHClasses> freshHClasses = facts_->TryGetPossibleHClasses(object_);
+            if (freshHClasses.has_value()) {
+                if (!ContainsSameHClasses(freshHClasses.value(), hclasses_)) {
+                    return HClassCheckResult::FAILURE;
+                }
+                allHClassesAreFresh_ = true;
+                return HClassCheckResult::SUCCESS;
+            }
+            if (allHClassesAreFresh_) {
+                return HClassCheckResult::FAILURE;
+            }
+
+            std::optional<NodeInfo::PossibleHClasses> storedHClasses;
+            if (!hclassesComeFromConstant_) {
+                storedHClasses = facts_->TryGetPossibleHClassesForRevalidation(object_);
+                if (!storedHClasses.has_value() || !ContainsSameHClasses(storedHClasses.value(), hclasses_)) {
+                    return HClassCheckResult::FAILURE;
+                }
+            }
+            std::optional<std::vector<RequestedHClassInfo>> requestedHClasses = TryBuildRequestedHClasses();
+            if (!requestedHClasses.has_value()) {
+                return HClassCheckResult::FAILURE;
+            }
+            KnownHClassesMerger merger(facts_, object_, requestedHClasses.value());
+            if (!merger.InputIsValid()) {
+                return HClassCheckResult::FAILURE;
+            }
+            if (merger.RequestedSetIsEmpty()) {
+                return builder_->EmitUnconditionalHClassDeopt(bcIndex);
+            }
+            HClassCheckResult emissionResult =
+                builder_->EmitHClassCheck(bcIndex, object_, merger.RequestedHClasses(), merger);
+            if (emissionResult != HClassCheckResult::SUCCESS) {
+                return emissionResult;
+            }
+            if (hclassesComeFromConstant_) {
+                facts_->RecordPossibleHClasses(
+                    object_, hclasses_, builder_->IsHClassStableForFacts(hclasses_.front(), false));
+            } else {
+                facts_->MarkPossibleHClassesFresh(object_);
+            }
+            allHClassesAreFresh_ = true;
+            return HClassCheckResult::SUCCESS;
+        }
+
+    private:
+        std::optional<std::vector<RequestedHClassInfo>> TryBuildRequestedHClasses() const
+        {
+            ArkSteedHeapBroker *broker = builder_->self->pgoContext_.GetBroker();
+            if (broker == nullptr) {
+                return std::nullopt;
+            }
+            std::vector<RequestedHClassInfo> requestedHClasses;
+            requestedHClasses.reserve(hclasses_.size());
+            ArkSteedHeapBroker::SerializingScope scope(
+                broker, "GraphBuilder::HClassInference::TryBuildRequestedHClasses");
+            for (JSHClass *hclass : hclasses_) {
+                ArkSteedHClassRef hclassRef = broker->MakeHClassRef(JSTaggedValue(hclass));
+                if (!hclassRef.IsSafeForCompile()) {
+                    return std::nullopt;
+                }
+                requestedHClasses.push_back(RequestedHClassInfo {hclass, hclassRef, false});
+            }
+            return requestedHClasses;
+        }
+
+        static bool ContainsSameHClasses(const NodeInfo::PossibleHClasses &lhs, const NodeInfo::PossibleHClasses &rhs)
+        {
+            if (lhs.size() != rhs.size()) {
+                return false;
+            }
+            return std::all_of(lhs.begin(), lhs.end(), [&rhs](JSHClass *hclass) {
+                return std::find(rhs.begin(), rhs.end(), hclass) != rhs.end();
+            });
+        }
+
+        BytecodeVisitor *builder_ {nullptr};
+        ValueVertex *object_ {nullptr};
+        CompileInfoFacts *facts_ {nullptr};
+        NodeInfo::PossibleHClasses hclasses_;
+        uint32_t effectEpoch_ {0};
+        bool allHClassesAreFresh_ {false};
+        bool hclassesComeFromConstant_ {false};
+    };
 
     ValueVertex *BuildLoadField(ValueVertex *object, PropertyLookupResult plr)
     {
@@ -6550,7 +6696,7 @@ struct GraphBuilder::BytecodeVisitor {
             if (!ResolveElementStoreTransitionGroups(access, &jsArrayGroups)) {
                 return false;
             }
-            knownJSArrayHClass = TryGetKnownHClass(receiver);
+            knownJSArrayHClass = TryGetFreshKnownHClass(receiver);
             if (knownJSArrayHClass != nullptr) {
                 bool foundKnownHClass = false;
                 for (const ResolvedElementStoreTransitionGroup &group : jsArrayGroups) {
@@ -6564,7 +6710,7 @@ struct GraphBuilder::BytecodeVisitor {
                     }
                 }
                 if (!foundKnownHClass) {
-                    return false;
+                    knownJSArrayHClass = nullptr;
                 }
             }
         }
@@ -6801,20 +6947,8 @@ struct GraphBuilder::BytecodeVisitor {
         return self->graph_->GetHeapConstant(handleIndex, staticNodeType);
     }
 
-    JSHClass *TryGetKnownHClass(ValueVertex *receiver) const
+    JSHClass *TryGetFreshKnownHClass(ValueVertex *receiver) const
     {
-        if (std::optional<ArkSteedHeapRef> constantRef = TryGetConstantHeapRef(receiver)) {
-            ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
-            if (broker == nullptr) {
-                return nullptr;
-            }
-            ArkSteedHeapBroker::SerializingScope scope(
-                broker, "GraphBuilder::TryGetKnownHClass");
-            JSTaggedValue constant = JSTaggedValue::Undefined();
-            if (broker->TryResolveRef(*constantRef, &constant) && constant.IsHeapObject()) {
-                return constant.GetTaggedObject()->GetClass();
-            }
-        }
         return compileInfoFacts_->TryGetHClass(receiver);
     }
 
@@ -7040,8 +7174,47 @@ struct GraphBuilder::BytecodeVisitor {
             BuildPreparedNamedStoreField(receiver, access.fieldOffset, preparedValue,
                                          access.fieldRepresentation);
         }
-        compileInfoFacts_->RecordHClass(receiver, transitionHClass, false);
+        compileInfoFacts_->RecordHClass(
+            receiver, transitionHClass, IsHClassStableForFacts(transitionHClass, false));
         return true;
+    }
+
+    bool CanLowerNamedStoreField(const NamedStoreAccessInfo &access) const
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (access.mode != AccessMode::NAMED_STORE ||
+            !TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
+            return false;
+        }
+        bool hasSupportedStorage = access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
+            access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY;
+        if (!hasSupportedStorage) {
+            return false;
+        }
+        if (access.kind == AccessKind::TRANSITION) {
+            JSHClass *transitionHClass = nullptr;
+            bool hasSupportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+                access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+            return access.holderIsReceiver && hasSupportedRepresentation && !receiverHClass->IsPrototype() &&
+                TryResolveHClassRef(access.transitionHClass, &transitionHClass);
+        }
+        if (access.isSharedStore) {
+            return access.holderIsReceiver;
+        }
+        if (access.kind == AccessKind::ACCESSOR) {
+            if (access.holderIsReceiver) {
+                return true;
+            }
+            JSHClass *holderHClass = nullptr;
+            return access.HasHolderHClass() && TryResolveHClassRef(access.holderHClass, &holderHClass);
+        }
+        if (!access.IsDataField()) {
+            return false;
+        }
+        return access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+            access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+            access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
     }
 
     bool TryLowerNamedStoreField(uint32_t bcIndex, const NamedStoreAccessInfo &access,
@@ -7154,11 +7327,6 @@ struct GraphBuilder::BytecodeVisitor {
         return left.fieldStorage == right.fieldStorage && left.fieldOffset == right.fieldOffset;
     }
 
-    void RecordPossibleHClasses(ValueVertex *receiver, const std::vector<JSHClass *> &expectedHClasses)
-    {
-        compileInfoFacts_->RecordPossibleHClasses(receiver, expectedHClasses, false);
-    }
-
     bool TryLowerEquivalentNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access,
                                             ValueVertex *receiver, ValueVertex *value)
     {
@@ -7167,15 +7335,19 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         std::vector<JSHClass *> expectedHClasses;
-        std::vector<ArkSteedHClassRef> expectedHClassRefs;
+        std::vector<RequestedHClassInfo> requestedHClasses;
         expectedHClasses.reserve(access.caseCount);
-        expectedHClassRefs.reserve(access.caseCount);
+        requestedHClasses.reserve(access.caseCount);
         JSHClass *firstHClass = nullptr;
         if (!TryResolveHClassRef(access.cases[0].expectedHClass, &firstHClass)) {
             return false;
         }
         expectedHClasses.push_back(firstHClass);
-        expectedHClassRefs.push_back(access.cases[0].expectedHClass);
+        requestedHClasses.push_back(RequestedHClassInfo {
+            firstHClass,
+            access.cases[0].expectedHClass,
+            access.cases[0].dependencies.canAssumeStableHClass,
+        });
         for (uint32_t i = 1; i < access.caseCount; ++i) {
             if (!IsLocalTaggedStoreField(access.cases[i]) ||
                 !HasSameStoreFieldLocation(access.cases[0], access.cases[i])) {
@@ -7190,17 +7362,14 @@ struct GraphBuilder::BytecodeVisitor {
                 return false;
             }
             expectedHClasses.push_back(expectedHClass);
-            expectedHClassRefs.push_back(access.cases[i].expectedHClass);
+            requestedHClasses.push_back(RequestedHClassInfo {
+                expectedHClass,
+                access.cases[i].expectedHClass,
+                access.cases[i].dependencies.canAssumeStableHClass,
+            });
         }
 
-        bool canAssumeStableHClasses = std::all_of(
-            access.cases.begin(), access.cases.begin() + access.caseCount,
-            [](const NamedStoreAccessInfo &storeCase) {
-                return storeCase.dependencies.canAssumeStableHClass;
-            });
-        HClassCheckResult checkResult =
-            BuildCheckAnyOfHClasses(
-                bcIndex, receiver, expectedHClasses, expectedHClassRefs, false, canAssumeStableHClasses);
+        HClassCheckResult checkResult = BuildHClassCheck(bcIndex, receiver, requestedHClasses, false);
         if (checkResult != HClassCheckResult::SUCCESS) {
             return checkResult == HClassCheckResult::UNREACHABLE;
         }
@@ -7221,8 +7390,10 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         std::vector<JSHClass *> expectedHClasses;
+        NodeInfo::PossibleHClassInfos provenHClasses;
         std::vector<StoreTaggedFieldByHClassCase> storeCases;
         expectedHClasses.reserve(access.caseCount);
+        provenHClasses.reserve(access.caseCount);
         storeCases.reserve(access.caseCount);
         for (uint32_t i = 0; i < access.caseCount; ++i) {
             const NamedStoreAccessInfo &storeCaseInfo = access.cases[i];
@@ -7244,6 +7415,11 @@ struct GraphBuilder::BytecodeVisitor {
             if (!expectedHClassHandleIndex.has_value()) {
                 return false;
             }
+            provenHClasses.push_back(NodeInfo::PossibleHClassInfo {
+                .hclass = expectedHClass,
+                .isStable = IsHClassStableForFacts(
+                    expectedHClass, storeCaseInfo.dependencies.canAssumeStableHClass),
+            });
             storeCases.push_back(StoreTaggedFieldByHClassCase {
                 expectedHClassHandleIndex.value(),
                 storeCaseInfo.fieldOffset,
@@ -7259,7 +7435,7 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_, currentBlock, storeInputs, self->chunk_, storeCases,
             ClassifyDirectWriteBarrierValueKind(value), self->preproc_->GetBytecodeOffset(bcIndex));
         store->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
-        RecordPossibleHClasses(receiver, expectedHClasses);
+        compileInfoFacts_->RecordPossibleHClasses(receiver, provenHClasses);
         return true;
     }
 
@@ -7385,9 +7561,15 @@ struct GraphBuilder::BytecodeVisitor {
             return TryLowerNamedStoreField(bcIndex, access.cases[0], receiver, value);
         }
 
-        JSHClass *knownHClass = TryGetKnownHClass(receiver);
+        JSHClass *knownHClass = TryGetFreshKnownHClass(receiver);
+        HClassInference inference(this, receiver, HClassInference::Mode::ALLOW_STALE);
+        std::optional<NodeInfo::PossibleHClasses> inferredHClasses = inference.TryGetPossibleHClasses();
+        if (knownHClass == nullptr && inferredHClasses.has_value() && inferredHClasses->size() == 1) {
+            knownHClass = inferredHClasses->front();
+        }
         if (knownHClass != nullptr) {
             const NamedStoreAccessInfo *matched = nullptr;
+            bool ambiguousMatch = false;
             for (uint32_t i = 0; i < access.caseCount; ++i) {
                 JSHClass *caseHClass = nullptr;
                 if (!TryResolveHClassRef(access.cases[i].expectedHClass, &caseHClass)) {
@@ -7397,11 +7579,21 @@ struct GraphBuilder::BytecodeVisitor {
                     continue;
                 }
                 if (matched != nullptr) {
-                    return false;
+                    matched = nullptr;
+                    ambiguousMatch = true;
+                    break;
                 }
                 matched = &access.cases[i];
             }
-            return matched != nullptr && TryLowerNamedStoreField(bcIndex, *matched, receiver, value);
+            if (!ambiguousMatch && matched != nullptr && CanLowerNamedStoreField(*matched)) {
+                HClassCheckResult freshnessResult = inference.EnsureHClassesFresh(bcIndex);
+                if (freshnessResult == HClassCheckResult::UNREACHABLE) {
+                    return true;
+                }
+                if (freshnessResult == HClassCheckResult::SUCCESS) {
+                    return TryLowerNamedStoreField(bcIndex, *matched, receiver, value);
+                }
+            }
         }
 
         return TryLowerEquivalentNamedStoreFields(bcIndex, access, receiver, value) ||
@@ -8130,33 +8322,94 @@ struct GraphBuilder::BytecodeVisitor {
         return TryBuildNamedAccessByValue(bcIndex, receiver, propertyKeyHandleIndex.value(), accessInfos.value());
     }
 
+    static std::optional<AccessFieldRepresentation> TryConvertPropertyRepresentation(Representation representation)
+    {
+        switch (representation) {
+            case Representation::TAGGED:
+                return AccessFieldRepresentation::TAGGED;
+            case Representation::INT:
+                return AccessFieldRepresentation::INT32;
+            case Representation::DOUBLE:
+                return AccessFieldRepresentation::DOUBLE;
+            default:
+                return std::nullopt;
+        }
+    }
+
     bool TryBuildStoreNamedProperty(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,
                                     ValueVertex *value)
     {
-        JSHClass *hclass = compileInfoFacts_->TryGetHClass(receiver);
-        if (hclass == nullptr) {
-            return false;
-        }
+        HClassInference inference(this, receiver, HClassInference::Mode::ALLOW_STALE);
+        std::optional<NodeInfo::PossibleHClasses> possibleHClasses = inference.TryGetPossibleHClasses();
         std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
-        if (!nameRef.has_value()) {
+        if (!possibleHClasses.has_value() || !nameRef.has_value()) {
             return false;
         }
-        std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(hclass, nameRef.value());
-        if (!maybePlr.has_value()) {
+
+        bool hasPlan = false;
+        bool isInlinedProperties = false;
+        uint32_t fieldOffset = 0;
+        AccessFieldRepresentation fieldRepresentation = AccessFieldRepresentation::UNKNOWN;
+        for (JSHClass *hclass : possibleHClasses.value()) {
+            std::optional<PropertyLookupResult> maybePlr =
+                TryLookupPropertyInPGOHClass(hclass, nameRef.value());
+            if (!maybePlr.has_value()) {
+                return false;
+            }
+            PropertyLookupResult plr = maybePlr.value();
+            std::optional<AccessFieldRepresentation> representation =
+                TryConvertPropertyRepresentation(plr.GetRepresentation());
+            if (!plr.IsFound() || !plr.IsLocal() || !plr.IsWritable() || plr.IsAccessor() ||
+                !representation.has_value()) {
+                return false;
+            }
+            if (!hasPlan) {
+                hasPlan = true;
+                isInlinedProperties = plr.IsInlinedProps();
+                fieldOffset = plr.GetOffset();
+                fieldRepresentation = representation.value();
+                continue;
+            }
+            if (isInlinedProperties != plr.IsInlinedProps() || fieldOffset != plr.GetOffset() ||
+                fieldRepresentation != representation.value()) {
+                return false;
+            }
+        }
+        if (!hasPlan) {
             return false;
         }
-        PropertyLookupResult plr = maybePlr.value();
-        if (!plr.IsFound() || !plr.IsLocal() || !plr.IsWritable() || plr.IsAccessor()) {
-            return false;
+
+        std::vector<JSHClass *> pendingStableHClasses;
+        pendingStableHClasses.reserve(possibleHClasses->size());
+        bool needsNotPrototypeGuard = false;
+        auto *env = self->preproc_->GetEnv();
+        auto *dependencies = env == nullptr ? nullptr : env->GetDependencies();
+        for (JSHClass *hclass : possibleHClasses.value()) {
+            bool isStable = JSTaggedValue(hclass).IsInSharedHeap();
+            if (!isStable && self->IsLazyDeoptEnabled() &&
+                kungfu::StableHClassDependency::IsValid(hclass)) {
+                if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
+                    return false;
+                }
+                isStable = true;
+            }
+            if (isStable) {
+                pendingStableHClasses.push_back(hclass);
+            }
+            bool hasNotPrototypeDependency = self->IsLazyDeoptEnabled() && dependencies != nullptr &&
+                dependencies->DependOnNotPrototype(hclass);
+            needsNotPrototypeGuard |= !hasNotPrototypeDependency;
         }
-        auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
-        if (self->IsLazyDeoptEnabled() && kungfu::StableHClassDependency::IsValid(hclass) &&
-            (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass))) {
-            return false;
+
+        HClassCheckResult freshnessResult = inference.EnsureHClassesFresh(bcIndex);
+        if (freshnessResult != HClassCheckResult::SUCCESS) {
+            return freshnessResult == HClassCheckResult::UNREACHABLE;
         }
-        bool hasNotPrototypeDependency = self->IsLazyDeoptEnabled() && dependencies != nullptr &&
-            dependencies->DependOnNotPrototype(hclass);
-        if (!hasNotPrototypeDependency) {
+        for (JSHClass *hclass : pendingStableHClasses) {
+            bool marked = compileInfoFacts_->MarkPossibleHClassStable(receiver, hclass);
+            ASSERT(marked);
+        }
+        if (needsNotPrototypeGuard) {
             ChunkVector<ValueVertex *> guardInputs(self->chunk_);
             guardInputs.emplace_back(receiver);
             auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(
@@ -8164,7 +8417,18 @@ struct GraphBuilder::BytecodeVisitor {
                 self->preproc_->GetBytecodeOffset(bcIndex));
             guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         }
-        BuildStoreField(receiver, value, plr);
+
+        ValueVertex *preparedValue = BuildCheckedNamedStoreValue(fieldRepresentation, value);
+        ASSERT(preparedValue != nullptr);
+        ValueVertex *storeTarget = receiver;
+        int32_t storeOffset = static_cast<int32_t>(fieldOffset);
+        if (!isInlinedProperties) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            storeOffset = static_cast<int32_t>(
+                TaggedArray::DATA_OFFSET + fieldOffset * JSTaggedValue::TaggedTypeSize());
+        }
+        BuildPreparedNamedStoreField(storeTarget, storeOffset, preparedValue, fieldRepresentation);
         return true;
     }
 
