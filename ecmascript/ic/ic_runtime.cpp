@@ -316,7 +316,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     TraceIC(GetThread(), receiver, key);
 
 #if ENABLE_V70_OPTIMIZATION
-    if (!op.IsFastMode() && op.IsFound()) {
+    if (!op.IsFastMode() && (op.IsFound() || op.GetHolder()->IsJSProxy())) {
         nexus_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
     }

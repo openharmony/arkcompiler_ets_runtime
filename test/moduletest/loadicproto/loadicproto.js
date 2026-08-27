@@ -383,4 +383,15 @@ function testPrototypeChainLookupOrder() {
 }
 testPrototypeChainLookupOrder();
 
+function testProxyIc(){
+    let obj = {
+        __proto__:new Proxy({add:1},{})
+    }
+    for(let i=0;i<100;i++){};
+    for(let i=0;i<100;i++) {
+        assert_equal(obj.add, 1);
+    }
+}
+testProxyIc();
+
 test_end();
