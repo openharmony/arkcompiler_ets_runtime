@@ -14,7 +14,9 @@
  */
 
 #include "mir_function.h"
+#include "parse_preg_no.h"
 #include "printing.h"
+#include <cctype>
 
 namespace {
 using namespace maple;
@@ -440,12 +442,13 @@ void MIRFunction::EnterFormals()
         formalDef.formalSym->SetTyIdx(formalDef.formalTyIdx);
         formalDef.formalSym->SetAttrs(formalDef.formalAttrs);
         const std::string &formalName = GlobalTables::GetStrTable().GetStringFromStrIdx(formalDef.formalStrIdx);
-        if (!isdigit(formalName.front())) {
+        uint32 thepregno = 0;
+        if (formalName.empty() || !isdigit(static_cast<unsigned char>(formalName.front())) ||
+            !ParsePregNo(formalName, thepregno)) {
             formalDef.formalSym->SetSKind(kStVar);
             (void)symTab->AddToStringSymbolMap(*formalDef.formalSym);
         } else {
             formalDef.formalSym->SetSKind(kStPreg);
-            uint32 thepregno = static_cast<uint32>(std::stoi(formalName));
             MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(formalDef.formalTyIdx);
             PrimType pType = mirType->GetPrimType();
             // if mirType info is not needed, set mirType to nullptr
