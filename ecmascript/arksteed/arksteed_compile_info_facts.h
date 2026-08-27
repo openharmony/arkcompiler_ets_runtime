@@ -242,7 +242,7 @@ public:
         ELEMENTS,
         LENGTH,
         CONST_DATA_ID,
-        TAGGED_VALUE,
+        HEAP_CONSTANT,
         UNKNOWN,
     };
 
@@ -271,9 +271,9 @@ public:
         return PropertyKey(Kind::CONST_DATA_ID, constDataId);
     }
 
-    static PropertyKey TaggedValue(JSTaggedValue key)
+    static PropertyKey HeapConstant(uint32_t handleIndex)
     {
-        return PropertyKey(Kind::TAGGED_VALUE, key.GetRawData());
+        return PropertyKey(Kind::HEAP_CONSTANT, handleIndex);
     }
 
     static PropertyKey Unknown()
@@ -320,9 +320,9 @@ public:
         return LoadedPropertyKey(receiver, PropertyKey::ConstDataId(constDataId), plr.GetData());
     }
 
-    static LoadedPropertyKey TaggedValue(ValueVertex *receiver, JSTaggedValue key, PropertyLookupResult plr)
+    static LoadedPropertyKey HeapConstant(ValueVertex *receiver, uint32_t handleIndex, PropertyLookupResult plr)
     {
-        return LoadedPropertyKey(receiver, PropertyKey::TaggedValue(key), plr.GetData());
+        return LoadedPropertyKey(receiver, PropertyKey::HeapConstant(handleIndex), plr.GetData());
     }
 
     ValueVertex *GetReceiver() const

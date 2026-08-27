@@ -1014,21 +1014,16 @@ public:
         VertexPropertyFlag::CAN_READ |
         VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    explicit LoadPrototypeHolderByHClassVertex(Chunk *chunk,
-                                               JSHClass *holderHClass,
-                                               std::vector<JSHClass *> expectedPrototypeHClasses,
-                                               uint32_t holderDepth,
+    explicit LoadPrototypeHolderByHClassVertex(Chunk *chunk, uint32_t holderDepth,
+                                               const std::vector<uint32_t> &expectedHClassHandleIndices,
                                                uint32_t bytecodeOffset)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          holderHClass_(holderHClass),
-          expectedPrototypeHClasses_(std::move(expectedPrototypeHClasses)),
-          holderDepth_(holderDepth)
-    {}
-
-    JSHClass *GetHolderHClass() const
+          holderDepth_(holderDepth),
+          expectedHClassHandleIndices_(chunk)
     {
-        return holderHClass_;
+        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(),
+                                            expectedHClassHandleIndices.end());
     }
 
     uint32_t GetHolderDepth() const
@@ -1036,28 +1031,25 @@ public:
         return holderDepth_;
     }
 
-    const std::vector<JSHClass *> &GetExpectedPrototypeHClasses() const
+    uint32_t GetExpectedHClassHandleIndex(uint32_t depth) const
     {
-        return expectedPrototypeHClasses_;
+        ASSERT(depth < holderDepth_);
+        return expectedHClassHandleIndices_[depth];
     }
 
     void SetValueLocationConstraints();
 
     void VerifyInputs() const
     {
-        ASSERT(holderHClass_ != nullptr);
         ASSERT(holderDepth_ != 0);
-        ASSERT(!expectedPrototypeHClasses_.empty());
-        ASSERT(expectedPrototypeHClasses_.size() == holderDepth_);
-        ASSERT(expectedPrototypeHClasses_.back() == holderHClass_);
-        ASSERT(GetInputCount() == 1);
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(expectedHClassHandleIndices_.size() == holderDepth_);
         ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 
 private:
-    JSHClass *holderHClass_ {nullptr};
-    std::vector<JSHClass *> expectedPrototypeHClasses_;
     uint32_t holderDepth_ {0};
+    ChunkVector<uint32_t> expectedHClassHandleIndices_;
 };
 
 class ConvertHoleToUndefinedVertex : public FixedInputVertexMixin<ValueVertex, ConvertHoleToUndefinedVertex> {
@@ -1089,29 +1081,27 @@ public:
         VertexPropertyFlag::CAN_EAGER_DEOPT |
         VertexPropertyFlag::CAN_READ;
 
-    FindPrototypeHolderVertex(Chunk *chunk, JSHClass *expectedHolderHClass,
-                              uint32_t bytecodeOffset)
+    FindPrototypeHolderVertex(Chunk *chunk, uint32_t expectedHClassHandleIndex, uint32_t bytecodeOffset)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          expectedHolderHClass_(expectedHolderHClass)
+          expectedHClassHandleIndex_(expectedHClassHandleIndex)
     {}
 
-    JSHClass *GetExpectedHolderHClass() const
+    uint32_t GetExpectedHClassHandleIndex() const
     {
-        return expectedHolderHClass_;
+        return expectedHClassHandleIndex_;
     }
 
     void SetValueLocationConstraints();
 
     void VerifyInputs() const
     {
-        ASSERT(expectedHolderHClass_ != nullptr);
-        ASSERT(GetInputCount() == RECEIVER_INDEX + 1);
+        ASSERT(GetInputCount() == NUM_INPUTS);
         ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 
 private:
-    JSHClass *expectedHolderHClass_ {nullptr};
+    uint32_t expectedHClassHandleIndex_ {0};
 };
 
 enum class ArkSteedWriteBarrierKind : uint8_t {
@@ -1626,7 +1616,7 @@ private:
 };
 
 struct StoreTaggedFieldByHClassCase {
-    JSHClass *expectedHClass {nullptr};
+    uint32_t expectedHClassHandleIndex {0};
     int32_t fieldOffset {0};
     bool propertiesArray {false};
 };
@@ -1674,10 +1664,11 @@ public:
     }
 
     void SetValueLocationConstraints();
+
     void VerifyInputs() const
     {
         ASSERT(!cases_.empty());
-        ASSERT(GetInputCount() == VALUE_INDEX + 1);
+        ASSERT(GetInputCount() == NUM_INPUTS);
         ASSERT(GetInput(GLUE_INDEX)->GetValueRepresentation() == ValueRepresentation::INT_PTR);
         ASSERT(GetInput(OBJECT_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
         ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
@@ -2718,29 +2709,28 @@ public:
         VertexPropertyFlag::CAN_EAGER_DEOPT |
         VertexPropertyFlag::CAN_READ;
 
-    explicit DeoptIfHClassMismatchVertex(Chunk *chunk,
-                                         JSHClass *expectedHClass,
+    explicit DeoptIfHClassMismatchVertex(Chunk *chunk, uint32_t expectedHClassHandleIndex,
                                          uint32_t bytecodeOffset)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          expectedHClass_(expectedHClass)
+          expectedHClassHandleIndex_(expectedHClassHandleIndex)
     {}
 
-    JSHClass *GetExpectedHClass() const
+    uint32_t GetExpectedHClassHandleIndex() const
     {
-        return expectedHClass_;
+        return expectedHClassHandleIndex_;
     }
 
     void SetValueLocationConstraints();
 
     void VerifyInputs() const
     {
-        ASSERT(expectedHClass_ != nullptr);
         ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 
 private:
-    JSHClass *expectedHClass_;
+    uint32_t expectedHClassHandleIndex_ {0};
 };
 
 class DeoptIfHClassNotInVertex : public VertexMixin<NonControlVertex, DeoptIfHClassNotInVertex>,
@@ -2754,31 +2744,38 @@ public:
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
 
     explicit DeoptIfHClassNotInVertex(Chunk *chunk,
-                                      std::vector<JSHClass *> expectedHClasses,
+                                      const std::vector<uint32_t> &expectedHClassHandleIndices,
                                       uint32_t bytecodeOffset)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          expectedHClasses_(std::move(expectedHClasses))
-    {}
-
-    const std::vector<JSHClass *> &GetExpectedHClasses() const
+          expectedHClassHandleIndices_(chunk)
     {
-        return expectedHClasses_;
+        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(),
+                                            expectedHClassHandleIndices.end());
+    }
+
+    uint32_t GetExpectedHClassCount() const
+    {
+        return expectedHClassHandleIndices_.size();
+    }
+
+    uint32_t GetExpectedHClassHandleIndex(uint32_t index) const
+    {
+        ASSERT(index < expectedHClassHandleIndices_.size());
+        return expectedHClassHandleIndices_[index];
     }
 
     void SetValueLocationConstraints();
 
     void VerifyInputs() const
     {
-        ASSERT(!expectedHClasses_.empty());
-        ASSERT(std::all_of(expectedHClasses_.begin(), expectedHClasses_.end(), [](JSHClass *hclass) {
-            return hclass != nullptr;
-        }));
-        ASSERT(GetInputCount() == 1);
+        ASSERT(GetExpectedHClassCount() != 0);
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
     }
 
 private:
-    std::vector<JSHClass *> expectedHClasses_;
+    ChunkVector<uint32_t> expectedHClassHandleIndices_;
 };
 
 class DeoptIfPrototypeChangedVertex : public VertexMixin<NonControlVertex, DeoptIfPrototypeChangedVertex>,
@@ -3229,40 +3226,55 @@ public:
     void SetValueLocationConstraints();
 };
 
-class BranchIfHClassInVertex : public BranchControlVertexT<BranchIfHClassInVertex> {
+class BranchIfHClassInVertex : public VertexMixin<BranchControlVertex, BranchIfHClassInVertex> {
 public:
     enum Indices : uint32_t {
-        RECEIVER_INDEX = 0,
+        VALUE_INDEX = 0,
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
-    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
-        ValueRepresentation::TAGGED,
-    };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    BranchIfHClassInVertex(BB *ifTrue, BB *ifFalse,
-                           std::vector<JSHClass *> expectedHClasses)
-        : BranchControlVertexT(ifTrue, ifFalse), expectedHClasses_(std::move(expectedHClasses))
-    {}
-
-    const std::vector<JSHClass *> &GetExpectedHClasses() const
+    BranchIfHClassInVertex(BB *ifTrue, BB *ifFalse, Chunk *chunk,
+                           const std::vector<uint32_t> &expectedHClassHandleIndices,
+                           bool inputIsHClassAddress = false)
+        : VertexMixin(ifTrue, ifFalse),
+          expectedHClassHandleIndices_(chunk),
+          inputIsHClassAddress_(inputIsHClassAddress)
     {
-        return expectedHClasses_;
+        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(),
+                                            expectedHClassHandleIndices.end());
+    }
+
+    uint32_t GetExpectedHClassCount() const
+    {
+        return expectedHClassHandleIndices_.size();
+    }
+
+    uint32_t GetExpectedHClassHandleIndex(uint32_t index) const
+    {
+        ASSERT(index < expectedHClassHandleIndices_.size());
+        return expectedHClassHandleIndices_[index];
+    }
+
+    bool InputIsHClassAddress() const
+    {
+        return inputIsHClassAddress_;
     }
 
     void SetValueLocationConstraints();
 
     void VerifyInputs() const
     {
-        ASSERT(!expectedHClasses_.empty());
-        ASSERT(std::all_of(expectedHClasses_.begin(), expectedHClasses_.end(), [](JSHClass *hclass) {
-            return hclass != nullptr;
-        }));
+        ASSERT(GetExpectedHClassCount() != 0);
+        ASSERT(GetInputCount() == NUM_INPUTS);
+        ASSERT(GetInput(VALUE_INDEX)->GetValueRepresentation() ==
+               (inputIsHClassAddress_ ? ValueRepresentation::INT64 : ValueRepresentation::TAGGED));
     }
 
 private:
-    std::vector<JSHClass *> expectedHClasses_;
+    ChunkVector<uint32_t> expectedHClassHandleIndices_;
+    bool inputIsHClassAddress_ {false};
 };
 
 class BranchIfInt32CompareVertex : public BranchControlVertexT<BranchIfInt32CompareVertex>,

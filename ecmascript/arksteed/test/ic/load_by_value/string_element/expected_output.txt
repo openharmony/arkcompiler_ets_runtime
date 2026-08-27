@@ -7,5 +7,6 @@ true
 true
 b
 b
+c
 true
 s

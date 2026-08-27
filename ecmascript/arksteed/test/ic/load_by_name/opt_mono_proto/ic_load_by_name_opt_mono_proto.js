@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+//! METHOD LoadScore
+//! HAS LoadPrototypeHolderByHClass
+//! HAS_NOT HeapConstant
+
 function LoadScore(obj)
 {
     return obj.score;

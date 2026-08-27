@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+//! METHOD storePolyProperties
+//! HAS StoreTaggedFieldByHClass
+//! HAS_NOT HeapConstant
+
 function makePropertiesA() {
     let holder = {};
     holder.a0 = 0;

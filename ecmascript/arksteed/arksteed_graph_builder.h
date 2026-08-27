@@ -100,13 +100,13 @@ private:
     [[deprecated("Use FinishBlockWithBranch<BranchVertexT>() instead")]]
     ControlVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
 
-    template <class BranchVertexT, class... Args>
-    BranchVertexT *FinishBlockWithBranch(BB *owner, std::initializer_list<ValueVertex *> input,
+    template <class BranchVertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    BranchVertexT *FinishBlockWithBranch(BB *owner, const InputRange &inputs,
                                          BB *targetIfTrue, BB *targetIfFalse, Args &&...args);
 
     // VertexT should be control vertex
-    template <class VertexT, class... Args>
-    VertexT *FinishBlockWith(BB *owner, std::initializer_list<ValueVertex *> inputs, Args &&...args);
+    template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    VertexT *FinishBlockWith(BB *owner, const InputRange &inputs, Args &&...args);
 
     BB *NewBlock();
     BB *ActivateNonCatchBlock(uint32_t rpoIndex);

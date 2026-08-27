@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+//! METHOD LoadScore
+//! HAS DeoptIfHClassNotIn
+//! HAS BranchIfHClassIn
+//! HAS_NOT HeapConstant
+
 function LoadScore(obj)
 {
     return obj.score;
@@ -21,6 +26,11 @@ function LoadScore(obj)
 let own = {
     score: 17,
     ownTag: 1,
+};
+
+let ownAlternative = {
+    score: 23,
+    alternativeTag: 1,
 };
 
 let prototype = {
@@ -33,10 +43,12 @@ inherited.receiverTag = 1;
 let sum = 0;
 for (let i = 0; i < 20; i++) {
     sum += LoadScore(own);
+    sum += LoadScore(ownAlternative);
     sum += LoadScore(inherited);
 }
 
 print(ArkTools.arkSteedCompileSync(LoadScore));
 print(sum);
 print(LoadScore(own));
+print(LoadScore(ownAlternative));
 print(LoadScore(inherited));

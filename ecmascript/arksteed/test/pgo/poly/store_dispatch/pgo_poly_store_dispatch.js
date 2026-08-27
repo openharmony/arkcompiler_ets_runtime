@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+//! METHOD storePoly
+//! HAS StoreTaggedFieldByHClass
+//! HAS_NOT HeapConstant
+
 class HolderA {
     constructor(value) {
         this.value = value;

@@ -187,13 +187,13 @@ void LineStringLoadElementVertex::SetValueLocationConstraints()
 
 void DeoptIfHClassMismatchVertex::SetValueLocationConstraints()
 {
-    SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
+    SetTemporariesNeeded(2);  // 2: actual hclass and tag/address mask
     UseRegister(Arg(RECEIVER_INDEX));
 }
 
 void DeoptIfHClassNotInVertex::SetValueLocationConstraints()
 {
-    SetTemporariesNeeded(2);  // 2: actual hclass and expected hclass
+    SetTemporariesNeeded(2);  // 2: actual hclass and tag/address mask
     UseRegister(Arg(RECEIVER_INDEX));
 }
 
@@ -351,7 +351,7 @@ void LoadPrototypeHolderByHClassVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
     UseRegister(Arg(RECEIVER_INDEX));
-    SetTemporariesNeeded(2);  // 2: current hclass and expected hclass
+    SetTemporariesNeeded(2);  // 2: current hclass and mask/check value
 }
 
 void ConvertHoleToUndefinedVertex::SetValueLocationConstraints()
@@ -370,7 +370,7 @@ void LoadHClassAddressVertex::SetValueLocationConstraints()
 void FindPrototypeHolderVertex::SetValueLocationConstraints()
 {
     DefineAsRegister(this);
-    SetTemporariesNeeded(2);  // 2: current HClass and mask/expected HClass
+    SetTemporariesNeeded(2);  // 2: current HClass and mask/check value
     UseRegister(Arg(RECEIVER_INDEX));
     UseEagerDeoptFrameSlots(this);
 }
@@ -881,9 +881,8 @@ void BranchIfTaggedStringVertex::SetValueLocationConstraints()
 
 void BranchIfHClassInVertex::SetValueLocationConstraints()
 {
-    UseRegister(Arg(RECEIVER_INDEX));
-    // 3: actual hclass, expected hclass, and the tagged-heap-object guard scratch.
-    SetTemporariesNeeded(3);
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(InputIsHClassAddress() ? 1 : 2);
 }
 
 void BranchIfInt32CompareVertex::SetValueLocationConstraints()
@@ -1100,20 +1099,18 @@ DUMP_EXTRA(Call)
 
 DUMP_EXTRA(DeoptIfHClassMismatch)
 {
-    uintptr_t expected = reinterpret_cast<uintptr_t>(vertex->GetExpectedHClass());
-    out << "  expected = 0x" << std::hex << expected << std::dec;
+    out << "  expected = heap#" << vertex->GetExpectedHClassHandleIndex();
 }
 
 DUMP_EXTRA(DeoptIfHClassNotIn)
 {
     out << "  expected = [";
-    const auto &expectedHClasses = vertex->GetExpectedHClasses();
-    out << std::hex;
-    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
-        if (i != 0) out << ", ";
-        out << "0x" << reinterpret_cast<uintptr_t>(expectedHClasses[i]);
+    for (uint32_t i = 0; i < vertex->GetExpectedHClassCount(); ++i) {
+        if (i != 0) {
+            out << ", ";
+        }
+        out << "heap#" << vertex->GetExpectedHClassHandleIndex(i);
     }
-    out << std::dec;
     out << ']';
 }
 
@@ -1137,24 +1134,19 @@ DUMP_EXTRA(Deopt)
 
 DUMP_EXTRA(LoadPrototypeHolderByHClass)
 {
-    uintptr_t holderHClass = reinterpret_cast<uintptr_t>(vertex->GetHolderHClass());
-    out << "  hclass = 0x" << std::hex << holderHClass << std::dec
-        << "  depth = " << vertex->GetHolderDepth()
-        << "  prototypes = [";
-    const auto &expectedHClasses = vertex->GetExpectedPrototypeHClasses();
-    out << std::hex;
-    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
-        if (i != 0) out << ", ";
-        out << "0x" << reinterpret_cast<uintptr_t>(expectedHClasses[i]);
+    out << "  depth = " << vertex->GetHolderDepth() << "  prototypes = [";
+    for (uint32_t i = 0; i < vertex->GetHolderDepth(); ++i) {
+        if (i != 0) {
+            out << ", ";
+        }
+        out << "heap#" << vertex->GetExpectedHClassHandleIndex(i);
     }
-    out << std::dec;
     out << "]";
 }
 
 DUMP_EXTRA(FindPrototypeHolder)
 {
-    uintptr_t holderHClass = reinterpret_cast<uintptr_t>(vertex->GetExpectedHolderHClass());
-    out << "  expected = 0x" << std::hex << holderHClass << std::dec;
+    out << "  expected = heap#" << vertex->GetExpectedHClassHandleIndex();
 }
 
 DUMP_EXTRA(PrepareSharedStoreField)
@@ -1171,6 +1163,13 @@ DUMP_EXTRA(StoreTaggedFieldByHClass)
 {
     out << "  numCases = " << vertex->GetCases().size()
         << "  value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
+    for (uint32_t i = 0; i < vertex->GetCases().size(); ++i) {
+        const StoreTaggedFieldByHClassCase &storeCase = vertex->GetCases()[i];
+        out << "  case[" << i << "] = { hclass = heap#"
+            << storeCase.expectedHClassHandleIndex
+            << ", offset = " << storeCase.fieldOffset
+            << ", storage = " << (storeCase.propertiesArray ? "properties" : "in-object") << " }";
+    }
 }
 
 DUMP_EXTRA(StoreTaggedFieldWithBarrier)
@@ -1198,12 +1197,11 @@ DUMP_EXTRA(I32BitwiseBinary)
 DUMP_EXTRA(BranchIfHClassIn)
 {
     out << "  expected = [";
-    const auto &expectedHClasses = vertex->GetExpectedHClasses();
-    for (size_t i = 0; i < expectedHClasses.size(); ++i) {
+    for (uint32_t i = 0; i < vertex->GetExpectedHClassCount(); ++i) {
         if (i != 0) {
             out << ", ";
         }
-        out << "0x" << std::hex << reinterpret_cast<uintptr_t>(expectedHClasses[i]) << std::dec;
+        out << "heap#" << vertex->GetExpectedHClassHandleIndex(i);
     }
     out << "]";
 }

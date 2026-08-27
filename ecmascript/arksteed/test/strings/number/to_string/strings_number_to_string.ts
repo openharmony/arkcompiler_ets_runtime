@@ -18,10 +18,16 @@ declare function print(arg: any): string;
 
 const REP = 60000;
 
+//! METHOD number_to_string_right
+//! HAS HeapConstant
+//! HAS_NOT CallCommonStub StringAdd
 function number_to_string_right(num: number): string {
     return "" + num;
 }
 
+//! METHOD number_to_string_left
+//! HAS HeapConstant
+//! HAS_NOT CallCommonStub StringAdd
 function number_to_string_left(num: number): string {
     return num + "";
 }

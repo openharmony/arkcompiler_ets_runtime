@@ -20,6 +20,7 @@
 //! HAS LoadSingleCharTableElement
 //! HAS CallCommonStub CreateStringBySingleCharCode
 //! HAS DeoptIfHClassMismatch
+//! HAS_NOT HeapConstant
 //! HAS LoadInt32Field
 //! HAS I32BitwiseBinary
 //! HAS DeoptIfInt32Condition
@@ -45,6 +46,7 @@ print(loadStringElement("abc", "1"));
 
 //! METHOD loadConstantStringElement
 //! HAS LoadSingleCharTableElement
+//! HAS HeapConstant
 //! HAS_NOT LineStringLoadElement
 //! HAS_NOT CallCommonStub CreateStringBySingleCharCode
 function loadConstantStringElement() {
@@ -57,6 +59,20 @@ for (let i = 0; i < 1000; i++) {
 }
 ArkTools.arkSteedCompileSync(loadConstantStringElement);
 print(loadConstantStringElement());
+
+//! METHOD loadConstantStringElementByIndex
+//! HAS HeapConstant
+//! HAS LineStringLoadElement
+//! HAS_NOT DeoptIfHClassMismatch
+function loadConstantStringElementByIndex(index) {
+    return "abc"[index];
+}
+
+for (let i = 0; i < 1000; i++) {
+    loadConstantStringElementByIndex(i % 3);
+}
+ArkTools.arkSteedCompileSync(loadConstantStringElementByIndex);
+print(loadConstantStringElementByIndex(2));
 
 function loadTreeStringElement(value, index) {
     return value[index];

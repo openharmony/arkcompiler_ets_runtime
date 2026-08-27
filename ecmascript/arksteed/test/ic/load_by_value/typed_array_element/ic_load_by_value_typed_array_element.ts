@@ -19,6 +19,7 @@
 //! HAS TypedArrayIntLoadElement
 //! HAS CheckedTaggedIntToI32
 //! HAS DeoptIfHClassMismatch
+//! HAS_NOT HeapConstant
 //! HAS LoadInt32Field
 //! HAS DeoptIfInt32Condition
 declare function print(arg: any): string;
@@ -142,6 +143,7 @@ print(loadFloat64Element(float64, 1));
 //! METHOD loadPolymorphicTypedElement
 //! HAS DeoptIfHClassNotIn
 //! HAS BranchIfHClassIn
+//! HAS_NOT HeapConstant
 function loadPolymorphicTypedElement(value, index) {
     return value[index];
 }

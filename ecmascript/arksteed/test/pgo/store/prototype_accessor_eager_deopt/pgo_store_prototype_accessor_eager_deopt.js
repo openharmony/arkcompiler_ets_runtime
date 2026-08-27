@@ -25,6 +25,9 @@ Object.defineProperty(proto, "value", {
     }
 });
 
+//! METHOD storePrototypeAccessor
+//! HAS FindPrototypeHolder
+//! HAS_NOT HeapConstant
 function storePrototypeAccessor(receiver, value) {
     receiver.value = value;
     return value;

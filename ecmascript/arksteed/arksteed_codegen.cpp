@@ -1147,8 +1147,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
     __ And(actualHClass, expectedHClass);
-    __ Move(expectedHClass, reinterpret_cast<uint64_t>(checkHClass->GetExpectedHClass()) &
-                                    TaggedStateWord::ADDRESS_MASK);
+    __ MoveEmbeddedTagged(expectedHClass, checkHClass->GetExpectedHClassHandleIndex());
     __ Compare(actualHClass, expectedHClass);
 #if defined(PANDA_TARGET_AMD64)
     __ JumpIf(Condition::NOT_EQUAL, deopt);
@@ -1183,8 +1182,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(Deop
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
     __ And(actualHClass, expectedHClass);
-    for (JSHClass *hclass : checkHClass->GetExpectedHClasses()) {
-        __ Move(expectedHClass, reinterpret_cast<uint64_t>(hclass) & TaggedStateWord::ADDRESS_MASK);
+    for (uint32_t i = 0; i < checkHClass->GetExpectedHClassCount(); ++i) {
+        __ MoveEmbeddedTagged(expectedHClass, checkHClass->GetExpectedHClassHandleIndex(i));
         __ Compare(actualHClass, expectedHClass);
         __ JumpIf(Condition::EQUAL, &pass);
     }
@@ -1575,7 +1574,6 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVer
     ArkSteedRegister expectedHClass = scope.Acquire();
     ArkSteedRegister receiver = GetInputRegister(loadHolder, RECEIVER_INDEX);
     ArkSteedRegister holder = GetResultRegister(loadHolder);
-    const auto &expectedPrototypeHClasses = loadHolder->GetExpectedPrototypeHClasses();
     Label protoChanged;
     Label deopt;
     Label pass;
@@ -1599,19 +1597,16 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVer
     __ Compare(currentHClass, 0);
     __ JumpIf(Condition::NOT_EQUAL, &protoChanged);
 
-    for (size_t i = 0; i < expectedPrototypeHClasses.size(); ++i) {
-        JSHClass *expectedPrototypeHClass = expectedPrototypeHClasses[i];
-        ASSERT(expectedPrototypeHClass != nullptr);
+    for (uint32_t i = 0; i < loadHolder->GetHolderDepth(); ++i) {
         __ Move(expectedHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
         __ Compare(holder, expectedHClass);
         __ JumpIf(Condition::EQUAL, &deopt);
         __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
         __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
-        __ Move(expectedHClass,
-                reinterpret_cast<uint64_t>(expectedPrototypeHClass) & TaggedStateWord::ADDRESS_MASK);
+        __ MoveEmbeddedTagged(expectedHClass, loadHolder->GetExpectedHClassHandleIndex(i));
         __ Compare(currentHClass, expectedHClass);
         __ JumpIf(Condition::NOT_EQUAL, &protoChanged);
-        if (i + 1 < expectedPrototypeHClasses.size()) {
+        if (i + 1 < loadHolder->GetHolderDepth()) {
             __ LoadField(holder, currentHClass, JSHClass::PROTOTYPE_OFFSET);
         }
     }
@@ -1690,9 +1685,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<FindPrototypeHolderVertex>(
     __ JumpIf(Condition::NOT_EQUAL, &deopt);
 
     loadHClassAddress(currentHClass, holder);
-    // TODO: HClass immediates should use ArkSteed heap constant/relocation support when available.
-    __ Move(scratch, reinterpret_cast<uint64_t>(findHolder->GetExpectedHolderHClass()) &
-                         TaggedStateWord::ADDRESS_MASK);
+    __ MoveEmbeddedTagged(scratch, findHolder->GetExpectedHClassHandleIndex());
     __ Compare(currentHClass, scratch);
     __ JumpIf(Condition::EQUAL, &found);
     __ LoadField(holder, currentHClass, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
@@ -2223,10 +2216,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldByHClassVertex
     __ LoadField(actualHClass, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
     __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
     __ And(actualHClass, expectedHClass);
-    // TODO: HClass immediates should use ArkSteed heap constant/relocation support when available.
     for (size_t i = 0; i < storeByHClass->GetCases().size(); ++i) {
-        __ Move(expectedHClass, reinterpret_cast<uint64_t>(storeByHClass->GetCases()[i].expectedHClass) &
-                                TaggedStateWord::ADDRESS_MASK);
+        __ MoveEmbeddedTagged(expectedHClass, storeByHClass->GetCases()[i].expectedHClassHandleIndex);
         __ Compare(actualHClass, expectedHClass);
         __ JumpIf(Condition::EQUAL, &caseLabels[i]);
     }
@@ -2456,19 +2447,25 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfHClassInVertex>(BranchIfH
                         << ": BranchIfHClassInVertex to BB #" << jumpIf->IfTrue()->GetId()
                         << " if true; to BB #" << jumpIf->IfFalse()->GetId() << " if false.";
 #endif
-    auto receiver = GetInputRegister(jumpIf, BranchIfHClassInVertex::RECEIVER_INDEX);
+    auto value = GetInputRegister(jumpIf, BranchIfHClassInVertex::VALUE_INDEX);
     TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister actualHClass = scope.Acquire();
+    ArkSteedRegister actualHClass = jumpIf->InputIsHClassAddress() ? value : scope.Acquire();
     ArkSteedRegister expectedHClass = scope.Acquire();
     BB *ifTrue = jumpIf->IfTrue();
     BB *ifFalse = jumpIf->IfFalse();
 
-    __ JumpIfNotTaggedHeapObject(receiver, ifFalse->GetLabel());
-    __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
-    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
-    __ And(actualHClass, expectedHClass);
-    for (JSHClass *hclass : jumpIf->GetExpectedHClasses()) {
-        __ Move(expectedHClass, reinterpret_cast<uint64_t>(hclass) & TaggedStateWord::ADDRESS_MASK);
+    if (!jumpIf->InputIsHClassAddress()) {
+        __ Move(actualHClass, value);
+        __ Move(expectedHClass, static_cast<uint64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+        __ And(actualHClass, expectedHClass);
+        __ Compare(actualHClass, 0);
+        __ JumpIf(Condition::NOT_EQUAL, ifFalse->GetLabel());
+        __ LoadField(actualHClass, value, TaggedObject::HCLASS_OFFSET);
+        __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+        __ And(actualHClass, expectedHClass);
+    }
+    for (uint32_t i = 0; i < jumpIf->GetExpectedHClassCount(); ++i) {
+        __ MoveEmbeddedTagged(expectedHClass, jumpIf->GetExpectedHClassHandleIndex(i));
         __ Compare(actualHClass, expectedHClass);
         __ JumpIf(Condition::EQUAL, ifTrue->GetLabel());
     }
