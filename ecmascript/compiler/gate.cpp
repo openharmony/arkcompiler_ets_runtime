@@ -781,10 +781,14 @@ std::string Gate::GateTypeStr(GateType gateType) const
     };
 
     std::string name = "";
-    if (strMap.count(gateType) > 0) {
-        name = strMap.at(gateType);
+    auto it = strMap.find(gateType);
+    if (it != strMap.end()) {
+        name = it->second;
     }
     uint32_t r = gateType.GetType();
+    if (r == 0) {
+        return name; // basic/stub types carry no TS type info (GetType()==0); omit the redundant suffix
+    }
     return name + std::string("-gateType(") + std::to_string(r) + std::string(")");
 }
 

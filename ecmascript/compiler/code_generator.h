@@ -116,7 +116,7 @@ struct CodeInfo {
 
     size_t GetSectionSize(ElfSecName sec) const;
 
-    std::vector<std::pair<uint8_t *, uintptr_t>> GetCodeInfo() const;
+    const std::vector<std::pair<uint8_t *, uintptr_t>> &GetCodeInfo() const;
 
     template <class Callback>
     void IterateSecInfos(const Callback &cb) const

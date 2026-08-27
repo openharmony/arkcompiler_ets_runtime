@@ -87,7 +87,7 @@ public:
                                  const std::string &filename = "");
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
-                          const MethodLogList &logList, std::ostringstream &codeStream);
+                          const MethodLogList &logList, std::string &codeStream);
 
     void DestroyModule();
 
@@ -143,7 +143,6 @@ public:
     virtual ~FileGenerator()
     {
         codeStream_.clear();
-        codeStream_.str("");
     }
 
     const CompilerLog GetLog() const
@@ -153,17 +152,18 @@ public:
 
     void PrintMergedCodeComment()
     {
-        if (codeStream_.str().empty()) {
+        if (codeStream_.empty()) {
             return;
         }
-        LOG_COMPILER(INFO) << "\n" << codeStream_.str();
+        LOG_COMPILER(INFO) << "\n" << codeStream_;
+        std::string().swap(codeStream_);
     }
 
 protected:
     std::vector<Module> modulePackage_ {};
     const CompilerLog *log_ {nullptr};
     const MethodLogList *logList_ {nullptr};
-    std::ostringstream codeStream_;
+    std::string codeStream_;
 
     virtual void RunLLVMAssembler()
     {
