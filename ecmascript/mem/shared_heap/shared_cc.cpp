@@ -45,38 +45,36 @@ SharedCC::SharedCC(SharedHeap *heap)
     }
 }
 
-void SharedCC::Trigger(GCReason gcReason)
+void SharedCC::RunConcurrentMarkPhase(GCReason gcReason)
 {
-    CHECK_DAEMON_THREAD();
-    RunPhases(gcReason);
+    {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+                          "SharedCC::WaitSensitiveStatusFinished", "");
+        // Avoid a sensitive-state deadlock during preparation.
+        sHeap_->WaitSensitiveStatusFinished();
+    }
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        ("SharedCC::RunConcurrentMarkPhase;GCReason" +
+         std::to_string(static_cast<int>(gcReason))).c_str(), "");
+    // TotalGC is finalized in FinalizeAndReclaim; see totalGcTimer_ and the TRACE_GC note in gc_stats.h.
+    totalGcTimer_.Reset();
+
+    PrepareMainThread();
+    ConcurrentMark();
 }
 
 void SharedCC::RunPhases(GCReason gcReason)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
-        ("SharedCC::RunPhases;GCReason " + std::to_string(static_cast<int>(gcReason))
-        + ";MarkReason" + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))).c_str(), "");
-    // TotalGC is finalized in FinalizeAndReclaim; see totalGcTimer_ and the TRACE_GC note in gc_stats.h.
-    totalGcTimer_.Reset();
-
-    PrepareMainThread();
-
-    {
-        WriteLockHolder gcWriteLock(BaseHeap::gcExclusiveRWLock_);
-        ConcurrentMark();           // Phase 1: concurrent (brief STW for init)
-        ReMarkAndPrepare(gcReason); // Phase 2: STW — remark, swap FROM/TO, forward roots
-        ParallelCopy();             // Phase 3a: concurrent (mutators run)
-        PostStringTableSweepTask(); // Phase 3b: post sweep (concurrent with UpdateReferences)
-        UpdateReferences();         // Phase 3c: concurrent (mutators run)
-        WaitStringTableSweep();     // Phase 3d: block until sweep done (mutators still run)
-        FinalizeAndReclaim();       // Phase 4: STW — finalize copy, sweep, reclaim
-
-        if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
-            VerifyHeap();           // Phase 5: STW (rare)
-        }
-    } // write lock released — safe to interact with main thread
-
-    Finish();                       // Phase 6: post-GC notifications (outside write lock)
+        ("SharedCC::RunPhases;GCReason" +
+         std::to_string(static_cast<int>(gcReason))).c_str(), "");
+    ReMarkAndPrepare(gcReason); // Phase 2: STW
+    ProcessMainThreadRSet();    // Phase 3: non-STW, prioritizes the main-thread detached RSet
+    ParallelCopy();             // Phase 4a
+    PostStringTableSweepTask(); // Phase 4b
+    UpdateReferences();         // Phase 4c
+    WaitStringTableSweep();     // Phase 4d
+    FinalizeAndReclaim();       // Phase 5: snapshot STW, concurrent wait, reclaim-dispatch STW
 }
 
 void SharedCC::ConcurrentMark()
@@ -91,63 +89,103 @@ void SharedCC::ReMarkAndPrepare(GCReason gcReason)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::ReMarkAndPrepare", "");
     TRACE_GC(GCStats::Scope::ScopeId::ReMark, sHeap_->GetEcmaGCStats());
     ThreadManagedScope runningScope(dThread_);
-    SuspendAllScope scope(dThread_);
-    EnterSharedGCScope();
-    sHeap_->CheckProfilerEnabled();
-    sHeap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::SHARED_CC, gcReason);
-    marker_->ReMark();
-    SuspendIdleThreads();
-    LogThreadStatesBeforeCopy();
-    // ResetTlab must precede PostTask, else it races with the concurrent sweeper.
-    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        auto *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        heap->ResetTlab();
-    });
-    sHeap_->GetSweeper()->Sweep(true);
-    sHeap_->GetSweeper()->PostTask(true);
-    PrepareForCopy();
-    ProcessWeakReference();
-    UpdateRoot();
-    marker_->Reset(false);
-    EstimatePostCCSize();
-    sHeap_->FinishGCTask();
-    sHeap_->UpdateGCThresholds(TriggerGCType::SHARED_CC);
-    ccRunning_ = true;
+    {
+        SuspendAllScope scope(dThread_);
+        EnterSharedGCScope();
+        sHeap_->CheckProfilerEnabled();
+        sHeap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::SHARED_CC, gcReason);
+        marker_->ReMark();
+        auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
+        concurrentProcessStringTable_ = stringTableCleaner->IsEnableConcurrentSweep();
+        SuspendIdleThreads();
+        // Finish LocalCC copy before detaching its LocalToShared RSet.
+        // ResetTlab must precede Sweep/PostTask to avoid racing with free-object construction.
+        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+            Heap *heap = thread->GetEcmaVM()->GetHeap();
+            heap->WaitAndHandleCCFinished();
+            heap->WaitRunningMarkTaskFinished();
+            heap->ResetTlab();
+        });
+        sHeap_->GetSweeper()->Sweep(true);
+        sHeap_->GetSweeper()->PostTask(true);
+        PrepareForCopy();
+        ProcessWeakReference();
+        UpdateRoot();
+        marker_->Reset(false);
+        EstimatePostCCSize();
+        sHeap_->UpdateGCThresholds(TriggerGCType::SHARED_CC);
+        ccRunning_ = true;
+        LogThreadStatesBeforeCopy();
+        // The remaining phases are concurrent unless mutators are held by CC_SUSPEND.
+        sHeap_->FinishGCTask();
+        sHeap_->NotifyGCCompleted();
+    }
+}
+
+void SharedCC::FinalizeAndReclaimInSTW(float previousStwDuration)
+{
+    // Post-snapshot marker tasks read slots already updated in Phase 4.
+    FinalizeCopy();
+    sHeap_->GetSweeper()->TryFillSweptRegion();
+    sHeap_->Reclaim(TriggerGCType::SHARED_CC);
+    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
+        // Taskpool clear is outside SuspendAll; wait before verification.
+        sHeap_->WaitClearTaskFinished();
+        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    }
+
+    // Include synchronous reclaim in the GC and STW durations.
+    sHeap_->GetEcmaGCStats()->RecordScopeDuration(
+        GCStats::Scope::ScopeId::TotalGC, totalGcTimer_.TotalSpentTime());
+    sHeap_->GetEcmaGCStats()->RecordScopeDuration(
+        GCStats::Scope::ScopeId::SuspendAll, previousStwDuration + stw3Timer_.TotalSpentTime());
+    sHeap_->FinishGCStats(TriggerGCType::SHARED_CC);
+
+    RestoreThreadStates();
+    ExitSharedGCScope();
+    {
+        LockHolder lock(waitMutex_);
+        ccRunning_ = false;
+        waitCV_.SignalAll();
+    }
 }
 
 void SharedCC::FinalizeAndReclaim()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::FinalizeAndReclaim", "");
-    // STW3 is finalized via stw3Timer_ below; do not wrap with TRACE_GC(SuspendAll) (RAII pitfall, see gc_stats.h).
+    ThreadManagedScope runningScope(dThread_);
+
+    // Snapshot marker tasks that may hold FROM references.
+    float snapshotStwDuration = 0.0F;
+    std::vector<std::shared_ptr<RunningMarkTaskSnapshot>> markTaskSnapshots;
     stw3Timer_.Reset();
-    ThreadManagedScope runningScope(dThread_);
-    SuspendAllScope scope(dThread_);
+    {
+        SuspendAllScope scope(dThread_);
+        Runtime::GetInstance()->GCIterateThreadList([&markTaskSnapshots](JSThread *thread) {
+            auto snapshot = thread->GetEcmaVM()->GetHeap()->SnapshotRunningMarkTasks();
+            if (!snapshot->IsFinished()) {
+                markTaskSnapshots.emplace_back(snapshot);
+            }
+        });
+        if (markTaskSnapshots.empty()) {
+            FinalizeAndReclaimInSTW(0.0F);
+        } else {
+            snapshotStwDuration = stw3Timer_.TotalSpentTime();
+        }
+    }
+    if (markTaskSnapshots.empty()) {
+        return;
+    }
 
-    FinalizeCopy();
-    // Sweep was already prepared and posted in PrepareForCopy (STW1).
-    // Ensure async sweep is finished before Reclaim.
-    sHeap_->GetSweeper()->TryFillSweptRegion();
-    sHeap_->Reclaim(TriggerGCType::SHARED_CC);
+    for (auto &snapshot : markTaskSnapshots) {
+        snapshot->Wait();
+    }
 
-    // Finalize durations after Reclaim (still in STW) so STW3/TotalGC include Reclaim.
-    sHeap_->GetEcmaGCStats()->RecordScopeDuration(
-        GCStats::Scope::ScopeId::TotalGC, totalGcTimer_.TotalSpentTime());
-    sHeap_->GetEcmaGCStats()->RecordScopeDuration(
-        GCStats::Scope::ScopeId::SuspendAll, stw3Timer_.TotalSpentTime());
-    sHeap_->FinishGCStats(TriggerGCType::SHARED_CC);
-
-    ccRunning_ = false;
-    RestoreThreadStates();
-    ExitSharedGCScope();
-    sHeap_->NotifyGCCompleted();
-}
-
-void SharedCC::VerifyHeap()
-{
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::VerifyHeap", "");
-    ThreadManagedScope runningScope(dThread_);
-    SuspendAllScope scope(dThread_);
-    SharedHeapVerification(sHeap_, VerifyKind::VERIFY_POST_SHARED_GC).VerifyHeap();
+    stw3Timer_.Reset();
+    {
+        SuspendAllScope scope(dThread_);
+        FinalizeAndReclaimInSTW(snapshotStwDuration);
+    }
 }
 
 void SharedCC::EnterSharedGCScope()
@@ -170,7 +208,8 @@ void SharedCC::ExitSharedGCScope()
                os::thread::GetCurrentThreadId() == DaemonThread::GetInstance()->GetThreadId());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
         std::shared_ptr<PGOProfiler> pgoProfiler = thread->GetEcmaVM()->GetPGOProfiler();
-        if (pgoProfiler != nullptr) {
+        // LocalCC PostGC resumes PGO if copying is still active.
+        if (pgoProfiler != nullptr && !thread->IsConcurrentCopying()) {
             pgoProfiler->ResumeByGC();
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -200,11 +239,16 @@ void SharedCC::PrepareMainThread()
 
 void SharedCC::SuspendIdleThreads()
 {
-    Runtime::GetInstance()->GCIterateThreadList([](JSThread *t) {
+    Runtime::GetInstance()->GCIterateThreadList([this](JSThread *t) {
         t->WithCCStatusLock([&](SharedCCStatus &status) {
+            if (!concurrentProcessStringTable_) {
+                t->SetCCSuspend();
+                status = SharedCCStatus::SUSPENDED;
+                return;
+            }
             if (status != SharedCCStatus::READY && status != SharedCCStatus::SUSPENDED) {
                 if (t->GetLastLeaveFrame() == nullptr) {
-                    t->SwitchAllStub(false);
+                    t->HoldReadBarrier(ReadBarrierOwner::SHARED_CC);
                     status = SharedCCStatus::READY;
                 } else {
                     t->SetCCSuspend();
@@ -239,11 +283,15 @@ void SharedCC::PrepareForCopy()
     });
 
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        thread->SetReadBarrierState(true);
+        if (thread->GetSharedCCStatus() == SharedCCStatus::READY) {
+            thread->AcquireReadBarrier(ReadBarrierOwner::SHARED_CC);
+        }
     });
 
     CollectUpdateRegions();
-    SetStringTableCopyOrSweeping(true);
+    if (concurrentProcessStringTable_) {
+        SetStringTableCopyOrSweeping(true);
+    }
 
     InstallSharedCCEvacuators();
 }
@@ -251,10 +299,12 @@ void SharedCC::PrepareForCopy()
 void SharedCC::CollectUpdateRegions()
 {
     sharedWorkloads_.clear();
-    for (auto *tw : threadWorkloads_) {
-        delete tw;
-    }
-    threadWorkloads_.clear();
+    ASSERT(rSetHandlers_.empty());
+    localRSetRegionCount_ = 0;
+    mainThreadRSetHandler_ = nullptr;
+    mainThreadRSetRegionCount_ = 0;
+    rSetHandlers_.reserve(Runtime::GetInstance()->GetThreadListSize());
+    JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
 
     auto collectShared = [this](Region *region) {
         sharedWorkloads_.push_back(region);
@@ -263,17 +313,20 @@ void SharedCC::CollectUpdateRegions()
     sHeap_->GetHugeObjectSpace()->EnumerateRegions(collectShared);
     sHeap_->GetAppSpawnSpace()->EnumerateRegions(collectShared);
 
-    Runtime::GetInstance()->GCIterateThreadList([this](JSThread *thread) {
-        auto *tw = new ThreadWorkload();
-        tw->thread = thread;
+    Runtime::GetInstance()->GCIterateThreadList([this, mainThread](JSThread *thread) {
         auto *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        heap->EnumerateRegions([tw](Region *region) {
-            tw->localRegions.push_back(region);
-        });
-        int num = static_cast<int>(tw->localRegions.size());
-        tw->nextIndex_.store(num - 1, std::memory_order_relaxed);
-        tw->remainItems_ = num;
-        threadWorkloads_.push_back(tw);
+        heap->GetSweeper()->EnsureAllTaskFinished();
+        size_t regionCount = heap->GetRegionCount();
+        auto *handler = new RSetWorkListHandler(heap, thread);
+        heap->SetRSetWorkListHandler(handler);
+        thread->SetProcessingLocalToSharedRset(true);
+        if (thread == mainThread) {
+            mainThreadRSetHandler_ = handler;
+            mainThreadRSetRegionCount_ = regionCount;
+            return;
+        }
+        rSetHandlers_.push_back(handler);
+        localRSetRegionCount_ += regionCount;
     });
 }
 
@@ -282,7 +335,7 @@ void SharedCC::ProcessWeakReference()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::ProcessWeakReference", "");
     TRACE_GC(GCStats::Scope::ScopeId::UpdateWeekRef, sHeap_->GetEcmaGCStats());
 
-    SharedCCEvacuator evacuator(sHeap_, GetTlabAllocator(MAIN_THREAD_INDEX));
+    SharedCCEvacuator evacuator(sHeap_, GetTlabAllocator(DAEMON_THREAD_INDEX));
     UpdateRecordWeakReference(evacuator);
 
     WeakRootVisitor weakVisitor = [&evacuator](TaggedObject *object) -> TaggedObject* {
@@ -341,7 +394,7 @@ void SharedCC::UpdateRoot()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::UpdateRoot", "");
     TRACE_GC(GCStats::Scope::ScopeId::UpdateRoot, sHeap_->GetEcmaGCStats());
 
-    SharedCCEvacuator evacuator(sHeap_, GetTlabAllocator(MAIN_THREAD_INDEX));
+    SharedCCEvacuator evacuator(sHeap_, GetTlabAllocator(DAEMON_THREAD_INDEX));
     SharedCCRootVisitor rootVisitor(&evacuator);
     Runtime::GetInstance()->IterateSharedRoot(rootVisitor);
 
@@ -414,7 +467,7 @@ void SharedCC::ParallelCopy()
     }
 
     SharedCCCopyTask daemonTask(copyTasks_, taskIter_, runningTaskCount_, this);
-    daemonTask.Run(MAIN_THREAD_INDEX);
+    daemonTask.Run(DAEMON_THREAD_INDEX);
     WaitFinished();
 }
 
@@ -438,27 +491,17 @@ int SharedCC::CalculateCopyThreadNum()
 
 int SharedCC::CalculateUpdateThreadNum()
 {
-    uint32_t count = sharedWorkloads_.size();
-    for (auto *tw : threadWorkloads_) {
-        count += tw->localRegions.size();
-    }
+    size_t count = sharedWorkloads_.size() + localRSetRegionCount_;
     constexpr uint32_t regionPerThread = 8;
     uint32_t maxThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-    return static_cast<int>(std::min(std::max(1U, count / regionPerThread), maxThreadNum));
+    size_t workerCount = std::max<size_t>(1, count / regionPerThread);
+    return static_cast<int>(std::min(workerCount, static_cast<size_t>(maxThreadNum)));
 }
 
-void SharedCC::OnUpdateFinished()
+void SharedCC::NotifyTasksFinished()
 {
     LockHolder lock(waitMutex_);
     waitCV_.SignalAll();
-}
-
-void SharedCC::WaitUpdateFinished()
-{
-    LockHolder lock(waitMutex_);
-    while (runningTaskCount_ > 0) {
-        waitCV_.Wait(&waitMutex_);
-    }
 }
 
 bool SharedCCCopyTask::Run(uint32_t threadIndex)
@@ -485,7 +528,7 @@ bool SharedCCCopyTask::Run(uint32_t threadIndex)
     }
 
     if (runningTaskCount_.fetch_sub(1, std::memory_order_seq_cst) == 1) {
-        cc_->OnCopyFinished();
+        cc_->NotifyTasksFinished();
     }
 
     return true;
@@ -502,8 +545,13 @@ Region* SharedCCCopyTask::GetNextTask()
 
 bool SharedCCUpdateTask::Run(uint32_t threadIndex)
 {
-    SharedCCUpdateVisitor updateVisitor;
+    auto *allocator = cc_->GetTlabAllocator(threadIndex);
+    SharedCCEvacuator evacuator(cc_->GetHeap(), allocator);
+    for (size_t i = 0; i < cc_->rSetHandlers_.size(); i++) {
+        cc_->ProcessRSetInternal(cc_->rSetHandlers_[i], evacuator);
+    }
 
+    SharedCCUpdateVisitor updateVisitor;
     auto processShared = [&updateVisitor](Region *region) {
         region->IterateAllMarkedBits([&](void *mem) {
             TaggedObject *object = reinterpret_cast<TaggedObject *>(mem);
@@ -511,16 +559,6 @@ bool SharedCCUpdateTask::Run(uint32_t threadIndex)
             ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, jsHclass, updateVisitor);
         });
     };
-
-    auto processLocal = [&updateVisitor](Region *region) {
-        region->IterateAllLocalToShareBits([&updateVisitor](void *mem, auto referenceTypeWrapper) {
-            constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
-            ObjectSlotBase<refType> slot(ToUintPtr(mem));
-            updateVisitor.HandleSlot(slot);
-            return true;
-        });
-    };
-
     while (true) {
         size_t idx = cc_->sharedIter_.fetch_add(1U, std::memory_order_relaxed);
         if (idx >= cc_->sharedWorkloads_.size()) {
@@ -529,40 +567,60 @@ bool SharedCCUpdateTask::Run(uint32_t threadIndex)
         processShared(cc_->sharedWorkloads_[idx]);
     }
 
-    for (auto *tw : cc_->threadWorkloads_) {
-        int done = 0;
-        while (true) {
-            int idx = tw->nextIndex_.fetch_sub(1, std::memory_order_relaxed);
-            if (idx < 0) {
-                break;
-            }
-            processLocal(tw->localRegions[idx]);
-            done++;
-        }
-        if (done > 0) {
-            LockHolder lock(tw->mutex_);
-            tw->remainItems_ -= done;
-            if (tw->remainItems_ == 0) {
-                tw->cv_.SignalAll();
-            }
-        }
-    }
-
     if (runningTaskCount_.fetch_sub(1, std::memory_order_seq_cst) == 1) {
-        cc_->OnUpdateFinished();
+        cc_->NotifyTasksFinished();
     }
-
     return true;
 }
 
-void SharedCC::OnCopyFinished()
+void SharedCC::ProcessMainThreadRSet()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::OnCopyFinished", "");
-    TRACE_GC(GCStats::Scope::ScopeId::WaitFinish, sHeap_->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::ProcessMainThreadRSet", "");
+    RSetWorkListHandler *mainHandler = mainThreadRSetHandler_;
+    if (mainHandler == nullptr) {
+        return;
+    }
+    size_t count = mainThreadRSetRegionCount_;
+    constexpr uint32_t regionPerThread = 8;
+    uint32_t maxThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    size_t workerCount = std::min(std::max<size_t>(1, count / regionPerThread),
+                                  static_cast<size_t>(maxThreadNum));
 
-    LockHolder lock(waitMutex_);
-    sHeap_->SetGCState(false);
-    waitCV_.SignalAll();
+    ASSERT(runningTaskCount_ == 0);
+    runningTaskCount_ = workerCount + 1;
+
+    for (size_t i = 0; i < workerCount; i++) {
+        common::Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<SharedCCMainThreadRSetTask>(this, mainHandler, runningTaskCount_));
+    }
+
+    SharedCCMainThreadRSetTask daemonTask(this, mainHandler, runningTaskCount_);
+    daemonTask.Run(DAEMON_THREAD_INDEX);
+    WaitFinished();
+}
+
+void SharedCC::ProcessRSetInternal(RSetWorkListHandler *handler, SharedCCEvacuator &evacuator)
+{
+    ASSERT(handler != nullptr);
+    handler->ProcessAll([&evacuator](void *mem, auto referenceTypeWrapper) -> bool {
+        constexpr ReferenceType refType = decltype(referenceTypeWrapper)::value;
+        ObjectSlotBase<refType> slot(ToUintPtr(mem));
+        ProcessRSetSlot<refType>(slot, evacuator);
+        // Keep the bit so MergeBack can restore it to the active RSet.
+        return true;
+    });
+}
+
+void SharedCC::ProcessRSetFromBoundJSThread(RSetWorkListHandler *handler)
+{
+    ASSERT(handler != nullptr);
+    ASSERT(JSThread::GetCurrent() == handler->GetOwnerThreadUnsafe());
+    ASSERT(JSThread::GetCurrent()->IsInRunningState());
+    JSThread *thread = JSThread::GetCurrent();
+    SharedCCEvacuator *evacuator = thread->GetSharedCCEvacuator();
+    ASSERT(evacuator != nullptr);
+    ProcessRSetInternal(handler, *evacuator);
+    handler->WaitFinishedThenMergeBack();
 }
 
 void SharedCC::WaitFinished()
@@ -604,9 +662,25 @@ void SharedCC::UpdateReferences()
     }
 
     SharedCCUpdateTask daemonTask(this, runningTaskCount_);
-    daemonTask.Run(MAIN_THREAD_INDEX);
-    WaitUpdateFinished();
+    daemonTask.Run(DAEMON_THREAD_INDEX);
+    WaitFinished();
     sharedWorkloads_.clear();
+}
+
+void SharedCC::MergeBackAndResetRSetWorkListHandlers()
+{
+    if (mainThreadRSetHandler_ != nullptr) {
+        mainThreadRSetHandler_->MergeBack();
+        delete mainThreadRSetHandler_;
+    }
+    for (auto *handler : rSetHandlers_) {
+        handler->MergeBack();
+        delete handler;
+    }
+    rSetHandlers_.clear();
+    localRSetRegionCount_ = 0;
+    mainThreadRSetHandler_ = nullptr;
+    mainThreadRSetRegionCount_ = 0;
 }
 
 void SharedCC::FinalizeCopy()
@@ -619,10 +693,7 @@ void SharedCC::FinalizeCopy()
         GetTlabAllocator(i)->Finalize();
     }
     FinalizeSharedCCEvacuators();
-    for (auto *tw : threadWorkloads_) {
-        delete tw;
-    }
-    threadWorkloads_.clear();
+    MergeBackAndResetRSetWorkListHandlers();
     FinishConcurrentStringTableSweep();
 }
 
@@ -632,8 +703,9 @@ void SharedCC::RestoreThreadStates()
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         thread->InstallSharedCCEvacuator(nullptr);
         thread->SetSharedCCStatus(SharedCCStatus::IDLE);
-        thread->SetReadBarrierState(false);
-        thread->SwitchAllStub(true);
+        thread->SetProcessingLocalToSharedRset(false);
+        thread->ReleaseReadBarrier(ReadBarrierOwner::SHARED_CC);
+        thread->TryRestoreNormalStubs();
         thread->ClearCCSuspend();
     });
     Runtime::GetInstance()->IterateAllThreadList([](JSThread *t) {
@@ -641,59 +713,32 @@ void SharedCC::RestoreThreadStates()
             t->ClearCCSuspend();
         }
     });
-    SetStringTableCopyOrSweeping(false);
+    if (concurrentProcessStringTable_) {
+        SetStringTableCopyOrSweeping(false);
+    }
 }
 
 void SharedCC::PrepareNewThread(JSThread *thread)
 {
-    if (!ccRunning_) {
-        return;
-    }
-    {
-        LockHolder lock(evacuatorsMutex_);
-        auto *evacuator = new SharedCCEvacuator(sHeap_);
-        evacuators_.push_back(evacuator);
-        thread->InstallSharedCCEvacuator(evacuator);
-    }
-    thread->SwitchAllStub(false);
-    thread->SetReadBarrierState(true);
-    thread->SetSharedCCStatus(SharedCCStatus::READY);
-}
-
-void SharedCC::SkipThreadWorkload(JSThread *thread)
-{
-    for (auto *tw : threadWorkloads_) {
-        if (tw->thread != thread) {
-            continue;
+    // Lock order: CC status -> evacuators.
+    thread->WithCCStatusLock([&](SharedCCStatus &status) {
+        LockHolder evacuatorLock(evacuatorsMutex_);
+        if (!ccRunning_) {
+            return;
         }
-        int done = 0;
-        while (true) {
-            int idx = tw->nextIndex_.fetch_sub(1, std::memory_order_relaxed);
-            if (idx < 0) {
-                break;
-            }
-            done++;
+        if (thread->GetSharedCCEvacuator() == nullptr) {
+            auto *evacuator = new SharedCCEvacuator(sHeap_);
+            evacuators_.push_back(evacuator);
+            thread->InstallSharedCCEvacuator(evacuator);
         }
-        if (done > 0) {
-            LockHolder lock(tw->mutex_);
-            tw->remainItems_ -= done;
-            if (tw->remainItems_ == 0) {
-                tw->cv_.SignalAll();
-            }
+        if (concurrentProcessStringTable_) {
+            thread->AcquireReadBarrier(ReadBarrierOwner::SHARED_CC);
+            status = SharedCCStatus::READY;
+        } else {
+            thread->SetCCSuspend();
+            status = SharedCCStatus::SUSPENDED;
         }
-        LockHolder lock(tw->mutex_);
-        while (tw->remainItems_ > 0) {
-            tw->cv_.Wait(&tw->mutex_);
-        }
-        return;
-    }
-}
-
-void SharedCC::Finish()
-{
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::Finish", "");
-    TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
-    sHeap_->InvokeSharedNativePointerCallbacks();
+    });
 }
 
 void SharedCCUpdateVisitor::VisitObjectRangeImpl(BaseObject *root, ObjectSlot start, ObjectSlot end,
@@ -771,9 +816,9 @@ void SharedCCUpdateVisitor::HandleInObjectArea(TaggedObject *rootObject, ObjectS
     }
 }
 
-void SharedCC::PostStringTableSweepTask()
+static const WeakRootVisitor &GetStringTableWeakVisitor()
 {
-    WeakRootVisitor weakVisitor = [](TaggedObject *header) -> TaggedObject* {
+    static const WeakRootVisitor visitor = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (!objectRegion) {
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
@@ -790,22 +835,36 @@ void SharedCC::PostStringTableSweepTask()
         }
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
+    return visitor;
+}
 
+void SharedCC::PostStringTableSweepTask()
+{
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
-    stringTableCleaner->PostConcurrentSweepWeakRefTask(weakVisitor);
+    if (concurrentProcessStringTable_) {
+        stringTableCleaner->PostConcurrentSweepWeakRefTask(GetStringTableWeakVisitor());
+    } else {
+        stringTableCleaner->PostSweepWeakRefTask(GetStringTableWeakVisitor());
+    }
 }
 
 void SharedCC::WaitStringTableSweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::WaitStringTableSweep", "");
-    auto stringTable = Runtime::GetInstance()->GetEcmaStringTable();
-    stringTable->WaitConcurrentSweepWeakRefTaskFinished();
+    auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
+    if (concurrentProcessStringTable_) {
+        stringTableCleaner->WaitConcurrentSweepWeakRefTaskFinished();
+    } else {
+        stringTableCleaner->JoinAndWaitSweepWeakRefTask(GetStringTableWeakVisitor());
+    }
 }
 
 void SharedCC::FinishConcurrentStringTableSweep()
 {
-    auto stringTable = Runtime::GetInstance()->GetEcmaStringTable();
-    stringTable->FinishConcurrentSweepInSTW(dThread_);
+    auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
+    if (concurrentProcessStringTable_) {
+        stringTableCleaner->FinishConcurrentSweepInSTW(dThread_);
+    }
 }
 
 void SharedCC::SetStringTableCopyOrSweeping(bool enabled)
@@ -896,6 +955,55 @@ void SharedCC::WaitMainThreadReady()
             return;
         }
         cv.Wait(&mtx);
+    }
+}
+
+bool SharedCCMainThreadRSetTask::Run(uint32_t threadIndex)
+{
+    auto *allocator = cc_->GetTlabAllocator(threadIndex);
+    SharedCCEvacuator evacuator(cc_->GetHeap(), allocator);
+    cc_->ProcessRSetInternal(handler_, evacuator);
+
+    if (runningTaskCount_.fetch_sub(1, std::memory_order_seq_cst) == 1) {
+        cc_->NotifyTasksFinished();
+    }
+
+    return true;
+}
+
+template <ReferenceType refType>
+void ProcessRSetSlot(ObjectSlotBase<refType> slot, SharedCCEvacuator &evacuator)
+{
+    TaggedValueType<refType> value = slot.GetTaggedValue();
+    if (!value.IsHeapObject()) {
+        return;
+    }
+
+    TaggedObject *rawObject = value.GetRawHeapObject();
+    Region *objectRegion = Region::ObjectAddressToRange(rawObject);
+    if (!objectRegion->IsFromRegion()) {
+        return;
+    }
+
+    if (!objectRegion->Test(rawObject)) {
+        return;
+    }
+
+    TaggedObject *object = value.GetHeapObject();
+    MarkWord markWord(object, RELAXED_LOAD);
+    TaggedObject *dst = markWord.IsForwardingAddress()
+        ? markWord.ToForwardingAddress()
+        : evacuator.Copy(object, markWord);
+
+    if constexpr (ReferenceIsCompressed<refType>) {
+        ASSERT(!value.IsWeakForHeapObject());
+        slot.CASUpdate(rawObject, dst);
+    } else {
+        if (value.IsWeakForHeapObject()) {
+            slot.CASUpdateWeak(rawObject, dst);
+        } else {
+            slot.CASUpdate(rawObject, dst);
+        }
     }
 }
 }  // namespace panda::ecmascript

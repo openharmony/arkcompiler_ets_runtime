@@ -471,9 +471,6 @@ protected:
     static constexpr size_t COLD_STARTUP_COMPRESS_LIMIT = 20_MB;
     static constexpr size_t FRAGMENTATION_COMPRESS_LIMIT = 50_MB;
 
-public:
-    // local GC takes ReadLock, shared GC takes WriteLock for mutual exclusion.
-    static RWLock gcExclusiveRWLock_;
 protected:
 
     const EcmaParamConfiguration config_;
@@ -837,7 +834,7 @@ public:
     void CollectGarbage(JSThread *thread);
 
     template<TriggerGCType gcType, GCReason gcReason>
-    void CompressCollectGarbageNotWaiting(JSThread *thread);
+    void CompressCollectGarbageNotWaiting(JSThread *thread, bool isForceGC = true);
 
     template<TriggerGCType gcType, GCReason gcReason>
     void PostGCTaskForTest(JSThread *thread);
@@ -1205,6 +1202,44 @@ private:
     SHAREDHEAP_PRIVATE_HYBRID_EXTENSION();
 };
 
+class RunningMarkTaskSnapshot {
+public:
+    RunningMarkTaskSnapshot(uint64_t generation, uint32_t taskCount)
+        : generation_(generation), remainingTaskCount_(taskCount) {}
+
+    void Wait()
+    {
+        LockHolder lock(mutex_);
+        while (remainingTaskCount_ > 0) {
+            cv_.Wait(&mutex_);
+        }
+    }
+
+    bool IsFinished()
+    {
+        LockHolder lock(mutex_);
+        return remainingTaskCount_ == 0;
+    }
+
+private:
+    void NotifyTaskFinished()
+    {
+        LockHolder lock(mutex_);
+        ASSERT(remainingTaskCount_ > 0);
+        remainingTaskCount_--;
+        if (remainingTaskCount_ == 0) {
+            cv_.SignalAll();
+        }
+    }
+
+    uint64_t generation_ {0};
+    uint32_t remainingTaskCount_ {0};
+    Mutex mutex_;
+    ConditionVariable cv_;
+
+    friend class Heap;
+};
+
 class Heap : public BaseHeap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
@@ -1490,6 +1525,7 @@ public:
 
     void PostParallelGCTask(ParallelGCTaskPhase taskPhase);
     void TryPostParallelGCTask(ParallelGCTaskPhase taskPhase);
+    std::shared_ptr<RunningMarkTaskSnapshot> SnapshotRunningMarkTasks();
 
     bool IsParallelGCEnabled() const
     {
@@ -1993,6 +2029,8 @@ private:
     }
     bool CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
                                            [[maybe_unused]] const char* traceName);
+    uint64_t RegisterRunningMarkTask();
+    void UnregisterRunningMarkTask(uint64_t generation);
     class ParallelGCTask : public GuardedTask {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase,
@@ -2213,6 +2251,11 @@ private:
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
+
+    Mutex runningMarkTaskMutex_;
+    uint64_t runningMarkTaskGeneration_ {0};
+    uint32_t runningMarkTaskCount_ {0};
+    std::shared_ptr<RunningMarkTaskSnapshot> runningMarkTaskSnapshot_;
 
     uint64_t startupDurationInMs_ {0};
 

@@ -484,8 +484,10 @@ public:
     template<typename ReadBarrier>
     void Range(ReadBarrier&& readBarrier, bool& isValid)
     {
-        std::function<bool(Entry*)> iter = [readBarrier, &isValid, this](Entry* node) {
-            BaseString* value = node->Value<SlotBarrier>();
+        // Range has no safepoint, so the phase snapshot remains valid for the traversal.
+        bool sweeping = chainedHashMap_->IsSweeping();
+        std::function<bool(Entry*)> iter = [readBarrier, &isValid, this, sweeping](Entry* node) {
+            BaseString* value = GetValue(node, sweeping);
             if (!IsNull(value) && !this->CheckValidity(readBarrier, value, isValid)) {
                 return false;
             }
@@ -531,10 +533,11 @@ private:
     template<typename ReadBarrier>
     bool CheckValidity(ReadBarrier&& readBarrier, BaseString* value, bool& isValid);
 
-    BaseString* GetValue(Entry* entry) const
+    BaseString* GetValue(Entry* entry, bool sweeping) const
     {
-        if constexpr (SlotBarrier == ChainedHashMapConfig::NeedSlotBarrier) {
-            if (!chainedHashMap_->IsSweeping()) {
+        if constexpr (SlotBarrier == ChainedHashMapConfig::NeedSlotBarrier ||
+                      SlotBarrier == ChainedHashMapConfig::NoSlotBarrierDynamic) {
+            if (!sweeping) {
                 return entry->Value<ChainedHashMapConfig::NoSlotBarrier>();
             }
             // Fresh entries inserted during concurrent sweep are already to-space tagged.
@@ -542,13 +545,15 @@ private:
             if (entry->IsToSpaceObject()) {
                 return entry->Value<ChainedHashMapConfig::NoSlotBarrier>();
             }
+            return entry->Value<ChainedHashMapConfig::NeedSlotBarrier>();
         }
         return entry->Value<SlotBarrier>();
     }
 
     Entry* NewEntry(BaseString* value)
     {
-        if constexpr (SlotBarrier != ChainedHashMapConfig::NeedSlotBarrier) {
+        if constexpr (SlotBarrier != ChainedHashMapConfig::NeedSlotBarrier &&
+                      SlotBarrier != ChainedHashMapConfig::NoSlotBarrierDynamic) {
             return new Entry(value);
         }
         if (!chainedHashMap_->IsSweeping()) {

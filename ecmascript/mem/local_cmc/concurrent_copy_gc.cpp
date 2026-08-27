@@ -23,7 +23,6 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
 #include "ecmascript/mem/local_cmc/cc_gc_visitor-inl.h"
-#include "ecmascript/mem/shared_heap/shared_partial_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "ecmascript/runtime_call_id.h"
@@ -169,7 +168,7 @@ void ConcurrentCopyGC::InitializeCopyPhase()
     heap_->EnumerateNonNewSpaceRegions([](Region *current) {
         current->ClearOldToNewRSet();
     });
-    thread_->SetReadBarrierState(true);
+    thread_->AcquireReadBarrier(ReadBarrierOwner::LOCAL_CC);
     thread_->SetCCStatus(CCStatus::COPYING);
     heap_->SelectFromSpace();
     ccUpdateFinished_ = false;
@@ -344,9 +343,7 @@ void ConcurrentCopyGC::Finish()
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification::VerifyCC(heap_);
     }
-    if (!SharedHeap::GetInstance()->GetSharedPartialGC()->IsConcurrentUpdating()) {
-        thread_->SetReadBarrierState(false);
-    }
+    thread_->ReleaseReadBarrier(ReadBarrierOwner::LOCAL_CC);
     thread_->SetCCStatus(CCStatus::READY);
     heap_->ResumeCC();
     heap_->SetFullMarkRequestedState(false);
@@ -357,14 +354,12 @@ void ConcurrentCopyGC::Finish()
 
 void ConcurrentCopyGC::PostGC()
 {
-    if (!SharedHeap::GetInstance()->GetSharedPartialGC()->IsConcurrentUpdating()) {
+    if (thread_->TryRestoreNormalStubs()) {
         ASSERT(!thread_->NeedReadBarrier());
-        thread_->SwitchAllStub(true);
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler = thread_->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
             pgoProfiler->ResumeByGC();
         }
     }
-    BaseHeap::gcExclusiveRWLock_.Unlock();
 }
 }  // namespace panda::ecmascript

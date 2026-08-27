@@ -46,9 +46,6 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, uint32_t hashcode, Lo
         return impl_.GetOrInternString<EnableCMCGCTrait>(vm, hashcode, loaderCallback, equalsCallback);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, hashcode, loaderCallback, equalsCallback);
-    }
     return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, hashcode, loaderCallback, equalsCallback);
 }
 

@@ -206,25 +206,6 @@ struct DisableCMCGCNormalTrait {
     }
 };
 
-struct DisableCMCGCConcurrentSweepTrait {
-    struct DummyStringTableInterface {}; // placeholder for consistent type
-    using StringTableInterface = DummyStringTableInterface;
-    using ChainedHashMapType = ChainedHashMap<EcmaStringTableMutex>;
-    using ChainedHashMapInUseScopeType = ChainedHashMapInUseScope<EcmaStringTableMutex>;
-    using ChainedHashMapOperationType = ChainedHashMapOperation<EcmaStringTableMutex, JSThread,
-                                                          ChainedHashMapConfig::NeedSlotBarrier>;
-    using ThreadType = JSThread;
-    static constexpr bool EnableCMCGC = false;
-    static constexpr bool ConcurrentSweep = true;
-    static common::ReadOnlyHandle<BaseString> CreateHandle(ThreadType* holder, BaseString* string)
-    {
-        return JSHandle<EcmaString>(holder, EcmaString::FromBaseString(string));
-    }
-};
-
-static_assert(std::is_same_v<DisableCMCGCNormalTrait::ChainedHashMapType,
-                             DisableCMCGCConcurrentSweepTrait::ChainedHashMapType>);
-
 class EcmaStringTableImpl final {
 public:
     EcmaStringTableImpl() {}
@@ -274,7 +255,6 @@ public:
     template <typename Traits, std::enable_if_t<!Traits::ConcurrentSweep, int> = 0>
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID);
 
-    template <typename Traits, std::enable_if_t<Traits::ConcurrentSweep, int> = 0>
     void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
                                 std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
                                 std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);

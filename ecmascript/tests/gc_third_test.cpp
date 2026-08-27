@@ -881,8 +881,8 @@ void TestStringTable(JSThread *thread, EcmaStringTable *stringTable)
 HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest1)
 {
     EcmaStringTable* stringTable = Runtime::GetInstance()->GetEcmaStringTable();
-    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
-        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+    DisableCMCGCNormalTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable->GetChainedHashMap());
     stringTable->GetCleaner()->SetEnableConcurrentSweep(true);
 
@@ -905,8 +905,8 @@ HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest2)
 {
     SharedHeap* sHeap = SharedHeap::GetInstance();
     EcmaStringTable* stringTable = Runtime::GetInstance()->GetEcmaStringTable();
-    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
-        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+    DisableCMCGCNormalTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable->GetChainedHashMap());
     stringTable->GetCleaner()->SetEnableConcurrentSweep(true);
 

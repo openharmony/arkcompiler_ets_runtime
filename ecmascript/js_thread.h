@@ -101,6 +101,12 @@ enum class SharedCCStatus : uint8_t {
     SUSPENDED,
 };
 
+enum class ReadBarrierOwner : uint8_t {
+    LOCAL_CC = 1U,
+    SHARED_PARTIAL_GC = 1U << 1U,
+    SHARED_CC = 1U << 2U,
+};
+
 enum class GCKind : uint8_t {
     LOCAL_GC,
     SHARED_GC
@@ -696,11 +702,29 @@ public:
     bool TryMarkCCTaskPending()
     {
         LockHolder lock(ccStatusMutex_);
+        if (ccStatus_ == SharedCCStatus::READY || ccStatus_ == SharedCCStatus::SUSPENDED) {
+            return false;
+        }
         ccStatus_ = SharedCCStatus::PENDING;
         if (ccTaskPending_) {
             return false;
         }
         ccTaskPending_ = true;
+        return true;
+    }
+
+    // Publish READY only after switching stubs.
+    bool TrySwitchSharedCCStub()
+    {
+        LockHolder lock(ccStatusMutex_);
+        if (ccStatus_ == SharedCCStatus::SUSPENDED) {
+            return true;
+        }
+        if (GetLastLeaveFrame() != nullptr) {
+            return ccStatus_ == SharedCCStatus::READY;
+        }
+        HoldReadBarrier(ReadBarrierOwner::SHARED_CC);
+        ccStatus_ = SharedCCStatus::READY;
         return true;
     }
 
@@ -789,6 +813,44 @@ public:
 #else
         ReadBarrierStateBit::Set(flag, &glueData_.sharedGCStateBitField_);
 #endif
+    }
+
+    // Serialized by owner-thread, STW, or GC phase protocols.
+    // Hold CC stubs without enabling the barrier.
+    void HoldReadBarrier(ReadBarrierOwner owner)
+    {
+        readBarrierOwnerMask_ |= static_cast<uint8_t>(owner);
+        SwitchAllStub(false);
+    }
+
+    void AcquireReadBarrier(ReadBarrierOwner owner)
+    {
+        uint8_t ownerMask = static_cast<uint8_t>(owner);
+        readBarrierOwnerMask_ |= ownerMask;
+        activeReadBarrierOwnerMask_ |= ownerMask;
+        SetReadBarrierState(true);
+        SwitchAllStub(false);
+    }
+
+    void ReleaseReadBarrier(ReadBarrierOwner owner)
+    {
+        uint8_t ownerMask = static_cast<uint8_t>(owner);
+        if ((readBarrierOwnerMask_ & ownerMask) == 0) {
+            return;
+        }
+        readBarrierOwnerMask_ &= static_cast<uint8_t>(~ownerMask);
+        activeReadBarrierOwnerMask_ &= static_cast<uint8_t>(~ownerMask);
+        SetReadBarrierState(activeReadBarrierOwnerMask_ != 0);
+    }
+
+    bool TryRestoreNormalStubs()
+    {
+        if (readBarrierOwnerMask_ != 0) {
+            return false;
+        }
+        SetReadBarrierState(false);
+        SwitchAllStub(true);
+        return true;
     }
 
     common::GCPhase GetCMCGCPhase() const
@@ -2527,6 +2589,8 @@ private:
     // Shared heap collect local heap Rset
     bool processingLocalToSharedRset_ {false};
     bool waitingSharedGCFinished_ {false};
+    uint8_t readBarrierOwnerMask_ {0};
+    uint8_t activeReadBarrierOwnerMask_ {0};
     SharedCCStatus ccStatus_ {SharedCCStatus::IDLE};
     bool ccTaskPending_ {false};
     mutable Mutex ccStatusMutex_;

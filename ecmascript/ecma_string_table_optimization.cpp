@@ -47,7 +47,7 @@ void EcmaStringTableCleaner::WaitSweepWeakRefTaskFinished()
 void EcmaStringTableCleaner::PostConcurrentSweepWeakRefTask(const WeakRootVisitor &visitor)
 {
     StartSweepWeakRefTask();
-    reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType *>(
+    reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(
         stringTable_->GetChainedHashMap())->StartSweeping();
     iter_ = std::make_shared<std::atomic<uint32_t>>(0U);
     const uint32_t postTaskCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
@@ -77,8 +77,8 @@ void EcmaStringTableCleaner::FinishConcurrentSweepInSTW(DaemonThread *dThread)
 {
     WaitConcurrentSweepWeakRefTask();
     ProcessCheckAndFreeHeadEntries();
-    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType* chainedHashMap =
-        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+    DisableCMCGCNormalTrait::ChainedHashMapType* chainedHashMap =
+        reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable_->GetChainedHashMap());
     chainedHashMap->ClearToSpaceTagForFreshEntries();
     chainedHashMap->FinishSweeping();
@@ -162,8 +162,8 @@ void EcmaStringTableCleaner::SuspendAllAndFinishSweeping(JSThread* thread)
 {
     SuspendAllScope scope(thread);
     ProcessCheckAndFreeHeadEntries();
-    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
-        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+    DisableCMCGCNormalTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable_->GetChainedHashMap());
     chainedHashMap->ClearToSpaceTagForFreshEntries();
     chainedHashMap->FinishSweeping();
@@ -174,8 +174,8 @@ void EcmaStringTableCleaner::SuspendAllAndFinishSweepingByDaemonThread(DaemonThr
     ThreadManagedScope runningScope(dThread);
     SuspendAllScope scope(dThread);
     ProcessCheckAndFreeHeadEntries();
-    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
-        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+    DisableCMCGCNormalTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable_->GetChainedHashMap());
     chainedHashMap->ClearToSpaceTagForFreshEntries();
     chainedHashMap->FinishSweeping();
@@ -185,8 +185,8 @@ void EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries()
 {
     ECMA_BYTRACE_NAME(
         HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries", "");
-    typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*
-        chainedHashMap = reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::ChainedHashMapType*>(
+    DisableCMCGCNormalTrait::ChainedHashMapType*
+        chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable_->GetChainedHashMap());
     for (uint32_t i = 0; i < ChainedHashMapConfig::SWEEP_PARTITION_COUNT; i++) {
         chainedHashMap->CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries_[i]);
@@ -633,13 +633,14 @@ void EcmaStringTableImpl::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t 
     });
 }
 
-template <typename Traits, std::enable_if_t<Traits::ConcurrentSweep, int>>
 void EcmaStringTableImpl::ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
                                                  std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
                                                  std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
 {
-    auto *chainedHashMap = reinterpret_cast<typename Traits::ChainedHashMapType *>(GetChainedHashMap());
-    typename Traits::ChainedHashMapOperationType chainedHashMapOperation(chainedHashMap);
+    auto *chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(GetChainedHashMap());
+    using ConcurrentSweepOperation = ChainedHashMapOperation<EcmaStringTableMutex, JSThread,
+                                                             ChainedHashMapConfig::NeedSlotBarrier>;
+    ConcurrentSweepOperation chainedHashMapOperation(chainedHashMap);
     chainedHashMap->ForEachBucketHeadInPartition(partitionID, [&](ChainedHashMapEntry* bucketHead, uint32_t index) {
         chainedHashMapOperation.ClearNodeFromGC(
             bucketHead, index, visitor, waitDeleteEntries, waitCheckAndFreeHeadEntries);
@@ -758,9 +759,6 @@ EcmaString* EcmaStringTable::GetOrInternFlattenString(EcmaVM* vm, EcmaString* st
         return impl_.GetOrInternFlattenString<EnableCMCGCTrait>(vm, string);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternFlattenString<DisableCMCGCConcurrentSweepTrait>(vm, string);
-    }
     return impl_.GetOrInternFlattenString<DisableCMCGCNormalTrait>(vm, string);
 }
 
@@ -771,9 +769,6 @@ EcmaString* EcmaStringTable::GetOrInternFlattenStringNoGC(EcmaVM* vm, EcmaString
         return impl_.GetOrInternFlattenStringNoGC<EnableCMCGCTrait>(vm, string);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternFlattenStringNoGC<DisableCMCGCConcurrentSweepTrait>(vm, string);
-    }
     return impl_.GetOrInternFlattenStringNoGC<DisableCMCGCNormalTrait>(vm, string);
 }
 
@@ -785,10 +780,6 @@ EcmaString* EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM* vm
         return impl_.GetOrInternStringFromCompressedSubString<EnableCMCGCTrait>(vm, string, offset, utf8Len);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternStringFromCompressedSubString<DisableCMCGCConcurrentSweepTrait>(vm, string, offset,
-                                                                                                utf8Len);
-    }
     return impl_.GetOrInternStringFromCompressedSubString<DisableCMCGCNormalTrait>(vm, string, offset, utf8Len);
 }
 
@@ -799,9 +790,6 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, EcmaString* string)
         return impl_.GetOrInternString<EnableCMCGCTrait>(vm, string);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, string);
-    }
     return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, string);
 }
 
@@ -813,9 +801,6 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, const JSHandle<EcmaSt
         return impl_.GetOrInternString<EnableCMCGCTrait>(vm, firstString, secondString);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, firstString, secondString);
-    }
     return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, firstString, secondString);
 }
 
@@ -828,9 +813,6 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, const uint8_t* utf8Da
         return impl_.GetOrInternString<EnableCMCGCTrait>(vm, utf8Data, utf8Len, canBeCompress, type);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, utf8Data, utf8Len, canBeCompress, type);
-    }
     return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, utf8Data, utf8Len, canBeCompress, type);
 }
 
@@ -842,9 +824,6 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, const uint8_t* utf8Da
         return impl_.GetOrInternString<EnableCMCGCTrait>(vm, utf8Data, utf16Len, type);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, utf8Data, utf16Len, type);
-    }
     return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, utf8Data, utf16Len, type);
 }
 
@@ -856,9 +835,6 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, const uint16_t* utf16
         return impl_.GetOrInternString<EnableCMCGCTrait>(vm, utf16Data, utf16Len, canBeCompress);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, utf16Data, utf16Len, canBeCompress);
-    }
     return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, utf16Data, utf16Len, canBeCompress);
 }
 
@@ -873,10 +849,6 @@ EcmaString* EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM* vm, 
         return impl_.GetOrInternStringWithoutJSHandleForJit<EnableCMCGCTrait>(vm, utf8Data, utf16Len, type);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternStringWithoutJSHandleForJit<DisableCMCGCConcurrentSweepTrait>(vm, utf8Data,
-                                                                                              utf16Len, type);
-    }
     return impl_.GetOrInternStringWithoutJSHandleForJit<DisableCMCGCNormalTrait>(vm, utf8Data, utf16Len, type);
 }
 
@@ -890,10 +862,6 @@ EcmaString* EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM* vm, 
                                                                                canBeCompress, type);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternStringWithoutJSHandleForJit<DisableCMCGCConcurrentSweepTrait>(vm, utf8Data, utf8Len,
-                                                                                              canBeCompress, type);
-    }
     return impl_.GetOrInternStringWithoutJSHandleForJit<DisableCMCGCNormalTrait>(vm, utf8Data, utf8Len,
                                                                                  canBeCompress, type);
 }
@@ -905,9 +873,6 @@ EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, const JSHandle
         return impl_.TryGetInternString<EnableCMCGCTrait>(thread, string);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.TryGetInternString<DisableCMCGCConcurrentSweepTrait>(thread, string);
-    }
     return impl_.TryGetInternString<DisableCMCGCNormalTrait>(thread, string);
 }
 
@@ -930,8 +895,7 @@ void EcmaStringTable::ConcurrentSweepWeakRef(const WeakRootVisitor& visitor, uin
         UNREACHABLE();
     }
 #endif
-    impl_.ConcurrentSweepWeakRef<DisableCMCGCConcurrentSweepTrait>(visitor, partitionID, waitDeleteEntries,
-                                                                   waitCheckAndFreeHeadEntries);
+    impl_.ConcurrentSweepWeakRef(visitor, partitionID, waitDeleteEntries, waitCheckAndFreeHeadEntries);
 }
 
 bool EcmaStringTable::CheckStringTableValidity(JSThread *thread)
@@ -941,9 +905,6 @@ bool EcmaStringTable::CheckStringTableValidity(JSThread *thread)
         return impl_.CheckStringTableValidity<EnableCMCGCTrait>(thread);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.CheckStringTableValidity<DisableCMCGCConcurrentSweepTrait>(thread);
-    }
     return impl_.CheckStringTableValidity<DisableCMCGCNormalTrait>(thread);
 }
 
@@ -956,9 +917,6 @@ EcmaString* EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM* vm, const JSH
         return impl_.GetOrInternStringThreadUnsafe<EnableCMCGCTrait>(vm, firstString, secondString);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternStringThreadUnsafe<DisableCMCGCConcurrentSweepTrait>(vm, firstString, secondString);
-    }
     return impl_.GetOrInternStringThreadUnsafe<DisableCMCGCNormalTrait>(vm, firstString, secondString);
 }
 
@@ -971,10 +929,6 @@ EcmaString* EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM* vm, const uin
         return impl_.GetOrInternStringThreadUnsafe<EnableCMCGCTrait>(vm, utf8Data, utf8Len, canBeCompress);
     }
 #endif
-    if (IsSweeping()) {
-        return impl_.GetOrInternStringThreadUnsafe<DisableCMCGCConcurrentSweepTrait>(vm, utf8Data, utf8Len,
-                                                                                     canBeCompress);
-    }
     return impl_.GetOrInternStringThreadUnsafe<DisableCMCGCNormalTrait>(vm, utf8Data, utf8Len, canBeCompress);
 }
 
