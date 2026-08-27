@@ -192,6 +192,7 @@ void SweepGC::ClearDeadReferences()
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcClearDeadWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcClearDeadWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcClearDeadWeak);
+    heap_->GetEcmaVM()->ProcessPendingRemovalModules(gcClearDeadWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcClearDeadWeak);
 }
 
