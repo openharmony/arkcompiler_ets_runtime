@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
+#include <algorithm>
+#include <vector>
 #if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
 #include "ecmascript/base/llvm_helper.h"
 #endif
@@ -348,7 +350,7 @@ size_t CodeInfo::GetSectionSize(ElfSecName sec) const
     return secInfos_[idx].second;
 }
 
-std::vector<std::pair<uint8_t *, uintptr_t>> CodeInfo::GetCodeInfo() const
+const std::vector<std::pair<uint8_t *, uintptr_t>> &CodeInfo::GetCodeInfo() const
 {
     return codeInfo_;
 }
@@ -656,18 +658,172 @@ static uint32_t GetInstrValue(size_t instrSize, uint8_t *instrAddr)
     return value;
 }
 
+namespace {
+// Markers identify the first and subsequent instructions of one gate's generated code.
+constexpr const char *MARKER_FIRST = "\xe2\x94\x8c";  // ┌ group start
+constexpr const char *MARKER_MID = "\xe2\x94\x82";    // │ group continuation
+
+constexpr size_t ASM_FIELD_WIDTH = 34; // asm text padded to this width so markers align
+constexpr size_t HEX_FIELD_WIDTH = 8;  // width of offset / instruction-hex fields
+constexpr size_t OUT_STRING_SIZE = 512;
+constexpr size_t HEX_MAX_DIGITS = sizeof(uint64_t) * 2; // hex digits for a full uint64
+constexpr uint32_t HEX_BITS_PER_DIGIT = 4;              // bits per hex digit (one nibble)
+constexpr uint64_t HEX_DIGIT_MASK = 0xf;                // bitmask of the lowest hex digit
+
+const std::string EMPTY_COMMENT;
+
+using FuncNameMap = std::map<uintptr_t, std::string>;
+
+struct CodeDisassemblyState {
+    uint8_t *instrAddr {nullptr};
+    size_t remainingBytes {0};
+    uint64_t instrOffset {0};
+    bool logEnabled {false};
+    std::string methodName;
+    FuncNameMap::const_iterator nextFunction;
+    uint32_t previousLine {0};
+};
+
+struct AsmOutputLine {
+    std::string &codeStream;
+    uint64_t offset {0};
+    uint32_t hex {0};
+    char *text {nullptr};
+};
+
+struct CodeCommentOutputContext {
+    uint64_t textOffset {0};
+    uint64_t textSecIndex {0};
+    const DILineInfoSpecifier &debugSpecifier;
+    DWARFContext *dwarfCtx {nullptr};
+    LLVMModule *llvmModule {nullptr};
+};
+
+void AppendHex(std::string &s, uint64_t value)
+{
+    static constexpr char hexDigits[] = "0123456789abcdef";
+    char buffer[HEX_MAX_DIGITS];
+    size_t length = 0;
+    do {
+        buffer[sizeof(buffer) - 1 - length] = hexDigits[value & HEX_DIGIT_MASK];
+        value >>= HEX_BITS_PER_DIGIT;
+        length++;
+    } while (value != 0);
+    if (length < HEX_FIELD_WIDTH) {
+        s.append(HEX_FIELD_WIDTH - length, '0');
+    }
+    s.append(buffer + sizeof(buffer) - length, length);
+}
+
+void EmitRawAsmLine(const AsmOutputLine &line)
+{
+    AppendHex(line.codeStream, line.offset);
+    line.codeStream += ':';
+    AppendHex(line.codeStream, line.hex);
+    line.codeStream += ' ';
+    line.codeStream += line.text;
+    line.codeStream += '\n';
+}
+
+// Tabs -> spaces so std::setw aligns by display column (a tab would drift with the viewer's tab width).
+// asmText points at LLVM's mutable output buffer and is consumed before the next disassembly call.
+void EmitAsmLine(const AsmOutputLine &line, const char *marker, const std::string &comment)
+{
+    size_t asmLength = strlen(line.text);
+    std::replace(line.text, line.text + asmLength, '\t', ' ');
+    AppendHex(line.codeStream, line.offset);
+    line.codeStream += ':';
+    AppendHex(line.codeStream, line.hex);
+    line.codeStream += ' ';
+    if (marker == nullptr) {
+        line.codeStream += line.text;
+    } else {
+        line.codeStream += line.text;
+        if (asmLength < ASM_FIELD_WIDTH) {
+            line.codeStream.append(ASM_FIELD_WIDTH - asmLength, ' ');
+        }
+        line.codeStream += marker;
+        if (!comment.empty()) {
+            line.codeStream += ' ';
+            line.codeStream += comment;
+        }
+    }
+    line.codeStream += '\n';
+}
+
+void AdvanceInstruction(CodeDisassemblyState &state, size_t instSize)
+{
+    state.instrOffset += instSize;
+    state.instrAddr += instSize;
+    state.remainingBytes -= instSize;
+}
+
+void UpdateMethodLogState(CodeDisassemblyState &state, const FuncNameMap &addr2name, const CompilerLog &log,
+                          const MethodLogList &logList, std::string &codeStream)
+{
+    uint64_t addr = reinterpret_cast<uint64_t>(state.instrAddr);
+    if (state.nextFunction == addr2name.end() || state.nextFunction->first != addr) {
+        return;
+    }
+
+    state.methodName = state.nextFunction->second;
+    ++state.nextFunction;
+    state.previousLine = 0;
+    state.logEnabled = log.OutputASM();
+    if (log.CertainMethod()) {
+        state.logEnabled = state.logEnabled && logList.IncludesMethod(state.methodName);
+    } else if (log.NoneMethod()) {
+        state.logEnabled = false;
+    }
+    if (state.logEnabled) {
+        codeStream += "------------------- asm code [";
+        codeStream += state.methodName;
+        codeStream += "] -------------------\n";
+    }
+}
+
+size_t DisassembleInstruction(LLVMDisasmContextRef disCtx, const CodeDisassemblyState &state, char *outString,
+                              size_t outStringSize)
+{
+    size_t instSize = LLVMDisasmInstruction(disCtx, state.instrAddr, state.remainingBytes, state.instrOffset,
+                                            outString, outStringSize);
+    return instSize == 0 ? 4 : instSize; // 4: default step size while instruction cannot be resolved
+}
+
+void EmitInstructionWithComment(CodeDisassemblyState &state, const AsmOutputLine &line,
+                                const CodeCommentOutputContext &context)
+{
+    if (!state.logEnabled) {
+        return;
+    }
+
+    object::SectionedAddress secAddr = {state.instrOffset, context.textSecIndex};
+    DILineInfo lineInfo = context.dwarfCtx->getLineInfoForAddress(secAddr, context.debugSpecifier);
+    uint32_t debugLine = (lineInfo && lineInfo.Line > 0) ? lineInfo.Line : 0;
+    if (debugLine == 0) {
+        state.previousLine = 0;
+        EmitRawAsmLine(line);
+        return;
+    }
+
+    const bool isFirst = debugLine != state.previousLine;
+    const std::string &comment = isFirst
+        ? context.llvmModule->GetDebugInfo()->GetComment(state.methodName, debugLine - 1) : EMPTY_COMMENT;
+    EmitAsmLine(line, isFirst ? MARKER_FIRST : MARKER_MID, comment);
+    state.previousLine = debugLine;
+}
+} // namespace
+
 void LLVMAssembler::PrintInstAndStep(uint64_t &instrOffset, uint8_t **instrAddr, uintptr_t &numBytes,
                                      size_t instSize, uint64_t textOffset, char *outString,
-                                     std::ostringstream &codeStream, bool logFlag)
+                                     std::string &codeStream, bool logFlag)
 {
     if (instSize == 0) {
         instSize = 4; // 4: default instruction step size while instruction can't be resolved or be constant
     }
     if (logFlag) {
-        uint64_t unitedInstOffset = instrOffset + textOffset;
-        // 8: length of output content
-        codeStream << std::setw(8) << std::setfill('0') << std::hex << unitedInstOffset << ":" << std::setw(8)
-                           << GetInstrValue(instSize, *instrAddr) << " " << outString << std::endl;
+        AsmOutputLine line {codeStream, instrOffset + textOffset, GetInstrValue(instSize, *instrAddr), outString};
+        EmitRawAsmLine(line);
     }
     instrOffset += instSize;
     *instrAddr += instSize;
@@ -690,40 +846,20 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
     uint64_t instrOffset = 0;
     const size_t outStringSize = 256;
     char outString[outStringSize];
-    std::ostringstream codeStream;
+    std::string codeStream;
     while (numBytes > 0) {
         uint64_t addr = reinterpret_cast<uint64_t>(instrAddr) - bufAddr;
         if (addr2name != nullptr && addr2name->find(addr) != addr2name->end()) {
             std::string methodName = addr2name->at(addr);
-            codeStream << "------------------- asm code [" << methodName << "] -------------------"
-                       << std::endl;
+            codeStream += "------------------- asm code [";
+            codeStream += methodName;
+            codeStream += "] -------------------\n";
         }
         size_t instSize = LLVMDisasmInstruction(ctx, instrAddr, numBytes, instrOffset, outString, outStringSize);
         PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, 0, outString, codeStream);
     }
-    LOG_ECMA(INFO) << "\n" << codeStream.str();
+    LOG_ECMA(INFO) << "\n" << codeStream;
     LLVMDisasmDispose(ctx);
-}
-
-static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, size_t outStringSize,
-                            DWARFContext *ctx, LLVMModule* module, const std::string &funcName)
-{
-    object::SectionedAddress secAddr = {addr, secIndex};
-    DILineInfoSpecifier spec;
-    spec.FNKind = DINameKind::ShortName;
-
-    DILineInfo info = ctx->getLineInfoForAddress(secAddr, spec);
-    if (info && info.Line > 0) {
-        std::string debugInfo = "\t\t;";
-        debugInfo += module->GetDebugInfo()->GetComment(funcName, info.Line - 1);
-        size_t len = strlen(outString);
-        if (len + debugInfo.size() < outStringSize) {
-            if (strcpy_s(outString + len, outStringSize - len, debugInfo.c_str()) != EOK) {
-                LOG_FULL(FATAL) << "strcpy_s failed";
-                UNREACHABLE();
-            }
-        }
-    }
 }
 
 uint64_t LLVMAssembler::GetTextSectionIndex() const
@@ -745,42 +881,27 @@ uint64_t LLVMAssembler::GetTextSectionIndex() const
 
 void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
                                 const CompilerLog &log, const MethodLogList &logList,
-                                std::ostringstream &codeStream) const
+                                std::string &codeStream) const
 {
     const uint64_t textSecIndex = GetTextSectionIndex();
     LLVMDisasmContextRef disCtx = LLVMCreateDisasm(LLVMGetTarget(module_), nullptr, 0, nullptr, SymbolLookupCallback);
-    bool logFlag = false;
     std::unique_ptr<DWARFContext> dwarfCtx = DWARFContext::create(*objFile_);
+    DILineInfoSpecifier debugSpecifier;
+    debugSpecifier.FNKind = DINameKind::ShortName;
+    CodeCommentOutputContext outputContext {textOffset, textSecIndex, debugSpecifier, dwarfCtx.get(), llvmModule_};
 
     for (auto it : codeInfo_.GetCodeInfo()) {
-        uint8_t *instrAddr = it.first;
-        size_t numBytes = it.second;
-        uint64_t instrOffset = 0;
+        CodeDisassemblyState state {it.first, it.second, 0, false, "",
+                                    addr2name.lower_bound(reinterpret_cast<uintptr_t>(it.first)), 0};
+        char outString[OUT_STRING_SIZE] = {'\0'};
 
-        const size_t outStringSize = 512;
-        char outString[outStringSize] = {'\0'};
-        std::string methodName;
-
-        while (numBytes > 0) {
-            uint64_t addr = reinterpret_cast<uint64_t>(instrAddr);
-            if (addr2name.find(addr) != addr2name.end()) {
-                methodName = addr2name.at(addr);
-                logFlag = log.OutputASM();
-                if (log.CertainMethod()) {
-                    logFlag = logFlag && logList.IncludesMethod(methodName);
-                } else if (log.NoneMethod()) {
-                    logFlag = false;
-                }
-                if (logFlag) {
-                    codeStream << "------------------- asm code [" << methodName << "] -------------------"
-                               << std::endl;
-                }
-            }
-
-            size_t instSize = LLVMDisasmInstruction(disCtx, instrAddr, numBytes, instrOffset, outString, outStringSize);
-            DecodeDebugInfo(instrOffset, textSecIndex, outString, outStringSize,
-                            dwarfCtx.get(), llvmModule_, methodName);
-            PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, textOffset, outString, codeStream, logFlag);
+        while (state.remainingBytes > 0) {
+            UpdateMethodLogState(state, addr2name, log, logList, codeStream);
+            size_t instSize = DisassembleInstruction(disCtx, state, outString, sizeof(outString));
+            AsmOutputLine line {codeStream, state.instrOffset + textOffset,
+                                GetInstrValue(instSize, state.instrAddr), outString};
+            EmitInstructionWithComment(state, line, outputContext);
+            AdvanceInstruction(state, instSize);
         }
     }
     LLVMDisasmDispose(disCtx);

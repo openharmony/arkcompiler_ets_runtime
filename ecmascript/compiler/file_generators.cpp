@@ -321,7 +321,7 @@ void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJ
 }
 
 void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
-                              const CompilerLog &log, const MethodLogList &logList, std::ostringstream &codeStream)
+                              const CompilerLog &log, const MethodLogList &logList, std::string &codeStream)
 {
     if (irModule_->GetModuleKind() != MODULE_LLVM) {
         std::cout << "DisassemblerFunc is not supported for litecg currently" << std::endl;

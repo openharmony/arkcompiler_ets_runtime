@@ -72,7 +72,7 @@ public:
         return engine_;
     }
     void Disassemble(const std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
-                     const CompilerLog &log, const MethodLogList &logList, std::ostringstream &codeStream) const;
+                     const CompilerLog &log, const MethodLogList &logList, std::string &codeStream) const;
     static void Disassemble(const std::map<uintptr_t, std::string> *addr2name,
                             const std::string& triple, uint8_t *buf, size_t size);
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
@@ -113,7 +113,7 @@ private:
     void BuildAndRunPassesFastMode();
     void Initialize(LOptions option);
     static void PrintInstAndStep(uint64_t &pc, uint8_t **byteSp, uintptr_t &numBytes, size_t instSize,
-                                 uint64_t textOffset, char *outString, std::ostringstream &codeStream,
+                                 uint64_t textOffset, char *outString, std::string &codeStream,
                                  bool logFlag = true);
     uint64_t GetTextSectionIndex() const;
 
