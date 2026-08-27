@@ -3625,7 +3625,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                 GlobalEnvScope scope(this);
 #endif
                 BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetCurrentGlobalEnv());
-                result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
+                result = typedArrayBuilder.StoreTypedArrayElementFromStoreIC(glue, receiver, index64, value, jsType);
                 Jump(&exit);
             }
             Bind(&handerInfoNotTypedArray);

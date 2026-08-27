@@ -47,6 +47,10 @@ public:
     GateRef FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array);
     GateRef LoadTypedArrayElement(GateRef glue, GateRef array, GateRef key, GateRef jsType);
     GateRef StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value, GateRef jsType);
+    GateRef StoreTypedArrayElementFromStoreIC(GateRef glue, GateRef array, GateRef index, GateRef value,
+                                              GateRef jsType);
+    void EmitFastIntElementStore(GateRef glue, GateRef block, GateRef index32, GateRef offset,
+                                 GateRef intValue, JSType type, Label *exit);
     GateRef CheckTypedArrayIndexInRange(GateRef array, GateRef index);
     GateRef GetValueFromBuffer(GateRef glue, GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
