@@ -976,4 +976,22 @@
     assert_equal(JSON.stringify(victim,replacer), '{"a":1,"c":3}');
 }
 
+// Test82: Replacer triggers fast-to-dict transition causing heap OOB read
+{
+    let obj = {};
+    obj[387] = 1;
+    obj[390] = 2;
+    let result = JSON.stringify(obj, function(k, v) {
+        if (String(k) === '387') {
+            Object.defineProperty(obj, 387, { writable: false });
+        }
+        return v;
+    });
+    let parsed = JSON.parse(result);
+    let keys = Object.keys(parsed);
+    assert_equal(keys.length, 2);
+    assert_equal(parsed[387], 1);
+    assert_equal(parsed[390], 2);
+}
+
 test_end();
