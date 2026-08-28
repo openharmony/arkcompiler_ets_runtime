@@ -151,6 +151,27 @@ namespace panda::test {
 class EcmaDumpTest : public BaseTestWithScope<false> {
 };
 
+HWTEST_F_L0(EcmaDumpTest, ProfileTypeInfoDumpForSnapshotIncludesFixedReferences)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<ProfileTypeInfo> profileTypeInfo = factory->NewProfileTypeInfo(2);
+    JSHandle<TaggedArray> extraInfo = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> jitOsr = factory->NewTaggedArray(2);
+    profileTypeInfo->SetExtraInfoMap(thread, extraInfo.GetTaggedValue());
+    profileTypeInfo->SetJitOsr(thread, jitOsr.GetTaggedValue());
+
+    std::vector<Reference> refs;
+    profileTypeInfo->DumpForSnapshot(thread, refs);
+
+    ASSERT_EQ(refs.size(), 4U);
+    EXPECT_EQ(refs[0].name_, "ExtraInfoMap");
+    EXPECT_EQ(refs[0].value_, extraInfo.GetTaggedValue());
+    EXPECT_EQ(refs[1].name_, "JitOsr");
+    EXPECT_EQ(refs[1].value_, jitOsr.GetTaggedValue());
+    EXPECT_EQ(refs[2].name_, "0");
+    EXPECT_EQ(refs[3].name_, "1");
+}
+
 #ifndef NDEBUG
 HWTEST_F_L0(EcmaDumpTest, Dump)
 {

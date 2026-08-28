@@ -15,6 +15,7 @@
 
 #include "metadata_parse.h"
 #include <algorithm>
+#include <limits>
 
 namespace rawheap_translate {
 bool MetaParser::Parse(const cJSON *object)
@@ -25,6 +26,9 @@ bool MetaParser::Parse(const cJSON *object)
     }
 
     GenerateMetaData();
+    for (auto *meta : orderedMeta_) {
+        ResolveArrayLayout(meta);
+    }
     SetBitField("HCLASS", "BitField", bitField_.objectTypeField);
     SetBitField("HCLASS", "BitField1", bitField_.objectBitField1);
     SetBitField("HCLASS", "Layout", bitField_.hclassLayoutField);
@@ -187,6 +191,15 @@ bool MetaParser::IsArray(JSType type)
     return false;
 }
 
+bool MetaParser::GetArrayLayout(JSType type, ArrayLayout &layout) const
+{
+    if (type >= orderedMeta_.size() || !orderedMeta_[type]->arrayLayout.valid) {
+        return false;
+    }
+    layout = orderedMeta_[type]->arrayLayout;
+    return true;
+}
+
 bool MetaParser::ParseTypeEnums(const cJSON *json)
 {
     cJSON *typeEnums = cJSON_GetObjectItem(json, "type_enum");
@@ -320,10 +333,21 @@ void MetaParser::FillMetaData(MetaData *parent, MetaData *meta)
     }
     
     for (const auto &field : parent->fields) {
-        meta->fields.push_back({field.name, field.offset + meta->endOffset, field.size});
+        uint64_t offset = static_cast<uint64_t>(field.offset) + meta->endOffset;
+        if (offset > std::numeric_limits<uint32_t>::max()) {
+            meta->hasOffsetOverflow = true;
+            continue;
+        }
+        meta->fields.push_back({field.name, static_cast<uint32_t>(offset), field.size});
     }
 
-    meta->endOffset += parent->endOffset;
+    uint64_t endOffset = static_cast<uint64_t>(meta->endOffset) + parent->endOffset;
+    if (endOffset > std::numeric_limits<uint32_t>::max()) {
+        meta->hasOffsetOverflow = true;
+        meta->endOffset = std::numeric_limits<uint32_t>::max();
+    } else {
+        meta->endOffset = static_cast<uint32_t>(endOffset);
+    }
 
     if (parent->IsArray()) {
         meta->visitType = parent->visitType;
@@ -344,10 +368,53 @@ void MetaParser::GenerateMetaData()
         it.second->fields.swap(meta->fields);
         it.second->visitType = meta->visitType;
         it.second->endOffset = meta->endOffset;
+        it.second->hasOffsetOverflow = meta->hasOffsetOverflow;
         delete meta;
     }
 
     newMeta.clear();
+}
+
+void MetaParser::ResolveArrayLayout(MetaData *meta)
+{
+    if (meta == nullptr || !meta->IsArray()) {
+        return;
+    }
+
+    Field length;
+    Field data;
+    for (auto it = meta->fields.rbegin(); it != meta->fields.rend(); ++it) {
+        if (length.name.empty() && it->name == "Length") {
+            length = *it;
+        } else if (data.name.empty() && it->name == "Data") {
+            data = *it;
+        }
+    }
+
+    constexpr uint32_t LENGTH_SIZE = sizeof(uint32_t);
+    constexpr uint32_t TAGGED_SLOT_SIZE = sizeof(uint64_t);
+    constexpr uint64_t MAX_OFFSET = std::numeric_limits<uint32_t>::max();
+    uint64_t lengthEnd = static_cast<uint64_t>(length.offset) + length.size;
+    uint64_t dataEnd = static_cast<uint64_t>(data.offset) + data.size;
+    bool valid = !meta->hasOffsetOverflow && !length.name.empty() && !data.name.empty() &&
+        length.size == LENGTH_SIZE && data.size == TAGGED_SLOT_SIZE && length.offset % LENGTH_SIZE == 0 &&
+        data.offset % TAGGED_SLOT_SIZE == 0 && lengthEnd <= MAX_OFFSET && dataEnd <= MAX_OFFSET &&
+        lengthEnd <= data.offset;
+    for (const auto &field : meta->fields) {
+        if (!valid || field.size != TAGGED_SLOT_SIZE || field.offset <= length.offset || field.offset >= data.offset) {
+            continue;
+        }
+        uint64_t fieldEnd = static_cast<uint64_t>(field.offset) + field.size;
+        if (field.offset % TAGGED_SLOT_SIZE != 0 || fieldEnd > MAX_OFFSET || fieldEnd > data.offset) {
+            valid = false;
+        }
+    }
+    if (!valid) {
+        LOG_ERROR_ << "invalid array layout, type=" << meta->name;
+        return;
+    }
+
+    meta->arrayLayout = {length, data, true};
 }
 
 MetaData *MetaParser::FindOrCreateMetaData(const std::string &name)

@@ -52,6 +52,7 @@ public:
     bool IsJSWrappedNapiObject(JSType type);
     bool IsGlobalEnv(JSType type);
     bool IsArray(JSType type);
+    bool GetArrayLayout(JSType type, ArrayLayout &layout) const;
 
     BitField* GetBitField()
     {
@@ -78,6 +79,7 @@ private:
     void SetBitField(const std::string &metaName, const std::string &fieldName, Field &field);
     void FillMetaData(MetaData *parent, MetaData *meta);
     void GenerateMetaData();
+    void ResolveArrayLayout(MetaData *meta);
     MetaData* FindOrCreateMetaData(const std::string &name);
 
     static void IterateJSONArray(const cJSON *array, const std::function<void(const cJSON *)> &visitor);

@@ -367,7 +367,7 @@ public:
             {JSType::MUTANT_TAGGED_ARRAY, {"MUTANT_TAGGED_ARRAY"}},
             {JSType::NATIVE_MODULE_FAILURE_INFO, {"ArkNativeModuleFailureInfo", "NATIVE_MODULE_FAILURE_INFO"}},
             {JSType::PENDING_JOB, {"Job", "Arguments", "PENDING_JOB"}},
-            {JSType::PROFILE_TYPE_INFO, {"PROFILE_TYPE_INFO"}},
+            {JSType::PROFILE_TYPE_INFO, {"Length", "ExtraInfoMap", "JitOsr", "Data", "PROFILE_TYPE_INFO"}},
             {JSType::PROFILE_TYPE_INFO_CELL_0, {"Value", "MachineCode", "Handle", "PROFILE_TYPE_INFO_CELL_0"}},
             {JSType::PROFILE_TYPE_INFO_CELL_1, {"Value", "MachineCode", "Handle", "PROFILE_TYPE_INFO_CELL_1"}},
             {JSType::PROFILE_TYPE_INFO_CELL_N, {"Value", "MachineCode", "Handle", "PROFILE_TYPE_INFO_CELL_N"}},
@@ -935,7 +935,12 @@ public:
             {JSType::PENDING_JOB, {job::PendingJob::JOB_OFFSET,
                                    job::PendingJob::ARGUMENT_OFFSET,
                                    job::PendingJob::SIZE - job::PendingJob::ARGUMENT_OFFSET}},
-            {JSType::PROFILE_TYPE_INFO, {ProfileTypeInfo::SIZE - ProfileTypeInfo::SIZE}},
+            {JSType::PROFILE_TYPE_INFO, {
+                ProfileTypeInfo::LENGTH_OFFSET,
+                ProfileTypeInfo::EXTRA_INFO_MAP_OFFSET,
+                ProfileTypeInfo::JIT_OSR_OFFSET,
+                ProfileTypeInfo::DATA_OFFSET,
+                ProfileTypeInfo::SIZE - ProfileTypeInfo::SIZE}},
             {JSType::PROFILE_TYPE_INFO_CELL_0, {
                 ProfileTypeInfoCell::VALUE_OFFSET,
                 ProfileTypeInfoCell::MACHINE_CODE_OFFSET,
@@ -1674,7 +1679,11 @@ public:
                 NativeModuleFailureInfo::SIZE - NativeModuleFailureInfo::ARK_NATIVE_MODULE_FAILURE_INFO_OFFSET}},
             {JSType::PENDING_JOB, {job::PendingJob::ARGUMENT_OFFSET - job::PendingJob::JOB_OFFSET,
                                    job::PendingJob::SIZE - job::PendingJob::ARGUMENT_OFFSET}},
-            {JSType::PROFILE_TYPE_INFO, {}},
+            {JSType::PROFILE_TYPE_INFO, {
+                ProfileTypeInfo::INVOCATION_COUNT_OFFSET - ProfileTypeInfo::LENGTH_OFFSET,
+                ProfileTypeInfo::JIT_OSR_OFFSET - ProfileTypeInfo::EXTRA_INFO_MAP_OFFSET,
+                ProfileTypeInfo::SIZE - ProfileTypeInfo::JIT_OSR_OFFSET,
+                JSTaggedValue::TaggedTypeSize()}},
             {JSType::PROFILE_TYPE_INFO_CELL_0, {
                 ProfileTypeInfoCell::MACHINE_CODE_OFFSET - ProfileTypeInfoCell::VALUE_OFFSET,
                 ProfileTypeInfoCell::HANDLE_OFFSET - ProfileTypeInfoCell::MACHINE_CODE_OFFSET,
@@ -4438,6 +4447,11 @@ HWTEST_F_L0(JSMetadataTest, TestProfileTypeInfoMetadata)
 
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_EQ(metadata.offsets.size(), 4U);
+    EXPECT_EQ(metadata.offsets.at("Length"), std::make_pair(0, 4));
+    EXPECT_EQ(metadata.offsets.at("ExtraInfoMap"), std::make_pair(32, 8));
+    EXPECT_EQ(metadata.offsets.at("JitOsr"), std::make_pair(40, 8));
+    EXPECT_EQ(metadata.offsets.at("Data"), std::make_pair(48, 8));
     ASSERT_TRUE(tester.Test(JSType::PROFILE_TYPE_INFO, metadata));
 }
 

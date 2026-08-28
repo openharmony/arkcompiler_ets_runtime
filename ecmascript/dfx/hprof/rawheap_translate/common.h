@@ -58,6 +58,12 @@ struct Field {
     uint32_t size = 0;
 };
 
+struct ArrayLayout {
+    Field length;
+    Field data;
+    bool valid {false};
+};
+
 struct MetaData {
     std::string name = "";
     std::string nodeName = "";
@@ -67,6 +73,8 @@ struct MetaData {
     uint32_t endOffset = 0;
     JSType type = 0;
     NodeType nodeType = DEFAULT_NODETYPE;
+    ArrayLayout arrayLayout {};
+    bool hasOffsetOverflow {false};
 
     bool IsArray()
     {

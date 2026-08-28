@@ -124,6 +124,32 @@ void WriteV2ObjectTable(BinaryWriter &writer, uint32_t rootCnt, bool withEdges =
     }
     writer.WriteUInt64(0);
 }
+
+bool ParseProfileTypeInfoMetadata(rawheap_translate::MetaParser *parser)
+{
+    std::string metadataJson =
+        "{\"type_enum\": {\"TAGGED_OBJECT\": 3, \"TAGGED_ARRAY\": 1, \"PROFILE_TYPE_INFO\": 1}, "
+        "\"type_list\": [{\"name\": \"TAGGED_OBJECT\", \"offsets\": [], \"end_offset\": 8, "
+        "\"parents\": []}, {\"name\": \"TAGGED_ARRAY\", \"offsets\": ["
+        "{\"name\": \"Length\", \"offset\": 0, \"size\": 4}, "
+        "{\"name\": \"Data\", \"offset\": 8, \"size\": 8}], \"end_offset\": 0, "
+        "\"parents\": [\"TAGGED_OBJECT\"], \"visit_type\": \"Array\"}, "
+        "{\"name\": \"PROFILE_TYPE_INFO\", \"offsets\": ["
+        "{\"name\": \"Length\", \"offset\": 0, \"size\": 4}, "
+        "{\"name\": \"ExtraInfoMap\", \"offset\": 32, \"size\": 8}, "
+        "{\"name\": \"JitOsr\", \"offset\": 40, \"size\": 8}, "
+        "{\"name\": \"Data\", \"offset\": 48, \"size\": 8}], \"end_offset\": 0, "
+        "\"parents\": [\"TAGGED_OBJECT\"], \"visit_type\": \"Array\"}], "
+        "\"type_layout\": {\"Dictionary_layout\": {}, \"Type_range\": {}}, "
+        "\"version\": \"1.0.0\"}";
+    cJSON *metadataCJson = cJSON_ParseWithLength(metadataJson.c_str(), metadataJson.size());
+    if (metadataCJson == nullptr) {
+        return false;
+    }
+    bool result = parser->Parse(metadataCJson);
+    cJSON_Delete(metadataCJson);
+    return result;
+}
 }  // namespace
 
 class RawHeapTranslateTest : public testing::Test {
@@ -226,6 +252,23 @@ public:
             return;
         }
         rawheap_->CreateEdge(node, addr, nameOrIndex, type);
+    }
+
+    rawheap_translate::Node *FindOrCreateNode(uint64_t addr)
+    {
+        return rawheap_ == nullptr ? nullptr : rawheap_->FindOrCreateNode(addr);
+    }
+
+    void BuildArrayEdges(rawheap_translate::Node *node)
+    {
+        if (rawheap_ != nullptr) {
+            rawheap_->BuildArrayEdges(node);
+        }
+    }
+
+    std::vector<rawheap_translate::Edge *> *GetEdges()
+    {
+        return rawheap_ == nullptr ? nullptr : rawheap_->GetEdges();
     }
 
     uint64_t GetHoleValue()
@@ -334,6 +377,44 @@ public:
             return nullptr;
         }
         return rawheap_->GetStringTable();
+    }
+
+    rawheap_translate::Node *FindOrCreateNode(uint32_t addr)
+    {
+        rawheap_translate::Node *node = rawheap_ == nullptr ? nullptr : rawheap_->FindNode(addr);
+        if (node == nullptr && rawheap_ != nullptr) {
+            node = rawheap_->CreateNode();
+            rawheap_->nodesMap_.emplace(addr, node);
+        }
+        return node;
+    }
+
+    void SetMemory(const std::vector<uint8_t> &memory)
+    {
+        if (rawheap_ == nullptr) {
+            return;
+        }
+        rawheap_->mem_ = new char[memory.size()];
+        std::copy(memory.begin(), memory.end(), rawheap_->mem_);
+        rawheap_->memSize_ = memory.size();
+        rawheap_->memPos_ = 0;
+    }
+
+    void BuildArrayEdges(rawheap_translate::Node *node)
+    {
+        if (rawheap_ != nullptr) {
+            rawheap_->BuildArrayEdges(node);
+        }
+    }
+
+    rawheap_translate::Node *GetNextEdgeTo()
+    {
+        return rawheap_ == nullptr ? nullptr : rawheap_->GetNextEdgeTo();
+    }
+
+    std::vector<rawheap_translate::Edge *> *GetEdges()
+    {
+        return rawheap_ == nullptr ? nullptr : rawheap_->GetEdges();
     }
 
     void AddSectionRecord(uint32_t record)
@@ -508,6 +589,230 @@ HWTEST_F_L0(RawHeapTranslateTest, MetaDataParse)
     rawheap_translate::MetaData *meta = metaParser->GetMetaData("JS_OBJECT");
     ASSERT_TRUE(meta != nullptr);
     ASSERT_EQ(meta->endOffset, 32);  // 32: 16 + 8 + 8 = 32, all parent endOffset count total
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, ProfileTypeInfoArrayLayout)
+{
+    ASSERT_TRUE(ParseProfileTypeInfoMetadata(metaParser.get()));
+
+    rawheap_translate::ArrayLayout taggedArrayLayout;
+    rawheap_translate::JSType taggedArrayType = metaParser->GetJSTypeFromTypeName("TAGGED_ARRAY");
+    ASSERT_TRUE(metaParser->GetArrayLayout(taggedArrayType, taggedArrayLayout));
+    EXPECT_EQ(taggedArrayLayout.length.offset, 8U);
+    EXPECT_EQ(taggedArrayLayout.length.size, 4U);
+    EXPECT_EQ(taggedArrayLayout.data.offset, 16U);
+    EXPECT_EQ(taggedArrayLayout.data.size, 8U);
+
+    rawheap_translate::ArrayLayout profileTypeInfoLayout;
+    rawheap_translate::JSType profileTypeInfoType = metaParser->GetJSTypeFromTypeName("PROFILE_TYPE_INFO");
+    ASSERT_TRUE(metaParser->GetArrayLayout(profileTypeInfoType, profileTypeInfoLayout));
+    EXPECT_EQ(profileTypeInfoLayout.length.offset, 8U);
+    EXPECT_EQ(profileTypeInfoLayout.length.size, 4U);
+    EXPECT_EQ(profileTypeInfoLayout.data.offset, 56U);
+    EXPECT_EQ(profileTypeInfoLayout.data.size, 8U);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, ProfileTypeInfoV1UsesOwnLayoutAndKeepsFixedRefsAtZeroLength)
+{
+    ASSERT_TRUE(ParseProfileTypeInfoMetadata(metaParser.get()));
+    rawheap_translate::RawHeapTranslateV1 rawheap(metaParser.get());
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    constexpr uint64_t EXTRA_INFO_ADDR = 0x2000;
+    constexpr uint64_t JIT_OSR_ADDR = 0x3000;
+    constexpr uint64_t IC_SLOT_ADDR = 0x4000;
+    rawheap_translate::Node *extraInfo = helper.FindOrCreateNode(EXTRA_INFO_ADDR);
+    rawheap_translate::Node *jitOsr = helper.FindOrCreateNode(JIT_OSR_ADDR);
+    rawheap_translate::Node *icSlot = helper.FindOrCreateNode(IC_SLOT_ADDR);
+    ASSERT_NE(extraInfo, nullptr);
+    ASSERT_NE(jitOsr, nullptr);
+    ASSERT_NE(icSlot, nullptr);
+
+    rawheap_translate::JSType type = metaParser->GetJSTypeFromTypeName("PROFILE_TYPE_INFO");
+    std::vector<uint64_t> zeroLengthData(7, 0);
+    zeroLengthData[1] = 0;
+    zeroLengthData[5] = EXTRA_INFO_ADDR;
+    zeroLengthData[6] = JIT_OSR_ADDR;
+    rawheap_translate::Node *zeroLengthNode = helper.FindOrCreateNode(0x1000);
+    zeroLengthNode->jsType = type;
+    zeroLengthNode->data = reinterpret_cast<char *>(zeroLengthData.data());
+    zeroLengthNode->size = zeroLengthData.size() * sizeof(uint64_t);
+    helper.BuildArrayEdges(zeroLengthNode);
+
+    auto *edges = helper.GetEdges();
+    ASSERT_NE(edges, nullptr);
+    ASSERT_EQ(edges->size(), 2U);
+    EXPECT_EQ((*edges)[0]->to, extraInfo);
+    EXPECT_EQ((*edges)[0]->type, rawheap_translate::EdgeType::DEFAULT);
+    auto *stringTable = helper.GetStringTable();
+    EXPECT_EQ(stringTable->GetStringByKey(stringTable->GetKeyByStringId((*edges)[0]->nameOrIndex)), "ExtraInfoMap");
+    EXPECT_EQ((*edges)[1]->to, jitOsr);
+    EXPECT_EQ((*edges)[1]->type, rawheap_translate::EdgeType::DEFAULT);
+    EXPECT_EQ(stringTable->GetStringByKey(stringTable->GetKeyByStringId((*edges)[1]->nameOrIndex)), "JitOsr");
+
+    std::vector<uint64_t> clampedData(8, 0);
+    clampedData[1] = 100;
+    clampedData[5] = EXTRA_INFO_ADDR;
+    clampedData[6] = JIT_OSR_ADDR;
+    clampedData[7] = IC_SLOT_ADDR | 1U;
+    rawheap_translate::Node *clampedNode = helper.FindOrCreateNode(0x5000);
+    clampedNode->jsType = type;
+    clampedNode->data = reinterpret_cast<char *>(clampedData.data());
+    clampedNode->size = clampedData.size() * sizeof(uint64_t);
+    helper.BuildArrayEdges(clampedNode);
+
+    ASSERT_EQ(edges->size(), 5U);
+    EXPECT_EQ((*edges)[4]->to, icSlot);
+    EXPECT_EQ((*edges)[4]->nameOrIndex, 0U);
+    EXPECT_EQ((*edges)[4]->type, rawheap_translate::EdgeType::WEAK);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, ProfileTypeInfoV2ClassifiesFixedRefsAndConsumesWholeObject)
+{
+    ASSERT_TRUE(ParseProfileTypeInfoMetadata(metaParser.get()));
+    rawheap_translate::RawHeapTranslateV2 rawheap(metaParser.get());
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+
+    rawheap_translate::Node *extraInfo = helper.FindOrCreateNode(8);
+    rawheap_translate::Node *jitOsr = helper.FindOrCreateNode(16);
+    rawheap_translate::Node *icSlot = helper.FindOrCreateNode(24);
+    rawheap_translate::Node *nextObject = helper.FindOrCreateNode(32);
+    ASSERT_NE(extraInfo, nullptr);
+    ASSERT_NE(jitOsr, nullptr);
+    ASSERT_NE(icSlot, nullptr);
+    ASSERT_NE(nextObject, nullptr);
+
+    std::vector<uint8_t> memory = {
+        rawheap_translate::ZERO_VALUE, rawheap_translate::ZERO_VALUE,
+        rawheap_translate::ZERO_VALUE, rawheap_translate::ZERO_VALUE,
+        8, 0, 0, 0,
+        16, 0, 0, 0,
+        rawheap_translate::ZERO_VALUE,
+        24, 0, 0, 0,
+        32, 0, 0, 0
+    };
+    helper.SetMemory(memory);
+
+    rawheap_translate::Node *node = helper.FindOrCreateNode(5);
+    node->jsType = metaParser->GetJSTypeFromTypeName("PROFILE_TYPE_INFO");
+    node->size = 72;
+    helper.BuildArrayEdges(node);
+
+    auto *edges = helper.GetEdges();
+    ASSERT_NE(edges, nullptr);
+    ASSERT_EQ(edges->size(), 3U);
+    EXPECT_EQ((*edges)[0]->to, extraInfo);
+    EXPECT_EQ((*edges)[0]->type, rawheap_translate::EdgeType::DEFAULT);
+    auto *stringTable = helper.GetStringTable();
+    EXPECT_EQ(stringTable->GetStringByKey(stringTable->GetKeyByStringId((*edges)[0]->nameOrIndex)), "ExtraInfoMap");
+    EXPECT_EQ((*edges)[1]->to, jitOsr);
+    EXPECT_EQ((*edges)[1]->type, rawheap_translate::EdgeType::DEFAULT);
+    EXPECT_EQ(stringTable->GetStringByKey(stringTable->GetKeyByStringId((*edges)[1]->nameOrIndex)), "JitOsr");
+    EXPECT_EQ((*edges)[2]->to, icSlot);
+    EXPECT_EQ((*edges)[2]->nameOrIndex, 1U);
+    EXPECT_EQ((*edges)[2]->type, rawheap_translate::EdgeType::ELEMENT);
+    EXPECT_EQ(helper.GetNextEdgeTo(), nextObject);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, ArrayLayoutRejectsOverflow)
+{
+    std::string metadataJson =
+        "{\"type_enum\": {\"TAGGED_OBJECT\": 3, \"BAD_ARRAY\": 1}, "
+        "\"type_list\": [{\"name\": \"TAGGED_OBJECT\", \"offsets\": [], \"end_offset\": 8, "
+        "\"parents\": []}, {\"name\": \"BAD_ARRAY\", \"offsets\": ["
+        "{\"name\": \"Length\", \"offset\": 0, \"size\": 4}, "
+        "{\"name\": \"Data\", \"offset\": 4294967280, \"size\": 8}], \"end_offset\": 0, "
+        "\"parents\": [\"TAGGED_OBJECT\"], \"visit_type\": \"Array\"}], "
+        "\"type_layout\": {\"Dictionary_layout\": {}, \"Type_range\": {}}, "
+        "\"version\": \"1.0.0\"}";
+    cJSON *metadataCJson = cJSON_ParseWithLength(metadataJson.c_str(), metadataJson.size());
+    ASSERT_NE(metadataCJson, nullptr);
+    ASSERT_TRUE(metaParser->Parse(metadataCJson));
+    cJSON_Delete(metadataCJson);
+
+    rawheap_translate::ArrayLayout layout;
+    rawheap_translate::JSType type = metaParser->GetJSTypeFromTypeName("BAD_ARRAY");
+    EXPECT_FALSE(metaParser->GetArrayLayout(type, layout));
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, InvalidV2ArrayLayoutStillConsumesWholeObject)
+{
+    std::string metadataJson =
+        "{\"type_enum\": {\"TAGGED_OBJECT\": 3, \"BAD_ARRAY\": 1}, "
+        "\"type_list\": [{\"name\": \"TAGGED_OBJECT\", \"offsets\": [], \"end_offset\": 8, "
+        "\"parents\": []}, {\"name\": \"BAD_ARRAY\", \"offsets\": ["
+        "{\"name\": \"Length\", \"offset\": 0, \"size\": 4}, "
+        "{\"name\": \"Data\", \"offset\": 8, \"size\": 4}], \"end_offset\": 0, "
+        "\"parents\": [\"TAGGED_OBJECT\"], \"visit_type\": \"Array\"}], "
+        "\"type_layout\": {\"Dictionary_layout\": {}, \"Type_range\": {}}, "
+        "\"version\": \"1.0.0\"}";
+    cJSON *metadataCJson = cJSON_ParseWithLength(metadataJson.c_str(), metadataJson.size());
+    ASSERT_NE(metadataCJson, nullptr);
+    ASSERT_TRUE(metaParser->Parse(metadataCJson));
+    cJSON_Delete(metadataCJson);
+
+    rawheap_translate::RawHeapTranslateV2 rawheap(metaParser.get());
+    RawHeapTranslateV2TestHelper helper(&rawheap);
+    rawheap_translate::Node *arrayRef = helper.FindOrCreateNode(8);
+    rawheap_translate::Node *nextObject = helper.FindOrCreateNode(16);
+    std::vector<uint8_t> memory = {rawheap_translate::ZERO_VALUE, 8, 0, 0, 0, 16, 0, 0, 0};
+    helper.SetMemory(memory);
+
+    rawheap_translate::Node *node = helper.FindOrCreateNode(24);
+    node->jsType = metaParser->GetJSTypeFromTypeName("BAD_ARRAY");
+    node->size = 24;
+    helper.BuildArrayEdges(node);
+
+    auto *edges = helper.GetEdges();
+    ASSERT_EQ(edges->size(), 1U);
+    EXPECT_EQ((*edges)[0]->to, arrayRef);
+    EXPECT_EQ(helper.GetNextEdgeTo(), nextObject);
+}
+
+HWTEST_F_L0(RawHeapTranslateTest, TaggedArrayKeepsExistingV1AndV2Layout)
+{
+    ASSERT_TRUE(ParseProfileTypeInfoMetadata(metaParser.get()));
+    rawheap_translate::JSType type = metaParser->GetJSTypeFromTypeName("TAGGED_ARRAY");
+
+    {
+        rawheap_translate::RawHeapTranslateV1 rawheap(metaParser.get());
+        RawHeapTranslateV1TestHelper helper(&rawheap);
+        rawheap_translate::Node *first = helper.FindOrCreateNode(0x6000);
+        rawheap_translate::Node *second = helper.FindOrCreateNode(0x7000);
+        std::vector<uint64_t> data = {0, 2, 0x6000, 0x7000};
+        rawheap_translate::Node *node = helper.FindOrCreateNode(0x5000);
+        node->jsType = type;
+        node->data = reinterpret_cast<char *>(data.data());
+        node->size = data.size() * sizeof(uint64_t);
+        helper.BuildArrayEdges(node);
+
+        auto *edges = helper.GetEdges();
+        ASSERT_EQ(edges->size(), 2U);
+        EXPECT_EQ((*edges)[0]->to, first);
+        EXPECT_EQ((*edges)[0]->nameOrIndex, 0U);
+        EXPECT_EQ((*edges)[1]->to, second);
+        EXPECT_EQ((*edges)[1]->nameOrIndex, 1U);
+    }
+
+    {
+        rawheap_translate::RawHeapTranslateV2 rawheap(metaParser.get());
+        RawHeapTranslateV2TestHelper helper(&rawheap);
+        rawheap_translate::Node *first = helper.FindOrCreateNode(8);
+        rawheap_translate::Node *second = helper.FindOrCreateNode(16);
+        std::vector<uint8_t> memory = {rawheap_translate::ZERO_VALUE, 8, 0, 0, 0, 16, 0, 0, 0};
+        helper.SetMemory(memory);
+        rawheap_translate::Node *node = helper.FindOrCreateNode(24);
+        node->jsType = type;
+        node->size = 32;
+        helper.BuildArrayEdges(node);
+
+        auto *edges = helper.GetEdges();
+        ASSERT_EQ(edges->size(), 2U);
+        EXPECT_EQ((*edges)[0]->to, first);
+        EXPECT_EQ((*edges)[0]->nameOrIndex, 0U);
+        EXPECT_EQ((*edges)[1]->to, second);
+        EXPECT_EQ((*edges)[1]->nameOrIndex, 1U);
+    }
 }
 
 HWTEST_F_L0(RawHeapTranslateTest, BytesToNumber)
