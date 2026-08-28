@@ -1212,7 +1212,7 @@ struct GraphBuilder::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::STTHISBYVALUE_IMM8_V8:
             case kungfu::EcmaOpcode::STTHISBYVALUE_IMM16_V8:
-                LowerStThisByValue(bcInfo);
+                LowerStThisByValue(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
             case kungfu::EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
@@ -2062,11 +2062,17 @@ struct GraphBuilder::BytecodeVisitor {
         CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
     }
 
-    void LowerStThisByValue(const BytecodeInfo *bcInfo)
+    void LowerStThisByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
         ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
         ValueVertex *key = LoadRegister(bcInfo, 1);
         ValueVertex *value = frameState.GetAcc();
+        ElementStoreAccessInfo access;
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        if (factory.TryBuildElementStoreAccessInfo(0, &access) &&
+            TryLowerElementStore(bcIndex, access, receiver, key, value)) {
+            return;
+        }
         CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
     }
 
@@ -5754,89 +5760,17 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         std::vector<JSHClass *> rawHClasses;
+        std::vector<ArkSteedHClassRef> hclassRefs;
         rawHClasses.reserve(expectedHClasses.size());
+        hclassRefs.reserve(expectedHClasses.size());
         for (const ResolvedElementStoreHClass &expected : expectedHClasses) {
             if (expected.hclass == nullptr || !expected.ref.IsSafeForCompile()) {
                 return false;
             }
             rawHClasses.push_back(expected.hclass);
+            hclassRefs.push_back(expected.ref);
         }
-
-        std::optional<std::vector<JSHClass *>> knownHClasses =
-            compileInfoFacts_->TryGetPossibleHClasses(receiver);
-        if (knownHClasses.has_value() && !knownHClasses->empty() &&
-            IsHClassSubset(knownHClasses.value(), rawHClasses)) {
-            return true;
-        }
-
-        std::vector<ValueVertex *> expectedConstants;
-        expectedConstants.reserve(expectedHClasses.size());
-        for (const ResolvedElementStoreHClass &expected : expectedHClasses) {
-            ValueVertex *constant = GetHeapConstant(expected.ref);
-            if (constant == nullptr) {
-                return false;
-            }
-            expectedConstants.push_back(constant);
-        }
-
-        CompileInfoFacts *entryFacts = compileInfoFacts_;
-        std::vector<BB *> checkBlocks;
-        std::vector<BB *> matchBlocks;
-        checkBlocks.reserve(expectedHClasses.size());
-        matchBlocks.reserve(expectedHClasses.size());
-        for (uint32_t i = 0; i < expectedHClasses.size(); ++i) {
-            checkBlocks.push_back(self->NewBlock());
-            matchBlocks.push_back(self->NewBlock());
-        }
-        BB *primitiveDeoptBlock = self->NewBlock();
-        BB *hclassMissDeoptBlock = self->NewBlock();
-        BB *doneBlock = self->NewBlock();
-        primitiveDeoptBlock->SetDeferred(true);
-        hclassMissDeoptBlock->SetDeferred(true);
-
-        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
-            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
-
-        ValueVertex *actualHClass = nullptr;
-        for (uint32_t i = 0; i < expectedHClasses.size(); ++i) {
-            currentBlock = checkBlocks[i];
-            compileInfoFacts_ = entryFacts;
-            if (actualHClass == nullptr) {
-                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
-                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
-            }
-            ValueVertex *expectedHClass = self->NewVertex<TaggedToRawI64Vertex>(
-                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {expectedConstants[i]});
-            BB *nextBlock = i + 1 < expectedHClasses.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
-            self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
-                currentBlock, {actualHClass, expectedHClass}, matchBlocks[i], nextBlock, Condition::EQUAL);
-        }
-
-        for (BB *matchBlock : matchBlocks) {
-            currentBlock = matchBlock;
-            compileInfoFacts_ = entryFacts;
-            self->FinishBlockWithJump(currentBlock, doneBlock);
-        }
-
-        auto buildDeoptBlock = [&](BB *deoptBlock) {
-            currentBlock = deoptBlock;
-            compileInfoFacts_ = entryFacts->Clone();
-            auto *deopt = self->FinishBlockWith<DeoptVertex>(
-                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
-                self->preproc_->GetBytecodeOffset(bcIndex));
-            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
-        };
-        buildDeoptBlock(primitiveDeoptBlock);
-        buildDeoptBlock(hclassMissDeoptBlock);
-
-        currentBlock = doneBlock;
-        compileInfoFacts_ = entryFacts;
-        if (rawHClasses.size() == 1) {
-            compileInfoFacts_->RecordHClass(receiver, rawHClasses.front(), true);
-        } else {
-            compileInfoFacts_->RecordPossibleHClasses(receiver, rawHClasses, true);
-        }
-        return true;
+        return BuildCheckHClasses(bcIndex, receiver, rawHClasses, hclassRefs, false, true);
     }
 
     bool ResolveElementStoreTransitionGroups(
@@ -5961,26 +5895,27 @@ struct GraphBuilder::BytecodeVisitor {
 
         struct DispatchEntry {
             const ResolvedElementStoreHClass *hclass {nullptr};
-            ValueVertex *hclassConstant {nullptr};
+            uint32_t hclassHandleIndex {0};
             uint32_t groupIndex {0};
             bool needsTransition {false};
         };
         std::vector<DispatchEntry> entries;
         entries.reserve(access.caseCount + groups.size());
         for (uint32_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
-            entries.push_back(DispatchEntry {&groups[groupIndex].target, nullptr, groupIndex, false});
+            entries.push_back(DispatchEntry {&groups[groupIndex].target, 0, groupIndex, false});
             for (const ResolvedElementStoreHClass &source : groups[groupIndex].transitionSources) {
-                entries.push_back(DispatchEntry {&source, nullptr, groupIndex, true});
+                entries.push_back(DispatchEntry {&source, 0, groupIndex, true});
             }
         }
         if (entries.empty()) {
             UNREACHABLE();
         }
         for (DispatchEntry &entry : entries) {
-            entry.hclassConstant = GetHeapConstant(entry.hclass->ref);
-            if (entry.hclassConstant == nullptr) {
+            std::optional<uint32_t> handleIndex = GetHeapConstantHandleIndex(entry.hclass->ref);
+            if (!handleIndex.has_value()) {
                 return false;
             }
+            entry.hclassHandleIndex = handleIndex.value();
         }
 
         CompileInfoFacts *entryFacts = compileInfoFacts_;
@@ -6024,13 +5959,10 @@ struct GraphBuilder::BytecodeVisitor {
                 actualHClass = self->NewVertex<LoadHClassAddressVertex>(
                     compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
             }
-            ValueVertex *expectedHClass = self->NewVertex<TaggedToRawI64Vertex>(
-                compileInfoFacts_, currentBlock,
-                std::initializer_list<ValueVertex *> {entries[i].hclassConstant});
             BB *nextBlock = i + 1 < entries.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
-            self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
-                currentBlock, {actualHClass, expectedHClass}, destinationFor(entries[i], i), nextBlock,
-                Condition::EQUAL);
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(
+                currentBlock, {actualHClass}, destinationFor(entries[i], i), nextBlock, self->chunk_,
+                std::vector<uint32_t> {entries[i].hclassHandleIndex}, true);
         }
 
         for (uint32_t i = 0; i < entries.size(); ++i) {

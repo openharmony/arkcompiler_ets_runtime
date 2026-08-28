@@ -452,27 +452,20 @@ uint32_t TypedArrayElementShift(JSType type)
     }
 }
 
-void BuildTypedArrayElementAddress(ArkSteedAssembler *assembler, ArkSteedRegister receiver, ArkSteedRegister index,
-                                   JSType type, OnHeapMode onHeapMode, ArkSteedRegister base, ArkSteedRegister byteOffset,
-                                   ArkSteedRegister backingOffset)
+void BuildTypedArrayDataPointer(ArkSteedAssembler *assembler, ArkSteedRegister receiver, OnHeapMode onHeapMode,
+                                ArkSteedRegister base, ArkSteedRegister backingOffset)
 {
-    ASSERT(base != byteOffset);
-    assembler->Move(byteOffset, index);
-    uint32_t shift = TypedArrayElementShift(type);
-    if (shift != 0) {
-        assembler->ShiftLeft(byteOffset, shift);
-    }
     assembler->LoadField(base, receiver, static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
     if (OnHeap::IsOnHeap(onHeapMode)) {
         assembler->Add(base, static_cast<int32_t>(ByteArray::DATA_OFFSET));
     } else if (OnHeap::IsNotOnHeap(onHeapMode)) {
-        ASSERT(backingOffset != base && backingOffset != byteOffset);
+        ASSERT(backingOffset != base);
         assembler->LoadField(base, base, static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
         assembler->LoadField(base, base, static_cast<int32_t>(JSNativePointer::POINTER_OFFSET));
         assembler->LoadInt32Field(backingOffset, receiver, static_cast<int32_t>(JSTypedArray::BYTE_OFFSET_OFFSET));
-        assembler->Add(byteOffset, backingOffset);
+        assembler->Add(base, backingOffset);
     } else {
-        ASSERT(backingOffset != base && backingOffset != byteOffset);
+        ASSERT(backingOffset != base);
         Label offHeap;
         Label addressDone;
         LoadHClassBitField(assembler, backingOffset, receiver);
@@ -486,9 +479,22 @@ void BuildTypedArrayElementAddress(ArkSteedAssembler *assembler, ArkSteedRegiste
         assembler->LoadField(base, base, static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
         assembler->LoadField(base, base, static_cast<int32_t>(JSNativePointer::POINTER_OFFSET));
         assembler->LoadInt32Field(backingOffset, receiver, static_cast<int32_t>(JSTypedArray::BYTE_OFFSET_OFFSET));
-        assembler->Add(byteOffset, backingOffset);
+        assembler->Add(base, backingOffset);
         assembler->Bind(&addressDone);
     }
+}
+
+void BuildTypedArrayElementAddress(ArkSteedAssembler *assembler, ArkSteedRegister receiver, ArkSteedRegister index,
+                                   JSType type, OnHeapMode onHeapMode, ArkSteedRegister base, ArkSteedRegister byteOffset,
+                                   ArkSteedRegister backingOffset)
+{
+    ASSERT(base != byteOffset);
+    assembler->Move(byteOffset, index);
+    uint32_t shift = TypedArrayElementShift(type);
+    if (shift != 0) {
+        assembler->ShiftLeft(byteOffset, shift);
+    }
+    BuildTypedArrayDataPointer(assembler, receiver, onHeapMode, base, backingOffset);
     assembler->Add(base, byteOffset);
 }
 
@@ -1763,11 +1769,8 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedElementVertex>(Stor
     auto index = GetInputRegister(store, StoreTaggedElementVertex::INDEX_INDEX);
     auto value = GetInputRegister(store, StoreTaggedElementVertex::VALUE_INDEX);
     TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister byteOffset = scope.Acquire();
-    __ Move(byteOffset, index);
-    __ ShiftLeft(byteOffset, TAGGED_TYPE_SIZE_LOG);
-    __ Add(byteOffset, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
-    __ StoreField(value, object, byteOffset);
+    ArkSteedRegister scratch = scope.Acquire();
+    __ StoreTaggedElement(object, index, value, scratch);
 }
 
 template <>
@@ -1804,30 +1807,11 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreIntTypedArrayElementVerte
     auto index = GetInputRegister(store, StoreIntTypedArrayElementVertex::INDEX_INDEX);
     auto value = GetInputRegister(store, StoreIntTypedArrayElementVertex::VALUE_INDEX);
     TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister base = scope.Acquire();
-    ArkSteedRegister byteOffset = scope.Acquire();
+    ArkSteedRegister data = scope.Acquire();
     OnHeapMode onHeapMode = store->GetOnHeapMode();
-    ArkSteedRegister backingOffset = OnHeap::IsOnHeap(onHeapMode) ? base : scope.Acquire();
-    BuildTypedArrayElementAddress(assembler_, receiver, index, store->GetType(), onHeapMode, base, byteOffset,
-                                  backingOffset);
-
-    switch (store->GetType()) {
-        case JSType::JS_INT8_ARRAY:
-        case JSType::JS_UINT8_ARRAY:
-        case JSType::JS_UINT8_CLAMPED_ARRAY:
-            __ StoreInt8Field(value, base, 0);
-            return;
-        case JSType::JS_INT16_ARRAY:
-        case JSType::JS_UINT16_ARRAY:
-            __ StoreInt16Field(value, base, 0);
-            return;
-        case JSType::JS_INT32_ARRAY:
-        case JSType::JS_UINT32_ARRAY:
-            __ StoreInt32Field(value, base, 0);
-            return;
-        default:
-            UNREACHABLE();
-    }
+    ArkSteedRegister backingOffset = OnHeap::IsOnHeap(onHeapMode) ? data : scope.Acquire();
+    BuildTypedArrayDataPointer(assembler_, receiver, onHeapMode, data, backingOffset);
+    __ StoreTypedArrayIntElement(value, data, index, store->GetType());
 }
 
 template <>

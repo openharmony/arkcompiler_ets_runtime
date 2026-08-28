@@ -17,8 +17,9 @@
 declare function print(value: any): void;
 
 //! METHOD storeInt32
-//! HAS HeapConstant
-//! HAS TaggedToRawI64
+//! HAS DeoptIfHClassNotIn
+//! HAS_NOT HeapConstant
+//! HAS_NOT TaggedToRawI64
 function storeInt32(receiver, index, value) {
     receiver[index] = value;
 }

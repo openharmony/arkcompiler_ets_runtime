@@ -138,6 +138,14 @@ void ArkSteedAssembler::LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister
     assembler_.Movq(operand, dst);
 }
 
+void ArkSteedAssembler::StoreTaggedElement(ArkSteedRegister elements, ArkSteedRegister index,
+                                           ArkSteedRegister value, ArkSteedRegister scratch)
+{
+    (void)scratch;
+    x64::Operand operand(elements, index, x64::Scale::Times8, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
+    assembler_.Movq(value, operand);
+}
+
 void ArkSteedAssembler::LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
                                                ArkSteedRegister lengthAndFlags)
 {
@@ -212,6 +220,28 @@ void ArkSteedAssembler::LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, 
         case JSType::JS_FLOAT64_ARRAY:
             assembler_.Movsd(dst, x64::Operand(data, index, x64::Scale::Times8, 0));
             break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void ArkSteedAssembler::StoreTypedArrayIntElement(ArkSteedRegister value, ArkSteedRegister data,
+                                                  ArkSteedRegister index, JSType elementType)
+{
+    switch (elementType) {
+        case JSType::JS_INT8_ARRAY:
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            assembler_.Movb(value, x64::Operand(data, index, x64::Scale::Times1, 0));
+            return;
+        case JSType::JS_INT16_ARRAY:
+        case JSType::JS_UINT16_ARRAY:
+            assembler_.Movw(value, x64::Operand(data, index, x64::Scale::Times2, 0));
+            return;
+        case JSType::JS_INT32_ARRAY:
+        case JSType::JS_UINT32_ARRAY:
+            assembler_.Movl(value, x64::Operand(data, index, x64::Scale::Times4, 0));
+            return;
         default:
             UNREACHABLE();
     }

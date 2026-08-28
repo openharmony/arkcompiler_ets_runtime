@@ -436,7 +436,7 @@ void StoreIntTypedArrayElementVertex::SetValueLocationConstraints()
     UseRegister(Arg(RECEIVER_INDEX));
     UseRegister(Arg(INDEX_INDEX));
     UseRegister(Arg(VALUE_INDEX));
-    SetTemporariesNeeded(OnHeap::IsOnHeap(onHeapMode_) ? 2 : 3);
+    SetTemporariesNeeded(OnHeap::IsOnHeap(onHeapMode_) ? 1 : 2);
 }
 
 void StoreFloatTypedArrayElementVertex::SetValueLocationConstraints()

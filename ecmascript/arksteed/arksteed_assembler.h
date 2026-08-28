@@ -142,6 +142,8 @@ public:
     void LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
     void LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister elements, ArkSteedRegister index);
+    void StoreTaggedElement(ArkSteedRegister elements, ArkSteedRegister index, ArkSteedRegister value,
+                            ArkSteedRegister scratch);
     void LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
                                 ArkSteedRegister lengthAndFlags);
     void LoadTypedArrayDataPointer(ArkSteedRegister dst, ArkSteedRegister receiver, ArkSteedRegister storage,
@@ -150,6 +152,8 @@ public:
                                   JSType elementType);
     void LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, ArkSteedRegister data, ArkSteedRegister index,
                                      ArkSteedRegister scratch, JSType elementType);
+    void StoreTypedArrayIntElement(ArkSteedRegister value, ArkSteedRegister data, ArkSteedRegister index,
+                                   JSType elementType);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, ArkSteedRegister offset);
     void StoreInt8Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);

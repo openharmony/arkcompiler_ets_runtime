@@ -17,8 +17,9 @@
 declare function print(value: any): void;
 
 //! METHOD storeElement
-//! HAS HeapConstant
-//! HAS TaggedToRawI64
+//! HAS BranchIfHClassIn
+//! HAS_NOT HeapConstant
+//! HAS_NOT TaggedToRawI64
 function storeElement(receiver, value) {
     receiver[1] = value;
 }

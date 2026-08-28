@@ -210,6 +210,14 @@ void ArkSteedAssembler::LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister
     LoadField(dst, dst, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
 }
 
+void ArkSteedAssembler::StoreTaggedElement(ArkSteedRegister elements, ArkSteedRegister index,
+                                           ArkSteedRegister value, ArkSteedRegister scratch)
+{
+    constexpr uint8_t TAGGED_SIZE_SHIFT = 3;
+    assembler_.Add(scratch, elements, aarch64::Operand(index, aarch64::UXTW, TAGGED_SIZE_SHIFT));
+    StoreField(value, scratch, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
+}
+
 void ArkSteedAssembler::LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
                                                ArkSteedRegister lengthAndFlags)
 {
@@ -290,6 +298,28 @@ void ArkSteedAssembler::LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, 
             assembler_.Add(scratch, data, aarch64::Operand(index, aarch64::UXTW, 3));
             assembler_.Ldr(dst, aarch64::MemoryOperand(scratch, 0));
             break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void ArkSteedAssembler::StoreTypedArrayIntElement(ArkSteedRegister value, ArkSteedRegister data,
+                                                  ArkSteedRegister index, JSType elementType)
+{
+    switch (elementType) {
+        case JSType::JS_INT8_ARRAY:
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            assembler_.Strb(value.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 0));
+            return;
+        case JSType::JS_INT16_ARRAY:
+        case JSType::JS_UINT16_ARRAY:
+            assembler_.Strh(value.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 1));
+            return;
+        case JSType::JS_INT32_ARRAY:
+        case JSType::JS_UINT32_ARRAY:
+            assembler_.Str(value.W(), aarch64::MemoryOperand(data, index, aarch64::UXTW, 2));
+            return;
         default:
             UNREACHABLE();
     }

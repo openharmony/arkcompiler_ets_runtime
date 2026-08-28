@@ -31,6 +31,8 @@ constexpr size_t ELEMENT_STORE_INPUT_COUNT = 3;
 constexpr size_t ELEMENT_STORE_SLOT_INPUT = 0;
 constexpr size_t ELEMENT_STORE_RECEIVER_INPUT = 1;
 constexpr size_t ELEMENT_STORE_KEY_INPUT = 2;
+constexpr size_t THIS_ELEMENT_STORE_INPUT_COUNT = 2;
+constexpr size_t THIS_ELEMENT_STORE_KEY_INPUT = 1;
 
 struct ParsedStoreHandler {
     uint64_t handlerInfo {0};
@@ -78,10 +80,18 @@ bool IsElementStoreInputShape(const kungfu::BytecodeInfo &bytecodeInfo)
 {
     bool isStoreByValue = bytecodeInfo.GetOpcode() == kungfu::EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8 ||
                           bytecodeInfo.GetOpcode() == kungfu::EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8;
-    return isStoreByValue && bytecodeInfo.inputs.size() == ELEMENT_STORE_INPUT_COUNT &&
+    if (isStoreByValue) {
+        return bytecodeInfo.inputs.size() == ELEMENT_STORE_INPUT_COUNT &&
+               std::holds_alternative<kungfu::ICSlotId>(bytecodeInfo.inputs[ELEMENT_STORE_SLOT_INPUT]) &&
+               std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[ELEMENT_STORE_RECEIVER_INPUT]) &&
+               std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[ELEMENT_STORE_KEY_INPUT]);
+    }
+
+    bool isStoreThisByValue = bytecodeInfo.GetOpcode() == kungfu::EcmaOpcode::STTHISBYVALUE_IMM8_V8 ||
+                              bytecodeInfo.GetOpcode() == kungfu::EcmaOpcode::STTHISBYVALUE_IMM16_V8;
+    return isStoreThisByValue && bytecodeInfo.inputs.size() == THIS_ELEMENT_STORE_INPUT_COUNT &&
            std::holds_alternative<kungfu::ICSlotId>(bytecodeInfo.inputs[ELEMENT_STORE_SLOT_INPUT]) &&
-           std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[ELEMENT_STORE_RECEIVER_INPUT]) &&
-           std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[ELEMENT_STORE_KEY_INPUT]);
+           std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[THIS_ELEMENT_STORE_KEY_INPUT]);
 }
 
 bool IsSupportedTypedArrayType(JSType type)
