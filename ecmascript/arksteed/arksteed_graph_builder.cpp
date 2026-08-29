@@ -5932,11 +5932,11 @@ struct GraphBuilder::BytecodeVisitor {
             actionBlocks.push_back(self->NewBlock());
             transitionBlocks.push_back(group.transitionSources.empty() ? nullptr : self->NewBlock());
         }
-        std::vector<BB *> transitionLandingBlocks(entries.size(), nullptr);
+        std::vector<BB *> dispatchLandingBlocks;
+        dispatchLandingBlocks.reserve(entries.size());
+        // Keep conditional dispatch edges out of shared action blocks so RA can emit edge moves on the landing jump.
         for (uint32_t i = 0; i < entries.size(); ++i) {
-            if (entries[i].needsTransition) {
-                transitionLandingBlocks[i] = self->NewBlock();
-            }
+            dispatchLandingBlocks.push_back(self->NewBlock());
         }
         BB *primitiveDeoptBlock = self->NewBlock();
         BB *hclassMissDeoptBlock = self->NewBlock();
@@ -5947,10 +5947,6 @@ struct GraphBuilder::BytecodeVisitor {
         self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
             currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
 
-        auto destinationFor = [&actionBlocks, &transitionLandingBlocks](const DispatchEntry &entry,
-                                                                        uint32_t entryIndex) {
-            return entry.needsTransition ? transitionLandingBlocks[entryIndex] : actionBlocks[entry.groupIndex];
-        };
         ValueVertex *actualHClass = nullptr;
         for (uint32_t i = 0; i < entries.size(); ++i) {
             currentBlock = checkBlocks[i];
@@ -5961,17 +5957,16 @@ struct GraphBuilder::BytecodeVisitor {
             }
             BB *nextBlock = i + 1 < entries.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
             self->FinishBlockWithBranch<BranchIfHClassInVertex>(
-                currentBlock, {actualHClass}, destinationFor(entries[i], i), nextBlock, self->chunk_,
+                currentBlock, {actualHClass}, dispatchLandingBlocks[i], nextBlock, self->chunk_,
                 std::vector<uint32_t> {entries[i].hclassHandleIndex}, true);
         }
 
         for (uint32_t i = 0; i < entries.size(); ++i) {
-            if (!entries[i].needsTransition) {
-                continue;
-            }
-            currentBlock = transitionLandingBlocks[i];
+            currentBlock = dispatchLandingBlocks[i];
             compileInfoFacts_ = entryFacts;
-            self->FinishBlockWithJump(currentBlock, transitionBlocks[entries[i].groupIndex]);
+            BB *destination = entries[i].needsTransition ? transitionBlocks[entries[i].groupIndex]
+                                                         : actionBlocks[entries[i].groupIndex];
+            self->FinishBlockWithJump(currentBlock, destination);
         }
 
         CompileInfoFacts *mergedExitFacts = nullptr;
