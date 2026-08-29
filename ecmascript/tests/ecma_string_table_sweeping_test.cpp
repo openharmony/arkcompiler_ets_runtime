@@ -246,13 +246,11 @@ protected:
         ChainedHashMapOperationConcurrentSweepType concurrentSweepOp(&chainedHashMap);
 
         std::vector<ChainedHashMapEntry*> waitDeleteEntries;
-        std::vector<ChainedHashMapSlotCheckInfo> waitCheckAndFreeHeadEntries;
 
         for (uint32_t i = 0; i < chainedHashMap.GetMapSize(); ++i) {
             auto bucketHead = chainedHashMap.GetBucket(i).load(std::memory_order_acquire);
             if (bucketHead != nullptr) {
-                concurrentSweepOp.ClearNodeFromGC(bucketHead, i, visitor, waitDeleteEntries,
-                                                  waitCheckAndFreeHeadEntries);
+                concurrentSweepOp.ClearNodeFromGC(bucketHead, i, visitor, waitDeleteEntries);
             }
         }
 
@@ -261,7 +259,9 @@ protected:
         }
         waitDeleteEntries.clear();
 
-        chainedHashMap.CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries);
+        for (uint32_t i = 0; i < ChainedHashMapConfig::SWEEP_PARTITION_COUNT; i++) {
+            chainedHashMap.CheckAndFreeHeadEntries(i);
+        }
 
         chainedHashMap.ClearToSpaceTagForFreshEntries();
         chainedHashMap.FinishSweeping();

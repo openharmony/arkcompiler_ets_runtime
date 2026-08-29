@@ -24,7 +24,6 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
-#include "ecmascript/platform/map.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/string/base_string_table.h"
@@ -140,8 +139,6 @@ private:
     std::atomic<uint32_t> PendingTaskCount_ {0U};
     bool enableConcurrentSweep_ {false};
     std::array<std::vector<ChainedHashMapEntry *>, ChainedHashMapConfig::SWEEP_PARTITION_COUNT> waitFreeEntries_ {};
-    std::array<std::vector<ChainedHashMapSlotCheckInfo>, ChainedHashMapConfig::SWEEP_PARTITION_COUNT>
-        waitCheckAndFreeHeadEntries_ {};
     Mutex sweepWeakRefMutex_;
     SweepState sweepWeakRefFinished_ { SweepState::FINISHED };
     ConditionVariable sweepWeakRefCV_;
@@ -256,8 +253,7 @@ public:
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID);
 
     void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
-                                std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
-                                std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
+                                std::vector<ChainedHashMapEntry*>& waitDeleteEntries);
 
     template <typename Traits>
     bool CheckStringTableValidity(JSThread *thread);
@@ -321,29 +317,21 @@ public:
             cleaner_ = new EcmaStringTableCleaner(this);
         }
 #else
-        cleanerMap_ = PageMap(AlignUp(sizeof(EcmaStringTableCleaner), PageSize()), PAGE_PROT_READWRITE);
-        ASSERT(cleanerMap_.GetMem() != nullptr);
-        cleaner_ = new (cleanerMap_.GetMem()) EcmaStringTableCleaner(this);
+        cleaner_ = new EcmaStringTableCleaner(this);
 #endif
     }
 
     ~EcmaStringTable()
     {
-#ifdef USE_CMC_GC
         if (cleaner_ != nullptr) {
             delete cleaner_;
             cleaner_ = nullptr;
         }
+#ifdef USE_CMC_GC
         if (needDeleteChainedHashMap_) {
             ASSERT(!enableCMCGC_);
             delete reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(impl_.GetChainedHashMap());
         }
-#else
-    if (cleaner_ != nullptr) {
-        cleaner_->~EcmaStringTableCleaner();
-        PageUnmap(cleanerMap_);
-        cleaner_ = nullptr;
-    }
 #endif
     }
 
@@ -372,8 +360,7 @@ public:
 
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID);
     void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
-                                std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
-                                std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
+                                std::vector<ChainedHashMapEntry*>& waitDeleteEntries);
 
     bool CheckStringTableValidity(JSThread *thread);
 
@@ -449,7 +436,6 @@ private:
 
     EcmaStringTableImpl impl_;
 
-    MemMap cleanerMap_;
     EcmaStringTableCleaner *cleaner_ = nullptr;
     bool enableCMCGC_ = false;
 #ifdef USE_CMC_GC
