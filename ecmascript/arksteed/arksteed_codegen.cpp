@@ -3605,7 +3605,7 @@ void ArkSteedCodeGenerator::ProcessValueVertex(ValueVertex *valueVertex)
 
 void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
 {
-    RecordVertexComment(vertex);
+    uint32_t pcBefore = __ GetPcOffset();
     TemporaryRegisterScope temporaryScope(assembler_);
     temporaryScope.Include(vertex->GetRegallocInfo()->GetGeneralTemporaries());
     temporaryScope.IncludeDouble(vertex->GetRegallocInfo()->GetDoubleTemporaries());
@@ -3633,6 +3633,9 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
     if (vertex->CanThrow() || vertex->IsCall()) {
         if (HasExceptionLazyDeopt(vertex)) {
             ASSERT(CatchBlockOf(vertex) == nullptr);
+            if (__ GetPcOffset() > pcBefore) {
+                RecordVertexComment(pcBefore, vertex);
+            }
             return;
         }
         if (BB *catchBlock = CatchBlockOf(vertex)) {
@@ -3645,11 +3648,15 @@ void ArkSteedCodeGenerator::ProcessNonControlVertex(NonControlVertex *vertex)
             EmitReturnIfPendingException();
         }
     }
+
+    if (__ GetPcOffset() > pcBefore) {
+        RecordVertexComment(pcBefore, vertex);
+    }
 }
 
 void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
 {
-    RecordVertexComment(vertex);
+    uint32_t pcBefore = __ GetPcOffset();
     TemporaryRegisterScope temporaryScope(assembler_);
     temporaryScope.Include(vertex->GetRegallocInfo()->GetGeneralTemporaries());
     temporaryScope.IncludeDouble(vertex->GetRegallocInfo()->GetDoubleTemporaries());
@@ -3666,6 +3673,10 @@ void ArkSteedCodeGenerator::ProcessControlVertex(ControlVertex *vertex)
         default:
             UNREACHABLE();
             break;
+    }
+
+    if (__ GetPcOffset() > pcBefore) {
+        RecordVertexComment(pcBefore, vertex);
     }
 }
 
@@ -3980,7 +3991,11 @@ void ArkSteedCodeGenerator::RecordBlockComment(BB *block)
     RecordComment(ss.str().c_str());
 }
 
-void ArkSteedCodeGenerator::RecordVertexComment(Vertex *vertex)
+// The vertex comment is anchored at pcBefore (just before the vertex's first
+// instruction) but only recorded after emission, so vertices that produce no
+// machine code (e.g. InitialValue, constants, elided fallthrough jumps) are
+// filtered out instead of piling up empty comment lines.
+void ArkSteedCodeGenerator::RecordVertexComment(uint32_t pcBefore, Vertex *vertex)
 {
     if (!__ IsCommentEnabled()) {
         return;
@@ -3991,6 +4006,7 @@ void ArkSteedCodeGenerator::RecordVertexComment(Vertex *vertex)
     }
     ss << vertex->Dump(withColors_);
     AppendVertexSuccessorInfo(&ss, vertex);
+    __ RecordCommentAt(pcBefore, ss.str().c_str());
 }
 
 void ArkSteedCodeGenerator::AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex)

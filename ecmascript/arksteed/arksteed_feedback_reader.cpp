@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/arksteed/arksteed_feedback_reader.h"
+#include "ecmascript/ic/property_box.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::arksteed {
@@ -349,6 +350,40 @@ bool ArkSteedFeedbackReader::ReadElementAccessFeedback(int slotIndex, ElementAcc
         feedback->cases[feedback->caseCount++] = elementCase;
     }
     return feedback->caseCount > 0;
+}
+
+bool ArkSteedFeedbackReader::ReadGlobalAccessFeedback(GlobalAccessFeedback *feedback) const
+{
+    *feedback = {};
+
+    uint32_t slotId = 0;
+    if (!TryGetFeedbackSlotId(&slotId)) {
+        return false;
+    }
+
+    ProfileTypeInfo *profileTypeArray = nullptr;
+    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) || slotId >= profileTypeArray->GetLength()) {
+        return false;
+    }
+
+    // Global IC slots hold a single strong PropertyBox reference; undefined means the site has
+    // never missed and Hole means MEGA.
+    JSTaggedValue handler = profileTypeArray->GetICSlot(compilerThread_, slotId);
+    if (!handler.IsHeapObject() || !handler.IsPropertyBox()) {
+        return false;
+    }
+    auto *box = PropertyBox::Cast(handler.GetTaggedObject());
+    if (box->IsInvalid(compilerThread_) || box->GetValue(compilerThread_).IsAccessorData()) {
+        return false;
+    }
+    feedback->base.kind = ProcessedFeedbackKind::GLOBAL_ACCESS;
+    feedback->base.source = {slotId, false, AccessFeedbackSlotKind::UNKNOWN};
+    feedback->box = broker_->MakeObjectRef(handler);
+    if (!feedback->box.IsSafeForCompile()) {
+        *feedback = {};
+        return false;
+    }
+    return true;
 }
 
 ArkSteedOperationHint ArkSteedFeedbackReader::MakeOperationHint(uint32_t rawBits) const

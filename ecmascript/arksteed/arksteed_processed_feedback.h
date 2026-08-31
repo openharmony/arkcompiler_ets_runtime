@@ -28,6 +28,7 @@ enum class ProcessedFeedbackKind : uint8_t {
     NAMED_ACCESS,
     VALUE_ACCESS,
     ELEMENT_ACCESS,
+    GLOBAL_ACCESS,
 };
 
 enum class ValueAccessFeedbackKind : uint8_t {
@@ -97,6 +98,12 @@ struct ElementAccessFeedback {
     ProcessedFeedbackBase base {};
     std::array<ElementAccessCaseFeedback, MAX_ELEMENT_IC_POLY_CASES> cases {};
     uint32_t caseCount {0};
+};
+
+// Value cell of a global-record or global-object binding cached by a global IC slot.
+struct GlobalAccessFeedback {
+    ProcessedFeedbackBase base {};
+    ArkSteedObjectRef box {};
 };
 
 }  // namespace panda::ecmascript::arksteed

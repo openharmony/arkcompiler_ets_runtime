@@ -119,7 +119,7 @@ private:
 
     void RecordComment(const char *msg);
     void RecordBlockComment(BB *block);
-    void RecordVertexComment(Vertex *vertex);
+    void RecordVertexComment(uint32_t pcBefore, Vertex *vertex);
     void AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex);
     void RecordGapMoveComment(const InstructionOperand &src, const InstructionOperand &dest, PhiVertex *phi);
     void RecordSpillComment();

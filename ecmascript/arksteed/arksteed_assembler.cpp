@@ -49,6 +49,13 @@ void ArkSteedAssembler::RecordComment(const char *str)
     comments_.Add(pcOffset, str);
 }
 
+void ArkSteedAssembler::RecordCommentAt(uint32_t pcOffset, const char *str)
+{
+    if (enableComments_) {
+        comments_.Add(pcOffset, str);
+    }
+}
+
 void ArkSteedAssembler::Disassemble(std::ostream &os, const uint8_t *commentsData, uint32_t commentsSize)
 {
     ArkSteedDisassembler disassembler(GetCodeBuffer(), GetCodeSize(), commentsData, commentsSize);

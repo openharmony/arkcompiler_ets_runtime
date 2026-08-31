@@ -22,8 +22,9 @@ sources with es2abc, runs them under ark_js_vm with the compiler log
 unconditionally enabled, and verifies:
 
   * stdout (with log lines filtered out) matches expected_output.txt;
-  * the `//!` IR constraints (HAS, HAS_NOT, COUNT, COUNT_GE, COUNT_LE, etc.)
-    hold on the CFG dumps parsed from the compiler log.
+  * the `//!` annotations (COMPILE_MODE, PARAMS, and the IR constraints
+    HAS, HAS_NOT, COUNT, COUNT_GE, COUNT_LE, etc.) hold on the CFG dumps
+    parsed from the compiler log.
 
 All generated artifacts (abc, disassembly, stdout/stderr captures) are
 written to a fresh /tmp/arksteed-<mode>-<timestamp>/ directory whose tree
@@ -33,6 +34,7 @@ Exit status is 0 iff every selected case passes.
 """
 
 import argparse
+from builtins import str
 import collections
 import difflib
 from fnmatch import fnmatchcase
@@ -75,6 +77,17 @@ QEMU_TIMEOUT_FACTOR = 10
 
 SOURCE_SUFFIXES = (".ts", ".js")
 EXPECTED_OUTPUT_NAME = "expected_output.txt"
+
+# COMPILE_MODE values and the es2abc flag each mode maps to. "module" is the
+# default; "script" compiles the source as a global script (no module wrapper),
+# which is what makes top-level `var`/function bindings emit LDGLOBALVAR /
+# STGLOBALVAR instead of module-local ldlexvar / stlexvar.
+COMPILE_MODES = ("module", "script", "commonjs")
+COMPILE_MODE_FLAGS = {
+    "module": ["--module"],
+    "script": [],
+    "commonjs": ["--commonjs"],
+}
 
 CRASH_SIGNALS = {6: "SIGABRT", 11: "SIGSEGV"}
 CRASH_RETURN_CODES = set(range(128, 128 + 32))
@@ -534,6 +547,7 @@ class TestCase:
     rel: str  # path relative to TEST_DIR, e.g. "example/test_1"
     source: Path
     expected: Path
+    compile_mode: str = "module"
     params: List[str] = field(default_factory=list)
     constraints: Dict[str, List[Constraint]] = field(default_factory=dict)
     config_errors: List[str] = field(default_factory=list)
@@ -624,8 +638,9 @@ def load_opcode_names() -> Optional[set]:
 
 
 def parse_annotations(case: TestCase, valid_opcodes: Optional[set]) -> None:
-    """Fill case.params / case.constraints; record problems in case.config_errors."""
+    """Fill case.compile_mode / case.params / case.constraints; record problems in case.config_errors."""
 
+    compile_mode: Optional[str] = None
     params: Optional[List[str]] = None
     current_method: Optional[str] = None
     try:
@@ -650,7 +665,17 @@ def parse_annotations(case: TestCase, valid_opcodes: Optional[set]) -> None:
             case.config_errors.append(f"line {lineno}: {message}")
 
         keyword = tokens[0]
-        if keyword == "PARAMS":
+        if keyword == "COMPILE_MODE":
+            if compile_mode is not None:
+                err("COMPILE_MODE may appear at most once")
+            elif len(tokens) != 2:
+                err("COMPILE_MODE expects exactly one mode")
+            elif tokens[1] not in COMPILE_MODES:
+                err(f"unknown COMPILE_MODE '{tokens[1]}' "
+                    f"(expected one of {', '.join(COMPILE_MODES)})")
+            else:
+                compile_mode = tokens[1]
+        elif keyword == "PARAMS":
             if params is not None:
                 err("PARAMS may appear at most once")
             else:
@@ -679,6 +704,7 @@ def parse_annotations(case: TestCase, valid_opcodes: Optional[set]) -> None:
                 err(str(error))
         else:
             err(f"unknown annotation keyword '{keyword}'")
+    case.compile_mode = compile_mode if compile_mode is not None else "module"
     case.params = params if params is not None else []
 
 
@@ -688,7 +714,7 @@ def parse_annotations(case: TestCase, valid_opcodes: Optional[set]) -> None:
 
 
 def compile_case(case: TestCase, abc_path: Path, cfg: BuildConfig) -> Tuple[bool, str]:
-    """Compile the source to abc with es2abc (always as an ES module)."""
+    """Compile the source to abc with es2abc in the case's COMPILE_MODE."""
 
     cmd = [
         str(cfg.es2abc),
@@ -696,8 +722,8 @@ def compile_case(case: TestCase, abc_path: Path, cfg: BuildConfig) -> Tuple[bool
         "--merge-abc",
         "--output",
         str(abc_path),
-        "--module",
     ]
+    cmd.extend(COMPILE_MODE_FLAGS[case.compile_mode])
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",

@@ -18,7 +18,6 @@
 //! METHOD      get
 //! HAS         Deopt                                   # throw Error("Invalid key")
 //! HAS_NOT     Throw
-//! COUNT       CallCommonStub          GetStringFromConstPool  4
 //! COUNT_GE    DeoptIfHClassMismatch   4
 //! COUNT_GE    LoadTaggedField         4
 
@@ -26,7 +25,6 @@
 //! COUNT_GE    InitialValue        4
 //! HAS         I32AddWithOverflow
 //! HAS_NOT     CallCommonStub      GetPropertyByName
-//! COUNT       CallCommonStub      GetStringFromConstPool  4
 //! COUNT       I32MulWithOverflow  2
 
 const REP = 6000;

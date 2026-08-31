@@ -214,6 +214,8 @@ public:
     bool GetFeedbackForElementAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
                                      ElementAccessFeedback *feedback) const;
 
+    bool GetFeedbackForGlobalAccess(const ArkSteedFeedbackReader &reader, GlobalAccessFeedback *feedback) const;
+
     bool GetFeedbackForOperation(const ArkSteedFeedbackReader &reader, OperationFeedback *feedback) const;
 
     bool TryGetCachedNamedAccessFeedback(AccessFeedbackSource source, NamedAccessFeedback *feedback) const

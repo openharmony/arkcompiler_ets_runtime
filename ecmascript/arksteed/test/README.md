@@ -49,6 +49,7 @@ All generated artifacts are written to a fresh `/tmp/arksteed-<platform>-<mode>-
 
 Annotations start with `//!`. In-line comments to annotations (starting with `#`) are supported.
 
+* `COMPILE_MODE <mode>`: Sets the compilation mode of current .js/.ts file. `<mode>` should be one of `module` (by default), `script` and `commonjs`.
 * `PARAMS <params>`: Which runtime options shall be passed to the ArkTS runtime (i.e. the `ark_js_vm` executable) for this test case.
     * Example: `//! PARAMS --enable-force-gc=true --compiler-jit-hotness-threshold=100` passes these 2 parameters to `ark_js_vm`.
     * A parameter replaces the runner default of the same option (e.g. `--enable-force-gc=true` overrides the default `=false`).

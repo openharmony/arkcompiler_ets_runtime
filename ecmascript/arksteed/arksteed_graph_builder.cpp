@@ -30,11 +30,12 @@
 #include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
-#include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/ecma_string-inl.h"  // IWYU pragma: keep
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/ic_info.h"
+#include "ecmascript/ic/property_box.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/profile_type_info_cell.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -1150,13 +1151,13 @@ struct GraphBuilder::BytecodeVisitor {
             // -------- Category #7: Property Access --------
             case kungfu::EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
             case kungfu::EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
-                LowerTryLdGlobalByName(bcInfo);
+                LowerTryLdGlobalByName(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
-                LowerLdGlobalVar(bcInfo);
+                LowerLdGlobalVar(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-                LowerStGlobalVar(bcInfo);
+                LowerStGlobalVar(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::LDSYMBOL:
                 LowerLdSymbol();
@@ -1237,7 +1238,7 @@ struct GraphBuilder::BytecodeVisitor {
                 break;
             case kungfu::EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
             case kungfu::EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16:
-                LowerTryStGlobalByName(bcInfo);
+                LowerTryStGlobalByName(bcInfo, bcIndex);
                 break;
             case kungfu::EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
                 LowerStConstToGlobalRecord(bcInfo, true);
@@ -2162,30 +2163,67 @@ struct GraphBuilder::BytecodeVisitor {
                                     CommonStubID::StOwnByNameWithNameSet);
     }
 
-    void LowerTryLdGlobalByName(const BytecodeInfo *bcInfo)
+    bool TryBuildLoadGlobalCell(uint32_t bcIndex, const BytecodeInfo *bcInfo)
     {
-        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::TryLdGlobalByName);
+        std::optional<ArkSteedObjectRef> boxRef = TryGetGlobalCellBox(bcInfo);
+        if (!boxRef.has_value()) {
+            return false;
+        }
+        ValueVertex *box = GetHeapConstant(boxRef.value());
+        if (box == nullptr) {
+            return false;
+        }
+        frameState.SetAcc(BuildGlobalCellBoxValue(bcIndex, box));
+        return true;
     }
 
-    void LowerTryStGlobalByName(const BytecodeInfo *bcInfo)
+    bool TryBuildStoreGlobalCell(uint32_t bcIndex, const BytecodeInfo *bcInfo)
     {
-        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::TryStGlobalByName);
+        std::optional<ArkSteedObjectRef> boxRef = TryGetGlobalCellBox(bcInfo);
+        if (!boxRef.has_value()) {
+            return false;
+        }
+        ValueVertex *box = GetHeapConstant(boxRef.value());
+        if (box == nullptr) {
+            return false;
+        }
+        BuildGlobalCellBoxValue(bcIndex, box);
+        BuildStoreTaggedField(box, static_cast<int32_t>(PropertyBox::VALUE_OFFSET), frameState.GetAcc());
+        return true;
     }
 
-    void LowerLdGlobalVar(const BytecodeInfo *bcInfo)
+    void LowerTryLdGlobalByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
-        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::LdGlobalVar);
+        if (!TryBuildLoadGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::TryLdGlobalByName);
+        }
     }
 
-    void LowerStGlobalVar(const BytecodeInfo *bcInfo)
+    void LowerTryStGlobalByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
     {
-        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
-        ValueVertex *value = frameState.GetAcc();
-        CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::StGlobalVar);
+        if (!TryBuildStoreGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            ValueVertex *value = frameState.GetAcc();
+            CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::TryStGlobalByName);
+        }
+    }
+
+    void LowerLdGlobalVar(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (!TryBuildLoadGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::LdGlobalVar);
+        }
+    }
+
+    void LowerStGlobalVar(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (!TryBuildStoreGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            ValueVertex *value = frameState.GetAcc();
+            CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::StGlobalVar);
+        }
     }
 
     void LowerStConstToGlobalRecord(const BytecodeInfo *bcInfo, bool isConst)
@@ -7415,6 +7453,25 @@ struct GraphBuilder::BytecodeVisitor {
         }
         BuildStoreField(receiver, value, plr);
         return true;
+    }
+
+    std::optional<ArkSteedObjectRef> TryGetGlobalCellBox(const BytecodeInfo *bcInfo)
+    {
+        ArkSteedFeedbackReader reader(self->compilerThread_, *bcInfo, self->pgoContext_.GetBroker());
+        GlobalAccessFeedback feedback;
+        if (!self->pgoContext_.GetBroker()->GetFeedbackForGlobalAccess(reader, &feedback)) {
+            return std::nullopt;
+        }
+        return feedback.box;
+    }
+
+    ValueVertex *BuildGlobalCellBoxValue(uint32_t bcIndex, ValueVertex *box)
+    {
+        ValueVertex *value = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {box}, static_cast<int32_t>(PropertyBox::VALUE_OFFSET));
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        BuildCheckTaggedCondition(bcIndex, value, hole, Condition::EQUAL, kungfu::DeoptType::PROPERTYBOXINVALID);
+        return value;
     }
 
     template <class VertexT>

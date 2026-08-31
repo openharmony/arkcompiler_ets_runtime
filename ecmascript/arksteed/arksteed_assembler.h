@@ -323,6 +323,7 @@ public:
         enableComments_ = enable;
     }
     void RecordComment(const char *str);
+    void RecordCommentAt(uint32_t pcOffset, const char *str);
     bool IsCommentEnabled() const
     {
         return enableComments_;
