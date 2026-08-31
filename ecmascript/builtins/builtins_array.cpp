@@ -884,7 +884,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
-    if (thisObjVal->IsStableJSArray(thread)) {
+    if (thisObjVal->IsStableJSArray(thread) && JSArray::Cast(*thisObjHandle)->GetLength() >= end) {
         return JSStableArray::Fill(thread, thisObjHandle, value, start, end);
     }
 

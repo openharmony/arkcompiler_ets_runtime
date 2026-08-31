@@ -241,4 +241,17 @@ function arrayInit(array, value) {
   };
 }
 
+{
+    let arr = [1, 2, 3, 4, 5, 6];
+    assert_equal(arr.length, 6);
+    arr.fill(0, {
+        valueOf() {
+            arr.splice(0);
+            return 0
+        }
+    });
+    assert_equal(arr.length, 6);
+    assert_equal(JSON.stringify(arr), JSON.stringify([0, 0, 0, 0, 0, 0]));
+}
+
 test_end();
