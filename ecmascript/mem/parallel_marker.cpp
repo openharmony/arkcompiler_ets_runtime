@@ -122,7 +122,7 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     if (heap_->IsYoungMark()) {
         return;
     }
-    auto generateVisitor = [](auto &objectVisitor) {
+    auto visitJitCodeMap = [this](auto &objectVisitor) {
         JitCodeMapVisitor visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
             auto it = jitCodeMaps.begin();
             while (it != jitCodeMaps.end()) {
@@ -139,23 +139,21 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
                 ++it;
             }
         };
-        return visitor;
-    } ;
-    JitCodeMapVisitor visitor;
+        ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
+    };
     if (heap_->GetCmsGC()) {
         ASSERT(!heap_->GetEvacuateNonMovableSpace());
         OldGCMarkObjectVisitor<true, false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-        visitor = generateVisitor(objectVisitor);
+        visitJitCodeMap(objectVisitor);
     } else {
         if (heap_->GetEvacuateNonMovableSpace()) {
             OldGCMarkObjectVisitor<false, true> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-            visitor = generateVisitor(objectVisitor);
+            visitJitCodeMap(objectVisitor);
         } else {
             OldGCMarkObjectVisitor<false, false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-            visitor = generateVisitor(objectVisitor);
+            visitJitCodeMap(objectVisitor);
         }
     }
-    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
     heap_->WaitRunningMarkTaskFinished();
 }
