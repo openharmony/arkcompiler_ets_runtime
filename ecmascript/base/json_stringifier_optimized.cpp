@@ -1092,8 +1092,8 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, bool hasC
     if (useFastPath) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(thread_, obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (ElementAccessor::IsDictionaryMode(thread_, obj) &&
-                i < ElementAccessor::GetElementsLength(thread_, obj)) {
+            if (ElementAccessor::IsDictionaryMode(thread_, obj) ||
+                i >= ElementAccessor::GetElementsLength(thread_, obj)) {
                 useFastPath = false;
                 processedIndex = i;
                 break;
