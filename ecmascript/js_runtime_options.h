@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_RUNTIME_OPTIONS_H_
 
 #include <optional>
+#include <charconv>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -2102,8 +2103,22 @@ public:
 
     void SetCompilerMethodsRange(arg_list_t* argListStr)
     {
-        compileMethodsRange_.first = std::stoull((*argListStr)[0]);
-        compileMethodsRange_.second = std::stoull((*argListStr)[1]);
+        if (argListStr == nullptr || argListStr->size() < 2) {
+            compileMethodsRange_ = {0, UINT32_MAX};
+            return;
+        }
+        uint32_t beginValue = 0;
+        uint32_t endValue = 0;
+        const std::string &beginText = (*argListStr)[0];
+        const std::string &endText = (*argListStr)[1];
+        auto beginParsed = std::from_chars(beginText.data(), beginText.data() + beginText.size(), beginValue);
+        auto endParsed = std::from_chars(endText.data(), endText.data() + endText.size(), endValue);
+        if (beginParsed.ec != std::errc{} || beginParsed.ptr != beginText.data() + beginText.size() ||
+            endParsed.ec != std::errc{} || endParsed.ptr != endText.data() + endText.size()) {
+            compileMethodsRange_ = {0, UINT32_MAX};
+            return;
+        }
+        compileMethodsRange_ = {beginValue, endValue};
     }
 
     const std::pair<uint32_t, uint32_t>& GetCompilerMethodsRange() const
