@@ -367,14 +367,6 @@ void LoadHClassAddressVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 }
 
-void FindPrototypeHolderVertex::SetValueLocationConstraints()
-{
-    DefineAsRegister(this);
-    SetTemporariesNeeded(2);  // 2: current HClass and mask/check value
-    UseRegister(Arg(RECEIVER_INDEX));
-    UseEagerDeoptFrameSlots(this);
-}
-
 void StoreTaggedToAddressVertex::SetValueLocationConstraints()
 {
     UseRegister(Arg(OBJECT_INDEX));
@@ -1142,11 +1134,6 @@ DUMP_EXTRA(LoadPrototypeHolderByHClass)
         out << "heap#" << vertex->GetExpectedHClassHandleIndex(i);
     }
     out << "]";
-}
-
-DUMP_EXTRA(FindPrototypeHolder)
-{
-    out << "  expected = heap#" << vertex->GetExpectedHClassHandleIndex();
 }
 
 DUMP_EXTRA(PrepareSharedStoreField)

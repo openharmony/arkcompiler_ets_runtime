@@ -14,8 +14,8 @@
  */
 
 //! METHOD LoadScore
-//! HAS LoadPrototypeHolderByHClass
-//! HAS_NOT HeapConstant
+//! HAS HeapConstant
+//! HAS_NOT LoadPrototypeHolderByHClass
 
 function LoadScore(obj)
 {

@@ -58,7 +58,6 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(LoadPrototypeHolderByHClass)      \
     V(ConvertHoleToUndefined)           \
     V(LoadHClassAddress)                \
-    V(FindPrototypeHolder)              \
     V(PrepareSharedStoreField)          \
     V(EnsurePropertiesCapacity)         \
     V(LoadException)                    \

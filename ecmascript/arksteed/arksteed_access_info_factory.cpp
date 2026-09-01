@@ -48,6 +48,7 @@ struct ParsedStoreHandler {
 struct ParsedLoadHandler {
     uint64_t handlerInfo {0};
     ArkSteedHClassRef holderHClass {};
+    ArkSteedObjectRef holder {};
     ArkSteedProtoCellRef protoCell {};
     uint32_t holderDepth {0};
     bool holderIsReceiver {true};
@@ -435,6 +436,7 @@ bool TryReadPrototypeLoadHandler(const ArkSteedHeapBroker *broker, JSThread *com
     result->holderIsReceiver = false;
     JSTaggedValue holderValue = prototypeHandler->GetHolder(compilerThread);
     if (holderValue.IsHeapObject()) {
+        result->holder = broker->MakeObjectRef(holderValue);
         result->holderHClass = broker->MakeHClassRef(JSTaggedValue(holderValue.GetTaggedObject()->GetClass()));
     }
     result->protoCell = broker->MakeProtoCellRef(protoCellValue);
@@ -578,7 +580,7 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
         return false;
     }
     if (!parsed.holderIsReceiver) {
-        if (!parsed.holderHClass.IsSafeForCompile()) {
+        if (!parsed.holder.IsSafeForCompile() || !parsed.holderHClass.IsSafeForCompile()) {
             return false;
         }
         parsed.holderDepth = 1;
@@ -595,6 +597,7 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     info->mode = AccessMode::NAMED_LOAD;
     info->kind = HandlerBase::IsNonExist(parsed.handlerInfo) ? AccessKind::NON_EXIST :
         (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD);
+    info->holder = parsed.holder;
     info->holderHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
     info->fieldOwnerHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
     info->fieldHClass = info->fieldOwnerHClass;
@@ -602,6 +605,8 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     info->holderDepth = parsed.holderDepth;
     info->holderIsReceiver = parsed.holderIsReceiver;
     info->hasNotFoundProtoCellGuard = parsed.hasProtoCell && HandlerBase::IsNonExist(parsed.handlerInfo);
+    info->guards.holder = parsed.holder;
+    info->guards.hasHolder = !parsed.holderIsReceiver && parsed.holder.IsSafeForCompile();
     info->guards.holderIsReceiver = parsed.holderIsReceiver;
     info->guards.hasNotFoundProtoCellGuard = info->hasNotFoundProtoCellGuard;
     FillNamedAccessInfo(caseFeedback, parsed.handlerInfo, parsed.protoCell, parsed.hasProtoCell, info);

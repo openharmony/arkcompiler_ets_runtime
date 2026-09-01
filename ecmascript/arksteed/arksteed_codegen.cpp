@@ -1660,49 +1660,6 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadHClassAddressVertex>(LoadH
 }
 
 template <>
-void ArkSteedCodeGenerator::VisitNonControlVertex<FindPrototypeHolderVertex>(
-    FindPrototypeHolderVertex *findHolder)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "CodeGen: Visiting v" << findHolder->GetId() << ": FindPrototypeHolderVertex";
-#endif
-    auto holder = GetResultRegister(findHolder);
-    auto receiver = GetInputRegister(findHolder, FindPrototypeHolderVertex::RECEIVER_INDEX);
-    TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister currentHClass = scope.Acquire();
-    ArkSteedRegister scratch = scope.Acquire();
-    ASSERT(holder != currentHClass && holder != scratch && currentHClass != scratch);
-
-    auto loadHClassAddress = [this, scratch](ArkSteedRegister dst, ArkSteedRegister object) {
-        __ LoadField(dst, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
-        __ Move(scratch, TaggedStateWord::ADDRESS_MASK);
-        __ And(dst, scratch);
-    };
-
-    Label loop;
-    Label found;
-    Label deopt;
-    loadHClassAddress(currentHClass, receiver);
-    __ LoadField(holder, currentHClass, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
-    __ Bind(&loop);
-    __ Move(scratch, holder);
-    __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
-    __ Compare(scratch, 0);
-    __ JumpIf(Condition::NOT_EQUAL, &deopt);
-
-    loadHClassAddress(currentHClass, holder);
-    __ MoveEmbeddedTagged(scratch, findHolder->GetExpectedHClassHandleIndex());
-    __ Compare(currentHClass, scratch);
-    __ JumpIf(Condition::EQUAL, &found);
-    __ LoadField(holder, currentHClass, static_cast<int32_t>(JSHClass::PROTOTYPE_OFFSET));
-    __ Jump(&loop);
-
-    __ Bind(&deopt);
-    EmitEagerDeoptExit(findHolder, kungfu::DeoptType::INCONSISTENTHCLASS4);
-    __ Bind(&found);
-}
-
-template <>
 void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedToAddressVertex>(StoreTaggedToAddressVertex *storeField)
 {
     auto obj = GetInputRegister(storeField, StoreTaggedToAddressVertex::OBJECT_INDEX);

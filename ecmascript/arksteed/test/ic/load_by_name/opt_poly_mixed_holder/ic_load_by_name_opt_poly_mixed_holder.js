@@ -14,9 +14,10 @@
  */
 
 //! METHOD LoadScore
-//! HAS DeoptIfHClassNotIn
 //! HAS BranchIfHClassIn
-//! HAS_NOT HeapConstant
+//! HAS LoadHClassAddress
+//! HAS HeapConstant
+//! HAS_NOT DeoptIfHClassNotIn
 
 function LoadScore(obj)
 {

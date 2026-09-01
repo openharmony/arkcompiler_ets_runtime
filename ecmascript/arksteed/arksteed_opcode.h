@@ -1069,41 +1069,6 @@ public:
     void SetValueLocationConstraints();
 };
 
-class FindPrototypeHolderVertex : public VertexMixin<ValueVertex, FindPrototypeHolderVertex>,
-                                  public EagerDeoptimizableMixin {
-public:
-    enum Indices : uint32_t {
-        RECEIVER_INDEX = 0,
-        NUM_INPUTS = 1,
-    };
-    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_EAGER_DEOPT |
-        VertexPropertyFlag::CAN_READ;
-
-    FindPrototypeHolderVertex(Chunk *chunk, uint32_t expectedHClassHandleIndex, uint32_t bytecodeOffset)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          expectedHClassHandleIndex_(expectedHClassHandleIndex)
-    {}
-
-    uint32_t GetExpectedHClassHandleIndex() const
-    {
-        return expectedHClassHandleIndex_;
-    }
-
-    void SetValueLocationConstraints();
-
-    void VerifyInputs() const
-    {
-        ASSERT(GetInputCount() == NUM_INPUTS);
-        ASSERT(GetInput(RECEIVER_INDEX)->GetValueRepresentation() == ValueRepresentation::TAGGED);
-    }
-
-private:
-    uint32_t expectedHClassHandleIndex_ {0};
-};
-
 enum class ArkSteedWriteBarrierKind : uint8_t {
     NO_BARRIER,
     GENERIC_BARRIER,
