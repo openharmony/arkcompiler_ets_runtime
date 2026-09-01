@@ -24,43 +24,6 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 
-namespace {
-void ResetRegisterCountsForDeregisterInner(JSThread *thread, JSHandle<SourceTextModule> module,
-                                           CUnorderedSet<CString, CStringHash> &visitedModules)
-{
-    CString moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-    if (!visitedModules.emplace(moduleRecordName).second) {
-        return;
-    }
-    if (module->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE) {
-        return;
-    }
-    if (module->GetRequestedModules(thread).IsUndefined()) {
-        return;
-    }
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
-    for (size_t idx = 0; idx < requestedModules->GetLength(); idx++) {
-        JSHandle<SourceTextModule> requiredModule =
-            SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx);
-        RETURN_IF_ABRUPT_COMPLETION(thread);
-        CString requiredModuleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
-        if (visitedModules.find(requiredModuleName) != visitedModules.end()) {
-            continue;
-        }
-        JSHandle<JSTaggedValue> restoredModule =
-            thread->GetModuleManager()->TryGetPendingRemovalModule(requiredModuleName);
-        if (restoredModule->IsUndefined()) {
-            ModuleDeregister::DisableMultiEntryDeregister(thread, requiredModule, ExecuteTypes::DYNAMIC);
-            RETURN_IF_ABRUPT_COMPLETION(thread);
-            continue;
-        }
-        ModuleDeregister::InitForDeregisterModule(restoredModule, ExecuteTypes::DYNAMIC);
-        ResetRegisterCountsForDeregisterInner(
-            thread, JSHandle<SourceTextModule>::Cast(restoredModule), visitedModules);
-    }
-}
-} // namespace
-
 void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointer, void *hint)
 {
     // LCOV_EXCL_BR_START
@@ -76,11 +39,12 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
     // pointer is module's name, which will be deregistered.
     JSTaggedValue moduleVal =
         thread->GetModuleManager()->HostGetImportedModule(pointer);
-    NativeAreaAllocator* allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
-    allocator->FreeBuffer(pointer);
     if (moduleVal.IsUndefined()) {
         return;
     }
+
+    NativeAreaAllocator* allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
+    allocator->FreeBuffer(pointer);
 
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(moduleVal.GetTaggedObject()));
     LoadingTypes type = module->GetLoadingTypes();
@@ -99,28 +63,65 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
     LOG_FULL(DEBUG) << "try to remove module " << recordNameStr << ", register counts is " << counts;
 }
 
+void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &moduleName)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    if (!moduleManager->IsLocalModuleLoaded(moduleName)) {
+        return;
+    }
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(moduleName);
+
+    LoadingTypes type = module->GetLoadingTypes();
+    // do not change stable module's RegisterCounts.
+    if (type == LoadingTypes::STABLE_MODULE) {
+        return;
+    }
+    if (!vm->ContainInDeregisterModuleList(moduleName)) {
+        std::set<CString> increaseModule = {moduleName};
+        IncreaseRegisterCounts(thread, module, increaseModule);
+    }
+}
+
 void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module)
 {
     CString recordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-    thread->GetModuleManager()->RemoveModuleFromCacheToPending(recordName);
+    thread->GetModuleManager()->RemoveModuleFromCache(recordName);
 }
 
-void ModuleDeregister::ResetRegisterCountsForDeregister(JSThread *thread, JSHandle<SourceTextModule> module)
+void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
+    std::set<CString> &increaseModule)
 {
-    CUnorderedSet<CString, CStringHash> visitedModules;
-    ResetRegisterCountsForDeregisterInner(thread, module, visitedModules);
-}
-
-void ModuleDeregister::RestoreModuleFromPending(JSThread *thread, const JSHandle<JSTaggedValue> &moduleRecord,
-                                                const ExecuteTypes &executeType)
-{
-    InitForDeregisterModule(moduleRecord, executeType);
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
-    ResetRegisterCountsForDeregister(thread, module);
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    if (executeType != ExecuteTypes::DYNAMIC) {
-        SetModuleLoadingTypeToStable(thread, module);
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
+        size_t requestedModulesLen = requestedModules->GetLength();
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            JSHandle<SourceTextModule> requiredModule =
+                SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
+            const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
+            CString moduleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
+            if (increaseModule.find(moduleName) != increaseModule.end()) {
+                continue;
+            }
+            increaseModule.emplace(moduleName);
+            LoadingTypes type = requiredModule->GetLoadingTypes();
+            if (type == LoadingTypes::DYNAMITC_MODULE) {
+                IncreaseRegisterCounts(thread, requiredModule, increaseModule);
+            }
+        }
     }
+
+    if (module->GetLoadingTypes() == LoadingTypes::STABLE_MODULE) {
+        return;
+    }
+    uint16_t registerNum = module->GetRegisterCounts();
+    if (registerNum == UINT16_MAX) {
+        module->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+        return;
+    }
+    module->SetRegisterCounts(registerNum + 1);
 }
 
 void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
@@ -136,9 +137,6 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
             ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
             CString moduleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
             if (moduleName.empty()) {
-                continue;
-            }
-            if (thread->GetModuleManager()->IsPendingRemovalModule(moduleName)) {
                 continue;
             }
             if (decreaseModule.find(moduleName) != decreaseModule.end()) {
