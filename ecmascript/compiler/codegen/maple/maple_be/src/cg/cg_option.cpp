@@ -14,6 +14,7 @@
  */
 
 #include "cg_option.h"
+#include <charconv>
 #include "cg_options.h"
 #include "triple.h"
 #include "option.h"
@@ -286,8 +287,17 @@ void CGOptions::SetRange(const std::string &str, const std::string &cmd, Range &
     subRange.enable = true;
 
     if (comma != std::string::npos) {
-        subRange.begin = std::stoul(tmpStr.substr(0, comma), nullptr);
-        subRange.end = std::stoul(tmpStr.substr(comma + 1, std::string::npos - (comma + 1)), nullptr);
+        const std::string beginText = tmpStr.substr(0, comma);
+        const std::string endText = tmpStr.substr(comma + 1);
+        uint64 beginValue = 0;
+        uint64 endValue = 0;
+        auto beginParsed = std::from_chars(beginText.data(), beginText.data() + beginText.size(), beginValue);
+        auto endParsed = std::from_chars(endText.data(), endText.data() + endText.size(), endValue);
+        CHECK_FATAL(beginParsed.ec == std::errc{} && beginParsed.ptr == beginText.data() + beginText.size() &&
+            endParsed.ec == std::errc{} && endParsed.ptr == endText.data() + endText.size(),
+            "invalid range values for %s", cmd.c_str());
+        subRange.begin = beginValue;
+        subRange.end = endValue;
     }
     CHECK_FATAL(range.begin < range.end, "invalid values for %s=%lu,%lu", cmd.c_str(), subRange.begin, subRange.end);
 }
