@@ -126,8 +126,6 @@ private:
     std::atomic<ChainedHashMapEntry*> overflow_;
 };
 
-using ChainedHashMapSlotCheckInfo = std::tuple<uint32_t, ChainedHashMapEntry*>;
-
 template<typename Mutex>
 class ChainedHashMap {
 public:
@@ -238,20 +236,14 @@ public:
         waitFreeEntries_.clear();
     }
 
-    void CheckAndFreeHeadEntries(std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+    void CheckAndFreeHeadEntries(uint32_t partitionId)
     {
-        for (auto info: waitCheckAndFreeHeadEntries) {
-            uint32_t index = std::get<0>(info); // 0: index
-            ChainedHashMapEntry* current = buckets_[index].load(std::memory_order_relaxed);
-            ChainedHashMapEntry* oldHead = std::get<1>(info); // 1: oldHead
-            ASSERT(oldHead->Value<ChainedHashMapConfig::NoSlotBarrier>() == nullptr);
-            if (current == oldHead) {
-                buckets_[index].store(oldHead->Overflow().load(std::memory_order_relaxed),
-                                      std::memory_order_relaxed);
-                delete oldHead;
+        ForEachBucketHeadInPartition(partitionId, [this](ChainedHashMapEntry* bucketHead, uint32_t index) {
+            if (bucketHead->Value<ChainedHashMapConfig::NoSlotBarrier>() == nullptr) {
+                StoreBucket(index, bucketHead->Overflow().load(std::memory_order_relaxed));
+                delete bucketHead;
             }
-        }
-        waitCheckAndFreeHeadEntries.clear();
+        });
     }
 
     // CMC GC only: can be removed after CMC GC is adapted.
@@ -471,8 +463,7 @@ public:
     bool ClearNodeFromGC(Entry* parent,
                          uint32_t index,
                          const WeakRootVisitor& visitor,
-                         std::vector<Entry*>& waitDeleteEntries,
-                         std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
+                         std::vector<Entry*>& waitDeleteEntries);
 
     template<ChainedHashMapConfig::SlotBarrier Barrier = SlotBarrier,
              std::enable_if_t<Barrier == ChainedHashMapConfig::NoSlotBarrier ||

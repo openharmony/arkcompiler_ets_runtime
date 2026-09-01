@@ -422,8 +422,7 @@ bool ChainedHashMapOperation<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(
     Entry* parent,
     uint32_t index,
     const WeakRootVisitor& visitor,
-    std::vector<Entry*>& waitDeleteEntries,
-    std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+    std::vector<Entry*>& waitDeleteEntries)
 {
     Entry* entry = parent;
     // Processing the overflow linked list
@@ -435,9 +434,6 @@ bool ChainedHashMapOperation<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(
         } else {
             prev = current;
         }
-    }
-    if (entry->Value<ChainedHashMapConfig::NoSlotBarrier>() == nullptr) {
-        waitCheckAndFreeHeadEntries.push_back(std::make_tuple(index, entry));
     }
     return false;
 }

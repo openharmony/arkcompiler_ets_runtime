@@ -113,8 +113,7 @@ void EcmaStringTableCleaner::ProcessConcurrentSweepWeakRef(IteratorPtr &iter, Ec
             delete entry;
         }
         waitFreeEntries.clear();
-        cleaner->stringTable_->ConcurrentSweepWeakRef(visitor, index, waitFreeEntries,
-                                                      cleaner->waitCheckAndFreeHeadEntries_[index]);
+        cleaner->stringTable_->ConcurrentSweepWeakRef(visitor, index, waitFreeEntries);
         if (ReduceCountAndCheckFinish(cleaner)) {
             cleaner->SignalSweepWeakRefTaskPending();
         }
@@ -189,7 +188,7 @@ void EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries()
         chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType*>(
             stringTable_->GetChainedHashMap());
     for (uint32_t i = 0; i < ChainedHashMapConfig::SWEEP_PARTITION_COUNT; i++) {
-        chainedHashMap->CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries_[i]);
+        chainedHashMap->CheckAndFreeHeadEntries(i);
     }
 }
 
@@ -634,16 +633,14 @@ void EcmaStringTableImpl::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t 
 }
 
 void EcmaStringTableImpl::ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t partitionID,
-                                                 std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
-                                                 std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+                                                 std::vector<ChainedHashMapEntry*>& waitDeleteEntries)
 {
     auto *chainedHashMap = reinterpret_cast<DisableCMCGCNormalTrait::ChainedHashMapType *>(GetChainedHashMap());
     using ConcurrentSweepOperation = ChainedHashMapOperation<EcmaStringTableMutex, JSThread,
                                                              ChainedHashMapConfig::NeedSlotBarrier>;
     ConcurrentSweepOperation chainedHashMapOperation(chainedHashMap);
     chainedHashMap->ForEachBucketHeadInPartition(partitionID, [&](ChainedHashMapEntry* bucketHead, uint32_t index) {
-        chainedHashMapOperation.ClearNodeFromGC(
-            bucketHead, index, visitor, waitDeleteEntries, waitCheckAndFreeHeadEntries);
+        chainedHashMapOperation.ClearNodeFromGC(bucketHead, index, visitor, waitDeleteEntries);
     });
 }
 
@@ -887,15 +884,14 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor& visitor, uint32_t part
 }
 
 void EcmaStringTable::ConcurrentSweepWeakRef(const WeakRootVisitor& visitor, uint32_t partitionID,
-                                             std::vector<ChainedHashMapEntry*>& waitDeleteEntries,
-                                             std::vector<ChainedHashMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+                                             std::vector<ChainedHashMapEntry*>& waitDeleteEntries)
 {
 #ifdef USE_CMC_GC
     if (enableCMCGC_) {
         UNREACHABLE();
     }
 #endif
-    impl_.ConcurrentSweepWeakRef(visitor, partitionID, waitDeleteEntries, waitCheckAndFreeHeadEntries);
+    impl_.ConcurrentSweepWeakRef(visitor, partitionID, waitDeleteEntries);
 }
 
 bool EcmaStringTable::CheckStringTableValidity(JSThread *thread)
