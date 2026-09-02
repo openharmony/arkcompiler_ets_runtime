@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -184,6 +184,16 @@ public:
         hooks_->DisableFirstTimeFlag();
     }
 
+    void EnableSimplifiedMode()
+    {
+        simplifiedMode_ = true;
+    }
+
+    bool IsSimplifiedMode() const
+    {
+        return simplifiedMode_;
+    }
+
     void SetSymbolicBreakpoint(const std::unordered_set<std::string> &functionNamesSet)
     {
         symbolicBreakpoints_.insert(functionNamesSet.begin(), functionNamesSet.end());
@@ -225,6 +235,7 @@ private:
     PtHooks *hooks_ {nullptr};
     NotificationManager *notificationMgr_ {nullptr};
     bool singleStepOnDebuggerStmt_ {false};
+    bool simplifiedMode_ {false};
 
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpoints_ {};
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> smartBreakpoints_ {};

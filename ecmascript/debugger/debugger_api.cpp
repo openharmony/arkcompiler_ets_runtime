@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -351,6 +351,16 @@ bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string
 void DebuggerApi::DisableFirstTimeFlag(JSDebugger *debugger)
 {
     return debugger->DisableFirstTimeFlag();
+}
+
+void DebuggerApi::EnableSimplifiedMode(JSDebugger *debugger)
+{
+    debugger->EnableSimplifiedMode();
+}
+
+bool DebuggerApi::IsSimplifiedMode(JSDebugger *debugger)
+{
+    return debugger->IsSimplifiedMode();
 }
 
 void DebuggerApi::SetSymbolicBreakpoint(JSDebugger *debugger, const std::unordered_set<std::string> &functionNamesSet)

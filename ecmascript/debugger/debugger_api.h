@@ -169,6 +169,8 @@ public:
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
     static bool RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url);
     static void DisableFirstTimeFlag(JSDebugger *debugger);
+    static void EnableSimplifiedMode(JSDebugger *debugger);
+    static bool IsSimplifiedMode(JSDebugger *debugger);
     static void SetSymbolicBreakpoint(JSDebugger *debugger, const std::unordered_set<std::string> &functionNamesSet);
     static void RemoveSymbolicBreakpoint(JSDebugger *debugger, const std::string &functionName);
     static bool ForEachFrameInUnionStack(const EcmaVM *ecmaVm,
