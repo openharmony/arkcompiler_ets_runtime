@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
@@ -291,6 +296,100 @@ HWTEST_F_L0(SharedCCStringTableSweepDisabledTest, StringTableSweepDisabledTest)
     Local<StringRef> afterGC = StringRef::NewFromUtf8(instance, stringData);
     EXPECT_TRUE(interned == afterGC);
     EXPECT_EQ(alive->GetLength(), ARRAY_LEN);
+}
+
+namespace {
+constexpr size_t WORKER_ARRAY_LEN = 10;
+constexpr size_t WORKER_LOCAL_REF_COUNT = 2;
+constexpr size_t WORKER_GARBAGE_LEN = 16 * 1024;
+constexpr size_t WORKER_GARBAGE_COUNT = 64;
+
+struct WorkerCtx {
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool workerReady {false};
+    bool gcDone {false};
+    bool workerOk {false};
+};
+
+void VerifyWorkerRefs(JSThread *workerThread, const JSHandle<TaggedArray> &localArr)
+{
+    JSTaggedValue r1 = localArr->Get(workerThread, 0);
+    EXPECT_TRUE(r1.IsHeapObject());
+    EXPECT_TRUE(r1.IsInSharedHeap());
+    EXPECT_EQ(JSHandle<TaggedArray>(workerThread, r1)->GetLength(), WORKER_ARRAY_LEN);
+    JSTaggedValue r2 = localArr->Get(workerThread, 1);
+    EXPECT_TRUE(r2.IsHeapObject());
+    EXPECT_TRUE(r2.IsInSharedHeap());
+    EXPECT_EQ(JSHandle<TaggedArray>(workerThread, r2)->GetLength(), WORKER_ARRAY_LEN);
+    JSTaggedValue r12 = JSHandle<TaggedArray>(workerThread, r1)->Get(workerThread, 0);
+    EXPECT_TRUE(r12.IsHeapObject());
+    EXPECT_TRUE(r12.IsInSharedHeap());
+}
+
+void WorkerRun(WorkerCtx *ctx)
+{
+    JSRuntimeOptions options;
+    options.SetEnableForceGC(false);
+    EcmaVM *workerVm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(workerVm != nullptr) << "Cannot create worker EcmaVM";
+    JSThread *workerThread = workerVm->GetJSThread();
+    workerThread->ManagedCodeBegin();
+    {
+        EcmaHandleScope workerScope(workerThread);
+        ObjectFactory *factory = workerVm->GetFactory();
+        JSHandle<TaggedArray> sharedAlive1 = factory->NewSTaggedArray(WORKER_ARRAY_LEN, JSTaggedValue::Undefined());
+        JSHandle<TaggedArray> sharedAlive2 = factory->NewSTaggedArray(WORKER_ARRAY_LEN, JSTaggedValue::Undefined());
+        {
+            EcmaHandleScope tmpScope(workerThread);
+            for (size_t i = 0; i < WORKER_GARBAGE_COUNT; i++) {
+                factory->NewSTaggedArray(WORKER_GARBAGE_LEN, JSTaggedValue::Undefined());
+            }
+        }
+        sharedAlive1->Set(workerThread, 0, sharedAlive2);
+        JSHandle<TaggedArray> localArr =
+            factory->NewTaggedArray(WORKER_LOCAL_REF_COUNT, JSTaggedValue::Undefined(), false);
+        localArr->Set(workerThread, 0, sharedAlive1);
+        localArr->Set(workerThread, 1, sharedAlive2);
+        {
+            ThreadSuspensionScope suspensionScope(workerThread);
+            std::unique_lock<std::mutex> lock(ctx->mtx);
+            ctx->workerReady = true;
+            ctx->cv.notify_one();
+            ctx->cv.wait(lock, [ctx] { return ctx->gcDone; });
+        }
+        VerifyWorkerRefs(workerThread, localArr);
+    }
+    workerThread->ManagedCodeEnd();
+    JSNApi::DestroyJSVM(workerVm);
+    std::lock_guard<std::mutex> lock(ctx->mtx);
+    ctx->workerOk = true;
+    ctx->cv.notify_one();
+}
+} // namespace
+
+HWTEST_F_L0(SharedCCTest, WorkerThreadSharedRSetTest)
+{
+    WorkerCtx ctx;
+    std::thread worker(WorkerRun, &ctx);
+    {
+        ThreadNativeScope nativeScope(thread);
+        std::unique_lock<std::mutex> lock(ctx.mtx);
+        ctx.cv.wait(lock, [&ctx] { return ctx.workerReady; });
+    }
+    CollectSharedCC();
+    {
+        std::lock_guard<std::mutex> lock(ctx.mtx);
+        ctx.gcDone = true;
+        ctx.cv.notify_all();
+    }
+    {
+        ThreadNativeScope nativeScope(thread);
+        std::unique_lock<std::mutex> lock(ctx.mtx);
+        ctx.cv.wait(lock, [&ctx] { return ctx.workerOk; });
+    }
+    worker.join();
+    EXPECT_TRUE(ctx.workerOk);
 }
 
 } // namespace panda::test

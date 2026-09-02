@@ -1165,6 +1165,9 @@ void JSThread::WaitCCSuspend()
 void JSThread::ClearCCSuspend()
 {
     LockHolder lock(suspendLock_);
+    if (!HasCCSuspend()) {
+        return;
+    }
     ClearFlag(ThreadFlag::CC_SUSPEND);
     suspendCondVar_.SignalAll();
 }
