@@ -88,8 +88,9 @@ void SharedCC::ReMarkAndPrepare(GCReason gcReason)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedCC::ReMarkAndPrepare", "");
     TRACE_GC(GCStats::Scope::ScopeId::ReMark, sHeap_->GetEcmaGCStats());
-    ThreadManagedScope runningScope(dThread_);
     {
+        SharedHeap::LocalCCDrainScope localCCDrainScope(dThread_);
+        ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
         EnterSharedGCScope();
         sHeap_->CheckProfilerEnabled();

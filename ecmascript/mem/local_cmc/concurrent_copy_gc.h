@@ -38,6 +38,8 @@ public:
     PUBLIC_API void WaitFinished();
 
 private:
+    // Coordinate this collector's copy lifetime with the SharedGC LocalCC drain.
+    void StartLocalCCCopy();
     void ProcessWeakReference();
     void Sweep();
     void InitializeCopyPhase();

@@ -101,10 +101,14 @@ public:
 void SharedPartialGC::RunFlip(GCReason reason)
 {
     Runtime *runtime = Runtime::GetInstance();
+    {
+        SharedHeap::LocalCCDrainScope localCCDrainScope(dThread_);
+        ThreadManagedScope runningScope(dThread_);
+        SharedPartialGCSuspendCallback suspendCallback(reason);
+        SharedPartialGCFlipFunction flipFunction;
+        runtime->FlipAllThreads(dThread_, &suspendCallback, &flipFunction);
+    }
     ThreadManagedScope runningScope(dThread_);
-    SharedPartialGCSuspendCallback suspendCallback(reason);
-    SharedPartialGCFlipFunction flipFunction;
-    runtime->FlipAllThreads(dThread_, &suspendCallback, &flipFunction);
     // run in daemon thread concurrently.
     sHeap_->GetSharedGCEvacuator()->ProcessLocalToShareRSet();
     sHeap_->GetSharedGCEvacuator()->ProcessAndWaitSRegionUpdateFinished();

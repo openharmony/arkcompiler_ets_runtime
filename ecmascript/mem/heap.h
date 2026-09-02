@@ -737,6 +737,16 @@ public:
 
     void WaitAllTasksFinished(JSThread *thread);
 
+    // Used by the daemon thread before entering managed state to block new LocalCC copies and drain active copies.
+    class LocalCCDrainScope final {
+    public:
+        explicit LocalCCDrainScope(JSThread *thread);
+        ~LocalCCDrainScope();
+
+        NO_COPY_SEMANTIC(LocalCCDrainScope);
+        NO_MOVE_SEMANTIC(LocalCCDrainScope);
+    };
+
     void StartConcurrentMarking(TriggerGCType gcType, MarkReason markReason);         // In daemon thread
 
     // Use JSThread instead of DaemonThread to check if IsReadyToSharedConcurrentMark, to avoid an atomic load.
@@ -1158,6 +1168,11 @@ private:
 
     Mutex suspensionRequestMutex_;
 
+    Mutex localCCDrainMutex_;
+    ConditionVariable localCCDrainCV_;
+    uint32_t activeLocalCCCount_ {0};
+    bool localCCCopyStartBlocked_ {false};
+
     DaemonThread *dThread_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
@@ -1200,6 +1215,8 @@ private:
     SharedMemoryReallocator memoryReallocator_;
 
     SHAREDHEAP_PRIVATE_HYBRID_EXTENSION();
+
+    friend class ConcurrentCopyGC;
 };
 
 class RunningMarkTaskSnapshot {
