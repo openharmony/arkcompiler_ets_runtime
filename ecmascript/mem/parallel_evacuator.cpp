@@ -590,7 +590,6 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
-    heap_->GetEcmaVM()->ProcessPendingRemovalModules(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
 }
 

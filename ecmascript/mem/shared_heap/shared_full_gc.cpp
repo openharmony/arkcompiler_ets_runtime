@@ -118,7 +118,6 @@ void SharedFullGC::Sweep()
         thread->IterateWeakRoots(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
-        thread->GetEcmaVM()->ProcessPendingRemovalModules(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
         thread->ClearVMCachedConstantPool();
     });

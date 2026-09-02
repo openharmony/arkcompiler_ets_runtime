@@ -144,7 +144,6 @@ void ConcurrentCopyGC::UpdateRoot()
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakRoots(weakVisitor);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(weakVisitor);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(weakVisitor);
-    heap_->GetEcmaVM()->ProcessPendingRemovalModules(weakVisitor);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(weakVisitor);
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(weakVisitor);
     CCUpdateRootVisitor updateRoot(mainEvacuator);

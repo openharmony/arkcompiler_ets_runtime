@@ -193,7 +193,6 @@ void SharedPartialGC::FlipUpdateWeakRoot(JSThread *thread)
     thread->IterateWeakRoots(UpdateWeakRootVisitor);
     thread->IterateWeakEcmaGlobalStorage(UpdateWeakRootVisitor, GCKind::SHARED_GC);
     thread->GetEcmaVM()->ProcessSnapShotEnv(UpdateWeakRootVisitor);
-    thread->GetEcmaVM()->ProcessPendingRemovalModules(UpdateWeakRootVisitor);
     if (sHeap_->HasCSetRegions()) {
         thread->ClearVMCachedConstantPool();
     }
