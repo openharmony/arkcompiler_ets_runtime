@@ -598,6 +598,30 @@ void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
     }
 }
 
+SharedHeap::LocalCCDrainScope::LocalCCDrainScope([[maybe_unused]] JSThread *thread)
+{
+    CHECK_DAEMON_THREAD();
+    ASSERT(!thread->IsInRunningState());
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedHeap::WaitLocalCCDrain", "");
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    LockHolder lock(sHeap->localCCDrainMutex_);
+    ASSERT(!sHeap->localCCCopyStartBlocked_);
+    sHeap->localCCCopyStartBlocked_ = true;
+    while (sHeap->activeLocalCCCount_ > 0) {
+        sHeap->localCCDrainCV_.Wait(&sHeap->localCCDrainMutex_);
+    }
+}
+
+SharedHeap::LocalCCDrainScope::~LocalCCDrainScope()
+{
+    CHECK_DAEMON_THREAD();
+    ASSERT(!JSThread::GetCurrent()->IsInRunningState());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    LockHolder lock(sHeap->localCCDrainMutex_);
+    sHeap->localCCCopyStartBlocked_ = false;
+    sHeap->localCCDrainCV_.SignalAll();
+}
+
 void SharedHeap::TriggerSharedCC(GCReason gcReason)
 {
     ASSERT(JSThread::GetCurrent() == dThread_);
@@ -679,6 +703,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         return;
     }
     {
+        LocalCCDrainScope localCCDrainScope(dThread_);
         ThreadManagedScope runningScope(dThread_);
         SetGCThreadQosPriority(common::PriorityMode::STW);
         SuspendAllScope scope(dThread_);
@@ -2098,6 +2123,7 @@ void Heap::CollectGarbageFromCCMark(GCReason reason)
     CHECK_NO_GC;
     CheckOngoingConcurrentMarking();
     ASSERT(thread_->IsMarkFinished());
+    ccGC_->StartLocalCCCopy();
     gcType_ = TriggerGCType::LOCAL_CC;
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType_, reason);
     memController_->StartCalculationBeforeGC();

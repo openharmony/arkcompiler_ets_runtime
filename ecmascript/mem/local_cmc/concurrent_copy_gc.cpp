@@ -26,6 +26,7 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 ConcurrentCopyGC::ConcurrentCopyGC(Heap *heap) : heap_(heap), thread_(heap->GetJSThread())
@@ -39,6 +40,26 @@ ConcurrentCopyGC::ConcurrentCopyGC(Heap *heap) : heap_(heap), thread_(heap->GetJ
     }
     auto mainEvacuator = new CCEvacuator(heap_, GetTlabAllocator(MAIN_THREAD_INDEX));
     thread_->InstallLocalCCEvacuator(mainEvacuator);
+}
+
+void ConcurrentCopyGC::StartLocalCCCopy()
+{
+    ASSERT(thread_->IsInRunningState());
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    {
+        RuntimeLockHolder lock(thread_, sHeap->localCCDrainMutex_);
+        if (!sHeap->localCCCopyStartBlocked_) {
+            sHeap->activeLocalCCCount_++;
+            return;
+        }
+    }
+    // SharedGC may need this thread to reach a safepoint, so never wait while remaining RUNNING.
+    ThreadNativeScope nativeScope(thread_);
+    LockHolder lock(sHeap->localCCDrainMutex_);
+    while (sHeap->localCCCopyStartBlocked_) {
+        sHeap->localCCDrainCV_.Wait(&sHeap->localCCDrainMutex_);
+    }
+    sHeap->activeLocalCCCount_++;
 }
 
 void ConcurrentCopyGC::RunPhase()
@@ -306,12 +327,23 @@ void ConcurrentCopyGC::RunUpdatePhase()
         });
     });
     std::atomic_thread_fence(std::memory_order_seq_cst);
-    LockHolder lock(waitMutex_);
-    heap_->SetGCState(false);
-    thread_->SetCCStatus(CCStatus::COPY_FINISHED);
-    thread_->SetCheckSafePointStatus();
-    ccUpdateFinished_ = true;
-    waitCV_.SignalAll();
+    {
+        LockHolder waitLock(waitMutex_);
+        heap_->SetGCState(false);
+        thread_->SetCCStatus(CCStatus::COPY_FINISHED);
+        thread_->SetCheckSafePointStatus();
+        ccUpdateFinished_ = true;
+        waitCV_.SignalAll();
+    }
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    {
+        LockHolder drainLock(sHeap->localCCDrainMutex_);
+        ASSERT(sHeap->activeLocalCCCount_ > 0);
+        sHeap->activeLocalCCCount_--;
+        if (sHeap->activeLocalCCCount_ == 0) {
+            sHeap->localCCDrainCV_.SignalAll();
+        }
+    }
 }
 
 void ConcurrentCopyGC::WaitFinished()

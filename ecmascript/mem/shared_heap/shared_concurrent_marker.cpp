@@ -152,6 +152,7 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
         sHeap_->WaitSensitiveStatusFinished();
     }
     {
+        SharedHeap::LocalCCDrainScope localCCDrainScope(dThread_);
         ThreadManagedScope runningScope(dThread_);
         InitialMarkSuspendCallback suspendCallback;
         if (IsCCMode()) {
