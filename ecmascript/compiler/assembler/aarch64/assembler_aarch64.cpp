@@ -366,7 +366,12 @@ void AssemblerAarch64::Stlr(const Register &rt, const MemoryOperand &operand)
 
 void AssemblerAarch64::Strb(const Register &rt, const MemoryOperand &operand)
 {
-    ASSERT(rt.IsW() && operand.IsImmediateOffset() && operand.GetAddrMode() == OFFSET);
+    ASSERT(rt.IsW());
+    if (!operand.IsImmediateOffset()) {
+        StrRegisterOffset(rt, operand, Scale::B);
+        return;
+    }
+    ASSERT(operand.GetAddrMode() == OFFSET);
     int64_t offset = operand.GetImmediate().Value();
     ASSERT(offset >= 0 && offset <= 4095);  // 4095: unsigned imm12 byte offset.
     uint32_t code =
@@ -376,11 +381,31 @@ void AssemblerAarch64::Strb(const Register &rt, const MemoryOperand &operand)
 
 void AssemblerAarch64::Strh(const Register &rt, const MemoryOperand &operand)
 {
-    ASSERT(rt.IsW() && operand.IsImmediateOffset() && operand.GetAddrMode() == OFFSET);
+    ASSERT(rt.IsW());
+    if (!operand.IsImmediateOffset()) {
+        StrRegisterOffset(rt, operand, Scale::H);
+        return;
+    }
+    ASSERT(operand.GetAddrMode() == OFFSET);
     int64_t offset = operand.GetImmediate().Value();
     ASSERT(offset >= 0 && (offset % 2) == 0 && offset <= 8190);  // 8190: unsigned imm12 scaled by 2.
     uint32_t code =
         0x79000000 | (static_cast<uint32_t>(offset / 2) << 10) | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::StrRegisterOffset(const Register &rt, const MemoryOperand &operand, Scale scale)
+{
+    ASSERT(rt.IsW() && !operand.IsImmediateOffset());
+    ASSERT(operand.GetExtendOption() != Extend::NO_EXTEND);
+    ASSERT(scale == Scale::B || scale == Scale::H);
+    uint32_t op = scale == Scale::B ? LoadStoreOpCode::STRB_Register : LoadStoreOpCode::STRH_Register;
+    uint32_t shift = GetShiftOfLdr(operand, scale, false);
+    uint32_t extendField =
+        (operand.GetExtendOption() << LDR_STR_Extend_LOWBITS) & LDR_STR_Extend_MASK;
+    uint32_t shiftField = (shift << LDR_STR_S_LOWBITS) & LDR_STR_S_MASK;
+    uint32_t code = op | Rm(operand.GetRegisterOffset().GetId()) | extendField | shiftField |
+                    Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
     EmitU32(code);
 }
 

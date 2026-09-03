@@ -185,7 +185,9 @@ HWTEST_F_L0(AssemblerAarch64Test, LdrStr)
                              "0000001c:78408fe1 \tldrh\tw1, [sp, #8]!\n"
                              "00000020:794013e1 \tldrh\tw1, [sp, #8]\n"
                              "00000024:f85f83e1 \tldur\tx1, [sp, #-8]\n"
-                             "00000028:f81f83e3 \tstur\tx3, [sp, #-8]\n");
+                             "00000028:f81f83e3 \tstur\tx3, [sp, #-8]\n"
+                             "0000002c:38234841 \tstrb\tw1, [x2, w3, uxtw]\n"
+                             "00000030:782658a4 \tstrh\tw4, [x5, w6, uxtw #1]\n");
 
     AssemblerAarch64 masm(chunk_);
     __ Str(x1, MemoryOperand(sp, 8, POSTINDEX));
@@ -199,6 +201,8 @@ HWTEST_F_L0(AssemblerAarch64Test, LdrStr)
     __ Ldrh(w1, MemoryOperand(sp, 8, OFFSET));
     __ Ldur(x1, MemoryOperand(sp, -8, OFFSET));
     __ Stur(x3, MemoryOperand(sp, -8, OFFSET));
+    __ Strb(w1, MemoryOperand(x2, w3, UXTW));
+    __ Strh(w4, MemoryOperand(x5, w6, UXTW, 1));
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
