@@ -86,6 +86,33 @@ void PageRelease([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 {
 }
 
+// No memfd on Windows; callers fall back to filling the memory themselves.
+bool CreateFillTemplate([[maybe_unused]] size_t size, [[maybe_unused]] uint64_t fillWord,
+                        [[maybe_unused]] size_t wordSize)
+{
+    return false;
+}
+
+void DestroyFillTemplates()
+{
+}
+
+bool IsFillTemplateReady([[maybe_unused]] size_t wordSize)
+{
+    return false;
+}
+
+bool MapFillTemplate([[maybe_unused]] void *addr, [[maybe_unused]] size_t size,
+                     [[maybe_unused]] size_t wordSize)
+{
+    return false;
+}
+
+bool UnmapFillTemplate([[maybe_unused]] void *addr, [[maybe_unused]] size_t size)
+{
+    return false;
+}
+
 void PagePreRead([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 {
 }

@@ -18,6 +18,7 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_array-inl.h"
 
+#include "ecmascript/mem/hole_memory.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
@@ -119,6 +120,26 @@ void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t l
     SetLength(length);
     SetExtraLength(extraLength);
     ASSERT(initValue.IsSpecial());
+    // If this array was allocated onto the shared hole template, its whole
+    // pages already read as Hole; writing them would copy-on-write every one of
+    // them and throw away the entire benefit. Only the partial pages at either
+    // end still need to be written.
+    if (initValue.IsHole()) {
+        // TaggedArray slots stay JSTaggedType wide even in a compressed build,
+        // so SkipRange declines there and the plain fill below runs.
+        constexpr size_t ELEM = JSTaggedValue::TaggedTypeSize();
+        uintptr_t dataBegin = reinterpret_cast<uintptr_t>(GetData());
+        size_t dataSize = static_cast<size_t>(length) * ELEM;
+        uintptr_t skipBegin = 0;
+        uintptr_t skipEnd = 0;
+        if (HoleMemory::SkipRange(dataBegin, dataSize, ELEM, skipBegin, skipEnd)) {
+            std::fill(reinterpret_cast<JSTaggedType *>(dataBegin),
+                      reinterpret_cast<JSTaggedType *>(skipBegin), initValue.GetRawData());
+            std::fill(reinterpret_cast<JSTaggedType *>(skipEnd),
+                      reinterpret_cast<JSTaggedType *>(dataBegin + dataSize), initValue.GetRawData());
+            return;
+        }
+    }
     std::fill_n(GetData(), length, initValue.GetRawData());
 }
 

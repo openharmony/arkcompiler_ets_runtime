@@ -108,5 +108,39 @@ const std::string GetPageTagString(PageTagType type, const std::string &spaceNam
 const char *GetPageTagString(PageTagType type);
 int PageProtect(void *mem, size_t size, int prot);
 size_t PUBLIC_API PageSize();
+
+// ---------------------------------------------------------------------------
+// Shared "fill template" backing store.
+//
+// A small anonymous memfd pre-filled with one repeating 64-bit word (for us,
+// JSTaggedValue::VALUE_HOLE). Mapping it MAP_PRIVATE gives memory that *reads*
+// as that word without owning any physical page: every mapping shares the same
+// page-cache pages until it is written to, at which point only the written page
+// is copied.
+//
+// The fd is created once, before appspawn forks, so every application process
+// inherits it and shares the same physical pages.
+//
+// CreateFillTemplate() is idempotent and returns false if the platform cannot
+// provide it (Windows, or memfd_create unavailable); callers must then fall
+// back to writing the value themselves.
+// wordSize is the width of one repetition of fillWord, in bytes: 8 for plain
+// JSTaggedType slots, 4 for compressed ones. It matters - a template filled
+// with 8-byte 0x5 reads as [0x5, 0x0] when interpreted as two 4-byte slots, and
+// a zeroed tagged value is IsHeapObject(), i.e. a null pointer, not a hole.
+//
+// One template can exist per width; call this once per width you need. They are
+// independent memfds, each costing its own `size` bytes of shared pages.
+bool PUBLIC_API CreateFillTemplate(size_t size, uint64_t fillWord, size_t wordSize);
+void PUBLIC_API DestroyFillTemplates();
+bool PUBLIC_API IsFillTemplateReady(size_t wordSize);
+
+// Replace [addr, addr + size) with a private mapping of the wordSize template.
+// addr and size must be page aligned. Ranges larger than the template are
+// covered by repeating it, which costs one VMA per template-sized chunk.
+bool PUBLIC_API MapFillTemplate(void *addr, size_t size, size_t wordSize);
+// Put plain anonymous (zeroed) memory back, so the range can be recycled by the
+// mem-map pool without carrying the file mapping with it.
+bool PUBLIC_API UnmapFillTemplate(void *addr, size_t size);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_MAP_H

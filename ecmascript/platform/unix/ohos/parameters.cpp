@@ -47,4 +47,13 @@ namespace panda::ecmascript {
         return defaultValue;
 #endif
     }
+
+    bool IsDisableHoleMemory(bool defaultValue)
+    {
+#if !defined(STANDALONE_MODE)
+        return OHOS::system::GetBoolParameter("persist.ark.disable.hole.memory", defaultValue);
+#else
+        return defaultValue;
+#endif
+    }
 }  // namespace panda::ecmascript

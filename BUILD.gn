@@ -1184,6 +1184,7 @@ ecma_source = [
   "ecmascript/mem/gc_key_stats.cpp",
   "ecmascript/mem/heap.cpp",
   "ecmascript/mem/heap_region_allocator.cpp",
+  "ecmascript/mem/hole_memory.cpp",
   "ecmascript/mem/linear_space.cpp",
   "ecmascript/mem/machine_code.cpp",
   "ecmascript/mem/mem_controller.cpp",

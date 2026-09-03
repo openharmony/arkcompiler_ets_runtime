@@ -26,5 +26,10 @@ namespace panda::ecmascript {
     size_t GetPoolSize(size_t defaultSize);
 
     bool IsEnableCMCGC(bool defaultValue);
+
+    // Read after fork: when true this process stops backing hole-initialised
+    // objects with the shared template. The template itself is always created
+    // before the fork, so the decision can be made per application process.
+    bool IsDisableHoleMemory(bool defaultValue);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_PARAMETERS_H
