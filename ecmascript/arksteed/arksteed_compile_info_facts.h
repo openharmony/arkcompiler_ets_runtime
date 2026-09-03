@@ -168,6 +168,16 @@ public:
         return NodeTypeIs(type_, type);
     }
 
+    bool IsNonHole() const
+    {
+        return nonHole_;
+    }
+
+    void MarkNonHole()
+    {
+        nonHole_ = true;
+    }
+
     bool HasKnownHClass() const
     {
         return possibleHClasses_.size() == 1;
@@ -213,7 +223,7 @@ public:
 
     bool NoInfoAvailable() const
     {
-        return type_ == NodeType::UNKNOWN && alternatives_.Empty() && possibleHClasses_.empty();
+        return type_ == NodeType::UNKNOWN && !nonHole_ && alternatives_.Empty() && possibleHClasses_.empty();
     }
 
 private:
@@ -226,6 +236,7 @@ private:
     void UnionPossibleHClasses(const NodeInfo &other);
 
     NodeType type_ {NodeType::UNKNOWN};
+    bool nonHole_ {false};
     AlternativeNodes alternatives_;
     std::vector<PossibleHClassInfo> possibleHClasses_;
 };
@@ -462,6 +473,8 @@ public:
     }
 
     NodeInfo::NodeType EnsureType(ValueVertex *node, NodeInfo::NodeType type);
+    void RecordNonHole(ValueVertex *node);
+    bool IsKnownNonHole(ValueVertex *node) const;
     void RecordHClass(ValueVertex *node, JSHClass *hclass, bool isStable);
     JSHClass *TryGetHClass(ValueVertex *node) const;
     void RecordPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClasses &hclasses, bool isStable);

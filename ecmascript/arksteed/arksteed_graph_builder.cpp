@@ -1512,13 +1512,19 @@ struct GraphBuilder::BytecodeVisitor {
                 LowerThrowDeleteSuperProperty();
                 break;
             case kungfu::EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
-                LowerThrowIfNotObject(bcInfo);
+                if (LowerThrowIfNotObject(bcInfo) == LoweringResult::BLOCK_TERMINATED) {
+                    return false;
+                }
                 break;
             case kungfu::EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
-                LowerThrowUndefinedIfHole(bcInfo);
+                if (LowerThrowUndefinedIfHole(bcInfo) == LoweringResult::BLOCK_TERMINATED) {
+                    return false;
+                }
                 break;
             case kungfu::EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
-                LowerThrowUndefinedIfHoleWithName(bcInfo);
+                if (LowerThrowUndefinedIfHoleWithName(bcInfo) == LoweringResult::BLOCK_TERMINATED) {
+                    return false;
+                }
                 break;
             case kungfu::EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
             case kungfu::EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
@@ -3162,6 +3168,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerThrow()
     {
+        currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
             ValueVertex *exception = frameState.GetAcc();
             auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw));
@@ -3171,6 +3178,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerThrowConstAssignment(const BytecodeInfo *bcInfo)
     {
+        currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
             ValueVertex *value = LoadRegister(bcInfo, 0);
             auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment));
@@ -3180,6 +3188,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerThrowNotExists()
     {
+        currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
             auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowThrowNotExists));
             UpdateCatchBlockData(vertex);
@@ -3188,6 +3197,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerThrowPatternNonCoercible()
     {
+        currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
             auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowPatternNonCoercible));
             UpdateCatchBlockData(vertex);
@@ -3196,15 +3206,35 @@ struct GraphBuilder::BytecodeVisitor {
 
     void LowerThrowDeleteSuperProperty()
     {
+        currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
             auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowDeleteSuperProperty));
             UpdateCatchBlockData(vertex);
         }
     }
 
-    void LowerThrowIfNotObject(const BytecodeInfo *bcInfo)
+    enum class LoweringResult : uint8_t { CONTINUE, BLOCK_TERMINATED };
+
+    LoweringResult LowerThrowIfNotObject(const BytecodeInfo *bcInfo)
     {
         ValueVertex *value = LoadRegister(bcInfo, 0);
+
+        constexpr auto JS_RECEIVER = NodeInfo::NodeType::JS_RECEIVER;
+        NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(value);
+        if (!NodeInfo::IsEmptyNodeType(knownType)) {
+            if (NodeInfo::NodeTypeIs(knownType, JS_RECEIVER)) {
+                compileInfoFacts_->RecordNonHole(value);
+                return LoweringResult::CONTINUE;
+            }
+            if (!NodeInfo::NodeTypeCanBe(knownType, JS_RECEIVER)) {
+                currentBlock->SetDeferred(true);
+                if (!TryBuildColdCatchDeopt()) {
+                    auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowIfNotObject));
+                    UpdateCatchBlockData(vertex);
+                }
+                return LoweringResult::BLOCK_TERMINATED;
+            }
+        }
 
         BB *isHeapObjectBlock = self->NewBlock();
         BB *checkLowerDoneBlock = self->NewBlock();
@@ -3262,13 +3292,49 @@ struct GraphBuilder::BytecodeVisitor {
 
         // Success: value is an ECMA object.
         currentBlock = checkUpperDoneBlock;
+        compileInfoFacts_->EnsureType(value, JS_RECEIVER);
+        return LoweringResult::CONTINUE;
     }
 
-    // WARNING: THIS BYTECODE IS POSSIBLY INACTIVATED AND IS GUARDED BY NO TEST CASES.
-    void LowerThrowUndefinedIfHole(const BytecodeInfo *bcInfo)
+    enum class HoleCheckKind : uint8_t { ELIDED, ALWAYS_THROWS, NEEDED };
+
+    HoleCheckKind ClassifyHoleCheck(ValueVertex *receiver)
+    {
+        if (compileInfoFacts_->IsKnownNonHole(receiver)) {
+            return HoleCheckKind::ELIDED;
+        }
+        if (auto *constant = receiver->TryCast<TaggedConstantVertex>(); constant != nullptr) {
+            return constant->GetValue() == JSTaggedValue::VALUE_HOLE
+                       ? HoleCheckKind::ALWAYS_THROWS
+                       : HoleCheckKind::ELIDED;
+        }
+        NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(receiver);
+        if (!NodeInfo::IsEmptyNodeType(knownType) && knownType != NodeInfo::NodeType::UNKNOWN) {
+            return HoleCheckKind::ELIDED;
+        }
+        return HoleCheckKind::NEEDED;
+    }
+
+    LoweringResult LowerThrowUndefinedIfHole(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = LoadRegister(bcInfo, 0);
         ValueVertex *obj = LoadRegister(bcInfo, 1);
+
+        switch (ClassifyHoleCheck(receiver)) {
+            case HoleCheckKind::ELIDED:
+                compileInfoFacts_->RecordNonHole(receiver);
+                return LoweringResult::CONTINUE;
+            case HoleCheckKind::ALWAYS_THROWS:
+                currentBlock->SetDeferred(true);
+                if (!TryBuildColdCatchDeopt()) {
+                    auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
+                        currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+                    UpdateCatchBlockData(throwVertex);
+                }
+                return LoweringResult::BLOCK_TERMINATED;
+            case HoleCheckKind::NEEDED:
+                break;
+        }
 
         BB *throwBlock = self->NewBlock();
         BB *doneBlock = self->NewBlock();
@@ -3284,36 +3350,113 @@ struct GraphBuilder::BytecodeVisitor {
             UpdateCatchBlockData(throwVertex);
         }
         currentBlock = doneBlock;
+        compileInfoFacts_->RecordNonHole(receiver);
+        return LoweringResult::CONTINUE;
     }
 
-    void LowerThrowUndefinedIfHoleWithName(const BytecodeInfo *bcInfo)
+    LoweringResult LowerThrowUndefinedIfHoleWithName(const BytecodeInfo *bcInfo)
     {
         ValueVertex *receiver = frameState.GetAcc();
-        ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
-        ValueVertex *str = StringFromConstPool(strID);
+
+        switch (ClassifyHoleCheck(receiver)) {
+            case HoleCheckKind::ELIDED:
+                compileInfoFacts_->RecordNonHole(receiver);
+                return LoweringResult::CONTINUE;
+            case HoleCheckKind::ALWAYS_THROWS:
+                currentBlock->SetDeferred(true);
+                if (!TryBuildColdCatchDeopt()) {
+                    ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
+                    ValueVertex *str = StringFromConstPool(strID);
+                    auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
+                        currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+                    UpdateCatchBlockData(throwVertex);
+                }
+                return LoweringResult::BLOCK_TERMINATED;
+            case HoleCheckKind::NEEDED:
+                break;
+        }
 
         BB *throwBlock = self->NewBlock();
         BB *doneBlock = self->NewBlock();
 
         ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
-        self->FinishBlockWith<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock, doneBlock);
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock, doneBlock);
 
         currentBlock = throwBlock;
         currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
+            ValueVertex *str = StringFromConstPool(strID);
             auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
                 currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
             UpdateCatchBlockData(throwVertex);
         }
 
         currentBlock = doneBlock;
+        compileInfoFacts_->RecordNonHole(receiver);
+        return LoweringResult::CONTINUE;
     }
 
     void LowerThrowIfSuperNotCorrectCall(const BytecodeInfo *bcInfo)
     {
-        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        int index = GetImmediate<int>(bcInfo, 0);
         ValueVertex *thisValue = frameState.GetAcc();
-        RuntimeCallWithLazyDeopt({index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+
+        if (index != 0 && index != 1) {
+            ValueVertex *indexValue = TaggedConstantFromInt32(index);
+            RuntimeCallWithLazyDeopt({indexValue, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+            return;
+        }
+
+        bool throwOnMatch = (index == 0);
+        ValueVertex *undefined = self->undefinedValue_;
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        ValueVertex *indexValue = TaggedConstantFromInt32(index);
+
+        BB *undefinedMatchBlock = self->NewBlock();
+        BB *notUndefinedBlock = self->NewBlock();
+        BB *holeMatchBlock = self->NewBlock();
+        BB *okBlock = self->NewBlock();
+
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
+            currentBlock, {thisValue, undefined}, undefinedMatchBlock, notUndefinedBlock);
+
+        auto emitThrow = [&]() {
+            currentBlock->SetDeferred(true);
+            if (!TryBuildColdCatchDeopt()) {
+                auto *vertex = self->FinishBlockWith<ThrowVertex>(
+                    currentBlock, {indexValue, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+                UpdateCatchBlockData(vertex);
+            }
+        };
+
+        currentBlock = notUndefinedBlock;
+        if (throwOnMatch) {
+            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
+                currentBlock, {thisValue, hole}, holeMatchBlock, okBlock);
+        } else {
+            BB *throwBlock = self->NewBlock();
+            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
+                currentBlock, {thisValue, hole}, holeMatchBlock, throwBlock);
+            currentBlock = throwBlock;
+            emitThrow();
+        }
+
+        currentBlock = undefinedMatchBlock;
+        if (throwOnMatch) {
+            emitThrow();
+        } else {
+            self->FinishBlockWithJump(currentBlock, okBlock);
+        }
+
+        currentBlock = holeMatchBlock;
+        if (throwOnMatch) {
+            emitThrow();
+        } else {
+            self->FinishBlockWithJump(currentBlock, okBlock);
+        }
+
+        currentBlock = okBlock;
     }
 
     // -------- Category #16: Control Flow --------

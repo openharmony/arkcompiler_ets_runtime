@@ -181,6 +181,7 @@ void NodeInfo::ClearUnstable()
 bool NodeInfo::MergeWith(const NodeInfo &other)
 {
     UnionType(other.type_);
+    nonHole_ = nonHole_ && other.nonHole_;
     alternatives_.MergeWith(other.alternatives_);
     UnionPossibleHClasses(other);
     return !NoInfoAvailable();
@@ -341,6 +342,19 @@ bool CompileInfoFacts::CheckType(ValueVertex *node, NodeInfo::NodeType type) con
 NodeInfo::NodeType CompileInfoFacts::EnsureType(ValueVertex *node, NodeInfo::NodeType type)
 {
     return GetOrCreateInfoFor(node)->IntersectType(type);
+}
+
+void CompileInfoFacts::RecordNonHole(ValueVertex *node)
+{
+    ASSERT(node != nullptr);
+    GetOrCreateInfoFor(node)->MarkNonHole();
+}
+
+bool CompileInfoFacts::IsKnownNonHole(ValueVertex *node) const
+{
+    ASSERT(node != nullptr);
+    const NodeInfo *info = TryGetInfoFor(node);
+    return info != nullptr && info->IsNonHole();
 }
 
 void CompileInfoFacts::RecordHClass(ValueVertex *node, JSHClass *hclass, bool isStable)
