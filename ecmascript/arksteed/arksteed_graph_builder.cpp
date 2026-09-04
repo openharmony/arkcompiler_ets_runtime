@@ -33,6 +33,7 @@
 #include "ecmascript/ecma_string-inl.h"  // IWYU pragma: keep
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/property_box.h"
@@ -41,6 +42,7 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
@@ -2875,10 +2877,190 @@ struct GraphBuilder::BytecodeVisitor {
 
     // -------- Category #14: Miscellaneous --------
 
+    enum class TypeOfKind : uint8_t {
+        UNDEFINED,
+        OBJECT,
+        NUMBER,
+        BOOLEAN,
+        STRING,
+        SYMBOL,
+        FUNCTION,
+        BIGINT,
+        NATIVE_MODULE_FAILURE_INFO,
+        UNKNOWN,
+    };
+
+    static TypeOfKind TypeOfKindFromHClass(const JSHClass *hclass)
+    {
+        if (hclass == nullptr) {
+            return TypeOfKind::UNKNOWN;
+        }
+        JSType type = hclass->GetObjectType();
+        if (type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST) {
+            return TypeOfKind::STRING;
+        }
+        if (type == JSType::SYMBOL) {
+            return TypeOfKind::SYMBOL;
+        }
+        if (hclass->IsCallable()) {
+            return TypeOfKind::FUNCTION;
+        }
+        if (type == JSType::BIGINT) {
+            return TypeOfKind::BIGINT;
+        }
+        if (type == JSType::NATIVE_MODULE_FAILURE_INFO) {
+            return TypeOfKind::NATIVE_MODULE_FAILURE_INFO;
+        }
+        return TypeOfKind::OBJECT;
+    }
+
+    static TypeOfKind TypeOfKindFromConstant(JSTaggedValue value)
+    {
+        if (value.IsUndefined()) {
+            return TypeOfKind::UNDEFINED;
+        }
+        if (value.IsNull()) {
+            return TypeOfKind::OBJECT;
+        }
+        if (value.IsInt() || value.IsDouble()) {
+            return TypeOfKind::NUMBER;
+        }
+        if (value.IsTrue() || value.IsFalse()) {
+            return TypeOfKind::BOOLEAN;
+        }
+        if (value.IsHole()) {
+            return TypeOfKind::UNKNOWN;
+        }
+        if (value.IsHeapObject()) {
+            return TypeOfKindFromHClass(value.GetTaggedObject()->GetClass());
+        }
+        return TypeOfKind::UNKNOWN;
+    }
+
+    static TypeOfKind TypeOfKindFromKnownType(NodeInfo::NodeType knownType)
+    {
+        if (NodeInfo::IsEmptyNodeType(knownType) || knownType == NodeInfo::NodeType::UNKNOWN) {
+            return TypeOfKind::UNKNOWN;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::UNDEFINED)) {
+            return TypeOfKind::UNDEFINED;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::NULL_TYPE)) {
+            return TypeOfKind::OBJECT;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::NUMBER)) {
+            return TypeOfKind::NUMBER;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::BOOLEAN)) {
+            return TypeOfKind::BOOLEAN;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::STRING)) {
+            return TypeOfKind::STRING;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::SYMBOL)) {
+            return TypeOfKind::SYMBOL;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::JS_FUNCTION)) {
+            return TypeOfKind::FUNCTION;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::BIGINT)) {
+            return TypeOfKind::BIGINT;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::UnionNodeType(
+            NodeInfo::NodeType::JS_ARRAY, NodeInfo::NodeType::JS_TYPED_ARRAY))) {
+            return TypeOfKind::OBJECT;
+        }
+        return TypeOfKind::UNKNOWN;
+    }
+
+    TypeOfKind TypeOfKindFromPossibleHClasses(ValueVertex *value) const
+    {
+        std::optional<NodeInfo::PossibleHClasses> hclasses = compileInfoFacts_->TryGetPossibleHClasses(value);
+        if (!hclasses.has_value() || hclasses->empty()) {
+            return TypeOfKind::UNKNOWN;
+        }
+        TypeOfKind kind = TypeOfKindFromHClass(hclasses->front());
+        bool allAgree = std::all_of(hclasses->begin(), hclasses->end(), [kind](const JSHClass *hclass) {
+            return TypeOfKindFromHClass(hclass) == kind;
+        });
+        return allAgree ? kind : TypeOfKind::UNKNOWN;
+    }
+
+    TypeOfKind ClassifyTypeOf(ValueVertex *value) const
+    {
+        if (auto *constant = value->TryCast<TaggedConstantVertex>()) {
+            return TypeOfKindFromConstant(JSTaggedValue(constant->GetValue()));
+        }
+        if (std::optional<ArkSteedHeapRef> constantRef = TryGetConstantHeapRef(value)) {
+            ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+            if (broker != nullptr) {
+                ArkSteedHeapBroker::SerializingScope scope(
+                    broker, "GraphBuilder::ClassifyTypeOf");
+                JSTaggedValue constant = JSTaggedValue::Undefined();
+                if (broker->TryResolveRef(*constantRef, &constant)) {
+                    return TypeOfKindFromConstant(constant);
+                }
+            }
+        }
+        TypeOfKind kind = TypeOfKindFromKnownType(compileInfoFacts_->GetKnownType(value));
+        if (kind != TypeOfKind::UNKNOWN) {
+            return kind;
+        }
+        return TypeOfKindFromPossibleHClasses(value);
+    }
+
+    ValueVertex *StringFromGlobalConstant(ConstantIndex index)
+    {
+        ValueVertex *constant = nullptr;
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker != nullptr) {
+            ArkSteedHeapBroker::SerializingScope scope(
+                broker, "GraphBuilder::StringFromGlobalConstant");
+            ArkSteedNameRef stringRef;
+            if (broker->TryGetGlobalConstantRef(index, &stringRef)) {
+                constant = GetHeapConstant(stringRef);
+            }
+        }
+        ASSERT(constant != nullptr);
+        return constant;
+    }
+
+    static ConstantIndex StringIndexOfTypeOfKind(TypeOfKind kind)
+    {
+        switch (kind) {
+            case TypeOfKind::UNDEFINED:
+                return ConstantIndex::UNDEFINED_STRING_INDEX;
+            case TypeOfKind::OBJECT:
+                return ConstantIndex::OBJECT_STRING_INDEX;
+            case TypeOfKind::NUMBER:
+                return ConstantIndex::NUMBER_STRING_INDEX;
+            case TypeOfKind::BOOLEAN:
+                return ConstantIndex::BOOLEAN_STRING_INDEX;
+            case TypeOfKind::STRING:
+                return ConstantIndex::STRING_STRING_INDEX;
+            case TypeOfKind::SYMBOL:
+                return ConstantIndex::SYMBOL_STRING_INDEX;
+            case TypeOfKind::FUNCTION:
+                return ConstantIndex::FUNCTION_STRING_INDEX;
+            case TypeOfKind::BIGINT:
+                return ConstantIndex::BIGINT_STRING_INDEX;
+            case TypeOfKind::NATIVE_MODULE_FAILURE_INFO:
+                return ConstantIndex::NATIVE_MODULE_FAILURE_INFO_STRING_INDEX;
+            case TypeOfKind::UNKNOWN:
+                break;
+        }
+        UNREACHABLE();
+    }
+
     void LowerTypeOf()
     {
         ValueVertex *obj = frameState.GetAcc();
-        CommonStubCallToAccWithLazyDeopt({glue, obj}, CommonStubID::TypeOf);
+        TypeOfKind kind = ClassifyTypeOf(obj);
+        if (kind == TypeOfKind::UNKNOWN) {
+            frameState.SetAcc(CommonStubCall({glue, obj}, CommonStubID::TypeOf));
+            return;
+        }
+        frameState.SetAcc(StringFromGlobalConstant(StringIndexOfTypeOfKind(kind)));
     }
 
     void LowerGetUnmappedArgs()
@@ -7020,6 +7202,9 @@ struct GraphBuilder::BytecodeVisitor {
 
         currentBlock = doneBlock;
         compileInfoFacts_ = entryFacts;
+        if (!allExpectedHClasses.empty()) {
+            compileInfoFacts_->RecordPossibleHClasses(receiver, allExpectedHClasses, false);
+        }
         frameState.SetAcc(self->NewPhiVertexWith(currentBlock, results, self->AccIndex()));
         return true;
     }

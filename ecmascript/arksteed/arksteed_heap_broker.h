@@ -19,6 +19,7 @@
 #include <array>
 #include <optional>
 
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/arksteed/arksteed_heap_ref.h"
 #include "ecmascript/arksteed/arksteed_processed_feedback.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
@@ -139,6 +140,21 @@ public:
     ArkSteedNameRef MakeNameRef(JSTaggedValue value) const
     {
         return MakeStableHeapRef(value, false);
+    }
+
+    bool TryGetGlobalConstantRef(ConstantIndex index, ArkSteedNameRef *name) const
+    {
+        if (!SerializingAllowed()) {
+            return false;
+        }
+        JSThread *hostThread = env_->GetHostThread();
+        JSTaggedValue value = hostThread->GlobalConstants()->
+                                GetGlobalConstantObject(static_cast<size_t>(index));
+        if (!value.IsString()) {
+            return false;
+        }
+        *name = MakeNameRef(value);
+        return name->IsSafeForCompile();
     }
 
     bool TryGetNameFromConstantPool(uint16_t cpIdx, ArkSteedNameRef *name) const
