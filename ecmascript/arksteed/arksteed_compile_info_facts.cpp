@@ -232,6 +232,25 @@ void NodeInfo::MarkUnstableHClassesStale()
     CheckPossibleHClassInvariants();
 }
 
+void NodeInfo::MarkHClassesStaleForElementsKindTransition(const PossibleHClasses &sourceHClasses)
+{
+    if (!HasFreshPossibleHClasses()) {
+        return;
+    }
+    bool containsMatchingHClass = false;
+    for (PossibleHClassInfo &info : possibleHClasses_) {
+        if (std::find(sourceHClasses.begin(), sourceHClasses.end(), info.hclass) == sourceHClasses.end()) {
+            continue;
+        }
+        info.isStable = false;
+        containsMatchingHClass = true;
+    }
+    if (containsMatchingHClass) {
+        possibleHClassesAreStale_ = true;
+    }
+    CheckPossibleHClassInvariants();
+}
+
 void NodeInfo::MarkPossibleHClassesFresh()
 {
     ASSERT(!possibleHClasses_.empty());
@@ -779,7 +798,7 @@ void CompileInfoFacts::MarkPossibleSideEffect(const SideEffectDescriptor &effect
             IncrementEffectEpoch();
             return;
         case SideEffectKind::MAP_TRANSITION:
-            MarkAllFreshUnstableHClassesStale();
+            MarkHClassesStaleForTransition(effect.receiver);
             ClearLoadedProperties();
             IncrementEffectEpoch();
             return;
@@ -801,6 +820,44 @@ void CompileInfoFacts::MarkAllFreshUnstableHClassesStale()
         entry.second.MarkUnstableHClassesStale();
     }
     freshUnstableHClassesRequireInvalidation_ = false;
+}
+
+void CompileInfoFacts::MarkHClassesStaleForTransition(ValueVertex *receiver)
+{
+    if (!freshUnstableHClassesRequireInvalidation_) {
+        return;
+    }
+    const NodeInfo *receiverInfo = TryGetInfoFor(receiver);
+    JSHClass *oldHClass = receiverInfo == nullptr ? nullptr : receiverInfo->GetFreshKnownHClass();
+    if (oldHClass == nullptr) {
+        MarkAllFreshUnstableHClassesStale();
+        return;
+    }
+    bool hasRemainingFreshUnstableHClasses = false;
+    for (auto &entry : nodeInfos_) {
+        NodeInfo &info = entry.second;
+        if (!info.HasFreshPossibleHClasses() || !info.HasUnstablePossibleHClass()) {
+            continue;
+        }
+        if (info.ContainsPossibleHClass(oldHClass)) {
+            info.MarkUnstableHClassesStale();
+            continue;
+        }
+        hasRemainingFreshUnstableHClasses = true;
+    }
+    freshUnstableHClassesRequireInvalidation_ = hasRemainingFreshUnstableHClasses;
+}
+
+void CompileInfoFacts::MarkHClassesStaleForElementsKindTransition(
+    const NodeInfo::PossibleHClasses &sourceHClasses)
+{
+    if (sourceHClasses.empty()) {
+        return;
+    }
+    for (auto &entry : nodeInfos_) {
+        entry.second.MarkHClassesStaleForElementsKindTransition(sourceHClasses);
+    }
+    RecomputeFreshUnstableHClassesRequireInvalidation();
 }
 
 void CompileInfoFacts::RecomputeFreshUnstableHClassesRequireInvalidation()

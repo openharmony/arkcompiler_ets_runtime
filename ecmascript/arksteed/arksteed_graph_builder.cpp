@@ -6170,18 +6170,30 @@ struct GraphBuilder::BytecodeVisitor {
         return !seenHClasses.empty();
     }
 
-    void BuildTransitionElementsKind(ValueVertex *receiver, const ResolvedElementStoreTransitionGroup &group)
+    void BuildTransitionElementsKind(ValueVertex *receiver, const ResolvedElementStoreTransitionGroup &group,
+                                     JSHClass *knownSourceHClass = nullptr)
     {
+        NodeInfo::PossibleHClasses sourceHClasses;
+        if (knownSourceHClass != nullptr) {
+            sourceHClasses.push_back(knownSourceHClass);
+        } else {
+            sourceHClasses.reserve(group.transitionSources.size());
+            for (const ResolvedElementStoreHClass &source : group.transitionSources) {
+                sourceHClasses.push_back(source.hclass);
+            }
+        }
         if (group.useExactHClassTransition) {
             ASSERT(group.targetHClassConstant != nullptr);
             self->NewVertex<TransitionHClassWithBarrierVertex>(
                 compileInfoFacts_, currentBlock, {glue, receiver, group.targetHClassConstant});
+            compileInfoFacts_->MarkHClassesStaleForElementsKindTransition(sourceHClasses);
             compileInfoFacts_->RecordHClass(receiver, group.target.hclass, false);
             return;
         }
         // Mutant backing is rejected by the access-info factory, so changing to the canonical array HClass is enough.
         RuntimeCall({receiver, TaggedConstantFromInt32(static_cast<int32_t>(group.targetElementsKind))},
                     RTSTUB_ID(UpdateHClassForElementsKind));
+        compileInfoFacts_->MarkHClassesStaleForElementsKindTransition(sourceHClasses);
     }
 
     void BuildJSArrayElementStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
@@ -6236,7 +6248,7 @@ struct GraphBuilder::BytecodeVisitor {
                         return candidate.hclass == knownHClass;
                     });
                 if (source != group.transitionSources.end()) {
-                    BuildTransitionElementsKind(receiver, group);
+                    BuildTransitionElementsKind(receiver, group, source->hclass);
                     BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
                     return true;
                 }

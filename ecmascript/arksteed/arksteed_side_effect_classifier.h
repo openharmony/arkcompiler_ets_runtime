@@ -98,8 +98,10 @@ public:
 
     static SideEffectDescriptor Classify(TransitionHClassWithBarrierVertex *vertex)
     {
-        (void)vertex;
-        return SideEffectDescriptor {SideEffectKind::MAP_TRANSITION};
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::MAP_TRANSITION;
+        descriptor.receiver = vertex->GetInput(TransitionHClassWithBarrierVertex::OBJECT_INDEX);
+        return descriptor;
     }
 
     static SideEffectDescriptor Classify(StoreTaggedFieldByHClassVertex *vertex)

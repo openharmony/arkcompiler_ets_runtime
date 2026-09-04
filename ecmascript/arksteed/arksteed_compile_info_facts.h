@@ -226,6 +226,7 @@ public:
     bool NarrowPossibleHClasses(const PossibleHClasses &hclasses);
     void ClearPossibleHClasses();
     void MarkUnstableHClassesStale();
+    void MarkHClassesStaleForElementsKindTransition(const PossibleHClasses &sourceHClasses);
     void MarkPossibleHClassesFresh();
     bool MarkPossibleHClassStable(JSHClass *hclass);
     bool MergeWith(const NodeInfo &other);
@@ -533,6 +534,7 @@ public:
     void ClearAvailableExpressions();
 
     void MarkPossibleSideEffect(const SideEffectDescriptor &effect);
+    void MarkHClassesStaleForElementsKindTransition(const NodeInfo::PossibleHClasses &sourceHClasses);
     void ClearAll();
     void OnSideEffect();
     void IncrementEffectEpoch();
@@ -590,6 +592,7 @@ private:
     void UpdateEnvSlotAliasMode(ValueVertex *env);
     void RecomputeEnvSlotAliasMode();
     void MarkAllFreshUnstableHClassesStale();
+    void MarkHClassesStaleForTransition(ValueVertex *receiver);
     void RecomputeFreshUnstableHClassesRequireInvalidation();
     bool EnvMayAlias(ValueVertex *lhs, ValueVertex *rhs) const;
 
