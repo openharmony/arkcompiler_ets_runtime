@@ -654,7 +654,8 @@ public:
     static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
         ValueRepresentation::INT_PTR,
     };
-    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+    static constexpr VertexPropertyFlag PROPERTIES =
+        VertexPropertyFlag::CAN_READ | VertexPropertyFlag::IS_NOT_IDEMPOTENT;
 
     explicit LoadExceptionVertex() : FixedInputVertexMixin() {}
 

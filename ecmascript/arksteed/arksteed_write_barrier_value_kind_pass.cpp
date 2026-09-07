@@ -49,7 +49,9 @@ ArkSteedWriteBarrierValueKind ClassifyDirectWriteBarrierValueKind(ValueVertex *v
     if (value->Is<HeapConstantVertex>()) {
         return ArkSteedWriteBarrierValueKind::HeapObject;
     }
-    if (value->Is<I32ToTaggedIntVertex>()) {
+    if (value->Is<I32ToTaggedIntVertex>() ||
+        value->Is<CheckedNonNegativeI32ToTaggedIntVertex>() ||
+        value->Is<F64ToTaggedDoubleVertex>()) {
         return ArkSteedWriteBarrierValueKind::NonHeap;
     }
     return ArkSteedWriteBarrierValueKind::Unknown;
@@ -195,10 +197,22 @@ void WriteBarrierValueKindPass::RewriteStores()
 {
     for (BB *block : *graph_) {
         ChunkVector<NonControlVertex *> &vertices = block->GetVertices();
-        for (NonControlVertex *&vertex : vertices) {
-            vertex = TryRewriteStore(vertex);
+        for (auto it = vertices.begin(); it != vertices.end();) {
+            auto *curVertex = (*it)->TryCast<SetValueWithBarrierVertex>();
+            if (curVertex != nullptr && ShouldRemoveSetValueWithBarrier(curVertex)) {
+                it = vertices.erase(it);
+                continue;
+            }
+            *it = TryRewriteStore(*it);
+            ++it;
         }
     }
+}
+
+bool WriteBarrierValueKindPass::ShouldRemoveSetValueWithBarrier(SetValueWithBarrierVertex *vertex) const
+{
+    ValueVertex *value = vertex->GetInput(SetValueWithBarrierVertex::VALUE_INDEX);
+    return ClassifyValue(value) == ArkSteedWriteBarrierValueKind::NonHeap;
 }
 
 NonControlVertex *WriteBarrierValueKindPass::TryRewriteStore(NonControlVertex *vertex)

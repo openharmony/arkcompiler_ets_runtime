@@ -833,10 +833,15 @@ VertexT *GraphBuilder::NewVertex(
         CompileInfoFacts::ExpressionOptions options(chunk_);
         CseBuildExpressionOptions(options, args...);
         uint32_t hash = CseHashExpression(OpcodeOf<VertexT>, expressionInputs, options);
+        // Read operations are versioned by the effect epoch.
         bool needsEpochCheck = CanRead(VertexT::PROPERTIES);
         ValueVertex *cached = compileInfoFacts->FindExpression(
             hash, OpcodeOf<VertexT>, expressionInputs, options, needsEpochCheck);
-        if (cached != nullptr) {
+        // The cached vertex is reusable if one of the following conditions is true:
+        // 1. The cached vertex is not a read vertex;
+        // 2. For read vertices, the cached vertex is created in the current block.
+        // Note: Constraint 2 can be relaxed in the future such that the cached vertex dominates current block.
+        if (cached != nullptr && (!needsEpochCheck || cached->GetOwner() == owner)) {
             return cached->Cast<VertexT>();
         }
 
@@ -2826,7 +2831,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
         int32_t offset = GetLexicalEnvSlotOffset(slot);
         self->NewVertex<StoreEnvSlotVertex>(compileInfoFacts_, currentBlock, {targetEnv, value}, offset);
-        self->NewVertex<SetValueWithBarrierVertex>(compileInfoFacts_, currentBlock, {glue, targetEnv, value}, offset);
+        if (ClassifyDirectWriteBarrierValueKind(value) != ArkSteedWriteBarrierValueKind::NonHeap) {
+            self->NewVertex<SetValueWithBarrierVertex>(
+                compileInfoFacts_, currentBlock, {glue, targetEnv, value}, offset);
+        }
         compileInfoFacts_->RecordEnvSlot(targetEnv, offset, value);
     }
 
@@ -5997,7 +6005,7 @@ struct GraphBuilder::BytecodeVisitor {
             return convertHoleToUndefined(result);
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
-            currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            compileInfoFacts_, currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
                                               plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
         ValueVertex *result =
@@ -6458,7 +6466,7 @@ struct GraphBuilder::BytecodeVisitor {
             return;
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
-            currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            compileInfoFacts_, currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         int32_t offset = static_cast<int32_t>(
             TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
         BuildStoreTaggedField(properties, offset, value);
@@ -7522,13 +7530,14 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
         ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
-            currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
         ValueVertex *capacity = self->NewVertex<LoadInt32FieldVertex>(
-            currentBlock, {elements}, static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
+            compileInfoFacts_, currentBlock, {elements}, static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
         BuildDeoptIfInt32Condition(
             index, capacity, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
-        ValueVertex *result = self->NewVertex<LoadTaggedElementVertex>(currentBlock, {elements, index});
+        ValueVertex *result = self->NewVertex<LoadTaggedElementVertex>(
+            compileInfoFacts_, currentBlock, {elements, index});
         ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
         BuildCheckTaggedCondition(
             bcIndex, result, hole, Condition::EQUAL, kungfu::DeoptType::BUILTINISHOLE1);
@@ -7579,7 +7588,7 @@ struct GraphBuilder::BytecodeVisitor {
 
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
         ValueVertex *lengthAndFlags = self->NewVertex<LoadInt32FieldVertex>(
-            currentBlock, {receiver}, static_cast<int32_t>(BaseString::LENGTH_AND_FLAGS_OFFSET));
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(BaseString::LENGTH_AND_FLAGS_OFFSET));
         ValueVertex *lengthShift =
             self->graph_->GetInt32Constant(static_cast<int32_t>(BaseString::LengthBits::START_BIT));
         ValueVertex *length = self->NewVertex<I32BitwiseBinaryVertex>(
@@ -7627,6 +7636,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     bool TryFoldConstantStringElement(ValueVertex *receiver, ValueVertex *key)
     {
+        ALLOW_DEREF_HANDLE;
         std::optional<int32_t> index = TryGetInt32Value(key);
         if (!index.has_value() || *index < 0) {
             return false;
@@ -7659,7 +7669,6 @@ struct GraphBuilder::BytecodeVisitor {
         if (!broker->TryResolveRef(*stringRef, &string) || !string.IsString()) {
             return false;
         }
-        ALLOW_DEREF_HANDLE;
         EcmaStringAccessor accessor(string);
         if (static_cast<uint32_t>(*index) >= accessor.GetLength()) {
             return false;
@@ -7709,16 +7718,17 @@ struct GraphBuilder::BytecodeVisitor {
 
         ValueVertex *index = checkedIndex == nullptr ? BuildCheckedTaggedIntToI32(key) : checkedIndex;
         ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
-            currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
         BuildDeoptIfInt32Condition(
             index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
         bool isOnHeap = receiverHClass->IsOnHeapFromBitField();
         ValueVertex *storage = self->NewVertex<LoadTaggedFieldVertex>(
-            currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
+            compileInfoFacts_, currentBlock, {receiver},
+            static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
         if (!isOnHeap) {
-            storage = self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {storage},
-                                                             static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
+            storage = self->NewVertex<LoadTaggedFieldVertex>(
+                compileInfoFacts_, currentBlock, {storage}, static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
             ValueVertex *null = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_NULL);
             BuildCheckTaggedCondition(
                 bcIndex, storage, null, Condition::EQUAL, kungfu::DeoptType::ARRAYBUFFERISDETACHED);

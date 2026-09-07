@@ -184,11 +184,11 @@ constexpr bool CanDeopt(VertexPropertyFlag flag)
 constexpr bool CanParticipateInCSE(VertexPropertyFlag flag)
 {
     return !IsNotIdempotent(flag) &&
-           !CanRead(flag) &&
            !CanWrite(flag) &&
            !CanAllocate(flag) &&
            !CanThrow(flag) &&
-           !IsCall(flag);
+           !IsCall(flag) &&
+           !CanDeopt(flag);
 }
 
 constexpr bool MayHaveSideEffects(VertexPropertyFlag flag)

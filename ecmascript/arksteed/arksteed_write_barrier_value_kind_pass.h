@@ -51,6 +51,7 @@ private:
     void ComputePhiKindsForTarget(TargetKind target, ChunkMap<PhiVertex *, PhiTargetState> *states);
     void ComputePhiKinds();
     void RewriteStores();
+    bool ShouldRemoveSetValueWithBarrier(SetValueWithBarrierVertex *vertex) const;
     NonControlVertex *TryRewriteStore(NonControlVertex *vertex);
     StoreTaggedFieldVertex *NewStoreWithoutBarrier(
         BB *owner, ValueVertex *object, ValueVertex *value, int32_t offset);
