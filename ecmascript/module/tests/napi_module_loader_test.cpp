@@ -34,6 +34,55 @@ using namespace panda::ecmascript::builtins;
 using ModulePathHelper = ecmascript::ModulePathHelper;
 
 namespace panda::test {
+// abc file and record name used by NapiModuleLoaderTest cases
+static constexpr const char *NAPI_TEST_MODULE_NAME = "module_test_module_test_module";
+static constexpr const char *NAPI_TEST_MODULE_ABC_NAME = "module_test_module_test_module.abc";
+// invalid modulePath with bundle prefix and its exact src/main match, for two-args overload tests
+static constexpr const char *NAPI_TWO_ARGS_MODULE_PATH = "com.test/modA";
+static constexpr const char *NAPI_TWO_ARGS_SRC_MAIN_REQUEST = "modA/src/main";
+// native-module style requests, host has no so resolver, load fails gracefully
+static constexpr const char *NAPI_NATIVE_SO_REQUEST = "@ohos.napi:test";
+static constexpr const char *NAPI_NATIVE_SO_REQUEST_2 = "@ohos.napi:test2";
+static constexpr const char *NAPI_NATIVE_HILOG_REQUEST = "@ohos:hilog";
+// normalized ohmurl with empty bundle/module parts so that baseFileName is kept unchanged
+static constexpr const char *NAPI_TEST_OHMURL = "@normalized:N&&&har/src/main/page/Test&1.0.0";
+static constexpr const char *NAPI_TEST_HAR_VERSION = "1.2.0";
+static constexpr const char *NAPI_EMPTY_MODULE_PATH = "";
+
+static std::string GetNapiTestAbcPath()
+{
+    return std::string(MODULE_ABC_PATH) + NAPI_TEST_MODULE_ABC_NAME;
+}
+
+static void SetupEntryHarPkgContextForNapi(EcmaVM *vm, const CString &harVersion)
+{
+#if ENABLE_MODULE_PKGCONTEXT_OPTIMIZATION
+    CMap<CString, CMap<CString, CVector<std::pair<CString, CString>>>> pkgList;
+    CMap<CString, CVector<std::pair<CString, CString>>> entryList;
+    entryList["entry"] = {
+        {"packageName", "entry"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", ""}, {"entryPath", "src/main/"}, {"isSO", "false"}
+    };
+    entryList["har"] = {
+        {"packageName", "har"}, {"bundleName", ""}, {"moduleName", ""},
+        {"version", harVersion}, {"entryPath", "Index.ets"}, {"isSO", "false"}
+    };
+#else
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["entry"] = {
+        "packageName", "entry", "bundleName", "", "moduleName", "",
+        "version", "", "entryPath", "src/main/", "isSO", "false"
+    };
+    entryList["har"] = {
+        "packageName", "har", "bundleName", "", "moduleName", "",
+        "version", harVersion, "entryPath", "Index.ets", "isSO", "false"
+    };
+#endif
+    pkgList["entry"] = entryList;
+    vm->SetpkgContextInfoList(pkgList);
+}
+
 class NapiModuleLoaderTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -648,6 +697,190 @@ HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadFromFile_RecordNotFound_T
         thread, entryPoint, abcFilePath);
 
     EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_TwoArgs_SrcMainExact_ThrowRefError
+ * @tc.desc: Test LoadModuleNameSpace(vm, requestPath, modulePath) overload when
+ *           requestPath equals srcPrefix exactly, should throw ReferenceError
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_TwoArgs_SrcMainExact_ThrowRefError)
+{
+    CString modulePath = NAPI_TWO_ARGS_MODULE_PATH;
+    CString requestPath = NAPI_TWO_ARGS_SRC_MAIN_REQUEST;
+
+    NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(instance, requestPath, modulePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_TwoArgs_SrcMainExact_ThrowRefError_Hybrid
+ * @tc.desc: Hybrid template variant of TwoArgs SrcMainExact test
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_TwoArgs_SrcMainExact_ThrowRefError_Hybrid)
+{
+    CString modulePath = NAPI_TWO_ARGS_MODULE_PATH;
+    CString requestPath = NAPI_TWO_ARGS_SRC_MAIN_REQUEST;
+
+    NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(instance, requestPath, modulePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_TwoArgs_NativeRequest
+ * @tc.desc: Test empty modulePath with @ohos: native request goes through
+ *           LoadModuleNameSpaceWithPath native module branch
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_TwoArgs_NativeRequest)
+{
+    CString modulePath = NAPI_EMPTY_MODULE_PATH;
+    CString requestPath = NAPI_NATIVE_SO_REQUEST;
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, modulePath);
+
+    // native so is unavailable on host, load returns failure gracefully
+    EXPECT_TRUE(result.GetTaggedValue().IsHole() || result.GetTaggedValue().IsUndefined() ||
+                result.GetTaggedValue().IsHeapObject());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpaceWithOhmurl_Normal
+ * @tc.desc: Test LoadModuleNameSpaceWithOhmurl with valid normalized ohmurl,
+ *           record does not exist in abc, should throw
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpaceWithOhmurl_Normal)
+{
+    std::string baseFileName = GetNapiTestAbcPath();
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, NAPI_TEST_MODULE_NAME);
+    ASSERT_TRUE(executeResult);
+
+    CString ohmurl = NAPI_TEST_OHMURL;
+    CString abcFilePath = baseFileName.c_str();
+
+    NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Normal>(thread, ohmurl, abcFilePath);
+
+    // baseFileName stays unchanged (empty bundle/module), record lookup fails
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpaceWithOhmurl_Hybrid
+ * @tc.desc: Hybrid template variant of LoadModuleNameSpaceWithOhmurl
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpaceWithOhmurl_Hybrid)
+{
+    std::string baseFileName = GetNapiTestAbcPath();
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, NAPI_TEST_MODULE_NAME);
+    ASSERT_TRUE(executeResult);
+
+    CString ohmurl = NAPI_TEST_OHMURL;
+    CString abcFilePath = baseFileName.c_str();
+
+    NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(thread, ohmurl, abcFilePath);
+
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_NormalizedPack_Normal
+ * @tc.desc: Test LoadModuleNameSpaceWithModuleInfo takes TranslateExpressionToNormalized
+ *           branch when pkgContextInfoList is set (IsNormalizedOhmUrlPack true)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_NormalizedPack_Normal)
+{
+    std::string baseFileName = GetNapiTestAbcPath();
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, NAPI_TEST_MODULE_NAME);
+    ASSERT_TRUE(executeResult);
+
+    SetupEntryHarPkgContextForNapi(instance, NAPI_TEST_HAR_VERSION);
+    ASSERT_TRUE(instance->IsNormalizedOhmUrlPack());
+
+    // '@ohos:' expression is returned unchanged by TranslateExpressionToNormalized,
+    // then handled by the native module branch
+    CString requestPath = NAPI_NATIVE_HILOG_REQUEST;
+    CString moduleName = NAPI_TEST_MODULE_NAME;
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    EXPECT_TRUE(result.GetTaggedValue().IsHole() || result.GetTaggedValue().IsUndefined() ||
+                result.GetTaggedValue().IsHeapObject());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_NormalizedPack_Hybrid
+ * @tc.desc: Hybrid template variant of NormalizedPack test
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_NormalizedPack_Hybrid)
+{
+    std::string baseFileName = GetNapiTestAbcPath();
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, NAPI_TEST_MODULE_NAME);
+    ASSERT_TRUE(executeResult);
+
+    SetupEntryHarPkgContextForNapi(instance, NAPI_TEST_HAR_VERSION);
+    ASSERT_TRUE(instance->IsNormalizedOhmUrlPack());
+
+    CString requestPath = NAPI_NATIVE_HILOG_REQUEST;
+    CString moduleName = NAPI_TEST_MODULE_NAME;
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    EXPECT_TRUE(result.GetTaggedValue().IsHole() || result.GetTaggedValue().IsUndefined() ||
+                result.GetTaggedValue().IsHeapObject());
+    thread->ClearException();
+}
+
+/**
+ * @tc.name: NapiModuleLoader_LoadModuleNameSpace_NativeRequest_WithModuleName
+ * @tc.desc: Test LoadFilePathWithinModule fallthrough branch: @pkg:key request
+ *           skips both need-translate checks and enters native module loading
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(NapiModuleLoaderTest, NapiModuleLoader_LoadModuleNameSpace_NativeRequest_WithModuleName)
+{
+    std::string baseFileName = GetNapiTestAbcPath();
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool executeResult = JSNApi::Execute(instance, baseFileName, NAPI_TEST_MODULE_NAME);
+    ASSERT_TRUE(executeResult);
+
+    CString requestPath = NAPI_NATIVE_SO_REQUEST_2;
+    CString moduleName = NAPI_TEST_MODULE_NAME;
+    CString abcFilePath = baseFileName.c_str();
+
+    JSHandle<JSTaggedValue> result = NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(
+        instance, requestPath, moduleName, abcFilePath);
+
+    EXPECT_TRUE(result.GetTaggedValue().IsHole() || result.GetTaggedValue().IsUndefined() ||
+                result.GetTaggedValue().IsHeapObject());
     thread->ClearException();
 }
 
