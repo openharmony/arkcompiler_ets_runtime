@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -353,8 +353,10 @@ void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> en
     if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
         return;
     }
-    auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
-    debuggerMgr->MethodEntry(method, envHandle);
+    if (!IsSimplifiedMode()) {
+        auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
+        debuggerMgr->MethodEntry(method, envHandle);
+    }
 
     // scriptParsed for sendable object
     if (method->IsSendableMethod()) {
@@ -374,7 +376,9 @@ void JSDebugger::MethodExit([[maybe_unused]] JSHandle<Method> method)
     if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
         return;
     }
-    auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
-    debuggerMgr->MethodExit(method);
+    if (!IsSimplifiedMode()) {
+        auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
+        debuggerMgr->MethodExit(method);
+    }
 }
 }  // namespace panda::tooling::ecmascript

@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -157,6 +157,15 @@ HWTEST_F_L0(JsDebuggerTest, JsDebuggerHooksNullTest)
 
     result = debuggerFriend.HandleStepTest(methodHandle, bcOffsetTest);
     EXPECT_EQ(result, false);
+}
+
+HWTEST_F_L0(JsDebuggerTest, SimplifiedModeTest)
+{
+    JSDebugger debugger(ecmaVm);
+    EXPECT_FALSE(debugger.IsSimplifiedMode());
+
+    debugger.EnableSimplifiedMode();
+    EXPECT_TRUE(debugger.IsSimplifiedMode());
 }
 
 HWTEST_F_L0(JsDebuggerTest, JsDebuggerBreakpointNullTest)
