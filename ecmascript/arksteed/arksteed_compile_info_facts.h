@@ -64,7 +64,13 @@ private:
 
 class NodeInfo {
 public:
+    struct PossibleHClassInfo {
+        JSHClass *hclass {nullptr};
+        bool isStable {false};
+    };
+
     using PossibleHClasses = std::vector<JSHClass *>;
+    using PossibleHClassInfos = std::vector<PossibleHClassInfo>;
 
     enum class NodeType : uint16_t {
         NONE = 0,
@@ -178,22 +184,31 @@ public:
         nonHole_ = true;
     }
 
-    bool HasKnownHClass() const
+    bool HasFreshKnownHClass() const
     {
-        return possibleHClasses_.size() == 1;
+        return possibleHClasses_.size() == 1 && !possibleHClassesAreStale_;
     }
 
-    JSHClass *GetKnownHClass() const
+    JSHClass *GetFreshKnownHClass() const
     {
-        return HasKnownHClass() ? possibleHClasses_.front().hclass : nullptr;
+        return HasFreshKnownHClass() ? possibleHClasses_.front().hclass : nullptr;
     }
 
-    bool HasPossibleHClasses() const
+    bool HasFreshPossibleHClasses() const
     {
-        return !possibleHClasses_.empty();
+        return !possibleHClasses_.empty() && !possibleHClassesAreStale_;
     }
 
-    PossibleHClasses GetPossibleHClasses() const;
+    PossibleHClasses GetFreshPossibleHClasses() const;
+    PossibleHClasses GetPossibleHClassesForRevalidation() const;
+
+    bool PossibleHClassesAreStale() const
+    {
+        return possibleHClassesAreStale_;
+    }
+
+    bool HasUnstablePossibleHClass() const;
+    bool ContainsPossibleHClass(JSHClass *hclass) const;
 
     size_t PossibleHClassCount() const
     {
@@ -202,13 +217,17 @@ public:
 
     bool HClassIsStable() const
     {
-        return HasKnownHClass() && possibleHClasses_.front().isStable;
+        return HasFreshKnownHClass() && possibleHClasses_.front().isStable;
     }
 
     void RecordHClass(JSHClass *hclass, bool isStable);
     void RecordPossibleHClasses(const PossibleHClasses &hclasses, bool isStable);
+    void RecordPossibleHClasses(const PossibleHClassInfos &hclasses);
+    bool NarrowPossibleHClasses(const PossibleHClasses &hclasses);
     void ClearPossibleHClasses();
-    void ClearUnstable();
+    void MarkUnstableHClassesStale();
+    void MarkPossibleHClassesFresh();
+    bool MarkPossibleHClassStable(JSHClass *hclass);
     bool MergeWith(const NodeInfo &other);
 
     AlternativeNodes &GetAlternatives()
@@ -227,18 +246,16 @@ public:
     }
 
 private:
-    struct PossibleHClassInfo {
-        JSHClass *hclass {nullptr};
-        bool isStable {false};
-    };
-
     void AddPossibleHClass(JSHClass *hclass, bool isStable);
+    void IntersectTypeWithPossibleHClasses();
     void UnionPossibleHClasses(const NodeInfo &other);
+    void CheckPossibleHClassInvariants() const;
 
     NodeType type_ {NodeType::UNKNOWN};
     bool nonHole_ {false};
     AlternativeNodes alternatives_;
-    std::vector<PossibleHClassInfo> possibleHClasses_;
+    PossibleHClassInfos possibleHClasses_;
+    bool possibleHClassesAreStale_ {false};
 };
 
 NodeInfo::NodeType NodeTypeFromJSTaggedValue(JSTaggedValue value);
@@ -478,9 +495,15 @@ public:
     void RecordHClass(ValueVertex *node, JSHClass *hclass, bool isStable);
     JSHClass *TryGetHClass(ValueVertex *node) const;
     void RecordPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClasses &hclasses, bool isStable);
+    void RecordPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClassInfos &hclasses);
+    bool NarrowPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClasses &hclasses);
     void SetPossibleHClasses(ValueVertex *node, const ChunkVector<JSHClass *> &hclasses,
                              NodeInfo::NodeType possibleType);
     std::optional<NodeInfo::PossibleHClasses> TryGetPossibleHClasses(ValueVertex *node) const;
+    std::optional<NodeInfo::PossibleHClasses> TryGetPossibleHClassesForRevalidation(ValueVertex *node) const;
+    bool PossibleHClassesAreStale(ValueVertex *node) const;
+    void MarkPossibleHClassesFresh(ValueVertex *node);
+    bool MarkPossibleHClassStable(ValueVertex *node, JSHClass *hclass);
     void SetAlternative(ValueVertex *node, AlternativeNodes::Kind kind, ValueVertex *alternative);
     ValueVertex *TryGetAlternative(ValueVertex *node, AlternativeNodes::Kind kind) const;
 
@@ -510,7 +533,6 @@ public:
     void ClearAvailableExpressions();
 
     void MarkPossibleSideEffect(const SideEffectDescriptor &effect);
-    void ClearUnstable();
     void ClearAll();
     void OnSideEffect();
     void IncrementEffectEpoch();
@@ -567,6 +589,8 @@ private:
     void CopyEnvSlots(LoadedEnvSlots &target, const LoadedEnvSlots &source) const;
     void UpdateEnvSlotAliasMode(ValueVertex *env);
     void RecomputeEnvSlotAliasMode();
+    void MarkAllFreshUnstableHClassesStale();
+    void RecomputeFreshUnstableHClassesRequireInvalidation();
     bool EnvMayAlias(ValueVertex *lhs, ValueVertex *rhs) const;
 
     static EnvSlotAliasMode MergeEnvSlotAliasMode(EnvSlotAliasMode lhs, EnvSlotAliasMode rhs);
@@ -580,6 +604,7 @@ private:
     ChunkMap<uint32_t, AvailableExpression> availableExpressions_;
     uint32_t effectEpoch_ {0};
     EnvSlotAliasMode envSlotAliasMode_ {EnvSlotAliasMode::NONE};
+    bool freshUnstableHClassesRequireInvalidation_ {false};
 };
 
 }  // namespace panda::ecmascript::arksteed

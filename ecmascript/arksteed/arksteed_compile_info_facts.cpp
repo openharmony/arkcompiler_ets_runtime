@@ -138,7 +138,15 @@ void AlternativeNodes::MergeWith(const AlternativeNodes &other)
     }
 }
 
-NodeInfo::PossibleHClasses NodeInfo::GetPossibleHClasses() const
+NodeInfo::PossibleHClasses NodeInfo::GetFreshPossibleHClasses() const
+{
+    if (!HasFreshPossibleHClasses()) {
+        return {};
+    }
+    return GetPossibleHClassesForRevalidation();
+}
+
+NodeInfo::PossibleHClasses NodeInfo::GetPossibleHClassesForRevalidation() const
 {
     PossibleHClasses result;
     result.reserve(possibleHClasses_.size());
@@ -148,34 +156,100 @@ NodeInfo::PossibleHClasses NodeInfo::GetPossibleHClasses() const
     return result;
 }
 
+bool NodeInfo::HasUnstablePossibleHClass() const
+{
+    return std::any_of(possibleHClasses_.begin(), possibleHClasses_.end(),
+                       [](const PossibleHClassInfo &info) { return !info.isStable; });
+}
+
+bool NodeInfo::ContainsPossibleHClass(JSHClass *hclass) const
+{
+    return std::any_of(possibleHClasses_.begin(), possibleHClasses_.end(),
+                       [hclass](const PossibleHClassInfo &info) { return info.hclass == hclass; });
+}
+
 void NodeInfo::RecordHClass(JSHClass *hclass, bool isStable)
 {
     possibleHClasses_.clear();
+    possibleHClassesAreStale_ = false;
     AddPossibleHClass(hclass, isStable);
-    IntersectType(NodeInfo::NodeType::JS_RECEIVER);
+    IntersectTypeWithPossibleHClasses();
+    CheckPossibleHClassInvariants();
 }
 
 void NodeInfo::RecordPossibleHClasses(const PossibleHClasses &hclasses, bool isStable)
 {
     possibleHClasses_.clear();
+    possibleHClassesAreStale_ = false;
     for (JSHClass *hclass : hclasses) {
         AddPossibleHClass(hclass, isStable);
     }
-    if (!possibleHClasses_.empty()) {
-        IntersectType(NodeInfo::NodeType::JS_RECEIVER);
+    IntersectTypeWithPossibleHClasses();
+    CheckPossibleHClassInvariants();
+}
+
+void NodeInfo::RecordPossibleHClasses(const PossibleHClassInfos &hclasses)
+{
+    possibleHClasses_.clear();
+    possibleHClassesAreStale_ = false;
+    for (const PossibleHClassInfo &info : hclasses) {
+        AddPossibleHClass(info.hclass, info.isStable);
     }
+    IntersectTypeWithPossibleHClasses();
+    CheckPossibleHClassInvariants();
+}
+
+bool NodeInfo::NarrowPossibleHClasses(const PossibleHClasses &hclasses)
+{
+    ASSERT(HasFreshPossibleHClasses());
+    possibleHClasses_.erase(
+        std::remove_if(possibleHClasses_.begin(), possibleHClasses_.end(), [&hclasses](const auto &info) {
+            return std::find(hclasses.begin(), hclasses.end(), info.hclass) == hclasses.end();
+        }),
+        possibleHClasses_.end());
+    if (possibleHClasses_.empty()) {
+        possibleHClassesAreStale_ = false;
+        CheckPossibleHClassInvariants();
+        return false;
+    }
+    IntersectTypeWithPossibleHClasses();
+    CheckPossibleHClassInvariants();
+    return true;
 }
 
 void NodeInfo::ClearPossibleHClasses()
 {
     possibleHClasses_.clear();
+    possibleHClassesAreStale_ = false;
+    CheckPossibleHClassInvariants();
 }
 
-void NodeInfo::ClearUnstable()
+void NodeInfo::MarkUnstableHClassesStale()
 {
-    possibleHClasses_.erase(std::remove_if(possibleHClasses_.begin(), possibleHClasses_.end(),
-                                           [](const PossibleHClassInfo &info) { return !info.isStable; }),
-                            possibleHClasses_.end());
+    if (HasUnstablePossibleHClass()) {
+        possibleHClassesAreStale_ = true;
+    }
+    CheckPossibleHClassInvariants();
+}
+
+void NodeInfo::MarkPossibleHClassesFresh()
+{
+    ASSERT(!possibleHClasses_.empty());
+    possibleHClassesAreStale_ = false;
+    CheckPossibleHClassInvariants();
+}
+
+bool NodeInfo::MarkPossibleHClassStable(JSHClass *hclass)
+{
+    ASSERT(!possibleHClassesAreStale_);
+    auto it = std::find_if(possibleHClasses_.begin(), possibleHClasses_.end(),
+                           [hclass](const PossibleHClassInfo &info) { return info.hclass == hclass; });
+    if (it == possibleHClasses_.end()) {
+        return false;
+    }
+    it->isStable = true;
+    CheckPossibleHClassInvariants();
+    return true;
 }
 
 bool NodeInfo::MergeWith(const NodeInfo &other)
@@ -183,7 +257,10 @@ bool NodeInfo::MergeWith(const NodeInfo &other)
     UnionType(other.type_);
     nonHole_ = nonHole_ && other.nonHole_;
     alternatives_.MergeWith(other.alternatives_);
+    bool mergedHClassesAreStale = possibleHClassesAreStale_ || other.possibleHClassesAreStale_;
     UnionPossibleHClasses(other);
+    possibleHClassesAreStale_ = possibleHClasses_.empty() ? false : mergedHClassesAreStale;
+    CheckPossibleHClassInvariants();
     return !NoInfoAvailable();
 }
 
@@ -204,6 +281,22 @@ void NodeInfo::AddPossibleHClass(JSHClass *hclass, bool isStable)
     });
 }
 
+void NodeInfo::IntersectTypeWithPossibleHClasses()
+{
+    if (possibleHClasses_.empty()) {
+        return;
+    }
+    IntersectType(NodeType::JS_RECEIVER);
+    NodeType possibleType = NodeType::NONE;
+    for (const PossibleHClassInfo &info : possibleHClasses_) {
+        possibleType = UnionNodeType(possibleType, NodeTypeFromHClass(info.hclass));
+    }
+    possibleType = IntersectNodeType(possibleType, NodeType::JS_RECEIVER);
+    if (!IsEmptyNodeType(possibleType)) {
+        IntersectType(possibleType);
+    }
+}
+
 void NodeInfo::UnionPossibleHClasses(const NodeInfo &other)
 {
     if (possibleHClasses_.empty() || other.possibleHClasses_.empty()) {
@@ -213,6 +306,12 @@ void NodeInfo::UnionPossibleHClasses(const NodeInfo &other)
     for (const auto &otherInfo : other.possibleHClasses_) {
         AddPossibleHClass(otherInfo.hclass, otherInfo.isStable);
     }
+}
+
+void NodeInfo::CheckPossibleHClassInvariants() const
+{
+    ASSERT(!possibleHClasses_.empty() || !possibleHClassesAreStale_);
+    ASSERT(!possibleHClassesAreStale_ || HasUnstablePossibleHClass());
 }
 
 bool LoadedPropertyKeyCompare::operator()(const LoadedPropertyKey &lhs, const LoadedPropertyKey &rhs) const
@@ -253,6 +352,7 @@ CompileInfoFacts *CompileInfoFacts::Clone() const
     }
     copy->effectEpoch_ = effectEpoch_;
     copy->envSlotAliasMode_ = envSlotAliasMode_;
+    copy->freshUnstableHClassesRequireInvalidation_ = freshUnstableHClassesRequireInvalidation_;
     return copy;
 }
 
@@ -261,7 +361,7 @@ CompileInfoFacts *CompileInfoFacts::CloneForLoopHeader() const
     auto *copy = chunk_->New<CompileInfoFacts>(chunk_);
     copy->nodeInfos_.insert(nodeInfos_.begin(), nodeInfos_.end());
     for (auto infoIt = copy->nodeInfos_.begin(); infoIt != copy->nodeInfos_.end();) {
-        infoIt->second.ClearUnstable();
+        infoIt->second.MarkUnstableHClassesStale();
         if (infoIt->second.NoInfoAvailable()) {
             infoIt = copy->nodeInfos_.erase(infoIt);
         } else {
@@ -273,6 +373,7 @@ CompileInfoFacts *CompileInfoFacts::CloneForLoopHeader() const
     copy->effectEpoch_ = effectEpoch_;
     copy->IncrementEffectEpoch();
     copy->envSlotAliasMode_ = EnvSlotAliasMode::NONE;
+    copy->freshUnstableHClassesRequireInvalidation_ = false;
     return copy;
 }
 
@@ -296,6 +397,7 @@ void CompileInfoFacts::Merge(const CompileInfoFacts &other)
     MergeEnvSlots(loadedEnvConstants_, other.loadedEnvConstants_);
     MergeAvailableExpressions(other);
     envSlotAliasMode_ = MergeEnvSlotAliasMode(envSlotAliasMode_, other.envSlotAliasMode_);
+    RecomputeFreshUnstableHClassesRequireInvalidation();
 }
 
 NodeInfo *CompileInfoFacts::GetOrCreateInfoFor(ValueVertex *node)
@@ -359,22 +461,51 @@ bool CompileInfoFacts::IsKnownNonHole(ValueVertex *node) const
 
 void CompileInfoFacts::RecordHClass(ValueVertex *node, JSHClass *hclass, bool isStable)
 {
-    GetOrCreateInfoFor(node)->RecordHClass(hclass, isStable);
+    NodeInfo *info = GetOrCreateInfoFor(node);
+    info->RecordHClass(hclass, isStable);
+    if (info->HasFreshPossibleHClasses() && info->HasUnstablePossibleHClass()) {
+        freshUnstableHClassesRequireInvalidation_ = true;
+    }
 }
 
 JSHClass *CompileInfoFacts::TryGetHClass(ValueVertex *node) const
 {
     const NodeInfo *info = TryGetInfoFor(node);
-    if (info == nullptr || !info->HasKnownHClass()) {
+    if (info == nullptr || !info->HasFreshKnownHClass()) {
         return nullptr;
     }
-    return info->GetKnownHClass();
+    return info->GetFreshKnownHClass();
 }
 
 void CompileInfoFacts::RecordPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClasses &hclasses,
                                               bool isStable)
 {
-    GetOrCreateInfoFor(node)->RecordPossibleHClasses(hclasses, isStable);
+    NodeInfo *info = GetOrCreateInfoFor(node);
+    info->RecordPossibleHClasses(hclasses, isStable);
+    if (info->HasFreshPossibleHClasses() && info->HasUnstablePossibleHClass()) {
+        freshUnstableHClassesRequireInvalidation_ = true;
+    }
+}
+
+void CompileInfoFacts::RecordPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClassInfos &hclasses)
+{
+    NodeInfo *info = GetOrCreateInfoFor(node);
+    info->RecordPossibleHClasses(hclasses);
+    if (info->HasFreshPossibleHClasses() && info->HasUnstablePossibleHClass()) {
+        freshUnstableHClassesRequireInvalidation_ = true;
+    }
+}
+
+bool CompileInfoFacts::NarrowPossibleHClasses(ValueVertex *node, const NodeInfo::PossibleHClasses &hclasses)
+{
+    NodeInfo *info = TryGetInfoFor(node);
+    if (info == nullptr || !info->HasFreshPossibleHClasses() || !info->NarrowPossibleHClasses(hclasses)) {
+        return false;
+    }
+    if (info->HasUnstablePossibleHClass()) {
+        freshUnstableHClassesRequireInvalidation_ = true;
+    }
+    return true;
 }
 
 void CompileInfoFacts::SetPossibleHClasses(ValueVertex *node, const ChunkVector<JSHClass *> &hclasses,
@@ -383,18 +514,50 @@ void CompileInfoFacts::SetPossibleHClasses(ValueVertex *node, const ChunkVector<
     NodeInfo::PossibleHClasses copy;
     copy.reserve(hclasses.size());
     copy.insert(copy.end(), hclasses.begin(), hclasses.end());
+    RecordPossibleHClasses(node, copy, false);
     NodeInfo *info = GetOrCreateInfoFor(node);
-    info->RecordPossibleHClasses(copy, false);
     info->IntersectType(possibleType);
 }
 
 std::optional<NodeInfo::PossibleHClasses> CompileInfoFacts::TryGetPossibleHClasses(ValueVertex *node) const
 {
     const NodeInfo *info = TryGetInfoFor(node);
-    if (info == nullptr || !info->HasPossibleHClasses()) {
+    if (info == nullptr || !info->HasFreshPossibleHClasses()) {
         return std::nullopt;
     }
-    return info->GetPossibleHClasses();
+    return info->GetFreshPossibleHClasses();
+}
+
+std::optional<NodeInfo::PossibleHClasses> CompileInfoFacts::TryGetPossibleHClassesForRevalidation(
+    ValueVertex *node) const
+{
+    const NodeInfo *info = TryGetInfoFor(node);
+    if (info == nullptr || info->PossibleHClassCount() == 0) {
+        return std::nullopt;
+    }
+    return info->GetPossibleHClassesForRevalidation();
+}
+
+bool CompileInfoFacts::PossibleHClassesAreStale(ValueVertex *node) const
+{
+    const NodeInfo *info = TryGetInfoFor(node);
+    return info != nullptr && info->PossibleHClassesAreStale();
+}
+
+void CompileInfoFacts::MarkPossibleHClassesFresh(ValueVertex *node)
+{
+    NodeInfo *info = TryGetInfoFor(node);
+    ASSERT(info != nullptr && info->PossibleHClassesAreStale());
+    info->MarkPossibleHClassesFresh();
+    if (info->HasUnstablePossibleHClass()) {
+        freshUnstableHClassesRequireInvalidation_ = true;
+    }
+}
+
+bool CompileInfoFacts::MarkPossibleHClassStable(ValueVertex *node, JSHClass *hclass)
+{
+    NodeInfo *info = TryGetInfoFor(node);
+    return info != nullptr && info->MarkPossibleHClassStable(hclass);
 }
 
 void CompileInfoFacts::SetAlternative(ValueVertex *node, AlternativeNodes::Kind kind, ValueVertex *alternative)
@@ -616,7 +779,8 @@ void CompileInfoFacts::MarkPossibleSideEffect(const SideEffectDescriptor &effect
             IncrementEffectEpoch();
             return;
         case SideEffectKind::MAP_TRANSITION:
-            ClearUnstable();
+            MarkAllFreshUnstableHClassesStale();
+            ClearLoadedProperties();
             IncrementEffectEpoch();
             return;
         case SideEffectKind::UNKNOWN_CALL:
@@ -628,17 +792,24 @@ void CompileInfoFacts::MarkPossibleSideEffect(const SideEffectDescriptor &effect
     }
 }
 
-void CompileInfoFacts::ClearUnstable()
+void CompileInfoFacts::MarkAllFreshUnstableHClassesStale()
 {
-    for (auto infoIt = nodeInfos_.begin(); infoIt != nodeInfos_.end();) {
-        infoIt->second.ClearUnstable();
-        if (infoIt->second.NoInfoAvailable()) {
-            infoIt = nodeInfos_.erase(infoIt);
-        } else {
-            ++infoIt;
-        }
+    if (!freshUnstableHClassesRequireInvalidation_) {
+        return;
     }
-    ClearLoadedProperties();
+    for (auto &entry : nodeInfos_) {
+        entry.second.MarkUnstableHClassesStale();
+    }
+    freshUnstableHClassesRequireInvalidation_ = false;
+}
+
+void CompileInfoFacts::RecomputeFreshUnstableHClassesRequireInvalidation()
+{
+    freshUnstableHClassesRequireInvalidation_ = std::any_of(
+        nodeInfos_.begin(), nodeInfos_.end(), [](const auto &entry) {
+            const NodeInfo &info = entry.second;
+            return info.HasFreshPossibleHClasses() && info.HasUnstablePossibleHClass();
+        });
 }
 
 void CompileInfoFacts::ClearAll()
@@ -650,11 +821,13 @@ void CompileInfoFacts::ClearAll()
     loadedEnvConstants_.clear();
     availableExpressions_.clear();
     envSlotAliasMode_ = EnvSlotAliasMode::NONE;
+    freshUnstableHClassesRequireInvalidation_ = false;
 }
 
 void CompileInfoFacts::OnSideEffect()
 {
-    ClearUnstable();
+    MarkAllFreshUnstableHClassesStale();
+    ClearLoadedProperties();
     loadedEnvSlots_.clear();
     envSlotAliasMode_ = EnvSlotAliasMode::NONE;
     IncrementEffectEpoch();
