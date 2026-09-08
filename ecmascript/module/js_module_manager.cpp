@@ -207,6 +207,34 @@ void ModuleManager::Iterate(RootVisitor &v)
 #endif
 }
 
+void ModuleManager::ProcessPendingRemovalLocalModules(const WeakRootVisitor &visitor)
+{
+    std::vector<CString> keysToErase;
+
+    auto processModule = [this, &visitor, &keysToErase](const CString &key, GCRoot &root) {
+        JSTaggedValue module = root.Read();
+        ASSERT(!module.IsInSharedHeap());
+        if (!module.IsHeapObject()) {
+            return;
+        }
+        TaggedObject *forwarded = visitor(module.GetTaggedObject());
+        if (forwarded == nullptr) {
+            SourceTextModule::Cast(module.GetTaggedObject())->DestroyModuleCNativeFields(this);
+            keysToErase.push_back(key);
+        } else if (forwarded != module.GetTaggedObject()) {
+            root = GCRoot(JSTaggedValue(forwarded));
+        }
+    };
+#if ENABLE_LATEST_OPTIMIZATION
+    pendingRemovalModules_.ForEach(processModule);
+#else
+    pendingRemovalModules_.ForEach([&processModule](auto iter) { processModule(iter->first, iter->second); });
+#endif
+    for (const auto &key : keysToErase) {
+        pendingRemovalModules_.Erase(key);
+    }
+}
+
 CString ModuleManager::GetRecordName(const JSThread *thread, JSTaggedValue module)
 {
     CString entry = "";
@@ -366,6 +394,18 @@ JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(const CString& refer
     return JSHandle<JSTaggedValue>(thread, entry.value());
 }
 
+JSHandle<JSTaggedValue> ModuleManager::TryGetPendingRemovalModule(const CString &referencing)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSTaggedValue module;
+    if (!pendingRemovalModules_.FindValue(referencing, module)) {
+        return thread->GlobalConstants()->GetHandledUndefined();
+    }
+    resolvedModules_.Emplace(referencing, module);
+    pendingRemovalModules_.Erase(referencing);
+    return JSHandle<JSTaggedValue>(thread, module);
+}
+
 // no handle created
 bool ModuleManager::TryGetImportedModuleTaggedValue(const CString &referencing, JSTaggedValue &module)
 {
@@ -382,7 +422,7 @@ JSHandle<JSTaggedValue> ModuleManager::TryGetSendableModule(const CString& refer
     return JSHandle<JSTaggedValue>(thread, entry.value());
 }
 
-void ModuleManager::RemoveModuleFromCache(const CString& recordName)
+void ModuleManager::RemoveModuleFromCacheToPending(const CString& recordName)
 {
     auto entry = resolvedModules_.Find(recordName);
     if (!entry) { // LCOV_EXCL_BR_LINE
@@ -390,16 +430,11 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
             ", when try to remove the module"; // LCOV_EXCL_BR_LINE
         return;
     }
-    SourceTextModule::Cast(entry.value())->DestroyModuleCNativeFields(this);
-    ResetConstPoolLiterals(recordName);
+    ASSERT(!entry.value().IsInSharedHeap());
+    pendingRemovalModules_.Emplace(recordName, entry.value());
     resolvedModules_.Erase(recordName);
-    // remove sendableModule
-    auto sendableModule = resolvedSendableModules_.Find(recordName);
-    if (!sendableModule) {
-        return;
-    }
-    SourceTextModule::Cast(sendableModule.value())->DestroySharedModuleCNativeFields();
-    resolvedSendableModules_.Erase(recordName);
+    ResetConstPoolLiterals(recordName);
+    classLiteralConstPoolMap_.erase(recordName);
 }
 
 // this function only remove module's name from resolvedModules List, it's content still needed by sharedmodule

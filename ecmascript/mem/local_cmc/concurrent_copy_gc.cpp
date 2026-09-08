@@ -161,6 +161,7 @@ void ConcurrentCopyGC::UpdateRoot()
         }
     };
     heap_->GetEcmaVM()->ProcessReferences(weakVisitor);
+    heap_->GetEcmaVM()->ProcessPendingRemovalLocalModules(weakVisitor);
     heap_->GetSweeper()->PostTask(TriggerGCType::LOCAL_CC);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakRoots(weakVisitor);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(weakVisitor);

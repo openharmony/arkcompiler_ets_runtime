@@ -65,9 +65,11 @@ public:
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
+    JSHandle<JSTaggedValue> TryGetPendingRemovalModule(const CString &referencing);
     bool TryGetImportedModuleTaggedValue(const CString &referencing, JSTaggedValue &module);
     JSHandle<JSTaggedValue> TryGetSendableModule(const CString& referencing);
     void Iterate(RootVisitor &v);
+    void ProcessPendingRemovalLocalModules(const WeakRootVisitor &visitor);
 
     ModuleExecuteMode GetExecuteMode() const
     {
@@ -113,18 +115,25 @@ public:
             ASSERT(!key.empty());
             SourceTextModule::Cast(root.Read())->DestroySharedModuleCNativeFields();
         });
+        pendingRemovalModules_.ForEach([this](const CString& key, GCRoot& root) {
+            ASSERT(!key.empty());
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(this);
+        });
 #else
         resolvedModules_.ForEach([this](auto it) {
-            CString key = it->first;
-            ASSERT(!key.empty());
+            ASSERT(!it->first.empty());
             GCRoot &root = it->second;
             SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(this);
         });
         resolvedSendableModules_.ForEach([](auto it) {
-            CString key = it->first;
-            ASSERT(!key.empty());
+            ASSERT(!it->first.empty());
             GCRoot &root = it->second;
             SourceTextModule::Cast(root.Read())->DestroySharedModuleCNativeFields();
+        });
+        pendingRemovalModules_.ForEach([this](auto it) {
+            ASSERT(!it->first.empty());
+            GCRoot &root = it->second;
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields(this);
         });
 #endif
     }
@@ -160,6 +169,7 @@ public:
     void ClearResolvedModules()
     {
         resolvedModules_.Clear();
+        pendingRemovalModules_.Clear();
     }
 
     void ClearSendableModulesForTest()
@@ -219,7 +229,12 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
-    void RemoveModuleFromCache(const CString &recordName);
+    void RemoveModuleFromCacheToPending(const CString &recordName);
+
+    bool IsPendingRemovalModule(const CString &recordName)
+    {
+        return pendingRemovalModules_.Find(recordName).has_value();
+    }
 
     void RemoveModuleNameFromList(const CString &recordName);
 
@@ -231,9 +246,11 @@ private:
 #if ENABLE_LATEST_OPTIMIZATION
     ModuleManagerMap<CString, CStringHash> resolvedModules_;
     ModuleManagerMap<CString, CStringHash> resolvedSendableModules_;
+    ModuleManagerMap<CString, CStringHash> pendingRemovalModules_;
 #else
     ModuleManagerMap<CString> resolvedModules_;
     ModuleManagerMap<CString> resolvedSendableModules_;
+    ModuleManagerMap<CString> pendingRemovalModules_;
 #endif
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     std::string moduleImportData_ {"\nModuleImportStack:"};

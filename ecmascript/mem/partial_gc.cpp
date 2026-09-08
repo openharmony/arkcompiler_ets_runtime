@@ -216,6 +216,7 @@ void PartialGC::ProcessNativeDelete()
         return header;
     };
     heap_->GetEcmaVM()->ProcessNativeDelete(gcUpdateWeak);
+    heap_->GetEcmaVM()->ProcessPendingRemovalLocalModules(gcUpdateWeak);
 }
 
 void PartialGC::Evacuate()

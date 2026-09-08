@@ -164,6 +164,7 @@ void SweepGC::ProcessNativeDelete()
         return header;
     };
     heap_->GetEcmaVM()->ProcessNativeDelete(gcUpdateWeak);
+    heap_->GetEcmaVM()->ProcessPendingRemovalLocalModules(gcUpdateWeak);
 }
 
 void SweepGC::ClearDeadReferences()
@@ -192,6 +193,7 @@ void SweepGC::ClearDeadReferences()
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcClearDeadWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcClearDeadWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcClearDeadWeak);
+    heap_->GetEcmaVM()->ProcessPendingRemovalLocalModules(gcClearDeadWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcClearDeadWeak);
 }
 

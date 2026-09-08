@@ -1005,6 +1005,12 @@ void EcmaVM::ProcessSnapShotEnv(const WeakRootVisitor& visitor)
     GetSnapshotEnv()->ProcessSnapShotEnv(visitor);
 }
 
+void EcmaVM::ProcessPendingRemovalLocalModules(const WeakRootVisitor &visitor)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "EcmaVM::ProcessPendingRemovalLocalModules", "");
+    moduleManagers_.ProcessPendingRemovalLocalModules(visitor);
+}
+
 // for cmc-gc
 void EcmaVM::IteratorSnapShotEnv(WeakVisitor & visitor)
 {
@@ -2753,6 +2759,14 @@ void EcmaVM::ModuleManagers::Iterate(RootVisitor &v)
     LockHolder lock(CMCGCMutex_);
     for (ModuleManager *moduleManager : moduleManagersVec_) {
         moduleManager->Iterate(v);
+    }
+}
+
+void EcmaVM::ModuleManagers::ProcessPendingRemovalLocalModules(const WeakRootVisitor &visitor)
+{
+    LockHolder lock(CMCGCMutex_);
+    for (ModuleManager *moduleManager : moduleManagersVec_) {
+        moduleManager->ProcessPendingRemovalLocalModules(visitor);
     }
 }
 
