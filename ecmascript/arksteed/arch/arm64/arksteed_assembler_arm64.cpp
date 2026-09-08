@@ -987,7 +987,12 @@ void ArkSteedAssembler::EmitEmbeddedLiteralPool(bool precedingCodeCanFallThrough
                                           literal->handleIndex,
                                           EmbeddedCodeRefRelocKind::ARM64_LITERAL64,
                                           RELOC_WIDTH});
-        assembler_.EmitU64(JSTaggedValue::VALUE_HOLE);
+        // EmitU64 bypasses the JIT CodeSign AppendData path. Emit two 32-bit words so CodeSign records the
+        // complete embedded literal while preserving its 64-bit layout.
+        constexpr uint32_t WORD_BITS = 32U;
+        uint64_t placeholder = JSTaggedValue::VALUE_HOLE;
+        assembler_.EmitU32(static_cast<uint32_t>(placeholder));
+        assembler_.EmitU32(static_cast<uint32_t>(placeholder >> WORD_BITS));
     }
 
     if (precedingCodeCanFallThrough) {

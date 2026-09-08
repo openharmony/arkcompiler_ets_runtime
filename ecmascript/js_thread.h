@@ -498,8 +498,8 @@ public:
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
 
     JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
-    JSHClass *GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind,
-                                     bool isPrototype, ThreadKind threadKind) const;
+    PUBLIC_API JSHClass *GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind,
+                                              bool isPrototype, ThreadKind threadKind) const;
 
     GlobalEnvField GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
     {

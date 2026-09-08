@@ -39,12 +39,15 @@
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::arksteed {
+constexpr JSTaggedType HCLASS_ADDRESS_MASK = ~JSTaggedValueInternals::TAG_MARK;
+
 #define __ assembler_->
 
 class GapMoveResolver {
@@ -1151,7 +1154,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassMismatchVertex>(D
     __ JumpIf(Condition::NOT_EQUAL, deopt);
 
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
-    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    __ Move(expectedHClass, HCLASS_ADDRESS_MASK);
     __ And(actualHClass, expectedHClass);
     __ MoveEmbeddedTagged(expectedHClass, checkHClass->GetExpectedHClassHandleIndex());
     __ Compare(actualHClass, expectedHClass);
@@ -1186,7 +1189,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfHClassNotInVertex>(Deop
     __ JumpIf(Condition::NOT_EQUAL, &deopt);
 
     __ LoadField(actualHClass, receiver, TaggedObject::HCLASS_OFFSET);
-    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    __ Move(expectedHClass, HCLASS_ADDRESS_MASK);
     __ And(actualHClass, expectedHClass);
     for (uint32_t i = 0; i < checkHClass->GetExpectedHClassCount(); ++i) {
         __ MoveEmbeddedTagged(expectedHClass, checkHClass->GetExpectedHClassHandleIndex(i));
@@ -1218,7 +1221,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DeoptIfPrototypeChangedVertex>
 
     auto loadHClassAddress = [this, scratch](ArkSteedRegister dst, ArkSteedRegister object) {
         __ LoadField(dst, object, TaggedObject::HCLASS_OFFSET);
-        __ Move(scratch, TaggedStateWord::ADDRESS_MASK);
+        __ Move(scratch, HCLASS_ADDRESS_MASK);
         __ And(dst, scratch);
     };
 
@@ -1561,7 +1564,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeFromObjectVertex>
     auto dst = GetResultRegister(loadPrototype);
     auto obj = GetInputRegister(loadPrototype, LoadPrototypeFromObjectVertex::OBJECT_INDEX);
     __ LoadField(dst, obj, TaggedObject::HCLASS_OFFSET);
-    __ And(dst, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ And(dst, static_cast<int64_t>(HCLASS_ADDRESS_MASK));
     __ LoadField(dst, dst, JSHClass::PROTOTYPE_OFFSET);
 }
 
@@ -1585,19 +1588,19 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVer
     Label pass;
 
     __ LoadField(currentHClass, receiver, TaggedObject::HCLASS_OFFSET);
-    __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ And(currentHClass, static_cast<int64_t>(HCLASS_ADDRESS_MASK));
     __ LoadField(holder, currentHClass, JSHClass::PROTOTYPE_OFFSET);
 
     __ Move(expectedHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
     __ Compare(holder, expectedHClass);
     __ JumpIf(Condition::EQUAL, &deopt);
     __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
-    __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ And(currentHClass, static_cast<int64_t>(HCLASS_ADDRESS_MASK));
     __ LoadField(expectedHClass, currentHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     __ Move(currentHClass, static_cast<int64_t>(JSTaggedValue::VALUE_NULL));
     __ Compare(expectedHClass, currentHClass);
     __ JumpIf(Condition::EQUAL, &protoChanged);
-    __ And(expectedHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+    __ And(expectedHClass, static_cast<int64_t>(HCLASS_ADDRESS_MASK));
     __ LoadField(currentHClass, expectedHClass, ProtoChangeMarker::BIT_FIELD_OFFSET);
     __ And(currentHClass, static_cast<int64_t>((1LLU << (ProtoChangeMarker::HAS_CHANGED_BITS - 1))));
     __ Compare(currentHClass, 0);
@@ -1608,7 +1611,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadPrototypeHolderByHClassVer
         __ Compare(holder, expectedHClass);
         __ JumpIf(Condition::EQUAL, &deopt);
         __ LoadField(currentHClass, holder, TaggedObject::HCLASS_OFFSET);
-        __ And(currentHClass, static_cast<int64_t>(TaggedStateWord::ADDRESS_MASK));
+        __ And(currentHClass, static_cast<int64_t>(HCLASS_ADDRESS_MASK));
         __ MoveEmbeddedTagged(expectedHClass, loadHolder->GetExpectedHClassHandleIndex(i));
         __ Compare(currentHClass, expectedHClass);
         __ JumpIf(Condition::NOT_EQUAL, &protoChanged);
@@ -1655,7 +1658,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<LoadHClassAddressVertex>(LoadH
     ArkSteedRegister mask = scope.Acquire();
     ASSERT(dst != mask);
     __ LoadField(dst, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
-    __ Move(mask, TaggedStateWord::ADDRESS_MASK);
+    __ Move(mask, HCLASS_ADDRESS_MASK);
     __ And(dst, mask);
 }
 
@@ -2155,7 +2158,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StoreTaggedFieldByHClassVertex
     __ JumpIf(Condition::NOT_EQUAL, &deopt);
 
     __ LoadField(actualHClass, object, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
-    __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+    __ Move(expectedHClass, HCLASS_ADDRESS_MASK);
     __ And(actualHClass, expectedHClass);
     for (size_t i = 0; i < storeByHClass->GetCases().size(); ++i) {
         __ MoveEmbeddedTagged(expectedHClass, storeByHClass->GetCases()[i].expectedHClassHandleIndex);
@@ -2402,7 +2405,7 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfHClassInVertex>(BranchIfH
         __ Compare(actualHClass, 0);
         __ JumpIf(Condition::NOT_EQUAL, ifFalse->GetLabel());
         __ LoadField(actualHClass, value, TaggedObject::HCLASS_OFFSET);
-        __ Move(expectedHClass, TaggedStateWord::ADDRESS_MASK);
+        __ Move(expectedHClass, HCLASS_ADDRESS_MASK);
         __ And(actualHClass, expectedHClass);
     }
     for (uint32_t i = 0; i < jumpIf->GetExpectedHClassCount(); ++i) {

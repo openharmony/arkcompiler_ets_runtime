@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "ecmascript/arksteed/arksteed_deopt_abi.h"
+#include "ecmascript/common.h"
 #include "ecmascript/compiler/deopt_type.h"
 #include "ecmascript/js_tagged_value_internals.h"
 #include "libpandabase/macros.h"
@@ -74,7 +75,7 @@ enum class DeoptSourceKind : uint8_t {
 
 class DeoptLiteralTableBuilder {
 public:
-    uint32_t GetOrAdd(uint32_t handleIndex);
+    uint32_t PUBLIC_API GetOrAdd(uint32_t handleIndex);
 
     const std::vector<uint32_t> &GetHandleIndices() const
     {
@@ -193,7 +194,7 @@ struct DeoptTranslation {
     }
 };
 
-class DeoptTranslationBuilder {
+class PUBLIC_API DeoptTranslationBuilder {
 public:
     DeoptId AddTranslation(uint32_t bytecodeOffset, kungfu::DeoptType type,
                            std::vector<DeoptTranslationInput> inputs);
@@ -236,13 +237,13 @@ private:
     const uint8_t *streamEnd_ {nullptr};
 };
 
-int64_t GetFloat64RawBits(double value);
+int64_t PUBLIC_API GetFloat64RawBits(double value);
 int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTranslationKind valueKind);
 DeoptTranslationInput BuildDeoptTranslationInput(ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
                                                  uint32_t index, DeoptLiteralTableBuilder *literalTableBuilder);
-std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(ArkSteedAssembler *assembler,
-                                                               const EagerDeoptimizableMixin *vertex,
-                                                               DeoptLiteralTableBuilder *literalTableBuilder);
+std::vector<DeoptTranslationInput> PUBLIC_API BuildDeoptTranslationInputs(
+    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
+    DeoptLiteralTableBuilder *literalTableBuilder);
 
 bool WouldStackOverflow(JSThread *thread, const JSTaggedType *sp);
 bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp,

@@ -34,10 +34,10 @@ public:
 
     void Compile();
     void InstallCode() override;
-    void SetDeoptTranslationData(std::vector<uint8_t> data);
-    void SetDeoptLiteralData(std::vector<JSHandle<JSTaggedValue>> literals);
-    void SetEmbeddedRefData(const std::vector<EmbeddedCodeRefReloc> &relocations,
-                            const std::vector<JSHandle<JSTaggedValue>> &handles);
+    void PUBLIC_API SetDeoptTranslationData(std::vector<uint8_t> data);
+    void PUBLIC_API SetDeoptLiteralData(std::vector<JSHandle<JSTaggedValue>> literals);
+    void PUBLIC_API SetEmbeddedRefData(const std::vector<EmbeddedCodeRefReloc> &relocations,
+                                      const std::vector<JSHandle<JSTaggedValue>> &handles);
 
     class AsyncTask : public common::Task {
     public:

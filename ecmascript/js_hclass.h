@@ -500,8 +500,8 @@ public:
                                        const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
     static void TransitionForElementsKindChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                          const ElementsKind newKind);
-    static bool IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
-                                                     const ElementsKind targetKind);
+    static bool PUBLIC_API IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
+                                                               const ElementsKind targetKind);
     static bool PUBLIC_API TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                         ElementsKind newKind);
     static void PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
@@ -2253,7 +2253,7 @@ public:
 
     DECL_DUMP()
 
-    static CString DumpJSType(JSType type);
+    static CString PUBLIC_API DumpJSType(JSType type);
 
     static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
                                                       const HClassLayoutDesc* desc,
