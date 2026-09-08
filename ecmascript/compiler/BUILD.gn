@@ -440,6 +440,7 @@ ohos_shared_library("libark_jsoptimizer") {
     }
     branch_protector_ret = "pac_ret"
   }
+  version_script = "libark_jsoptimizer.map"
   deps = [
     ":libark_jsoptimizer_set_with_maple",
     "$js_root:libark_jsruntime",

@@ -1,0 +1,30 @@
+{
+  global:
+    extern "C" {
+      InitJitCompiler;
+      CreateJitCompilerTask;
+      JitCompile;
+      JitFinalize;
+      DeleteJitCompilerTask;
+      InitArkSteedCompiler;
+      ArkSteedCompile;
+      ArkSteedFinalize;
+      CreateArkSteedCompilerTask;
+      DeleteArkSteedCompilerTask;
+    };
+    extern "C++" {
+      panda::ecmascript::AOTCompilationEnv::*;
+      panda::ecmascript::AotCompilerStats::*;
+      panda::ecmascript::kungfu::AotCompilerPreprocessor::*;
+      panda::ecmascript::kungfu::AOTFileGenerator::*;
+      panda::ecmascript::kungfu::AotMethodLogList::*;
+      panda::ecmascript::kungfu::CodeInfo::*;
+      panda::ecmascript::kungfu::CompilationConfig::*;
+      panda::ecmascript::kungfu::CompilationOptions::*;
+      panda::ecmascript::kungfu::CompilerLog::*;
+      panda::ecmascript::kungfu::Module::*;
+      panda::ecmascript::kungfu::PassManager::*;
+    };
+  local:
+    *;
+};
