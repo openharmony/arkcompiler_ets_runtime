@@ -23,7 +23,9 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/cms_mem/slot_space-inl.h"
+#if ECMASCRIPT_ENABLE_ARK_STEED
 #include "ecmascript/mem/embedded_code_ref_set.h"
+#endif
 #include "ecmascript/mem/guarded_task.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/mem/linear_space.h"
@@ -1340,10 +1342,12 @@ public:
         return hugeMachineCodeSpace_;
     }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
     EmbeddedCodeRefSet *GetEmbeddedCodeRefSet()
     {
         return &embeddedCodeRefSet_;
     }
+#endif
 
     SnapshotSpace *GetSnapshotSpace() const
     {
@@ -2302,7 +2306,9 @@ private:
     NativePointerList nativePointerList_;
     NativePointerList concurrentNativePointerList_;
     HEAP_PRIVATE_HYBRID_EXTENSION();
+#if ECMASCRIPT_ENABLE_ARK_STEED
     EmbeddedCodeRefSet embeddedCodeRefSet_;
+#endif
 
     friend class ConcurrentCopyGC;
     friend class ConcurrentMarker;

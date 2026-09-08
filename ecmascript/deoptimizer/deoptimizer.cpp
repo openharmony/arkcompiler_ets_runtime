@@ -23,7 +23,7 @@
 #include "ecmascript/base/gc_helper.h"
 #include "ecmascript/base/number_helper.h"
 
-#ifdef ECMASCRIPT_ENABLE_ARK_STEED
+#if ECMASCRIPT_ENABLE_ARK_STEED
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #endif
@@ -375,6 +375,7 @@ void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
     stackContext_.isFrameLazyDeopt_ = it.IsLazyDeoptFrameType();
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
 bool Deoptimizier::CollectSteedDeoptContextFromRuntime(FrameIterator &it, SteedFunctionFrame *frame,
                                                        MachineCode *machineCode)
 {
@@ -401,6 +402,8 @@ bool Deoptimizier::CollectSteedDeoptContextFromRuntime(FrameIterator &it, SteedF
         frame->GetPrevFrameFp() == nullptr ? false : IsRecursiveCall(it, jsFunction);
     return true;
 }
+
+#endif
 
 void Deoptimizier::DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress)
 {
@@ -963,6 +966,7 @@ bool Deoptimizier::PrepareForExceptionLazyDeopt(JSThread *thread, JSTaggedType *
     }
 #else
     (void)thread;
+    (void)startFrame;
 #endif
     return false;
 }

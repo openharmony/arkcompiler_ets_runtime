@@ -892,6 +892,7 @@ void MachineCodeSpace::PrepareSweeping()
     // fill free obj before sparse space prepare sweeping rebuild freelist, as may fail set free obj
     // when iterate machine code space in GetMachineCodeObject
     allocator_->FillBumpPointer();
+#if ECMASCRIPT_ENABLE_ARK_STEED
     IterateOverObjects([this](TaggedObject *object) {
         if (!JSTaggedValue(object).IsMachineCodeObject()) {
             return;
@@ -902,6 +903,7 @@ void MachineCodeSpace::PrepareSweeping()
             localHeap_->GetEmbeddedCodeRefSet()->RemoveOwner(MachineCode::Cast(object));
         }
     });
+#endif
     SparseSpace::PrepareSweeping();
     if (jitFort_) {
         jitFort_->PrepareSweeping();

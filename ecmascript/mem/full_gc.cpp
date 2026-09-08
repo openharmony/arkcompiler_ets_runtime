@@ -148,7 +148,9 @@ void FullGC::Mark()
     heap_->WaitRunningMarkTaskFinished();
 
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+#endif
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningMarkTaskFinished();
 
@@ -157,9 +159,11 @@ void FullGC::Mark()
     MarkUntilFixPoint();
     heap_->SetParallelGCEnabled(prev);
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
     if (!heap_->GetEmbeddedCodeRefSet()->UpdateMarkedLocalTargets()) {
         LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
     }
+#endif
 
     if (heap_->GetEvacuateNonMovableSpace()) {
         heap_->GetNonMovableSpace()->PrepareForIterate();
@@ -198,7 +202,9 @@ void FullGC::MarkUntilFixPointImpl()
         }
         marker->ProcessMarkStack(MAIN_THREAD_INDEX);
         marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+#if ECMASCRIPT_ENABLE_ARK_STEED
         marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+#endif
 
         while (holder->PopFreshWeakAggregate(&weakAggregate)) {
             if (!runner.HandleWeakAggregate(weakAggregate)) {

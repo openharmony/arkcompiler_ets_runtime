@@ -1183,7 +1183,6 @@ ecma_source = [
   "ecmascript/mem/cms_mem/sticky_sweep_gc.cpp",
   "ecmascript/mem/cms_mem/sweep_gc.cpp",
   "ecmascript/mem/dyn_chunk.cpp",
-  "ecmascript/mem/embedded_code_ref_set.cpp",
   "ecmascript/mem/full_gc.cpp",
   "ecmascript/mem/concurrent_marker.cpp",
   "ecmascript/mem/concurrent_sweeper.cpp",
@@ -1353,6 +1352,7 @@ if (ets_runtime_enable_ark_steed) {
     "ecmascript/arksteed/arksteed_deopt_helper.cpp",
     "ecmascript/arksteed/arksteed_safepoint_table.cpp",
     "ecmascript/arksteed/arksteed_task.cpp",
+    "ecmascript/mem/embedded_code_ref_set.cpp",
   ]
 }
 

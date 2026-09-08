@@ -62,7 +62,9 @@ void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm,
         heap->GetSweeper()->EnsureAllTaskFinished();
     }
     ObjectXRay::VisitVMRoots(localVm, visitor);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     heap->GetEmbeddedCodeRefSet()->VisitSharedTargets(visitor);
+#endif
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 

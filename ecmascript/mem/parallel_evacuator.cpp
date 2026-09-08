@@ -506,6 +506,7 @@ void ParallelEvacuator::UpdateRoot()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateRoot", "");
 
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     bool refsUpdated = false;
     if (heap_->IsYoungMark()) {
         heap_->GetEmbeddedCodeRefSet()->VisitYoungTargets(updateRootVisitor_);
@@ -517,6 +518,7 @@ void ParallelEvacuator::UpdateRoot()
     if (!refsUpdated) {
         LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
     }
+#endif
 }
 
 template <TriggerGCType gcType, bool cmsGC>

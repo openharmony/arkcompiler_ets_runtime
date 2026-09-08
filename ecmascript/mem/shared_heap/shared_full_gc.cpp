@@ -84,12 +84,14 @@ void SharedFullGC::Mark()
     marker->ProcessMarkStack(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningMarkTaskFinished();
+#if ECMASCRIPT_ENABLE_ARK_STEED
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
         if (!heap->GetEmbeddedCodeRefSet()->UpdateSharedTargets()) {
             LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references";
         }
     });
+#endif
 }
 
 void SharedFullGC::Sweep()

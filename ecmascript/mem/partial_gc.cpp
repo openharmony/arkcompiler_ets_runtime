@@ -181,9 +181,11 @@ void PartialGC::Mark()
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     Marker *marker = heap_->GetNonMovableMarker();
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningMarkTaskFinished();
+#endif
 }
 
 void PartialGC::Sweep()

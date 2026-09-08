@@ -286,6 +286,7 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, Allocat
 void HugeMachineCodeSpace::Sweep()
 {
     ASSERT(!g_isEnableCMCGC);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     EnumerateRegions([this](Region *region) {
         bool isMarked = false;
         region->IterateAllMarkedBits([&isMarked]([[maybe_unused]] void *mem) { isMarked = true; });
@@ -294,6 +295,7 @@ void HugeMachineCodeSpace::Sweep()
                 MachineCode::Cast(reinterpret_cast<TaggedObject *>(region->GetBegin())));
         }
     });
+#endif
     HugeObjectSpace::Sweep();
     if (jitFort_) {
         jitFort_->Sweep(true);

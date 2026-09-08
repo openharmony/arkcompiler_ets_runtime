@@ -328,6 +328,7 @@ public:
     static void GetBaselineBuiltinFp(ExtendedAssembler *assembler);
 };
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
 class ArkSteedCall : public CommonCall {
 public:
     static void ArkSteedCallEntry(ExtendedAssembler *assembler);
@@ -351,6 +352,7 @@ private:
                               Register newTarget, Register thisObj, Register actualNumArgs,
                               Register expectedNumArgs, CopyUserArgs copyUserArgs);
 };
+#endif
 
 }  // namespace panda::ecmascript::aarch64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

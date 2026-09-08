@@ -276,8 +276,10 @@ public:
     bool SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     bool SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
                          JSHandle<Method> &method, size_t dataSize);
+#endif
 
     template <VisitType visitType, class DerivedVisitor>
     void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)

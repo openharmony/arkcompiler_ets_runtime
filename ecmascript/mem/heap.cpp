@@ -1575,7 +1575,9 @@ void Heap::Destroy()
         delete snapshotSpace_;
         snapshotSpace_ = nullptr;
     }
+#if ECMASCRIPT_ENABLE_ARK_STEED
     embeddedCodeRefSet_.Clear();
+#endif
     if (machineCodeSpace_ != nullptr) {
         machineCodeSpace_->Reset();
         delete machineCodeSpace_;

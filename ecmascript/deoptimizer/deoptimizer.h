@@ -142,8 +142,10 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
+#if ECMASCRIPT_ENABLE_ARK_STEED
     bool CollectSteedDeoptContextFromRuntime(FrameIterator &it, SteedFunctionFrame *frame,
                                              MachineCode *machineCode);
+#endif
     void DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectMaterializedVregs(const std::vector<std::pair<VRegId, JSTaggedType>> &deoptValues, size_t shift);

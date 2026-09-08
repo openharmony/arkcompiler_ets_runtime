@@ -149,7 +149,11 @@ bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandl
         return SetBaselineCodeData(thread, desc, method, dataSize);
     }
     if (desc.codeType == MachineCodeType::ARKSTEED_CODE) {
+#if ECMASCRIPT_ENABLE_ARK_STEED
         return SetArkSteedData(thread, desc, method, dataSize);
+#else
+        UNREACHABLE();
+#endif
     }
 
     SetLocalHeapAddress(reinterpret_cast<uint64_t>(thread->GetEcmaVM()->GetHeap()));
@@ -251,6 +255,7 @@ bool MachineCode::SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &d
     return true;
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
 bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
                                   JSHandle<Method> &method, size_t dataSize)
 {
@@ -297,11 +302,9 @@ bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
         }
     }
 
-#if ECMASCRIPT_ENABLE_ARK_STEED
     if (!SetArkSteedTranslationData(desc)) {
         return false;
     }
-#endif
 
     // Set frame info from FuncEntryDes at funcEntryDesAddr
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(desc.funcEntryDesAddr);
@@ -326,7 +329,6 @@ bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
     return true;
 }
 
-#if ECMASCRIPT_ENABLE_ARK_STEED
 bool MachineCode::SetArkSteedTranslationData(const MachineCodeDesc &desc)
 {
     ASSERT(desc.arkSteedTranslationSize <= std::numeric_limits<uint32_t>::max());
