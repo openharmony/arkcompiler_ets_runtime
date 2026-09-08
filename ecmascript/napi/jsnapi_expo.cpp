@@ -1280,8 +1280,9 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
             JSTaggedValue bufferData = retArrayBuffer->GetArrayBufferData(thread);
             if (!bufferData.IsJSNativePointer()) {
                 *data = nullptr;
+            } else {
+                *data = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
             }
-            *data = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
         }
         if (arrayBuffer) {
             *arrayBuffer = reinterpret_cast<JSValueRef*>(retArrayBuffer.GetAddress());
