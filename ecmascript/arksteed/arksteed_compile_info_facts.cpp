@@ -202,11 +202,12 @@ void NodeInfo::RecordPossibleHClasses(const PossibleHClassInfos &hclasses)
 bool NodeInfo::NarrowPossibleHClasses(const PossibleHClasses &hclasses)
 {
     ASSERT(HasFreshPossibleHClasses());
-    possibleHClasses_.erase(
-        std::remove_if(possibleHClasses_.begin(), possibleHClasses_.end(), [&hclasses](const auto &info) {
-            return std::find(hclasses.begin(), hclasses.end(), info.hclass) == hclasses.end();
-        }),
-        possibleHClasses_.end());
+    possibleHClasses_.erase(std::remove_if(possibleHClasses_.begin(), possibleHClasses_.end(),
+                                           [&hclasses](const auto &info) {
+                                               return std::find(hclasses.begin(), hclasses.end(), info.hclass) ==
+                                                      hclasses.end();
+                                           }),
+                            possibleHClasses_.end());
     if (possibleHClasses_.empty()) {
         possibleHClassesAreStale_ = false;
         CheckPossibleHClassInvariants();
@@ -848,8 +849,7 @@ void CompileInfoFacts::MarkHClassesStaleForTransition(ValueVertex *receiver)
     freshUnstableHClassesRequireInvalidation_ = hasRemainingFreshUnstableHClasses;
 }
 
-void CompileInfoFacts::MarkHClassesStaleForElementsKindTransition(
-    const NodeInfo::PossibleHClasses &sourceHClasses)
+void CompileInfoFacts::MarkHClassesStaleForElementsKindTransition(const NodeInfo::PossibleHClasses &sourceHClasses)
 {
     if (sourceHClasses.empty()) {
         return;
@@ -862,8 +862,8 @@ void CompileInfoFacts::MarkHClassesStaleForElementsKindTransition(
 
 void CompileInfoFacts::RecomputeFreshUnstableHClassesRequireInvalidation()
 {
-    freshUnstableHClassesRequireInvalidation_ = std::any_of(
-        nodeInfos_.begin(), nodeInfos_.end(), [](const auto &entry) {
+    freshUnstableHClassesRequireInvalidation_ =
+        std::any_of(nodeInfos_.begin(), nodeInfos_.end(), [](const auto &entry) {
             const NodeInfo &info = entry.second;
             return info.HasFreshPossibleHClasses() && info.HasUnstablePossibleHClass();
         });

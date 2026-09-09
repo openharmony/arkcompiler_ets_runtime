@@ -157,9 +157,8 @@ void GraphPrinter::PrintConstants(Graph *graph)
 
 bool GraphPrinter::HasConstantsToPrint(Graph *graph) const
 {
-    return !graph->GetInt32Constants().empty() ||
-           !graph->GetFloat64Constants().empty() || !graph->GetTaggedConstants().empty() ||
-           !graph->GetHeapConstants().empty();
+    return !graph->GetInt32Constants().empty() || !graph->GetFloat64Constants().empty() ||
+           !graph->GetTaggedConstants().empty() || !graph->GetHeapConstants().empty();
 }
 
 void GraphPrinter::PrintInt32Constants(Graph *graph)
@@ -270,13 +269,13 @@ void GraphPrinter::PreProcessBlock(BB *block)
         AddTarget(block, nullptr);
     }
 
-    LOG_COMPILER(INFO) << GetArrowColumn(nullptr) <<
-        "------------------------------------------------------------------------";
+    LOG_COMPILER(INFO) << GetArrowColumn(nullptr)
+                       << "------------------------------------------------------------------------";
 
-    const char *blockTypeName =
-        block->IsLoopHeader() ? "Loop Header" : block->IsExceptionHandler() ? "Exception Handler" : "Other";
-    LOG_COMPILER(INFO) << PrintBlockArrows(block) << "Block " << block->GetId()
-                       << " (" << blockTypeName << ')';
+    const char *blockTypeName = block->IsLoopHeader()         ? "Loop Header"
+                                : block->IsExceptionHandler() ? "Exception Handler"
+                                                              : "Other";
+    LOG_COMPILER(INFO) << PrintBlockArrows(block) << "Block " << block->GetId() << " (" << blockTypeName << ')';
     if (block->HasRegisterMergeState()) {
         PrintPredecessors(block);
     }
@@ -453,7 +452,6 @@ std::string GraphPrinter::FormatControlVertexTargets(ControlVertex *vertex) cons
     return result;
 }
 
-
 size_t GraphPrinter::AddTarget(BB *target, BB *currentBlock)
 {
     bool isBackward = false;
@@ -530,7 +528,8 @@ std::string RenderArrowRuns(const std::vector<ArrowRun> &runs, bool withColors)
             out << run.glyphs;
             continue;
         }
-        WITH_ANSI_COLOR_SCOPE(NthFaintColor(out, run.color, withColors)) {
+        WITH_ANSI_COLOR_SCOPE(NthFaintColor(out, run.color, withColors))
+        {
             out << run.glyphs;
         }
     }
@@ -538,7 +537,7 @@ std::string RenderArrowRuns(const std::vector<ArrowRun> &runs, bool withColors)
 }
 }  // namespace
 
-std::string GraphPrinter::PrintBlockArrows(BB* block)
+std::string GraphPrinter::PrintBlockArrows(BB *block)
 {
     if (loopHeaders_.erase(block) > 0) {
         AddTarget(block, nullptr);

@@ -49,8 +49,7 @@ ArkSteedWriteBarrierValueKind ClassifyDirectWriteBarrierValueKind(ValueVertex *v
     if (value->Is<HeapConstantVertex>()) {
         return ArkSteedWriteBarrierValueKind::HeapObject;
     }
-    if (value->Is<I32ToTaggedIntVertex>() ||
-        value->Is<CheckedNonNegativeI32ToTaggedIntVertex>() ||
+    if (value->Is<I32ToTaggedIntVertex>() || value->Is<CheckedNonNegativeI32ToTaggedIntVertex>() ||
         value->Is<F64ToTaggedDoubleVertex>()) {
         return ArkSteedWriteBarrierValueKind::NonHeap;
     }
@@ -79,8 +78,8 @@ ArkSteedWriteBarrierValueKind WriteBarrierValueKindPass::ClassifyValue(ValueVert
     return it != valueKinds_.end() ? it->second : ArkSteedWriteBarrierValueKind::Unknown;
 }
 
-bool WriteBarrierValueKindPass::InputCanBeTarget(
-    ValueVertex *input, TargetKind target, const ChunkMap<PhiVertex *, PhiTargetState> &states) const
+bool WriteBarrierValueKindPass::InputCanBeTarget(ValueVertex *input, TargetKind target,
+                                                 const ChunkMap<PhiVertex *, PhiTargetState> &states) const
 {
     if (input == nullptr) {
         return false;
@@ -92,8 +91,8 @@ bool WriteBarrierValueKindPass::InputCanBeTarget(
     return ClassifyDirectValue(input) == ToValueKind(target);
 }
 
-bool WriteBarrierValueKindPass::InputHasTargetSource(
-    ValueVertex *input, TargetKind target, const ChunkMap<PhiVertex *, PhiTargetState> &states) const
+bool WriteBarrierValueKindPass::InputHasTargetSource(ValueVertex *input, TargetKind target,
+                                                     const ChunkMap<PhiVertex *, PhiTargetState> &states) const
 {
     if (input == nullptr) {
         return false;
@@ -117,8 +116,8 @@ void WriteBarrierValueKindPass::CollectPhis()
     }
 }
 
-void WriteBarrierValueKindPass::ComputePhiKindsForTarget(
-    TargetKind target, ChunkMap<PhiVertex *, PhiTargetState> *states)
+void WriteBarrierValueKindPass::ComputePhiKindsForTarget(TargetKind target,
+                                                         ChunkMap<PhiVertex *, PhiTargetState> *states)
 {
     ASSERT(states != nullptr);
     for (PhiVertex *phi : phis_) {
@@ -224,8 +223,8 @@ NonControlVertex *WriteBarrierValueKindPass::TryRewriteStore(NonControlVertex *v
             store->SetValueKind(valueKind);
         }
         if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
-            return NewStoreWithoutBarrier(store->GetOwner(),
-                store->GetInput(StoreTaggedFieldWithBarrierVertex::OBJECT_INDEX),
+            return NewStoreWithoutBarrier(
+                store->GetOwner(), store->GetInput(StoreTaggedFieldWithBarrierVertex::OBJECT_INDEX),
                 store->GetInput(StoreTaggedFieldWithBarrierVertex::VALUE_INDEX), store->GetOffset());
         }
         return store;
@@ -253,8 +252,8 @@ NonControlVertex *WriteBarrierValueKindPass::TryRewriteStore(NonControlVertex *v
             store->SetValueKind(valueKind);
         }
         if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
-            return NewStoreWithoutBarrier(store->GetOwner(),
-                store->GetInput(StoreSharedFieldWithBarrierVertex::OBJECT_INDEX),
+            return NewStoreWithoutBarrier(
+                store->GetOwner(), store->GetInput(StoreSharedFieldWithBarrierVertex::OBJECT_INDEX),
                 store->GetInput(StoreSharedFieldWithBarrierVertex::VALUE_INDEX), store->GetOffset());
         }
         return store;
@@ -272,8 +271,8 @@ NonControlVertex *WriteBarrierValueKindPass::TryRewriteStore(NonControlVertex *v
     return vertex;
 }
 
-StoreTaggedFieldVertex *WriteBarrierValueKindPass::NewStoreWithoutBarrier(
-    BB *owner, ValueVertex *object, ValueVertex *value, int32_t offset)
+StoreTaggedFieldVertex *WriteBarrierValueKindPass::NewStoreWithoutBarrier(BB *owner, ValueVertex *object,
+                                                                          ValueVertex *value, int32_t offset)
 {
     std::initializer_list<ValueVertex *> inputs {object, value};
     auto *store = Vertex::New<StoreTaggedFieldVertex>(chunk_, inputs, offset);

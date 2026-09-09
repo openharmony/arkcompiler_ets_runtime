@@ -57,24 +57,21 @@ struct ParsedLoadHandler {
 
 bool IsNamedLoadBytecode(kungfu::EcmaOpcode opcode)
 {
-    return opcode == kungfu::EcmaOpcode::LDOBJBYNAME_IMM8_ID16 ||
-        opcode == kungfu::EcmaOpcode::LDOBJBYNAME_IMM16_ID16;
+    return opcode == kungfu::EcmaOpcode::LDOBJBYNAME_IMM8_ID16 || opcode == kungfu::EcmaOpcode::LDOBJBYNAME_IMM16_ID16;
 }
 
 bool IsValueLoadBytecode(kungfu::EcmaOpcode opcode)
 {
-    return opcode == kungfu::EcmaOpcode::LDOBJBYVALUE_IMM8_V8 ||
-        opcode == kungfu::EcmaOpcode::LDOBJBYVALUE_IMM16_V8 ||
-        opcode == kungfu::EcmaOpcode::LDTHISBYVALUE_IMM8 ||
-        opcode == kungfu::EcmaOpcode::LDTHISBYVALUE_IMM16;
+    return opcode == kungfu::EcmaOpcode::LDOBJBYVALUE_IMM8_V8 || opcode == kungfu::EcmaOpcode::LDOBJBYVALUE_IMM16_V8 ||
+           opcode == kungfu::EcmaOpcode::LDTHISBYVALUE_IMM8 || opcode == kungfu::EcmaOpcode::LDTHISBYVALUE_IMM16;
 }
 
 bool IsNamedStoreInputShape(const kungfu::BytecodeInfo &bytecodeInfo)
 {
     return bytecodeInfo.inputs.size() == NAMED_STORE_INPUT_COUNT &&
-        std::holds_alternative<kungfu::ICSlotId>(bytecodeInfo.inputs[NAMED_ACCESS_SLOT_INPUT]) &&
-        std::holds_alternative<kungfu::ConstDataId>(bytecodeInfo.inputs[NAMED_ACCESS_NAME_INPUT]) &&
-        std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[NAMED_STORE_RECEIVER_INPUT]);
+           std::holds_alternative<kungfu::ICSlotId>(bytecodeInfo.inputs[NAMED_ACCESS_SLOT_INPUT]) &&
+           std::holds_alternative<kungfu::ConstDataId>(bytecodeInfo.inputs[NAMED_ACCESS_NAME_INPUT]) &&
+           std::holds_alternative<kungfu::VirtualRegister>(bytecodeInfo.inputs[NAMED_STORE_RECEIVER_INPUT]);
 }
 
 bool IsElementStoreInputShape(const kungfu::BytecodeInfo &bytecodeInfo)
@@ -115,8 +112,8 @@ bool IsSupportedTypedArrayType(JSType type)
 
 bool CanTransitionElementsKind(JSThread *hostThread, JSHClass *source, JSHClass *target)
 {
-    if (hostThread == nullptr || source == nullptr || target == nullptr || source == target ||
-        !source->IsJSArray() || !target->IsJSArray() || source->IsPrototype() || target->IsPrototype()) {
+    if (hostThread == nullptr || source == nullptr || target == nullptr || source == target || !source->IsJSArray() ||
+        !target->IsJSArray() || source->IsPrototype() || target->IsPrototype()) {
         return false;
     }
 
@@ -135,16 +132,14 @@ bool CanApplyExplicitElementTransition(JSHClass *source, JSHClass *target)
         source->IsPrototype() || target->IsPrototype()) {
         return false;
     }
-    return source == target ||
-        Elements::MergeElementsKind(source->GetElementsKind(), target->GetElementsKind()) == target->GetElementsKind();
+    return source == target || Elements::MergeElementsKind(source->GetElementsKind(), target->GetElementsKind()) ==
+                                   target->GetElementsKind();
 }
 
-bool BuildElementStoreTransitionGroups(JSThread *hostThread,
-                                       const std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> &hclasses,
-                                       const std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> &explicitTargets,
-                                       const std::array<ArkSteedHClassRef,
-                                                        MAX_ELEMENT_IC_POLY_CASES> &explicitTargetRefs,
-                                       ElementStoreAccessInfo *access)
+bool BuildElementStoreTransitionGroups(
+    JSThread *hostThread, const std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> &hclasses,
+    const std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> &explicitTargets,
+    const std::array<ArkSteedHClassRef, MAX_ELEMENT_IC_POLY_CASES> &explicitTargetRefs, ElementStoreAccessInfo *access)
 {
     std::array<JSHClass *, MAX_ELEMENT_IC_POLY_CASES> selectedTargets {};
     std::array<ArkSteedHClassRef, MAX_ELEMENT_IC_POLY_CASES> selectedTargetRefs {};
@@ -215,8 +210,7 @@ bool BuildElementStoreTransitionGroups(JSThread *hostThread,
             groupTargets[groupIndex] = target;
         } else {
             access->transitionGroups[groupIndex].useExactHClassTransition =
-                access->transitionGroups[groupIndex].useExactHClassTransition ||
-                selectedTargetsAreExplicit[caseIndex];
+                access->transitionGroups[groupIndex].useExactHClassTransition || selectedTargetsAreExplicit[caseIndex];
         }
         if (hclasses[caseIndex] == target) {
             continue;
@@ -233,8 +227,8 @@ bool BuildElementStoreTransitionGroups(JSThread *hostThread,
 void SetFieldLocation(uint64_t handlerInfo, PropertyAccessInfo *info)
 {
     info->fieldIndex = HandlerBase::GetOffset(handlerInfo);
-    info->fieldStorage = HandlerBase::IsInlinedProps(handlerInfo) ? AccessFieldStorage::IN_OBJECT :
-                                                                   AccessFieldStorage::PROPERTIES_ARRAY;
+    info->fieldStorage =
+        HandlerBase::IsInlinedProps(handlerInfo) ? AccessFieldStorage::IN_OBJECT : AccessFieldStorage::PROPERTIES_ARRAY;
     uint32_t baseOffset = info->fieldStorage == AccessFieldStorage::IN_OBJECT ? 0 : TaggedArray::DATA_OFFSET;
     info->fieldOffset = static_cast<int32_t>(baseOffset + info->fieldIndex * JSTaggedValue::TaggedTypeSize());
     Representation representation = HandlerBase::RepresentationBit::Get(handlerInfo);
@@ -264,9 +258,8 @@ bool SetFieldRepresentation(Representation representation, PropertyAccessInfo *i
 }
 
 bool TrySetStoreFieldLocationFromHClass(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
-                                        const NamedAccessCaseFeedback &caseFeedback,
-                                        const ParsedStoreHandler &parsed, ArkSteedNameRef name,
-                                        PropertyAccessInfo *info)
+                                        const NamedAccessCaseFeedback &caseFeedback, const ParsedStoreHandler &parsed,
+                                        ArkSteedNameRef name, PropertyAccessInfo *info)
 {
     JSTaggedValue nameValue;
     if (!broker->TryResolveRef(name, &nameValue)) {
@@ -314,8 +307,8 @@ bool TrySetStoreFieldLocationFromHClass(const ArkSteedHeapBroker *broker, JSThre
         info->fieldOffset = static_cast<int32_t>(lookup.GetOffset());
     } else {
         info->fieldStorage = AccessFieldStorage::PROPERTIES_ARRAY;
-        info->fieldOffset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
-            lookup.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        info->fieldOffset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + lookup.GetOffset() * JSTaggedValue::TaggedTypeSize());
     }
     return true;
 }
@@ -347,8 +340,8 @@ bool TryReadPrototypeStoreHandler(const ArkSteedHeapBroker *broker, JSThread *co
     }
     result->protoCell = broker->MakeProtoCellRef(protoCellValue);
     result->hasProtoCell = true;
-    bool hasValidHolder = result->holderIsReceiver ||
-        (result->holder.IsSafeForCompile() && result->holderHClass.IsSafeForCompile());
+    bool hasValidHolder =
+        result->holderIsReceiver || (result->holder.IsSafeForCompile() && result->holderHClass.IsSafeForCompile());
     return hasValidHolder && result->protoCell.IsSafeForCompile();
 }
 
@@ -394,11 +387,11 @@ bool TryReadTransWithProtoStoreHandler(const ArkSteedHeapBroker *broker, JSThrea
     result->hasProtoCell = true;
     JSTaggedValue transitionHClass;
     return broker->TryResolveRef(result->transitionHClass, &transitionHClass) && transitionHClass.IsJSHClass() &&
-        result->protoCell.IsSafeForCompile();
+           result->protoCell.IsSafeForCompile();
 }
 
-bool TryReadStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
-                         const ArkSteedHandlerRef &handler, ParsedStoreHandler *result)
+bool TryReadStoreHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread, const ArkSteedHandlerRef &handler,
+                         ParsedStoreHandler *result)
 {
     JSTaggedValue cachedHandler;
     if (!broker->TryResolveRef(handler, &cachedHandler)) {
@@ -441,13 +434,13 @@ bool TryReadPrototypeLoadHandler(const ArkSteedHeapBroker *broker, JSThread *com
     }
     result->protoCell = broker->MakeProtoCellRef(protoCellValue);
     result->hasProtoCell = true;
-    bool hasValidHolder = holderValue.IsUndefined() ? HandlerBase::IsNonExist(result->handlerInfo) :
-                                                      result->holderHClass.IsSafeForCompile();
+    bool hasValidHolder = holderValue.IsUndefined() ? HandlerBase::IsNonExist(result->handlerInfo)
+                                                    : result->holderHClass.IsSafeForCompile();
     return hasValidHolder && result->protoCell.IsSafeForCompile();
 }
 
-bool TryReadLoadHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread,
-                        const ArkSteedHandlerRef &handler, ParsedLoadHandler *result)
+bool TryReadLoadHandler(const ArkSteedHeapBroker *broker, JSThread *compilerThread, const ArkSteedHandlerRef &handler,
+                        ParsedLoadHandler *result)
 {
     JSTaggedValue cachedHandler;
     if (!broker->TryResolveRef(handler, &cachedHandler)) {
@@ -479,8 +472,7 @@ void FillNamedAccessInfo(const NamedAccessCaseFeedback &caseFeedback, uint64_t h
 }  // namespace
 
 bool ArkSteedAccessInfoFactory::TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback,
-                                                            ArkSteedNameRef name,
-                                                            NamedStoreAccessInfo *info) const
+                                                            ArkSteedNameRef name, NamedStoreAccessInfo *info) const
 {
     *info = {};
     if (!caseFeedback.expectedHClass.IsSafeForCompile() || !caseFeedback.handler.IsSafeForCompile()) {
@@ -508,10 +500,10 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedStoreAccessInfo(const NamedAccessCas
     bool isField = HandlerBase::IsNonSharedStoreField(fieldHandlerInfo);
     Representation representation = HandlerBase::RepresentationBit::Get(fieldHandlerInfo);
     bool hasSupportedFieldRep = representation == Representation::TAGGED || representation == Representation::INT ||
-        representation == Representation::DOUBLE;
+                                representation == Representation::DOUBLE;
     bool isAccessor = HandlerBase::IsAccessor(parsed.handlerInfo) && !isSharedStore;
-    if (isSharedStore && (!isField || HandlerBase::IsAccessor(parsed.handlerInfo) ||
-        representation != Representation::TAGGED)) {
+    if (isSharedStore &&
+        (!isField || HandlerBase::IsAccessor(parsed.handlerInfo) || representation != Representation::TAGGED)) {
         LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store unsupported shared handler handler=0x" << std::hex
                             << parsed.handlerInfo << std::dec << " isField=" << isField
                             << " accessor=" << HandlerBase::IsAccessor(parsed.handlerInfo)
@@ -527,15 +519,16 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedStoreAccessInfo(const NamedAccessCas
     if (!(isField && hasSupportedFieldRep) && !isAccessor && !isSharedStore) {
         LOG_COMPILER(DEBUG) << "ArkSteedPGO: named store unsupported handler handler=0x" << std::hex
                             << parsed.handlerInfo << std::dec << " isField=" << isField
-                            << " rep=" << static_cast<int>(representation)
-                            << " isAccessor=" << isAccessor << " isShared=" << isSharedStore;
+                            << " rep=" << static_cast<int>(representation) << " isAccessor=" << isAccessor
+                            << " isShared=" << isSharedStore;
         return false;
     }
 
     info->mode = AccessMode::NAMED_STORE;
-    info->kind = isAccessor ? AccessKind::ACCESSOR :
-        (parsed.hasTransitionHClass ? AccessKind::TRANSITION :
-         (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD));
+    info->kind = isAccessor ? AccessKind::ACCESSOR
+                            : (parsed.hasTransitionHClass
+                                   ? AccessKind::TRANSITION
+                                   : (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD));
     info->holder = parsed.holder;
     info->holderHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
     info->holderIsReceiver = parsed.holderIsReceiver;
@@ -595,8 +588,9 @@ bool ArkSteedAccessInfoFactory::TryMakeNamedLoadAccessInfo(const NamedAccessCase
     }
 
     info->mode = AccessMode::NAMED_LOAD;
-    info->kind = HandlerBase::IsNonExist(parsed.handlerInfo) ? AccessKind::NON_EXIST :
-        (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD);
+    info->kind = HandlerBase::IsNonExist(parsed.handlerInfo)
+                     ? AccessKind::NON_EXIST
+                     : (parsed.hasProtoCell ? AccessKind::PROTOTYPE_FIELD : AccessKind::FIELD);
     info->holder = parsed.holder;
     info->holderHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
     info->fieldOwnerHClass = parsed.holderIsReceiver ? caseFeedback.expectedHClass : parsed.holderHClass;
@@ -668,8 +662,8 @@ bool ArkSteedAccessInfoFactory::TryBuildElementStoreAccessInfo(int slotIndex, El
         JSType typedArrayType = JSType::INVALID;
         OnHeapMode onHeapMode = OnHeapMode::NONE;
         if (hclass->IsJSArray() && !hclass->IsPrototype() && hclass->IsStableElements() && hasTaggedArrayBacking &&
-            !hclass->IsDictionaryElement() &&
-            HandlerBase::IsNormalElement(handlerInfo) && HandlerBase::IsJSArray(handlerInfo)) {
+            !hclass->IsDictionaryElement() && HandlerBase::IsNormalElement(handlerInfo) &&
+            HandlerBase::IsJSArray(handlerInfo)) {
             caseKind = ElementStoreKind::JS_ARRAY;
             elementsKind = hclass->GetElementsKind();
             if (parsed.hasTransitionHClass) {
@@ -732,8 +726,8 @@ bool ArkSteedAccessInfoFactory::TryBuildElementStoreAccessInfo(int slotIndex, El
         return false;
     }
     if (access->IsJSArray() &&
-        !BuildElementStoreTransitionGroups(env_ == nullptr ? nullptr : env_->GetHostThread(), hclasses,
-                                           explicitTargets, explicitTargetRefs, access)) {
+        !BuildElementStoreTransitionGroups(env_ == nullptr ? nullptr : env_->GetHostThread(), hclasses, explicitTargets,
+                                           explicitTargetRefs, access)) {
         *access = {};
         return false;
     }
@@ -757,8 +751,8 @@ bool ArkSteedAccessInfoFactory::TryBuildElementStoreAccessInfo(int slotIndex, El
         auto feedbackEnd = hclasses.begin() + access->caseCount;
         auto installedEnd = installedExplicitTargets.begin() + installedExplicitTargetCount;
         bool isFeedbackHClass = target != nullptr && std::find(hclasses.begin(), feedbackEnd, target) != feedbackEnd;
-        bool isAlreadyInstalled = target != nullptr &&
-            std::find(installedExplicitTargets.begin(), installedEnd, target) != installedEnd;
+        bool isAlreadyInstalled =
+            target != nullptr && std::find(installedExplicitTargets.begin(), installedEnd, target) != installedEnd;
         if (target == nullptr || isFeedbackHClass || isAlreadyInstalled) {
             continue;
         }

@@ -425,7 +425,7 @@ bool TryFoldBitwiseNot(PrimitiveConstant value, JSTaggedValue *result)
         return false;
     }
     int32_t converted = base::NumberHelper::DoubleToInt(number, base::INT32_BITS);
-    *result = JSTaggedValue(~converted); // NOLINT(hicpp-signed-bitwise)
+    *result = JSTaggedValue(~converted);  // NOLINT(hicpp-signed-bitwise)
     return true;
 }
 

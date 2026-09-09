@@ -34,7 +34,7 @@ namespace {
 void UseDeoptFrameSlot(InputLocation *location)
 {
     location->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT,
-        UnallocatedState::LifetimeFlag::USED_AT_END, NO_VREG);
+                                              UnallocatedState::LifetimeFlag::USED_AT_END, NO_VREG);
 }
 
 void UseEagerDeoptFrameSlots(EagerDeoptimizableMixin *deopt)
@@ -970,9 +970,9 @@ namespace {
 
 template <class VertexT>
 struct DumpCommonHelper {
-    static constexpr int COMMON_COUNT = COMMON_MIXINS_LIST(HAS_COMMON_MIXIN)
-        + std::is_base_of_v<EagerDeoptimizableMixin, VertexT>
-        + std::is_base_of_v<LazyDeoptimizableMixin, VertexT>;
+    static constexpr int COMMON_COUNT = COMMON_MIXINS_LIST(HAS_COMMON_MIXIN) +
+                                        std::is_base_of_v<EagerDeoptimizableMixin, VertexT> +
+                                        std::is_base_of_v<LazyDeoptimizableMixin, VertexT>;
 
     static constexpr bool HAS_COMMON = static_cast<bool>(COMMON_COUNT);
 
@@ -1152,8 +1152,7 @@ DUMP_EXTRA(StoreTaggedFieldByHClass)
         << "  value_kind = " << WriteBarrierValueKindName(vertex->GetValueKind());
     for (uint32_t i = 0; i < vertex->GetCases().size(); ++i) {
         const StoreTaggedFieldByHClassCase &storeCase = vertex->GetCases()[i];
-        out << "  case[" << i << "] = { hclass = heap#"
-            << storeCase.expectedHClassHandleIndex
+        out << "  case[" << i << "] = { hclass = heap#" << storeCase.expectedHClassHandleIndex
             << ", offset = " << storeCase.fieldOffset
             << ", storage = " << (storeCase.propertiesArray ? "properties" : "in-object") << " }";
     }
@@ -1171,8 +1170,7 @@ DUMP_EXTRA(StoreSharedFieldWithBarrier)
 
 DUMP_EXTRA(I32DivByConstWithCheck)
 {
-    out << "  divisor = " << vertex->GetDivisor()
-        << "  magic = " << vertex->GetMagic()
+    out << "  divisor = " << vertex->GetDivisor() << "  magic = " << vertex->GetMagic()
         << "  shift = " << vertex->GetShift();
 }
 
@@ -1215,13 +1213,15 @@ DUMP_EXTRA(ConstantGapMove)
 void Vertex::Dump(std::ostream &out, bool withColors) const
 {
     out << FormatVertexLabel(this) << ":  ";
-    WITH_ANSI_COLOR_SCOPE(BrightRed(out, withColors)) {
+    WITH_ANSI_COLOR_SCOPE(BrightRed(out, withColors))
+    {
         out << OpcodeToString(GetOpcode());
     }
     ValueRepresentation repr = GetValueRepresentation();
     if (repr != ValueRepresentation::NONE) {
         out << " [";
-        WITH_ANSI_COLOR_SCOPE(BrightRed(out, withColors)) {
+        WITH_ANSI_COLOR_SCOPE(BrightRed(out, withColors))
+        {
             out << ValueRepresentationName(repr);
         }
         out << ']';
@@ -1230,7 +1230,9 @@ void Vertex::Dump(std::ostream &out, bool withColors) const
     if (n > 0) {
         out << "  (";
         for (uint32_t i = 0; i < n; i++) {
-            if (i != 0) out << ", ";
+            if (i != 0) {
+                out << ", ";
+            }
             out << FormatVertexLabel(GetInput(i));
         }
         out << ")";
@@ -1245,7 +1247,8 @@ void Vertex::Dump(std::ostream &out, bool withColors) const
             DumpExtraHelper<VertexT>::Dump(out, self);
         }
     };
-    WITH_ANSI_COLOR_SCOPE(BrightGreen(out, withColors)) {
+    WITH_ANSI_COLOR_SCOPE(BrightGreen(out, withColors))
+    {
         switch (GetOpcode()) {
 #define CASE(Type)                                  \
             case VertexOpcode::Type:                \

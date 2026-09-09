@@ -34,8 +34,7 @@
 namespace panda::ecmascript::arksteed {
 namespace {
 
-void FillDeoptLiteralTable(JSHandle<MachineCode> &machineCodeObj,
-                           const std::vector<JSHandle<JSTaggedValue>> &literals)
+void FillDeoptLiteralTable(JSHandle<MachineCode> &machineCodeObj, const std::vector<JSHandle<JSTaggedValue>> &literals)
 {
     if (literals.empty()) {
         return;
@@ -45,8 +44,7 @@ void FillDeoptLiteralTable(JSHandle<MachineCode> &machineCodeObj,
     CHECK(literals.size() * sizeof(uint64_t) <= machineCodeObj->GetHeapConstantTableSize());
 
     auto *literalTable = reinterpret_cast<uint64_t *>(machineCodeObj->GetHeapConstantTableAddress());
-    Region *machineCodeRegion =
-        Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
+    Region *machineCodeRegion = Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
     for (size_t i = 0; i < literals.size(); ++i) {
         JSTaggedValue literal = literals[i].GetTaggedValue();
         CHECK(literal.IsHeapObject() && !literal.IsWeakForHeapObject());
@@ -89,9 +87,8 @@ void ArkSteedTask::SetDeoptLiteralData(std::vector<JSHandle<JSTaggedValue>> lite
 {
     deoptLiteralHandles_ = std::move(literals);
     auto &codeDesc = GetMachineCodeDesc();
-    codeDesc.heapConstantTableAddr = deoptLiteralHandles_.empty()
-        ? 0
-        : reinterpret_cast<uintptr_t>(deoptLiteralHandles_.data());
+    codeDesc.heapConstantTableAddr =
+        deoptLiteralHandles_.empty() ? 0 : reinterpret_cast<uintptr_t>(deoptLiteralHandles_.data());
     codeDesc.heapConstantTableSize = deoptLiteralHandles_.size() * sizeof(uint64_t);
 }
 
@@ -237,10 +234,8 @@ bool ArkSteedTask::AsyncTask::Run(uint32_t threadIndex)
     DISALLOW_HEAP_ACCESS;
 
     CString info = "compile method (ArkSteed): " + task_->GetMethodName();
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL,
-                      HITRACE_TAG_ARK,
-                      ConvertToStdString("ArkSteed::Compile:" + info).c_str(),
-                      "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+                      ConvertToStdString("ArkSteed::Compile:" + info).c_str(), "");
 
     JitAsyncTaskRunScope asyncTaskRunScope(task_.get());
 
@@ -266,8 +261,7 @@ bool ArkSteedTask::AsyncTask::Run(uint32_t threadIndex)
         scope.appendMessage(sizeInfo);
 
         int compilerTime = scope.TotalSpentTimeInMicroseconds();
-        JitDfx::GetInstance()->RecordSpentTimeAndPrintStatsLogInJitThread(compilerTime,
-                                                                          task_->GetMethodName(),
+        JitDfx::GetInstance()->RecordSpentTimeAndPrintStatsLogInJitThread(compilerTime, task_->GetMethodName(),
                                                                           task_->GetCompilerTier().IsBaseLine(),
                                                                           task_->GetMainThreadCompilerTime());
     }

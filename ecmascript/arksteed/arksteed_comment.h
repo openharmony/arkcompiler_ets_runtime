@@ -27,7 +27,7 @@ struct CommentEntry {
     uint32_t pcOffset;
     std::string comment;
 
-    CommentEntry(uint32_t pc, std::string_view str) : pcOffset(pc), comment(str){};
+    CommentEntry(uint32_t pc, std::string_view str) : pcOffset(pc), comment(str) {};
 
     uint32_t CommentLength() const;
     uint32_t Size() const;

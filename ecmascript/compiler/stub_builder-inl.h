@@ -3738,7 +3738,7 @@ inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef fun
 }
 
 inline void StubBuilder::SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall,
-                                            GateRef isArkSteed)
+                                              GateRef isArkSteed)
 {
     SetCodeEntryToFunctionFromFuncEntry(glue, jsFunc, codeEntry);
     GateRef compiledCodeFastCallBits = Int32Add(Int32(1),

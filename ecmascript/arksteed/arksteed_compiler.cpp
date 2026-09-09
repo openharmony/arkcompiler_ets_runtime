@@ -75,7 +75,6 @@ static void LogAsm(ArkSteedAssembler *assembler)
         LOG_COMPILER(INFO) << line;
     }
     LOG_COMPILER(INFO) << "================================================";
-
 }
 
 ArkSteedCompilationOptions::ArkSteedCompilationOptions(JSRuntimeOptions runtimeOptions)
@@ -130,8 +129,7 @@ void ArkSteedCompilerTask::DebugLogOnCompilationStart()
     JitCompilationEnv *env = jitCompilationEnv_.get();
     MethodLiteral *method = env->GetMethodLiteral();
     LOG_COMPILER(INFO) << "======== ArkSteedCompilerTask: Starts compiling: "
-                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId())
-                       << " ========";
+                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId()) << " ========";
 }
 
 void ArkSteedCompilerTask::DebugLogOnCompilationDone()
@@ -142,8 +140,7 @@ void ArkSteedCompilerTask::DebugLogOnCompilationDone()
     JitCompilationEnv *env = jitCompilationEnv_.get();
     MethodLiteral *method = env->GetMethodLiteral();
     LOG_COMPILER(INFO) << "======== ArkSteedCompilerTask: Finished compiling: "
-                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId())
-                       << " ========";
+                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId()) << " ========";
 }
 
 bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr)
@@ -159,8 +156,7 @@ bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGl
             jitProfiler->ProfileBytecode(env->GetJSThread(), profileTypeInfo_, method->GetMethodId(),
                                          env->GetMethodAbcId(), env->GetMethodPcStart(),
                                          method->GetCodeSize(jsPandaFile, method->GetMethodId()),
-                                         jsPandaFile->GetPandaFile()->GetHeader(), jsFunction_,
-                                         env->GetGlobalEnv());
+                                         jsPandaFile->GetPandaFile()->GetHeader(), jsFunction_, env->GetGlobalEnv());
         }
     }
 
@@ -243,8 +239,7 @@ bool ArkSteedCompilerTask::Compile()
     }
 
     // Register allocation
-    graph_->SetReuseStackSlots(
-        arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedReuseStackSlots());
+    graph_->SetReuseStackSlots(arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedReuseStackSlots());
     ArkSteedRegisterAllocator registerAllocator(graph_);
 
     // Code generation
@@ -320,8 +315,7 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
     arkSteedTask_->SetDeoptTranslationData(translationBuilder_->Encode());
 #endif
 
-    arkSteedTask_->SetEmbeddedRefData(assembler_->GetEmbeddedRefRelocations(),
-                                      heapConstantHandles);
+    arkSteedTask_->SetEmbeddedRefData(assembler_->GetEmbeddedRefRelocations(), heapConstantHandles);
 
     // Frame info - fill FuncEntryDes
     // Set funcEntry to point to heap-allocated FuncEntryDes

@@ -104,7 +104,7 @@ struct HasInputTypes : std::false_type {};
 
 template <typename T>
 struct HasInputTypes<T, decltype(void(T::INPUT_TYPES))> : std::true_type {};
-}
+}  // namespace details
 
 /**
  * CRTP Mixin Classes for ArkSteed Opcodes
@@ -154,7 +154,7 @@ public:
     }
 
     template <typename... Args>
-    static Derived *New(Chunk *chunk, Span<ValueVertex * const> inputs, Args &&...args)
+    static Derived *New(Chunk *chunk, Span<ValueVertex *const> inputs, Args &&...args)
     {
         return Vertex::New<Derived>(chunk, inputs, std::forward<Args>(args)...);
     }
@@ -167,7 +167,8 @@ public:
 
 protected:
     template <typename... Args>
-    explicit VertexMixin(Args &&...args) : Base(std::forward<Args>(args)...) {}
+    explicit VertexMixin(Args &&...args) : Base(std::forward<Args>(args)...)
+    {}
 };
 
 /**
@@ -207,8 +208,7 @@ public:
 
 protected:
     template <typename... Args>
-    explicit FixedInputVertexMixin(Args &&...args)
-        : VertexMixin<Base, Derived>(std::forward<Args>(args)...)
+    explicit FixedInputVertexMixin(Args &&...args) : VertexMixin<Base, Derived>(std::forward<Args>(args)...)
     {}
 
     inline void CheckValueInput(uint32_t index, ValueRepresentation expectedRepr) const
@@ -346,8 +346,7 @@ public:
     using EagerDeoptFrameState = ChunkVector<EagerDeoptFrameValue>;
 
     EagerDeoptimizableMixin(Chunk *chunk, uint32_t bytecodeOffset)
-        : eagerDeoptFrameState_(chunk),
-          bytecodeOffset_(bytecodeOffset)
+        : eagerDeoptFrameState_(chunk), bytecodeOffset_(bytecodeOffset)
     {}
 
     void SetEagerDeoptFrameState(EagerDeoptFrameState frameState)
@@ -409,9 +408,7 @@ class ThrowableMixin {
 public:
     ThrowableMixin() = default;
 
-    ThrowableMixin(BB *caughtBy, uint32_t catchPredIndex)
-        : catchPredIndex_(catchPredIndex),
-          caughtBy_(caughtBy)
+    ThrowableMixin(BB *caughtBy, uint32_t catchPredIndex) : catchPredIndex_(catchPredIndex), caughtBy_(caughtBy)
     {
         ASSERT(caughtBy_ != nullptr);
         ASSERT(catchPredIndex_ != NULL_INDEX);
@@ -570,8 +567,7 @@ public:
 
     HeapConstantVertex(uint32_t handleIndex, uint16_t staticNodeType)
         : FixedInputVertexMixin(), handleIndex_(handleIndex), staticNodeType_(staticNodeType)
-    {
-    }
+    {}
 
     uint32_t GetHandleIndex() const
     {
@@ -597,9 +593,7 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    InitialValueVertex(int32_t frameSlotIndex)
-        : FixedInputVertexMixin(), frameSlotIndex_(frameSlotIndex)
-    {}
+    InitialValueVertex(int32_t frameSlotIndex) : FixedInputVertexMixin(), frameSlotIndex_(frameSlotIndex) {}
 
     int32_t GetFrameSlotIndex() const
     {
@@ -637,8 +631,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit LoadTaggedFromAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit LoadTaggedFromAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -679,8 +672,7 @@ public:
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
     // 2: object and value to be stored
 
-    explicit StoreTaggedToAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit StoreTaggedToAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -699,8 +691,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit LoadI32FromAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit LoadI32FromAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -721,8 +712,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
 
-    explicit StoreI32ToAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit StoreI32ToAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -741,8 +731,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit LoadI64FromAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit LoadI64FromAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -763,8 +752,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
 
-    explicit StoreI64ToAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit StoreI64ToAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -785,8 +773,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit LoadF64FromAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit LoadF64FromAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -807,14 +794,12 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
 
-    explicit StoreF64ToAddressVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset) {}
+    explicit StoreF64ToAddressVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
 
-class LoadTaggedFieldVertex : public FixedInputVertexMixin<ValueVertex, LoadTaggedFieldVertex>,
-                              public OffsetMixin {
+class LoadTaggedFieldVertex : public FixedInputVertexMixin<ValueVertex, LoadTaggedFieldVertex>, public OffsetMixin {
 public:
     enum Indices : uint32_t {
         OBJECT_INDEX = 0,
@@ -826,14 +811,12 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit LoadTaggedFieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset)
-    {}
+    explicit LoadTaggedFieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
 
-class LoadInt32FieldVertex : public FixedInputVertexMixin<ValueVertex, LoadInt32FieldVertex>,
-                             public OffsetMixin {
+class LoadInt32FieldVertex : public FixedInputVertexMixin<ValueVertex, LoadInt32FieldVertex>, public OffsetMixin {
 public:
     enum Indices : uint32_t {
         OBJECT_INDEX = 0,
@@ -845,8 +828,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
-    explicit LoadInt32FieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset)
-    {}
+    explicit LoadInt32FieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -870,8 +852,7 @@ public:
     void SetValueLocationConstraints();
 };
 
-class LoadSingleCharTableElementVertex
-    : public FixedInputVertexMixin<ValueVertex, LoadSingleCharTableElementVertex> {
+class LoadSingleCharTableElementVertex : public FixedInputVertexMixin<ValueVertex, LoadSingleCharTableElementVertex> {
 public:
     enum Indices : uint32_t {
         GLUE_INDEX = 0,
@@ -910,8 +891,7 @@ public:
 
     TypedArrayIntLoadElementVertex(JSType elementType, bool isOnHeap)
         : FixedInputVertexMixin(), elementType_(elementType), isOnHeap_(isOnHeap)
-    {
-    }
+    {}
 
     JSType GetElementType() const
     {
@@ -930,8 +910,7 @@ private:
     bool isOnHeap_;
 };
 
-class TypedArrayDoubleLoadElementVertex
-    : public FixedInputVertexMixin<ValueVertex, TypedArrayDoubleLoadElementVertex> {
+class TypedArrayDoubleLoadElementVertex : public FixedInputVertexMixin<ValueVertex, TypedArrayDoubleLoadElementVertex> {
 public:
     enum Indices : uint32_t {
         RECEIVER_INDEX = 0,
@@ -949,8 +928,7 @@ public:
 
     TypedArrayDoubleLoadElementVertex(JSType elementType, bool isOnHeap)
         : FixedInputVertexMixin(), elementType_(elementType), isOnHeap_(isOnHeap)
-    {
-    }
+    {}
 
     JSType GetElementType() const
     {
@@ -1011,9 +989,7 @@ public:
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit LoadPrototypeHolderByHClassVertex(Chunk *chunk, uint32_t holderDepth,
                                                const std::vector<uint32_t> &expectedHClassHandleIndices,
@@ -1023,8 +999,7 @@ public:
           holderDepth_(holderDepth),
           expectedHClassHandleIndices_(chunk)
     {
-        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(),
-                                            expectedHClassHandleIndices.end());
+        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(), expectedHClassHandleIndices.end());
     }
 
     uint32_t GetHolderDepth() const
@@ -1114,8 +1089,7 @@ public:
 
     explicit StoreTaggedFieldVertex(int32_t offset, uint32_t propertyId = UNKNOWN_PROPERTY_ID)
         : FixedInputVertexMixin(), OffsetMixin(offset), propertyId_(propertyId)
-    {
-    }
+    {}
 
     uint32_t GetPropertyId() const
     {
@@ -1145,12 +1119,10 @@ public:
         ValueRepresentation::TAGGED,
     };
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::IS_DEFERRED_CALL;
+        VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::IS_DEFERRED_CALL;
 
-    explicit StoreTaggedFieldWithBarrierVertex(int32_t offset,
-                                               ArkSteedWriteBarrierValueKind valueKind =
-                                                   ArkSteedWriteBarrierValueKind::Unknown)
+    explicit StoreTaggedFieldWithBarrierVertex(
+        int32_t offset, ArkSteedWriteBarrierValueKind valueKind = ArkSteedWriteBarrierValueKind::Unknown)
         : FixedInputVertexMixin(), OffsetMixin(offset), valueKind_(valueKind)
     {}
 
@@ -1208,9 +1180,7 @@ public:
         ValueRepresentation::INT32,
         ValueRepresentation::TAGGED,
     };
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::IS_CALL;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::IS_CALL;
 
     explicit StoreTaggedElementWithBarrierVertex(
         ArkSteedWriteBarrierValueKind valueKind = ArkSteedWriteBarrierValueKind::Unknown)
@@ -1326,15 +1296,12 @@ public:
         ValueRepresentation::TAGGED,
     };
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::IS_DEFERRED_CALL;
+        VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::IS_DEFERRED_CALL;
 
-    explicit StoreSharedFieldWithBarrierVertex(int32_t offset,
-                                               ArkSteedWriteBarrierValueKind valueKind =
-                                                   ArkSteedWriteBarrierValueKind::Unknown)
+    explicit StoreSharedFieldWithBarrierVertex(
+        int32_t offset, ArkSteedWriteBarrierValueKind valueKind = ArkSteedWriteBarrierValueKind::Unknown)
         : FixedInputVertexMixin(), OffsetMixin(offset), valueKind_(valueKind)
-    {
-    }
+    {}
 
     ArkSteedWriteBarrierValueKind GetValueKind() const
     {
@@ -1368,36 +1335,27 @@ public:
         ValueRepresentation::TAGGED,
     };
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::IS_DEFERRED_CALL;
+        VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::IS_DEFERRED_CALL;
 
     explicit TransitionHClassWithBarrierVertex() : FixedInputVertexMixin() {}
 
     void SetValueLocationConstraints();
 };
 
-class PrepareSharedStoreFieldVertex
-    : public VertexMixin<ValueVertex, PrepareSharedStoreFieldVertex>,
-      public ThrowableMixin,
-      public LazyDeoptimizableMixin {
+class PrepareSharedStoreFieldVertex : public VertexMixin<ValueVertex, PrepareSharedStoreFieldVertex>,
+                                      public ThrowableMixin,
+                                      public LazyDeoptimizableMixin {
 public:
     enum Indices : uint32_t {
         VALUE_INDEX = 0,
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_ALLOCATE |
-        VertexPropertyFlag::CAN_LAZY_DEOPT |
-        VertexPropertyFlag::CAN_THROW;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ |
+                                                     VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_ALLOCATE |
+                                                     VertexPropertyFlag::CAN_LAZY_DEOPT | VertexPropertyFlag::CAN_THROW;
 
-    PrepareSharedStoreFieldVertex(uint64_t handlerInfo)
-        : VertexMixin(), handlerInfo_(handlerInfo)
-    {
-    }
+    PrepareSharedStoreFieldVertex(uint64_t handlerInfo) : VertexMixin(), handlerInfo_(handlerInfo) {}
 
     size_t GetArgCount() const
     {
@@ -1431,18 +1389,11 @@ public:
         NUM_INPUTS = 2,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_ALLOCATE |
-        VertexPropertyFlag::CAN_LAZY_DEOPT |
-        VertexPropertyFlag::CAN_THROW;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::IS_CALL |
+                                                     VertexPropertyFlag::CAN_READ | VertexPropertyFlag::CAN_ALLOCATE |
+                                                     VertexPropertyFlag::CAN_LAZY_DEOPT | VertexPropertyFlag::CAN_THROW;
 
-    EnsurePropertiesCapacityVertex(int32_t fieldIndex)
-        : VertexMixin(), fieldIndex_(fieldIndex)
-    {
-    }
+    EnsurePropertiesCapacityVertex(int32_t fieldIndex) : VertexMixin(), fieldIndex_(fieldIndex) {}
 
     int32_t GetFieldIndex() const
     {
@@ -1482,10 +1433,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
 
-    explicit StoreInt32FieldVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset)
-    {
-    }
+    explicit StoreInt32FieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -1505,18 +1453,14 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE;
 
-    explicit StoreDoubleFieldVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset)
-    {
-    }
+    explicit StoreDoubleFieldVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
 
-class StoreInt32FieldWithRepVertex
-    : public VertexMixin<NonControlVertex, StoreInt32FieldWithRepVertex>,
-      public EagerDeoptimizableMixin,
-      public OffsetMixin {
+class StoreInt32FieldWithRepVertex : public VertexMixin<NonControlVertex, StoreInt32FieldWithRepVertex>,
+                                     public EagerDeoptimizableMixin,
+                                     public OffsetMixin {
 public:
     enum Indices : uint32_t {
         STORE_TARGET_INDEX = 0,
@@ -1525,15 +1469,11 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     StoreInt32FieldWithRepVertex(Chunk *chunk, int32_t offset, uint32_t bytecodeOffset)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          OffsetMixin(offset)
-    {
-    }
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), OffsetMixin(offset)
+    {}
 
     void SetValueLocationConstraints();
 
@@ -1547,10 +1487,9 @@ public:
 private:
 };
 
-class StoreDoubleFieldWithRepVertex
-    : public VertexMixin<NonControlVertex, StoreDoubleFieldWithRepVertex>,
-      public EagerDeoptimizableMixin,
-      public OffsetMixin {
+class StoreDoubleFieldWithRepVertex : public VertexMixin<NonControlVertex, StoreDoubleFieldWithRepVertex>,
+                                      public EagerDeoptimizableMixin,
+                                      public OffsetMixin {
 public:
     enum Indices : uint32_t {
         STORE_TARGET_INDEX = 0,
@@ -1559,15 +1498,11 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     StoreDoubleFieldWithRepVertex(Chunk *chunk, int32_t offset, uint32_t bytecodeOffset)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          OffsetMixin(offset)
-    {
-    }
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), OffsetMixin(offset)
+    {}
 
     void SetValueLocationConstraints();
 
@@ -1587,8 +1522,8 @@ struct StoreTaggedFieldByHClassCase {
     bool propertiesArray {false};
 };
 
-class StoreTaggedFieldByHClassVertex
-    : public VertexMixin<NonControlVertex, StoreTaggedFieldByHClassVertex>, public EagerDeoptimizableMixin {
+class StoreTaggedFieldByHClassVertex : public VertexMixin<NonControlVertex, StoreTaggedFieldByHClassVertex>,
+                                       public EagerDeoptimizableMixin {
 public:
     enum Indices : uint32_t {
         GLUE_INDEX = 0,
@@ -1597,19 +1532,13 @@ public:
         NUM_INPUTS = 3,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::IS_DEFERRED_CALL |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_READ |
+                                                     VertexPropertyFlag::IS_DEFERRED_CALL |
+                                                     VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    StoreTaggedFieldByHClassVertex(Chunk *chunk,
-                                   const std::vector<StoreTaggedFieldByHClassCase> &cases,
+    StoreTaggedFieldByHClassVertex(Chunk *chunk, const std::vector<StoreTaggedFieldByHClassCase> &cases,
                                    ArkSteedWriteBarrierValueKind valueKind, uint32_t bytecodeOffset)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          cases_(chunk),
-          valueKind_(valueKind)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), cases_(chunk), valueKind_(valueKind)
     {
         cases_.assign(cases.begin(), cases.end());
     }
@@ -1645,8 +1574,7 @@ private:
     ArkSteedWriteBarrierValueKind valueKind_ {ArkSteedWriteBarrierValueKind::Unknown};
 };
 
-class StoreEnvSlotVertex : public FixedInputVertexMixin<NonControlVertex, StoreEnvSlotVertex>,
-                           public OffsetMixin {
+class StoreEnvSlotVertex : public FixedInputVertexMixin<NonControlVertex, StoreEnvSlotVertex>, public OffsetMixin {
 public:
     enum Indices : uint32_t {
         ENV_INDEX = 0,
@@ -1682,10 +1610,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_WRITE;
 
-    explicit SetValueWithBarrierVertex(int32_t offset)
-        : FixedInputVertexMixin(), OffsetMixin(offset)
-    {
-    }
+    explicit SetValueWithBarrierVertex(int32_t offset) : FixedInputVertexMixin(), OffsetMixin(offset) {}
 
     void SetValueLocationConstraints();
 };
@@ -1699,18 +1624,12 @@ class CallRuntimeVertex : public VertexMixin<ValueVertex, CallRuntimeVertex>,
                           public RuntimeStubIDMixin {
 public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_ALLOCATE |
-        VertexPropertyFlag::CAN_LAZY_DEOPT |
-        VertexPropertyFlag::CAN_THROW;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ |
+                                                     VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_ALLOCATE |
+                                                     VertexPropertyFlag::CAN_LAZY_DEOPT | VertexPropertyFlag::CAN_THROW;
 
     CallRuntimeVertex(RuntimeStubID id, SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
-        : VertexMixin(),
-          RuntimeStubIDMixin(id),
-          sideEffectKind_(sideEffectKind)
+        : VertexMixin(), RuntimeStubIDMixin(id), sideEffectKind_(sideEffectKind)
     {
         ASSERT(sideEffectKind_ == SideEffectKind::UNKNOWN_CALL || sideEffectKind_ == SideEffectKind::SAFE_CALL);
     }
@@ -1735,9 +1654,7 @@ private:
     SideEffectKind sideEffectKind_;
 };
 
-class CallVertex : public VertexMixin<ValueVertex, CallVertex>,
-                   public ThrowableMixin,
-                   public LazyDeoptimizableMixin {
+class CallVertex : public VertexMixin<ValueVertex, CallVertex>, public ThrowableMixin, public LazyDeoptimizableMixin {
 public:
     enum Indices : uint32_t {
         TARGET_INDEX = 0,
@@ -1746,13 +1663,9 @@ public:
         FIRST_ARG_INDEX = 3,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_ALLOCATE |
-        VertexPropertyFlag::CAN_LAZY_DEOPT |
-        VertexPropertyFlag::CAN_THROW;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ |
+                                                     VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_ALLOCATE |
+                                                     VertexPropertyFlag::CAN_LAZY_DEOPT | VertexPropertyFlag::CAN_THROW;
 
     CallVertex(uint32_t actualArgc) : VertexMixin(), actualArgc_(actualArgc) {}
 
@@ -1786,19 +1699,12 @@ class CallCommonStubVertex : public VertexMixin<ValueVertex, CallCommonStubVerte
                              public CommonStubIDMixin {
 public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_ALLOCATE |
-        VertexPropertyFlag::CAN_LAZY_DEOPT |
-        VertexPropertyFlag::CAN_THROW;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ |
+                                                     VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_ALLOCATE |
+                                                     VertexPropertyFlag::CAN_LAZY_DEOPT | VertexPropertyFlag::CAN_THROW;
 
-    CallCommonStubVertex(CommonStubID stubId,
-                         SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
-        : VertexMixin(),
-          CommonStubIDMixin(stubId),
-          sideEffectKind_(sideEffectKind)
+    CallCommonStubVertex(CommonStubID stubId, SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+        : VertexMixin(), CommonStubIDMixin(stubId), sideEffectKind_(sideEffectKind)
     {
         ASSERT(sideEffectKind_ == SideEffectKind::UNKNOWN_CALL || sideEffectKind_ == SideEffectKind::SAFE_CALL);
     }
@@ -1870,8 +1776,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit CheckedTaggedIntToI32Vertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -1894,8 +1799,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit CheckedTaggedStringVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -1924,9 +1828,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    explicit I32ConditionCheckVertex(Condition condition)
-        : FixedInputVertexMixin(), ConditionMixin(condition)
-    {}
+    explicit I32ConditionCheckVertex(Condition condition) : FixedInputVertexMixin(), ConditionMixin(condition) {}
 
     void SetValueLocationConstraints();
 };
@@ -1946,9 +1848,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    explicit F64ConditionCheckVertex(Condition condition)
-        : FixedInputVertexMixin(), ConditionMixin(condition)
-    {}
+    explicit F64ConditionCheckVertex(Condition condition) : FixedInputVertexMixin(), ConditionMixin(condition) {}
 
     void SetValueLocationConstraints();
 };
@@ -2007,11 +1907,8 @@ public:
         ValueRepresentation::TAGGED,
         ValueRepresentation::TAGGED,
     };
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::CAN_READ |
-        VertexPropertyFlag::CAN_WRITE |
-        VertexPropertyFlag::CAN_ALLOCATE;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::IS_CALL | VertexPropertyFlag::CAN_READ |
+                                                     VertexPropertyFlag::CAN_WRITE | VertexPropertyFlag::CAN_ALLOCATE;
 
     explicit StringEqualVertex() : FixedInputVertexMixin() {}
 
@@ -2028,8 +1925,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32AddWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2055,8 +1951,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32SubWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2082,8 +1977,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32MulWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2109,8 +2003,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32DivWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2135,16 +2028,11 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    explicit I32DivByConstWithCheckVertex(Chunk *chunk, uint32_t bytecodeOffset,
-                                          int32_t divisor, int32_t magic, uint32_t shift)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          divisor_(divisor),
-          magic_(magic),
-          shift_(shift)
+    explicit I32DivByConstWithCheckVertex(Chunk *chunk, uint32_t bytecodeOffset, int32_t divisor, int32_t magic,
+                                          uint32_t shift)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), divisor_(divisor), magic_(magic), shift_(shift)
     {}
 
     int32_t GetDivisor() const
@@ -2253,8 +2141,7 @@ public:
     void SetValueLocationConstraints();
 };
 
-class CheckedI32ModVertex : public VertexMixin<ValueVertex, CheckedI32ModVertex>,
-                            public EagerDeoptimizableMixin {
+class CheckedI32ModVertex : public VertexMixin<ValueVertex, CheckedI32ModVertex>, public EagerDeoptimizableMixin {
 public:
     enum Indices : uint32_t {
         LEFT_INDEX = 0,
@@ -2263,8 +2150,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit CheckedI32ModVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2293,9 +2179,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    explicit I32BitwiseBinaryVertex(IntBitwiseKind kind)
-        : FixedInputVertexMixin(), kind_(kind)
-    {}
+    explicit I32BitwiseBinaryVertex(IntBitwiseKind kind) : FixedInputVertexMixin(), kind_(kind) {}
 
     IntBitwiseKind GetKind() const
     {
@@ -2309,8 +2193,7 @@ public:
 
     bool IsShift() const
     {
-        return kind_ == IntBitwiseKind::SHIFT_LEFT ||
-               kind_ == IntBitwiseKind::SHIFT_RIGHT_LOGICAL ||
+        return kind_ == IntBitwiseKind::SHIFT_LEFT || kind_ == IntBitwiseKind::SHIFT_RIGHT_LOGICAL ||
                kind_ == IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC;
     }
 
@@ -2320,9 +2203,8 @@ private:
     IntBitwiseKind kind_;
 };
 
-class CheckedNonNegativeI32ToTaggedIntVertex
-    : public VertexMixin<ValueVertex, CheckedNonNegativeI32ToTaggedIntVertex>,
-      public EagerDeoptimizableMixin {
+class CheckedNonNegativeI32ToTaggedIntVertex : public VertexMixin<ValueVertex, CheckedNonNegativeI32ToTaggedIntVertex>,
+                                               public EagerDeoptimizableMixin {
 public:
     enum Indices : uint32_t {
         INPUT_INDEX = 0,
@@ -2330,8 +2212,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit CheckedNonNegativeI32ToTaggedIntVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2371,8 +2252,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32NegWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2397,8 +2277,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32IncWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2423,8 +2302,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::INT32;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit I32DecWithOverflowVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2466,8 +2344,7 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::FLOAT64;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT |
-        VertexPropertyFlag::CAN_EAGER_DEOPT;
+        VertexPropertyFlag::IS_NOT_IDEMPOTENT | VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit CheckedNumberToF64Vertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -2671,12 +2548,9 @@ public:
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_EAGER_DEOPT |
-        VertexPropertyFlag::CAN_READ;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
 
-    explicit DeoptIfHClassMismatchVertex(Chunk *chunk, uint32_t expectedHClassHandleIndex,
-                                         uint32_t bytecodeOffset)
+    explicit DeoptIfHClassMismatchVertex(Chunk *chunk, uint32_t expectedHClassHandleIndex, uint32_t bytecodeOffset)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
           expectedHClassHandleIndex_(expectedHClassHandleIndex)
@@ -2709,15 +2583,11 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
 
-    explicit DeoptIfHClassNotInVertex(Chunk *chunk,
-                                      const std::vector<uint32_t> &expectedHClassHandleIndices,
+    explicit DeoptIfHClassNotInVertex(Chunk *chunk, const std::vector<uint32_t> &expectedHClassHandleIndices,
                                       uint32_t bytecodeOffset)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          expectedHClassHandleIndices_(chunk)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), expectedHClassHandleIndices_(chunk)
     {
-        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(),
-                                            expectedHClassHandleIndices.end());
+        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(), expectedHClassHandleIndices.end());
     }
 
     uint32_t GetExpectedHClassCount() const
@@ -2753,8 +2623,8 @@ public:
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
-    DeoptIfPrototypeChangedVertex(Chunk *chunk, bool checkProtoChangeMarker,
-                                  bool checkNotPrototype, uint32_t bytecodeOffset)
+    DeoptIfPrototypeChangedVertex(Chunk *chunk, bool checkProtoChangeMarker, bool checkNotPrototype,
+                                  uint32_t bytecodeOffset)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
           checkProtoChangeMarker_(checkProtoChangeMarker),
@@ -2796,8 +2666,8 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    explicit DeoptIfTaggedConditionVertex(Chunk *chunk, uint32_t bytecodeOffset,
-                                          Condition condition, kungfu::DeoptType deoptType)
+    explicit DeoptIfTaggedConditionVertex(Chunk *chunk, uint32_t bytecodeOffset, Condition condition,
+                                          kungfu::DeoptType deoptType)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
           ConditionMixin(condition),
@@ -2836,8 +2706,8 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    explicit DeoptIfInt32ConditionVertex(Chunk *chunk, uint32_t bytecodeOffset,
-                                         Condition condition, kungfu::DeoptType deoptType)
+    explicit DeoptIfInt32ConditionVertex(Chunk *chunk, uint32_t bytecodeOffset, Condition condition,
+                                         kungfu::DeoptType deoptType)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
           ConditionMixin(condition),
@@ -2874,8 +2744,8 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    explicit DeoptIfFloat64ConditionVertex(Chunk *chunk, uint32_t bytecodeOffset,
-                                           Condition condition, kungfu::DeoptType deoptType)
+    explicit DeoptIfFloat64ConditionVertex(Chunk *chunk, uint32_t bytecodeOffset, Condition condition,
+                                           kungfu::DeoptType deoptType)
         : VertexMixin(),
           EagerDeoptimizableMixin(chunk, bytecodeOffset),
           ConditionMixin(condition),
@@ -2911,8 +2781,7 @@ public:
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
 
     explicit DeoptIfNotNumberVertex(Chunk *chunk, uint32_t bytecodeOffset)
-        : VertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset)
+        : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
     {}
 
     void SetValueLocationConstraints();
@@ -2947,18 +2816,15 @@ public:
     }
 };
 
-class DeoptIfArrayBufferDetachedVertex
-    : public VertexMixin<NonControlVertex, DeoptIfArrayBufferDetachedVertex>,
-      public EagerDeoptimizableMixin {
+class DeoptIfArrayBufferDetachedVertex : public VertexMixin<NonControlVertex, DeoptIfArrayBufferDetachedVertex>,
+                                         public EagerDeoptimizableMixin {
 public:
     enum Indices : uint32_t {
         RECEIVER_INDEX = 0,
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_EAGER_DEOPT |
-        VertexPropertyFlag::CAN_READ;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
 
     DeoptIfArrayBufferDetachedVertex(Chunk *chunk, uint32_t bytecodeOffset, OnHeapMode onHeapMode)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), onHeapMode_(onHeapMode)
@@ -2991,9 +2857,7 @@ public:
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_EAGER_DEOPT |
-        VertexPropertyFlag::CAN_READ;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
 
     explicit DeoptIfCOWElementsVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -3016,9 +2880,7 @@ public:
         NUM_INPUTS = 1,
     };
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
-    static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_EAGER_DEOPT |
-        VertexPropertyFlag::CAN_READ;
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT | VertexPropertyFlag::CAN_READ;
 
     explicit DeoptIfElementsUnstableVertex(Chunk *chunk, uint32_t bytecodeOffset)
         : VertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset)
@@ -3039,12 +2901,8 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_EAGER_DEOPT;
 
-    explicit DeoptVertex(Chunk *chunk,
-                         kungfu::DeoptType type,
-                         uint32_t bytecodeOffset)
-        : FixedInputVertexMixin(),
-          EagerDeoptimizableMixin(chunk, bytecodeOffset),
-          deoptType_(type)
+    explicit DeoptVertex(Chunk *chunk, kungfu::DeoptType type, uint32_t bytecodeOffset)
+        : FixedInputVertexMixin(), EagerDeoptimizableMixin(chunk, bytecodeOffset), deoptType_(type)
     {}
 
     kungfu::DeoptType GetDeoptType() const
@@ -3089,9 +2947,7 @@ public:
     }
 
 protected:
-    explicit UnconditionalControlVertex(BB *target)
-        : ControlVertex(), target_(target), predecessorId_(0)
-    {}
+    explicit UnconditionalControlVertex(BB *target) : ControlVertex(), target_(target), predecessorId_(0) {}
 
 private:
     BB *target_;
@@ -3106,9 +2962,7 @@ private:
 template <typename Derived>
 class UnconditionalControlVertexT : public FixedInputVertexMixin<UnconditionalControlVertex, Derived> {
 protected:
-    UnconditionalControlVertexT(BB *target)
-        : FixedInputVertexMixin<UnconditionalControlVertex, Derived>(target)
-    {}
+    UnconditionalControlVertexT(BB *target) : FixedInputVertexMixin<UnconditionalControlVertex, Derived>(target) {}
 };
 
 class BranchControlVertex : public ControlVertex {
@@ -3134,9 +2988,7 @@ public:
     }
 
 protected:
-    BranchControlVertex(BB *ifTrue, BB *ifFalse)
-        : ControlVertex(), ifTrue_(ifTrue), ifFalse_(ifFalse)
-    {}
+    BranchControlVertex(BB *ifTrue, BB *ifFalse) : ControlVertex(), ifTrue_(ifTrue), ifFalse_(ifFalse) {}
 
 private:
     BB *ifTrue_;
@@ -3150,8 +3002,7 @@ private:
 template <typename Derived>
 class BranchControlVertexT : public FixedInputVertexMixin<BranchControlVertex, Derived> {
 protected:
-    BranchControlVertexT(BB *ifTrue, BB *ifFalse)
-        : FixedInputVertexMixin<BranchControlVertex, Derived>(ifTrue, ifFalse)
+    BranchControlVertexT(BB *ifTrue, BB *ifFalse) : FixedInputVertexMixin<BranchControlVertex, Derived>(ifTrue, ifFalse)
     {}
 };
 
@@ -3166,9 +3017,7 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    BranchIfTrueVertex(BB *ifTrue, BB *ifFalse)
-        : BranchControlVertexT(ifTrue, ifFalse)
-    {}
+    BranchIfTrueVertex(BB *ifTrue, BB *ifFalse) : BranchControlVertexT(ifTrue, ifFalse) {}
 
     void SetValueLocationConstraints();
 };
@@ -3185,9 +3034,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    BranchIfTaggedStringVertex(BB *ifTrue, BB *ifFalse)
-        : BranchControlVertexT(ifTrue, ifFalse)
-    {}
+    BranchIfTaggedStringVertex(BB *ifTrue, BB *ifFalse) : BranchControlVertexT(ifTrue, ifFalse) {}
 
     void SetValueLocationConstraints();
 };
@@ -3202,14 +3049,10 @@ public:
     static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
 
     BranchIfHClassInVertex(BB *ifTrue, BB *ifFalse, Chunk *chunk,
-                           const std::vector<uint32_t> &expectedHClassHandleIndices,
-                           bool inputIsHClassAddress = false)
-        : VertexMixin(ifTrue, ifFalse),
-          expectedHClassHandleIndices_(chunk),
-          inputIsHClassAddress_(inputIsHClassAddress)
+                           const std::vector<uint32_t> &expectedHClassHandleIndices, bool inputIsHClassAddress = false)
+        : VertexMixin(ifTrue, ifFalse), expectedHClassHandleIndices_(chunk), inputIsHClassAddress_(inputIsHClassAddress)
     {
-        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(),
-                                            expectedHClassHandleIndices.end());
+        expectedHClassHandleIndices_.assign(expectedHClassHandleIndices.begin(), expectedHClassHandleIndices.end());
     }
 
     uint32_t GetExpectedHClassCount() const
@@ -3243,8 +3086,7 @@ private:
     bool inputIsHClassAddress_ {false};
 };
 
-class BranchIfInt32CompareVertex : public BranchControlVertexT<BranchIfInt32CompareVertex>,
-                                   public ConditionMixin {
+class BranchIfInt32CompareVertex : public BranchControlVertexT<BranchIfInt32CompareVertex>, public ConditionMixin {
 public:
     enum Indices : uint32_t {
         LEFT_INDEX = 0,
@@ -3265,8 +3107,7 @@ public:
     void SetValueLocationConstraints();
 };
 
-class BranchIfInt64CompareVertex : public BranchControlVertexT<BranchIfInt64CompareVertex>,
-                                   public ConditionMixin {
+class BranchIfInt64CompareVertex : public BranchControlVertexT<BranchIfInt64CompareVertex>, public ConditionMixin {
 public:
     enum Indices : uint32_t {
         LEFT_INDEX = 0,
@@ -3287,8 +3128,7 @@ public:
     void SetValueLocationConstraints();
 };
 
-class BranchIfFloat64CompareVertex : public BranchControlVertexT<BranchIfFloat64CompareVertex>,
-                                     public ConditionMixin {
+class BranchIfFloat64CompareVertex : public BranchControlVertexT<BranchIfFloat64CompareVertex>, public ConditionMixin {
 public:
     enum Indices : uint32_t {
         LEFT_INDEX = 0,
@@ -3323,9 +3163,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    BranchIfReferenceEqualVertex(BB *ifTrue, BB *ifFalse)
-        : BranchControlVertexT(ifTrue, ifFalse)
-    {}
+    BranchIfReferenceEqualVertex(BB *ifTrue, BB *ifFalse) : BranchControlVertexT(ifTrue, ifFalse) {}
 
     void SetValueLocationConstraints();
 };
@@ -3374,9 +3212,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    BranchIfTaggedHeapObjectVertex(BB *ifTrue, BB *ifFalse)
-        : BranchControlVertexT(ifTrue, ifFalse)
-    {}
+    BranchIfTaggedHeapObjectVertex(BB *ifTrue, BB *ifFalse) : BranchControlVertexT(ifTrue, ifFalse) {}
 
     void SetValueLocationConstraints();
 };
@@ -3404,8 +3240,7 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    explicit JumpLoopVertex(Chunk *chunk, BB *target)
-        : UnconditionalControlVertexT(target), usedVertices_(chunk) {}
+    explicit JumpLoopVertex(Chunk *chunk, BB *target) : UnconditionalControlVertexT(target), usedVertices_(chunk) {}
 
     void SetValueLocationConstraints();
 
@@ -3451,13 +3286,9 @@ class ThrowVertex : public VertexMixin<ControlVertex, ThrowVertex>, public Throw
 public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
     static constexpr VertexPropertyFlag PROPERTIES =
-        VertexPropertyFlag::CAN_THROW |
-        VertexPropertyFlag::IS_CALL |
-        VertexPropertyFlag::IS_NOT_IDEMPOTENT;
+        VertexPropertyFlag::CAN_THROW | VertexPropertyFlag::IS_CALL | VertexPropertyFlag::IS_NOT_IDEMPOTENT;
 
-    explicit ThrowVertex(kungfu::RuntimeStubCSigns::ID id)
-        : VertexMixin(), RuntimeStubIDMixin(id)
-    {}
+    explicit ThrowVertex(kungfu::RuntimeStubCSigns::ID id) : VertexMixin(), RuntimeStubIDMixin(id) {}
 
     size_t GetArgCount() const
     {
@@ -3532,9 +3363,7 @@ public:
     static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::TAGGED;
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    explicit PhiVertex(VirtualRegister owner)
-        : VertexMixin(), owner_(owner)
-    {}
+    explicit PhiVertex(VirtualRegister owner) : VertexMixin(), owner_(owner) {}
 
     uint32_t GetPredecessorCount() const
     {
@@ -3636,9 +3465,7 @@ public:
     };
     static constexpr VertexPropertyFlag PROPERTIES = {};
 
-    explicit I64BitwiseBinaryVertex(IntBitwiseKind kind)
-        : FixedInputVertexMixin(), kind_(kind)
-    {}
+    explicit I64BitwiseBinaryVertex(IntBitwiseKind kind) : FixedInputVertexMixin(), kind_(kind) {}
 
     IntBitwiseKind GetKind() const
     {
@@ -3735,8 +3562,7 @@ inline void DefineAsFixed(ValueVertex *vertex, uint32_t regCode)
 
 inline void DefineAsFixed(ValueVertex *vertex, ArkSteedRegister reg)
 {
-    vertex->Result().SetUnallocated(UnallocatedState::ExtendedPolicy::FIXED_REGISTER,
-                                    static_cast<uint32_t>(reg.Code()),
+    vertex->Result().SetUnallocated(UnallocatedState::ExtendedPolicy::FIXED_REGISTER, static_cast<uint32_t>(reg.Code()),
                                     NO_VREG);
 }
 
@@ -3748,29 +3574,25 @@ inline void DefineSameAsFirst(ValueVertex *vertex)
 inline void UseRegister(Input input)
 {
     input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER,
-                                                         UnallocatedState::LifetimeFlag::USED_AT_END,
-                                                         NO_VREG);
+                                                         UnallocatedState::LifetimeFlag::USED_AT_END, NO_VREG);
 }
 
 inline void UseAndClobberRegister(Input input)
 {
     input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER,
-                                                         UnallocatedState::LifetimeFlag::USED_AT_START,
-                                                         NO_VREG);
+                                                         UnallocatedState::LifetimeFlag::USED_AT_START, NO_VREG);
 }
 
 inline void UseAny(Input input)
 {
     input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT,
-                                                         UnallocatedState::LifetimeFlag::USED_AT_END,
-                                                         NO_VREG);
+                                                         UnallocatedState::LifetimeFlag::USED_AT_END, NO_VREG);
 }
 
 inline void UseSlot(Input input)
 {
     input.GetLocation()->GetOperand() = UnallocatedState(UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT,
-                                                         UnallocatedState::LifetimeFlag::USED_AT_END,
-                                                         NO_VREG);
+                                                         UnallocatedState::LifetimeFlag::USED_AT_END, NO_VREG);
 }
 
 inline void UseFixed(Input input, uint32_t regCode)
@@ -3799,9 +3621,7 @@ inline void UseAndClobberFixed(Input input, uint32_t regCode)
 {
     input.GetLocation()->GetOperand() =
         UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER,
-                         UnallocatedState::LifetimeFlag::USED_AT_START,
-                         regCode,
-                         NO_VREG);
+                         UnallocatedState::LifetimeFlag::USED_AT_START, regCode, NO_VREG);
     input.vertex()->SetHint(input.GetOperand());
 }
 
@@ -3812,9 +3632,7 @@ inline void UseAndClobberFixed(Input input, ArkSteedRegister reg)
     // that are not inputs should be modeled with RequireSpecificTemporary().
     input.GetLocation()->GetOperand() =
         UnallocatedState(UnallocatedState::ExtendedPolicy::FIXED_REGISTER,
-                         UnallocatedState::LifetimeFlag::USED_AT_START,
-                         static_cast<uint32_t>(reg.Code()),
-                         NO_VREG);
+                         UnallocatedState::LifetimeFlag::USED_AT_START, static_cast<uint32_t>(reg.Code()), NO_VREG);
     input.vertex()->SetHint(input.GetOperand());
 }
 

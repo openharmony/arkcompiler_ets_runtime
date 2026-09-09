@@ -52,17 +52,17 @@ public:
 
     constexpr void Set(RegisterT reg)
     {
-        bits_ |= (storage_t{1} << reg.Code());
+        bits_ |= (storage_t {1} << reg.Code());
     }
 
     void Clear(RegisterT reg)
     {
-        bits_ &= ~(storage_t{1} << reg.Code());
+        bits_ &= ~(storage_t {1} << reg.Code());
     }
 
     constexpr bool Has(RegisterT reg) const
     {
-        return (bits_ & (storage_t{1} << reg.Code())) != 0;
+        return (bits_ & (storage_t {1} << reg.Code())) != 0;
     }
 
     void Clear(const RegListBase &other)

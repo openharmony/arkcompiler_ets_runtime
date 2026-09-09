@@ -382,8 +382,7 @@ public:
 private:
     LoadedPropertyKey(ValueVertex *receiver, PropertyKey propertyKey, uint32_t propertyLookupResult)
         : receiver_(receiver), propertyKey_(propertyKey), propertyLookupResult_(propertyLookupResult)
-    {
-    }
+    {}
 
     ValueVertex *receiver_ {nullptr};
     PropertyKey propertyKey_ {PropertyKey::Unknown()};

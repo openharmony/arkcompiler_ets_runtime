@@ -18,8 +18,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
-#include <cstring>
 #include <limits>
+
+#include "securec.h"
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/arksteed/arksteed_compile_info_facts.h"
@@ -28,6 +29,7 @@
 #include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
 #include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/ecma_string-inl.h"  // IWYU pragma: keep
@@ -123,7 +125,7 @@ void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, CommonStubID id
 
 void ValidateCommonStubCallArgs(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
 {
-    auto span = Span<ValueVertex * const>{inputs.begin(), inputs.size()};
+    auto span = Span<ValueVertex *const> {inputs.begin(), inputs.size()};
     ValidateCommonStubCallArgs(span, id);
 }
 
@@ -156,8 +158,8 @@ bool SupportsF64BinOp(BinaryOpKind kind)
 
 bool IsEqualityCompare(JSCondition kind)
 {
-    return kind == JSCondition::EQUAL || kind == JSCondition::NOT_EQUAL ||
-           kind == JSCondition::STRICT_EQUAL || kind == JSCondition::STRICT_NOT_EQUAL;
+    return kind == JSCondition::EQUAL || kind == JSCondition::NOT_EQUAL || kind == JSCondition::STRICT_EQUAL ||
+           kind == JSCondition::STRICT_NOT_EQUAL;
 }
 
 bool IsStrictEqualityCompare(JSCondition kind)
@@ -186,9 +188,9 @@ bool IsReferenceComparableRootValue(ValueVertex *node)
 bool IsReferenceComparableType(NodeInfo::NodeType type)
 {
     using NodeType = NodeInfo::NodeType;
-    constexpr NodeType referenceComparable = NodeInfo::UnionNodeType(
-        NodeInfo::UnionNodeType(NodeType::NULL_OR_UNDEFINED, NodeType::BOOLEAN),
-        NodeInfo::UnionNodeType(NodeType::SYMBOL, NodeType::JS_RECEIVER));
+    constexpr NodeType referenceComparable =
+        NodeInfo::UnionNodeType(NodeInfo::UnionNodeType(NodeType::NULL_OR_UNDEFINED, NodeType::BOOLEAN),
+                                NodeInfo::UnionNodeType(NodeType::SYMBOL, NodeType::JS_RECEIVER));
     return NodeInfo::NodeTypeIs(type, referenceComparable);
 }
 
@@ -323,14 +325,18 @@ void CseAppendExpressionOption(CompileInfoFacts::ExpressionOptions &options, con
     } else if constexpr (std::is_pointer_v<RawT>) {
         options.push_back(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value)));
     } else if constexpr (std::is_floating_point_v<RawT>) {
-        uint64_t bits = 0;
-        std::memcpy(&bits, &value, sizeof(value));
-        options.push_back(bits);
+        if constexpr (sizeof(RawT) == sizeof(uint32_t)) {
+            options.push_back(base::bit_cast<uint32_t>(value));
+        } else {
+            options.push_back(base::bit_cast<uint64_t>(value));
+        }
     } else {
         static_assert(std::is_trivially_copyable_v<RawT>, "Unsupported available-expression option type");
         static_assert(sizeof(RawT) <= sizeof(uint64_t), "Available-expression option is too large");
         uint64_t bits = 0;
-        std::memcpy(&bits, &value, sizeof(value));
+        if (memcpy_s(&bits, sizeof(bits), &value, sizeof(value)) != EOK) {
+            UNREACHABLE();
+        }
         options.push_back(bits);
     }
 }
@@ -368,8 +374,7 @@ constexpr bool CseCanUseAvailableExpression()
     if constexpr (!std::is_base_of_v<ValueVertex, VertexT>) {
         return false;
     } else {
-        return !CseIsExcludedAvailableExpressionOpcode(OpcodeOf<VertexT>) &&
-                CanParticipateInCSE(VertexT::PROPERTIES);
+        return !CseIsExcludedAvailableExpressionOpcode(OpcodeOf<VertexT>) && CanParticipateInCSE(VertexT::PROPERTIES);
     }
 }
 }  // namespace
@@ -434,11 +439,8 @@ struct GraphBuilder::CatchBlockInputData {
     }
 };
 
-GraphBuilder::GraphBuilder(JSThread *compilerThread,
-                           Graph *destGraph,
-                           uintptr_t glueAddr,
-                           BytecodePreprocessor *preproc,
-                           BytecodeAnalysis *analysis)
+GraphBuilder::GraphBuilder(JSThread *compilerThread, Graph *destGraph, uintptr_t glueAddr,
+                           BytecodePreprocessor *preproc, BytecodeAnalysis *analysis)
     : graph_(destGraph),
       compilerThread_(compilerThread),
       glueAddr_(glueAddr),
@@ -483,7 +485,8 @@ void GraphBuilder::DebugLog()
         return;
     }
     LOG_COMPILER(DEBUG) << "arksteed::GraphBuilder: Starts graph building with "
-                           "NumLocalVRegs = " << numLocal_ << ", NumParamVRegs = " << numParams_;
+                           "NumLocalVRegs = "
+                        << numLocal_ << ", NumParamVRegs = " << numParams_;
 
     std::string dumpStr = preproc_->Dump();
     std::istringstream preprocStream(dumpStr);
@@ -573,9 +576,7 @@ void GraphBuilder::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpo
     if (bcBlock->IsLoopHeader()) {
         blocks_[rpoIndex]->SetIsLoopHeader(true);
     }
-    bcBlock->IsLoopHeader()
-        ? InitFrameStateForLoopHeader(frameState, rpoIndex)
-        : InitFrameState(frameState, rpoIndex);
+    bcBlock->IsLoopHeader() ? InitFrameStateForLoopHeader(frameState, rpoIndex) : InitFrameState(frameState, rpoIndex);
 
     if (bcBlock->IsSynthetic()) {
         // Edge-split block, etc. No bytecode inside.
@@ -821,8 +822,8 @@ VertexT *GraphBuilder::NewVertex(BB *owner, const InputRange &inputs, Args &&...
 }
 
 template <class VertexT, class InputRange, class... Args>
-VertexT *GraphBuilder::NewVertex(
-    CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs, Args &&...args)
+VertexT *GraphBuilder::NewVertex(CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs,
+                                 Args &&...args)
 {
     if constexpr (CseCanUseAvailableExpression<VertexT>()) {
         CompileInfoFacts::ExpressionInputs expressionInputs(chunk_);
@@ -835,8 +836,8 @@ VertexT *GraphBuilder::NewVertex(
         uint32_t hash = CseHashExpression(OpcodeOf<VertexT>, expressionInputs, options);
         // Read operations are versioned by the effect epoch.
         bool needsEpochCheck = CanRead(VertexT::PROPERTIES);
-        ValueVertex *cached = compileInfoFacts->FindExpression(
-            hash, OpcodeOf<VertexT>, expressionInputs, options, needsEpochCheck);
+        ValueVertex *cached =
+            compileInfoFacts->FindExpression(hash, OpcodeOf<VertexT>, expressionInputs, options, needsEpochCheck);
         // The cached vertex is reusable if one of the following conditions is true:
         // 1. The cached vertex is not a read vertex;
         // 2. For read vertices, the cached vertex is created in the current block.
@@ -874,8 +875,7 @@ JumpLoopVertex *GraphBuilder::FinishBlockWithJumpLoop(BB *owner, BB *target)
     return jumpLoopVertex;
 }
 
-ControlVertex *GraphBuilder::FinishBlockWithBranch(
-    BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse)
+ControlVertex *GraphBuilder::FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse)
 {
     auto finishWithTargets = [targetIfTrue, targetIfFalse, owner](ControlVertex *vertex) {
         targetIfTrue->AddPredecessor(owner);
@@ -884,31 +884,30 @@ ControlVertex *GraphBuilder::FinishBlockWithBranch(
     };
 
     if (auto *compare = input->TryCast<I32ConditionCheckVertex>()) {
-        return finishWithTargets(FinishBlockWith<BranchIfInt32CompareVertex>(
-            owner,
-            {compare->GetInput(I32ConditionCheckVertex::LEFT_INDEX),
-             compare->GetInput(I32ConditionCheckVertex::RIGHT_INDEX)},
-            targetIfTrue, targetIfFalse, compare->GetCondition()));
+        return finishWithTargets(
+            FinishBlockWith<BranchIfInt32CompareVertex>(owner,
+                                                        {compare->GetInput(I32ConditionCheckVertex::LEFT_INDEX),
+                                                         compare->GetInput(I32ConditionCheckVertex::RIGHT_INDEX)},
+                                                        targetIfTrue, targetIfFalse, compare->GetCondition()));
     }
     if (auto *compare = input->TryCast<F64ConditionCheckVertex>()) {
-        return finishWithTargets(FinishBlockWith<BranchIfFloat64CompareVertex>(
-            owner,
-            {compare->GetInput(F64ConditionCheckVertex::LEFT_INDEX),
-             compare->GetInput(F64ConditionCheckVertex::RIGHT_INDEX)},
-            targetIfTrue, targetIfFalse, compare->GetCondition()));
+        return finishWithTargets(
+            FinishBlockWith<BranchIfFloat64CompareVertex>(owner,
+                                                          {compare->GetInput(F64ConditionCheckVertex::LEFT_INDEX),
+                                                           compare->GetInput(F64ConditionCheckVertex::RIGHT_INDEX)},
+                                                          targetIfTrue, targetIfFalse, compare->GetCondition()));
     }
     if (auto *equal = input->TryCast<TaggedEqualVertex>()) {
         return finishWithTargets(FinishBlockWith<BranchIfReferenceEqualVertex>(
-            owner,
-            {equal->GetInput(TaggedEqualVertex::LEFT_INDEX), equal->GetInput(TaggedEqualVertex::RIGHT_INDEX)},
+            owner, {equal->GetInput(TaggedEqualVertex::LEFT_INDEX), equal->GetInput(TaggedEqualVertex::RIGHT_INDEX)},
             targetIfTrue, targetIfFalse));
     }
     if (auto *notEqual = input->TryCast<TaggedNotEqualVertex>()) {
-        return finishWithTargets(FinishBlockWith<BranchIfReferenceEqualVertex>(
-            owner,
-            {notEqual->GetInput(TaggedNotEqualVertex::LEFT_INDEX),
-             notEqual->GetInput(TaggedNotEqualVertex::RIGHT_INDEX)},
-            targetIfFalse, targetIfTrue));
+        return finishWithTargets(
+            FinishBlockWith<BranchIfReferenceEqualVertex>(owner,
+                                                          {notEqual->GetInput(TaggedNotEqualVertex::LEFT_INDEX),
+                                                           notEqual->GetInput(TaggedNotEqualVertex::RIGHT_INDEX)},
+                                                          targetIfFalse, targetIfTrue));
     }
 
     auto *branchVertex = FinishBlockWith<BranchIfTrueVertex>(owner, {input}, targetIfTrue, targetIfFalse);
@@ -916,11 +915,11 @@ ControlVertex *GraphBuilder::FinishBlockWithBranch(
 }
 
 template <class BranchVertexT, class InputRange, class... Args>
-BranchVertexT *GraphBuilder::FinishBlockWithBranch(
-    BB *owner, const InputRange &inputs, BB *targetIfTrue, BB *targetIfFalse, Args &&...args)
+BranchVertexT *GraphBuilder::FinishBlockWithBranch(BB *owner, const InputRange &inputs, BB *targetIfTrue,
+                                                   BB *targetIfFalse, Args &&...args)
 {
-    auto *vertex = FinishBlockWith<BranchVertexT>(
-        owner, inputs, targetIfTrue, targetIfFalse, std::forward<Args>(args)...);
+    auto *vertex =
+        FinishBlockWith<BranchVertexT>(owner, inputs, targetIfTrue, targetIfFalse, std::forward<Args>(args)...);
     targetIfTrue->AddPredecessor(owner);
     targetIfFalse->AddPredecessor(owner);
     return vertex;
@@ -1005,8 +1004,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         currentBcInfo = bcInfo;
         currentBcIndex = bcIndex;
-        if (self->GetOptions()->GetCompilerArkSteedDeoptOnInsufficientProfile() &&
-            bcInfo->IsInsufficientProfile()) {
+        if (self->GetOptions()->GetCompilerArkSteedDeoptOnInsufficientProfile() && bcInfo->IsInsufficientProfile()) {
             EmitUnconditionalDeopt();
             return false;
         }
@@ -1571,8 +1569,7 @@ struct GraphBuilder::BytecodeVisitor {
         currentBlock->SetDeferred(true);
         constexpr auto DEOPT_TYPE = kungfu::DeoptType::INSUFFICIENTPROFILE;
         uint32_t bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex);
-        auto *deopt = self->FinishBlockWith<DeoptVertex>(
-            currentBlock, {}, self->chunk_, DEOPT_TYPE, bytecodeOffset);
+        auto *deopt = self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, DEOPT_TYPE, bytecodeOffset);
         deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
     }
 
@@ -2257,28 +2254,27 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *propKey = StringFromConstPool(stringId);
         ValueVertex *value = frameState.GetAcc();
-        ValueVertex *isConstGate = isConst
-            ? self->graph_->GetTaggedConstant(JSTaggedValue::True().GetRawData())
-            : self->graph_->GetTaggedConstant(JSTaggedValue::False().GetRawData());
+        ValueVertex *isConstGate = isConst ? self->graph_->GetTaggedConstant(JSTaggedValue::True().GetRawData())
+                                           : self->graph_->GetTaggedConstant(JSTaggedValue::False().GetRawData());
         RuntimeCallWithLazyDeopt({propKey, value, isConstGate}, RTSTUB_ID(StGlobalRecord));
     }
 
     void LowerLdGlobal()
     {
-        constexpr int32_t offset = static_cast<int32_t>(
-            GlobalEnv::HEADER_SIZE + GlobalEnv::JS_GLOBAL_OBJECT_INDEX * JSTaggedValue::TaggedTypeSize());
+        constexpr int32_t offset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE + GlobalEnv::JS_GLOBAL_OBJECT_INDEX *
+                                                                                     JSTaggedValue::TaggedTypeSize());
 
-        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
+        frameState.SetAcc(
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
     }
 
     void LowerLdSymbol()
     {
-        constexpr int32_t offset = static_cast<int32_t>(
-            GlobalEnv::HEADER_SIZE + GlobalEnv::SYMBOL_FUNCTION_INDEX * JSTaggedValue::TaggedTypeSize());
+        constexpr int32_t offset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE + GlobalEnv::SYMBOL_FUNCTION_INDEX *
+                                                                                     JSTaggedValue::TaggedTypeSize());
 
-        frameState.SetAcc(self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
+        frameState.SetAcc(
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
     }
 
     void LowerLdPrivateProperty(const BytecodeInfo *bcInfo)
@@ -2294,7 +2290,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *levelIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
         ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
-        ValueVertex *obj = LoadRegister(bcInfo, 3);  // 3: obj register index
+        ValueVertex *obj = LoadRegister(bcInfo, 3);         // 3: obj register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 4);  // 4: lexicalEnv register index
         ValueVertex *value = frameState.GetAcc();
         RuntimeCallWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(StPrivateProperty));
@@ -2557,8 +2553,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
         ValueVertex *slotId = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 1));
 
-        CommonStubCallToAccWithLazyDeopt(
-            {glue, index, jsFunc, slotId, GlobalEnv()}, CommonStubID::CreateArrayWithBuffer);
+        CommonStubCallToAccWithLazyDeopt({glue, index, jsFunc, slotId, GlobalEnv()},
+                                         CommonStubID::CreateArrayWithBuffer);
     }
 
     void LowerCreateRegExpWithLiteral(const BytecodeInfo *bcInfo)
@@ -2593,8 +2589,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *slotId = TaggedConstantFromInt32(GetICSlotId<int>(bcInfo, 3));
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
 
-        RuntimeCallToAccWithLazyDeopt(
-            {method, homeObject, length, env, module, slotId, jsFunc}, RTSTUB_ID(DefineMethod));
+        RuntimeCallToAccWithLazyDeopt({method, homeObject, length, env, module, slotId, jsFunc},
+                                      RTSTUB_ID(DefineMethod));
 #else
         RuntimeCallToAcc({method, homeObject, length, env, module}, RTSTUB_ID(DefineMethod));
 #endif
@@ -2610,8 +2606,8 @@ struct GraphBuilder::BytecodeVisitor {
         // 3: lexicalEnv register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);
 
-        CommonStubCallToAccWithLazyDeopt(
-            {glue, jsFunc, methodId, length, lexicalEnv, slotId, GlobalEnv()}, CommonStubID::Definefunc);
+        CommonStubCallToAccWithLazyDeopt({glue, jsFunc, methodId, length, lexicalEnv, slotId, GlobalEnv()},
+                                         CommonStubID::Definefunc);
     }
 
     void LowerDefineClassWithBuffer(const BytecodeInfo *bcInfo)
@@ -2619,7 +2615,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *methodId = TaggedConstantFromInt32(GetConstDataId<int>(bcInfo, 0));
         ValueVertex *literalId = TaggedConstantFromInt32(GetConstDataId<int>(bcInfo, 1));
         ValueVertex *length = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
-        ValueVertex *proto = LoadRegister(bcInfo, 3);  // 3: proto register index
+        ValueVertex *proto = LoadRegister(bcInfo, 3);       // 3: proto register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 4);  // 4: lexicalEnv register index
         ValueVertex *sharedConstPool = SharedConstPool();
         ValueVertex *module = ModuleFromFunction();
@@ -2632,9 +2628,8 @@ struct GraphBuilder::BytecodeVisitor {
             {proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length, slotId, jsFunc},
             RTSTUB_ID(CreateClassWithBuffer));
 #else
-        RuntimeCallToAcc(
-            {proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length},
-            RTSTUB_ID(CreateClassWithBuffer));
+        RuntimeCallToAcc({proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length},
+                         RTSTUB_ID(CreateClassWithBuffer));
 #endif
     }
 
@@ -2648,8 +2643,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *undefinedValue = self->undefinedValue_;
         ValueVertex *taggedOne = TaggedConstantFromInt32(1);
 
-        RuntimeCallToAccWithLazyDeopt(
-            {obj, prop, getter, setter, acc, undefinedValue, taggedOne}, RTSTUB_ID(DefineGetterSetterByValue));
+        RuntimeCallToAccWithLazyDeopt({obj, prop, getter, setter, acc, undefinedValue, taggedOne},
+                                      RTSTUB_ID(DefineGetterSetterByValue));
     }
 
     void LowerDefinePropertyByName(const BytecodeInfo *bcInfo)
@@ -2701,7 +2696,7 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *levelIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
-        ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
+        ValueVertex *obj = LoadRegister(bcInfo, 2);         // 2: obj register index
         ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
         ValueVertex *value = frameState.GetAcc();
         RuntimeCallWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(DefinePrivateProperty));
@@ -2783,8 +2778,8 @@ struct GraphBuilder::BytecodeVisitor {
     {
         ValueVertex *parent = LoadRegister(bcInfo, 1);
         ValueVertex *numVars = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
-        ValueVertex *newEnv = CommonStubCall(
-            {glue, parent, numVars}, CommonStubID::NewLexicalEnv, SideEffectKind::SAFE_CALL);
+        ValueVertex *newEnv =
+            CommonStubCall({glue, parent, numVars}, CommonStubID::NewLexicalEnv, SideEffectKind::SAFE_CALL);
 
         frameState.SetAcc(newEnv);
         frameState.SetLexicalEnv(newEnv);
@@ -2797,8 +2792,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *level = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
         ValueVertex *slotId = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
         ValueVertex *parent = LoadRegister(bcInfo, 2);  // 2: env register index
-        ValueVertex *newEnv = RuntimeCall(
-            {level, slotId, parent, jsFunc}, RTSTUB_ID(OptNewLexicalEnvWithName), SideEffectKind::SAFE_CALL);
+        ValueVertex *newEnv = RuntimeCall({level, slotId, parent, jsFunc}, RTSTUB_ID(OptNewLexicalEnvWithName),
+                                          SideEffectKind::SAFE_CALL);
 
         frameState.SetAcc(newEnv);
         frameState.SetLexicalEnv(newEnv);
@@ -2835,8 +2830,8 @@ struct GraphBuilder::BytecodeVisitor {
         int32_t offset = GetLexicalEnvSlotOffset(slot);
         self->NewVertex<StoreEnvSlotVertex>(compileInfoFacts_, currentBlock, {targetEnv, value}, offset);
         if (ClassifyDirectWriteBarrierValueKind(value) != ArkSteedWriteBarrierValueKind::NonHeap) {
-            self->NewVertex<SetValueWithBarrierVertex>(
-                compileInfoFacts_, currentBlock, {glue, targetEnv, value}, offset);
+            self->NewVertex<SetValueWithBarrierVertex>(compileInfoFacts_, currentBlock, {glue, targetEnv, value},
+                                                       offset);
         }
         compileInfoFacts_->RecordEnvSlot(targetEnv, offset, value);
     }
@@ -2983,8 +2978,8 @@ struct GraphBuilder::BytecodeVisitor {
         if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::BIGINT)) {
             return TypeOfKind::BIGINT;
         }
-        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::UnionNodeType(
-            NodeInfo::NodeType::JS_ARRAY, NodeInfo::NodeType::JS_TYPED_ARRAY))) {
+        if (NodeInfo::NodeTypeIs(
+                knownType, NodeInfo::UnionNodeType(NodeInfo::NodeType::JS_ARRAY, NodeInfo::NodeType::JS_TYPED_ARRAY))) {
             return TypeOfKind::OBJECT;
         }
         return TypeOfKind::UNKNOWN;
@@ -2997,9 +2992,8 @@ struct GraphBuilder::BytecodeVisitor {
             return TypeOfKind::UNKNOWN;
         }
         TypeOfKind kind = TypeOfKindFromHClass(hclasses->front());
-        bool allAgree = std::all_of(hclasses->begin(), hclasses->end(), [kind](const JSHClass *hclass) {
-            return TypeOfKindFromHClass(hclass) == kind;
-        });
+        bool allAgree = std::all_of(hclasses->begin(), hclasses->end(),
+                                    [kind](const JSHClass *hclass) { return TypeOfKindFromHClass(hclass) == kind; });
         return allAgree ? kind : TypeOfKind::UNKNOWN;
     }
 
@@ -3011,8 +3005,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (std::optional<ArkSteedHeapRef> constantRef = TryGetConstantHeapRef(value)) {
             ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
             if (broker != nullptr) {
-                ArkSteedHeapBroker::SerializingScope scope(
-                    broker, "GraphBuilder::ClassifyTypeOf");
+                ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::ClassifyTypeOf");
                 JSTaggedValue constant = JSTaggedValue::Undefined();
                 if (broker->TryResolveRef(*constantRef, &constant)) {
                     return TypeOfKindFromConstant(constant);
@@ -3031,8 +3024,7 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *constant = nullptr;
         ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
         if (broker != nullptr) {
-            ArkSteedHeapBroker::SerializingScope scope(
-                broker, "GraphBuilder::StringFromGlobalConstant");
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::StringFromGlobalConstant");
             ArkSteedNameRef stringRef;
             if (broker->TryGetGlobalConstantRef(index, &stringRef)) {
                 constant = GetHeapConstant(stringRef);
@@ -3086,8 +3078,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *numArgs = ActualArgc();
         ValueVertex *argvTaggedArray = self->undefinedValue_;
 
-        CommonStubCallToAccWithLazyDeopt(
-            {glue, argv, numArgs, argvTaggedArray, GlobalEnv()}, CommonStubID::GetUnmappedArgs);
+        CommonStubCallToAccWithLazyDeopt({glue, argv, numArgs, argvTaggedArray, GlobalEnv()},
+                                         CommonStubID::GetUnmappedArgs);
     }
 
     void LowerCopyRestArgs(const BytecodeInfo *bcInfo)
@@ -3256,14 +3248,14 @@ struct GraphBuilder::BytecodeVisitor {
         BB *checkLowerFailedBlock = self->NewBlock();
         BB *checkUpperFailedBlock = self->NewBlock();
 
-        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
-            currentBlock, {value}, isHeapObjectBlock, notHeapObjectBlock);
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {value}, isHeapObjectBlock,
+                                                                    notHeapObjectBlock);
 
         // Hot path: value is a heap object → check HClass type range inline.
         currentBlock = isHeapObjectBlock;
 
-        ValueVertex *hclass = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {value}, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+        ValueVertex *hclass = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {value},
+                                                                     static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
         ValueVertex *hclassRaw = self->NewVertex<TaggedToRawI64Vertex>(compileInfoFacts_, currentBlock, {hclass});
 
         ValueVertex *addrMask = self->graph_->GetInt64Constant(static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
@@ -3282,15 +3274,14 @@ struct GraphBuilder::BytecodeVisitor {
 
         // Whether type is in [ECMA_OBJECT_FIRST, ECMA_OBJECT_LAST]
         ValueVertex *firstType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST));
-        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
-            currentBlock, {typeBits, firstType},
-            checkLowerDoneBlock, checkLowerFailedBlock, Condition::GREATER_THAN_OR_EQUAL);
+        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(currentBlock, {typeBits, firstType},
+                                                                checkLowerDoneBlock, checkLowerFailedBlock,
+                                                                Condition::GREATER_THAN_OR_EQUAL);
 
         currentBlock = checkLowerDoneBlock;
         ValueVertex *lastType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST));
-        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(
-            currentBlock, {typeBits, lastType},
-            checkUpperDoneBlock, checkUpperFailedBlock, Condition::LESS_THAN_OR_EQUAL);
+        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(currentBlock, {typeBits, lastType}, checkUpperDoneBlock,
+                                                                checkUpperFailedBlock, Condition::LESS_THAN_OR_EQUAL);
 
         for (BB *exceptionBlock : {notHeapObjectBlock, checkLowerFailedBlock, checkUpperFailedBlock}) {
             currentBlock = exceptionBlock;
@@ -3315,9 +3306,8 @@ struct GraphBuilder::BytecodeVisitor {
             return HoleCheckKind::ELIDED;
         }
         if (auto *constant = receiver->TryCast<TaggedConstantVertex>(); constant != nullptr) {
-            return constant->GetValue() == JSTaggedValue::VALUE_HOLE
-                       ? HoleCheckKind::ALWAYS_THROWS
-                       : HoleCheckKind::ELIDED;
+            return constant->GetValue() == JSTaggedValue::VALUE_HOLE ? HoleCheckKind::ALWAYS_THROWS
+                                                                     : HoleCheckKind::ELIDED;
         }
         NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(receiver);
         if (!NodeInfo::IsEmptyNodeType(knownType) && knownType != NodeInfo::NodeType::UNKNOWN) {
@@ -3338,8 +3328,8 @@ struct GraphBuilder::BytecodeVisitor {
             case HoleCheckKind::ALWAYS_THROWS:
                 currentBlock->SetDeferred(true);
                 if (!TryBuildColdCatchDeopt()) {
-                    auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
-                        currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+                    auto *throwVertex =
+                        self->FinishBlockWith<ThrowVertex>(currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
                     UpdateCatchBlockData(throwVertex);
                 }
                 return LoweringResult::BLOCK_TERMINATED;
@@ -3356,8 +3346,8 @@ struct GraphBuilder::BytecodeVisitor {
         currentBlock = throwBlock;
         currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
-            auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
-                currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+            auto *throwVertex =
+                self->FinishBlockWith<ThrowVertex>(currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
             UpdateCatchBlockData(throwVertex);
         }
         currentBlock = doneBlock;
@@ -3378,8 +3368,8 @@ struct GraphBuilder::BytecodeVisitor {
                 if (!TryBuildColdCatchDeopt()) {
                     ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
                     ValueVertex *str = StringFromConstPool(strID);
-                    auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
-                        currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+                    auto *throwVertex =
+                        self->FinishBlockWith<ThrowVertex>(currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
                     UpdateCatchBlockData(throwVertex);
                 }
                 return LoweringResult::BLOCK_TERMINATED;
@@ -3391,15 +3381,16 @@ struct GraphBuilder::BytecodeVisitor {
         BB *doneBlock = self->NewBlock();
 
         ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
-        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock, doneBlock);
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock,
+                                                                  doneBlock);
 
         currentBlock = throwBlock;
         currentBlock->SetDeferred(true);
         if (!TryBuildColdCatchDeopt()) {
             ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
             ValueVertex *str = StringFromConstPool(strID);
-            auto *throwVertex = self->FinishBlockWith<ThrowVertex>(
-                currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+            auto *throwVertex =
+                self->FinishBlockWith<ThrowVertex>(currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
             UpdateCatchBlockData(throwVertex);
         }
 
@@ -3429,26 +3420,26 @@ struct GraphBuilder::BytecodeVisitor {
         BB *holeMatchBlock = self->NewBlock();
         BB *okBlock = self->NewBlock();
 
-        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
-            currentBlock, {thisValue, undefined}, undefinedMatchBlock, notUndefinedBlock);
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {thisValue, undefined},
+                                                                  undefinedMatchBlock, notUndefinedBlock);
 
         auto emitThrow = [&]() {
             currentBlock->SetDeferred(true);
             if (!TryBuildColdCatchDeopt()) {
-                auto *vertex = self->FinishBlockWith<ThrowVertex>(
-                    currentBlock, {indexValue, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+                auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {indexValue, thisValue},
+                                                                  RTSTUB_ID(ThrowIfSuperNotCorrectCall));
                 UpdateCatchBlockData(vertex);
             }
         };
 
         currentBlock = notUndefinedBlock;
         if (throwOnMatch) {
-            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
-                currentBlock, {thisValue, hole}, holeMatchBlock, okBlock);
+            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {thisValue, hole}, holeMatchBlock,
+                                                                      okBlock);
         } else {
             BB *throwBlock = self->NewBlock();
-            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
-                currentBlock, {thisValue, hole}, holeMatchBlock, throwBlock);
+            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {thisValue, hole}, holeMatchBlock,
+                                                                      throwBlock);
             currentBlock = throwBlock;
             emitThrow();
         }
@@ -3580,8 +3571,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *lexicalEnv = frameState.GetLexicalEnv();
         AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX),
                          lexicalEnv == self->initialLexicalEnv_ ? self->undefinedValue_ : lexicalEnv);
-        deoptFrameState->emplace_back(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX),
-                                      self->initialActualArgc_, DeoptTranslationKind::INT32_TO_TAGGED);
+        deoptFrameState->emplace_back(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), self->initialActualArgc_,
+                                      DeoptTranslationKind::INT32_TO_TAGGED);
     }
 
     template <class DeoptFrameState, class Predicate>
@@ -3635,9 +3626,8 @@ struct GraphBuilder::BytecodeVisitor {
         const kungfu::BitSet &catchLiveIn = self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex);
         AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
         AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
-        AppendLiveLocalsAndParams(deoptFrameState, 0, [&catchLiveIn](VRegIDType index) {
-            return catchLiveIn.TestBit(index);
-        });
+        AppendLiveLocalsAndParams(deoptFrameState, 0,
+                                  [&catchLiveIn](VRegIDType index) { return catchLiveIn.TestBit(index); });
     }
 
     // D+E (dependency + exception) lazy deopt.
@@ -3654,9 +3644,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (includeAcc) {
             AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
         }
-        AppendLiveLocalsAndParams(deoptFrameState, 0, [&liveSet](VRegIDType index) {
-            return liveSet.TestBit(index);
-        });
+        AppendLiveLocalsAndParams(deoptFrameState, 0, [&liveSet](VRegIDType index) { return liveSet.TestBit(index); });
     }
 
     EagerDeoptFrameState BuildCurrentEagerDeoptFrameState(uint32_t bcIndex)
@@ -3672,9 +3660,8 @@ struct GraphBuilder::BytecodeVisitor {
         if (liveSet.TestBit(self->AccIndex())) {
             AppendDeoptInput(&frameStateValues, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
         }
-        AppendLiveLocalsAndParams(&frameStateValues, FIXED_PARAM_VREG_COUNT, [&liveSet](VRegIDType index) {
-            return liveSet.TestBit(index);
-        });
+        AppendLiveLocalsAndParams(&frameStateValues, FIXED_PARAM_VREG_COUNT,
+                                  [&liveSet](VRegIDType index) { return liveSet.TestBit(index); });
         return frameStateValues;
     }
 
@@ -4010,8 +3997,7 @@ struct GraphBuilder::BytecodeVisitor {
             if (broker == nullptr) {
                 return std::nullopt;
             }
-            ArkSteedHeapBroker::SerializingScope scope(
-                broker, "GraphBuilder::TryGetConstantHeapRef");
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryGetConstantHeapRef");
             ArkSteedHeapRef ref = broker->MakeObjectRef(value);
             return ref.IsSafeForCompile() ? std::optional<ArkSteedHeapRef>(ref) : std::nullopt;
         }
@@ -4047,8 +4033,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         auto *call = value->TryCast<CallCommonStubVertex>();
-        if (call == nullptr ||
-            call->GetCommonStubID() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
+        if (call == nullptr || call->GetCommonStubID() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
             return false;
         }
 
@@ -4061,8 +4046,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (constDataId < 0 || constDataId > std::numeric_limits<uint16_t>::max()) {
             return false;
         }
-        std::optional<ArkSteedNameRef> stringRef =
-            TryGetNameRefFromConstDataId(static_cast<uint16_t>(constDataId));
+        std::optional<ArkSteedNameRef> stringRef = TryGetNameRefFromConstDataId(static_cast<uint16_t>(constDataId));
         if (!stringRef.has_value()) {
             return false;
         }
@@ -4088,15 +4072,14 @@ struct GraphBuilder::BytecodeVisitor {
         return name;
     }
 
-    std::optional<PropertyLookupResult> TryLookupPropertyInPGOHClass(
-        JSHClass *hclass, const ArkSteedNameRef &nameRef) const
+    std::optional<PropertyLookupResult> TryLookupPropertyInPGOHClass(JSHClass *hclass,
+                                                                     const ArkSteedNameRef &nameRef) const
     {
         ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
         if (hclass == nullptr || broker == nullptr) {
             return std::nullopt;
         }
-        ArkSteedHeapBroker::SerializingScope scope(
-            broker, "GraphBuilder::TryLookupPropertyInPGOHClass");
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryLookupPropertyInPGOHClass");
         JSTaggedValue name = JSTaggedValue::Undefined();
         if (!broker->TryResolveRef(nameRef, &name) || (!name.IsString() && !name.IsSymbol())) {
             return std::nullopt;
@@ -4126,8 +4109,9 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(
-        const PropertyAccessInfo &accessInfo, JSHClass *holderHClass, const ArkSteedNameRef &nameRef) const
+    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                                                  JSHClass *holderHClass,
+                                                                                  const ArkSteedNameRef &nameRef) const
     {
         std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(holderHClass, nameRef);
         if (!maybePlr.has_value()) {
@@ -4138,17 +4122,16 @@ struct GraphBuilder::BytecodeVisitor {
                                plr.GetOffset() == static_cast<uint32_t>(accessInfo.fieldOffset)) ||
                               (accessInfo.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY &&
                                !plr.IsInlinedProps() && plr.GetOffset() == accessInfo.fieldIndex);
-        if (!plr.IsFound() || !plr.IsLocal() ||
-            plr.IsAccessor() || plr.IsFunction() ||
-            plr.IsLoadFromIterResult() || plr.GetRepresentation() != Representation::TAGGED ||
-            !hasSameStorage) {
+        if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || plr.IsFunction() || plr.IsLoadFromIterResult() ||
+            plr.GetRepresentation() != Representation::TAGGED || !hasSameStorage) {
             return std::nullopt;
         }
         return plr;
     }
 
-    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(
-        const PropertyAccessInfo &accessInfo, JSHClass *holderHClass, uint16_t constDataId) const
+    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                                                  JSHClass *holderHClass,
+                                                                                  uint16_t constDataId) const
     {
         std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
         if (!nameRef.has_value()) {
@@ -4180,8 +4163,7 @@ struct GraphBuilder::BytecodeVisitor {
             holderRef = accessInfo.holder;
             holderHandleIndex = recordedHolderHandleIndex.value();
         }
-        ArkSteedHeapBroker::SerializingScope scope(
-            broker, "GraphBuilder::TryConvertNamedLoadAccessInfo");
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryConvertNamedLoadAccessInfo");
         std::optional<JSHClass *> receiverHClass = TryResolveHClassRef(accessInfo.expectedHClass);
         if (!receiverHClass.has_value() || receiverHClass.value() == nullptr ||
             !receiverHClass.value()->GetLayout(self->compilerThread_).IsTaggedArray()) {
@@ -4229,8 +4211,7 @@ struct GraphBuilder::BytecodeVisitor {
         if (!plr.has_value()) {
             return std::nullopt;
         }
-        bool hasStableProtoChain = holderDepth > 0 &&
-            accessInfo.dependencies.canAssumeStableProtoChain;
+        bool hasStableProtoChain = holderDepth > 0 && accessInfo.dependencies.canAssumeStableProtoChain;
         NamedLoadAccessInfo result {
             .receiverHClass = receiverHClass.value(),
             .holderHClass = holderHClass,
@@ -4268,13 +4249,11 @@ struct GraphBuilder::BytecodeVisitor {
         if (lhs.holderDepth == 0) {
             return true;
         }
-        return lhs.holderHClass == rhs.holderHClass &&
-               lhs.holderHandleIndex == rhs.holderHandleIndex &&
+        return lhs.holderHClass == rhs.holderHClass && lhs.holderHandleIndex == rhs.holderHandleIndex &&
                lhs.expectedPrototypeHClasses == rhs.expectedPrototypeHClasses;
     }
 
-    static bool AppendHClassIfMissing(std::vector<JSHClass *> *hclasses,
-                                      std::vector<ArkSteedHClassRef> *hclassRefs,
+    static bool AppendHClassIfMissing(std::vector<JSHClass *> *hclasses, std::vector<ArkSteedHClassRef> *hclassRefs,
                                       JSHClass *hclass, const ArkSteedHClassRef &hclassRef)
     {
         ASSERT(hclasses != nullptr && hclassRefs != nullptr);
@@ -4305,20 +4284,17 @@ struct GraphBuilder::BytecodeVisitor {
                 if (!HasSameLoadFieldAccess(existing, accessInfo.value())) {
                     continue;
                 }
-                ASSERT(accessInfo->lookupStartObjectHClasses.size() ==
-                       accessInfo->lookupStartObjectHClassRefs.size());
+                ASSERT(accessInfo->lookupStartObjectHClasses.size() == accessInfo->lookupStartObjectHClassRefs.size());
                 for (uint32_t i = 0; i < accessInfo->lookupStartObjectHClasses.size(); ++i) {
-                    if (!AppendHClassIfMissing(&existing.lookupStartObjectHClasses,
-                                               &existing.lookupStartObjectHClassRefs,
-                                               accessInfo->lookupStartObjectHClasses[i],
-                                               accessInfo->lookupStartObjectHClassRefs[i])) {
+                    if (!AppendHClassIfMissing(
+                            &existing.lookupStartObjectHClasses, &existing.lookupStartObjectHClassRefs,
+                            accessInfo->lookupStartObjectHClasses[i], accessInfo->lookupStartObjectHClassRefs[i])) {
                         return std::nullopt;
                     }
                 }
                 existing.canAssumeStableHClasses =
                     existing.canAssumeStableHClasses && accessInfo->canAssumeStableHClasses;
-                existing.hasStableProtoChain =
-                    existing.hasStableProtoChain && accessInfo->hasStableProtoChain;
+                existing.hasStableProtoChain = existing.hasStableProtoChain && accessInfo->hasStableProtoChain;
                 merged = true;
                 break;
             }
@@ -4424,8 +4400,8 @@ struct GraphBuilder::BytecodeVisitor {
     {
         std::vector<ValueVertex *> inputs {value};
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfNotNumberVertex>(
-            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+        self->NewVertex<DeoptIfNotNumberVertex>(currentBlock, inputs, self->chunk_,
+                                                self->preproc_->GetBytecodeOffset(currentBcIndex))
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
@@ -4441,8 +4417,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         ValueVertex *result = BuildSelect<BranchIfTaggedStringVertex>(
-            {value}, self->AccIndex(),
-            [&]() -> ValueVertex * { return value; },
+            {value}, self->AccIndex(), [&]() -> ValueVertex * { return value; },
             [&]() -> ValueVertex * {
                 BuildDeoptIfNotNumber(value);
                 ValueVertex *numberResult = RuntimeCall({value}, RTSTUB_ID(NumberToString));
@@ -4544,8 +4519,8 @@ struct GraphBuilder::BytecodeVisitor {
         ASSERT(divisor <= -2 || divisor >= 2);
         constexpr uint32_t BIT_WIDTH = 32;
         uint64_t highOne = 1ULL << (BIT_WIDTH - 1U);
-        uint64_t ad = divisor < 0 ? static_cast<uint64_t>(-static_cast<int64_t>(divisor)) :
-                                     static_cast<uint64_t>(divisor);
+        uint64_t ad =
+            divisor < 0 ? static_cast<uint64_t>(-static_cast<int64_t>(divisor)) : static_cast<uint64_t>(divisor);
         uint64_t divisorBits = static_cast<uint64_t>(static_cast<int64_t>(divisor));
         uint64_t t = highOne + (divisorBits >> 63U);
         uint64_t anc = t - 1U - t % ad;
@@ -4601,8 +4576,8 @@ struct GraphBuilder::BytecodeVisitor {
         std::vector<ValueVertex *> inputs {leftI32};
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
         ValueVertex *rawResult = self->NewVertex<I32DivByConstWithCheckVertex>(
-            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex),
-            divisor, magic.magic, magic.shift);
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), divisor, magic.magic,
+            magic.shift);
         rawResult->Cast<I32DivByConstWithCheckVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         return BuildTaggedI32Result(rawResult);
     }
@@ -4612,9 +4587,9 @@ struct GraphBuilder::BytecodeVisitor {
     {
         std::vector<ValueVertex *> inputs {leftI32, rightI32};
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfInt32ConditionVertex>(
-            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
-            deoptType)
+        self->NewVertex<DeoptIfInt32ConditionVertex>(currentBlock, inputs, self->chunk_,
+                                                     self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
+                                                     deoptType)
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
@@ -4623,9 +4598,9 @@ struct GraphBuilder::BytecodeVisitor {
     {
         std::vector<ValueVertex *> inputs {leftF64, rightF64};
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfFloat64ConditionVertex>(
-            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
-            deoptType)
+        self->NewVertex<DeoptIfFloat64ConditionVertex>(currentBlock, inputs, self->chunk_,
+                                                       self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
+                                                       deoptType)
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
@@ -4779,8 +4754,8 @@ struct GraphBuilder::BytecodeVisitor {
         return nullptr;
     }
 
-    ValueVertex *TryBuildI32BinaryReduction(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
-                                            bool leftKnownInt, bool rightKnownInt)
+    ValueVertex *TryBuildI32BinaryReduction(BinaryOpKind kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                            bool rightKnownInt)
     {
         if (std::optional<int32_t> rightValue = TryGetInt32Value(right)) {
             if (ValueVertex *reduced = TryBuildI32RightConstantReduction(kind, left, leftKnownInt, *rightValue)) {
@@ -4805,8 +4780,8 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildI32CheckedBinOp(kind, left, right, leftKnownInt, rightKnownInt);
     }
 
-    ValueVertex *BuildI32CheckedBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
-                                       bool leftKnownInt, bool rightKnownInt)
+    ValueVertex *BuildI32CheckedBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                      bool rightKnownInt)
     {
         ASSERT(SupportsI32CheckedBinOp(kind));
 
@@ -4853,14 +4828,15 @@ struct GraphBuilder::BytecodeVisitor {
         }
         if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
             ValueVertex *i32 = BuildTaggedIntToI32(value);
-            ValueVertex *f64 = self->NewVertex<I32ToF64Vertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{i32});
+            ValueVertex *f64 = self->NewVertex<I32ToF64Vertex>(compileInfoFacts_, currentBlock,
+                                                               std::initializer_list<ValueVertex *> {i32});
             compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
             return f64;
         }
         std::vector<ValueVertex *> inputs {value};
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(
-            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(currentBlock, inputs, self->chunk_,
+                                                                     self->preproc_->GetBytecodeOffset(currentBcIndex));
         f64->Cast<CheckedNumberToF64Vertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
         compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::NUMBER);
         compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
@@ -5099,16 +5075,16 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildI32BitwiseTaggedValue(IntBitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
     {
-        ValueVertex *raw = self->NewVertex<I32BitwiseBinaryVertex>(
-            compileInfoFacts_, currentBlock, {leftI32, rightI32}, kind);
+        ValueVertex *raw =
+            self->NewVertex<I32BitwiseBinaryVertex>(compileInfoFacts_, currentBlock, {leftI32, rightI32}, kind);
         if (kind != IntBitwiseKind::SHIFT_RIGHT_LOGICAL) {
             return BuildTaggedI32Result(raw);
         }
         return BuildCheckedNonNegativeI32ToTaggedInt(raw);
     }
 
-    ValueVertex *BuildI32BitwiseBinOp(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right,
-                                       bool leftKnownInt, bool rightKnownInt)
+    ValueVertex *BuildI32BitwiseBinOp(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                      bool rightKnownInt)
     {
         if (leftKnownInt && rightKnownInt) {
             if (ValueVertex *reduced = TryBuildI32BitwiseReduction(kind, left, right)) {
@@ -5131,13 +5107,12 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     void BuildTruncatingNumberTypedArrayStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
-                                               const ElementStoreAccessInfo &access)
+                                              const ElementStoreAccessInfo &access)
     {
         if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
             ValueVertex *intValue = BuildTaggedIntToI32(value);
-            self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
-                                                              {receiver, index, intValue}, access.typedArrayType,
-                                                              access.onHeapMode);
+            self->NewVertex<StoreIntTypedArrayElementVertex>(
+                compileInfoFacts_, currentBlock, {receiver, index, intValue}, access.typedArrayType, access.onHeapMode);
             return;
         }
 
@@ -5150,27 +5125,26 @@ struct GraphBuilder::BytecodeVisitor {
         BB *upperOverflowBlock = self->NewBlock();
         BB *doneBlock = self->NewBlock();
 
-        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(
-            currentBlock, {doubleValue, minInt64}, checkUpperBlock, lowerOverflowBlock,
-            Condition::GREATER_THAN_OR_EQUAL);
+        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(currentBlock, {doubleValue, minInt64},
+                                                                  checkUpperBlock, lowerOverflowBlock,
+                                                                  Condition::GREATER_THAN_OR_EQUAL);
 
         currentBlock = checkUpperBlock;
-        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(
-            currentBlock, {doubleValue, maxInt64}, fastBlock, upperOverflowBlock, Condition::LESS_THAN);
+        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(currentBlock, {doubleValue, maxInt64}, fastBlock,
+                                                                  upperOverflowBlock, Condition::LESS_THAN);
 
         currentBlock = fastBlock;
         ValueVertex *fastValue = self->NewVertex<F64ToI32TruncVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{doubleValue});
-        self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
-                                                         {receiver, index, fastValue}, access.typedArrayType,
-                                                         access.onHeapMode);
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {doubleValue});
+        self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock, {receiver, index, fastValue},
+                                                         access.typedArrayType, access.onHeapMode);
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         for (BB *overflowBlock : {lowerOverflowBlock, upperOverflowBlock}) {
             currentBlock = overflowBlock;
             currentBlock->SetDeferred(true);
             ValueVertex *slowValue = self->NewVertex<DoubleToInt32CallVertex>(
-                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{doubleValue});
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {doubleValue});
             self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
                                                              {receiver, index, slowValue}, access.typedArrayType,
                                                              access.onHeapMode);
@@ -5181,21 +5155,20 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     void BuildClampedUint8TypedArrayStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
-                                           const ElementStoreAccessInfo &access)
+                                          const ElementStoreAccessInfo &access)
     {
         ValueVertex *clampedValue = nullptr;
         if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
             ValueVertex *intValue = BuildTaggedIntToI32(value);
-            clampedValue = self->NewVertex<I32ToUint8ClampedVertex>(
-                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {intValue});
+            clampedValue = self->NewVertex<I32ToUint8ClampedVertex>(compileInfoFacts_, currentBlock,
+                                                                    std::initializer_list<ValueVertex *> {intValue});
         } else {
             ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
-            clampedValue = self->NewVertex<F64ToUint8ClampedVertex>(
-                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {doubleValue});
+            clampedValue = self->NewVertex<F64ToUint8ClampedVertex>(compileInfoFacts_, currentBlock,
+                                                                    std::initializer_list<ValueVertex *> {doubleValue});
         }
-        self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
-                                                         {receiver, index, clampedValue}, access.typedArrayType,
-                                                         access.onHeapMode);
+        self->NewVertex<StoreIntTypedArrayElementVertex>(
+            compileInfoFacts_, currentBlock, {receiver, index, clampedValue}, access.typedArrayType, access.onHeapMode);
     }
 
     ValueVertex *BuildBitwiseOperation(IntBitwiseKind kind)
@@ -5225,8 +5198,8 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildStringAdd(ValueVertex *left, ValueVertex *right)
     {
-        ValueVertex *result = CommonStubCall(
-            {glue, left, right, self->graph_->GetInt32Constant(0), GlobalEnv()}, CommonStubID::StringAdd);
+        ValueVertex *result = CommonStubCall({glue, left, right, self->graph_->GetInt32Constant(0), GlobalEnv()},
+                                             CommonStubID::StringAdd);
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::STRING);
         return result;
     }
@@ -5296,8 +5269,8 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *valueI32 = BuildTaggedIntToI32(value);
         ValueVertex *zero = self->graph_->GetInt32Constant(0);
         Condition condition = trueIfNonZero ? Condition::NOT_EQUAL : Condition::EQUAL;
-        ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
-            compileInfoFacts_, currentBlock, {valueI32, zero}, condition);
+        ValueVertex *result =
+            self->NewVertex<I32ConditionCheckVertex>(compileInfoFacts_, currentBlock, {valueI32, zero}, condition);
         compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
         return result;
     }
@@ -5354,8 +5327,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *TryReduceCompareEqualAgainstConstant(JSCondition kind, ValueVertex *left, ValueVertex *right)
     {
-        if (left == right && IsEqualityCompare(kind) &&
-            compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT)) {
+        if (left == right && IsEqualityCompare(kind) && compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT)) {
             return GetBooleanConstant(IsEqualCompare(kind));
         }
         if (!IsStrictEqualityCompare(kind)) {
@@ -5400,8 +5372,8 @@ struct GraphBuilder::BytecodeVisitor {
         return result;
     }
 
-    ValueVertex *BuildI32CompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right,
-                                   bool leftKnownInt, bool rightKnownInt)
+    ValueVertex *BuildI32CompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                   bool rightKnownInt)
     {
         if (leftKnownInt && rightKnownInt) {
             return BuildI32CompareTaggedValue(kind, left, right);
@@ -5479,7 +5451,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         switch (kind) {
             case JSCondition::GREATER_THAN_OR_EQUAL:
-                return GetBooleanConstant(true);   // uint32 >= 0 >= right
+                return GetBooleanConstant(true);  // uint32 >= 0 >= right
             case JSCondition::LESS_THAN:
                 return GetBooleanConstant(false);  // uint32 >= 0, cannot be < right (<=0)
             case JSCondition::GREATER_THAN:
@@ -5521,8 +5493,7 @@ struct GraphBuilder::BytecodeVisitor {
         bool rightKnownNumber = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::NUMBER);
         bool leftKnownNonIntNumber = leftKnownNumber && !leftKnownInt;
         bool rightKnownNonIntNumber = rightKnownNumber && !rightKnownInt;
-        if (leftKnownNonIntNumber || rightKnownNonIntNumber ||
-            feedback.hint == ArkSteedOperationHint::NUMBER) {
+        if (leftKnownNonIntNumber || rightKnownNonIntNumber || feedback.hint == ArkSteedOperationHint::NUMBER) {
             LogOperationFeedback(feedback, "Compare", "F64CompareOp");
             return BuildF64CompareOp(kind, left, right);
         }
@@ -5564,19 +5535,16 @@ struct GraphBuilder::BytecodeVisitor {
         UNREACHABLE();
     }
 
-    void LogOperationFeedback(const OperationFeedback &feedback, const char *opcodeName,
-                              const char *chosenPath) const
+    void LogOperationFeedback(const OperationFeedback &feedback, const char *opcodeName, const char *chosenPath) const
     {
         LOG_COMPILER(INFO) << "ArkSteed operation feedback: op=" << opcodeName
                            << ", bcOffset=" << self->preproc_->GetBytecodeOffset(currentBcIndex)
-                           << ", slotId=" << feedback.slotId
-                           << ", rawTypeBits=" << feedback.rawTypeBits
-                           << ", hint=" << static_cast<uint32_t>(feedback.hint)
-                           << ", path=" << chosenPath;
+                           << ", slotId=" << feedback.slotId << ", rawTypeBits=" << feedback.rawTypeBits
+                           << ", hint=" << static_cast<uint32_t>(feedback.hint) << ", path=" << chosenPath;
     }
 
     ValueVertex *BuildNumericBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
-                                    const OperationFeedback &feedback)
+                                   const OperationFeedback &feedback)
     {
         if (feedback.hint == ArkSteedOperationHint::INT && SupportsI32CheckedBinOp(kind)) {
             LogOperationFeedback(feedback, "BinaryNumeric", "I32BinOp");
@@ -5600,8 +5568,7 @@ struct GraphBuilder::BytecodeVisitor {
             return constant;
         }
         OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
-        bool observedNonInt32Result =
-            SupportsF64BinOp(kind) && feedback.hint == ArkSteedOperationHint::NUMBER;
+        bool observedNonInt32Result = SupportsF64BinOp(kind) && feedback.hint == ArkSteedOperationHint::NUMBER;
         if (!observedNonInt32Result) {
             if (ValueVertex *provenInt = TryBuildProvenIntBinOp(kind, left, right)) {
                 return provenInt;
@@ -5648,8 +5615,8 @@ struct GraphBuilder::BytecodeVisitor {
                 return BuildTaggedI32Result(rawResult);
             }
             case CommonStubID::Not: {
-                ValueVertex *rawResult =
-                    self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{valueI32});
+                ValueVertex *rawResult = self->NewVertex<I32BNotVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {valueI32});
                 return BuildTaggedI32Result(rawResult);
             }
             default:
@@ -5676,26 +5643,26 @@ struct GraphBuilder::BytecodeVisitor {
         switch (stubId) {
             case CommonStubID::Neg: {
                 ValueVertex *negF64 = self->NewVertex<F64NegVertex>(compileInfoFacts_, currentBlock, {valueF64});
-                ValueVertex *result = self->NewVertex<F64ToTaggedDoubleVertex>(
-                    compileInfoFacts_, currentBlock, {negF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {negF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
             case CommonStubID::Inc: {
                 ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
-                ValueVertex *addF64 = self->NewVertex<F64AddVertex>(
-                    compileInfoFacts_, currentBlock, {valueF64, oneF64});
-                ValueVertex *result = self->NewVertex<F64ToTaggedDoubleVertex>(
-                    compileInfoFacts_, currentBlock, {addF64});
+                ValueVertex *addF64 =
+                    self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, {valueF64, oneF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {addF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
             case CommonStubID::Dec: {
                 ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
-                ValueVertex *subF64 = self->NewVertex<F64SubVertex>(
-                    compileInfoFacts_, currentBlock, {valueF64, oneF64});
-                ValueVertex *result = self->NewVertex<F64ToTaggedDoubleVertex>(
-                    compileInfoFacts_, currentBlock, {subF64});
+                ValueVertex *subF64 =
+                    self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, {valueF64, oneF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {subF64});
                 compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
                 return result;
             }
@@ -5883,10 +5850,9 @@ struct GraphBuilder::BytecodeVisitor {
                 if (!NodeInfo::NodeTypeCanBe(knownType_, hclassType)) {
                     continue;
                 }
-                auto existing = std::find_if(
-                    requestedHClasses_.begin(), requestedHClasses_.end(), [&requested](const auto &entry) {
-                        return entry.hclass == requested.hclass;
-                    });
+                auto existing =
+                    std::find_if(requestedHClasses_.begin(), requestedHClasses_.end(),
+                                 [&requested](const auto &entry) { return entry.hclass == requested.hclass; });
                 if (existing != requestedHClasses_.end()) {
                     existing->hasExternalStableDependency |= requested.hasExternalStableDependency;
                     if (!existing->hclassRef.IsSafeForCompile() && requested.hclassRef.IsSafeForCompile()) {
@@ -5951,9 +5917,8 @@ struct GraphBuilder::BytecodeVisitor {
 
         const RequestedHClassInfo *FindRequestedInfo(JSHClass *hclass) const
         {
-            auto it = std::find_if(requestedHClasses_.begin(), requestedHClasses_.end(), [hclass](const auto &entry) {
-                return entry.hclass == hclass;
-            });
+            auto it = std::find_if(requestedHClasses_.begin(), requestedHClasses_.end(),
+                                   [hclass](const auto &entry) { return entry.hclass == hclass; });
             return it == requestedHClasses_.end() ? nullptr : &*it;
         }
 
@@ -5970,15 +5935,14 @@ struct GraphBuilder::BytecodeVisitor {
 
     HClassCheckResult EmitUnconditionalHClassDeopt(uint32_t bcIndex)
     {
-        auto *deopt = self->FinishBlockWith<DeoptVertex>(
-            currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
-            self->preproc_->GetBytecodeOffset(bcIndex));
+        auto *deopt =
+            self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                               self->preproc_->GetBytecodeOffset(bcIndex));
         deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         return HClassCheckResult::UNREACHABLE;
     }
 
-    HClassCheckResult EmitHClassCheck(uint32_t bcIndex, ValueVertex *object,
-                                      const NodeInfo::PossibleHClasses &hclasses,
+    HClassCheckResult EmitHClassCheck(uint32_t bcIndex, ValueVertex *object, const NodeInfo::PossibleHClasses &hclasses,
                                       const KnownHClassesMerger &merger)
     {
         ASSERT(!hclasses.empty());
@@ -5997,15 +5961,15 @@ struct GraphBuilder::BytecodeVisitor {
         }
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
         if (hclasses.size() == 1) {
-            auto *check = self->NewVertex<DeoptIfHClassMismatchVertex>(
-                currentBlock, {object}, self->chunk_, expectedHClassHandleIndices.front(),
-                self->preproc_->GetBytecodeOffset(bcIndex));
+            auto *check = self->NewVertex<DeoptIfHClassMismatchVertex>(currentBlock, {object}, self->chunk_,
+                                                                       expectedHClassHandleIndices.front(),
+                                                                       self->preproc_->GetBytecodeOffset(bcIndex));
             check->SetEagerDeoptFrameState(std::move(deoptFrameState));
             return HClassCheckResult::SUCCESS;
         }
-        auto *check = self->NewVertex<DeoptIfHClassNotInVertex>(
-            currentBlock, {object}, self->chunk_, expectedHClassHandleIndices,
-            self->preproc_->GetBytecodeOffset(bcIndex));
+        auto *check =
+            self->NewVertex<DeoptIfHClassNotInVertex>(currentBlock, {object}, self->chunk_, expectedHClassHandleIndices,
+                                                      self->preproc_->GetBytecodeOffset(bcIndex));
         check->SetEagerDeoptFrameState(std::move(deoptFrameState));
         return HClassCheckResult::SUCCESS;
     }
@@ -6015,9 +5979,9 @@ struct GraphBuilder::BytecodeVisitor {
         return JSTaggedValue(hclass).IsInSharedHeap() || (self->IsLazyDeoptEnabled() && hasExternalStableDependency);
     }
 
-    HClassCheckResult ResolveHClassStability(
-        const NodeInfo::PossibleHClasses &hclasses, const KnownHClassesMerger &merger,
-        bool installStableDependencies, NodeInfo::PossibleHClassInfos *resolvedHClasses)
+    HClassCheckResult ResolveHClassStability(const NodeInfo::PossibleHClasses &hclasses,
+                                             const KnownHClassesMerger &merger, bool installStableDependencies,
+                                             NodeInfo::PossibleHClassInfos *resolvedHClasses)
     {
         ASSERT(resolvedHClasses != nullptr);
         resolvedHClasses->clear();
@@ -6028,7 +5992,8 @@ struct GraphBuilder::BytecodeVisitor {
             bool isSharedHClass = JSTaggedValue(hclass).IsInSharedHeap();
             bool isStable = IsHClassStableForFacts(hclass, requested->hasExternalStableDependency);
             bool shouldInstallDependency = installStableDependencies && self->IsLazyDeoptEnabled() &&
-                kungfu::StableHClassDependency::IsValid(hclass) && !isSharedHClass && !isStable;
+                                           kungfu::StableHClassDependency::IsValid(hclass) && !isSharedHClass &&
+                                           !isStable;
             if (shouldInstallDependency) {
                 auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
                 if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
@@ -6044,9 +6009,9 @@ struct GraphBuilder::BytecodeVisitor {
         return HClassCheckResult::SUCCESS;
     }
 
-    std::optional<HClassCheckResult> TryFoldConstantHClassCheck(
-        uint32_t bcIndex, ValueVertex *object, const KnownHClassesMerger &merger,
-        bool installStableDependencies)
+    std::optional<HClassCheckResult> TryFoldConstantHClassCheck(uint32_t bcIndex, ValueVertex *object,
+                                                                const KnownHClassesMerger &merger,
+                                                                bool installStableDependencies)
     {
         std::optional<ArkSteedHeapRef> constantRef = TryGetConstantHeapRef(object);
         if (!constantRef.has_value()) {
@@ -6058,8 +6023,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
         JSTaggedValue constant = JSTaggedValue::Undefined();
         {
-            ArkSteedHeapBroker::SerializingScope scope(
-                broker, "GraphBuilder::TryFoldConstantHClassCheck");
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryFoldConstantHClassCheck");
             if (!broker->TryResolveRef(*constantRef, &constant)) {
                 return HClassCheckResult::FAILURE;
             }
@@ -6072,8 +6036,8 @@ struct GraphBuilder::BytecodeVisitor {
             return EmitUnconditionalHClassDeopt(bcIndex);
         }
         NodeInfo::PossibleHClassInfos resolvedHClasses;
-        HClassCheckResult result = ResolveHClassStability(
-            {constantHClass}, merger, installStableDependencies, &resolvedHClasses);
+        HClassCheckResult result =
+            ResolveHClassStability({constantHClass}, merger, installStableDependencies, &resolvedHClasses);
         if (result != HClassCheckResult::SUCCESS) {
             return result;
         }
@@ -6103,15 +6067,14 @@ struct GraphBuilder::BytecodeVisitor {
             return HClassCheckResult::SUCCESS;
         }
 
-        const NodeInfo::PossibleHClasses &checkedHClasses = merger.ExistingFreshHClassesFound()
-            ? merger.IntersectSet()
-            : merger.RequestedHClasses();
+        const NodeInfo::PossibleHClasses &checkedHClasses =
+            merger.ExistingFreshHClassesFound() ? merger.IntersectSet() : merger.RequestedHClasses();
         if (checkedHClasses.empty()) {
             return EmitUnconditionalHClassDeopt(bcIndex);
         }
         NodeInfo::PossibleHClassInfos resolvedHClasses;
-        HClassCheckResult stabilityResult = ResolveHClassStability(
-            checkedHClasses, merger, installStableDependencies, &resolvedHClasses);
+        HClassCheckResult stabilityResult =
+            ResolveHClassStability(checkedHClasses, merger, installStableDependencies, &resolvedHClasses);
         if (stabilityResult != HClassCheckResult::SUCCESS) {
             return stabilityResult;
         }
@@ -6167,7 +6130,9 @@ struct GraphBuilder::BytecodeVisitor {
         };
 
         HClassInference(BytecodeVisitor *builder, ValueVertex *object, Mode mode = Mode::FRESH_ONLY)
-            : builder_(builder), object_(object), facts_(builder->compileInfoFacts_),
+            : builder_(builder),
+              object_(object),
+              facts_(builder->compileInfoFacts_),
               effectEpoch_(facts_->GetEffectEpoch())
         {
             std::optional<NodeInfo::PossibleHClasses> hclasses =
@@ -6252,8 +6217,8 @@ struct GraphBuilder::BytecodeVisitor {
                 return emissionResult;
             }
             if (hclassesComeFromConstant_) {
-                facts_->RecordPossibleHClasses(
-                    object_, hclasses_, builder_->IsHClassStableForFacts(hclasses_.front(), false));
+                facts_->RecordPossibleHClasses(object_, hclasses_,
+                                               builder_->IsHClassStableForFacts(hclasses_.front(), false));
             } else {
                 facts_->MarkPossibleHClassesFresh(object_);
             }
@@ -6270,8 +6235,8 @@ struct GraphBuilder::BytecodeVisitor {
             }
             std::vector<RequestedHClassInfo> requestedHClasses;
             requestedHClasses.reserve(hclasses_.size());
-            ArkSteedHeapBroker::SerializingScope scope(
-                broker, "GraphBuilder::HClassInference::TryBuildRequestedHClasses");
+            ArkSteedHeapBroker::SerializingScope scope(broker,
+                                                       "GraphBuilder::HClassInference::TryBuildRequestedHClasses");
             for (JSHClass *hclass : hclasses_) {
                 ArkSteedHClassRef hclassRef = broker->MakeHClassRef(JSTaggedValue(hclass));
                 if (!hclassRef.IsSafeForCompile()) {
@@ -6317,8 +6282,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             compileInfoFacts_, currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
-        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
-                                              plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        int32_t offset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
         ValueVertex *result =
             self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
         return convertHoleToUndefined(result);
@@ -6332,16 +6297,16 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
-        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET +
-                                              plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        int32_t offset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
         return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {properties}, offset);
     }
 
     void BuildDeoptIfNotHeapObject(ValueVertex *value)
     {
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfNotHeapObjectVertex>(
-            currentBlock, {value}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+        self->NewVertex<DeoptIfNotHeapObjectVertex>(currentBlock, {value}, self->chunk_,
+                                                    self->preproc_->GetBytecodeOffset(currentBcIndex))
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
@@ -6351,24 +6316,24 @@ struct GraphBuilder::BytecodeVisitor {
             return;
         }
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfArrayBufferDetachedVertex>(
-            currentBlock, {receiver}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), onHeapMode)
+        self->NewVertex<DeoptIfArrayBufferDetachedVertex>(currentBlock, {receiver}, self->chunk_,
+                                                          self->preproc_->GetBytecodeOffset(currentBcIndex), onHeapMode)
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
     void BuildDeoptIfCOWElements(ValueVertex *elements)
     {
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfCOWElementsVertex>(
-            currentBlock, {elements}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+        self->NewVertex<DeoptIfCOWElementsVertex>(currentBlock, {elements}, self->chunk_,
+                                                  self->preproc_->GetBytecodeOffset(currentBcIndex))
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
     void BuildDeoptIfElementsUnstable(ValueVertex *receiver)
     {
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
-        self->NewVertex<DeoptIfElementsUnstableVertex>(
-            currentBlock, {receiver}, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex))
+        self->NewVertex<DeoptIfElementsUnstableVertex>(currentBlock, {receiver}, self->chunk_,
+                                                       self->preproc_->GetBytecodeOffset(currentBcIndex))
             ->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
@@ -6392,12 +6357,11 @@ struct GraphBuilder::BytecodeVisitor {
             return BuildTaggedIntToI32(key);
         }
         ValueVertex *keyF64 = BuildCheckedNumberToF64(key);
-        ValueVertex *index = self->NewVertex<F64ToI32TruncVertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{keyF64});
-        ValueVertex *roundTrip = self->NewVertex<I32ToF64Vertex>(
-            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *>{index});
-        BuildDeoptIfFloat64Condition(keyF64, roundTrip, Condition::NOT_EQUAL,
-                                     kungfu::DeoptType::NOTINT7);
+        ValueVertex *index = self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock,
+                                                                  std::initializer_list<ValueVertex *> {keyF64});
+        ValueVertex *roundTrip = self->NewVertex<I32ToF64Vertex>(compileInfoFacts_, currentBlock,
+                                                                 std::initializer_list<ValueVertex *> {index});
+        BuildDeoptIfFloat64Condition(keyF64, roundTrip, Condition::NOT_EQUAL, kungfu::DeoptType::NOTINT7);
         return index;
     }
 
@@ -6414,9 +6378,8 @@ struct GraphBuilder::BytecodeVisitor {
         bool useExactHClassTransition {false};
     };
 
-    HClassCheckResult BuildCheckElementStoreHClasses(
-        uint32_t bcIndex, ValueVertex *receiver,
-        const std::vector<ResolvedElementStoreHClass> &expectedHClasses)
+    HClassCheckResult BuildCheckElementStoreHClasses(uint32_t bcIndex, ValueVertex *receiver,
+                                                     const std::vector<ResolvedElementStoreHClass> &expectedHClasses)
     {
         if (expectedHClasses.empty()) {
             return HClassCheckResult::FAILURE;
@@ -6436,8 +6399,8 @@ struct GraphBuilder::BytecodeVisitor {
         return BuildCheckAnyOfHClasses(bcIndex, receiver, rawHClasses, hclassRefs, false, true);
     }
 
-    bool ResolveElementStoreTransitionGroups(
-        const ElementStoreAccessInfo &access, std::vector<ResolvedElementStoreTransitionGroup> *resolvedGroups)
+    bool ResolveElementStoreTransitionGroups(const ElementStoreAccessInfo &access,
+                                             std::vector<ResolvedElementStoreTransitionGroup> *resolvedGroups)
     {
         if (!access.IsJSArray() || access.transitionGroupCount == 0) {
             return false;
@@ -6496,8 +6459,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
         if (group.useExactHClassTransition) {
             ASSERT(group.targetHClassConstant != nullptr);
-            self->NewVertex<TransitionHClassWithBarrierVertex>(
-                compileInfoFacts_, currentBlock, {glue, receiver, group.targetHClassConstant});
+            self->NewVertex<TransitionHClassWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                               {glue, receiver, group.targetHClassConstant});
             compileInfoFacts_->MarkHClassesStaleForElementsKindTransition(sourceHClasses);
             compileInfoFacts_->RecordHClass(receiver, group.target.hclass, false);
             return;
@@ -6512,12 +6475,11 @@ struct GraphBuilder::BytecodeVisitor {
                                   ElementsKind elementsKind)
     {
         BuildDeoptIfElementsUnstable(receiver);
-        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
-            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSArray::LENGTH_OFFSET));
-        BuildDeoptIfInt32Condition(index, length, Condition::GREATER_THAN_OR_EQUAL,
-                                   kungfu::DeoptType::NOTLEGALIDX1);
-        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                    static_cast<int32_t>(JSArray::LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(index, length, Condition::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::NOTLEGALIDX1);
+        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                       static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
         BuildDeoptIfCOWElements(elements);
         if (Elements::IsIntOrHoleInt(elementsKind)) {
             BuildCheckedTaggedIntToI32(value);
@@ -6554,11 +6516,10 @@ struct GraphBuilder::BytecodeVisitor {
                     BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
                     return true;
                 }
-                auto source = std::find_if(
-                    group.transitionSources.begin(), group.transitionSources.end(),
-                    [knownHClass](const ResolvedElementStoreHClass &candidate) {
-                        return candidate.hclass == knownHClass;
-                    });
+                auto source = std::find_if(group.transitionSources.begin(), group.transitionSources.end(),
+                                           [knownHClass](const ResolvedElementStoreHClass &candidate) {
+                                               return candidate.hclass == knownHClass;
+                                           });
                 if (source != group.transitionSources.end()) {
                     BuildTransitionElementsKind(receiver, group, source->hclass);
                     BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
@@ -6619,8 +6580,8 @@ struct GraphBuilder::BytecodeVisitor {
         primitiveDeoptBlock->SetDeferred(true);
         hclassMissDeoptBlock->SetDeferred(true);
 
-        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
-            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {receiver}, checkBlocks.front(),
+                                                                    primitiveDeoptBlock);
 
         ValueVertex *actualHClass = nullptr;
         for (uint32_t i = 0; i < entries.size(); ++i) {
@@ -6669,9 +6630,9 @@ struct GraphBuilder::BytecodeVisitor {
         auto buildDeoptBlock = [&](BB *deoptBlock) {
             currentBlock = deoptBlock;
             compileInfoFacts_ = entryFacts->Clone();
-            auto *deopt = self->FinishBlockWith<DeoptVertex>(
-                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
-                self->preproc_->GetBytecodeOffset(currentBcIndex));
+            auto *deopt =
+                self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                                   self->preproc_->GetBytecodeOffset(currentBcIndex));
             deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
         };
         buildDeoptBlock(primitiveDeoptBlock);
@@ -6701,10 +6662,10 @@ struct GraphBuilder::BytecodeVisitor {
                 bool foundKnownHClass = false;
                 for (const ResolvedElementStoreTransitionGroup &group : jsArrayGroups) {
                     foundKnownHClass = knownJSArrayHClass == group.target.hclass ||
-                        std::any_of(group.transitionSources.begin(), group.transitionSources.end(),
-                                    [knownJSArrayHClass](const ResolvedElementStoreHClass &source) {
-                                        return source.hclass == knownJSArrayHClass;
-                                    });
+                                       std::any_of(group.transitionSources.begin(), group.transitionSources.end(),
+                                                   [knownJSArrayHClass](const ResolvedElementStoreHClass &source) {
+                                                       return source.hclass == knownJSArrayHClass;
+                                                   });
                     if (foundKnownHClass) {
                         break;
                     }
@@ -6724,11 +6685,9 @@ struct GraphBuilder::BytecodeVisitor {
                     !receiverHClass->IsTypedArray() || receiverHClass->GetObjectType() != access.typedArrayType) {
                     return false;
                 }
-                receiverHClasses.push_back(
-                    ResolvedElementStoreHClass {receiverHClass, access.cases[i].expectedHClass});
+                receiverHClasses.push_back(ResolvedElementStoreHClass {receiverHClass, access.cases[i].expectedHClass});
             }
-            HClassCheckResult checkResult =
-                BuildCheckElementStoreHClasses(bcIndex, receiver, receiverHClasses);
+            HClassCheckResult checkResult = BuildCheckElementStoreHClasses(bcIndex, receiver, receiverHClasses);
             if (checkResult != HClassCheckResult::SUCCESS) {
                 return checkResult == HClassCheckResult::UNREACHABLE;
             }
@@ -6770,8 +6729,7 @@ struct GraphBuilder::BytecodeVisitor {
             }
         }
 
-        return BuildJSArrayElementStoreDispatch(
-            access, jsArrayGroups, knownJSArrayHClass, receiver, index, value);
+        return BuildJSArrayElementStoreDispatch(access, jsArrayGroups, knownJSArrayHClass, receiver, index, value);
     }
 
     void BuildStoreTaggedField(ValueVertex *object, int32_t offset, ValueVertex *value)
@@ -6781,8 +6739,8 @@ struct GraphBuilder::BytecodeVisitor {
             self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object, value}, offset);
             return;
         }
-        self->NewVertex<StoreTaggedFieldWithBarrierVertex>(
-            compileInfoFacts_, currentBlock, {glue, object, value}, offset, valueKind);
+        self->NewVertex<StoreTaggedFieldWithBarrierVertex>(compileInfoFacts_, currentBlock, {glue, object, value},
+                                                           offset, valueKind);
     }
 
     void BuildStoreField(ValueVertex *object, ValueVertex *value, PropertyLookupResult plr)
@@ -6793,8 +6751,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
             compileInfoFacts_, currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
-        int32_t offset = static_cast<int32_t>(
-            TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        int32_t offset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
         BuildStoreTaggedField(properties, offset, value);
     }
 
@@ -6814,8 +6772,7 @@ struct GraphBuilder::BytecodeVisitor {
             return nullptr;
         }
         std::vector<uint32_t> expectedHClassHandleIndices;
-        if (!GetHeapConstantHandleIndices(
-                accessInfo.expectedPrototypeHClassRefs, &expectedHClassHandleIndices)) {
+        if (!GetHeapConstantHandleIndices(accessInfo.expectedPrototypeHClassRefs, &expectedHClassHandleIndices)) {
             return nullptr;
         }
         auto *loadHolder = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
@@ -6844,8 +6801,7 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    JSHClass *TryGetGenericInitialArrayHClass(JSHClass *receiverHClass,
-                                              ArkSteedHClassRef *genericHClassRef) const
+    JSHClass *TryGetGenericInitialArrayHClass(JSHClass *receiverHClass, ArkSteedHClassRef *genericHClassRef) const
     {
         if (genericHClassRef == nullptr || receiverHClass == nullptr || !receiverHClass->IsJSArray() ||
             receiverHClass->GetElementsKind() == ElementsKind::GENERIC) {
@@ -6859,17 +6815,16 @@ struct GraphBuilder::BytecodeVisitor {
             return nullptr;
         }
 
-        ArkSteedHeapBroker::SerializingScope scope(
-            broker, "GraphBuilder::TryGetGenericInitialArrayHClass");
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryGetGenericInitialArrayHClass");
         auto globalEnv = env->GetGlobalEnv();
         bool isPrototype = receiverHClass->IsPrototype();
-        JSHClass *initialHClass = hostThread->GetArrayInstanceHClass(
-            globalEnv, receiverHClass->GetElementsKind(), isPrototype, JSThread::ThreadKind::JitThread);
+        JSHClass *initialHClass = hostThread->GetArrayInstanceHClass(globalEnv, receiverHClass->GetElementsKind(),
+                                                                     isPrototype, JSThread::ThreadKind::JitThread);
         if (initialHClass != receiverHClass) {
             return nullptr;
         }
-        JSHClass *genericHClass = hostThread->GetArrayInstanceHClass(
-            globalEnv, ElementsKind::GENERIC, isPrototype, JSThread::ThreadKind::JitThread);
+        JSHClass *genericHClass = hostThread->GetArrayInstanceHClass(globalEnv, ElementsKind::GENERIC, isPrototype,
+                                                                     JSThread::ThreadKind::JitThread);
         *genericHClassRef = broker->MakeHClassRef(JSTaggedValue(genericHClass));
         return genericHClassRef->IsSafeForCompile() ? genericHClass : nullptr;
     }
@@ -6907,12 +6862,10 @@ struct GraphBuilder::BytecodeVisitor {
             return std::nullopt;
         }
 
-        ArkSteedHeapBroker::SerializingScope scope(
-            broker, "GraphBuilder::GetHeapConstantNameHandleIndex");
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::GetHeapConstantNameHandleIndex");
         uint32_t handleIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
         JSTaggedValue value = JSTaggedValue::Undefined();
-        if (!broker->TryRecordHeapConstant(ref, &handleIndex, &value) ||
-            (!value.IsString() && !value.IsSymbol())) {
+        if (!broker->TryRecordHeapConstant(ref, &handleIndex, &value) || (!value.IsString() && !value.IsSymbol())) {
             return std::nullopt;
         }
         return handleIndex;
@@ -6952,8 +6905,8 @@ struct GraphBuilder::BytecodeVisitor {
         return compileInfoFacts_->TryGetHClass(receiver);
     }
 
-    HClassCheckResult RequireKnownHClass(uint32_t bcIndex, const NamedStoreAccessInfo &access,
-                                         ValueVertex *receiver, JSHClass *receiverHClass)
+    HClassCheckResult RequireKnownHClass(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                         JSHClass *receiverHClass)
     {
         if (receiverHClass == nullptr) {
             return HClassCheckResult::FAILURE;
@@ -6977,8 +6930,8 @@ struct GraphBuilder::BytecodeVisitor {
 
         ValueVertex *storeTarget = receiver;
         if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
-            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
             return false;
         }
@@ -6987,8 +6940,8 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value}, access.handlerInfo);
         UpdateCatchBlockData(prepareField);
         LoadLazyDeoptFrameStateForThrowableCall(bcIndex, prepareField);
-        self->NewVertex<StoreSharedFieldWithBarrierVertex>(
-            compileInfoFacts_, currentBlock, {glue, storeTarget, prepareField}, access.fieldOffset);
+        self->NewVertex<StoreSharedFieldWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                           {glue, storeTarget, prepareField}, access.fieldOffset);
         return true;
     }
 
@@ -7009,13 +6962,13 @@ struct GraphBuilder::BytecodeVisitor {
 
         ValueVertex *accessorHolder = holder;
         if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
-            accessorHolder = self->NewVertex<LoadTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {holder}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            accessorHolder = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {holder},
+                                                                    static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
             return false;
         }
-        ValueVertex *accessor = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {accessorHolder}, access.fieldOffset);
+        ValueVertex *accessor = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock,
+                                                                       {accessorHolder}, access.fieldOffset);
 
         CompileInfoFacts *entryFacts = compileInfoFacts_;
         BB *internalAccessorBlock = self->NewBlock();
@@ -7026,8 +6979,8 @@ struct GraphBuilder::BytecodeVisitor {
         internalAccessorBlock->SetDeferred(true);
         undefinedSetterBlock->SetDeferred(true);
 
-        self->FinishBlockWithBranch<BranchIfObjectTypeVertex>(
-            currentBlock, {accessor}, internalAccessorBlock, loadSetterBlock, JSType::INTERNAL_ACCESSOR);
+        self->FinishBlockWithBranch<BranchIfObjectTypeVertex>(currentBlock, {accessor}, internalAccessorBlock,
+                                                              loadSetterBlock, JSType::INTERNAL_ACCESSOR);
 
         currentBlock = internalAccessorBlock;
         compileInfoFacts_ = entryFacts->Clone();
@@ -7037,11 +6990,11 @@ struct GraphBuilder::BytecodeVisitor {
 
         currentBlock = loadSetterBlock;
         compileInfoFacts_ = entryFacts->Clone();
-        ValueVertex *setter = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {accessor}, static_cast<int32_t>(AccessorData::SETTER_OFFSET));
+        ValueVertex *setter = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {accessor},
+                                                                     static_cast<int32_t>(AccessorData::SETTER_OFFSET));
         CompileInfoFacts *setterFacts = compileInfoFacts_;
-        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(
-            currentBlock, {setter, self->undefinedValue_}, undefinedSetterBlock, callSetterBlock);
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {setter, self->undefinedValue_},
+                                                                  undefinedSetterBlock, callSetterBlock);
 
         currentBlock = undefinedSetterBlock;
         compileInfoFacts_ = setterFacts->Clone();
@@ -7051,8 +7004,8 @@ struct GraphBuilder::BytecodeVisitor {
 
         currentBlock = callSetterBlock;
         compileInfoFacts_ = setterFacts->Clone();
-        CallVertex *call = BuildCallVertex(
-            std::initializer_list<ValueVertex *> {setter, self->undefinedValue_, receiver, value}, 1);
+        CallVertex *call =
+            BuildCallVertex(std::initializer_list<ValueVertex *> {setter, self->undefinedValue_, receiver, value}, 1);
         LoadLazyDeoptFrameStateForThrowableCall(bcIndex, call);
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
@@ -7067,17 +7020,16 @@ struct GraphBuilder::BytecodeVisitor {
     {
         bool needsStableProtoChain =
             access.hasProtoCell || !access.holderIsReceiver || access.kind == AccessKind::TRANSITION;
-        bool needsProtoMarker = needsStableProtoChain &&
-            !access.dependencies.canAssumeStableProtoChain;
+        bool needsProtoMarker = needsStableProtoChain && !access.dependencies.canAssumeStableProtoChain;
         checkNotPrototype = checkNotPrototype && !access.dependencies.canAssumeNotPrototype;
         if (!needsProtoMarker && !checkNotPrototype) {
             return true;
         }
         ChunkVector<ValueVertex *> guardInputs(self->chunk_);
         guardInputs.emplace_back(receiver);
-        auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(
-            currentBlock, guardInputs, self->chunk_, needsProtoMarker, checkNotPrototype,
-            self->preproc_->GetBytecodeOffset(bcIndex));
+        auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(currentBlock, guardInputs, self->chunk_,
+                                                                     needsProtoMarker, checkNotPrototype,
+                                                                     self->preproc_->GetBytecodeOffset(bcIndex));
         guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         return true;
     }
@@ -7109,26 +7061,24 @@ struct GraphBuilder::BytecodeVisitor {
                 BuildStoreTaggedField(storeTarget, offset, value);
                 return;
             case AccessFieldRepresentation::INT32:
-                self->NewVertex<StoreInt32FieldVertex>(compileInfoFacts_, currentBlock,
-                                                       {storeTarget, value}, offset);
+                self->NewVertex<StoreInt32FieldVertex>(compileInfoFacts_, currentBlock, {storeTarget, value}, offset);
                 return;
             case AccessFieldRepresentation::DOUBLE:
-                self->NewVertex<StoreDoubleFieldVertex>(compileInfoFacts_, currentBlock,
-                                                        {storeTarget, value}, offset);
+                self->NewVertex<StoreDoubleFieldVertex>(compileInfoFacts_, currentBlock, {storeTarget, value}, offset);
                 return;
             default:
                 UNREACHABLE();
         }
     }
 
-    bool TryLowerNamedStoreTransition(uint32_t bcIndex, const NamedStoreAccessInfo &access,
-                                      ValueVertex *receiver, ValueVertex *value)
+    bool TryLowerNamedStoreTransition(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                      ValueVertex *value)
     {
         JSHClass *receiverHClass = nullptr;
         JSHClass *transitionHClass = nullptr;
         bool supportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
-            access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
-            access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+                                       access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                                       access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
         if (access.mode != AccessMode::NAMED_STORE || access.kind != AccessKind::TRANSITION ||
             !access.holderIsReceiver || !supportedRepresentation ||
             !TryResolveHClassRef(access.expectedHClass, &receiverHClass) ||
@@ -7159,8 +7109,8 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
 
-        self->NewVertex<TransitionHClassWithBarrierVertex>(
-            compileInfoFacts_, currentBlock, {glue, receiver, transitionHClassValue});
+        self->NewVertex<TransitionHClassWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                           {glue, receiver, transitionHClassValue});
 
         if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
             auto *properties = self->NewVertex<EnsurePropertiesCapacityVertex>(
@@ -7168,36 +7118,32 @@ struct GraphBuilder::BytecodeVisitor {
                 static_cast<int32_t>(access.fieldIndex));
             UpdateCatchBlockData(properties);
             LoadLazyDeoptFrameStateForThrowableCall(bcIndex, properties);
-            BuildPreparedNamedStoreField(properties, access.fieldOffset, preparedValue,
-                                         access.fieldRepresentation);
+            BuildPreparedNamedStoreField(properties, access.fieldOffset, preparedValue, access.fieldRepresentation);
         } else {
-            BuildPreparedNamedStoreField(receiver, access.fieldOffset, preparedValue,
-                                         access.fieldRepresentation);
+            BuildPreparedNamedStoreField(receiver, access.fieldOffset, preparedValue, access.fieldRepresentation);
         }
-        compileInfoFacts_->RecordHClass(
-            receiver, transitionHClass, IsHClassStableForFacts(transitionHClass, false));
+        compileInfoFacts_->RecordHClass(receiver, transitionHClass, IsHClassStableForFacts(transitionHClass, false));
         return true;
     }
 
     bool CanLowerNamedStoreField(const NamedStoreAccessInfo &access) const
     {
         JSHClass *receiverHClass = nullptr;
-        if (access.mode != AccessMode::NAMED_STORE ||
-            !TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
+        if (access.mode != AccessMode::NAMED_STORE || !TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
             return false;
         }
         bool hasSupportedStorage = access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
-            access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY;
+                                   access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY;
         if (!hasSupportedStorage) {
             return false;
         }
         if (access.kind == AccessKind::TRANSITION) {
             JSHClass *transitionHClass = nullptr;
             bool hasSupportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
-                access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
-                access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+                                              access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                                              access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
             return access.holderIsReceiver && hasSupportedRepresentation && !receiverHClass->IsPrototype() &&
-                TryResolveHClassRef(access.transitionHClass, &transitionHClass);
+                   TryResolveHClassRef(access.transitionHClass, &transitionHClass);
         }
         if (access.isSharedStore) {
             return access.holderIsReceiver;
@@ -7213,12 +7159,12 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
         return access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
-            access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
-            access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+               access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+               access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
     }
 
-    bool TryLowerNamedStoreField(uint32_t bcIndex, const NamedStoreAccessInfo &access,
-                                 ValueVertex *receiver, ValueVertex *value)
+    bool TryLowerNamedStoreField(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                 ValueVertex *value)
     {
         if (access.kind == AccessKind::TRANSITION) {
             return TryLowerNamedStoreTransition(bcIndex, access, receiver, value);
@@ -7250,8 +7196,8 @@ struct GraphBuilder::BytecodeVisitor {
 
         ValueVertex *storeTarget = receiver;
         if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
-            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
             return false;
         }
@@ -7266,13 +7212,13 @@ struct GraphBuilder::BytecodeVisitor {
             storeInputs.emplace_back(value);
             EagerDeoptimizableMixin *store = nullptr;
             if (access.fieldRepresentation == AccessFieldRepresentation::INT32) {
-                store = self->NewVertex<StoreInt32FieldWithRepVertex>(
-                    compileInfoFacts_, currentBlock, storeInputs, self->chunk_, access.fieldOffset,
-                    self->preproc_->GetBytecodeOffset(bcIndex));
+                store = self->NewVertex<StoreInt32FieldWithRepVertex>(compileInfoFacts_, currentBlock, storeInputs,
+                                                                      self->chunk_, access.fieldOffset,
+                                                                      self->preproc_->GetBytecodeOffset(bcIndex));
             } else {
-                store = self->NewVertex<StoreDoubleFieldWithRepVertex>(
-                    compileInfoFacts_, currentBlock, storeInputs, self->chunk_, access.fieldOffset,
-                    self->preproc_->GetBytecodeOffset(bcIndex));
+                store = self->NewVertex<StoreDoubleFieldWithRepVertex>(compileInfoFacts_, currentBlock, storeInputs,
+                                                                       self->chunk_, access.fieldOffset,
+                                                                       self->preproc_->GetBytecodeOffset(bcIndex));
             }
             store->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
             return true;
@@ -7285,11 +7231,11 @@ struct GraphBuilder::BytecodeVisitor {
     static bool IsLocalTaggedStoreField(const NamedStoreAccessInfo &access)
     {
         return access.mode == AccessMode::NAMED_STORE && !access.isSharedStore && !access.hasProtoCell &&
-            access.IsDataField() && access.holderIsReceiver &&
-            access.fieldRepresentation == AccessFieldRepresentation::TAGGED &&
-            (access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
-             access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) &&
-            access.expectedHClass.IsSafeForCompile();
+               access.IsDataField() && access.holderIsReceiver &&
+               access.fieldRepresentation == AccessFieldRepresentation::TAGGED &&
+               (access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
+                access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) &&
+               access.expectedHClass.IsSafeForCompile();
     }
 
     static bool IsLocalPolyNamedStoreCase(const NamedStoreAccessInfo &access)
@@ -7307,8 +7253,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
         if (access.kind == AccessKind::TRANSITION) {
             bool supportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
-                access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
-                access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+                                           access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                                           access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
             return access.holderIsReceiver && supportedRepresentation && access.transitionHClass.IsSafeForCompile();
         }
         if (access.kind == AccessKind::ACCESSOR) {
@@ -7318,8 +7264,8 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
         return access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
-            access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
-            access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+               access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+               access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
     }
 
     static bool HasSameStoreFieldLocation(const NamedStoreAccessInfo &left, const NamedStoreAccessInfo &right)
@@ -7327,8 +7273,8 @@ struct GraphBuilder::BytecodeVisitor {
         return left.fieldStorage == right.fieldStorage && left.fieldOffset == right.fieldOffset;
     }
 
-    bool TryLowerEquivalentNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access,
-                                            ValueVertex *receiver, ValueVertex *value)
+    bool TryLowerEquivalentNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                            ValueVertex *value)
     {
         if (access.caseCount < 2 || !IsLocalTaggedStoreField(access.cases[0])) {
             return false;
@@ -7357,8 +7303,7 @@ struct GraphBuilder::BytecodeVisitor {
             if (!TryResolveHClassRef(access.cases[i].expectedHClass, &expectedHClass)) {
                 return false;
             }
-            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) !=
-                expectedHClasses.end()) {
+            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) != expectedHClasses.end()) {
                 return false;
             }
             expectedHClasses.push_back(expectedHClass);
@@ -7375,15 +7320,15 @@ struct GraphBuilder::BytecodeVisitor {
         }
         ValueVertex *storeTarget = receiver;
         if (access.cases[0].fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
-            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
         }
         BuildStoreTaggedField(storeTarget, access.cases[0].fieldOffset, value);
         return true;
     }
 
-    bool TryLowerPolyNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access,
-                                      ValueVertex *receiver, ValueVertex *value)
+    bool TryLowerPolyNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                      ValueVertex *value)
     {
         if (access.caseCount < 2) {
             return false;
@@ -7405,8 +7350,7 @@ struct GraphBuilder::BytecodeVisitor {
             if (!TryResolveHClassRef(storeCaseInfo.expectedHClass, &expectedHClass)) {
                 return false;
             }
-            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) !=
-                expectedHClasses.end()) {
+            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) != expectedHClasses.end()) {
                 return false;
             }
             expectedHClasses.push_back(expectedHClass);
@@ -7417,8 +7361,7 @@ struct GraphBuilder::BytecodeVisitor {
             }
             provenHClasses.push_back(NodeInfo::PossibleHClassInfo {
                 .hclass = expectedHClass,
-                .isStable = IsHClassStableForFacts(
-                    expectedHClass, storeCaseInfo.dependencies.canAssumeStableHClass),
+                .isStable = IsHClassStableForFacts(expectedHClass, storeCaseInfo.dependencies.canAssumeStableHClass),
             });
             storeCases.push_back(StoreTaggedFieldByHClassCase {
                 expectedHClassHandleIndex.value(),
@@ -7439,8 +7382,8 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    bool TryLowerMixedPolyNamedStores(uint32_t bcIndex, const NamedStoreAccessSet &access,
-                                      ValueVertex *receiver, ValueVertex *value)
+    bool TryLowerMixedPolyNamedStores(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                      ValueVertex *value)
     {
         if (access.caseCount < 2) {
             return false;
@@ -7456,8 +7399,7 @@ struct GraphBuilder::BytecodeVisitor {
 
             JSHClass *expectedHClass = nullptr;
             if (!TryResolveHClassRef(storeCase.expectedHClass, &expectedHClass) ||
-                std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) !=
-                    expectedHClasses.end()) {
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) != expectedHClasses.end()) {
                 return false;
             }
             expectedHClasses.push_back(expectedHClass);
@@ -7488,8 +7430,8 @@ struct GraphBuilder::BytecodeVisitor {
         primitiveDeoptBlock->SetDeferred(true);
         hclassMissDeoptBlock->SetDeferred(true);
 
-        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
-            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {receiver}, checkBlocks.front(),
+                                                                    primitiveDeoptBlock);
 
         std::vector<uint32_t> expectedHClassHandleIndices;
         expectedHClassHandleIndices.reserve(access.caseCount);
@@ -7519,8 +7461,7 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_ = entryFacts->Clone();
             compileInfoFacts_->RecordHClass(
                 receiver, expectedHClasses[i],
-                IsHClassStableForFacts(expectedHClasses[i],
-                                       access.cases[i].dependencies.canAssumeStableHClass));
+                IsHClassStableForFacts(expectedHClasses[i], access.cases[i].dependencies.canAssumeStableHClass));
             bool lowered = TryLowerNamedStoreField(bcIndex, access.cases[i], receiver, value);
             ASSERT(lowered);
             if (!lowered) {
@@ -7533,9 +7474,9 @@ struct GraphBuilder::BytecodeVisitor {
         auto buildDeoptBlock = [&](BB *deoptBlock) {
             currentBlock = deoptBlock;
             compileInfoFacts_ = entryFacts->Clone();
-            auto *deopt = self->FinishBlockWith<DeoptVertex>(
-                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
-                self->preproc_->GetBytecodeOffset(bcIndex));
+            auto *deopt =
+                self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                                   self->preproc_->GetBytecodeOffset(bcIndex));
             deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         };
         buildDeoptBlock(primitiveDeoptBlock);
@@ -7550,8 +7491,8 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    bool TryLowerNamedStoreAccessSet(uint32_t bcIndex, const NamedStoreAccessSet &access,
-                                     ValueVertex *receiver, ValueVertex *value)
+    bool TryLowerNamedStoreAccessSet(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                     ValueVertex *value)
     {
         if (access.caseCount == 0) {
             return false;
@@ -7606,8 +7547,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
 
         return TryLowerEquivalentNamedStoreFields(bcIndex, access, receiver, value) ||
-            TryLowerPolyNamedStoreFields(bcIndex, access, receiver, value) ||
-            TryLowerMixedPolyNamedStores(bcIndex, access, receiver, value);
+               TryLowerPolyNamedStoreFields(bcIndex, access, receiver, value) ||
+               TryLowerMixedPolyNamedStores(bcIndex, access, receiver, value);
     }
 
     ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, const LoadedPropertyKey &key,
@@ -7635,7 +7576,7 @@ struct GraphBuilder::BytecodeVisitor {
     }
 
     ValueVertex *BuildPolymorphicPropertyLoad(uint32_t bcIndex, ValueVertex *object,
-                                               const NamedLoadAccessInfo &accessInfo)
+                                              const NamedLoadAccessInfo &accessInfo)
     {
         // Internal case blocks share CompileInfoFacts. Do not let a load from one sibling case
         // enter the property cache or available-expression table and leak into another case.
@@ -7652,8 +7593,7 @@ struct GraphBuilder::BytecodeVisitor {
         expectedHClassHandleIndices.reserve(accessInfos.size());
         for (const NamedLoadAccessInfo &accessInfo : accessInfos) {
             if (accessInfo.lookupStartObjectHClasses.empty() ||
-                accessInfo.lookupStartObjectHClasses.size() !=
-                    accessInfo.lookupStartObjectHClassRefs.size()) {
+                accessInfo.lookupStartObjectHClasses.size() != accessInfo.lookupStartObjectHClassRefs.size()) {
                 return false;
             }
             for (uint32_t i = 0; i < accessInfo.lookupStartObjectHClasses.size(); ++i) {
@@ -7672,8 +7612,7 @@ struct GraphBuilder::BytecodeVisitor {
             expectedHClassHandleIndices.push_back(std::move(groupHandleIndices));
             if (accessInfo.holderDepth != 0 && !accessInfo.hasStableProtoChain) {
                 std::vector<uint32_t> prototypeHandleIndices;
-                if (!GetHeapConstantHandleIndices(
-                        accessInfo.expectedPrototypeHClassRefs, &prototypeHandleIndices)) {
+                if (!GetHeapConstantHandleIndices(accessInfo.expectedPrototypeHClassRefs, &prototypeHandleIndices)) {
                     return false;
                 }
             }
@@ -7694,8 +7633,8 @@ struct GraphBuilder::BytecodeVisitor {
         primitiveDeoptBlock->SetDeferred(true);
         hclassMissDeoptBlock->SetDeferred(true);
 
-        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(
-            currentBlock, {receiver}, checkBlocks.front(), primitiveDeoptBlock);
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {receiver}, checkBlocks.front(),
+                                                                    primitiveDeoptBlock);
 
         ValueVertex *actualHClass = nullptr;
         for (uint32_t i = 0; i < accessInfos.size(); ++i) {
@@ -7706,9 +7645,8 @@ struct GraphBuilder::BytecodeVisitor {
                     compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
             }
             BB *nextBlock = i + 1 < accessInfos.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
-            self->FinishBlockWithBranch<BranchIfHClassInVertex>(
-                currentBlock, {actualHClass}, caseBlocks[i], nextBlock, self->chunk_,
-                expectedHClassHandleIndices[i], true);
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(currentBlock, {actualHClass}, caseBlocks[i], nextBlock,
+                                                                self->chunk_, expectedHClassHandleIndices[i], true);
         }
 
         std::vector<ValueVertex *> results;
@@ -7728,9 +7666,9 @@ struct GraphBuilder::BytecodeVisitor {
         auto buildDeoptBlock = [&](BB *deoptBlock) {
             currentBlock = deoptBlock;
             compileInfoFacts_ = entryFacts->Clone();
-            auto *deopt = self->FinishBlockWith<DeoptVertex>(
-                currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
-                self->preproc_->GetBytecodeOffset(bcIndex));
+            auto *deopt =
+                self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                                   self->preproc_->GetBytecodeOffset(bcIndex));
             deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         };
         buildDeoptBlock(primitiveDeoptBlock);
@@ -7756,9 +7694,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
         const NamedLoadAccessInfo &accessInfo = accessInfos.front();
         const std::vector<JSHClass *> &maps = accessInfo.lookupStartObjectHClasses;
-        bool hasHClassOfString = std::any_of(maps.begin(), maps.end(), [](JSHClass *hclass) {
-            return hclass != nullptr && hclass->IsString();
-        });
+        bool hasHClassOfString = std::any_of(maps.begin(), maps.end(),
+                                             [](JSHClass *hclass) { return hclass != nullptr && hclass->IsString(); });
         if (hasHClassOfString) {
             return false;
         }
@@ -7776,8 +7713,8 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    bool TryBuildLoadNamedProperty(
-        const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId)
+    bool TryBuildLoadNamedProperty(const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver,
+                                   uint16_t constDataId)
     {
         auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
         PropertyAccessSet accessSet;
@@ -7802,8 +7739,8 @@ struct GraphBuilder::BytecodeVisitor {
             currentBlock, {function}, static_cast<int32_t>(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
         ValueVertex *profile = self->NewVertex<LoadTaggedFieldVertex>(
             currentBlock, {profileCell}, static_cast<int32_t>(ProfileTypeInfoCell::VALUE_OFFSET));
-        int32_t slotOffset = static_cast<int32_t>(
-            ProfileTypeInfo::DATA_OFFSET + slotId * JSTaggedValue::TaggedTypeSize());
+        int32_t slotOffset =
+            static_cast<int32_t>(ProfileTypeInfo::DATA_OFFSET + slotId * JSTaggedValue::TaggedTypeSize());
         return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {profile}, slotOffset);
     }
 
@@ -7829,9 +7766,8 @@ struct GraphBuilder::BytecodeVisitor {
 
         const NamedLoadAccessInfo &accessInfo = accessInfos.front();
         const std::vector<JSHClass *> &hclasses = accessInfo.lookupStartObjectHClasses;
-        bool hasStringHClass = std::any_of(hclasses.begin(), hclasses.end(), [](JSHClass *hclass) {
-            return hclass != nullptr && hclass->IsString();
-        });
+        bool hasStringHClass = std::any_of(hclasses.begin(), hclasses.end(),
+                                           [](JSHClass *hclass) { return hclass != nullptr && hclass->IsString(); });
         if (hasStringHClass) {
             return false;
         }
@@ -7842,8 +7778,7 @@ struct GraphBuilder::BytecodeVisitor {
             return checkResult == HClassCheckResult::UNREACHABLE;
         }
 
-        LoadedPropertyKey key =
-            LoadedPropertyKey::HeapConstant(receiver, propertyKeyHandleIndex, accessInfo.plr);
+        LoadedPropertyKey key = LoadedPropertyKey::HeapConstant(receiver, propertyKeyHandleIndex, accessInfo.plr);
         ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, key, accessInfo);
         if (result == nullptr) {
             return false;
@@ -7852,20 +7787,19 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    void BuildCheckTaggedCondition(uint32_t bcIndex, ValueVertex *left, ValueVertex *right,
-                                   Condition condition, kungfu::DeoptType deoptType)
+    void BuildCheckTaggedCondition(uint32_t bcIndex, ValueVertex *left, ValueVertex *right, Condition condition,
+                                   kungfu::DeoptType deoptType)
     {
         EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
-        auto *check = self->NewVertex<DeoptIfTaggedConditionVertex>(
-            currentBlock, {left, right}, self->chunk_, self->preproc_->GetBytecodeOffset(bcIndex),
-            condition, deoptType);
+        auto *check = self->NewVertex<DeoptIfTaggedConditionVertex>(currentBlock, {left, right}, self->chunk_,
+                                                                    self->preproc_->GetBytecodeOffset(bcIndex),
+                                                                    condition, deoptType);
         check->SetEagerDeoptFrameState(std::move(deoptFrameState));
     }
 
     bool TryResolveNormalElementLoadHClass(const ElementLoadAccessInfo &accessInfo, JSHClass **receiverHClass)
     {
-        if (accessInfo.kind != ElementLoadKind::NORMAL ||
-            HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+        if (accessInfo.kind != ElementLoadKind::NORMAL || HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
             return false;
         }
 
@@ -7885,19 +7819,16 @@ struct GraphBuilder::BytecodeVisitor {
         return true;
     }
 
-    bool AppendCompatibleNormalElementHClasses(JSHClass *receiverHClass,
-                                                const ArkSteedHClassRef &receiverHClassRef,
-                                                bool isMutantArrayEnabled,
-                                                std::vector<JSHClass *> *receiverHClasses,
-                                                std::vector<ArkSteedHClassRef> *receiverHClassRefs)
+    bool AppendCompatibleNormalElementHClasses(JSHClass *receiverHClass, const ArkSteedHClassRef &receiverHClassRef,
+                                               bool isMutantArrayEnabled, std::vector<JSHClass *> *receiverHClasses,
+                                               std::vector<ArkSteedHClassRef> *receiverHClassRefs)
     {
         ASSERT(receiverHClasses != nullptr && receiverHClassRefs != nullptr);
         ASSERT(receiverHClasses->size() == receiverHClassRefs->size());
         if (receiverHClass == nullptr || !receiverHClassRef.IsSafeForCompile()) {
             return false;
         }
-        if (std::find(receiverHClasses->begin(), receiverHClasses->end(), receiverHClass) ==
-            receiverHClasses->end()) {
+        if (std::find(receiverHClasses->begin(), receiverHClasses->end(), receiverHClass) == receiverHClasses->end()) {
             receiverHClasses->push_back(receiverHClass);
             receiverHClassRefs->push_back(receiverHClassRef);
         }
@@ -7908,9 +7839,8 @@ struct GraphBuilder::BytecodeVisitor {
         if (!isMutantArrayEnabled) {
             ArkSteedHClassRef genericHClassRef;
             JSHClass *genericHClass = TryGetGenericInitialArrayHClass(receiverHClass, &genericHClassRef);
-            if (genericHClass != nullptr &&
-                std::find(receiverHClasses->begin(), receiverHClasses->end(), genericHClass) ==
-                    receiverHClasses->end()) {
+            if (genericHClass != nullptr && std::find(receiverHClasses->begin(), receiverHClasses->end(),
+                                                      genericHClass) == receiverHClasses->end()) {
                 receiverHClasses->push_back(genericHClass);
                 receiverHClassRefs->push_back(genericHClassRef);
             }
@@ -7921,18 +7851,16 @@ struct GraphBuilder::BytecodeVisitor {
     void BuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key)
     {
         ValueVertex *index = BuildCheckedTaggedIntToI32(key);
-        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
-        ValueVertex *capacity = self->NewVertex<LoadInt32FieldVertex>(
-            compileInfoFacts_, currentBlock, {elements}, static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
-        BuildDeoptIfInt32Condition(
-            index, capacity, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                       static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+        ValueVertex *capacity = self->NewVertex<LoadInt32FieldVertex>(compileInfoFacts_, currentBlock, {elements},
+                                                                      static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(index, capacity, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
-        ValueVertex *result = self->NewVertex<LoadTaggedElementVertex>(
-            compileInfoFacts_, currentBlock, {elements, index});
+        ValueVertex *result =
+            self->NewVertex<LoadTaggedElementVertex>(compileInfoFacts_, currentBlock, {elements, index});
         ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
-        BuildCheckTaggedCondition(
-            bcIndex, result, hole, Condition::EQUAL, kungfu::DeoptType::BUILTINISHOLE1);
+        BuildCheckTaggedCondition(bcIndex, result, hole, Condition::EQUAL, kungfu::DeoptType::BUILTINISHOLE1);
         frameState.SetAcc(result);
     }
 
@@ -7947,9 +7875,8 @@ struct GraphBuilder::BytecodeVisitor {
         bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
         std::vector<JSHClass *> receiverHClasses;
         std::vector<ArkSteedHClassRef> receiverHClassRefs;
-        if (!AppendCompatibleNormalElementHClasses(receiverHClass, accessInfo.expectedHClass,
-                                                   isMutantArrayEnabled, &receiverHClasses,
-                                                   &receiverHClassRefs)) {
+        if (!AppendCompatibleNormalElementHClasses(receiverHClass, accessInfo.expectedHClass, isMutantArrayEnabled,
+                                                   &receiverHClasses, &receiverHClassRefs)) {
             return false;
         }
         HClassCheckResult checkResult =
@@ -7967,8 +7894,7 @@ struct GraphBuilder::BytecodeVisitor {
     bool TryBuildStringElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
                                    const ElementLoadAccessInfo &accessInfo)
     {
-        if (accessInfo.kind != ElementLoadKind::STRING ||
-            HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+        if (accessInfo.kind != ElementLoadKind::STRING || HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
             return false;
         }
 
@@ -7988,13 +7914,12 @@ struct GraphBuilder::BytecodeVisitor {
             compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(BaseString::LENGTH_AND_FLAGS_OFFSET));
         ValueVertex *lengthShift =
             self->graph_->GetInt32Constant(static_cast<int32_t>(BaseString::LengthBits::START_BIT));
-        ValueVertex *length = self->NewVertex<I32BitwiseBinaryVertex>(
-            currentBlock, {lengthAndFlags, lengthShift}, IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
-        BuildDeoptIfInt32Condition(
-            index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+        ValueVertex *length = self->NewVertex<I32BitwiseBinaryVertex>(currentBlock, {lengthAndFlags, lengthShift},
+                                                                      IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
+        BuildDeoptIfInt32Condition(index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
-        ValueVertex *charCode = self->NewVertex<LineStringLoadElementVertex>(
-            compileInfoFacts_, currentBlock, {receiver, index, lengthAndFlags});
+        ValueVertex *charCode = self->NewVertex<LineStringLoadElementVertex>(compileInfoFacts_, currentBlock,
+                                                                             {receiver, index, lengthAndFlags});
 
         // SingleCharTable caches one-character strings for codes [1, 0x7f].
         ValueVertex *one = self->graph_->GetInt32Constant(LoadSingleCharTableElementVertex::MIN_CHAR_CODE);
@@ -8007,9 +7932,8 @@ struct GraphBuilder::BytecodeVisitor {
         BB *createCharBlock = self->NewBlock();
         BB *doneBlock = self->NewBlock();
         createCharBlock->SetDeferred(true);
-        self->FinishBlockWithBranch<BranchIfInt32CompareVertex>(currentBlock, {adjustedCharCode, cachedRange},
-                                                                cachedCharBlock, createCharBlock,
-                                                                Condition::BELOW_OR_EQUAL);
+        self->FinishBlockWithBranch<BranchIfInt32CompareVertex>(
+            currentBlock, {adjustedCharCode, cachedRange}, cachedCharBlock, createCharBlock, Condition::BELOW_OR_EQUAL);
 
         currentBlock = cachedCharBlock;
         compileInfoFacts_ = entryFacts->Clone();
@@ -8020,8 +7944,7 @@ struct GraphBuilder::BytecodeVisitor {
         currentBlock = createCharBlock;
         compileInfoFacts_ = entryFacts->Clone();
         ValueVertex *createdChar =
-            CommonStubCallToAccWithLazyDeopt(
-            {glue, charCode, GlobalEnv()}, CommonStubID::CreateStringBySingleCharCode);
+            CommonStubCallToAccWithLazyDeopt({glue, charCode, GlobalEnv()}, CommonStubID::CreateStringBySingleCharCode);
         self->FinishBlockWithJump(currentBlock, doneBlock);
 
         currentBlock = doneBlock;
@@ -8060,8 +7983,7 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
 
-        ArkSteedHeapBroker::SerializingScope scope(
-            broker, "GraphBuilder::TryFoldConstantStringElement");
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryFoldConstantStringElement");
         JSTaggedValue string = JSTaggedValue::Undefined();
         if (!broker->TryResolveRef(*stringRef, &string) || !string.IsString()) {
             return false;
@@ -8084,8 +8006,7 @@ struct GraphBuilder::BytecodeVisitor {
 
     bool TryResolveTypedArrayElementLoadHClass(const ElementLoadAccessInfo &accessInfo, JSHClass **receiverHClass)
     {
-        if (accessInfo.kind != ElementLoadKind::TYPED_ARRAY ||
-            HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+        if (accessInfo.kind != ElementLoadKind::TYPED_ARRAY || HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
             return false;
         }
 
@@ -8121,19 +8042,18 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *index = checkedIndex == nullptr ? BuildCheckedTaggedIntToI32(key) : checkedIndex;
         ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
             compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
-        BuildDeoptIfInt32Condition(
-            index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+        BuildDeoptIfInt32Condition(index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
 
         bool isOnHeap = receiverHClass->IsOnHeapFromBitField();
-        ValueVertex *storage = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {receiver},
-            static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
+        ValueVertex *storage =
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                   static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
         if (!isOnHeap) {
-            storage = self->NewVertex<LoadTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {storage}, static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
+            storage = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {storage},
+                                                             static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
             ValueVertex *null = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_NULL);
-            BuildCheckTaggedCondition(
-                bcIndex, storage, null, Condition::EQUAL, kungfu::DeoptType::ARRAYBUFFERISDETACHED);
+            BuildCheckTaggedCondition(bcIndex, storage, null, Condition::EQUAL,
+                                      kungfu::DeoptType::ARRAYBUFFERISDETACHED);
         }
 
         switch (objectType) {
@@ -8195,8 +8115,7 @@ struct GraphBuilder::BytecodeVisitor {
         for (uint32_t i = 0; i + 1 < access.elementCount; ++i) {
             BB *caseBlock = self->NewBlock();
             BB *nextCaseBlock = self->NewBlock();
-            std::optional<uint32_t> expectedHClassHandleIndex =
-                GetHeapConstantHandleIndex(expectedHClassRefs[i]);
+            std::optional<uint32_t> expectedHClassHandleIndex = GetHeapConstantHandleIndex(expectedHClassRefs[i]);
             if (!expectedHClassHandleIndex.has_value()) {
                 return false;
             }
@@ -8249,9 +8168,8 @@ struct GraphBuilder::BytecodeVisitor {
             }
             isJSArray = hclass->IsJSArray();
             expectedHClasses.push_back(hclass);
-            if (!AppendCompatibleNormalElementHClasses(
-                    hclass, access.elements[i].expectedHClass, isMutantArrayEnabled,
-                    &compatibleHClasses, &compatibleHClassRefs)) {
+            if (!AppendCompatibleNormalElementHClasses(hclass, access.elements[i].expectedHClass, isMutantArrayEnabled,
+                                                       &compatibleHClasses, &compatibleHClassRefs)) {
                 return false;
             }
         }
@@ -8294,8 +8212,8 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    bool TryBuildLoadPropertyByValue(
-        const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key)
+    bool TryBuildLoadPropertyByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver,
+                                     ValueVertex *key)
     {
         auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
         ValueLoadAccessSet access;
@@ -8318,10 +8236,8 @@ struct GraphBuilder::BytecodeVisitor {
             return false;
         }
         bool hasStringHClass = std::any_of(accessInfos->begin(), accessInfos->end(), [](const auto &accessInfo) {
-            return std::any_of(accessInfo.lookupStartObjectHClasses.begin(),
-                               accessInfo.lookupStartObjectHClasses.end(), [](JSHClass *hclass) {
-                return hclass != nullptr && hclass->IsString();
-            });
+            return std::any_of(accessInfo.lookupStartObjectHClasses.begin(), accessInfo.lookupStartObjectHClasses.end(),
+                               [](JSHClass *hclass) { return hclass != nullptr && hclass->IsString(); });
         });
         if (hasStringHClass) {
             return false;
@@ -8345,8 +8261,7 @@ struct GraphBuilder::BytecodeVisitor {
         }
     }
 
-    bool TryBuildStoreNamedProperty(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,
-                                    ValueVertex *value)
+    bool TryBuildStoreNamedProperty(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId, ValueVertex *value)
     {
         HClassInference inference(this, receiver, HClassInference::Mode::ALLOW_STALE);
         std::optional<NodeInfo::PossibleHClasses> possibleHClasses = inference.TryGetPossibleHClasses();
@@ -8360,8 +8275,7 @@ struct GraphBuilder::BytecodeVisitor {
         uint32_t fieldOffset = 0;
         AccessFieldRepresentation fieldRepresentation = AccessFieldRepresentation::UNKNOWN;
         for (JSHClass *hclass : possibleHClasses.value()) {
-            std::optional<PropertyLookupResult> maybePlr =
-                TryLookupPropertyInPGOHClass(hclass, nameRef.value());
+            std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(hclass, nameRef.value());
             if (!maybePlr.has_value()) {
                 return false;
             }
@@ -8395,8 +8309,7 @@ struct GraphBuilder::BytecodeVisitor {
         auto *dependencies = env == nullptr ? nullptr : env->GetDependencies();
         for (JSHClass *hclass : possibleHClasses.value()) {
             bool isStable = JSTaggedValue(hclass).IsInSharedHeap();
-            if (!isStable && self->IsLazyDeoptEnabled() &&
-                kungfu::StableHClassDependency::IsValid(hclass)) {
+            if (!isStable && self->IsLazyDeoptEnabled() && kungfu::StableHClassDependency::IsValid(hclass)) {
                 if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
                     return false;
                 }
@@ -8405,8 +8318,8 @@ struct GraphBuilder::BytecodeVisitor {
             if (isStable) {
                 pendingStableHClasses.push_back(hclass);
             }
-            bool hasNotPrototypeDependency = self->IsLazyDeoptEnabled() && dependencies != nullptr &&
-                dependencies->DependOnNotPrototype(hclass);
+            bool hasNotPrototypeDependency =
+                self->IsLazyDeoptEnabled() && dependencies != nullptr && dependencies->DependOnNotPrototype(hclass);
             needsNotPrototypeGuard |= !hasNotPrototypeDependency;
         }
 
@@ -8422,8 +8335,7 @@ struct GraphBuilder::BytecodeVisitor {
             ChunkVector<ValueVertex *> guardInputs(self->chunk_);
             guardInputs.emplace_back(receiver);
             auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(
-                currentBlock, guardInputs, self->chunk_, false, true,
-                self->preproc_->GetBytecodeOffset(bcIndex));
+                currentBlock, guardInputs, self->chunk_, false, true, self->preproc_->GetBytecodeOffset(bcIndex));
             guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
         }
 
@@ -8432,10 +8344,10 @@ struct GraphBuilder::BytecodeVisitor {
         ValueVertex *storeTarget = receiver;
         int32_t storeOffset = static_cast<int32_t>(fieldOffset);
         if (!isInlinedProperties) {
-            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(
-                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
-            storeOffset = static_cast<int32_t>(
-                TaggedArray::DATA_OFFSET + fieldOffset * JSTaggedValue::TaggedTypeSize());
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            storeOffset =
+                static_cast<int32_t>(TaggedArray::DATA_OFFSET + fieldOffset * JSTaggedValue::TaggedTypeSize());
         }
         BuildPreparedNamedStoreField(storeTarget, storeOffset, preparedValue, fieldRepresentation);
         return true;
@@ -8453,8 +8365,8 @@ struct GraphBuilder::BytecodeVisitor {
 
     ValueVertex *BuildGlobalCellBoxValue(uint32_t bcIndex, ValueVertex *box)
     {
-        ValueVertex *value = self->NewVertex<LoadTaggedFieldVertex>(
-            compileInfoFacts_, currentBlock, {box}, static_cast<int32_t>(PropertyBox::VALUE_OFFSET));
+        ValueVertex *value = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {box},
+                                                                    static_cast<int32_t>(PropertyBox::VALUE_OFFSET));
         ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
         BuildCheckTaggedCondition(bcIndex, value, hole, Condition::EQUAL, kungfu::DeoptType::PROPERTYBOXINVALID);
         return value;
@@ -8481,29 +8393,26 @@ struct GraphBuilder::BytecodeVisitor {
         mixin->LoadCatchBlock(lazyCatchBlock, catchPredIndex);
     }
 
-    CallCommonStubVertex *CommonStubCall(
-        std::initializer_list<ValueVertex *> inputs, CommonStubID id,
-        SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    CallCommonStubVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                         SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
         ValidateCommonStubCallArgs(inputs, id);
-        auto *vertex = self->NewVertex<CallCommonStubVertex>(
-            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
+        auto *vertex =
+            self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
 
-    CallCommonStubVertex *CommonStubCallWithLazyDeopt(
-        std::initializer_list<ValueVertex *> inputs, CommonStubID id,
-        SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    CallCommonStubVertex *CommonStubCallWithLazyDeopt(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                                      SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
         auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
-    CallCommonStubVertex *CommonStubCallToAccWithLazyDeopt(
-        std::initializer_list<ValueVertex *> inputs, CommonStubID id,
-        SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    CallCommonStubVertex *CommonStubCallToAccWithLazyDeopt(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                                           SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
         auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
         frameState.SetAcc(vertex);
@@ -8511,8 +8420,8 @@ struct GraphBuilder::BytecodeVisitor {
         return vertex;
     }
 
-    CallCommonStubVertex *CommonStubCallWithIC(
-        const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    CallCommonStubVertex *CommonStubCallWithIC(const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs,
+                                               CommonStubID id)
     {
         ChunkVector<ValueVertex *> allArgs(self->chunk_);
         allArgs.reserve(inputs.size() + CallVertex::FIRST_ARG_INDEX);
@@ -8529,16 +8438,17 @@ struct GraphBuilder::BytecodeVisitor {
         return vertex;
     }
 
-    CallCommonStubVertex *CommonStubCallWithICAndLazyDeopt(
-        const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    CallCommonStubVertex *CommonStubCallWithICAndLazyDeopt(const BytecodeInfo *bcInfo,
+                                                           std::initializer_list<ValueVertex *> inputs, CommonStubID id)
     {
         auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
         LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
         return vertex;
     }
 
-    CallCommonStubVertex *CommonStubCallToAccWithICAndLazyDeopt(
-        const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    CallCommonStubVertex *CommonStubCallToAccWithICAndLazyDeopt(const BytecodeInfo *bcInfo,
+                                                                std::initializer_list<ValueVertex *> inputs,
+                                                                CommonStubID id)
     {
         auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
         frameState.SetAcc(vertex);
@@ -8550,8 +8460,7 @@ struct GraphBuilder::BytecodeVisitor {
     CallRuntimeVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id,
                                    SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
     {
-        auto *vertex = self->NewVertex<CallRuntimeVertex>(
-            compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
+        auto *vertex = self->NewVertex<CallRuntimeVertex>(compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
         UpdateCatchBlockData(vertex);
         return vertex;
     }
@@ -8581,8 +8490,8 @@ struct GraphBuilder::BytecodeVisitor {
         return self->graph_->GetTaggedConstant(taggedValue);
     }
 
-    ValueVertex *TaggedArrayFromValueIn(
-        const BytecodeInfo *bcInfo, ValueVertex *taggedInputSize, uint32_t inputSize, uint32_t startIndex = 0)
+    ValueVertex *TaggedArrayFromValueIn(const BytecodeInfo *bcInfo, ValueVertex *taggedInputSize, uint32_t inputSize,
+                                        uint32_t startIndex = 0)
     {
         ValueVertex *taggedArray = RuntimeCall({taggedInputSize}, RTSTUB_ID(NewTaggedArray));
         for (uint32_t idx = 0; idx < inputSize; ++idx) {
@@ -8610,7 +8519,8 @@ struct GraphBuilder::BytecodeVisitor {
         int32_t constpoolOffset = static_cast<int32_t>(Method::CONSTANT_POOL_OFFSET);
 
         ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
-        ValueVertex *method = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, methodOffset);
+        ValueVertex *method =
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, methodOffset);
         return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {method}, constpoolOffset);
     }
 
@@ -8711,7 +8621,7 @@ BB *GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint
         caughtByData = catchBlockInputs_[catchBlockIndex];
     }
 
-    BytecodeVisitor visitor{
+    BytecodeVisitor visitor {
         .self = this,
         .glue = glue_,
         .lazyGlobalEnv = lazyGlobalEnv_,

@@ -43,19 +43,18 @@ enum class ArkSteedEagerDeoptResult : uintptr_t {
 
 constexpr size_t AlignArkSteedEagerDeoptSnapshot(size_t size)
 {
-    return (size + ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT - 1U) &
-           ~(ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT - 1U);
+    return (size + ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT - 1U) & ~(ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT - 1U);
 }
 
 // The host ark_stub_compiler can emit code for an architecture different from
 // its own. Keep both layouts available without consulting host target macros.
 namespace x64_eager_deopt_abi {
 constexpr uint16_t EXIT_SIZE = 5U;  // 5: byte width of CALL rel32.
-constexpr ArkSteedEagerDeoptReturnPcSource RETURN_PC_SOURCE =
-    ArkSteedEagerDeoptReturnPcSource::STACK_LINK;
+constexpr ArkSteedEagerDeoptReturnPcSource RETURN_PC_SOURCE = ArkSteedEagerDeoptReturnPcSource::STACK_LINK;
 constexpr size_t FIXED_EXIT_LINK_SIZE = ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // CALL pushes one return-address slot.
 
-constexpr std::array<uint8_t, 10U> GENERAL_REGISTER_CODES = {  // 10: all allocatable x64 GPRs.
+constexpr std::array<uint8_t, 10U> GENERAL_REGISTER_CODES = {
+    // 10: all allocatable x64 GPRs.
     0U,   // rax
     3U,   // rbx
     1U,   // rcx
@@ -67,26 +66,24 @@ constexpr std::array<uint8_t, 10U> GENERAL_REGISTER_CODES = {  // 10: all alloca
     11U,  // r11
     12U,  // r12
 };
-constexpr uint32_t FLOATING_REGISTER_COUNT = 15U;  // xmm0-xmm14
-constexpr uint32_t GENERAL_REGISTER_CODE_COUNT = 16U;  // 16: architectural GPR codes rax-r15.
+constexpr uint32_t FLOATING_REGISTER_COUNT = 15U;       // xmm0-xmm14
+constexpr uint32_t GENERAL_REGISTER_CODE_COUNT = 16U;   // 16: architectural GPR codes rax-r15.
 constexpr uint32_t FLOATING_REGISTER_CODE_COUNT = 16U;  // 16: architectural FP codes xmm0-xmm15.
-constexpr uint32_t FLOATING_SNAPSHOT_OFFSET =
-    GENERAL_REGISTER_CODES.size() * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;
+constexpr uint32_t FLOATING_SNAPSHOT_OFFSET = GENERAL_REGISTER_CODES.size() * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;
 constexpr uint32_t SNAPSHOT_SIZE = static_cast<uint32_t>(AlignArkSteedEagerDeoptSnapshot(
     FLOATING_SNAPSHOT_OFFSET + FLOATING_REGISTER_COUNT * ARKSTEED_EAGER_DEOPT_SLOT_SIZE));
-constexpr size_t ENTRY_METADATA_SIZE =
-    2U * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // Glue plus SysV call alignment.
+constexpr size_t ENTRY_METADATA_SIZE = 2U * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // Glue plus SysV call alignment.
 constexpr size_t ENTRY_FRAME_SIZE = SNAPSHOT_SIZE + ENTRY_METADATA_SIZE;
 constexpr size_t VENEER_FRAME_SIZE = ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // CALL continuation.
 }  // namespace x64_eager_deopt_abi
 
 namespace aarch64_eager_deopt_abi {
 constexpr uint16_t EXIT_SIZE = sizeof(uint32_t);  // 4 bytes: one BL instruction.
-constexpr ArkSteedEagerDeoptReturnPcSource RETURN_PC_SOURCE =
-    ArkSteedEagerDeoptReturnPcSource::LINK_REGISTER;
+constexpr ArkSteedEagerDeoptReturnPcSource RETURN_PC_SOURCE = ArkSteedEagerDeoptReturnPcSource::LINK_REGISTER;
 constexpr size_t FIXED_EXIT_LINK_SIZE = 0U;  // 0: BL keeps the fixed-exit return PC in LR.
 
-constexpr std::array<uint8_t, 26U> GENERAL_REGISTER_CODES = {  // 26: all allocatable AArch64 GPRs.
+constexpr std::array<uint8_t, 26U> GENERAL_REGISTER_CODES = {
+    // 26: all allocatable AArch64 GPRs.
     0U,   // x0
     1U,   // x1
     2U,   // x2
@@ -114,34 +111,26 @@ constexpr std::array<uint8_t, 26U> GENERAL_REGISTER_CODES = {  // 26: all alloca
     27U,  // x27
     28U,  // x28
 };
-constexpr uint32_t FLOATING_REGISTER_COUNT = 30U;  // d0-d29
-constexpr uint32_t GENERAL_REGISTER_CODE_COUNT = 32U;  // 32: architectural GPR codes x0-x31.
+constexpr uint32_t FLOATING_REGISTER_COUNT = 30U;       // d0-d29
+constexpr uint32_t GENERAL_REGISTER_CODE_COUNT = 32U;   // 32: architectural GPR codes x0-x31.
 constexpr uint32_t FLOATING_REGISTER_CODE_COUNT = 32U;  // 32: architectural FP codes d0-d31.
-constexpr uint32_t FLOATING_SNAPSHOT_OFFSET =
-    GENERAL_REGISTER_CODES.size() * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;
+constexpr uint32_t FLOATING_SNAPSHOT_OFFSET = GENERAL_REGISTER_CODES.size() * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;
 constexpr uint32_t SNAPSHOT_SIZE = static_cast<uint32_t>(AlignArkSteedEagerDeoptSnapshot(
     FLOATING_SNAPSHOT_OFFSET + FLOATING_REGISTER_COUNT * ARKSTEED_EAGER_DEOPT_SLOT_SIZE));
-constexpr size_t ENTRY_METADATA_SIZE =
-    2U * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // Veneer continuation and glue.
+constexpr size_t ENTRY_METADATA_SIZE = 2U * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // Veneer continuation and glue.
 constexpr size_t ENTRY_FRAME_SIZE = SNAPSHOT_SIZE + ENTRY_METADATA_SIZE;
-constexpr size_t VENEER_FRAME_SIZE =
-    2U * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // Saved fixed-exit LR plus alignment.
+constexpr size_t VENEER_FRAME_SIZE = 2U * ARKSTEED_EAGER_DEOPT_SLOT_SIZE;  // Saved fixed-exit LR plus alignment.
 }  // namespace aarch64_eager_deopt_abi
 
 #if defined(PANDA_TARGET_AMD64)
 constexpr uint16_t ARKSTEED_EAGER_DEOPT_EXIT_SIZE = x64_eager_deopt_abi::EXIT_SIZE;
 constexpr ArkSteedEagerDeoptReturnPcSource ARKSTEED_EAGER_DEOPT_RETURN_PC_SOURCE =
     x64_eager_deopt_abi::RETURN_PC_SOURCE;
-constexpr size_t ARKSTEED_EAGER_DEOPT_FIXED_EXIT_LINK_SIZE =
-    x64_eager_deopt_abi::FIXED_EXIT_LINK_SIZE;
-constexpr auto ARKSTEED_DEOPT_GENERAL_REGISTER_CODES =
-    x64_eager_deopt_abi::GENERAL_REGISTER_CODES;
-constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_COUNT =
-    x64_eager_deopt_abi::FLOATING_REGISTER_COUNT;
-constexpr uint32_t ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT =
-    x64_eager_deopt_abi::GENERAL_REGISTER_CODE_COUNT;
-constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_CODE_COUNT =
-    x64_eager_deopt_abi::FLOATING_REGISTER_CODE_COUNT;
+constexpr size_t ARKSTEED_EAGER_DEOPT_FIXED_EXIT_LINK_SIZE = x64_eager_deopt_abi::FIXED_EXIT_LINK_SIZE;
+constexpr auto ARKSTEED_DEOPT_GENERAL_REGISTER_CODES = x64_eager_deopt_abi::GENERAL_REGISTER_CODES;
+constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_COUNT = x64_eager_deopt_abi::FLOATING_REGISTER_COUNT;
+constexpr uint32_t ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT = x64_eager_deopt_abi::GENERAL_REGISTER_CODE_COUNT;
+constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_CODE_COUNT = x64_eager_deopt_abi::FLOATING_REGISTER_CODE_COUNT;
 
 // r10 carries the global entry target and r13 carries glue before the snapshot is complete.
 constexpr ArkSteedRegister ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER = x64::r10;
@@ -150,16 +139,11 @@ constexpr ArkSteedRegister ARKSTEED_EAGER_DEOPT_ENTRY_GLUE_REGISTER = x64::r13;
 constexpr uint16_t ARKSTEED_EAGER_DEOPT_EXIT_SIZE = aarch64_eager_deopt_abi::EXIT_SIZE;
 constexpr ArkSteedEagerDeoptReturnPcSource ARKSTEED_EAGER_DEOPT_RETURN_PC_SOURCE =
     aarch64_eager_deopt_abi::RETURN_PC_SOURCE;
-constexpr size_t ARKSTEED_EAGER_DEOPT_FIXED_EXIT_LINK_SIZE =
-    aarch64_eager_deopt_abi::FIXED_EXIT_LINK_SIZE;
-constexpr auto ARKSTEED_DEOPT_GENERAL_REGISTER_CODES =
-    aarch64_eager_deopt_abi::GENERAL_REGISTER_CODES;
-constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_COUNT =
-    aarch64_eager_deopt_abi::FLOATING_REGISTER_COUNT;
-constexpr uint32_t ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT =
-    aarch64_eager_deopt_abi::GENERAL_REGISTER_CODE_COUNT;
-constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_CODE_COUNT =
-    aarch64_eager_deopt_abi::FLOATING_REGISTER_CODE_COUNT;
+constexpr size_t ARKSTEED_EAGER_DEOPT_FIXED_EXIT_LINK_SIZE = aarch64_eager_deopt_abi::FIXED_EXIT_LINK_SIZE;
+constexpr auto ARKSTEED_DEOPT_GENERAL_REGISTER_CODES = aarch64_eager_deopt_abi::GENERAL_REGISTER_CODES;
+constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_COUNT = aarch64_eager_deopt_abi::FLOATING_REGISTER_COUNT;
+constexpr uint32_t ARKSTEED_DEOPT_GENERAL_REGISTER_CODE_COUNT = aarch64_eager_deopt_abi::GENERAL_REGISTER_CODE_COUNT;
+constexpr uint32_t ARKSTEED_DEOPT_FLOATING_REGISTER_CODE_COUNT = aarch64_eager_deopt_abi::FLOATING_REGISTER_CODE_COUNT;
 
 // x16 carries the global entry target and x17 carries glue before the snapshot is complete.
 constexpr ArkSteedRegister ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER = aarch64::x16;
@@ -251,20 +235,16 @@ constexpr bool AllocatableRegistersHaveDeoptSnapshotOffsets()
 
 // The global entry reserves the snapshot plus the native values that cannot live in allocatable registers.
 #if defined(PANDA_TARGET_AMD64)
-constexpr size_t ARKSTEED_EAGER_DEOPT_ENTRY_METADATA_SIZE =
-    x64_eager_deopt_abi::ENTRY_METADATA_SIZE;
+constexpr size_t ARKSTEED_EAGER_DEOPT_ENTRY_METADATA_SIZE = x64_eager_deopt_abi::ENTRY_METADATA_SIZE;
 #elif defined(PANDA_TARGET_ARM64)
-constexpr size_t ARKSTEED_EAGER_DEOPT_ENTRY_METADATA_SIZE =
-    aarch64_eager_deopt_abi::ENTRY_METADATA_SIZE;
+constexpr size_t ARKSTEED_EAGER_DEOPT_ENTRY_METADATA_SIZE = aarch64_eager_deopt_abi::ENTRY_METADATA_SIZE;
 #endif
 constexpr size_t ARKSTEED_EAGER_DEOPT_ENTRY_FRAME_SIZE =
     ARKSTEED_DEOPT_SNAPSHOT_SIZE + ARKSTEED_EAGER_DEOPT_ENTRY_METADATA_SIZE;
 #if defined(PANDA_TARGET_AMD64)
-constexpr size_t ARKSTEED_EAGER_DEOPT_VENEER_FRAME_SIZE =
-    x64_eager_deopt_abi::VENEER_FRAME_SIZE;
+constexpr size_t ARKSTEED_EAGER_DEOPT_VENEER_FRAME_SIZE = x64_eager_deopt_abi::VENEER_FRAME_SIZE;
 #elif defined(PANDA_TARGET_ARM64)
-constexpr size_t ARKSTEED_EAGER_DEOPT_VENEER_FRAME_SIZE =
-    aarch64_eager_deopt_abi::VENEER_FRAME_SIZE;
+constexpr size_t ARKSTEED_EAGER_DEOPT_VENEER_FRAME_SIZE = aarch64_eager_deopt_abi::VENEER_FRAME_SIZE;
 #endif
 
 static_assert(GetAllocatableGeneralRegisters().Count() == ArkSteedDeoptSnapshot::GENERAL_SLOT_COUNT);
@@ -278,9 +258,9 @@ static_assert(ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER != ARKSTEED_EAGER_DEOPT
 static_assert(alignof(ArkSteedDeoptSnapshot) == ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT);
 static_assert(ARKSTEED_DEOPT_FLOATING_SNAPSHOT_OFFSET % alignof(uint64_t) == 0U);
 static_assert(ARKSTEED_EAGER_DEOPT_ENTRY_FRAME_SIZE % ARKSTEED_EAGER_DEOPT_STACK_ALIGNMENT == 0U);
-static_assert(x64_eager_deopt_abi::SNAPSHOT_SIZE == 208U);  // 208: align16((10 GP + 15 FP) * 8 bytes).
-static_assert(x64_eager_deopt_abi::ENTRY_FRAME_SIZE == 224U);  // 224: 208-byte snapshot + 16-byte metadata.
-static_assert(aarch64_eager_deopt_abi::SNAPSHOT_SIZE == 448U);  // 448: align16((26 GP + 30 FP) * 8 bytes).
+static_assert(x64_eager_deopt_abi::SNAPSHOT_SIZE == 208U);         // 208: align16((10 GP + 15 FP) * 8 bytes).
+static_assert(x64_eager_deopt_abi::ENTRY_FRAME_SIZE == 224U);      // 224: 208-byte snapshot + 16-byte metadata.
+static_assert(aarch64_eager_deopt_abi::SNAPSHOT_SIZE == 448U);     // 448: align16((26 GP + 30 FP) * 8 bytes).
 static_assert(aarch64_eager_deopt_abi::ENTRY_FRAME_SIZE == 464U);  // 464: 448-byte snapshot + 16-byte metadata.
 
 #if defined(PANDA_TARGET_AMD64)

@@ -25,10 +25,8 @@ class ArkSteedHeapRef {
 public:
     ArkSteedHeapRef() = default;
     explicit ArkSteedHeapRef(JSTaggedValue value) : value_(value) {}
-    ArkSteedHeapRef(JSTaggedValue value, bool stable) : value_(value), stable_(stable)
-    {}
-    explicit ArkSteedHeapRef(JSHandle<JSTaggedValue> handle) : handle_(handle), stable_(true)
-    {}
+    ArkSteedHeapRef(JSTaggedValue value, bool stable) : value_(value), stable_(stable) {}
+    explicit ArkSteedHeapRef(JSHandle<JSTaggedValue> handle) : handle_(handle), stable_(true) {}
 
     ArkSteedHeapRef &operator=(JSTaggedValue value) = delete;
 

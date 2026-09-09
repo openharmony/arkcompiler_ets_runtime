@@ -61,7 +61,7 @@ public:
         }
         auto *dependencies = env_->GetDependencies();
         return dependencies != nullptr &&
-            dependencies->DependOnArrayDetector(env_->GetGlobalEnv().GetObject<GlobalEnv>());
+               dependencies->DependOnArrayDetector(env_->GetGlobalEnv().GetObject<GlobalEnv>());
     }
 
     bool InstallStableProtoChain(ArkSteedHClassRef receiverHClass) const
@@ -78,10 +78,9 @@ public:
             return true;
         }
         auto *dependencies = env_->GetDependencies();
-        return dependencies != nullptr &&
-            dependencies->DependOnStableProtoChain(compilerThread_,
-                JSHClass::Cast(receiverHClassValue.GetTaggedObject()), nullptr,
-                env_->GetGlobalEnv().GetObject<GlobalEnv>());
+        return dependencies != nullptr && dependencies->DependOnStableProtoChain(
+                                              compilerThread_, JSHClass::Cast(receiverHClassValue.GetTaggedObject()),
+                                              nullptr, env_->GetGlobalEnv().GetObject<GlobalEnv>());
     }
 
     bool InstallNotPrototype(ArkSteedHClassRef receiverHClass) const
@@ -101,9 +100,8 @@ private:
         }
         if (access->dependencies.protoChainDependency == AccessDependencyKind::PROTOTYPE_CHAIN) {
             bool dependOnFullProtoChain = access->IsNotFound() && !access->HasHolder();
-            access->dependencies.canAssumeStableProtoChain =
-                DependOnStableProtoChain(access->expectedHClass, *access,
-                                         access->holderIsReceiver || dependOnFullProtoChain);
+            access->dependencies.canAssumeStableProtoChain = DependOnStableProtoChain(
+                access->expectedHClass, *access, access->holderIsReceiver || dependOnFullProtoChain);
         }
         if (access->dependencies.notPrototypeDependency == AccessDependencyKind::NOT_PROTOTYPE) {
             access->dependencies.canAssumeNotPrototype = DependOnNotPrototype(access->expectedHClass);
@@ -158,7 +156,7 @@ private:
         }
         auto *dependencies = env_ == nullptr ? nullptr : env_->GetDependencies();
         return dependencies != nullptr &&
-            dependencies->DependOnStableHClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
+               dependencies->DependOnStableHClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
     }
 
     bool DependOnStableProtoChain(ArkSteedHClassRef receiverHClass, const PropertyAccessInfo &access,
@@ -182,8 +180,8 @@ private:
         }
         auto *dependencies = env_ == nullptr ? nullptr : env_->GetDependencies();
         return dependencies != nullptr &&
-            dependencies->DependOnStableProtoChain(compilerThread_, receiver, holderHClass,
-                                                    env_->GetGlobalEnv().GetObject<GlobalEnv>());
+               dependencies->DependOnStableProtoChain(compilerThread_, receiver, holderHClass,
+                                                      env_->GetGlobalEnv().GetObject<GlobalEnv>());
     }
 
     bool DependOnNotPrototype(ArkSteedHClassRef receiverHClass) const

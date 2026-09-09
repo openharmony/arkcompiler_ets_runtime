@@ -25,8 +25,7 @@ class WriteBarrierValueKindPass {
 public:
     explicit WriteBarrierValueKindPass(Graph *graph)
         : graph_(graph), chunk_(graph->GetChunk()), phis_(chunk_), valueKinds_(chunk_)
-    {
-    }
+    {}
 
     void Run();
 
@@ -53,8 +52,7 @@ private:
     void RewriteStores();
     bool ShouldRemoveSetValueWithBarrier(SetValueWithBarrierVertex *vertex) const;
     NonControlVertex *TryRewriteStore(NonControlVertex *vertex);
-    StoreTaggedFieldVertex *NewStoreWithoutBarrier(
-        BB *owner, ValueVertex *object, ValueVertex *value, int32_t offset);
+    StoreTaggedFieldVertex *NewStoreWithoutBarrier(BB *owner, ValueVertex *object, ValueVertex *value, int32_t offset);
     StoreTaggedElementVertex *NewElementStoreWithoutBarrier(BB *owner, ValueVertex *object, ValueVertex *index,
                                                             ValueVertex *value);
     bool TryGetIntPtrConstant(ValueVertex *value, int32_t *result) const;

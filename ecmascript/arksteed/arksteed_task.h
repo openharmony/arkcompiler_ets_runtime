@@ -37,7 +37,7 @@ public:
     void PUBLIC_API SetDeoptTranslationData(std::vector<uint8_t> data);
     void PUBLIC_API SetDeoptLiteralData(std::vector<JSHandle<JSTaggedValue>> literals);
     void PUBLIC_API SetEmbeddedRefData(const std::vector<EmbeddedCodeRefReloc> &relocations,
-                                      const std::vector<JSHandle<JSTaggedValue>> &handles);
+                                       const std::vector<JSHandle<JSTaggedValue>> &handles);
 
     class AsyncTask : public common::Task {
     public:
@@ -58,8 +58,7 @@ private:
 
 class ArkSteedCompileTimeScope : public ClockScope {
 public:
-    explicit ArkSteedCompileTimeScope(ArkSteedTask *task)
-        : task_(task), isAppJit_(false)
+    explicit ArkSteedCompileTimeScope(ArkSteedTask *task) : task_(task), isAppJit_(false)
     {
         if (task_ != nullptr) {
             auto *jit = task_->GetJit();

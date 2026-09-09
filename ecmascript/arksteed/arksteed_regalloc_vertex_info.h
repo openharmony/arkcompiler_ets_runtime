@@ -192,7 +192,7 @@ public:
 
     LiveRange GetLiveRange()
     {
-        return LiveRange{id_, endId_};
+        return LiveRange {id_, endId_};
     }
     VertexId GetEndId() const
     {

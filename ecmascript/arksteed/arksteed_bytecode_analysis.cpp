@@ -195,7 +195,7 @@ void BytecodeAnalysis::InitializeBytecodeLiveness()
         }
         live.CopyFrom(blockLiveOut_[blockIndex]);
         // Reverse scan: compute per-bytecode liveness
-        for (uint32_t bcIndex = curBlock->endBcIndex + 1; bcIndex-- > curBlock->startBcIndex; ) {
+        for (uint32_t bcIndex = curBlock->endBcIndex + 1; bcIndex-- > curBlock->startBcIndex;) {
             const BytecodeInfo *curBc = parent_->GetBytecode(bcIndex);
             bcLiveOut_[bcIndex].CopyFrom(live);
             ClearDefinedVRegs(curBc, live);

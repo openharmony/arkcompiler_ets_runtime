@@ -29,10 +29,7 @@ class Graph;
 
 class GraphBuilder {
 public:
-    GraphBuilder(JSThread *compilerThread,
-                 Graph *destGraph,
-                 uintptr_t glueAddr,
-                 BytecodePreprocessor *preproc,
+    GraphBuilder(JSThread *compilerThread, Graph *destGraph, uintptr_t glueAddr, BytecodePreprocessor *preproc,
                  BytecodeAnalysis *analysis);
 
     bool Run();
@@ -80,8 +77,8 @@ private:
     void InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex);
     bool HasEmittedNormalEdge(uint32_t predRpoIndex, uint32_t targetRpoIndex) const;
     void WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex);
-    void MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
-                         uint32_t actualPredIndex, uint32_t actualNumPreds);
+    void MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex, uint32_t actualPredIndex,
+                         uint32_t actualNumPreds);
 
     PhiVertex *NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg);
     template <class InputRange = std::initializer_list<ValueVertex *>>
@@ -101,8 +98,8 @@ private:
     ControlVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
 
     template <class BranchVertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
-    BranchVertexT *FinishBlockWithBranch(BB *owner, const InputRange &inputs,
-                                         BB *targetIfTrue, BB *targetIfFalse, Args &&...args);
+    BranchVertexT *FinishBlockWithBranch(BB *owner, const InputRange &inputs, BB *targetIfTrue, BB *targetIfFalse,
+                                         Args &&...args);
 
     // VertexT should be control vertex
     template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>

@@ -36,8 +36,7 @@ public:
     ArkSteedCodeGenerator(ArkSteedAssembler *assembler, Graph *graph,
                           ArkSteedSafepointTableBuilder *safepointBuilder = nullptr,
                           DeoptTranslationBuilder *translationBuilder = nullptr,
-                          DeoptLiteralTableBuilder *deoptLiteralTableBuilder = nullptr,
-                          bool withColors = false)
+                          DeoptLiteralTableBuilder *deoptLiteralTableBuilder = nullptr, bool withColors = false)
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
@@ -58,13 +57,12 @@ private:
     void ProcessNonControlVertex(NonControlVertex *vertex);
     void ProcessControlVertex(ControlVertex *vertex);
     void DeconstructPhisInSuccessor(BB *successor, uint32_t predecessorId);
-    void CollectPhiMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver,
-                         BB *successor, int predecessorId,
-                         ArkSteedRegList *registersSetByPhis, ArkDoubleRegList *doubleRegistersSetByPhis,
+    void CollectPhiMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver, BB *successor,
+                         int predecessorId, ArkSteedRegList *registersSetByPhis,
+                         ArkDoubleRegList *doubleRegistersSetByPhis,
                          ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
-    void CollectRegisterStateMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver,
-                                   BB *successor, int predecessorId,
-                                   const ArkSteedRegList &registersSetByPhis,
+    void CollectRegisterStateMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver, BB *successor,
+                                   int predecessorId, const ArkSteedRegList &registersSetByPhis,
                                    const ArkDoubleRegList &doubleRegistersSetByPhis,
                                    ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
     void LoadConstantToRegister(const ValueVertex *constVertex, ArkSteedRegister reg);
@@ -84,8 +82,7 @@ private:
     };
 
     Label *RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
-    void BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex,
-                                  kungfu::DeoptType type);
+    void BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
     void EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
     void EmitQueuedEagerDeoptExits();
     void EmitEagerDeoptStackOverflow();

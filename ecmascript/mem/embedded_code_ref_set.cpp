@@ -123,14 +123,14 @@ EmbeddedCodeRefSet::EntryRange EmbeddedCodeRefSet::GetRange(const OwnerEntries &
     ASSERT(ownerEntries.youngEnd <= ownerEntries.localEnd);
     ASSERT(ownerEntries.localEnd <= ownerEntries.entries.size());
     switch (domain) {
-    case TargetDomain::YOUNG:
-        return {0, ownerEntries.youngEnd};
-    case TargetDomain::LOCAL:
-        return {0, ownerEntries.localEnd};
-    case TargetDomain::SHARED:
-        return {ownerEntries.localEnd, static_cast<uint32_t>(ownerEntries.entries.size())};
-    default:
-        UNREACHABLE();
+        case TargetDomain::YOUNG:
+            return {0, ownerEntries.youngEnd};
+        case TargetDomain::LOCAL:
+            return {0, ownerEntries.localEnd};
+        case TargetDomain::SHARED:
+            return {ownerEntries.localEnd, static_cast<uint32_t>(ownerEntries.entries.size())};
+        default:
+            UNREACHABLE();
     }
 }
 
@@ -221,8 +221,8 @@ void EmbeddedCodeRefSet::CompactYoungEntries()
         ASSERT(ownerEntries.youngEnd <= ownerEntries.localEnd);
         ASSERT(ownerEntries.localEnd <= ownerEntries.entries.size());
         auto oldYoungEnd = ownerEntries.entries.begin() + ownerEntries.youngEnd;
-        auto newYoungEnd = std::partition(
-            ownerEntries.entries.begin(), oldYoungEnd, [](const EmbeddedCodeRefEntry &entry) {
+        auto newYoungEnd =
+            std::partition(ownerEntries.entries.begin(), oldYoungEnd, [](const EmbeddedCodeRefEntry &entry) {
                 ASSERT(IsStrongHeapObject(entry.target));
                 JSTaggedValue target(entry.target);
                 ASSERT(!target.IsInSharedHeap());

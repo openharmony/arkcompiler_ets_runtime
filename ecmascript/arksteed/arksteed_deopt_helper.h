@@ -196,8 +196,7 @@ struct DeoptTranslation {
 
 class PUBLIC_API DeoptTranslationBuilder {
 public:
-    DeoptId AddTranslation(uint32_t bytecodeOffset, kungfu::DeoptType type,
-                           std::vector<DeoptTranslationInput> inputs);
+    DeoptId AddTranslation(uint32_t bytecodeOffset, kungfu::DeoptType type, std::vector<DeoptTranslationInput> inputs);
     std::vector<uint8_t> Encode() const;
 
 private:
@@ -242,12 +241,11 @@ int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTran
 DeoptTranslationInput BuildDeoptTranslationInput(ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
                                                  uint32_t index, DeoptLiteralTableBuilder *literalTableBuilder);
 std::vector<DeoptTranslationInput> PUBLIC_API BuildDeoptTranslationInputs(
-    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
-    DeoptLiteralTableBuilder *literalTableBuilder);
+    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex, DeoptLiteralTableBuilder *literalTableBuilder);
 
 bool WouldStackOverflow(JSThread *thread, const JSTaggedType *sp);
-bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp,
-                             uintptr_t snapshot, JSTaggedType *result);
+bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp, uintptr_t snapshot,
+                             JSTaggedType *result);
 }  // namespace arksteed
 }  // namespace panda::ecmascript
 

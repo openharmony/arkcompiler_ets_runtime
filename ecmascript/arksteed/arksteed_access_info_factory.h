@@ -33,7 +33,9 @@ public:
 
     ArkSteedAccessInfoFactory(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                               JitCompilationEnv *env, ArkSteedHeapBroker *broker)
-        : compilerThread_(compilerThread), bytecodeInfo_(bytecodeInfo), env_(env),
+        : compilerThread_(compilerThread),
+          bytecodeInfo_(bytecodeInfo),
+          env_(env),
           broker_(broker == nullptr ? &ownedBroker_ : broker),
           feedbackReader_(compilerThread_, bytecodeInfo_, broker_),
           dependencyRecorder_(compilerThread_, env_, broker_)

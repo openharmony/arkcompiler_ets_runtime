@@ -133,8 +133,9 @@ public:
     }
 
 private:
-    int maxCallStackArgs_{0};
-    static constexpr int ALLOCATABLE_GENERAL_REGISTER_COUNT = 32; // 32: number of allocatable general-purpose registers
+    int maxCallStackArgs_ {0};
+    static constexpr int ALLOCATABLE_GENERAL_REGISTER_COUNT =
+        32;                                                       // 32: number of allocatable general-purpose registers
     static constexpr int ALLOCATABLE_DOUBLE_REGISTER_COUNT = 32;  // 32: number of allocatable double (FP) registers
 };
 
@@ -421,7 +422,7 @@ public:
 
     std::vector<LoopUsedVertices> loopUsedVertices_;
     Chunk *chunk_ = nullptr;
-    uint32_t nextVertexId_{0};
+    uint32_t nextVertexId_ {0};
 };
 
 }  // namespace panda::ecmascript::arksteed

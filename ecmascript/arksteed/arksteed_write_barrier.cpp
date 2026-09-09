@@ -27,17 +27,15 @@ namespace {
 
 ArkSteedRegList GetBarrierCallArgumentRegisters()
 {
-    return ArkSteedRegList{ArkSteedAssembler::GetParameterRegister(0),
-                           ArkSteedAssembler::GetParameterRegister(1),
-                           ArkSteedAssembler::GetParameterRegister(2),
-                           ArkSteedAssembler::GetParameterRegister(3)};
+    return ArkSteedRegList {ArkSteedAssembler::GetParameterRegister(0), ArkSteedAssembler::GetParameterRegister(1),
+                            ArkSteedAssembler::GetParameterRegister(2), ArkSteedAssembler::GetParameterRegister(3)};
 }
 
 class DeferredBarrierCall final : public ArkSteedDeferredCode {
 public:
-    DeferredBarrierCall(kungfu::RuntimeStubCSigns::ID runtimeId, ArkSteedRegister glue,
-                        ArkSteedRegister object, int32_t offset, ArkSteedRegister value,
-                        const DeferredRegisterSnapshot &registerSnapshot, bool preserveInputs)
+    DeferredBarrierCall(kungfu::RuntimeStubCSigns::ID runtimeId, ArkSteedRegister glue, ArkSteedRegister object,
+                        int32_t offset, ArkSteedRegister value, const DeferredRegisterSnapshot &registerSnapshot,
+                        bool preserveInputs)
         : runtimeId_(runtimeId),
           glue_(glue),
           object_(object),
@@ -133,13 +131,13 @@ private:
 #define __ assembler_->
 
 void ArkSteedWriteBarrierEmitter::CallBarrierRuntime(kungfu::RuntimeStubCSigns::ID runtimeId, ArkSteedRegister glue,
-                                                     ArkSteedRegister object, int32_t offset,
-                                                     ArkSteedRegister value, bool preserveInputs)
+                                                     ArkSteedRegister object, int32_t offset, ArkSteedRegister value,
+                                                     bool preserveInputs)
 {
     ASSERT(chunk_ != nullptr);
     ASSERT(deferredCode_ != nullptr);
-    auto *deferredCall = chunk_->New<DeferredBarrierCall>(runtimeId, glue, object, offset, value,
-                                                          registerSnapshot_, preserveInputs);
+    auto *deferredCall =
+        chunk_->New<DeferredBarrierCall>(runtimeId, glue, object, offset, value, registerSnapshot_, preserveInputs);
     deferredCode_->push_back(deferredCall);
     __ Jump(deferredCall->GetEntryLabel());
     __ Bind(deferredCall->GetReturnLabel());
@@ -154,8 +152,7 @@ void ArkSteedWriteBarrierEmitter::EmitFastWriteBarrier(ArkSteedRegister glue, Ar
 void ArkSteedWriteBarrierEmitter::EmitLocalToShareRSet(ArkSteedRegister glue, ArkSteedRegister object,
                                                        ArkSteedRegister value, int32_t offset,
                                                        ArkSteedRegister objectRegionScratch,
-                                                       ArkSteedRegister bitsetWordAddrScratch,
-                                                       Label *next)
+                                                       ArkSteedRegister bitsetWordAddrScratch, Label *next)
 {
     ASSERT(objectRegionScratch != bitsetWordAddrScratch);
     ASSERT(glue != objectRegionScratch);
@@ -166,8 +163,8 @@ void ArkSteedWriteBarrierEmitter::EmitLocalToShareRSet(ArkSteedRegister glue, Ar
     constexpr int64_t REGION_BASE_MASK = static_cast<int64_t>(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK));
     constexpr uint32_t BITSET_WORD_BYTE_INDEX_SHIFT =
         TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2 - GCBitset::BYTE_PER_WORD_LOG2;
-    constexpr uint32_t BITSET_WORD_BYTE_INDEX_MASK = static_cast<uint32_t>(~uint64_t{0} >> TAGGED_TYPE_SIZE_LOG) >>
-        GCBitset::BIT_PER_WORD_LOG2 << GCBitset::BYTE_PER_WORD_LOG2;
+    constexpr uint32_t BITSET_WORD_BYTE_INDEX_MASK = static_cast<uint32_t>(~uint64_t {0} >> TAGGED_TYPE_SIZE_LOG) >>
+                                                     GCBitset::BIT_PER_WORD_LOG2 << GCBitset::BYTE_PER_WORD_LOG2;
     static_assert(BITSET_WORD_BYTE_INDEX_MASK == 0x1ffffffc, "LocalToShareSet byte index layout changed");
 
     ArkSteedRegister regionBase = objectRegionScratch;
@@ -176,8 +173,7 @@ void ArkSteedWriteBarrierEmitter::EmitLocalToShareRSet(ArkSteedRegister glue, Ar
 
     __ Move(regionBase, object);
     __ And(regionBase, REGION_BASE_MASK);
-    __ LoadField(bitsetWordAddr, regionBase,
-                 static_cast<int32_t>(Region::PackedData::GetLocalToShareSetOffset(false)));
+    __ LoadField(bitsetWordAddr, regionBase, static_cast<int32_t>(Region::PackedData::GetLocalToShareSetOffset(false)));
     __ Compare(bitsetWordAddr, 0);
     __ JumpIf(Condition::EQUAL, &callRuntime);
 
@@ -255,8 +251,7 @@ void ArkSteedWriteBarrierEmitter::EmitWriteBarrier(ArkSteedRegister glue, ArkSte
 
         __ Bind(&valueNotShared);
         Label notOldToYoung;
-        __ LoadField(objectRegion, objectRegion,
-                              static_cast<int32_t>(Region::PackedData::GetFlagsOffset(false)));
+        __ LoadField(objectRegion, objectRegion, static_cast<int32_t>(Region::PackedData::GetFlagsOffset(false)));
         __ And(objectRegion, static_cast<int64_t>(RegionSpaceFlag::VALID_SPACE_MASK));
         __ Compare(objectRegion, static_cast<int32_t>(RegionSpaceFlag::IN_YOUNG_SPACE));
         __ JumpIf(Condition::EQUAL, &notOldToYoung);
@@ -284,7 +279,7 @@ void ArkSteedWriteBarrierEmitter::EmitWriteBarrier(ArkSteedRegister glue, ArkSte
 
     __ Move(objectRegion, glue);
     __ LoadField(objectRegion, objectRegion,
-                          static_cast<int32_t>(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+                 static_cast<int32_t>(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
     __ And(objectRegion, static_cast<int64_t>(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK));
     __ Compare(objectRegion, static_cast<int32_t>(SharedMarkStatus::READY_TO_CONCURRENT_MARK));
     __ JumpIf(Condition::EQUAL, &done);
@@ -295,7 +290,7 @@ void ArkSteedWriteBarrierEmitter::EmitWriteBarrier(ArkSteedRegister glue, ArkSte
         __ Bind(&checkNormalMarking);
         __ Move(objectRegion, glue);
         __ LoadField(objectRegion, objectRegion,
-                              static_cast<int32_t>(JSThread::GlueData::GetGCStateBitFieldOffset(false)));
+                     static_cast<int32_t>(JSThread::GlueData::GetGCStateBitFieldOffset(false)));
         __ And(objectRegion, static_cast<int64_t>(JSThread::CONCURRENT_MARKING_BITFIELD_MASK));
         __ Compare(objectRegion, static_cast<int32_t>(MarkStatus::READY_TO_MARK));
         __ JumpIf(Condition::EQUAL, &done);
@@ -327,16 +322,14 @@ void ArkSteedWriteBarrierEmitter::StoreTaggedField(ArkSteedRegister glue, ArkSte
                                                    ArkSteedRegister valueRegionScratch,
                                                    ArkSteedWriteBarrierValueKind valueKind)
 {
-    if (barrierKind == ArkSteedWriteBarrierKind::NO_BARRIER ||
-        valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+    if (barrierKind == ArkSteedWriteBarrierKind::NO_BARRIER || valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
         __ StoreField(value, object, offset);
         return;
     }
 
     if (valueKind == ArkSteedWriteBarrierValueKind::HeapObject) {
         __ StoreField(value, object, offset);
-        EmitPostStoreWriteBarrier(glue, object, value, offset, barrierKind, objectRegionScratch,
-                                  valueRegionScratch);
+        EmitPostStoreWriteBarrier(glue, object, value, offset, barrierKind, objectRegionScratch, valueRegionScratch);
         return;
     }
 
@@ -356,8 +349,7 @@ void ArkSteedWriteBarrierEmitter::StoreTaggedField(ArkSteedRegister glue, ArkSte
 }
 
 void ArkSteedWriteBarrierEmitter::TransitionHClass(ArkSteedRegister glue, ArkSteedRegister object,
-                                                   ArkSteedRegister hclass,
-                                                   ArkSteedRegister objectRegionScratch,
+                                                   ArkSteedRegister hclass, ArkSteedRegister objectRegionScratch,
                                                    ArkSteedRegister hclassRegionScratch)
 {
     static_assert(TaggedObject::HCLASS_OFFSET == 0);

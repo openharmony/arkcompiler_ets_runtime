@@ -100,7 +100,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(F64Add)                           \
     V(F64Sub)                           \
     V(F64Mul)                           \
-    V(F64Div)                           \
+    V(F64Div)
 
 #define NON_VALUE_VERTEX_LIST(V)    \
     V(DeoptIfHClassMismatch)        \

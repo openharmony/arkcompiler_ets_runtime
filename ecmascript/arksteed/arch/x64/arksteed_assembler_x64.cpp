@@ -67,15 +67,11 @@ void ArkSteedAssembler::MoveEmbeddedTagged(ArkSteedRegister dst, uint32_t handle
     uint32_t instructionOffset = GetPcOffset();
     assembler_.Movabs(JSTaggedValue::VALUE_HOLE, dst);
     ASSERT(GetPcOffset() - instructionOffset == MOVABS_SIZE);
-    embeddedRefRelocations_.push_back({instructionOffset + MOVABS_IMMEDIATE_OFFSET,
-                                      handleIndex,
-                                      EmbeddedCodeRefRelocKind::X64_MOVABS_IMM64,
-                                      RELOC_WIDTH});
+    embeddedRefRelocations_.push_back({instructionOffset + MOVABS_IMMEDIATE_OFFSET, handleIndex,
+                                       EmbeddedCodeRefRelocKind::X64_MOVABS_IMM64, RELOC_WIDTH});
 }
 
-void ArkSteedAssembler::FinalizeEmbeddedRefs()
-{
-}
+void ArkSteedAssembler::FinalizeEmbeddedRefs() {}
 
 void ArkSteedAssembler::Move(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src)
 {
@@ -138,8 +134,8 @@ void ArkSteedAssembler::LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister
     assembler_.Movq(operand, dst);
 }
 
-void ArkSteedAssembler::StoreTaggedElement(ArkSteedRegister elements, ArkSteedRegister index,
-                                           ArkSteedRegister value, ArkSteedRegister scratch)
+void ArkSteedAssembler::StoreTaggedElement(ArkSteedRegister elements, ArkSteedRegister index, ArkSteedRegister value,
+                                           ArkSteedRegister scratch)
 {
     (void)scratch;
     x64::Operand operand(elements, index, x64::Scale::Times8, static_cast<int32_t>(TaggedArray::DATA_OFFSET));
@@ -225,8 +221,8 @@ void ArkSteedAssembler::LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, 
     }
 }
 
-void ArkSteedAssembler::StoreTypedArrayIntElement(ArkSteedRegister value, ArkSteedRegister data,
-                                                  ArkSteedRegister index, JSType elementType)
+void ArkSteedAssembler::StoreTypedArrayIntElement(ArkSteedRegister value, ArkSteedRegister data, ArkSteedRegister index,
+                                                  JSType elementType)
 {
     switch (elementType) {
         case JSType::JS_INT8_ARRAY:
@@ -400,8 +396,7 @@ void ArkSteedAssembler::Int32Mul(ArkSteedRegister dst, ArkSteedRegister src)
     assembler_.Imull(src, dst);
 }
 
-void ArkSteedAssembler::Int32MulWide([[maybe_unused]] ArkSteedRegister dst,
-                                     [[maybe_unused]] ArkSteedRegister left,
+void ArkSteedAssembler::Int32MulWide([[maybe_unused]] ArkSteedRegister dst, [[maybe_unused]] ArkSteedRegister left,
                                      [[maybe_unused]] ArkSteedRegister right)
 {
     UNREACHABLE();

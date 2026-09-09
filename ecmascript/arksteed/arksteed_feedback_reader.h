@@ -35,8 +35,8 @@ public:
     bool ReadValueAccessFeedback(ValueAccessFeedback *feedback) const;
     bool ReadElementAccessFeedback(int slotIndex, ElementAccessFeedback *feedback) const;
     bool ReadGlobalAccessFeedback(GlobalAccessFeedback *feedback) const;
-    bool TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const; // input slot
-    bool TryGetFeedbackSlotId(uint32_t *slotId) const; // primary slot
+    bool TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const;  // input slot
+    bool TryGetFeedbackSlotId(uint32_t *slotId) const;                                  // primary slot
     bool ReadOperationFeedback(OperationFeedback *feedback) const;
 
 private:
@@ -59,8 +59,7 @@ private:
 
     bool TryReadNamedAccessName(ArkSteedNameRef *name) const;
     bool TryGetConstDataId(int index, uint16_t *constDataId) const;
-    NamedAccessCaseFeedback MakeNamedAccessCaseFeedback(ArkSteedHClassRef expectedHClass,
-                                                        JSTaggedValue handler) const;
+    NamedAccessCaseFeedback MakeNamedAccessCaseFeedback(ArkSteedHClassRef expectedHClass, JSTaggedValue handler) const;
     ElementAccessCaseFeedback MakeElementAccessCaseFeedback(ArkSteedHClassRef expectedHClass,
                                                             JSTaggedValue handler) const;
     bool TryGetICMonoSnapshot(int slotIndex, ICMonoSnapshot *snapshot) const;

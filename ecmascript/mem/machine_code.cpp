@@ -15,7 +15,6 @@
 
 #include "ecmascript/mem/machine_code.h"
 
-#include <cstring>
 #include <limits>
 
 #include "ecmascript/base/config.h"
@@ -444,9 +443,12 @@ bool MachineCode::GetArkSteedTranslationData(const uint8_t **data, size_t *size)
 
     uint32_t translationOffset = 0;
     uint32_t translationSize = 0;
-    std::memcpy(&translationOffset, reinterpret_cast<const void *>(infoAddress), sizeof(translationOffset));
-    std::memcpy(&translationSize, reinterpret_cast<const void *>(infoAddress + sizeof(translationOffset)),
-                sizeof(translationSize));
+    if (memcpy_s(&translationOffset, sizeof(translationOffset), reinterpret_cast<const void *>(infoAddress),
+                 sizeof(translationOffset)) != EOK ||
+        memcpy_s(&translationSize, sizeof(translationSize),
+                 reinterpret_cast<const void *>(infoAddress + sizeof(translationOffset)), sizeof(translationSize)) != EOK) {
+        return false;
+    }
     if (translationOffset == 0 || translationSize == 0) {
         return false;
     }

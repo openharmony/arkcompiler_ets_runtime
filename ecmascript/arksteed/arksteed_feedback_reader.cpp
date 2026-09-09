@@ -27,8 +27,7 @@ bool ArkSteedFeedbackReader::TryGetFeedbackSlotId(int index, bool allowImmediate
     if (slotId == nullptr) {
         return false;
     }
-    if (index == ACCESS_SLOT_INPUT && !allowImmediate &&
-        bytecodeInfo_.slotId.GetId() != kungfu::ICSlotId::INVALID_ID) {
+    if (index == ACCESS_SLOT_INPUT && !allowImmediate && bytecodeInfo_.slotId.GetId() != kungfu::ICSlotId::INVALID_ID) {
         *slotId = static_cast<uint32_t>(bytecodeInfo_.slotId.GetId());
         return true;
     }
@@ -245,8 +244,8 @@ bool ArkSteedFeedbackReader::ReadValueAccessFeedback(ValueAccessFeedback *feedba
     }
 
     ProfileTypeInfo *profileTypeArray = nullptr;
-    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) ||
-        slotId >= profileTypeArray->GetLength() || profileTypeArray->GetLength() - slotId <= 1) {
+    if (!broker_->TryGetProfileTypeInfo(&profileTypeArray) || slotId >= profileTypeArray->GetLength() ||
+        profileTypeArray->GetLength() - slotId <= 1) {
         return false;
     }
 
@@ -258,8 +257,7 @@ bool ArkSteedFeedbackReader::ReadValueAccessFeedback(ValueAccessFeedback *feedba
     if (first.IsWeak()) {
         feedback->kind = ValueAccessFeedbackKind::ELEMENT;
         feedback->cases[0] = MakeNamedAccessCaseFeedback(broker_->MakeWeakHClassRef(first), second);
-        if (!feedback->cases[0].expectedHClass.IsSafeForCompile() ||
-            !feedback->cases[0].handler.IsSafeForCompile()) {
+        if (!feedback->cases[0].expectedHClass.IsSafeForCompile() || !feedback->cases[0].handler.IsSafeForCompile()) {
             *feedback = {};
             return false;
         }
@@ -293,8 +291,8 @@ bool ArkSteedFeedbackReader::ReadValueAccessFeedback(ValueAccessFeedback *feedba
                 *feedback = {};
                 return false;
             }
-            NamedAccessCaseFeedback icCase = MakeNamedAccessCaseFeedback(
-                broker_->MakeWeakHClassRef(cachedHClass), caseArray->Get(compilerThread_, index + 1));
+            NamedAccessCaseFeedback icCase = MakeNamedAccessCaseFeedback(broker_->MakeWeakHClassRef(cachedHClass),
+                                                                         caseArray->Get(compilerThread_, index + 1));
             if (!icCase.expectedHClass.IsSafeForCompile() || !icCase.handler.IsSafeForCompile()) {
                 *feedback = {};
                 return false;
@@ -341,8 +339,7 @@ bool ArkSteedFeedbackReader::ReadElementAccessFeedback(int slotIndex, ElementAcc
             *feedback = {};
             return false;
         }
-        ElementAccessCaseFeedback elementCase =
-            MakeElementAccessCaseFeedback(icCase.expectedHClass, icCase.handler);
+        ElementAccessCaseFeedback elementCase = MakeElementAccessCaseFeedback(icCase.expectedHClass, icCase.handler);
         if (!elementCase.expectedHClass.IsSafeForCompile() || !elementCase.handler.IsSafeForCompile()) {
             *feedback = {};
             return false;

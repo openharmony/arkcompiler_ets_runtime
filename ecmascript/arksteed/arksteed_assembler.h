@@ -187,8 +187,8 @@ public:
     void Int32MulWide(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
     void Int32MulHigh(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
     void Int32Div(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor);
-    void Int32DivAndRemainder(ArkSteedRegister quotient, ArkSteedRegister remainder,
-                              ArkSteedRegister dividend, ArkSteedRegister divisor);
+    void Int32DivAndRemainder(ArkSteedRegister quotient, ArkSteedRegister remainder, ArkSteedRegister dividend,
+                              ArkSteedRegister divisor);
     void PositiveInt32Mod(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor);
     void Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src);
     void Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
@@ -277,7 +277,7 @@ public:
     void ReturnWithPendingException();
     void ReturnIfPendingException();
     // Branch to target if no pending exception exists in JSThread.
-    void BranchIfNoPendingException(Label* target);
+    void BranchIfNoPendingException(Label *target);
     void LoadAndClearPendingException(ArkSteedRegister dst, ArkSteedRegister glue);
     void Return();
 
@@ -373,9 +373,8 @@ private:
     void PushPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
     void PopPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
     static constexpr uint32_t VENEER_INSTRUCTION_SIZE = sizeof(uint32_t);  // One ARM64 instruction is 4 bytes.
-    static constexpr uint32_t VENEER_DISTANCE_MARGIN = 4U * 1024U;  // Check 4 KiB before the encoding limit.
-    static constexpr uint32_t EMBEDDED_LITERAL_MAX_FORWARD_DISPLACEMENT =
-        ((1U << 18U) - 1U) * sizeof(uint32_t);
+    static constexpr uint32_t VENEER_DISTANCE_MARGIN = 4U * 1024U;         // Check 4 KiB before the encoding limit.
+    static constexpr uint32_t EMBEDDED_LITERAL_MAX_FORWARD_DISPLACEMENT = ((1U << 18U) - 1U) * sizeof(uint32_t);
     static constexpr uint32_t EMBEDDED_LITERAL_DISTANCE_MARGIN = 4U * 1024U;
     static constexpr uint32_t EMBEDDED_LITERAL_SIZE = sizeof(JSTaggedType);
     static constexpr uint32_t EMBEDDED_LITERAL_POOL_PREFIX_RESERVE = 2U * sizeof(uint32_t);

@@ -68,9 +68,7 @@ public:
         bool ownsSerializing_ {false};
     };
 
-    ArkSteedHeapBroker(JSThread *compilerThread, JitCompilationEnv *env)
-        : compilerThread_(compilerThread), env_(env)
-    {}
+    ArkSteedHeapBroker(JSThread *compilerThread, JitCompilationEnv *env) : compilerThread_(compilerThread), env_(env) {}
 
     void StartSerializing() const
     {
@@ -148,8 +146,7 @@ public:
             return false;
         }
         JSThread *hostThread = env_->GetHostThread();
-        JSTaggedValue value = hostThread->GlobalConstants()->
-                                GetGlobalConstantObject(static_cast<size_t>(index));
+        JSTaggedValue value = hostThread->GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(index));
         if (!value.IsString()) {
             return false;
         }
@@ -190,8 +187,7 @@ public:
         return method->IsSafeForCompile();
     }
 
-    bool TryRecordHeapConstant(const ArkSteedHeapRef &ref, uint32_t *handleIndex,
-                               JSTaggedValue *currentValue) const
+    bool TryRecordHeapConstant(const ArkSteedHeapRef &ref, uint32_t *handleIndex, JSTaggedValue *currentValue) const
     {
         ASSERT(handleIndex != nullptr);
         ASSERT(currentValue != nullptr);

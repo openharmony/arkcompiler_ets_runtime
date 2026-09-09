@@ -348,8 +348,8 @@ private:
     using BasicPolicyField = VirtualRegisterField::NextField<BasicPolicy, 1>;
     using ExtendedPolicyField = BasicPolicyField::NextField<ExtendedPolicy, 3>;  // 3: ExtendedPolicy bit width
     using LifetimeField = ExtendedPolicyField::NextField<uint8_t, 1>;
-    using FixedRegisterField = LifetimeField::NextField<uint32_t, 6>;  // 6: FixedRegister bit width
-    using InputIndexField = FixedRegisterField::NextField<uint32_t, 3>;  // 3: InputIndex bit width
+    using FixedRegisterField = LifetimeField::NextField<uint32_t, 6>;      // 6: FixedRegister bit width
+    using InputIndexField = FixedRegisterField::NextField<uint32_t, 3>;    // 3: InputIndex bit width
     using FixedSlotIndexField = BasicPolicyField::NextField<int32_t, 28>;  // 28: remaining bits for slot index
 };
 
@@ -443,7 +443,7 @@ protected:
     using LocationKindField = KindField::NextField<LocationKind, 1>;
     // 8: MachineRepresentation bit width
     using RepresentationField = LocationKindField::NextField<MachineRepresentation, 8>;
-    static_assert(RepresentationField::END_BIT <= 32);  // 32: total bits in a 32-bit word
+    static_assert(RepresentationField::END_BIT <= 32);    // 32: total bits in a 32-bit word
     using IndexField = panda::BitField<int32_t, 32, 32>;  // 32: start bit; 32: int32_t bit width
 };
 
@@ -678,12 +678,11 @@ constexpr ArkSteedRegList GetAllocatableGeneralRegisters()
     // Allocatable registers: x0-x15, x19-x28 (26 registers)
     // Excluded: x16-x17 (scratch), x18 (platform), x29-x31 (fp/lr/sp).
     // Keep this exclusion list in sync with kScratchRegister/kScratchRegister2 in arksteed_assembler.h.
-    return ArkSteedRegList{aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3,  aarch64::x4,
-                           aarch64::x5,  aarch64::x6,  aarch64::x7,  aarch64::x8,  aarch64::x9,
-                           aarch64::x10, aarch64::x11, aarch64::x12, aarch64::x13, aarch64::x14,
-                           aarch64::x15, aarch64::x19, aarch64::x20, aarch64::x21, aarch64::x22,
-                           aarch64::x23, aarch64::x24, aarch64::x25, aarch64::x26, aarch64::x27,
-                           aarch64::x28};
+    return ArkSteedRegList {aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3,  aarch64::x4,  aarch64::x5,
+                            aarch64::x6,  aarch64::x7,  aarch64::x8,  aarch64::x9,  aarch64::x10, aarch64::x11,
+                            aarch64::x12, aarch64::x13, aarch64::x14, aarch64::x15, aarch64::x19, aarch64::x20,
+                            aarch64::x21, aarch64::x22, aarch64::x23, aarch64::x24, aarch64::x25, aarch64::x26,
+                            aarch64::x27, aarch64::x28};
 #elif defined(PANDA_TARGET_AMD64)
     // Allocatable registers: rax, rbx, rcx, rdx, rsi, rdi, r8, r9, r11, r12 (10 registers)
     // Excluded: rsp, rbp, r10 (scratch), r13 (argc), r14 (currently kept live across the compiled code call by
@@ -691,16 +690,8 @@ constexpr ArkSteedRegList GetAllocatableGeneralRegisters()
     // compiled call).
     // to do: Once ArkSteed generated functions save/restore their full callee-saved set, r14/r15 can be reconsidered as
     //        allocatable.
-    return ArkSteedRegList{x64::rax,
-                           x64::rbx,
-                           x64::rcx,
-                           x64::rdx,
-                           x64::rsi,
-                           x64::rdi,
-                           x64::r8,
-                           x64::r9,
-                           x64::r11,
-                           x64::r12};
+    return ArkSteedRegList {x64::rax, x64::rbx, x64::rcx, x64::rdx, x64::rsi,
+                            x64::rdi, x64::r8,  x64::r9,  x64::r11, x64::r12};
 #endif
 }
 
@@ -710,32 +701,16 @@ constexpr ArkDoubleRegList GetAllocatableDoubleRegisters()
     // Allocatable: d0-d29 (30 registers)
     // Reserved: d30-d31 (scratch)
     // Keep this exclusion list in sync with kScratchDoubleRegister/kScratchDoubleRegister2 in arksteed_assembler.h.
-    return ArkDoubleRegList{
-        aarch64::d0, aarch64::d1, aarch64::d2, aarch64::d3, aarch64::d4,
-        aarch64::d5, aarch64::d6, aarch64::d7, aarch64::d8, aarch64::d9,
-        aarch64::d10, aarch64::d11, aarch64::d12, aarch64::d13, aarch64::d14,
-        aarch64::d15, aarch64::d16, aarch64::d17, aarch64::d18, aarch64::d19,
-        aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23, aarch64::d24,
-        aarch64::d25, aarch64::d26, aarch64::d27, aarch64::d28, aarch64::d29
-    };
+    return ArkDoubleRegList {aarch64::d0,  aarch64::d1,  aarch64::d2,  aarch64::d3,  aarch64::d4,  aarch64::d5,
+                             aarch64::d6,  aarch64::d7,  aarch64::d8,  aarch64::d9,  aarch64::d10, aarch64::d11,
+                             aarch64::d12, aarch64::d13, aarch64::d14, aarch64::d15, aarch64::d16, aarch64::d17,
+                             aarch64::d18, aarch64::d19, aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23,
+                             aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27, aarch64::d28, aarch64::d29};
 #elif defined(PANDA_TARGET_AMD64)
     // Allocatable: xmm0-xmm14 (15 registers)
     // Reserved: xmm15 (scratch)
-    return ArkDoubleRegList{x64::xmm0,
-                            x64::xmm1,
-                            x64::xmm2,
-                            x64::xmm3,
-                            x64::xmm4,
-                            x64::xmm5,
-                            x64::xmm6,
-                            x64::xmm7,
-                            x64::xmm8,
-                            x64::xmm9,
-                            x64::xmm10,
-                            x64::xmm11,
-                            x64::xmm12,
-                            x64::xmm13,
-                            x64::xmm14};
+    return ArkDoubleRegList {x64::xmm0, x64::xmm1, x64::xmm2,  x64::xmm3,  x64::xmm4,  x64::xmm5,  x64::xmm6, x64::xmm7,
+                             x64::xmm8, x64::xmm9, x64::xmm10, x64::xmm11, x64::xmm12, x64::xmm13, x64::xmm14};
 #endif
 }
 
@@ -743,14 +718,12 @@ constexpr ArkSteedRegList GetNGCRuntimeCallerSavedGeneralRegisters()
 {
 #if defined(PANDA_TARGET_ARM64)
     // AAPCS64: x0-x18 are caller-saved. ArkSteed only allocates x0-x15 from that range.
-    return ArkSteedRegList{aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3,
-                           aarch64::x4,  aarch64::x5,  aarch64::x6,  aarch64::x7,
-                           aarch64::x8,  aarch64::x9,  aarch64::x10, aarch64::x11,
-                           aarch64::x12, aarch64::x13, aarch64::x14, aarch64::x15};
+    return ArkSteedRegList {aarch64::x0,  aarch64::x1,  aarch64::x2,  aarch64::x3, aarch64::x4,  aarch64::x5,
+                            aarch64::x6,  aarch64::x7,  aarch64::x8,  aarch64::x9, aarch64::x10, aarch64::x11,
+                            aarch64::x12, aarch64::x13, aarch64::x14, aarch64::x15};
 #elif defined(PANDA_TARGET_AMD64)
     // System V AMD64: rbx and r12 are the only allocatable callee-saved GPRs.
-    return ArkSteedRegList{x64::rax, x64::rcx, x64::rdx, x64::rsi,
-                           x64::rdi, x64::r8,  x64::r9,  x64::r11};
+    return ArkSteedRegList {x64::rax, x64::rcx, x64::rdx, x64::rsi, x64::rdi, x64::r8, x64::r9, x64::r11};
 #endif
 }
 
@@ -758,13 +731,10 @@ constexpr ArkDoubleRegList GetNGCRuntimeCallerSavedDoubleRegisters()
 {
 #if defined(PANDA_TARGET_ARM64)
     // AAPCS64 preserves the low 64 bits of v8-v15, which is sufficient for ArkSteed double values.
-    return ArkDoubleRegList{
-        aarch64::d0,  aarch64::d1,  aarch64::d2,  aarch64::d3,
-        aarch64::d4,  aarch64::d5,  aarch64::d6,  aarch64::d7,
-        aarch64::d16, aarch64::d17, aarch64::d18, aarch64::d19,
-        aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23,
-        aarch64::d24, aarch64::d25, aarch64::d26, aarch64::d27,
-        aarch64::d28, aarch64::d29};
+    return ArkDoubleRegList {aarch64::d0,  aarch64::d1,  aarch64::d2,  aarch64::d3,  aarch64::d4,  aarch64::d5,
+                             aarch64::d6,  aarch64::d7,  aarch64::d16, aarch64::d17, aarch64::d18, aarch64::d19,
+                             aarch64::d20, aarch64::d21, aarch64::d22, aarch64::d23, aarch64::d24, aarch64::d25,
+                             aarch64::d26, aarch64::d27, aarch64::d28, aarch64::d29};
 #elif defined(PANDA_TARGET_AMD64)
     // System V AMD64 treats every allocatable XMM register as caller-saved.
     return GetAllocatableDoubleRegisters();
@@ -774,9 +744,9 @@ constexpr ArkDoubleRegList GetNGCRuntimeCallerSavedDoubleRegisters()
 constexpr ArkSteedRegList GetASMFastWriteBarrierClobberedGeneralRegisters()
 {
 #if defined(PANDA_TARGET_ARM64)
-    return ArkSteedRegList{aarch64::x15};
+    return ArkSteedRegList {aarch64::x15};
 #elif defined(PANDA_TARGET_AMD64)
-    return ArkSteedRegList{x64::r11};
+    return ArkSteedRegList {x64::r11};
 #endif
 }
 

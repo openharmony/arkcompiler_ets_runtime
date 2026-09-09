@@ -90,8 +90,7 @@ inline aarch64::MemoryOperand ArkSteedAssembler::MaterializeAddress(const aarch6
     return aarch64::MemoryOperand(scratch, 0, aarch64::AddrMode::OFFSET);
 }
 
-inline void ArkSteedAssembler::LoadRegisterWithOperand(const aarch64::Register &dst,
-                                                       const aarch64::MemoryOperand &src)
+inline void ArkSteedAssembler::LoadRegisterWithOperand(const aarch64::Register &dst, const aarch64::MemoryOperand &src)
 {
     if (FitsScaledImmediateOffset(src, !dst.IsW())) {
         assembler_.Ldr(dst, src);
@@ -106,8 +105,7 @@ inline void ArkSteedAssembler::LoadRegisterWithOperand(const aarch64::Register &
     assembler_.Ldr(dst, MaterializeAddress(src));
 }
 
-inline void ArkSteedAssembler::StoreRegisterWithOperand(const aarch64::Register &src,
-                                                        const aarch64::MemoryOperand &dst)
+inline void ArkSteedAssembler::StoreRegisterWithOperand(const aarch64::Register &src, const aarch64::MemoryOperand &dst)
 {
     if (FitsScaledImmediateOffset(dst, !src.IsW())) {
         assembler_.Str(src, dst);
@@ -185,10 +183,8 @@ inline void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, MemoryOperan
 constexpr ArkSteedRegister ArkSteedAssembler::GetParameterRegister(int i)
 {
     ASSERT(i >= 0 && i < NUM_ARG_REGISTERS);
-    constexpr ArkSteedRegister argRegisters[8] = {
-        aarch64::x0, aarch64::x1, aarch64::x2, aarch64::x3,
-        aarch64::x4, aarch64::x5, aarch64::x6, aarch64::x7
-    };
+    constexpr ArkSteedRegister argRegisters[8] = {aarch64::x0, aarch64::x1, aarch64::x2, aarch64::x3,
+                                                  aarch64::x4, aarch64::x5, aarch64::x6, aarch64::x7};
     return argRegisters[i];
 }
 

@@ -16,9 +16,9 @@
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 
 #include "libpandabase/macros.h"
+#include "securec.h"
 
 #include <algorithm>
-#include <cstring>
 #include <limits>
 #include <numeric>
 #include <sstream>
@@ -88,15 +88,14 @@ ArkSteedSafepointTableBuilder::Safepoint ArkSteedSafepointTableBuilder::DefineSa
     return Safepoint(&entries_.back());
 }
 
-void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(
-    uint32_t pcOffset, std::vector<ArkSteedDeoptValue> deopts, ExceptionHandlerKind exceptionHandlerKind)
+void ArkSteedSafepointTableBuilder::DefineDeoptSafepoint(uint32_t pcOffset, std::vector<ArkSteedDeoptValue> deopts,
+                                                         ExceptionHandlerKind exceptionHandlerKind)
 {
     if (entries_.empty()) {
         encodedDeoptData_.clear();
     }
-    std::sort(deopts.begin(), deopts.end(), [](const ArkSteedDeoptValue &lhs, const ArkSteedDeoptValue &rhs) {
-        return lhs.id < rhs.id;
-    });
+    std::sort(deopts.begin(), deopts.end(),
+              [](const ArkSteedDeoptValue &lhs, const ArkSteedDeoptValue &rhs) { return lhs.id < rhs.id; });
     ASSERT(deopts.size() <= UINT16_MAX / DEOPT_LOGICAL_PAIR_SIZE);
     entries_.push_back(NewEntry(pcOffset));
     entries_.back().deoptNum = static_cast<uint16_t>(deopts.size() * DEOPT_LOGICAL_PAIR_SIZE);
@@ -139,9 +138,8 @@ void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
 
     ChunkVector<size_t> order(entries_.size(), chunk_);
     std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [this](size_t lhs, size_t rhs) {
-        return entries_[lhs].pcOffset < entries_[rhs].pcOffset;
-    });
+    std::sort(order.begin(), order.end(),
+              [this](size_t lhs, size_t rhs) { return entries_[lhs].pcOffset < entries_[rhs].pcOffset; });
 
     size_t deoptOffset = sizeof(ArkSteedSafepointHeader) + entries_.size() * sizeof(ArkSteedSafepointEntry);
     for (size_t i = 0; i < order.size(); i++) {
@@ -151,7 +149,10 @@ void ArkSteedSafepointTableBuilder::Emit(uint8_t *buffer) const
         if (!encodedDeopts.empty()) {
             ASSERT(deoptOffset <= std::numeric_limits<uint32_t>::max());
             entryBuffer[i].deoptOffset = static_cast<uint32_t>(deoptOffset);
-            std::memcpy(buffer + deoptOffset, encodedDeopts.data(), encodedDeopts.size());
+            if (memcpy_s(buffer + deoptOffset, encodedDeopts.size(), encodedDeopts.data(), encodedDeopts.size()) !=
+                EOK) {
+                UNREACHABLE();
+            }
             deoptOffset += encodedDeopts.size();
         }
     }
@@ -186,12 +187,8 @@ std::string ArkSteedSafepointTableBuilder::DumpMemoryUsage() const
     }
     size_t totalSize = headerSize + entriesSize + deoptSize;
     std::stringstream ss;
-    ss << "Safepoint table: " << entries_.size() << " entries ("
-       << deoptEntryCount << " with deopt), "
-       << totalSize << " bytes total ("
-       << headerSize << " header + "
-       << entriesSize << " entries + "
-       << deoptSize << " deopt data)";
+    ss << "Safepoint table: " << entries_.size() << " entries (" << deoptEntryCount << " with deopt), " << totalSize
+       << " bytes total (" << headerSize << " header + " << entriesSize << " entries + " << deoptSize << " deopt data)";
     return ss.str();
 }
 
@@ -239,15 +236,14 @@ const ArkSteedSafepointEntry *ArkSteedSafepointTable::FindEntry(uint32_t pcOffse
     return &entries_[lo - 1];
 }
 
-bool ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, const uint64_t *deoptLiterals,
-                                         uint32_t deoptLiteralCount, std::vector<kungfu::ARKDeopt> &deopts) const
+bool ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, const uint64_t *deoptLiterals, uint32_t deoptLiteralCount,
+                                          std::vector<kungfu::ARKDeopt> &deopts) const
 {
     const ArkSteedSafepointEntry *entry = FindEntry(pcOffset);
     if (entry == nullptr || entry->pcOffset != pcOffset || entry->deoptNum == 0) {
         return true;
     }
-    if (deoptLiteralCount != header_->deoptLiteralCount ||
-        (deoptLiteralCount != 0 && deoptLiterals == nullptr)) {
+    if (deoptLiteralCount != header_->deoptLiteralCount || (deoptLiteralCount != 0 && deoptLiterals == nullptr)) {
         return false;
     }
 
@@ -302,8 +298,7 @@ bool ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, const uint64_t *deo
             (void)regIsFull;
             ASSERT(encodedRegSize > 0 && encodedRegSize <= size_ - offset);
             offset += encodedRegSize;
-            if ((encodedReg != GCStackMapRegisters::FP && encodedReg != GCStackMapRegisters::SP) ||
-                offset >= size_) {
+            if ((encodedReg != GCStackMapRegisters::FP && encodedReg != GCStackMapRegisters::SP) || offset >= size_) {
                 return false;
             }
             auto [encodedOffset, encodedOffsetSize, offsetIsFull] =
@@ -315,9 +310,8 @@ bool ArkSteedSafepointTable::GetDeoptInfo(uint32_t pcOffset, const uint64_t *deo
                 return false;
             }
             deopt.kind = kungfu::LocationTy::Kind::INDIRECT;
-            deopt.value = std::make_pair(
-                static_cast<kungfu::LLVMStackMapType::DwarfRegType>(encodedReg),
-                static_cast<kungfu::LLVMStackMapType::OffsetType>(encodedOffset));
+            deopt.value = std::make_pair(static_cast<kungfu::LLVMStackMapType::DwarfRegType>(encodedReg),
+                                         static_cast<kungfu::LLVMStackMapType::OffsetType>(encodedOffset));
             offset += encodedOffsetSize;
         }
         decodedDeopts.emplace_back(deopt);

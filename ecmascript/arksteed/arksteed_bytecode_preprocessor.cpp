@@ -100,7 +100,7 @@ uint32_t BytecodePreprocessor::JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uin
 uint32_t BytecodePreprocessor::AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors)
 {
     uint32_t fakeJumpBlockIndex = static_cast<uint32_t>(basicBlocks_.size());
-    basicBlocks_.emplace_back(BasicBlockInfo{
+    basicBlocks_.emplace_back(BasicBlockInfo {
         // To be initialized later in MakeRPO()
         .rpoIndex = NULL_INDEX,
         // Synthetic block: Use [NULL_INDEX, NULL_INDEX - 1] to represent an empty range
@@ -204,7 +204,7 @@ void BytecodePreprocessor::CollectTryCatchBlockInfo()
         uint32_t startBcIndex = bcIndexOfOffset_[tryStartOffset];
         uint32_t endBcIndex = bcIndexOfOffset_[tryEndOffset] - 1;
 
-        TryBlockInfo curInfoItem{startBcIndex, endBcIndex, NULL_INDEX, CatchBlockProfileState::UNKNOWN};
+        TryBlockInfo curInfoItem {startBcIndex, endBcIndex, NULL_INDEX, CatchBlockProfileState::UNKNOWN};
         tryBlock.EnumerateCatchBlocks([&](CDACatchBlock &catchBlock) {
             uint32_t pcOffset = catchBlock.GetHandlerPc();
             uint32_t catchBcIndex = bcIndexOfOffset_[pcOffset];
@@ -254,7 +254,8 @@ enum : uint8_t {
 void BytecodePreprocessor::BuildBasicBlocks()
 {
     uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
-    if (bcCount == 0) return;
+    if (bcCount == 0)
+        return;
 
     ChunkVector<uint8_t> blockStartMarks(bcCount, NOT_START_OF_BLOCK, GetChunk());
     MarkBasicBlockStarts(blockStartMarks, bcCount);
@@ -300,7 +301,7 @@ void BytecodePreprocessor::CreateBasicBlocks(const ChunkVector<uint8_t> &blockSt
     uint32_t blockCount = 0;
 
     auto appendBasicBlock = [&](uint32_t nextStartBcIndex) {
-        basicBlocks_.emplace_back(BasicBlockInfo{
+        basicBlocks_.emplace_back(BasicBlockInfo {
             .rpoIndex = NULL_INDEX,
             .startBcIndex = startBcIndex,
             .endBcIndex = nextStartBcIndex - 1,
@@ -586,8 +587,7 @@ void BytecodePreprocessor::SplitCriticalEdges()
         if (numJumpPredecessors_[fallthroughIndex] >= 2) {  // 2: critical edge threshold (needs split)
             // 1 : numJumpPredecessors_ = 1 (which is current block)
             uint32_t nextBlockIndex = AppendSyntheticJump(fallthroughIndex, 1);
-            LOG_COMPILER(DEBUG) << "Edge-split (previously fallthrough): Block #" << i
-                                << " -> #" << nextBlockIndex
+            LOG_COMPILER(DEBUG) << "Edge-split (previously fallthrough): Block #" << i << " -> #" << nextBlockIndex
                                 << " -> #" << fallthroughIndex;
             // Redirect loop-back block of the fallthrough target if necessary
             if (BLOCK_INDEX_FROM_PTR(basicBlocks_[fallthroughIndex].loopBackBlock) == i) {
@@ -598,9 +598,8 @@ void BytecodePreprocessor::SplitCriticalEdges()
         if (numJumpPredecessors_[jumpIndex] >= 2) {  // 2: critical edge threshold (needs split)
             // 1 : numJumpPredecessors_ = 1 (which is current block)
             uint32_t nextBlockIndex = AppendSyntheticJump(jumpIndex, 1);
-            LOG_COMPILER(DEBUG) << "Edge-split (previously jump): Block #" << i
-                                << " -> #" << nextBlockIndex
-                                << " -> #" << jumpIndex;
+            LOG_COMPILER(DEBUG) << "Edge-split (previously jump): Block #" << i << " -> #" << nextBlockIndex << " -> #"
+                                << jumpIndex;
             // Redirect loop-back block of the jump target if necessary
             if (BLOCK_INDEX_FROM_PTR(basicBlocks_[jumpIndex].loopBackBlock) == i) {
                 basicBlocks_[jumpIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
@@ -848,8 +847,8 @@ std::string BytecodePreprocessor::DumpBasicBlocksString() const
         out << ", endBcIndex = " << PrintIndex(curBlock.endBcIndex);
         out << "\n     fallthroughBlock = " << printBB(curBlock.fallthroughBlock);
         out << "\n     jumpBlock = " << printBB(curBlock.jumpBlock);
-        out << "\n     catchBlock = " << printBB(curBlock.catchBlock)
-            << " (" << CatchBlockProfileStateString(curBlock.catchBlockState) << ')';
+        out << "\n     catchBlock = " << printBB(curBlock.catchBlock) << " ("
+            << CatchBlockProfileStateString(curBlock.catchBlockState) << ')';
         out << "\n     loopHeaderBlock = " << printBB(curBlock.loopHeaderBlock);
         out << "\n     loopBackBlock = " << printBB(curBlock.loopBackBlock);
         out << "\n     jumpPredecessors = [";
@@ -959,8 +958,7 @@ void BytecodePreprocessor::DumpGraphvizEdges(std::ostream &out) const
             out << " -> BB" << block.jumpBlock->rpoIndex;
             if (block.IsEndOfLoop()) {
                 out << " [style=solid, penwidth=3];\n";
-                out << "    // " << rpoLabel(&block) << " -> " << rpoLabel(block.jumpBlock)
-                    << " is a loop back edge\n";
+                out << "    // " << rpoLabel(&block) << " -> " << rpoLabel(block.jumpBlock) << " is a loop back edge\n";
             } else {
                 out << " [style=solid];\n";
             }

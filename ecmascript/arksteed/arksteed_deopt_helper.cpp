@@ -16,12 +16,14 @@
 #include "ecmascript/arksteed/arksteed_deopt_helper.h"
 
 #include <algorithm>
-#include <cstring>
 #include <limits>
+
+#include "securec.h"
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/base/hash_combine.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
@@ -89,7 +91,9 @@ bool ReadUint32LE(const uint8_t *&cursor, const uint8_t *end, uint32_t &value)
     }
 
     uint8_t bytes[sizeof(uint32_t)] {};
-    std::memcpy(bytes, cursor, sizeof(bytes));
+    if (memcpy_s(bytes, sizeof(bytes), cursor, sizeof(bytes)) != EOK) {
+        return false;
+    }
     uint32_t result = 0;
     for (size_t index = 0; index < sizeof(bytes); ++index) {
         result |= static_cast<uint32_t>(bytes[index]) << (index * 8U);
@@ -106,7 +110,9 @@ bool ReadUint64LE(const uint8_t *&cursor, const uint8_t *end, uint64_t &value)
     }
 
     uint8_t bytes[sizeof(uint64_t)] {};
-    std::memcpy(bytes, cursor, sizeof(bytes));
+    if (memcpy_s(bytes, sizeof(bytes), cursor, sizeof(bytes)) != EOK) {
+        return false;
+    }
     uint64_t result = 0;
     for (size_t index = 0; index < sizeof(bytes); ++index) {
         result |= static_cast<uint64_t>(bytes[index]) << (index * 8U);
@@ -213,10 +219,8 @@ bool ReadSLEB128(const uint8_t *&cursor, const uint8_t *end, int64_t &value)
             if ((byte & LEB128_SIGN_BIT) != 0 && nextShift < LEB128_MAX_SHIFT + 1U) {
                 result |= UINT64_MAX << nextShift;
             }
-            int64_t signedResult = 0;
-            std::memcpy(&signedResult, &result, sizeof(signedResult));
             cursor = current;
-            value = signedResult;
+            value = base::bit_cast<int64_t>(result);
             return true;
         }
         previousByte = byte;
@@ -335,16 +339,14 @@ void WriteOpcode(DeoptTranslationOpcode opcode, std::vector<uint8_t> &output)
     output.push_back(static_cast<uint8_t>(opcode));
 }
 
-void WriteSignedInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input,
-                      std::vector<uint8_t> &output)
+void WriteSignedInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input, std::vector<uint8_t> &output)
 {
     WriteOpcode(opcode, output);
     WriteSLEB128(input.vreg, output);
     WriteSLEB128(input.source, output);
 }
 
-void WriteRegisterInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input,
-                        std::vector<uint8_t> &output)
+void WriteRegisterInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input, std::vector<uint8_t> &output)
 {
     CHECK(input.source >= 0);
     WriteOpcode(opcode, output);
@@ -352,8 +354,7 @@ void WriteRegisterInput(DeoptTranslationOpcode opcode, const DeoptTranslationInp
     WriteULEB128(static_cast<uint64_t>(input.source), output);
 }
 
-void WriteUnsignedInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input,
-                        std::vector<uint8_t> &output)
+void WriteUnsignedInput(DeoptTranslationOpcode opcode, const DeoptTranslationInput &input, std::vector<uint8_t> &output)
 {
     ASSERT(input.source >= 0);
     WriteOpcode(opcode, output);
@@ -442,9 +443,7 @@ struct DecodedBodyHeader {
 
 int64_t Uint64ToInt64Bits(uint64_t bits)
 {
-    int64_t value = 0;
-    std::memcpy(&value, &bits, sizeof(value));
-    return value;
+    return base::bit_cast<int64_t>(bits);
 }
 
 bool ReadUint32ULEB(const uint8_t *&cursor, const uint8_t *end, uint32_t *value)
@@ -475,8 +474,7 @@ bool DecodeBodyHeader(const uint8_t *begin, const uint8_t *end, DecodedBodyHeade
         return false;
     }
     const uint8_t *cursor = begin + 1;
-    if (!ReadUint32ULEB(cursor, end, &header->bytecodeOffset) ||
-        !ReadUint32ULEB(cursor, end, &header->inputCount)) {
+    if (!ReadUint32ULEB(cursor, end, &header->bytecodeOffset) || !ReadUint32ULEB(cursor, end, &header->inputCount)) {
         return false;
     }
     header->inputStart = cursor;
@@ -521,8 +519,7 @@ bool DecodeRegisterSource(const uint8_t *&cursor, const uint8_t *end, DeoptSourc
     if (sourceKind == DeoptSourceKind::GP_REGISTER && GetArkSteedDeoptGeneralSnapshotOffset(registerCode) < 0) {
         return false;
     }
-    if (sourceKind == DeoptSourceKind::FP_REGISTER &&
-        GetArkSteedDeoptFloatingSnapshotOffset(registerCode) < 0) {
+    if (sourceKind == DeoptSourceKind::FP_REGISTER && GetArkSteedDeoptFloatingSnapshotOffset(registerCode) < 0) {
         return false;
     }
     *source = registerCode;
@@ -571,8 +568,7 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
         return false;
     }
     auto opcode = static_cast<DeoptTranslationOpcode>(encodedOpcode);
-    if (opcode >= DeoptTranslationOpcode::TAGGED_REGISTER &&
-        opcode <= DeoptTranslationOpcode::TAGGED_STACK_SLOT) {
+    if (opcode >= DeoptTranslationOpcode::TAGGED_REGISTER && opcode <= DeoptTranslationOpcode::TAGGED_STACK_SLOT) {
         input->valueKind = DeoptTranslationKind::TAGGED;
         input->sourceKind = opcode == DeoptTranslationOpcode::TAGGED_REGISTER ? DeoptSourceKind::GP_REGISTER
                                                                               : DeoptSourceKind::STACK_SLOT;
@@ -590,24 +586,23 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
         input->valueKind = DeoptTranslationKind::TAGGED;
         input->sourceKind = DeoptSourceKind::CONSTANT;
         return DecodeTaggedConstant(opcode, cursor, end, &input->source);
-    } else if (opcode >= DeoptTranslationOpcode::INT32_REGISTER &&
-               opcode <= DeoptTranslationOpcode::INT32_CONSTANT) {
+    } else if (opcode >= DeoptTranslationOpcode::INT32_REGISTER && opcode <= DeoptTranslationOpcode::INT32_CONSTANT) {
         input->valueKind = DeoptTranslationKind::INT32_TO_TAGGED;
-        input->sourceKind = opcode == DeoptTranslationOpcode::INT32_REGISTER ? DeoptSourceKind::GP_REGISTER
-                           : opcode == DeoptTranslationOpcode::INT32_STACK_SLOT ? DeoptSourceKind::STACK_SLOT
-                                                                                : DeoptSourceKind::CONSTANT;
+        input->sourceKind = opcode == DeoptTranslationOpcode::INT32_REGISTER     ? DeoptSourceKind::GP_REGISTER
+                            : opcode == DeoptTranslationOpcode::INT32_STACK_SLOT ? DeoptSourceKind::STACK_SLOT
+                                                                                 : DeoptSourceKind::CONSTANT;
     } else if (opcode >= DeoptTranslationOpcode::FLOAT64_REGISTER &&
                opcode <= DeoptTranslationOpcode::FLOAT64_CONSTANT) {
         input->valueKind = DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE;
-        input->sourceKind = opcode == DeoptTranslationOpcode::FLOAT64_REGISTER ? DeoptSourceKind::FP_REGISTER
-                           : opcode == DeoptTranslationOpcode::FLOAT64_STACK_SLOT ? DeoptSourceKind::STACK_SLOT
-                                                                                  : DeoptSourceKind::CONSTANT;
+        input->sourceKind = opcode == DeoptTranslationOpcode::FLOAT64_REGISTER     ? DeoptSourceKind::FP_REGISTER
+                            : opcode == DeoptTranslationOpcode::FLOAT64_STACK_SLOT ? DeoptSourceKind::STACK_SLOT
+                                                                                   : DeoptSourceKind::CONSTANT;
     } else if (opcode >= DeoptTranslationOpcode::RAW_INT32_REGISTER &&
                opcode <= DeoptTranslationOpcode::RAW_INT32_CONSTANT) {
         input->valueKind = DeoptTranslationKind::RAW_INT32;
-        input->sourceKind = opcode == DeoptTranslationOpcode::RAW_INT32_REGISTER ? DeoptSourceKind::GP_REGISTER
-                           : opcode == DeoptTranslationOpcode::RAW_INT32_STACK_SLOT ? DeoptSourceKind::STACK_SLOT
-                                                                                    : DeoptSourceKind::CONSTANT;
+        input->sourceKind = opcode == DeoptTranslationOpcode::RAW_INT32_REGISTER     ? DeoptSourceKind::GP_REGISTER
+                            : opcode == DeoptTranslationOpcode::RAW_INT32_STACK_SLOT ? DeoptSourceKind::STACK_SLOT
+                                                                                     : DeoptSourceKind::CONSTANT;
     } else {
         return false;
     }
@@ -627,8 +622,7 @@ bool DecodeExplicitInput(uint8_t encodedOpcode, const uint8_t *&cursor, const ui
     return DecodeSignedSource(cursor, end, &input->source);
 }
 
-bool DecodeInputs(const DecodedBodyHeader &header, const uint8_t *end,
-                  std::vector<DeoptTranslationInput> *inputs)
+bool DecodeInputs(const DecodedBodyHeader &header, const uint8_t *end, std::vector<DeoptTranslationInput> *inputs)
 {
     if (header.inputStart > end || header.inputCount > inputs->max_size() ||
         header.inputCount > static_cast<size_t>(end - header.inputStart) / MIN_EXPLICIT_INPUT_SIZE) {
@@ -653,8 +647,8 @@ bool DecodeInputs(const DecodedBodyHeader &header, const uint8_t *end,
 }
 }  // namespace
 
-DeoptId DeoptTranslationBuilder::AddTranslation(
-    uint32_t bytecodeOffset, kungfu::DeoptType type, std::vector<DeoptTranslationInput> inputs)
+DeoptId DeoptTranslationBuilder::AddTranslation(uint32_t bytecodeOffset, kungfu::DeoptType type,
+                                                std::vector<DeoptTranslationInput> inputs)
 {
     CHECK(headers_.size() < std::numeric_limits<uint32_t>::max());
     CHECK(bodies_.size() < std::numeric_limits<uint32_t>::max());
@@ -729,8 +723,7 @@ std::vector<uint8_t> DeoptTranslationBuilder::Encode() const
     CHECK(stream.size() <= std::numeric_limits<uint32_t>::max());
 
     size_t fixedSize = sizeof(uint32_t) * 2U;
-    CHECK(headers_.size() <=
-          (std::numeric_limits<size_t>::max() - fixedSize) / DEOPT_TRANSLATION_HEADER_SIZE);
+    CHECK(headers_.size() <= (std::numeric_limits<size_t>::max() - fixedSize) / DEOPT_TRANSLATION_HEADER_SIZE);
     fixedSize += headers_.size() * DEOPT_TRANSLATION_HEADER_SIZE;
     CHECK(offsets.size() <= (std::numeric_limits<size_t>::max() - fixedSize) / sizeof(uint32_t));
     fixedSize += offsets.size() * sizeof(uint32_t);
@@ -766,8 +759,8 @@ DeoptTranslationReader::DeoptTranslationReader(const uint8_t *data, size_t size)
     const uint8_t *end = reinterpret_cast<const uint8_t *>(dataAddress + size);
     uint32_t deoptCount = 0;
     uint32_t bodyCount = 0;
-    if (!ReadUint32LE(cursor, end, deoptCount) || !ReadUint32LE(cursor, end, bodyCount) ||
-        deoptCount == 0 || bodyCount == 0 || bodyCount > deoptCount ||
+    if (!ReadUint32LE(cursor, end, deoptCount) || !ReadUint32LE(cursor, end, bodyCount) || deoptCount == 0 ||
+        bodyCount == 0 || bodyCount > deoptCount ||
         deoptCount > static_cast<size_t>(end - cursor) / DEOPT_TRANSLATION_HEADER_SIZE) {
         return;
     }
@@ -828,8 +821,7 @@ bool DeoptTranslationReader::GetBodyRange(uint32_t bodyId, const uint8_t **begin
     }
     uint32_t startOffset = 0;
     size_t streamSize = static_cast<size_t>(streamEnd_ - streamStart_);
-    if (!ReadBodyOffset(bodyId, &startOffset) || startOffset >= streamSize ||
-        (bodyId == 0 && startOffset != 0) ||
+    if (!ReadBodyOffset(bodyId, &startOffset) || startOffset >= streamSize || (bodyId == 0 && startOffset != 0) ||
         streamStart_[startOffset] != static_cast<uint8_t>(DeoptTranslationOpcode::BEGIN)) {
         return false;
     }
@@ -883,9 +875,7 @@ bool DeoptTranslationReader::GetBody(uint32_t bodyId, DeoptTranslation *translat
 
 int64_t GetFloat64RawBits(double value)
 {
-    int64_t bits = 0;
-    std::memcpy(&bits, &value, sizeof(bits));
-    return bits;
+    return base::bit_cast<int64_t>(value);
 }
 
 int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTranslationKind valueKind)
@@ -918,9 +908,8 @@ int64_t GetConstantSourceForDeoptTranslation(const ValueVertex *value, DeoptTran
     }
 }
 
-DeoptTranslationInput BuildDeoptTranslationInput(
-    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex, uint32_t index,
-    DeoptLiteralTableBuilder *literalTableBuilder)
+DeoptTranslationInput BuildDeoptTranslationInput(ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
+                                                 uint32_t index, DeoptLiteralTableBuilder *literalTableBuilder)
 {
     DeoptTranslationInput input {
         vertex->GetDeoptVReg(index),
@@ -961,9 +950,9 @@ DeoptTranslationInput BuildDeoptTranslationInput(
     return input;
 }
 
-std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(
-    ArkSteedAssembler *assembler, const EagerDeoptimizableMixin *vertex,
-    DeoptLiteralTableBuilder *literalTableBuilder)
+std::vector<DeoptTranslationInput> BuildDeoptTranslationInputs(ArkSteedAssembler *assembler,
+                                                               const EagerDeoptimizableMixin *vertex,
+                                                               DeoptLiteralTableBuilder *literalTableBuilder)
 {
     std::vector<DeoptTranslationInput> inputs;
     inputs.reserve(vertex->GetDeoptFrameValueCount() + 1);
@@ -989,8 +978,8 @@ struct MaterializedArkSteedDeoptFrame {
     std::vector<std::pair<int32_t, JSTaggedType>> values;
 };
 
-bool ReadTranslationFromMachineCode(const MachineCode *machineCode, DeoptId deoptId,
-                                    DeoptTranslationHeader *header, DeoptTranslation *translation)
+bool ReadTranslationFromMachineCode(const MachineCode *machineCode, DeoptId deoptId, DeoptTranslationHeader *header,
+                                    DeoptTranslation *translation)
 {
     if (machineCode == nullptr || header == nullptr || translation == nullptr) {
         return false;
@@ -1021,8 +1010,8 @@ bool ReadDeoptLiteral(const MachineCode *machineCode, uint32_t literalIndex, uin
     return true;
 }
 
-bool ReadDeoptInputRaw(const DeoptTranslationInput &input, const MachineCode *machineCode,
-                       uintptr_t callsiteFp, uintptr_t snapshot, uint64_t *raw)
+bool ReadDeoptInputRaw(const DeoptTranslationInput &input, const MachineCode *machineCode, uintptr_t callsiteFp,
+                       uintptr_t snapshot, uint64_t *raw)
 {
     ASSERT(raw != nullptr);
     switch (input.sourceKind) {
@@ -1055,8 +1044,8 @@ bool ReadDeoptInputRaw(const DeoptTranslationInput &input, const MachineCode *ma
     UNREACHABLE();
 }
 
-bool MaterializeDeoptInput(const DeoptTranslationInput &input, const MachineCode *machineCode,
-                           uintptr_t callsiteFp, uintptr_t snapshot, JSTaggedType *value)
+bool MaterializeDeoptInput(const DeoptTranslationInput &input, const MachineCode *machineCode, uintptr_t callsiteFp,
+                           uintptr_t snapshot, JSTaggedType *value)
 {
     ASSERT(value != nullptr);
     uint64_t raw = 0;
@@ -1085,9 +1074,8 @@ bool MaterializeDeoptInput(const DeoptTranslationInput &input, const MachineCode
     UNREACHABLE();
 }
 
-bool MaterializeTranslation(const DeoptTranslation &translation, const MachineCode *machineCode,
-                            uintptr_t callsiteFp, uintptr_t snapshot,
-                            MaterializedArkSteedDeoptFrame *frame)
+bool MaterializeTranslation(const DeoptTranslation &translation, const MachineCode *machineCode, uintptr_t callsiteFp,
+                            uintptr_t snapshot, MaterializedArkSteedDeoptFrame *frame)
 {
     ASSERT(frame != nullptr);
     frame->inlineDepth = 0;
@@ -1129,8 +1117,7 @@ bool DecodeArkSteedEagerDeoptExit(const MachineCode *machineCode, uintptr_t retu
 
     uintptr_t textStart = machineCode->GetText();
     uint32_t textSize = machineCode->GetFuncSize();
-    if (textStart == 0 || textSize == 0 ||
-        textStart > std::numeric_limits<uintptr_t>::max() - textSize) {
+    if (textStart == 0 || textSize == 0 || textStart > std::numeric_limits<uintptr_t>::max() - textSize) {
         return false;
     }
     uintptr_t textEnd = textStart + textSize;
@@ -1174,8 +1161,7 @@ bool DecodeArkSteedEagerDeoptExit(const MachineCode *machineCode, uintptr_t retu
     return true;
 }
 
-bool ResolveArkSteedEagerDeoptExit(JSThread *thread, uintptr_t returnPc,
-                                   MachineCode **machineCode, DeoptId *deoptId)
+bool ResolveArkSteedEagerDeoptExit(JSThread *thread, uintptr_t returnPc, MachineCode **machineCode, DeoptId *deoptId)
 {
     if (thread == nullptr || machineCode == nullptr || deoptId == nullptr || returnPc == 0) {
         return false;
@@ -1204,14 +1190,13 @@ bool WouldStackOverflow(JSThread *thread, const JSTaggedType *sp)
     return !thread->IsCrossThreadExecutionEnable() && sp <= frameBase + JSThread::RESERVE_STACK_SIZE;
 }
 
-bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp,
-                             uintptr_t snapshot, JSTaggedType *result)
+bool HandleArkSteedDeoptNoGC(JSThread *thread, uintptr_t returnPc, uintptr_t inputFp, uintptr_t snapshot,
+                             JSTaggedType *result)
 {
     DISALLOW_GARBAGE_COLLECTION;
     DISALLOW_HEAP_ALLOC;
 
-    if (thread == nullptr || result == nullptr || inputFp == 0 || snapshot == 0 ||
-        inputFp % alignof(uintptr_t) != 0 ||
+    if (thread == nullptr || result == nullptr || inputFp == 0 || snapshot == 0 || inputFp % alignof(uintptr_t) != 0 ||
         snapshot % alignof(ArkSteedDeoptSnapshot) != 0) {
         return false;
     }

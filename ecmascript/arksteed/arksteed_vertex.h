@@ -87,7 +87,7 @@ enum class ValueRepresentation : uint8_t {
     VERTEX_VALUE_REPRESENTATIONS(DEFINE_VALUE_REPRESENTATION)
 #undef DEFINE_VALUE_REPRESENTATION
 
-    // TODO: Adaptation to 32-bit platform
+    // Need adaptation to 32-bit platform
     INT_PTR = INT64,
 };
 

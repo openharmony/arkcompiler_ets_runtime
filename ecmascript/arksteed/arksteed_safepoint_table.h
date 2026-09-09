@@ -85,25 +85,22 @@ struct ArkSteedSafepointEntry {
 
     ExceptionHandlerKind GetExceptionHandlerKind() const
     {
-        uint16_t kind = static_cast<uint16_t>(
-            (extraSpillSlotsAndFlags & EXCEPTION_HANDLER_KIND_MASK) >> EXCEPTION_HANDLER_KIND_SHIFT);
+        uint16_t kind = static_cast<uint16_t>((extraSpillSlotsAndFlags & EXCEPTION_HANDLER_KIND_MASK) >>
+                                              EXCEPTION_HANDLER_KIND_SHIFT);
         ASSERT(kind <= static_cast<uint16_t>(ExceptionHandlerKind::LAZY_DEOPT));
         return static_cast<ExceptionHandlerKind>(kind);
     }
 };
 
-
 static_assert(sizeof(ArkSteedSafepointHeader) == 16, "Header must be 16 bytes");  // 16: header size in bytes
-static_assert(sizeof(ArkSteedSafepointEntry) == 12, "Entry must be 12 bytes");  // 12: entry size in bytes
+static_assert(sizeof(ArkSteedSafepointEntry) == 12, "Entry must be 12 bytes");    // 12: entry size in bytes
 // ============================================================================
 // Builder — used during compilation to collect safepoint entries
 // ============================================================================
 
 class PUBLIC_API ArkSteedSafepointTableBuilder {
 public:
-    explicit ArkSteedSafepointTableBuilder(Chunk *chunk)
-        : chunk_(chunk), entries_(chunk), encodedDeoptData_(chunk)
-    {}
+    explicit ArkSteedSafepointTableBuilder(Chunk *chunk) : chunk_(chunk), entries_(chunk), encodedDeoptData_(chunk) {}
     ~ArkSteedSafepointTableBuilder() = default;
 
     class Safepoint {
