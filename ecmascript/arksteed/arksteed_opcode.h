@@ -3168,6 +3168,23 @@ public:
     void SetValueLocationConstraints();
 };
 
+class BranchIfCallableVertex : public BranchControlVertexT<BranchIfCallableVertex> {
+public:
+    enum Indices : uint32_t {
+        VALUE_INDEX = 0,
+        NUM_INPUTS = 1,
+    };
+    static constexpr ValueRepresentation VALUE_TYPE = ValueRepresentation::NONE;
+    static constexpr ValueRepresentationArray<NUM_INPUTS> INPUT_TYPES = {
+        ValueRepresentation::TAGGED,
+    };
+    static constexpr VertexPropertyFlag PROPERTIES = VertexPropertyFlag::CAN_READ;
+
+    BranchIfCallableVertex(BB *ifTrue, BB *ifFalse) : BranchControlVertexT(ifTrue, ifFalse) {}
+
+    void SetValueLocationConstraints();
+};
+
 class BranchIfObjectTypeVertex : public BranchControlVertexT<BranchIfObjectTypeVertex> {
 public:
     enum Indices : uint32_t {

@@ -3333,6 +3333,30 @@ void ArkSteedCodeGenerator::VisitControlVertex<BranchIfReferenceEqualVertex>(Bra
 }
 
 template <>
+void ArkSteedCodeGenerator::VisitControlVertex<BranchIfCallableVertex>(BranchIfCallableVertex *jumpIf)
+{
+    BB *ifTrue = jumpIf->IfTrue();
+    BB *ifFalse = jumpIf->IfFalse();
+    bool trueBranchIsFallthrough = IsNextBlockInLayout(ifTrue);
+    bool falseBranchIsFallthrough = IsNextBlockInLayout(ifFalse);
+
+    auto value = GetInputRegister(jumpIf, BranchIfCallableVertex::VALUE_INDEX);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister scratch = scope.Acquire();
+    __ Move(scratch, value);
+    __ And(scratch, static_cast<int64_t>(JSTaggedValue::TAG_HEAPOBJECT_MASK));
+    __ Compare(scratch, 0);
+    __ JumpIf(Condition::NOT_EQUAL, ifFalse->GetLabel());
+    __ LoadField(scratch, value, static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+    __ And(scratch, static_cast<int64_t>(HCLASS_ADDRESS_MASK));
+    __ LoadInt32Field(scratch, scratch, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+    __ And(scratch, static_cast<int32_t>(1U << JSHClass::CallableBit::START_BIT));
+    __ Compare(scratch, 0);
+    __ Branch(Condition::NOT_EQUAL, ifTrue->GetLabel(), trueBranchIsFallthrough, ifFalse->GetLabel(),
+              falseBranchIsFallthrough);
+}
+
+template <>
 void ArkSteedCodeGenerator::VisitControlVertex<BranchIfObjectTypeVertex>(BranchIfObjectTypeVertex *jumpIf)
 {
     BB *ifTrue = jumpIf->IfTrue();

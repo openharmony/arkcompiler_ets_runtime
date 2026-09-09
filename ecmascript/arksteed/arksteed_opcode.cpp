@@ -907,6 +907,12 @@ void BranchIfObjectTypeVertex::SetValueLocationConstraints()
     SetTemporariesNeeded(1);
 }
 
+void BranchIfCallableVertex::SetValueLocationConstraints()
+{
+    UseRegister(Arg(VALUE_INDEX));
+    SetTemporariesNeeded(1);
+}
+
 void ReturnVertex::SetValueLocationConstraints()
 {
     UseFixed(Arg(0), 0);

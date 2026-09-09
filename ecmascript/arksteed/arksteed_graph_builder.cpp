@@ -1308,6 +1308,14 @@ struct GraphBuilder::BytecodeVisitor {
             case kungfu::EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
                 LowerCallThisRange(bcInfo);
                 break;
+            case kungfu::EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case kungfu::EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case kungfu::EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case kungfu::EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
+                LowerCallThisWithName(bcInfo);
+                break;
             case kungfu::EcmaOpcode::APPLY_IMM8_V8_V8:
                 LowerCallSpread(bcInfo);
                 break;
@@ -2439,6 +2447,44 @@ struct GraphBuilder::BytecodeVisitor {
         ChunkVector<ValueVertex *> args(self->chunk_);
         args.push_back(func);
         args.push_back(undefined);
+        args.push_back(thisObj);
+        for (uint32_t idx = 0; idx < argc; idx++) {
+            args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));
+        }
+        CallVertex *call = BuildCallVertex(args, argc);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThisWithName(const BytecodeInfo *bcInfo)
+    {
+        constexpr uint32_t FIXED_INPUTS = 2;
+        ASSERT(bcInfo->inputs.size() >= FIXED_INPUTS);
+        uint32_t argc = bcInfo->inputs.size() - FIXED_INPUTS;
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        BB *callBlock = self->NewBlock();
+        BB *throwBlock = self->NewBlock();
+        self->FinishBlockWithBranch<BranchIfCallableVertex>(currentBlock, {func}, callBlock, throwBlock);
+
+        currentBlock = throwBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *stringId = self->graph_->GetInt32Constant(
+                GetConstDataId<int>(bcInfo, static_cast<int>(bcInfo->inputs.size() - 1)));
+            ValueVertex *funcName = StringFromConstPool(stringId);
+            auto *throws = self->FinishBlockWith<ThrowVertex>(
+                currentBlock, {funcName, func}, RTSTUB_ID(ThrowNotCallableException));
+            UpdateCatchBlockData(throws);
+        }
+
+        currentBlock = callBlock;
+        compileInfoFacts_ = entryFacts;
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        args.push_back(func);
+        args.push_back(self->undefinedValue_);
         args.push_back(thisObj);
         for (uint32_t idx = 0; idx < argc; idx++) {
             args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));

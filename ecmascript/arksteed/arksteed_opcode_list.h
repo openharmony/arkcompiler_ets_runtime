@@ -149,6 +149,7 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
     V(BranchIfFloat64Compare)               \
     V(BranchIfReferenceEqual)               \
     V(BranchIfObjectType)                   \
+    V(BranchIfCallable)                     \
     V(BranchIfTaggedHeapObject)
 
 #define UNCONDITIONAL_CONTROL_VERTEX_LIST(V) \
