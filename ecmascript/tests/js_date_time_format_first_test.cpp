@@ -80,7 +80,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuSimpleDateFormat)
     icu::UnicodeString dateTime3("2022.May.25 AD 11:09:34 AM");
 
     icu::UnicodeString pattern("yyyy.MM.dd HH:mm:ss");
-    icu::SimpleDateFormat sdf(pattern, status);
+    // The parsed text ("May", "AD", "AM") is English, so the format must not depend on the ambient default locale.
+    icu::SimpleDateFormat sdf(pattern, icu::Locale("en", "US"), status);
     JSDateTimeFormat::SetIcuSimpleDateFormat(thread, dtf, sdf, JSDateTimeFormat::FreeSimpleDateFormat);
     icu::SimpleDateFormat *resSdf = dtf->GetIcuSimpleDateFormat(thread);
     UDate timeStamp = resSdf->parse(dateTime1, status);
@@ -94,7 +95,7 @@ HWTEST_F_L0(JSDateTimeFormatTest, Set_Get_IcuSimpleDateFormat)
 
     status = UErrorCode::U_ZERO_ERROR;
     icu::UnicodeString pattern2("yyyyy.MMMMM.dd GGG hh:mm::ss aaa");
-    icu::SimpleDateFormat sdf2(pattern2, status);
+    icu::SimpleDateFormat sdf2(pattern2, icu::Locale("en", "US"), status);
     JSDateTimeFormat::SetIcuSimpleDateFormat(thread, dtf, sdf2, JSDateTimeFormat::FreeSimpleDateFormat);
     icu::SimpleDateFormat *resSdf2 = dtf->GetIcuSimpleDateFormat(thread);
     timeStamp = resSdf2->parse(dateTime1, status);

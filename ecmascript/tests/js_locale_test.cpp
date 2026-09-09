@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
+#include "unicode/utypes.h"
 
 using namespace panda::ecmascript;
 
@@ -533,7 +534,7 @@ ResolvedLocale ResolveLocaleCommon(JSThread *thread, JSHandle<TaggedArray> &avai
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ResolvedLocale result = JSLocale::ResolveLocale(thread, availableLocales, requestedLocales,
                                                     LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
-    EXPECT_STREQ("en-US", result.locale.c_str());  // default locale
+    EXPECT_STREQ(intl::LocaleHelper::StdStringDefaultLocale(thread).c_str(), result.locale.c_str());
     // availableLocales and requestLocales is not empty
     std::vector<std::string> availableStringLocales =
         intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
