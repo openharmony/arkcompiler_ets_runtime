@@ -312,7 +312,7 @@ HWTEST_F_L0(AssemblerAarch64Test, Loop)
 
 HWTEST_F_L0(AssemblerAarch64Test, TbzAndCbz)
 {
-    std::string expectResult("00000000:36780001 \ttbz\tw1, #15, 0x0\n"
+    std::string expectResult("00000000:367800c1 \ttbz\tw1, #15, 0x18\n"
                              "00000004:b60000c2 \ttbz\tx2, #32, 0x1c\n"
                              "00000008:372800c2 \ttbnz\tw2, #5, 0x20\n"
                              "0000000c:34000063 \tcbz\tw3, 0x18\n"
