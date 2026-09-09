@@ -21,6 +21,7 @@
 
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE) && defined(PANDA_TARGET_ARM64) && \
     defined(PANDA_TARGET_OHOS)
+#include "ecmascript/mem/jit_fort.h"
 #include "jit_fort_helper.h"
 #endif
 
@@ -33,7 +34,8 @@ public:
     {
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE) && defined(PANDA_TARGET_ARM64) && \
     defined(PANDA_TARGET_OHOS)
-        if (Jit::GetInstance()->IsEnableJitFort()) {
+        if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign() &&
+            JitFort::IsResourceAvailable()) {
             opened_ = OHOS::Security::CodeSign::PrctlWrapper(
                 JITFORT_PRCTL_OPTION, JITFORT_SWITCH_IN, 0) == 0;
             closeRequired_ = opened_;

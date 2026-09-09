@@ -39,6 +39,7 @@
 
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "ecmascript/compiler/jit_signcode.h"
+#include "ecmascript/mem/jit_fort.h"
 #include "jit_buffer_integrity.h"
 #endif
 
@@ -272,9 +273,10 @@ bool ArkSteedCompilerTask::Compile()
 #ifdef JIT_ENABLE_CODE_SIGN
 void ArkSteedCompilerTask::EnableCodeSign()
 {
-    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign()) {
-        kungfu::JitSignCode *singleton = kungfu::JitSignCode::GetInstance();
-        singleton->Reset();
+    kungfu::JitSignCode *singleton = kungfu::JitSignCode::GetInstance();
+    singleton->Reset();
+    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign() &&
+        JitFort::IsResourceAvailable()) {
         OHOS::Security::CodeSign::JitCodeSigner *jitSigner = CreateJitCodeSigner();
         singleton->SetCodeSigner(jitSigner);
         assembler_->EnableCodeSign();
