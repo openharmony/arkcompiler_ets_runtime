@@ -1387,7 +1387,6 @@ enum EcmaRuntimeCallerId {
 
 #if ECMASCRIPT_ENABLE_ALLOCATE_AND_GC_RUNTIME_STAT
 #define MEM_ALLOCATE_AND_GC_TRACE(vm, name)                                                     \
-    CHECK_JS_THREAD(vm);                                                                        \
     EcmaRuntimeStat *_run_stat_ = vm->GetRuntimeStat();                                         \
     RuntimeTimerScope mem_##name##_scope_(MEM_ALLOCATE_AND_GC_ID(name) _run_stat_)
 #else
