@@ -1007,7 +1007,7 @@ public:
                                 MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value);
     void SetCompiledFastCallFlagToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall);
+    void SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall, GateRef isArkSteed);
     GateRef GetFuncEntryDes(GateRef glue, GateRef machineCode, GateRef codeAddr);
     GateRef GetFuncEntryDesAddress(GateRef machineCode);
     GateRef IsAlign(GateRef address, GateRef alignByte);
@@ -1166,6 +1166,7 @@ public:
     GateRef IsAotWithCallField(GateRef method);
     GateRef IsFastCall(GateRef method);
     GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
+    GateRef HasArkSteedEntry(GateRef jsFunc);
     GateRef GetInternalString(GateRef glue, GateRef key);
     GateRef GetExpectedNumOfArgs(GateRef method);
     GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
@@ -1340,6 +1341,7 @@ public:
     void EndTraceDefineFunc(GateRef glue);
     void UpdateProfileTypeInfoAsMega(GateRef glue, GateRef profileTypeInfo, GateRef slotId);
     GateRef GetIsFastCall(GateRef machineCode);
+    GateRef GetIsArkSteedCode(GateRef machineCode);
     // compute new elementKind from sub elements
     GateRef ComputeTaggedArrayElementKind(GateRef glue, GateRef array, GateRef offset, GateRef end);
     GateRef GetElementsKindHClass(GateRef glue, GateRef elementKind);

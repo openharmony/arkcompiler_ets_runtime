@@ -53,6 +53,11 @@ public:
     void ConfigJitFortOptions(EcmaVM *vm);
     void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit);
     bool PUBLIC_API IsEnableFastJit() const;
+    JitBackend GetJitBackend() const
+    {
+        return jitBackend_;
+    }
+
     bool PUBLIC_API IsEnableBaselineJit() const;
     bool PUBLIC_API IsEnableJitFort() const;
     void SetEnableJitFort(bool isEnableJitFort);
@@ -77,7 +82,7 @@ public:
         return initialized_;
     }
 
-    void DeleteJitCompilerTask(void *compiler);
+    void DeleteJitCompilerTask(void *compiler, bool isArkSteed);
 
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(JSThread *jsThread);
@@ -243,7 +248,7 @@ public:
     };
 #if ECMASCRIPT_ENABLE_ARK_STEED
     static void CompileArkSteed(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
-                               CompilerTier tier = CompilerTier::Tier::FAST,
+                               CompilerTier tier = CompilerTier::Tier::ARKSTEED,
                                int32_t offset = MachineCode::INVALID_OSR_OFFSET,
                                JitCompileMode mode = JitCompileMode::Mode::ASYNC);
 #endif
@@ -260,6 +265,7 @@ private:
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
+    JitBackend jitBackend_ { JitBackend::ARKSTEED };
     bool isApp_ { false };
     bool isProfileNeedDump_ { true };
     uint32_t hotnessThreshold_ { 0 };

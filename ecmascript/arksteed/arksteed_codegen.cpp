@@ -1119,12 +1119,12 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<CallVertex>(CallVertex *call)
     Label callGeneric;
     Label exit;
     ArkSteedRegister target = GetInputRegister(call, CallVertex::TARGET_INDEX);
-    TemporaryRegisterScope scope(assembler_);
-    ArkSteedRegister scratch = scope.Acquire();
     __ JumpIfNotTaggedHeapObject(target, &callGeneric);
     __ JumpIfNotJSFunction(target, &callGeneric);
     __ JumpIfClassConstructor(target, &callGeneric);
-    __ JumpIfFunctionNotCompiled(target, &callGeneric);
+    __ JumpIfNotArkSteedEntry(target, &callGeneric);
+    TemporaryRegisterScope scope(assembler_);
+    ArkSteedRegister scratch = scope.Acquire();
     EmitCallArkSteed(call, target, scratch, &exit);
     __ Bind(&callGeneric);
     EmitCallGeneric(call, scratch);

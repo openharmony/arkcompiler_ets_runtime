@@ -298,20 +298,18 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     Label isHeapObject(&builder);
     Label isJsFcuntion(&builder);
     Label fastCall(&builder);
-#if !ECMASCRIPT_ENABLE_ARK_STEED
     Label notFastCall(&builder);
     Label slowCall(&builder);
     Label call(&builder);
     Label call1(&builder);
     Label callBridge(&builder);
     Label callBridge1(&builder);
-#endif
     Label slowPath(&builder);
     Label notCallConstructor(&builder);
     Label isCallConstructor(&builder);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    (void)argc;  // Unused
-    (void)argsFastCall;  // Unused
+    Label callArkSteed(&builder);
+    Label checkAot(&builder);
 #endif
     // use builder_ to make BRANCH_CIR work.
     auto &builder_ = builder;
@@ -338,9 +336,8 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                 builder.Bind(&notCallConstructor);
             }
 #if ECMASCRIPT_ENABLE_ARK_STEED
-            BRANCH_CIR(builder.JudgeAotAndFastCall(func,
-                CircuitBuilder::JudgeMethodType::HAS_AOT), &fastCall, &slowPath);
-            builder.Bind(&fastCall);
+            BRANCH_CIR(builder.HasArkSteedEntry(func), &callArkSteed, &checkAot);
+            builder.Bind(&callArkSteed);
             {
                 builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
                 const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(SteedCallAndPushArgv));
@@ -350,7 +347,8 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                 builder.EndCallTimer(glue, gate, {glue, func}, true);
                 builder.Jump(exit);
             }
-#else
+            builder.Bind(&checkAot);
+#endif
             GateRef method = builder.GetMethodFromFunction(glue, func);
             BRANCH_CIR(builder.JudgeAotAndFastCall(func,
                 CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
@@ -409,7 +407,6 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                     builder.Jump(exit);
                 }
             }
-#endif
         }
     }
     builder.Bind(&slowPath);
@@ -725,12 +722,12 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
 
 #if ECMASCRIPT_ENABLE_ARK_STEED
         Bind(&checkSteed);
-        BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT), &methodIsSteed, &methodNotAot);
+        BRANCH(HasArkSteedEntry(func_), &methodIsSteed, &checkAot);
         Bind(&methodIsSteed);
         {
             JSCallArkSteed(exit);
         }
-#else
+#endif
         Bind(&checkAot);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &methodIsFastCall,
             &methodNotFastCall);
@@ -765,7 +762,6 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
             }
             (void) res;
         }
-#endif
 
         Bind(&methodNotAot);
         {

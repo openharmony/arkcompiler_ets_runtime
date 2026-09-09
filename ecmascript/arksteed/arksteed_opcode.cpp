@@ -152,10 +152,10 @@ void CallVertex::SetValueLocationConstraints()
 {
     DefineAsFixed(this, 0);
 #if defined(PANDA_TARGET_AMD64)
-    // 1 for the call scratch held across the type guards, 1 for the guard's HClass/value.
+    // Reserve temporaries for the function guards and call argument preparation.
     SetTemporariesNeeded(2);
 #elif defined(PANDA_TARGET_ARM64)
-    // 1 for the call scratch, 2 for the type guard's HClass + objectType/bitfield.
+    // The guards run before the call scratch is acquired; retain the call's temporary budget.
     SetTemporariesNeeded(3);
 #else
     SetTemporariesNeeded(1);

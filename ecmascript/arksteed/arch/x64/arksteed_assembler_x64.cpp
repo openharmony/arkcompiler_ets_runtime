@@ -799,12 +799,12 @@ void ArkSteedAssembler::JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *t
     Bind(&notClassConstructor);
 }
 
-void ArkSteedAssembler::JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target)
+void ArkSteedAssembler::JumpIfNotArkSteedEntry(ArkSteedRegister jsFunc, Label *target)
 {
     TemporaryRegisterScope scope(this);
-    ArkSteedRegister bitfield = scope.Acquire();
-    LoadField(bitfield, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
-    assembler_.Btq(x64::Immediate(JSFunctionBase::IsCompiledCodeBit::START_BIT), bitfield);
+    ArkSteedRegister scratch = scope.Acquire();
+    LoadInt32Field(scratch, jsFunc, JSFunctionBase::BIT_FIELD_OFFSET);
+    assembler_.Btl(x64::Immediate(JSFunctionBase::IsArkSteedEntryBit::START_BIT), scratch);
     assembler_.Jnb(target);
 }
 

@@ -255,7 +255,7 @@ public:
     void JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target);
     void JumpIfNotJSFunction(ArkSteedRegister value, Label *target);
     void JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target);
-    void JumpIfFunctionNotCompiled(ArkSteedRegister jsFunc, Label *target);
+    void JumpIfNotArkSteedEntry(ArkSteedRegister jsFunc, Label *target);
     void Bind(Label *label);
 #if defined(PANDA_TARGET_ARM64)
     void CheckCodePools(bool precedingCodeCanFallThrough, size_t protectedCodeSize = 0U);

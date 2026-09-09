@@ -285,8 +285,15 @@ enum CommandValues {
     // .hap file descriptor passed from compiler_service via Binder
     OPTION_HAP_FD,
 
+    OPTION_COMPILER_JIT_BACKEND,
+
     // OPTION_LAST should at the last
     OPTION_LAST,
+};
+
+enum class JitBackend : uint8_t {
+    ARKSTEED,
+    FASTJIT,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1476,6 +1483,16 @@ public:
     bool IsEnableJIT() const
     {
         return enableFastJIT_;
+    }
+
+    void SetCompilerJitBackend(JitBackend value)
+    {
+        compilerJitBackend_ = value;
+    }
+
+    JitBackend GetCompilerJitBackend() const
+    {
+        return compilerJitBackend_;
     }
 
     void SetEnableDFXHiSysEvent(bool value)
@@ -2818,6 +2835,7 @@ private:
     bool enableTraceCallNum_{false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
+    JitBackend compilerJitBackend_ {JitBackend::ARKSTEED};
     bool enableDFXHiSysEvent_ {true};
     bool enableAPPJIT_ {false};
     bool isEnableJitDfxDump_ {false};

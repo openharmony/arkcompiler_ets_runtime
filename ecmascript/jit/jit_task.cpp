@@ -406,9 +406,8 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     if (compilerTier_.IsFastJit()) {
-        jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
+        jsFunction_->SetJitCompiledFuncEntry(hostThread_, machineCodeObj, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
-        jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
         LOG_JIT(INFO) << "Install fast jit machine code, method name: " << GetMethodName()
@@ -472,7 +471,7 @@ void JitTask::CloneProfileTypeInfo()
 JitTask::~JitTask()
 {
     ReleaseSustainingJSHandle();
-    jit_->DeleteJitCompilerTask(compilerTask_);
+    jit_->DeleteJitCompilerTask(compilerTask_, compilerTier_.IsArkSteed());
     jit_->DecJitTaskCnt(hostThread_);
     ASSERT(dependencies_ != nullptr);
     delete dependencies_;

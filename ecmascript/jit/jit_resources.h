@@ -24,7 +24,7 @@ using InitJitCompilerFuncType = void (*)(JSRuntimeOptions options);
 using JitCompileFuncType = bool(*)(void*, JitTask*);
 using JitFinalizeFuncType = bool(*)(void*, JitTask*);
 using CreateJitCompilerTaskFuncType = void*(*)(JitTask*);
-using DeleteJitCompilerTaskFuncType = void(*)(void*);
+using DeleteJitCompilerTaskFuncType = void(*)(void*, bool);
 
 class JitResources {
 public:
@@ -63,12 +63,12 @@ public:
         return createJitCompilerTask_(jitTask);
     }
 
-    void DeleteJitCompilerTask(void *compilerTask)
+    void DeleteJitCompilerTask(void *compilerTask, bool isArkSteed)
     {
         if (deleteJitCompilerTask_ == nullptr) {
             return;
         }
-        deleteJitCompilerTask_(compilerTask);
+        deleteJitCompilerTask_(compilerTask, isArkSteed);
     }
 
     bool ResolveLib();

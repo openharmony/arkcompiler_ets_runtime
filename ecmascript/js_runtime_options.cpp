@@ -198,6 +198,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n"
     "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
+    "--compiler-jit-backend:               JIT backend: 'arksteed' or 'fastjit'. Default: 'arksteed'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
     "--compiler-enable-framework-aot:      Enable frame aot: Default: 'true'\n"
     "--compiler-enable-pgo-space:          Enable pgo space used for compiler. Default: 'true'\n"
@@ -378,6 +379,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
         {"compiler-enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
+        {"compiler-jit-backend", required_argument, nullptr, OPTION_COMPILER_JIT_BACKEND},
         {"compiler-enable-dfx-hisys-event", required_argument, nullptr, OPTION_COMPILER_ENABLE_DFX_HISYS_EVENT},
         {"compiler-enable-osr", required_argument, nullptr, OPTION_COMPILER_ENABLE_OSR},
         {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
@@ -1322,6 +1324,17 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 if (ret) {
                     SetEnableJIT(argBool);
                 } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_JIT_BACKEND:
+                if (std::string(optarg) == "arksteed") {
+                    SetCompilerJitBackend(JitBackend::ARKSTEED);
+                } else if (std::string(optarg) == "fastjit") {
+                    SetCompilerJitBackend(JitBackend::FASTJIT);
+                } else {
+                    LOG_ECMA(ERROR) << "Invalid compiler-jit-backend: '" << optarg
+                                    << "', expected 'arksteed' or 'fastjit'";
                     return false;
                 }
                 break;

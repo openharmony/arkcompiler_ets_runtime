@@ -13618,8 +13618,9 @@ void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRe
                                             IntPtr(MachineCode::FUNCADDR_OFFSET));
                     ASSERT(IntPtrNotEqual(codeAddr, IntPtr(0)));
                     GateRef isFastCall = GetIsFastCall(machineCode);
-                    SetCompiledFuncEntry(glue, jsFunc, codeAddr, ZExtInt1ToInt32(isFastCall));
+                    GateRef isArkSteed = GetIsArkSteedCode(machineCode);
                     SetMachineCodeToFunction(glue, jsFunc, machineCode);
+                    SetCompiledFuncEntry(glue, jsFunc, codeAddr, ZExtInt1ToInt32(isFastCall), isArkSteed);
                     Jump(&exitPoint);
                 }
             }
