@@ -47,6 +47,11 @@ public:
     void RemoveOwner(MachineCode *owner);
     void Clear();
 
+    bool IsEmpty() const
+    {
+        return refsByOwner_.empty();
+    }
+
     void VisitYoungTargets(RootVisitor &visitor);
     void VisitMarkedLocalTargets(RootVisitor &visitor);
     void VisitSharedTargets(RootVisitor &visitor);
