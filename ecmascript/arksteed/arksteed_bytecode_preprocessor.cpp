@@ -364,22 +364,18 @@ void BytecodePreprocessor::InitializeBlockEdges()
         if (!throws) {
             continue;
         }
-        const TryBlockInfo *innermostTryBlock = nullptr;
+        const TryBlockInfo *matchedTryBlock = nullptr;
         for (const auto &tryBlock : tryBlocks_) {
             if (!tryBlock.ContainsBytecode(curBlock.startBcIndex)) {
                 continue;
             }
-            if (innermostTryBlock == nullptr) {
-                innermostTryBlock = &tryBlock;
-            } else if (tryBlock.startBcIndex >= innermostTryBlock->startBcIndex &&
-                       tryBlock.endBcIndex <= innermostTryBlock->endBcIndex) {
-                innermostTryBlock = &tryBlock;
-            }
+            matchedTryBlock = &tryBlock;
+            break;
         }
-        if (innermostTryBlock != nullptr) {
-            uint32_t catchBlockIndex = bcBlockIndices_[innermostTryBlock->catchBcIndex] - 1;
+        if (matchedTryBlock != nullptr) {
+            uint32_t catchBlockIndex = bcBlockIndices_[matchedTryBlock->catchBcIndex] - 1;
             curBlock.catchBlock = BLOCK_INDEX_TO_PTR(catchBlockIndex);
-            curBlock.catchBlockState = innermostTryBlock->catchBlockState;
+            curBlock.catchBlockState = matchedTryBlock->catchBlockState;
             basicBlocks_[catchBlockIndex].catchPredecessors.push_back(BLOCK_INDEX_TO_PTR(i));
         }
     }
