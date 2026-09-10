@@ -349,7 +349,7 @@ def check_arksteed_gn_args(cfg: BuildConfig) -> bool:
         print(f"Error: args.gn does not exist: {args_gn}", file=sys.stderr)
         return False
     content = args_gn.read_text(encoding="utf-8")
-    if re.search(r"^\s*ets_runtime_enable_ark_steed\s*=\s*true\s*$", content, re.MULTILINE):
+    if not re.search(r"^\s*ets_runtime_enable_ark_steed\s*=\s*false\s*(?:#.*)?$", content, re.MULTILINE):
         return True
     print(
         f"Error: ArkSteed GN option is not enabled in {args_gn}. "
