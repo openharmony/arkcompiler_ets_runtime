@@ -5365,6 +5365,9 @@ template("host_jit_test_action") {
       " --compiler-enable-litecg=true" + " --enable-force-gc=false" +
       " --entry-point=${_target_name_} "
   _jit_run_options_ += common_options
+  _icu_data_path_options_ =
+      " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data") + " "
+  _jit_run_options_ += _icu_data_path_options_
 
   if (defined(invoker.jit_method_dichotomy_filter) && invoker.jit_method_dichotomy_filter) {
       _method_dichotomy_file_path_ = rebase_path("./method_compiled_by_jit.cfg")
@@ -5436,6 +5439,7 @@ template("host_jit_test_action") {
         " --compiler-enable-jit-lite-compile=true" +
         " --entry-point=${_target_name_} "
     _jit_lite_run_options_ += common_options
+    _jit_lite_run_options_ += _icu_data_path_options_
 
     if (defined(invoker.enable_osr) && invoker.enable_osr) {
       _jit_lite_run_options_ += " --compiler-enable-osr=true "
