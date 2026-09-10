@@ -738,7 +738,7 @@ void ArkSteedAssembler::JumpIf(Condition condition, Label *target)
         case Condition::BELOW_OR_EQUAL:
             assembler_.Jbe(target);
             break;
-        case Condition::OVERFLOW:
+        case Condition::OVERFLOWED:
             assembler_.Jo(target);
             break;
         case Condition::NOT_OVERFLOW:

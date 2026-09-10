@@ -2444,7 +2444,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<StringEqualVertex>(StringEqual
         auto right = GetInputRegister(op, I32##Name##WithOverflowVertex::RIGHT_INDEX);                               \
         __ Op(dst, left, right);                                                                                     \
         ASSERT(!EagerDeoptUsesRegister(op, dst));                                                                    \
-        BranchToEagerDeoptTarget(Condition::OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);                        \
+        BranchToEagerDeoptTarget(Condition::OVERFLOWED, op, kungfu::DeoptType::INT32OVERFLOW1);                      \
     }
 
 DEFINE_I32_WITH_OVERFLOW_CODEGEN(Add, Int32Add)
@@ -2508,7 +2508,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<I32MulWithOverflowVertex>(I32M
 #else
     __ Int32Mul(dst, right);
     ASSERT(!EagerDeoptUsesRegister(op, dst));
-    BranchToEagerDeoptTarget(Condition::OVERFLOW, op, kungfu::DeoptType::INT32OVERFLOW1);
+    BranchToEagerDeoptTarget(Condition::OVERFLOWED, op, kungfu::DeoptType::INT32OVERFLOW1);
 #endif
     __ CompareInt32(dst, 0);
     __ JumpIf(Condition::NOT_EQUAL, &success);
@@ -3007,7 +3007,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DoubleToInt32CallVertex>(Doubl
         }                                                                                                            \
         __ AsmOp(dst, input);                                                                                        \
         ASSERT(!EagerDeoptUsesRegister(op, dst));                                                                    \
-        BranchToEagerDeoptTarget(Condition::OVERFLOW, op, DeoptType);                                                \
+        BranchToEagerDeoptTarget(Condition::OVERFLOWED, op, DeoptType);                                              \
     }
 #else
 #define DEFINE_I32_UNARY_WITH_OVERFLOW_CODEGEN(Name, AsmOp, DeoptType, NeedZeroCheck)                                \
@@ -3025,7 +3025,7 @@ void ArkSteedCodeGenerator::VisitNonControlVertex<DoubleToInt32CallVertex>(Doubl
         }                                                                                                            \
         __ AsmOp(dst, input);                                                                                        \
         ASSERT(!EagerDeoptUsesRegister(op, dst));                                                                    \
-        __ JumpIf(Condition::OVERFLOW, &deopt);                                                                      \
+        __ JumpIf(Condition::OVERFLOWED, &deopt);                                                                    \
         __ Jump(&done);                                                                                              \
         __ Bind(&deopt);                                                                                             \
         EmitEagerDeoptExit(op, DeoptType);                                                                           \

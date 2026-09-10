@@ -1613,7 +1613,7 @@ aarch64::Condition ArkSteedAssembler::ToPhysicalCondition(Condition condition) c
             return aarch64::Condition::EQ;
         case Condition::NOT_ZERO:
             return aarch64::Condition::NE;
-        case Condition::OVERFLOW:
+        case Condition::OVERFLOWED:
             return aarch64::Condition::VS;
         case Condition::NOT_OVERFLOW:
             return aarch64::Condition::VC;
