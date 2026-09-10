@@ -1456,10 +1456,9 @@ std::string DFXJSNApi::SourceMapTranslateBySourceMap(const std::string &stackStr
     return ecmascript::SourceMap::GetInstance().TranslateBySourceMap(stackStr);
 }
 
-void DFXJSNApi::SourceMapSetInitStatus(bool success)
+void DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus status)
 {
-    ecmascript::SourceMap::GetInstance().SetInitStatus(
-        success ? ecmascript::InitStatus::EXECUTED_SUCCESSFULLY : ecmascript::InitStatus::IN_EXECUTED);
+    ecmascript::SourceMap::GetInstance().SetInitStatus(status);
 }
 
 uint32_t DFXJSNApi::GetCurrentThreadId()
