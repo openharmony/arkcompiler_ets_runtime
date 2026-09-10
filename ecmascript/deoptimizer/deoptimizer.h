@@ -232,6 +232,7 @@ private:
     size_t inlineDepth_ {0};
     uint32_t type_ {static_cast<uint32_t>(DeoptType::NONE)};
     bool isRecursiveCall_ {false};
+    bool isArkSteedFrame_ {false};
 };
 
 }  // namespace panda::ecmascript

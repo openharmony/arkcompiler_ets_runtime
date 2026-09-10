@@ -153,11 +153,13 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
             DwarfRegType dwarfReg = value.first;
             OffsetType offset = value.second;
             ASSERT (dwarfReg == GCStackMapRegisters::FP || dwarfReg == GCStackMapRegisters::SP);
-#if ECMASCRIPT_ENABLE_ARK_STEED
-            auto kind = arksteed::DecodeLazyDeoptOffsetTag(static_cast<int32_t>(offset));
-            int32_t realOffset = arksteed::StripLazyDeoptOffsetTag(static_cast<int32_t>(offset));
-#else
             int32_t realOffset = static_cast<int32_t>(offset);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            auto kind = arksteed::DeoptTranslationKind::TAGGED;
+            if (isArkSteedFrame_) {
+                kind = arksteed::DecodeLazyDeoptOffsetTag(realOffset);
+                realOffset = arksteed::StripLazyDeoptOffsetTag(realOffset);
+            }
 #endif
             uintptr_t addr;
             if (dwarfReg == GCStackMapRegisters::SP) {
@@ -167,8 +169,8 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
             }
 #if ECMASCRIPT_ENABLE_ARK_STEED
             // Apply type conversion based on the DeoptTranslationKind tag embedded in offset LSBs
-            // by the ArkSteed lazy-deopt safepoint encoder.  AOT deopt offsets are naturally aligned
-            // (tag == 0 → TAGGED) so this path is also safe for the shared AOT+ArkSteed deopt handler.
+            // by the ArkSteed lazy-deopt safepoint encoder. Only Steed metadata carries offset tags;
+            // other frames retain the raw offset and tagged load.
             switch (kind) {
                 case arksteed::DeoptTranslationKind::INT32_TO_TAGGED:
                     v = JSTaggedValue(static_cast<int32_t>(*reinterpret_cast<int32_t *>(addr))).GetRawData();
@@ -449,6 +451,7 @@ void Deoptimizier::DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevRetu
 
 void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
 {
+    isArkSteedFrame_ = false;
     JSTaggedValue jsFunction = JSTaggedValue::Undefined();
     uintptr_t *prevReturnAddrAddress = nullptr;
     JSTaggedType *lastLeave = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
@@ -460,6 +463,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
         switch (type) {
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+                isArkSteedFrame_ = false;
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
                 AssistCollectDeoptBundleVec(it, frame);
@@ -468,6 +472,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
             }
             case FrameType::FASTJIT_FUNCTION_FRAME:
             case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+                isArkSteedFrame_ = false;
                 auto frame = it.GetFrame<FASTJITFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
                 AssistCollectDeoptBundleVec(it, frame);
@@ -476,6 +481,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
             }
 #if ECMASCRIPT_ENABLE_ARK_STEED
             case FrameType::STEED_FUNCTION_FRAME: {
+                isArkSteedFrame_ = true;
                 auto frame = it.GetFrame<SteedFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
                 AssistCollectDeoptBundleVec(it, frame);
