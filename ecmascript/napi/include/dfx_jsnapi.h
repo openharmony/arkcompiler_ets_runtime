@@ -26,10 +26,10 @@
 #include <atomic>
 
 #include "ecmascript/common.h"
+#include "ecmascript/extractortool/src/source_map_init_status.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
-
 #include "libpandabase/macros.h"
 
 namespace panda {
@@ -207,7 +207,7 @@ public:
     static void SourceMapSplitSourceMap(const std::string &sourceMapData);
     static bool SourceMapTranslateUrlPosition(std::string &url, int &line, int &column, std::string &packageName);
     static std::string SourceMapTranslateBySourceMap(const std::string &stackStr);
-    static void SourceMapSetInitStatus(bool success);
+    static void SourceMapSetInitStatus(ecmascript::InitStatus status);
 
     static uint32_t GetCurrentThreadId();
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);

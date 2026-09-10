@@ -28,7 +28,7 @@
 #include <thread>
 #include <vector>
 
-#include "ecmascript/log_wrapper.h"
+#include "ecmascript/extractortool/src/source_map_init_status.h"
 
 namespace panda {
 namespace ecmascript {
@@ -66,8 +66,6 @@ public:
         return *this;
     }
 };
-
-enum class InitStatus { NOT_EXECUTED, IN_EXECUTED, EXECUTED_SUCCESSFULLY };
 
 class SourceMap final {
 public:

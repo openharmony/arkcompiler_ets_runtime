@@ -295,6 +295,53 @@ public:
         sourceMap_->SetInitStatus(status);
     }
 
+    void SplitSourceMapEager(const std::string& sourceMapData)
+    {
+        sourceMap_->SplitSourceMap(sourceMapData);
+    }
+
+    std::string TranslateBySourceMap(const std::string& stackStr)
+    {
+        return sourceMap_->TranslateBySourceMap(stackStr);
+    }
+
+    static std::string ExtractFileName(const std::string& str)
+    {
+        return SourceMap::ExtractFileName(str);
+    }
+
+    static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res)
+    {
+        SourceMap::ExtractStackInfo(stackStr, res);
+    }
+
+    MappingInfo FindWithKey(int32_t row, int32_t col, const SourceMapData& targetMap, const std::string& key)
+    {
+        return sourceMap_->Find(row, col, targetMap, key);
+    }
+
+    std::string GetSourceInfo(const std::string& line, const std::string& column,
+                              const SourceMapData& targetMap, const std::string& key)
+    {
+        return sourceMap_->GetSourceInfo(line, column, targetMap, key);
+    }
+
+    static void GetPackageName(const SourceMapData& targetMap, std::string& packageName)
+    {
+        SourceMap::GetPackageName(targetMap, packageName);
+    }
+
+    bool GetLineAndColumnNumbersEager(int& line, int& column, SourceMapData& targetMap,
+                                       std::string& url, std::string& packageName)
+    {
+        return sourceMap_->GetLineAndColumnNumbers(line, column, targetMap, url, packageName);
+    }
+
+    void ExtractSourceMapDataShared(const std::string& allmappings, std::shared_ptr<SourceMapData>& curMapData)
+    {
+        sourceMap_->ExtractSourceMapData(allmappings, curMapData);
+    }
+
 private:
     std::shared_ptr<SourceMap> sourceMap_ {nullptr};
 };

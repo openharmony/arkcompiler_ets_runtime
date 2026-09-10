@@ -1973,4 +1973,423 @@ HWTEST_F_L0(DFXJSNApiTests, PerformHybridHeapDump_JSONFormat_StillFailsWithoutST
     bool result = DFXJSNApi::PerformHybridHeapDump(vm_, dumpOption);
     EXPECT_FALSE(result) << "JSON format hybrid dump should still fail without STS runtime";
 }
+
+/**
+ * @tc.name: SourceMapSetInitStatus_EnumTransparency_001
+ * @tc.desc: Test DFXJSNApi::SourceMapSetInitStatus with InitStatus enum passes through correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSetInitStatus_EnumTransparency_001)
+{
+    // IN_EXECUTED
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::IN_EXECUTED);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::IN_EXECUTED);
+
+    // EXECUTED_SUCCESSFULLY
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // NO_SOURCEMAP
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NO_SOURCEMAP);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::NO_SOURCEMAP);
+
+    // NOT_EXECUTED
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::NOT_EXECUTED);
+}
+
+/**
+ * @tc.name: SourceMapSetInitStatus_Transition_001
+ * @tc.desc: Test InitStatus transition through DFXJSNApi matches real usage in js_runtime
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSetInitStatus_Transition_001)
+{
+    // Simulate the js_runtime SourceMapInit lifecycle (success path):
+    // NOT_EXECUTED -> IN_EXECUTED -> EXECUTED_SUCCESSFULLY
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::NOT_EXECUTED);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::IN_EXECUTED);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::IN_EXECUTED);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapSetInitStatus_Transition_NoSourceMap_001
+ * @tc.desc: Test InitStatus transition when no sourcemap is available (failure path)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSetInitStatus_Transition_NoSourceMap_001)
+{
+    // Simulate the js_runtime SourceMapInit lifecycle (failure path):
+    // NOT_EXECUTED -> IN_EXECUTED -> NO_SOURCEMAP
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::NOT_EXECUTED);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::IN_EXECUTED);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::IN_EXECUTED);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NO_SOURCEMAP);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::NO_SOURCEMAP);
+}
+
+/**
+ * @tc.name: SourceMapSetInitStatus_NO_SOURCEMAP_001
+ * @tc.desc: Test SourceMapSetInitStatus covers EXECUTED_SUCCESSFULLY and NO_SOURCEMAP states
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSetInitStatus_NO_SOURCEMAP_001)
+{
+    // ReadSourceMapData success -> EXECUTED_SUCCESSFULLY
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // ReadSourceMapData failure -> NO_SOURCEMAP
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NO_SOURCEMAP);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::NO_SOURCEMAP);
+
+    // Success resets back to EXECUTED_SUCCESSFULLY
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    EXPECT_EQ(ecmascript::SourceMap::GetInstance().GetInitStatus(),
+              ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapSplitSourceMap_EagerPath_001
+ * @tc.desc: Test DFXJSNApi::SourceMapSplitSourceMap populates eager path, then TranslateUrlPosition finds URL
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSplitSourceMap_EagerPath_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // SplitSourceMap with valid eager-format data populates eagerSourceMaps_
+    // Format must match SplitSourceMap parser: FLAG_MAPPINGS = "    \"mappings\": \""
+    std::string eagerData =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": \"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\"\n"
+        "    \"entry-package-info\": \"entry|1.0.0\"\n"
+        "  }\n"
+        "}";
+    DFXJSNApi::SourceMapSplitSourceMap(eagerData);
+
+    // TranslateUrlPosition should find the URL in eagerSourceMaps_
+    std::string url = "entry/src/main/ets/pages/Index.ts";
+    int line = 10;
+    int column = 5;
+    std::string packageName;
+    EXPECT_TRUE(DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName));
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapSplitSourceMap_EmptyData_001
+ * @tc.desc: Test DFXJSNApi::SourceMapSplitSourceMap with empty string does not crash
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSplitSourceMap_EmptyData_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    DFXJSNApi::SourceMapSplitSourceMap("");
+
+    // Unknown URL should return false after loading empty data
+    std::string url = "any/path/file.ts";
+    int line = 1;
+    int column = 1;
+    std::string packageName;
+    EXPECT_FALSE(DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName));
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapSplitSourceMap_InvalidData_001
+ * @tc.desc: Test DFXJSNApi::SourceMapSplitSourceMap with invalid JSON does not crash
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapSplitSourceMap_InvalidData_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    DFXJSNApi::SourceMapSplitSourceMap("not valid json {{{");
+
+    // Unknown URL should return false after loading invalid data
+    std::string url = "any/path/file.ts";
+    int line = 1;
+    int column = 1;
+    std::string packageName;
+    EXPECT_FALSE(DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName));
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapTranslateUrlPosition_NotFound_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateUrlPosition returns false for unknown URL
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateUrlPosition_NotFound_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    std::string url = "nonexistent/path/unknown.ts";
+    int line = 1;
+    int column = 1;
+    std::string packageName;
+    bool result = DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName);
+    EXPECT_FALSE(result);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapTranslateUrlPosition_AfterSplit_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateUrlPosition finds URL after SplitSourceMap eager path
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateUrlPosition_AfterSplit_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::IN_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // Load eager data (same format as sourceMapTest.h sourceMapData)
+    std::string eagerData =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": \"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\"\n"
+        "    \"entry-package-info\": \"entry|1.0.0\"\n"
+        "  }\n"
+        "}";
+    DFXJSNApi::SourceMapSplitSourceMap(eagerData);
+
+    // Now translate should find the URL via eager path
+    std::string url = "entry/src/main/ets/pages/Index.ts";
+    int line = 10;
+    int column = 5;
+    std::string packageName;
+    bool result = DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName);
+    EXPECT_TRUE(result);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapTranslateBySourceMap_NoSourceMap_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateBySourceMap returns NOT_FOUNDMAP prefix when InitStatus=NO_SOURCEMAP
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateBySourceMap_NoSourceMap_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NO_SOURCEMAP);
+
+    std::string stackStr = "at func (entry/src/main/ets/pages/Index.ts:10:5)";
+    std::string result = DFXJSNApi::SourceMapTranslateBySourceMap(stackStr);
+    GTEST_LOG_(INFO) << "result << " << result;
+    EXPECT_NE(result.find("at func entry (entry/src/main/ets/pages/Index.ets:1:1)"), std::string::npos);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+}
+
+/**
+ * @tc.name: SourceMapTranslateBySourceMap_ExecutedSuccessfully_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateBySourceMap with InitStatus=EXECUTED_SUCCESSFULLY preserves stack lines
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateBySourceMap_ExecutedSuccessfully_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // Line without parentheses is preserved as-is
+    std::string stackStr = "TypeError: Cannot read property";
+    std::string result = DFXJSNApi::SourceMapTranslateBySourceMap(stackStr);
+    EXPECT_NE(result.find("TypeError: Cannot read property"), std::string::npos);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+}
+
+/**
+ * @tc.name: SourceMapTranslateBySourceMap_UnknownUrl_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateBySourceMap with unknown URL falls back to raw stack
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateBySourceMap_UnknownUrl_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // Unknown URL, not in eagerSourceMaps_, falls back to raw stack
+    std::string stackStr = "at func (unknown/file.js:10:5)";
+    std::string result = DFXJSNApi::SourceMapTranslateBySourceMap(stackStr);
+    // Should contain the original file reference
+    EXPECT_NE(result.find("unknown/file.js"), std::string::npos);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapTranslateBySourceMap_AfterSplit_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateBySourceMap resolves after SplitSourceMap eager path
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateBySourceMap_AfterSplit_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::IN_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // Load eager data (same format as sourceMapTest.h sourceMapData)
+    std::string eagerData =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": \"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\"\n"
+        "    \"entry-package-info\": \"entry|1.0.0\"\n"
+        "  }\n"
+        "}";
+    DFXJSNApi::SourceMapSplitSourceMap(eagerData);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // TranslateBySourceMap should resolve using eager data
+    std::string stackStr = "at func (entry/src/main/ets/pages/Index.ts:10:5)";
+    std::string result = DFXJSNApi::SourceMapTranslateBySourceMap(stackStr);
+    // With eager data loaded and InitStatus=EXECUTED_SUCCESSFULLY, should NOT have NOT_FOUNDMAP prefix
+    EXPECT_EQ(result.find("Cannot get SourceMap info"), std::string::npos);
+    // Should contain the resolved source path from eagerSourceMaps_
+    EXPECT_NE(result.find("entry/src/main/ets/pages/Index.ets"), std::string::npos);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
+
+/**
+ * @tc.name: SourceMapTranslateBySourceMap_MixedLines_001
+ * @tc.desc: Test DFXJSNApi::SourceMapTranslateBySourceMap with mixed stack lines (error msg + stack frame)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(DFXJSNApiTests, SourceMapTranslateBySourceMap_MixedLines_001)
+{
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+
+    // First line without parens (error message), second line with unknown URL
+    std::string stackStr = "TypeError: Cannot read property\nat func (unknown.js:10:5)";
+    std::string result = DFXJSNApi::SourceMapTranslateBySourceMap(stackStr);
+    // Both lines should appear in output
+    EXPECT_NE(result.find("TypeError: Cannot read property"), std::string::npos);
+    EXPECT_NE(result.find("unknown.js"), std::string::npos);
+
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::NOT_EXECUTED);
+    DFXJSNApi::SourceMapSetInitStatus(ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+}
 } // namespace panda::test
