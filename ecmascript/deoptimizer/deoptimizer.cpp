@@ -927,6 +927,10 @@ void Deoptimizier::ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread,
 bool Deoptimizier::PrepareForExceptionLazyDeopt(JSThread *thread, JSTaggedType *startFrame)
 {
 #if ECMASCRIPT_ENABLE_ARK_STEED
+    auto *jit = Jit::GetInstance();
+    if (!jit->IsEnableFastJit() || jit->GetJitBackend() != JitBackend::ARKSTEED) {
+        return false;
+    }
     JSTaggedType *current = startFrame;
     if (current == nullptr) {
         current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
