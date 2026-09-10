@@ -127,6 +127,7 @@ ohos_source_set("libark_llvmcodegen_set") {
   subsystem_name = "arkcompiler"
 }
 
+if (!enable_litecg_only) {
 ohos_shared_library("libark_llvmcodegen") {
   stack_protector_ret = false
   deps = [ ":libark_llvmcodegen_set" ]
@@ -159,4 +160,5 @@ ohos_shared_library("libark_llvmcodegen") {
   }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
+}
 }

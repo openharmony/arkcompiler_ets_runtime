@@ -107,10 +107,7 @@ libark_jsoptimizer_sources = [
   "circuit.cpp",
   "circuit_builder.cpp",
   "circuit_builder_helper.cpp",
-  "codegen/llvm/aarch64/aarch64_builder.cpp",
-  "codegen/llvm/llvm_codegen.cpp",
-  "codegen/llvm/llvm_ir_builder.cpp",
-  "codegen/llvm/x64/x64_builder.cpp",
+  "code_generator.cpp",
   "combined_pass_visitor.cpp",
   "common_stubs.cpp",
   "compilation_driver.cpp",
@@ -194,6 +191,15 @@ libark_jsoptimizer_sources = [
   "verifier.cpp",
 ]
 
+# LLVM codegen sources are only built when LLVM is not excluded (enable_litecg_only=false).
+# They are added per-target (libark_jsoptimizer_set always, libark_jsoptimizer_set_with_maple only when !enable_litecg_only).
+libark_llvmcodegen_sources = [
+  "codegen/llvm/aarch64/aarch64_builder.cpp",
+  "codegen/llvm/llvm_codegen.cpp",
+  "codegen/llvm/llvm_ir_builder.cpp",
+  "codegen/llvm/x64/x64_builder.cpp",
+]
+
 if (ets_runtime_enable_ark_steed) {
   libark_jsoptimizer_sources += [
     "trampoline/aarch64/arksteed_call.cpp",
@@ -259,6 +265,7 @@ config("libark_jsoptimizer_set_config") {
 ohos_source_set("libark_jsoptimizer_set") {
   stack_protector_ret = false
   sources = libark_jsoptimizer_sources
+  sources += libark_llvmcodegen_sources
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
   } else if (is_mingw) {
@@ -325,6 +332,9 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   }
   cflags_cc = [ "-fvisibility=hidden" ]
   sources = libark_jsoptimizer_sources
+  if (!enable_litecg_only) {
+    sources += libark_llvmcodegen_sources
+  }
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
   } else if (is_mingw) {
@@ -368,10 +378,12 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   }
 
   deps = []
-  if (is_ohos) {
-    deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen" ]
-  } else {
-    deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen_set" ]
+  if (!enable_litecg_only) {
+    if (is_ohos) {
+      deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen" ]
+    } else {
+      deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen_set" ]
+    }
   }
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
