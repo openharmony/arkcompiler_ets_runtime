@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_DFX_HPROF_RAWHEAP_DUMP_H
 #define ECMASCRIPT_DFX_HPROF_RAWHEAP_DUMP_H
 
+#include <csignal>
 #include <functional>
 
 #include "ecmascript/dfx/hprof/file_stream.h"
@@ -30,6 +31,57 @@ struct GlobalRefMappingEntry {
     uintptr_t refAddr {0};
     JSTaggedType heapObjAddr {0};
 };
+
+// RAII guard: registers crash signal handlers for OOM dump, restores on scope exit.
+// Ensures the handler does not affect normal exit (_exit) after dump completes.
+class DumpAbortSignalScope {
+public:
+    explicit DumpAbortSignalScope(bool enable, bool isForSharedOOM = false);
+    ~DumpAbortSignalScope();
+    NO_COPY_SEMANTIC(DumpAbortSignalScope);
+    NO_MOVE_SEMANTIC(DumpAbortSignalScope);
+
+private:
+    static constexpr int SIGNALS_TO_CATCH[] = {
+        SIGABRT,  // abort()
+        SIGSEGV,  // segmentation fault (null pointer, memory violation)
+        SIGFPE,   // floating point exception (divide by zero)
+        SIGILL,   // illegal instruction
+        SIGBUS,   // bus error
+        SIGALRM,  // timeout (alarm)
+        SIGPIPE,  // write to closed pipe
+        SIGXFSZ,  // file size limit exceeded
+        SIGTERM   // termination
+    };
+    static constexpr int SIGNAL_COUNT = sizeof(SIGNALS_TO_CATCH) / sizeof(SIGNALS_TO_CATCH[0]);
+    static constexpr int DUMP_TIMEOUT_WARNING_SECONDS = 20;
+
+    struct sigaction oldActions_[SIGNAL_COUNT] {};
+    bool active_ {false};
+};
+
+// Dump status codes: 0=success, 1=failed, 2-11=phase in progress
+static constexpr int32_t DUMP_STATUS_SUCCESS = 0;
+static constexpr int32_t DUMP_STATUS_FAILED = 1;
+static constexpr int32_t DUMP_STATUS_DUMP_INIT = 2;
+static constexpr int32_t DUMP_STATUS_FILL_BUMP_POINTER = 3;
+static constexpr int32_t DUMP_STATUS_MARK_ROOT_OBJECTS = 4;
+static constexpr int32_t DUMP_STATUS_ROOT_TABLE = 5;
+static constexpr int32_t DUMP_STATUS_MARK_PROCESS_OBJECTS = 6;
+static constexpr int32_t DUMP_STATUS_UPDATE_STRING_TABLE = 7;
+static constexpr int32_t DUMP_STATUS_DUMP_STRING_TABLE = 8;
+static constexpr int32_t DUMP_STATUS_DUMP_OBJECT_TABLE = 9;
+static constexpr int32_t DUMP_STATUS_DUMP_OBJECT_MEMORY = 10;
+static constexpr int32_t DUMP_STATUS_END_OF_STREAM = 11;
+
+void SetDumpStatus(int32_t status);
+
+#ifdef OHOS_UNIT_TEST
+// Test helpers for coverage testing
+const char* GetSignalNameForTest(int sig);
+double GetDumpCostForTest();
+#endif
+
 class ObjectMarker : public HeapMarker, public RootVisitor, public BaseObjectVisitor<ObjectMarker> {
 public:
     ObjectMarker(const EcmaVM *vm, const DumpSnapShotOption *option) : vm_(vm), option_(option) {}

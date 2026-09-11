@@ -13,11 +13,15 @@
  * limitations under the License.
  */
 #include <algorithm>
+#include <chrono>
+#include <csignal>
 #include <fcntl.h>
 #include <regex>
 #include <sstream>
+#include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
-#include <chrono>
+#include <vector>
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
@@ -2716,6 +2720,182 @@ HWTEST_F_L0(HeapDumpTest, TestRawHeapGlobalRefTrackingOnV2)
 
     JSNApi::SetTrackGlobalRef(false);
 }
+
+HWTEST_F_L0(HeapDumpTest, TestOOMDumpNonOOMPathNoReport)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    std::string rawHeapPath("test_oom_non_oom_no_report.raw");
+    DumpSnapShotOption dumpOption;
+    dumpOption.isSync = false;
+    dumpOption.isDumpOOM = false;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+}
 #endif  // PANDA_TARGET_ARM32
 #endif
+
+HWTEST_F_L0(HeapDumpTest, TestDumpAbortSignalScopeDisabled)
+{
+    DumpAbortSignalScope scope(false);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDumpAbortSignalScopeEnabledRestoresHandler)
+{
+    struct sigaction oldAct;
+    sigemptyset(&oldAct.sa_mask);
+    oldAct.sa_handler = SIG_DFL;
+    sigaction(SIGABRT, &oldAct, nullptr);
+
+    {
+        DumpAbortSignalScope scope(true);
+    }
+
+    struct sigaction restoredAct;
+    sigaction(SIGABRT, nullptr, &restoredAct);
+    EXPECT_EQ(restoredAct.sa_handler, SIG_DFL);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestOOMDumpForkChildNormalExit)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::string rawHeapPath("test_oom_fork_normal_exit.rawheap");
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT, 0644);
+    ASSERT_TRUE(fd > 0);
+
+    FileDescriptorStream stream(fd);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    dumpOption.isDumpOOM = true;
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDumpAbortSignalScopeAlarmDoesNotExit)
+{
+    pid_t childPid = fork();
+    ASSERT_GE(childPid, 0);
+    if (childPid == 0) {
+        DumpAbortSignalScope scope(true);
+        alarm(1);
+        sleep(3);
+        _exit(0);
+    }
+    int status = 0;
+    ASSERT_EQ(waitpid(childPid, &status, 0), childPid);
+    ASSERT_TRUE(WIFEXITED(status)) << "Child should exit normally, not killed by signal";
+    ASSERT_EQ(WEXITSTATUS(status), 0);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDumpAbortSignalScopeCrashSignalExits)
+{
+    pid_t childPid = fork();
+    ASSERT_GE(childPid, 0);
+    if (childPid == 0) {
+        DumpAbortSignalScope scope(true);
+        raise(SIGABRT);
+        _exit(0);
+    }
+    int status = 0;
+    ASSERT_EQ(waitpid(childPid, &status, 0), childPid);
+    ASSERT_TRUE(WIFSIGNALED(status) || WIFEXITED(status)) <<
+        "Child should exit (via _exit in handler or signal)";
+}
+
+HWTEST_F_L0(HeapDumpTest, TestGetSignalNameAllCases)
+{
+    // Test all signal branches in GetSignalName switch statement
+    std::vector<std::pair<int, std::string>> cases = {
+        {SIGABRT, "dump_abort_before_finalize"},
+        {SIGSEGV, "dump_segfault_before_finalize"},
+        {SIGFPE, "dump_fpe_before_finalize"},
+        {SIGILL, "dump_illegal_instruction_before_finalize"},
+        {SIGBUS, "dump_bus_error_before_finalize"},
+        {SIGALRM, "dump_timeout_before_finalize"},
+        {SIGPIPE, "dump_broken_pipe_before_finalize"},
+        {SIGXFSZ, "dump_file_size_limit_before_finalize"},
+        {SIGTERM, "dump_terminated_before_finalize"},
+        {99999, "dump_unknown_signal_before_finalize"},  // tests default branch
+    };
+    for (const auto &[sig, expected] : cases) {
+        const char* result = GetSignalNameForTest(sig);
+        EXPECT_STREQ(result, expected.c_str()) << "Signal " << sig << " should return " << expected;
+    }
+}
+
+HWTEST_F_L0(HeapDumpTest, TestSetDumpStatusBasic)
+{
+    SetDumpStatus(DUMP_STATUS_DUMP_INIT);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    SetDumpStatus(DUMP_STATUS_END_OF_STREAM);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDumpAbortSignalHandlerOutsideDumpZone)
+{
+    pid_t childPid = fork();
+    ASSERT_GE(childPid, 0);
+    if (childPid == 0) {
+        {
+            DumpAbortSignalScope scope(true);
+        }
+        raise(SIGABRT);
+        _exit(0);
+    }
+    int status = 0;
+    waitpid(childPid, &status, 0);
+    ASSERT_TRUE(WIFSIGNALED(status));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestReportOOMDumpStatusSharedOOM)
+{
+    DumpSnapShotOption dumpOption;
+    dumpOption.isDumpOOM = true;
+    dumpOption.isForSharedOOM = true;
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::string rawHeapPath("test_shared_oom_report.rawheap");
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT, 0644);
+    ASSERT_TRUE(fd > 0);
+    FileDescriptorStream stream(fd);
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestOOMDumpNonOOMForkPath)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    bool status = true;
+    std::string rawHeapPath("test_non_oom_fork_path.raw");
+    auto cb = [&status](uint8_t retCode) {
+        if (retCode != static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS)) {
+            status = false;
+        }
+    };
+    DumpSnapShotOption dumpOption;
+    dumpOption.isSync = false;
+    dumpOption.isDumpOOM = false;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption, nullptr, cb));
+    ASSERT_TRUE(status);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDumpAbortSignalScopeAllSignalsRestored)
+{
+    int testSignals[] = {SIGABRT, SIGSEGV, SIGFPE, SIGILL, SIGBUS,
+                         SIGALRM, SIGPIPE, SIGXFSZ, SIGTERM};
+    for (int sig : testSignals) {
+        struct sigaction oldAct;
+        sigemptyset(&oldAct.sa_mask);
+        oldAct.sa_handler = SIG_DFL;
+        sigaction(sig, &oldAct, nullptr);
+    }
+
+    {
+        DumpAbortSignalScope scope(true);
+    }
+
+    for (int sig : testSignals) {
+        struct sigaction restoredAct;
+        sigaction(sig, nullptr, &restoredAct);
+        EXPECT_EQ(restoredAct.sa_handler, SIG_DFL) << "Signal " << sig << " handler not restored";
+    }
+}
 }

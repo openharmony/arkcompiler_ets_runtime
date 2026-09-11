@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <csignal>
+
 #include "common_components/heap/heap.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/dfx/hprof/rawheap_dump.h"
@@ -21,11 +24,111 @@
 #include "ecmascript/object_fast_operator-inl.h"
 
 #ifdef ENABLE_HISYSEVENT
-    #include "hisysevent.h"
     #include "dfx_signal_handler.h"
+    #include "hisysevent.h"
 #endif
 
 namespace panda::ecmascript {
+
+// Signal handling: send hisysevent before OOM dump abort/crash
+static std::atomic<bool> g_inDumpZone(false);
+static std::atomic<bool> g_isForSharedOOM(false);
+
+static std::atomic<int32_t> g_dumpStatus(DUMP_STATUS_FAILED);
+static std::chrono::time_point<std::chrono::steady_clock> g_dumpStartTime;
+
+void SetDumpStatus(int32_t status)
+{
+    g_dumpStatus.store(status);
+    auto now = std::chrono::steady_clock::now();
+    if (g_dumpStartTime == std::chrono::time_point<std::chrono::steady_clock>{}) {
+        g_dumpStartTime = now;
+    }
+}
+
+static double GetDumpCost()
+{
+    return std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - g_dumpStartTime).count();
+}
+
+// Map signal number to description
+static const char* GetSignalName(int sig)
+{
+    switch (sig) {
+        case SIGABRT:  return "dump_abort_before_finalize";
+        case SIGSEGV:  return "dump_segfault_before_finalize";
+        case SIGFPE:   return "dump_fpe_before_finalize";
+        case SIGILL:   return "dump_illegal_instruction_before_finalize";
+        case SIGBUS:   return "dump_bus_error_before_finalize";
+        case SIGALRM:  return "dump_timeout_before_finalize";
+        case SIGPIPE:  return "dump_broken_pipe_before_finalize";
+        case SIGXFSZ:  return "dump_file_size_limit_before_finalize";
+        case SIGTERM:  return "dump_terminated_before_finalize";
+        default:       return "dump_unknown_signal_before_finalize";
+    }
+}
+
+static void DumpAbortSignalHandler(int sig)
+{
+    if (g_inDumpZone.load()) {
+        if (g_dumpStatus.load() == DUMP_STATUS_SUCCESS) {
+            return;
+        }
+        double dumpCost = GetDumpCost();
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC,
+            "STATUS", g_dumpStatus.load(),
+            "MESSAGE", GetSignalName(sig),
+            "OOM_TYPE", g_isForSharedOOM.load() ? "SHARED_OOM" : "LOCAL_OOM",
+            "DUMP_COST", dumpCost,
+            "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId(),
+            "EVENT_VERSION", "1.0.0");
+        if (sig == SIGALRM) {
+            // Timeout warning only; do not exit, let DFX's 20s SIGKILL handle termination
+            return;
+        }
+        // Do not reset; let crash proceed, child process exits directly
+        _exit(0);
+    }
+    _exit(0);
+}
+
+DumpAbortSignalScope::DumpAbortSignalScope(bool enable, bool isForSharedOOM)
+{
+    if (!enable) {
+        return;
+    }
+    g_isForSharedOOM.store(isForSharedOOM);
+    g_dumpStartTime = std::chrono::steady_clock::time_point{};
+    struct sigaction newAction;
+    newAction.sa_handler = DumpAbortSignalHandler;
+    sigemptyset(&newAction.sa_mask);
+    for (int sig : SIGNALS_TO_CATCH) {
+        sigaddset(&newAction.sa_mask, sig);
+    }
+    newAction.sa_flags = 0;
+
+    for (int i = 0; i < SIGNAL_COUNT; i++) {
+        sigaction(SIGNALS_TO_CATCH[i], &newAction, &oldActions_[i]);
+    }
+
+    alarm(DUMP_TIMEOUT_WARNING_SECONDS);
+    g_inDumpZone.store(true);
+    active_ = true;
+}
+
+DumpAbortSignalScope::~DumpAbortSignalScope()
+{
+    if (active_) {
+        alarm(0);
+        g_inDumpZone.store(false);
+        for (int i = 0; i < SIGNAL_COUNT; i++) {
+            sigaction(SIGNALS_TO_CATCH[i], &oldActions_[i], nullptr);
+        }
+        active_ = false;
+    }
+}
+
 void ObjectMarker::VisitRoot([[maybe_unused]]Root type, ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -189,13 +292,20 @@ void RawHeapDump::Finalize()
     double duration = std::chrono::duration<double>(endTime - startTime_).count();
     LOG_ECMA(INFO) << "rawheap dump success, cost " << duration << "s, " << "file size " << GetRawHeapFileOffset();
     if (dumpOption_.isDumpOOM) {
-        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 0, "MESSAGE", "OK",
+#ifdef ENABLE_HISYSEVENT
+        const char *uniqueId = &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId();
+        SetDumpStatus(DUMP_STATUS_SUCCESS);
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", g_dumpStatus.load(), "MESSAGE", "OK",
                         "OOM_TYPE", dumpOption_.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM",
                         "OBJ_COUNT", GetObjectCount(),
                         "STR_COUNT", GetEcmaStringTable()->GetCapcity(),
                         "HEAP_SIZE", marker_.GetHeapSize(),
                         "FILE_SIZE", GetRawHeapFileOffset(),
-                        "DURATION", duration, "VERSION", GetRawheapVersion());
+                        "DURATION", duration,
+                        "APP_RUNNING_UNIQUE_ID", uniqueId,
+                        "EVENT_VERSION", "1.0.0",
+                        "VERSION", GetRawheapVersion());
+#endif
     }
 }
 
@@ -233,19 +343,29 @@ void RawHeapDump::BinaryDump()
     DumpVersion(GetRawheapVersion());
     DumpMetadataFields();
 
+    SetDumpStatus(DUMP_STATUS_MARK_ROOT_OBJECTS);
     marker_.MarkRootObjects();
 
+    SetDumpStatus(DUMP_STATUS_ROOT_TABLE);
     DumpRootTable();
 
+    SetDumpStatus(DUMP_STATUS_MARK_PROCESS_OBJECTS);
     marker_.ProcessMarkObjectsFromRoot();
     // properties name was only exempted in mode RawHeapDumpCropLevel::LEVEL_V1
     if (Runtime::GetInstance()->GetRawHeapDumpCropLevel() == RawHeapDumpCropLevel::LEVEL_V1) {
         AddExemptedStringNode();
     }
 
+    SetDumpStatus(DUMP_STATUS_UPDATE_STRING_TABLE);
     UpdateStringTable();
+
+    SetDumpStatus(DUMP_STATUS_DUMP_STRING_TABLE);
     DumpStringTable();
+
+    SetDumpStatus(DUMP_STATUS_DUMP_OBJECT_TABLE);
     DumpObjectTable();
+
+    SetDumpStatus(DUMP_STATUS_DUMP_OBJECT_MEMORY);
     DumpObjectMemory();
 
     DumpSectionIndex();
@@ -1060,4 +1180,18 @@ uint32_t RawHeapDumpV2::GenerateSyntheticAddr(JSTaggedType addr)
     }
 #endif
 }
+
+#ifdef OHOS_UNIT_TEST
+// Test helper: expose GetSignalName for direct unit testing of switch branches
+const char* GetSignalNameForTest(int sig)
+{
+    return GetSignalName(sig);
+}
+
+// Test helper: expose GetDumpCost for direct unit testing
+double GetDumpCostForTest()
+{
+    return GetDumpCost();
+}
+#endif
 } // namespace panda::ecmascript

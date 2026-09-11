@@ -156,6 +156,7 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
         "TYPE", type,
         "EVENT_CONFIG", eventConfig,
         "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId(),
+        "EVENT_VERSION", "1.0.0",
         "ARKTS_TYPE", DYNAMIC_STR,
         "THREAD_TYPE", threadType,
         "SPACE_TYPE", spaceType,

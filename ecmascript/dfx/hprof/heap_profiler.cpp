@@ -14,6 +14,7 @@
  */
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <unistd.h>
 #include "profiler/heap_profiler_listener.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
@@ -173,6 +174,19 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
     snapshot->UpdateNodes();
 }
 
+static void ReportOOMDumpStatus(const DumpSnapShotOption &dumpOption, int32_t status,
+                                const char *message)
+{
+    if (!dumpOption.isDumpOOM) {
+        return;
+    }
+    SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", status,
+                    "MESSAGE", message,
+                    "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM",
+                    "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId(),
+                    "EVENT_VERSION", "1.0.0");
+}
+
 void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOption &dumpOption,
                                           [[maybe_unused]] bool fromSharedGC)
 {
@@ -191,9 +205,7 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
     }
     if (fd < 0) {
         LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
-        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1,
-                        "MESSAGE", "request fd from dfx failed.",
-                        "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
+        ReportOOMDumpStatus(dumpOption, DUMP_STATUS_FAILED, "request fd from dfx failed.");
         return;
     }
 
@@ -237,16 +249,22 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const Dump
     // fork for oom
     if ((pid = fork()) < 0) {
         LOG_ECMA(ERROR) << "DumpHeapSnapshotFromSharedGCForOOM fork failed: " << strerror(errno);
+        ReportOOMDumpStatus(dumpOption, DUMP_STATUS_FAILED, "fork_failed");
         return;
     }
     if (pid == 0) {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-        DumpHeapSnapshotFromSharedGC(stream, dumpOption);
+        {
+            DumpAbortSignalScope dumpAbortScope(dumpOption.isDumpOOM, dumpOption.isForSharedOOM);
+            SetDumpStatus(DUMP_STATUS_DUMP_INIT);
+            DumpHeapSnapshotFromSharedGC(stream, dumpOption);
+        }
         _exit(0);
     }
     if (pid != 0) {
         if (!Process::IsolateSubProcess(vm_->GetBundleName().c_str(), getpid(), pid)) {
             LOG_ECMA(ERROR) << "OOM Fork dump snapshot failed!";
+            ReportOOMDumpStatus(dumpOption, DUMP_STATUS_FAILED, "isolate_subprocess_failed");
         }
     }
 }
@@ -254,6 +272,7 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const Dump
 bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
     base::BlockHookScope blockScope;
+    SetDumpStatus(DUMP_STATUS_FILL_BUMP_POINTER);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
@@ -263,6 +282,7 @@ bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapSh
     } else {
         DoDump(stream, nullptr, dumpOption);
     }
+    SetDumpStatus(DUMP_STATUS_END_OF_STREAM);
     stream->EndOfStream();
     return true;
 }
@@ -538,6 +558,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         std::string unused;
         if (appfreezeCallback != nullptr && !appfreezeCallback(getpid(), false, unused)) {
             LOG_ECMA(ERROR) << "failed to set appfreeze filter";
+            ReportOOMDumpStatus(dumpOption, DUMP_STATUS_FAILED, "appfreeze_filter_failed");
             return false;
         }
         // hidumper do fork and fillmap.
@@ -547,6 +568,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         // fork for hidumper or oom
         pid = ForkAndPerformDump(stream, dumpOption, progress);
         if (pid < 0) {
+            ReportOOMDumpStatus(dumpOption, DUMP_STATUS_FAILED, "fork_failed");
             if (callback) {
                 callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FORK_FAILED));
             }
@@ -564,6 +586,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         if (dumpOption.isDumpOOM) {
             if (!Process::IsolateSubProcess(vm_->GetBundleName().c_str(), getpid(), pid)) {
                 LOG_ECMA(ERROR) << "OOM Fork dump snapshot failed!";
+                ReportOOMDumpStatus(dumpOption, DUMP_STATUS_FAILED, "isolate_subprocess_failed");
                 return false;
             }
             return true;
@@ -591,14 +614,19 @@ pid_t HeapProfiler::ForkAndPerformDump(Stream *stream,
     if (pid == 0) {
         vm_->GetAssociatedJSThread()->SetCrossThreadExecution(true);
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-        if (dumpOption.dumpFormat == DumpFormat::BINARY) {
-            BinaryDump(stream, dumpOption);
-            stream->EndOfStream();
-        } else {
-            DoDump(stream, progress, dumpOption);
+        {
+            DumpAbortSignalScope dumpAbortScope(dumpOption.isDumpOOM, dumpOption.isForSharedOOM);
+            SetDumpStatus(DUMP_STATUS_DUMP_INIT);
+            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+                BinaryDump(stream, dumpOption);
+                SetDumpStatus(DUMP_STATUS_END_OF_STREAM);
+                stream->EndOfStream();
+            } else {
+                DoDump(stream, progress, dumpOption);
 #if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT) && defined(ENABLE_BACKTRACE_LOCAL)
-            DumpHandleLeakRecords();
+                DumpHandleLeakRecords();
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT && ENABLE_BACKTRACE_LOCAL
+            }
         }
         vm_->GetAssociatedJSThread()->SetCrossThreadExecution(false);
         _exit(0);
