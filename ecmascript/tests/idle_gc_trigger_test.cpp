@@ -49,6 +49,14 @@ public:
             idleGCTrigger->ClearPostGCTask(static_cast<panda::JSNApi::TRIGGER_IDLE_GC_TYPE>(data.second));
         });
     }
+
+    void TearDown() override
+    {
+        SharedHeap *sheap = SharedHeap::GetInstance();
+        sheap->GetOldSpace()->SetInitialCapacity(sheap->GetOldSpace()->GetMaximumCapacity());
+        sheap->GetCompressSpace()->SetInitialCapacity(sheap->GetCompressSpace()->GetMaximumCapacity());
+        TestHelper::DestroyEcmaVMWithScope(instance, scope);
+    }
 };
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest001)
@@ -433,8 +441,24 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
     };
     Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
     SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    ASSERT_TRUE(freeze);
+    delete trigger;
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    bool freeze = false;
+    auto callback = [&freeze](bool needFreeze) {
+        if (needFreeze) {
+            freeze = true;
+        }
+    };
+    Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
+    SharedHeap *sheap = SharedHeap::GetInstance();
     sheap->NotifyHeapAliveSizeAfterGC(1);
-    sheap->GetOldSpace()->SetInitialCapacity(10000);
     sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
