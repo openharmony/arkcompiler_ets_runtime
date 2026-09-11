@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <new>
 #include <unistd.h>
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
@@ -214,9 +215,11 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     });
     EXPECT_EQ(count, 3); // 3 : number of methods
 
-    MethodLiteral *method1 = new MethodLiteral(methodId[0]);
-    MethodLiteral *method2 = new MethodLiteral(methodId[1]);
-    MethodLiteral *method3 = new MethodLiteral(methodId[2]);
+    // Construct each MethodLiteral in its array slot (mirrors production InitializeMemory) so
+    // the pointers live inside methodLiterals_ and SetMethodLiteralToMap computes valid indices.
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new (pf->GetMethodLiterals() + 1) MethodLiteral(methodId[1]);
+    MethodLiteral *method3 = new (pf->GetMethodLiterals() + 2) MethodLiteral(methodId[2]);
     pf->SetMethodLiteralToMap(method1);
     pf->SetMethodLiteralToMap(method2);
     pf->SetMethodLiteralToMap(method3);

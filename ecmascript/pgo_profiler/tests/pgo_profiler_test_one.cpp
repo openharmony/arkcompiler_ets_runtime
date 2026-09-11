@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 
 #include <future>
+#include <new>
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -121,6 +122,7 @@ protected:
 
         const File* file = pf->GetPandaFile();
         auto classes = pf->GetClasses();
+        size_t methodIdx = 0;  // indexes into pf->GetMethodLiterals() for placement-new below
 
         for (size_t i = 0; i < classes.Size(); i++) {
             panda_file::File::EntityId classId(classes[i]);
@@ -128,8 +130,9 @@ protected:
                 continue;
             }
             ClassDataAccessor cda(*file, classId);
-            cda.EnumerateMethods([pf, &methodLiterals](panda_file::MethodDataAccessor& mda) {
-                auto* methodLiteral = new MethodLiteral(mda.GetMethodId());
+            cda.EnumerateMethods([pf, &methodLiterals, &methodIdx](panda_file::MethodDataAccessor& mda) {
+                auto* methodLiteral = new (pf->GetMethodLiterals() + methodIdx) MethodLiteral(mda.GetMethodId());
+                methodIdx++;
                 methodLiteral->Initialize(pf.get());
                 pf->SetMethodLiteralToMap(methodLiteral);
                 methodLiterals.push_back(methodLiteral);

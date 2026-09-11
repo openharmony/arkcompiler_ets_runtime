@@ -96,11 +96,7 @@ void JSPandaFile::ResetAfterSnapshotFail()
         JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
         methodLiterals_ = nullptr;
     }
-#if ENABLE_LATEST_OPTIMIZATION
     methodLiteralMap_.Clear();
-#else
-    methodLiteralMap_.clear();
-#endif
     numMethods_ = 0;
     numClasses_ = 0;
 }
@@ -167,11 +163,7 @@ JSPandaFile::~JSPandaFile()
     }
 
     constpoolMap_.clear();
-#if ENABLE_LATEST_OPTIMIZATION
     methodLiteralMap_.Clear();
-#else
-    methodLiteralMap_.clear();
-#endif
     ClearNameMap();
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
@@ -244,11 +236,7 @@ void JSPandaFile::InitializeUnMergedPF()
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
     methodLiterals_ = static_cast<MethodLiteral *>(
         JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
-#if ENABLE_LATEST_OPTIMIZATION
-    methodLiteralMap_.Reserve(numMethods_);
-#else
-    methodLiteralMap_.reserve(numMethods_);
-#endif
+    methodLiteralMap_.Reserve(numMethods_, methodLiterals_);
 }
 
 void JSPandaFile::InitializeMergedPF()
@@ -314,11 +302,7 @@ void JSPandaFile::InitializeMergedPF()
     }
     methodLiterals_ = static_cast<MethodLiteral *>(
         JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
-#if ENABLE_LATEST_OPTIMIZATION
-    methodLiteralMap_.Reserve(numMethods_);
-#else
-    methodLiteralMap_.reserve(numMethods_);
-#endif
+    methodLiteralMap_.Reserve(numMethods_, methodLiterals_);
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const

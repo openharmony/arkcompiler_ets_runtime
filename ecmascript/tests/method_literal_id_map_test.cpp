@@ -23,14 +23,25 @@ namespace panda::test {
 
 class MethodLiteralIDMapTest : public BaseTestWithOutScope {
 protected:
+    // The index-based MethodLiteralIDMap layout stores array indices and resolves them against
+    // the base bound in Reserve(), so mock pointers must live in a real contiguous array (the
+    // pointer-based layout stores them directly and ignores the base). Neither layout reads
+    // MethodLiteral fields, so an aligned raw buffer without constructing MethodLiteral
+    // objects is sufficient.
+    static constexpr size_t NUM_SLOTS = 256;  // 256: covers the largest id (136) used below
+    alignas(MethodLiteral) uint8_t storage_[sizeof(MethodLiteral) * NUM_SLOTS];
+
+    MethodLiteral* Base()
+    {
+        return reinterpret_cast<MethodLiteral*>(storage_);
+    }
+
     // Helper method to create a mock MethodLiteral for testing
     // Note: We use raw pointers since MethodLiteral requires EntityId for construction
     MethodLiteral* CreateMockMethodLiteral(uint32_t id)
     {
-        // For unit testing purposes, we can create simple pointer placeholders
-        // In actual usage, these would be proper MethodLiteral objects
-        // Add offset to ensure we never return nullptr (when id=0)
-        return reinterpret_cast<MethodLiteral*>(static_cast<uintptr_t>((id + 1) * 0x1000));
+        // Points into the contiguous storage above; id 0 yields Base() (never nullptr)
+        return Base() + id;
     }
 };
 
@@ -47,11 +58,11 @@ HWTEST_F_L0(MethodLiteralIDMapTest, Reserve)
     MethodLiteralIDMap map;
 
     // Reserve space for 10 elements
-    map.Reserve(10);
+    map.Reserve(10, Base());
     EXPECT_EQ(map.Size(), 0U);
 
     // Reserve should be idempotent for same size
-    map.Reserve(10);
+    map.Reserve(10, Base());
     EXPECT_EQ(map.Size(), 0U);
 }
 
@@ -59,7 +70,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, Reserve)
 HWTEST_F_L0(MethodLiteralIDMapTest, InsertAndFind)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -83,7 +94,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, InsertAndFind)
 HWTEST_F_L0(MethodLiteralIDMapTest, DuplicateKeyInsert)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -106,7 +117,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, InsertWithoutReserve)
     // Insert without Reserve should trigger ASSERT and crash in debug mode
     // In release mode, it may access nullptr
     // This test verifies the expected behavior
-    map.Reserve(1);
+    map.Reserve(1, Base());
     EXPECT_TRUE(map.Insert(100, method));
 }
 
@@ -114,7 +125,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, InsertWithoutReserve)
 HWTEST_F_L0(MethodLiteralIDMapTest, CollisionHandling)
 {
     MethodLiteralIDMap map;
-    map.Reserve(16);  // Small capacity to force collisions
+    map.Reserve(16, Base());  // Small capacity to force collisions
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -136,7 +147,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, CollisionHandling)
 HWTEST_F_L0(MethodLiteralIDMapTest, Iteration)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -167,7 +178,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, Iteration)
 HWTEST_F_L0(MethodLiteralIDMapTest, RangeBasedForLoop)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -190,7 +201,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, RangeBasedForLoop)
 HWTEST_F_L0(MethodLiteralIDMapTest, ConstIteration)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map.Insert(100, method1);
@@ -212,7 +223,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, ConstIteration)
 HWTEST_F_L0(MethodLiteralIDMapTest, Clear)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -225,7 +236,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, Clear)
     EXPECT_EQ(map.Size(), 0U);
 
     // After Clear, we need to Reserve again
-    map.Reserve(10);
+    map.Reserve(10, Base());
     EXPECT_TRUE(map.Insert(300, CreateMockMethodLiteral(3)));
 }
 
@@ -233,7 +244,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, Clear)
 HWTEST_F_L0(MethodLiteralIDMapTest, MoveConstructor)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -256,13 +267,13 @@ HWTEST_F_L0(MethodLiteralIDMapTest, MoveConstructor)
 HWTEST_F_L0(MethodLiteralIDMapTest, MoveAssignment)
 {
     MethodLiteralIDMap map1;
-    map1.Reserve(10);
+    map1.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map1.Insert(100, method1);
 
     MethodLiteralIDMap map2;
-    map2.Reserve(5);
+    map2.Reserve(5, Base());
 
     auto* method2 = CreateMockMethodLiteral(2);
     map2.Insert(200, method2);
@@ -281,7 +292,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, MoveAssignment)
 HWTEST_F_L0(MethodLiteralIDMapTest, FindNonExistent)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map.Insert(100, method1);
@@ -297,7 +308,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, FindNonExistent)
 HWTEST_F_L0(MethodLiteralIDMapTest, LargeNumberOfInsertions)
 {
     MethodLiteralIDMap map;
-    map.Reserve(200);
+    map.Reserve(200, Base());
 
     // Insert 50 elements with sequential keys to minimize collisions
     for (uint32_t i = 0; i < 50; i++) {
@@ -328,7 +339,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, CapacityCalculation)
     MethodLiteralIDMap map;
 
     // Test small reserve - minimum capacity is 16
-    map.Reserve(1);
+    map.Reserve(1, Base());
     // Should be able to insert at least 12 elements (75% load factor)
     for (uint32_t i = 0; i < 12; i++) {
         auto* method = CreateMockMethodLiteral(i);
@@ -337,7 +348,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, CapacityCalculation)
     EXPECT_EQ(map.Size(), 12U);
 
     map.Clear();
-    map.Reserve(50);
+    map.Reserve(50, Base());
     // Should be able to insert at least 37 elements (75% of 50)
     for (uint32_t i = 0; i < 37; i++) {
         auto* method = CreateMockMethodLiteral(i + 100);
@@ -350,7 +361,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, CapacityCalculation)
 HWTEST_F_L0(MethodLiteralIDMapTest, EmptyMapIteration)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     size_t count = 0;
     for (auto [key, value] : map) {
@@ -367,7 +378,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, EmptyMapIteration)
 HWTEST_F_L0(MethodLiteralIDMapTest, IteratorComparison)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map.Insert(100, method1);
@@ -388,7 +399,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, IteratorComparison)
 HWTEST_F_L0(MethodLiteralIDMapTest, ZeroKeyValue)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method = CreateMockMethodLiteral(0);
     EXPECT_TRUE(map.Insert(0, method));
@@ -400,7 +411,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, ZeroKeyValue)
 HWTEST_F_L0(MethodLiteralIDMapTest, MaxKeyValue)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method = CreateMockMethodLiteral(1);
     uint32_t max_key = std::numeric_limits<uint32_t>::max();
@@ -413,7 +424,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, MaxKeyValue)
 HWTEST_F_L0(MethodLiteralIDMapTest, ReinsertAfterClear)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     // Insert some elements
     auto* method1 = CreateMockMethodLiteral(1);
@@ -424,7 +435,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, ReinsertAfterClear)
 
     // Clear and re-reserve
     map.Clear();
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     // Reinsert elements
     auto* method3 = CreateMockMethodLiteral(3);
@@ -440,7 +451,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, ReinsertAfterClear)
 HWTEST_F_L0(MethodLiteralIDMapTest, CollisionChain)
 {
     MethodLiteralIDMap map;
-    map.Reserve(16);  // Capacity 16, indices 0-15
+    map.Reserve(16, Base());  // Capacity 16, indices 0-15
 
     // Keys that hash to same index: 0, 16, 32, 48...
     auto* method1 = CreateMockMethodLiteral(1);
@@ -464,7 +475,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, CollisionChain)
 HWTEST_F_L0(MethodLiteralIDMapTest, InsertAfterMove)
 {
     MethodLiteralIDMap map1;
-    map1.Reserve(10);
+    map1.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map1.Insert(100, method1);
@@ -473,7 +484,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, InsertAfterMove)
     MethodLiteralIDMap map2 = std::move(map1);
 
     // map1 should be empty, but we can reserve and insert again
-    map1.Reserve(10);
+    map1.Reserve(10, Base());
     auto* method2 = CreateMockMethodLiteral(2);
     EXPECT_TRUE(map1.Insert(200, method2));
     EXPECT_EQ(map1.Size(), 1U);
@@ -488,7 +499,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, InsertAfterMove)
 HWTEST_F_L0(MethodLiteralIDMapTest, MultipleClear)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     // Insert, clear, insert, clear
     for (int round = 0; round < 3; round++) {
@@ -500,7 +511,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, MultipleClear)
         EXPECT_EQ(map.Size(), 0U);
 
         if (round < 2) {
-            map.Reserve(10);
+            map.Reserve(10, Base());
         }
     }
 }
@@ -509,7 +520,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, MultipleClear)
 HWTEST_F_L0(MethodLiteralIDMapTest, IteratorDereference)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map.Insert(100, method1);
@@ -524,7 +535,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, IteratorDereference)
 HWTEST_F_L0(MethodLiteralIDMapTest, IteratorIncrement)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);
@@ -550,7 +561,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, IteratorIncrement)
 HWTEST_F_L0(MethodLiteralIDMapTest, ConstMapIteration)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     map.Insert(100, method1);
@@ -572,7 +583,7 @@ HWTEST_F_L0(MethodLiteralIDMapTest, ConstMapIteration)
 HWTEST_F_L0(MethodLiteralIDMapTest, OverwritePrevention)
 {
     MethodLiteralIDMap map;
-    map.Reserve(10);
+    map.Reserve(10, Base());
 
     auto* method1 = CreateMockMethodLiteral(1);
     auto* method2 = CreateMockMethodLiteral(2);

@@ -14,6 +14,7 @@
  */
 
 #include <memory>
+#include <new>
 #include <sstream>
 #include <string>
 #include "zlib.h"
@@ -313,7 +314,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    // Construct in the array slot (mirrors production InitializeMemory) so the pointer is
+    // inside methodLiterals_; SetMethodLiteralToMap then computes a valid index from it.
+    MethodLiteral *method = new (pf->GetMethodLiterals()) MethodLiteral(methodId[0]);
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFile(pf);
 

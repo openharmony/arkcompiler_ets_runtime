@@ -207,26 +207,16 @@ public:
 
     inline void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
-#if ENABLE_LATEST_OPTIMIZATION
         ASSERT(methodLiteral != nullptr);
+        // methodLiteral must point into the contiguous methodLiterals_ array; the index-based
+        // map computes the array index internally and resolves it back to a pointer in Find().
         methodLiteralMap_.Insert(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
-#else
-        ASSERT(methodLiteral != nullptr);
-        methodLiteralMap_.try_emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
-#endif
     }
 
-#if ENABLE_LATEST_OPTIMIZATION
     inline const MethodLiteralIDMap& GetMethodLiteralMap() const
     {
         return methodLiteralMap_;
     }
-#else
-    inline const std::unordered_map<uint32_t, MethodLiteral*>& GetMethodLiteralMap() const
-    {
-        return methodLiteralMap_;
-    }
-#endif
 
     uint32_t GetNumMethods() const
     {
@@ -298,15 +288,7 @@ public:
 
     inline PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const
     {
-#if ENABLE_LATEST_OPTIMIZATION
         return methodLiteralMap_.Find(offset);
-#else
-        auto iter = methodLiteralMap_.find(offset);
-        if (iter == methodLiteralMap_.end()) {
-            return nullptr;
-        }
-        return iter->second;
-#endif
     }
 
     inline int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
@@ -624,11 +606,7 @@ private:
     CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
-#if ENABLE_LATEST_OPTIMIZATION
     MethodLiteralIDMap methodLiteralMap_;
-#else
-    std::unordered_map<uint32_t, MethodLiteral*> methodLiteralMap_;
-#endif
     std::unordered_map<uint32_t, panda_file::File::StringData> methodNameMap_;
     CUnorderedMap<uint32_t, CString> recordNameMap_;
     Mutex methodNameMapMutex_;

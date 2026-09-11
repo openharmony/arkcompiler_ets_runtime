@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <fstream>
 #include <memory>
+#include <new>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -94,6 +95,7 @@ protected:
 
         const File *file = pf_->GetPandaFile();
         auto classes = pf_->GetClasses();
+        size_t methodIdx = 0;  // indexes into pf_->GetMethodLiterals() for placement-new below
 
         for (size_t i = 0; i < classes.Size(); i++) {
             panda_file::File::EntityId classId(classes[i]);
@@ -102,7 +104,8 @@ protected:
             }
             ClassDataAccessor cda(*file, classId);
             cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
-                auto *methodLiteral = new MethodLiteral(mda.GetMethodId());
+                auto *methodLiteral = new (pf_->GetMethodLiterals() + methodIdx) MethodLiteral(mda.GetMethodId());
+                methodIdx++;
                 methodLiteral->Initialize(pf_.get());
                 pf_->SetMethodLiteralToMap(methodLiteral);
                 methodLiterals.push_back(methodLiteral);
@@ -125,9 +128,11 @@ protected:
         File::EntityId classId = file->GetClassId(typeDesc);
         EXPECT_TRUE(classId.IsValid());
 
+        size_t methodIdx = 0;  // indexes into pf_->GetMethodLiterals() for placement-new below
         ClassDataAccessor cda(*file, classId);
         cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
-            auto *methodLiteral = new MethodLiteral(mda.GetMethodId());
+            auto *methodLiteral = new (pf_->GetMethodLiterals() + methodIdx) MethodLiteral(mda.GetMethodId());
+            methodIdx++;
             methodLiteral->Initialize(pf_.get());
             pf_->SetMethodLiteralToMap(methodLiteral);
             methodLiterals.push_back(methodLiteral);
