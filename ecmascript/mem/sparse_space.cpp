@@ -639,6 +639,11 @@ bool OldSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
     fromSpace->RemoveRegion(region);
     DefaultRegion::FromRegion(region)->InitializeFreeObjectSets();
     region->ResetRegionFlag(RegionSpaceFlag::IN_OLD_SPACE, RegionGCFlags::IN_NEW_TO_OLD_SET);
+    JSThread::ThreadId tid = 0;
+    if (localHeap_->EnablePageTagThreadId()) {
+        tid = localHeap_->GetJSThread()->GetThreadId();
+    }
+    PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName(), tid);
 
     regionList_.AddNodeToFront(region);
     IncreaseCommitted(region->GetCapacity());
