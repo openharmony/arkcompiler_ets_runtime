@@ -36,25 +36,28 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemFromList)
     MemMap memMap = PageMap(HUGE_OBJECT_CAPACITY, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
     PageRelease(memMap.GetMem(), memMap.GetSize());
 
+    size_t cap = MemMapAllocator::GetInstance()->GetCapacity();
+    ASSERT_NE(cap, 0U);
+    // Mirror initialHugeObjectCapacity in InitializeHugeRegionMap: min(capacity_/3, INITIAL_HUGE_OBJECT_CAPACITY)
+    size_t initialHuge = (cap / 3 < INITIAL_HUGE_OBJECT_CAPACITY) ? cap / 3 : INITIAL_HUGE_OBJECT_CAPACITY;
+    size_t allocSize = AlignUp(initialHuge / 2, PageSize());
+
     constexpr size_t LOOP_TIMES = 10;
     for (size_t i = 0; i < LOOP_TIMES; ++i) {
         // From FreeList
-        size_t size1 = 256 * 1024 * 1024;
         auto mem1 = MemMapAllocator::GetInstance()->
-            Allocate(0, size1, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
-        EXPECT_EQ(mem1.GetSize(), size1);
+            Allocate(0, allocSize, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
+        EXPECT_EQ(mem1.GetSize(), allocSize);
 
         // From FreeList
-        size_t size2 = 512 * 1024 * 1024;
         auto mem2 = MemMapAllocator::GetInstance()->
-            Allocate(0, size2, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
-        EXPECT_EQ(mem2.GetSize(), size2);
+            Allocate(0, allocSize, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
+        EXPECT_EQ(mem2.GetSize(), allocSize);
 
         // From PageMap
-        size_t size3 = 512 * 1024 * 1024;
         auto mem3 = MemMapAllocator::GetInstance()->
-            Allocate(0, size3, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
-        EXPECT_EQ(mem3.GetSize(), size3);
+            Allocate(0, allocSize, DEFAULT_REGION_SIZE, "", false, false, false, false, false, false);
+        EXPECT_EQ(mem3.GetSize(), allocSize);
 
         thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
         MemMapAllocator::GetInstance()->CacheOrFree(mem1.GetMem(), mem1.GetSize(), false, false, 0, false, false);
