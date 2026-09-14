@@ -582,7 +582,8 @@ namespace panda::ecmascript {
     V(NumberBigIntNativePointerToString)                       \
     V(ComputeHashcode)                                         \
     V(UpdateSharedModule)                                      \
-    V(PrintMethodName)                                           \
+    V(PrintMethodName)                                         \
+    V(RuntimeBranchProfile)                                    \
     ARKSTEED_RUNTIME_STUB_LIST(V)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)               \

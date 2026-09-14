@@ -20,6 +20,11 @@
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#ifdef ENABLE_BRANCH_PROFILE
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_thread.h"
+#endif
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -621,6 +626,21 @@ JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     return JSTaggedValue(obj.GetTaggedValue().GetTaggedObject()->GetClass()->IsOnHeapFromBitField());
 }
+
+#ifdef ENABLE_BRANCH_PROFILE
+JSTaggedValue BuiltinsArkTools::GetBranchCount(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    EcmaVM *vm = thread->GetEcmaVM();
+    return JSTaggedValue(static_cast<uint32_t>(vm->GetBranchCount()));
+}
+#else
+JSTaggedValue BuiltinsArkTools::GetBranchCount(EcmaRuntimeCallInfo *info)
+{
+    return JSTaggedValue(0);
+}
+#endif
 
 // It is used to check whether a function is aot compiled and deopted at runtime.
 JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)

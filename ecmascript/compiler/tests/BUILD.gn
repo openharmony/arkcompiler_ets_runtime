@@ -137,6 +137,26 @@ host_unittest_action("ConstantFoldingTest") {
   ]
 }
 
+if (enable_branch_elimination) {
+  host_unittest_action("BranchEliminationTest") {
+    module_out_path = module_output_path
+
+    sources = [
+      # test file
+      "branch_elimination_test.cpp",
+    ]
+
+    deps = [
+      "$js_root:libark_jsruntime_test_set",
+      "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    ]
+    external_deps = [
+      "runtime_core:libarkfile_static",
+      "zlib:libz",
+    ]
+  }
+}
+
 host_unittest_action("GlobalValueNumberingTest") {
   module_out_path = module_output_path
 
@@ -308,6 +328,10 @@ group("host_unittest") {
     ":StructuredControlFlowTestAction",
     ":TypedArrayLoweringTestAction",
   ]
+
+  if (enable_branch_elimination) {
+    deps += [ ":BranchEliminationTest" ]
+  }
 
   if (is_mac) {
     deps -= [ ":AssemblerTestAction" ]

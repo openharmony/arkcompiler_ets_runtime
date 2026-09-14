@@ -97,6 +97,12 @@ struct CompilationOptions {
     bool isEnableBaselinePgo_ {false};
     bool isEnableMergePoly_ {true};
     bool enableAotCodeComment_ {false};
+#ifdef ENABLE_BRANCH_ELIMINATION
+    bool isEnableBranchElimination_ {true};
+#endif
+#ifdef ENABLE_BRANCH_PROFILE
+    bool isEnableBreProfiling_ {false};
+#endif
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;
     size_t anFileMaxByteSize_ {0_MB};

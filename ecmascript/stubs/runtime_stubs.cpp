@@ -16,6 +16,10 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/js_object.h"
+#ifdef ENABLE_BRANCH_PROFILE
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/log_wrapper.h"
+#endif
 #include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/gc_helper.h"
@@ -5320,6 +5324,23 @@ DEF_RUNTIME_STUBS(ComputeHashcode)
     uint32_t result = EcmaStringAccessor(string).ComputeHashcode(thread);
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
+
+#ifdef ENABLE_BRANCH_PROFILE
+DEF_RUNTIME_STUBS(RuntimeBranchProfile)
+{
+    LOG_ECMA(INFO) << "count runtime branch";
+    RUNTIME_STUBS_HEADER(RuntimeBranchProfile);
+    auto vm = thread->GetEcmaVM();
+    vm->CountBranch();
+    return JSTaggedValue::Undefined().GetRawData();
+}
+#else
+DEF_RUNTIME_STUBS(RuntimeBranchProfile)
+{
+    RUNTIME_STUBS_HEADER(RuntimeBranchProfile);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+#endif
 
 void RuntimeStubs::Initialize(JSThread *thread)
 {
