@@ -15,13 +15,12 @@
 
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_message_helper.h"
-
 #include "ecmascript/module/module_logger.h"
 
 namespace panda::ecmascript {
 
-bool ModuleMessageHelper::EnsureResultFile(const EcmaVM *vm, const uint32_t tid,
-                                           const std::string_view fileSuffix, std::string &path)
+bool ModuleMessageHelper::GetOrCreateWritableFile(const EcmaVM *vm, const uint32_t tid,
+                                                  const std::string_view fileSuffix, std::string &path)
 {
     CString bundleName = vm->GetBundleName();
     path = base::ConcatToCString(FILEDIR, bundleName);
@@ -48,12 +47,12 @@ bool ModuleMessageHelper::EnsureResultFile(const EcmaVM *vm, const uint32_t tid,
     return true;
 }
 
-void ModuleMessageHelper::PrintCircularImportModuleStack(JSThread *thread, const CString &moduleName,
+void ModuleMessageHelper::PrintCircularImportModuleStack(const JSThread *thread, const CString &moduleName,
                                                          std::string_view stack)
 {
     std::string path;
     std::string circularImport = base::ConcatToStdString("_", std::to_string(getpid()), CIRCULAR_IMPORT_FILE);
-    if (!EnsureResultFile(thread->GetEcmaVM(), os::thread::GetCurrentThreadId(),
+    if (!GetOrCreateWritableFile(thread->GetEcmaVM(), os::thread::GetCurrentThreadId(),
         std::string_view(circularImport), path)) {
         LOG_ECMA(ERROR) << "Failed to open circular import log file for module: " << moduleName;
         return;
@@ -67,6 +66,7 @@ void ModuleMessageHelper::PrintCircularImportModuleStack(JSThread *thread, const
     std::string moduleStack(stack);
     if (moduleStack.empty()) {
         LOG_ECMA(ERROR) << "Circular import stack trace is empty for module: " << moduleName;
+        fileHandle.close();
         return;
     }
     std::string start = base::ConcatToStdString("circular Module Name: ", moduleName);

@@ -92,7 +92,7 @@ void ModuleLogger::InsertEntryPointModule(JSHandle<SourceTextModule> currentModu
 void ModuleLogger::PrintSummary() const
 {
     std::string path;
-    if (!ModuleMessageHelper::EnsureResultFile(vm_, tid_, SUFFIX, path)) {
+    if (!ModuleMessageHelper::GetOrCreateWritableFile(vm_, tid_, SUFFIX, path)) {
         LOG_ECMA(ERROR) << "create file fail, no log anymore";
         return;
     }
@@ -110,7 +110,7 @@ void ModuleLogger::PrintSummary() const
 void ModuleLogger::PrintUsedFileInfo() const
 {
     std::string path;
-    if (!ModuleMessageHelper::EnsureResultFile(vm_, tid_, SUFFIX, path)) {
+    if (!ModuleMessageHelper::GetOrCreateWritableFile(vm_, tid_, SUFFIX, path)) {
         LOG_ECMA(ERROR) << "open file fail, no log anymore";
         return;
     }
@@ -148,7 +148,7 @@ void ModuleLogger::PrintUsedFileInfo() const
 void ModuleLogger::PrintUnusedFileInfo() const
 {
     std::string path;
-    if (!ModuleMessageHelper::EnsureResultFile(vm_, tid_, SUFFIX, path)) {
+    if (!ModuleMessageHelper::GetOrCreateWritableFile(vm_, tid_, SUFFIX, path)) {
         LOG_ECMA(ERROR) << "open file fail, no log anymore";
         return;
     }

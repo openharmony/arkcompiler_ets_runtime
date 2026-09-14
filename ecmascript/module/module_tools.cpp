@@ -34,13 +34,12 @@ ModuleImportStackScope::ModuleImportStackScope(JSThread *thread, JSHandle<Source
         if (!moduleName_.empty()) {
             PushModuleImportStack(moduleName_);
             // Check for circular dependency
-            auto &moduleImportSet = moduleManager_->GetModuleImportSet();
-            if (moduleImportSet.find(moduleName_) != moduleImportSet.end()) {
+            if (moduleManager_->IsModuleInImportSet(moduleName_)) {
                 LOG_ECMA(WARN) << "Circular Module: circular dependency detected for module: " << moduleName_;
                 ModuleMessageHelper::PrintCircularImportModuleStack(thread, moduleName_,
                     moduleManager_->GetModuleImportStackData());
             } else {
-                moduleImportSet.insert(moduleName_);
+                moduleManager_->InsertModuleToImportSet(moduleName_);
             }
             truncatedStack_ = moduleManager_->GetImportStackDataForCPPCrash(
                 moduleName_, 64 * 1024); // 64 * 1024 = 64KB
@@ -56,7 +55,7 @@ ModuleImportStackScope::~ModuleImportStackScope()
         ResetCrashObject(handle_);
         PopModuleImportStack(moduleName_);
         // Remove from module import set
-        moduleManager_->GetModuleImportSet().erase(moduleName_);
+        moduleManager_->EraseModuleFromImportSet(moduleName_);
     }
 }
 
