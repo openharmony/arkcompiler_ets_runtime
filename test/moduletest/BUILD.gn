@@ -125,6 +125,7 @@ module_test_list = [
   "newtaggedsubarray",
   "nextinternalslowpath",
   "object",
+  "typedarraystore",
   "typedarraymapoverflow",
   "objectcloneproperties",
   "objectdefineproperties",

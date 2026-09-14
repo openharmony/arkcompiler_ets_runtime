@@ -117,6 +117,85 @@ GateRef BuiltinsTypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, Gate
     return ret;
 }
 
+GateRef BuiltinsTypedArrayStubBuilder::StoreTypedArrayElementFromStoreIC(GateRef glue, GateRef array, GateRef index,
+                                                                         GateRef value, GateRef jsType)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label slowPath(env);
+
+    GateRef buffer = GetViewedArrayBuffer(glue, array);
+    IR_IF (IsDetachedBuffer(glue, buffer)) {
+        Jump(&exit);
+    }
+    IR_IF (CheckTypedArrayIndexInRange(array, index)) {
+        IR_IF (Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY)))) {
+            // Uint8Clamped stays on the runtime path in the store IC, unchanged from the
+            // original behavior; SetValueToBuffer's inline clamped handling serves the
+            // FastSetPropertyByIndex entry.
+            IR_IF (Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT8_CLAMPED_ARRAY)))) {
+                Jump(&slowPath);
+            }
+            IR_IF (TaggedIsNumber(value)) {
+                GateRef offset = GetByteOffset(array);
+                SetValueToBuffer(glue, value, buffer, TruncInt64ToInt32(index), offset, jsType, &slowPath);
+                result = Undefined();
+                Jump(&exit);
+            } IR_ELSE {
+                Jump(&slowPath);
+            }
+        } IR_ELSE {
+            Jump(&slowPath);
+        }
+    } IR_ELSE {
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypedArrayPropertyByIndex),
+            { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+// Emits the raw store for one integer typed-array kind: the value is truncated to the
+// element width and written at the element's byte offset.
+void BuiltinsTypedArrayStubBuilder::EmitFastIntElementStore(GateRef glue, GateRef block, GateRef index32,
+    GateRef offset, GateRef intValue, JSType type, Label *exit)
+{
+    switch (type) {
+        case JSType::JS_INT8_ARRAY:
+        case JSType::JS_UINT8_ARRAY: {
+            GateRef byteIndex = Int32Add(index32, offset);
+            Store(VariableType::INT8(), glue, block, byteIndex, TruncInt32ToInt8(intValue));
+            break;
+        }
+        case JSType::JS_INT16_ARRAY:
+        case JSType::JS_UINT16_ARRAY: {
+            GateRef byteIndex = Int32Add(Int32Mul(index32, Int32(base::ElementSize::TWO)), offset);
+            Store(VariableType::INT16(), glue, block, byteIndex, TruncInt32ToInt16(intValue));
+            break;
+        }
+        case JSType::JS_INT32_ARRAY:
+        case JSType::JS_UINT32_ARRAY: {
+            GateRef byteIndex = Int32Add(Int32Mul(index32, Int32(base::ElementSize::FOUR)), offset);
+            Store(VariableType::INT32(), glue, block, byteIndex, intValue);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    Jump(exit);
+}
+
 GateRef BuiltinsTypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef array,
                                                               GateRef index, GateRef jsType)
 {
@@ -2755,6 +2834,9 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
     Jump(exit);
 }
 
+// Thin wrapper over SetValueToBuffer (the single store implementation, shared with
+// StoreTypedArrayElementFromStoreIC); non-number values and BigInt kinds defer to the
+// slow-path runtime call.
 void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array,
                                                            GateRef index, GateRef jsType)
 {
@@ -2762,38 +2844,22 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     Label entryPass(env);
     env->SubCfgEntry(&entryPass);
     Label exit(env);
-    Label isDetached(env);
-    Label notDetached(env);
     Label slowPath(env);
-    Label indexIsvalid(env);
-    Label notFloatArray(env);
-    Label valueIsNumber(env);
 
     GateRef buffer = GetViewedArrayBuffer(glue, array);
-    BRANCH(IsDetachedBuffer(glue, buffer), &isDetached, &notDetached);
-    Bind(&isDetached);
-    {
+    IR_IF (IsDetachedBuffer(glue, buffer)) {
         Jump(&slowPath);
     }
-    Bind(&notDetached);
-    {
-        GateRef arrLen = GetArrayLength(array);
-        BRANCH(Int32GreaterThanOrEqual(index, arrLen), &exit, &indexIsvalid);
-        Bind(&indexIsvalid);
-        {
-            BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT32_ARRAY))),
-                &notFloatArray, &slowPath);
-            Bind(&notFloatArray);
-            {
-                BRANCH(TaggedIsNumber(value), &valueIsNumber, &slowPath);
-                Bind(&valueIsNumber);
-                {
-                    GateRef offset = GetByteOffset(array);
-                    SetValueToBuffer(glue, value, buffer, index, offset, jsType, &slowPath);
-                    Jump(&exit);
-                }
-            }
-        }
+    IR_IF (Int32GreaterThanOrEqual(index, GetArrayLength(array))) {
+        Jump(&exit);
+    }
+    IR_IF (BitAnd(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))),
+                  TaggedIsNumber(value))) {
+        GateRef offset = GetByteOffset(array);
+        SetValueToBuffer(glue, value, buffer, index, offset, jsType, &slowPath);
+        Jump(&exit);
+    } IR_ELSE {
+        Jump(&slowPath);
     }
     Bind(&slowPath);
     {
@@ -2806,327 +2872,168 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     return;
 }
 
+// Single store implementation for every typed-array element kind, dispatched on the
+// payload kind first. A tagged int is already an int32, so integer kinds truncate and
+// write with no range guard; double payloads into integer kinds go through the INT32
+// range guard to the runtime for ToInt32 modulo semantics (the hardware conversion
+// saturates); Uint8Clamped saturates, with LrInt rounding for doubles; float kinds
+// store the IEEE value with NaN canonicalized. Unknown kinds are a silent no-op.
 void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index,
                                                      GateRef offset, GateRef jsType, Label *slowPath)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
     env->SubCfgEntry(&entryPass);
-
     Label exit(env);
-    Label defaultLabel(env);
-    Label isInt8(env);
-    Label notInt8(env);
-    Label isInt16(env);
-    Label notInt16(env);
-    Label fastPath(env);
-    Label valueTypeIsInt(env);
-    Label valueTypeIsDouble(env);
-    Label labelBuffer[3] = { Label(env), Label(env), Label(env) };
-    Label labelBuffer1[3] = { Label(env), Label(env), Label(env) };
-    Label labelBuffer2[3] = { Label(env), Label(env), Label(env) };
-    int64_t valueBuffer[3] = {
-        static_cast<int64_t>(JSType::JS_INT8_ARRAY), static_cast<int64_t>(JSType::JS_UINT8_ARRAY),
-        static_cast<int64_t>(JSType::JS_UINT8_CLAMPED_ARRAY) };
-    int64_t valueBuffer1[3] = {
-        static_cast<int64_t>(JSType::JS_INT16_ARRAY), static_cast<int64_t>(JSType::JS_UINT16_ARRAY),
-        static_cast<int64_t>(JSType::JS_INT32_ARRAY) };
-    int64_t valueBuffer2[3] = {
-        static_cast<int64_t>(JSType::JS_UINT32_ARRAY), static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
-        static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY) };
-
-    GateRef valueType = TaggedIsInt(value);
-    BRANCH(valueType, &valueTypeIsInt, &valueTypeIsDouble);
-    Bind(&valueTypeIsInt);
-    {
+    static constexpr JSType STORE_KINDS[] = {
+        JSType::JS_INT8_ARRAY, JSType::JS_UINT8_ARRAY, JSType::JS_UINT8_CLAMPED_ARRAY,
+        JSType::JS_INT16_ARRAY, JSType::JS_UINT16_ARRAY, JSType::JS_INT32_ARRAY,
+        JSType::JS_UINT32_ARRAY, JSType::JS_FLOAT32_ARRAY, JSType::JS_FLOAT64_ARRAY,
+    };
+    constexpr size_t storeKinds = sizeof(STORE_KINDS) / sizeof(STORE_KINDS[0]);
+    constexpr size_t uint8ClampedIdx = 2; // index of JS_UINT8_CLAMPED_ARRAY in STORE_KINDS
+    constexpr size_t float32Idx = 7;      // index of JS_FLOAT32_ARRAY in STORE_KINDS
+    constexpr size_t float64Idx = 8;      // index of JS_FLOAT64_ARRAY in STORE_KINDS
+    static_assert(STORE_KINDS[uint8ClampedIdx] == JSType::JS_UINT8_CLAMPED_ARRAY &&
+                  STORE_KINDS[float32Idx] == JSType::JS_FLOAT32_ARRAY &&
+                  STORE_KINDS[float64Idx] == JSType::JS_FLOAT64_ARRAY,
+                  "index constants must match the STORE_KINDS order");
+    int64_t typeKeys[storeKinds];
+    for (size_t i = 0; i < storeKinds; i++) {
+        typeKeys[i] = static_cast<int64_t>(STORE_KINDS[i]);
+    }
+    GateRef block = GetDataPointFromBuffer(glue, buffer);
+    GateRef topValue = Int32(static_cast<uint32_t>(UINT8_MAX));
+    GateRef bottomValue = Int32(0U);
+    IR_IF (TaggedIsInt(value)) {
+        // tagged int payload: already an int32, truncate-and-write, no range guard needed
+        Label intLabels[storeKinds] = { Label(env), Label(env), Label(env), Label(env), Label(env),
+                                        Label(env), Label(env), Label(env), Label(env) };
         GateRef intValue = GetInt32OfTInt(value);
-        GateRef valueLessthanMin = Int32LessThanOrEqual(intValue, Int32(INT32_MIN));
-        GateRef valueMorethanMax = Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX));
-        BRANCH(BitOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
-    }
-    Bind(&valueTypeIsDouble);
-    {
-        GateRef intValue = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
-        GateRef valueLessthanMin = Int32LessThanOrEqual(intValue, Int32(INT32_MIN));
-        GateRef valueMorethanMax = Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX));
-        BRANCH(BitOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
-    }
-    Bind(&fastPath);
+        Switch(jsType, &exit, typeKeys, intLabels, static_cast<int32_t>(storeKinds));
+        for (size_t i = 0; i < storeKinds; i++) {
+            if (i == uint8ClampedIdx || i == float32Idx || i == float64Idx) {
+                continue;
+            }
+            Bind(&intLabels[i]);
+            EmitFastIntElementStore(glue, block, index, offset, intValue, STORE_KINDS[i], &exit);
+        }
 
-    BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT8_CLAMPED_ARRAY))),
-        &isInt8, &notInt8);
-    Bind(&isInt8);
-    {
-        // 3 : this switch has 3 cases
-        Switch(jsType, &defaultLabel, valueBuffer, labelBuffer, 3);
-        // 0 : index of this buffer
-        Bind(&labelBuffer[0]);
+        Bind(&intLabels[uint8ClampedIdx]); // Uint8Clamped: saturate to [0, UINT8_MAX]
         {
-            Label valueIsInt(env);
-            Label valueIsDouble(env);
             GateRef byteIndex = Int32Add(index, offset);
-            GateRef block = GetDataPointFromBuffer(glue, buffer);
-            BRANCH(valueType, &valueIsInt, &valueIsDouble);
-            Bind(&valueIsInt);
-            {
-                GateRef val = TruncInt32ToInt8(GetInt32OfTInt(value));
-                Store(VariableType::INT8(), glue, block, byteIndex, val);
-                Jump(&exit);
-            }
-            Bind(&valueIsDouble);
-            {
-                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
-                Store(VariableType::INT8(), glue, block, byteIndex, val);
-                Jump(&exit);
-            }
-        }
-        // 1 : index of this buffer
-        Bind(&labelBuffer[1]);
-        {
-            Label valueIsInt(env);
-            Label valueIsDouble(env);
-            GateRef byteIndex = Int32Add(index, offset);
-            GateRef block = GetDataPointFromBuffer(glue, buffer);
-            BRANCH(valueType, &valueIsInt, &valueIsDouble);
-            Bind(&valueIsInt);
-            {
-                GateRef val = TruncInt32ToInt8(GetInt32OfTInt(value));
-                Store(VariableType::INT8(), glue, block, byteIndex, val);
-                Jump(&exit);
-            }
-            Bind(&valueIsDouble);
-            {
-                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
-                Store(VariableType::INT8(), glue, block, byteIndex, val);
-                Jump(&exit);
-            }
-        }
-        // 2 : index of this buffer
-        Bind(&labelBuffer[2]);
-        {
-            Label valueIsInt(env);
-            Label valueIsDouble(env);
-            GateRef byteIndex = Int32Add(index, offset);
-            GateRef block = GetDataPointFromBuffer(glue, buffer);
-            Label overFlow(env);
-            Label underFlow(env);
-            GateRef topValue = Int32(static_cast<uint32_t>(UINT8_MAX));
-            GateRef bottomValue = Int32(0U);
-            BRANCH(valueType, &valueIsInt, &valueIsDouble);
-            Bind(&valueIsInt);
-            {
-                Label notOverFlow1(env);
-                Label notUnderFlow1(env);
-                GateRef tmpVal = GetInt32OfTInt(value);
-                BRANCH(Int32GreaterThan(tmpVal, topValue), &overFlow, &notOverFlow1);
-                Bind(&notOverFlow1);
-                {
-                    BRANCH(Int32LessThan(tmpVal, bottomValue), &underFlow, &notUnderFlow1);
-                    Bind(&notUnderFlow1);
-                    {
-                        GateRef val = TruncInt32ToInt8(tmpVal);
-                        Store(VariableType::INT8(), glue, block, byteIndex, val);
-                        Jump(&exit);
-                    }
-                }
-            }
-            Bind(&valueIsDouble);
-            {
-                GateRef dVal = GetDoubleOfTDouble(value);
-                GateRef integer = ChangeFloat64ToInt32(dVal);
-                Label notOverFlow2(env);
-                Label notUnderFlow2(env);
-                BRANCH(Int32GreaterThan(integer, topValue), &overFlow, &notOverFlow2);
-                Bind(&notOverFlow2);
-                {
-                    BRANCH(BitOr(Int32LessThan(integer, bottomValue), DoubleIsNAN(dVal)), &underFlow, &notUnderFlow2);
-                    Bind(&notUnderFlow2);
-                    {
-                        GateRef val = CallNGCRuntime(glue, RTSTUB_ID(LrInt), { dVal });
-                        Store(VariableType::INT8(), glue, block, byteIndex, val);
-                        Jump(&exit);
-                    }
-                }
-            }
-            Bind(&overFlow);
-            {
+            IR_IF (Int32GreaterThan(intValue, topValue)) {
                 Store(VariableType::INT8(), glue, block, byteIndex, Int8(static_cast<uint8_t>(UINT8_MAX)));
                 Jump(&exit);
             }
-            Bind(&underFlow);
-            {
+            IR_IF (Int32LessThan(intValue, bottomValue)) {
                 Store(VariableType::INT8(), glue, block, byteIndex, Int8(0));
                 Jump(&exit);
             }
+            Store(VariableType::INT8(), glue, block, byteIndex, TruncInt32ToInt8(intValue));
+            Jump(&exit);
         }
-    }
 
-    Bind(&notInt8);
-    {
-        BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_INT32_ARRAY))),
-            &isInt16, &notInt16);
-        Bind(&isInt16);
+        Bind(&intLabels[float32Idx]); // Float32
         {
-            // 3 : this switch has 3 case
-            Switch(jsType, &defaultLabel, valueBuffer1, labelBuffer1, 3);
-            // 0 : index of this buffer
-            Bind(&labelBuffer1[0]);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::TWO)), offset);
-                GateRef block = GetDataPointFromBuffer(glue, buffer);
-                BRANCH(valueType, &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
-                    GateRef val = TruncInt32ToInt16(GetInt32OfTInt(value));
-                    Store(VariableType::INT16(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-                Bind(&valueIsDouble);
-                {
-                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
-                    Store(VariableType::INT16(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-            }
-            // 1 : index of this buffer
-            Bind(&labelBuffer1[1]);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::TWO)), offset);
-                GateRef block = GetDataPointFromBuffer(glue, buffer);
-                BRANCH(valueType, &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
-                    GateRef val = TruncInt32ToInt16(GetInt32OfTInt(value));
-                    Store(VariableType::INT16(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-                Bind(&valueIsDouble);
-                {
-                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
-                    Store(VariableType::INT16(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-            }
-            // 2 : index of this buffer
-            Bind(&labelBuffer1[2]);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
-                GateRef block = GetDataPointFromBuffer(glue, buffer);
-                BRANCH(valueType, &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
-                    GateRef val = GetInt32OfTInt(value);
-                    Store(VariableType::INT32(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-                Bind(&valueIsDouble);
-                {
-                    GateRef val = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
-                    Store(VariableType::INT32(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-            }
+            GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
+            Store(VariableType::FLOAT32(), glue, block, byteIndex,
+                  TruncDoubleToFloat32(ChangeInt32ToFloat64(intValue)));
+            Jump(&exit);
         }
-        Bind(&notInt16);
-        {
-            // 3 : this switch has 3 case
-            Switch(jsType, &defaultLabel, valueBuffer2, labelBuffer2, 3);
-            // 0 : index of this buffer
-            Bind(&labelBuffer2[0]);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
-                GateRef block = GetDataPointFromBuffer(glue, buffer);
-                BRANCH(valueType, &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
-                    GateRef val = GetInt32OfTInt(value);
-                    Store(VariableType::INT32(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-                Bind(&valueIsDouble);
-                {
-                    GateRef val = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
-                    Store(VariableType::INT32(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-            }
-            // 1 : index of this buffer
-            Bind(&labelBuffer2[1]);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
-                GateRef block = GetDataPointFromBuffer(glue, buffer);
-                BRANCH(valueType, &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
-                    GateRef val = GetInt32OfTInt(value);
-                    Store(VariableType::INT32(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-                Bind(&valueIsDouble);
-                {
-                    Label isNaN(env);
-                    Label next(env);
-                    DEFVARIABLE(val, VariableType::INT32(), Int32(0));
-                    GateRef doubleVal = GetDoubleOfTDouble(value);
-                    val = ChangeFloat64ToInt32(doubleVal);
-                    BRANCH_UNLIKELY(DoubleIsNAN(doubleVal), &isNaN, &next);
-                    Bind(&isNaN);
-                    {
-                        val = ChangeFloat64ToInt32(Double(base::NAN_VALUE));
-                        Jump(&next);
-                    }
-                    Bind(&next);
-                    Store(VariableType::INT32(), glue, block, byteIndex, *val);
-                    Jump(&exit);
-                }
-            }
-            // 2 : index of this buffer
-            Bind(&labelBuffer2[2]);
-            {
-                Label valueIsInt(env);
-                Label valueIsDouble(env);
-                GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::EIGHT)), offset);
-                GateRef block = GetDataPointFromBuffer(glue, buffer);
-                BRANCH(valueType, &valueIsInt, &valueIsDouble);
-                Bind(&valueIsInt);
-                {
-                    GateRef val = ChangeTaggedPointerToInt64(value);
-                    Store(VariableType::INT64(), glue, block, byteIndex, val);
-                    Jump(&exit);
-                }
-                Bind(&valueIsDouble);
-                {
-                    Label isNaN(env);
-                    Label next(env);
-                    DEFVARIABLE(val, VariableType::INT64(), ChangeTaggedPointerToInt64(value));
-                    GateRef doubleVal = GetDoubleOfTDouble(value);
-                    BRANCH_UNLIKELY(DoubleIsNAN(doubleVal), &isNaN, &next);
-                    Bind(&isNaN);
-                    {
-                        val = ChangeTaggedPointerToInt64(DoubleToTaggedDouble(Double(base::NAN_VALUE)));
-                        Jump(&next);
-                    }
-                    Bind(&next);
-                    Store(VariableType::INT64(), glue, block, byteIndex, *val);
-                    Jump(&exit);
-                }
-            }
-        }
-    }
 
-    Bind(&defaultLabel);
-    {
-        Jump(&exit);
+        Bind(&intLabels[float64Idx]); // Float64
+        {
+            GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::EIGHT)), offset);
+            Store(VariableType::FLOAT64(), glue, block, byteIndex, ChangeInt32ToFloat64(intValue));
+            Jump(&exit);
+        }
+    } IR_ELSE {
+        Label dblLabels[storeKinds] = { Label(env), Label(env), Label(env), Label(env), Label(env),
+                                        Label(env), Label(env), Label(env), Label(env) };
+        Label intKindStore(env);
+        GateRef doubleVal = GetDoubleOfTDouble(value);
+        Switch(jsType, &exit, typeKeys, dblLabels, static_cast<int32_t>(storeKinds));
+        for (size_t i = 0; i < storeKinds; i++) {
+            if (i == uint8ClampedIdx || i == float32Idx || i == float64Idx) {
+                continue;
+            }
+            Bind(&dblLabels[i]);
+            Jump(&intKindStore);
+        }
+
+        Bind(&intKindStore);
+        {
+            // double payload into an integer kind: out-of-int32-range values need the
+            // runtime's ToInt32 modulo semantics, so they take the slow path
+            GateRef intValue = ChangeFloat64ToInt32(doubleVal);
+            IR_IF (BitOr(Int32LessThanOrEqual(intValue, Int32(INT32_MIN)),
+                         Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX)))) {
+                Jump(slowPath);
+            }
+            static constexpr JSType INT_KINDS[] = {
+                JSType::JS_INT8_ARRAY, JSType::JS_UINT8_ARRAY, JSType::JS_INT16_ARRAY,
+                JSType::JS_UINT16_ARRAY, JSType::JS_INT32_ARRAY, JSType::JS_UINT32_ARRAY,
+            };
+            constexpr size_t intKindCount = sizeof(INT_KINDS) / sizeof(INT_KINDS[0]);
+            Label widthLabels[intKindCount] = { Label(env), Label(env), Label(env),
+                                                Label(env), Label(env), Label(env) };
+            int64_t widthKeys[intKindCount];
+            for (size_t i = 0; i < intKindCount; i++) {
+                widthKeys[i] = static_cast<int64_t>(INT_KINDS[i]);
+            }
+            Switch(jsType, &exit, widthKeys, widthLabels, static_cast<int32_t>(intKindCount));
+            for (size_t i = 0; i < intKindCount; i++) {
+                Bind(&widthLabels[i]);
+                EmitFastIntElementStore(glue, block, index, offset, intValue, INT_KINDS[i], &exit);
+            }
+        }
+
+        Bind(&dblLabels[uint8ClampedIdx]); // Uint8Clamped: saturate, LrInt rounding
+        {
+            GateRef byteIndex = Int32Add(index, offset);
+            GateRef integer = ChangeFloat64ToInt32(doubleVal);
+            // out-of-int32-range doubles must clamp via the runtime: the inline float-to-int
+            // conversion result for them is target-dependent (saturates on arm64, INT32_MIN
+            // on x64), so the saturation compares below cannot be trusted for such values
+            IR_IF (BitOr(Int32LessThanOrEqual(integer, Int32(INT32_MIN)),
+                         Int32GreaterThanOrEqual(integer, Int32(INT32_MAX)))) {
+                Jump(slowPath);
+            }
+            IR_IF (Int32GreaterThan(integer, topValue)) {
+                Store(VariableType::INT8(), glue, block, byteIndex, Int8(static_cast<uint8_t>(UINT8_MAX)));
+                Jump(&exit);
+            }
+            IR_IF (BitOr(Int32LessThan(integer, bottomValue), DoubleIsNAN(doubleVal))) {
+                Store(VariableType::INT8(), glue, block, byteIndex, Int8(0));
+                Jump(&exit);
+            }
+            Store(VariableType::INT8(), glue, block, byteIndex,
+                  CallNGCRuntime(glue, RTSTUB_ID(LrInt), { doubleVal }));
+            Jump(&exit);
+        }
+
+        Bind(&dblLabels[float32Idx]); // Float32: NaN canonicalized, then narrowed
+        {
+            DEFVARIABLE(val, VariableType::FLOAT64(), doubleVal);
+            GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
+            IR_IF_UNLIKELY (DoubleIsNAN(doubleVal)) {
+                val = Double(base::NAN_VALUE);
+            }
+            Store(VariableType::FLOAT32(), glue, block, byteIndex, TruncDoubleToFloat32(*val));
+            Jump(&exit);
+        }
+
+        Bind(&dblLabels[float64Idx]); // Float64: NaN canonicalized
+        {
+            DEFVARIABLE(val, VariableType::FLOAT64(), doubleVal);
+            GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::EIGHT)), offset);
+            IR_IF_UNLIKELY (DoubleIsNAN(doubleVal)) {
+                val = Double(base::NAN_VALUE);
+            }
+            Store(VariableType::FLOAT64(), glue, block, byteIndex, *val);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     env->SubCfgExit();
