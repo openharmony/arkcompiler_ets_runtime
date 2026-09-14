@@ -185,6 +185,21 @@ public:
         return moduleImportSet_;
     }
 
+    bool IsModuleInImportSet(const CString& moduleName)
+    {
+        return moduleImportSet_.find(moduleName) != moduleImportSet_.end();
+    }
+ 
+    void InsertModuleToImportSet(const CString& moduleName)
+    {
+        moduleImportSet_.insert(moduleName);
+    }
+ 
+    void EraseModuleFromImportSet(const CString& moduleName)
+    {
+        moduleImportSet_.erase(moduleName);
+    }
+
     std::string_view GetModuleImportStackData() const
     {
         return moduleImportData_;

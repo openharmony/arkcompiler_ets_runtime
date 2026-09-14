@@ -18,6 +18,8 @@
 
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_logger.h"
+#include "ecmascript/module/module_message_helper.h"
+#include "ecmascript/platform/dfx_crash_obj.h"
 
 namespace panda::ecmascript {
 
