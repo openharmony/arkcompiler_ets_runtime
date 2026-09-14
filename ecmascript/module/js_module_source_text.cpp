@@ -2500,7 +2500,7 @@ JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByRecordIndexBinding(JSTh
     const CString *moduleRecordName = binding->GetModuleRecordName();
     ModuleManager *moduleManager = thread->GetModuleManager();
     ASSERT(moduleRecordName != nullptr && moduleManager != nullptr);
-    if (!moduleManager->IsLocalModuleLoaded(*moduleRecordName)) {
+    if (!moduleManager->IsEvaluatedModule(*moduleRecordName)) {
         CString fileName = binding->GetAbcFileNameString();
         if (!JSPandaFileExecutor::LazyExecuteModule(
             thread, *moduleRecordName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
