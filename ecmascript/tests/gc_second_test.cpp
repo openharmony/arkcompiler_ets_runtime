@@ -114,6 +114,9 @@ HWTEST_F_L0(GCTest, CSetTest)
     instance->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
     instance->CollectGarbage(TriggerGCType::OLD_GC);
     Region *region = Region::ObjectAddressToRange(*array);
+    // The sensitive status set above gates the requested full mark; reset it so the
+    // requested-mark path below is exercised.
+    heap->SetSensitiveStatus(AppSensitiveStatus::NORMAL_SCENE);
     heap->SetFullMarkRequestedState(true);
     heap->TryTriggerConcurrentMarking(MarkReason::OTHER);
     EXPECT_TRUE(!region->InCollectSet());
@@ -445,9 +448,17 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
     }
     EXPECT_GT(space->GetSurvivalObjectSize(), 0);
 
-    EXPECT_FALSE(space->AdjustCapacity(0, thread));
+    // Pin the capacity at half the committed size so the small-flow calls below
+    // deterministically take the committed-driven coverage recovery.
+    space->SetInitialCapacity(space->GetCommittedSize() / 2);
+    // A small flow carries no survival signal: NaN votes for neither grow nor shrink.
+    space->AdjustCapacity(0, thread);
+    space->SetInitialCapacity(space->GetCommittedSize() / 2);
+    // The flow gate is removed: a small flow no longer gates the adjustment.
+    EXPECT_TRUE(space->AdjustCapacity(1, thread));
+    space->SetInitialCapacity(space->GetCommittedSize() / 2);
     size_t size = space->GetInitialCapacity() * GROW_OBJECT_SURVIVAL_RATE / 2;
-    EXPECT_FALSE(space->AdjustCapacity(size, thread));
+    EXPECT_TRUE(space->AdjustCapacity(size, thread));
 
     space->SetInitialCapacity(space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1);
     size = space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1;
