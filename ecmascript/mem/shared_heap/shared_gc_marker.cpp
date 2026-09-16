@@ -39,6 +39,9 @@ void SharedGCMarkerBase::MarkGlobalRoots(RootVisitor &visitor)
 
 void SharedGCMarkerBase::MarkAllLocalRoots(RootVisitor &visitor, SharedMarkType markType)
 {
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    hasEmbeddedRefs_ = false;
+#endif
     Runtime *runtime = Runtime::GetInstance();
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         PrepareCollectLocalVMRSet();
@@ -63,7 +66,13 @@ void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm,
     }
     ObjectXRay::VisitVMRoots(localVm, visitor);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    heap->GetEmbeddedCodeRefSet()->VisitSharedTargets(visitor);
+    auto *refs = heap->GetEmbeddedCodeRefSet();
+    if (!refs->IsEmpty()) {
+        if (markType == SharedMarkType::NOT_CONCURRENT_MARK) {
+            hasEmbeddedRefs_ = true;
+        }
+        refs->VisitSharedTargets(visitor);
+    }
 #endif
     heap->ProcessSharedGCMarkingLocalBuffer();
 }

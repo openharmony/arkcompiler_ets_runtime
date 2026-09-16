@@ -65,6 +65,12 @@ public:
 
     virtual void ProcessMarkStack(uint32_t threadId) = 0;
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    // Reset by MarkAllLocalRoots; valid after its serial NOT_CONCURRENT_MARK traversal.
+    // Concurrent root marking must not write this summary.
+    bool hasEmbeddedRefs_ {false};
+#endif
+
 protected:
     SharedGCWorkManager *sWorkManager_ {nullptr};
 
