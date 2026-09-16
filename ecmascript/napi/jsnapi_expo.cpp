@@ -5201,6 +5201,11 @@ void JSNApi::DisallowCrossThreadExecution(EcmaVM *vm)
     vm->GetAssociatedJSThread()->SetCrossThreadExecution(false);
 }
 
+bool JSNApi::IsCrossThreadExecutionAllowed(EcmaVM *vm)
+{
+    return vm->GetAssociatedJSThread()->IsCrossThreadExecutionEnable();
+}
+
 void* JSNApi::GetEnv(EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
