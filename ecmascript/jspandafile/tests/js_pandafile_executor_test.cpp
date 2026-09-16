@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <new>
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -61,7 +62,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    MethodLiteral *method = new (pf->GetMethodLiterals()) MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFile(pf);
@@ -94,7 +95,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    MethodLiteral *method = new (pf->GetMethodLiterals()) MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFile(pf);
@@ -134,7 +135,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    MethodLiteral *method = new (pf->GetMethodLiterals()) MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFile(pf);
@@ -208,7 +209,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromAbsolutePathAbcFile)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    MethodLiteral *method = new (pf->GetMethodLiterals()) MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFile(pf);

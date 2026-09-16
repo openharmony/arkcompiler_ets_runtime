@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <new>
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
 #include "class_data_accessor-inl.h"
@@ -99,8 +100,10 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method1 = new MethodLiteral(methodId[0]);
-    MethodLiteral *method2 = new MethodLiteral(methodId[1]);
+    // Construct in array slots (mirrors production InitializeMemory) so the pointers live
+    // inside methodLiterals_ and SetMethodLiteralToMap computes valid indices.
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new (pf->GetMethodLiterals() + 1) MethodLiteral(methodId[1]);
     pf->SetMethodLiteralToMap(method1);
     pf->SetMethodLiteralToMap(method2);
     pfManager->AddJSPandaFile(pf);
@@ -475,8 +478,8 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClass_NewVersion)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method1(methodId[0]);
-    pf->SetMethodLiteralToMap(&method1);
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    pf->SetMethodLiteralToMap(method1);
     pfManager->AddJSPandaFile(pf);
 
     // Test that translation works without errors
@@ -510,10 +513,10 @@ HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_ViaGenerateProgram)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method1(methodId[0]);
-    MethodLiteral method2(methodId[1]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new (pf->GetMethodLiterals() + 1) MethodLiteral(methodId[1]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
     pfManager->AddJSPandaFile(pf);
 
     // GenerateProgram internally calls ParseConstPool
@@ -550,10 +553,10 @@ HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_MultipleTypes)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method1(methodId[0]);
-    MethodLiteral method2(methodId[1]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new (pf->GetMethodLiterals() + 1) MethodLiteral(methodId[1]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
     pfManager->AddJSPandaFile(pf);
 
     // GenerateProgram internally calls ParseConstPool
@@ -588,8 +591,8 @@ HWTEST_F_L0(PandaFileTranslatorTest, UpdateICOffset_BytecodeTranslation)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method1(methodId[0]);
-    pf->SetMethodLiteralToMap(&method1);
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    pf->SetMethodLiteralToMap(method1);
     pfManager->AddJSPandaFile(pf);
 
     // TranslateClasses will call UpdateICOffset internally when fixing opcodes
@@ -624,10 +627,10 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram_ValidMethod)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[1].GetOffset());
-    MethodLiteral method1(methodId[0]);
-    MethodLiteral method2(methodId[1]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new (pf->GetMethodLiterals() + 1) MethodLiteral(methodId[1]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
     pfManager->AddJSPandaFile(pf);
 
     // GenerateProgram is tested through public API
@@ -665,10 +668,10 @@ HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_Empty)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[1].GetOffset());
-    MethodLiteral method1(methodId[0]);
-    MethodLiteral method2(methodId[1]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
+    MethodLiteral *method1 = new (pf->GetMethodLiterals() + 0) MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new (pf->GetMethodLiterals() + 1) MethodLiteral(methodId[1]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
     pfManager->AddJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(

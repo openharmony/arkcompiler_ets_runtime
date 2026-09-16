@@ -537,11 +537,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteAndReadRecordInfoSectionWithMergedPF)
     deserializePf->npmEntries_.clear();
     deserializePf->methodLiterals_ = nullptr;
     deserializePf->SetBundlePack(false);
-#if ENABLE_LATEST_OPTIMIZATION
     deserializePf->methodLiteralMap_.Clear();
-#else
-    deserializePf->methodLiteralMap_.clear();
-#endif
     ASSERT_TRUE(JSPandaFileSnapshot::ReadDataFromFile(thread, deserializePf.get(), path, version));
 
     ASSERT_TRUE(deserializePf != nullptr);
@@ -612,11 +608,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ReadRecordInfoSection_EmptyPkgNameAndZeroMe
     pf->ownedNpmEntries_.clear();
     pf->methodLiterals_ = nullptr;
     pf->numMethods_ = 0;
-#if ENABLE_LATEST_OPTIMIZATION
     pf->methodLiteralMap_.Clear();
-#else
-    pf->methodLiteralMap_.clear();
-#endif
     MemMap memMap(buffer.data(), buffer.size());
     FileMemMapReader reader(memMap, []() {}, "ReadRecordInfoSection_EmptyPkgNameAndZeroMethods");
     ASSERT_TRUE(JSPandaFileRecordInfoSnapshot::ReadRecordInfoSection(pf.get(), reader));

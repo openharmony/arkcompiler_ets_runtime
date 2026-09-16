@@ -25,6 +25,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #undef private
 
+#include <new>
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
 #include "class_data_accessor-inl.h"
@@ -4520,7 +4521,9 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteCjsModuleTest2)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    // Construct in the array slot (mirrors production InitializeMemory) so the pointer is
+    // inside methodLiterals_; SetMethodLiteralToMap then computes a valid index from it.
+    MethodLiteral *method = new (pf->GetMethodLiterals()) MethodLiteral(methodId[0]);
     method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFile(pf);

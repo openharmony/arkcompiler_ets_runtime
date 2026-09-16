@@ -310,11 +310,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     if (numMethods > 0 && jsPandaFile->GetMethodLiterals() == nullptr) {
         jsPandaFile->methodLiterals_ = static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(
             sizeof(MethodLiteral) * numMethods, jsPandaFile->isBundlePack_, jsPandaFile->mode_));
-#if ENABLE_LATEST_OPTIMIZATION
-        jsPandaFile->methodLiteralMap_.Reserve(numMethods);
-#else
-        jsPandaFile->methodLiteralMap_.reserve(numMethods);
-#endif
+        jsPandaFile->methodLiteralMap_.Reserve(numMethods, jsPandaFile->methodLiterals_);
     }
     // read MethodLiterals
     MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
