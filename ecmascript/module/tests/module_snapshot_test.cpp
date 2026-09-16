@@ -942,7 +942,10 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithUpdatedRecordIndexBindi
     nativeModule->SetEcmaModuleFilenameString(thread, baseFileName);
     nativeModule->SetEcmaModuleRecordNameString(nativeRecordName);
     nativeModule->SetTypes(ModuleTypes::APP_MODULE);
-    nativeModule->SetStatus(ModuleStatus::INSTANTIATED);
+    // EVALUATED keeps this test on the skip-lazy path: CreateBindingByRecordIndexBinding
+    // only skips LazyExecuteModule for evaluated targets, and the fake "modules.abc"
+    // above cannot be lazy-executed.
+    nativeModule->SetStatus(ModuleStatus::EVALUATED);
 
     JSHandle<EcmaString> exportName = factory->NewFromStdString("recordIndexValue");
     JSHandle<JSTaggedValue> exportNameValue = JSHandle<JSTaggedValue>::Cast(exportName);
@@ -979,7 +982,7 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingWithUpdatedRecordIndexBindi
     EXPECT_EQ(restoredBinding->GetModuleRecordNameString(), nativeRecordName);
     CString bindingName = EcmaStringAccessor(restoredBinding->GetBindingName(thread)).Utf8ConvertToString(thread);
     EXPECT_EQ(bindingName, "recordIndexValue");
-    EXPECT_TRUE(thread->GetModuleManager()->IsLocalModuleLoaded(nativeRecordName));
+    EXPECT_TRUE(thread->GetModuleManager()->IsEvaluatedModule(nativeRecordName));
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingLoadsAndKeepsTemporaryCjsModule)
@@ -1019,6 +1022,60 @@ HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingLoadsAndKeepsTemporaryCjsMo
     EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(cjsRecordName));
     EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(moduleRecordName));
     EXPECT_EQ(moduleManager->GetResolvedModulesSize(), resolvedModuleCount + 1);
+}
+
+HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingEvaluatesLoadedButUnevaluatedCjsModule)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    CString cjsFileName = MODULE_ABC_PATH "module_unexecute_C.abc";
+    CString cjsRecordName = "module_unexecute_C";
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    CString moduleRecordName = "snapshotModuleWithUnevaluatedCjsBinding";
+    module->SetEcmaModuleFilenameString(thread, cjsFileName);
+    module->SetEcmaModuleRecordNameString(moduleRecordName);
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    // The target CJS module is registered in resolvedModules_ but not evaluated yet,
+    // e.g. restored from snapshot in INSTANTIATED state. Restore must evaluate it
+    // before resolving the binding name.
+    JSHandle<SourceTextModule> unevaluatedCjsModule = factory->NewSourceTextModule();
+    unevaluatedCjsModule->SetEcmaModuleFilenameString(thread, cjsFileName);
+    unevaluatedCjsModule->SetEcmaModuleRecordNameString(cjsRecordName);
+    unevaluatedCjsModule->SetTypes(ModuleTypes::CJS_MODULE);
+    unevaluatedCjsModule->SetStatus(ModuleStatus::INSTANTIATED);
+    moduleManager->AddResolveImportedModule(cjsRecordName, unevaluatedCjsModule.GetTaggedValue());
+
+    JSHandle<TaggedArray> environment = factory->NewTaggedArray(1);
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding = factory->NewSResolvedRecordIndexBindingRecord(
+        cjsRecordName, cjsFileName, SourceTextModule::UNDEFINED_INDEX);
+    recordIndexBinding->SetIsUpdatedFromResolvedRecordBinding(true);
+    environment->Set(thread, index0, recordIndexBinding.GetTaggedValue());
+    module->SetEnvironment(thread, environment);
+    moduleManager->AddResolveImportedModule(moduleRecordName, module.GetTaggedValue());
+
+    uint32_t resolvedModuleCount = moduleManager->GetResolvedModulesSize();
+    ASSERT_TRUE(moduleManager->IsLocalModuleLoaded(cjsRecordName));
+    ASSERT_FALSE(moduleManager->IsEvaluatedModule(cjsRecordName));
+    JSHandle<TaggedArray> serializeArray = factory->NewTaggedArray(1);
+    serializeArray->Set(thread, index0, module.GetTaggedValue());
+
+    MockModuleSnapshot::MockRestoreUpdatedBinding(thread, serializeArray);
+
+    // The CJS module is executed in place during restore: a loaded-but-unevaluated
+    // target must not skip the lazy path, otherwise the binding name is resolved
+    // from an unevaluated module.
+    EXPECT_TRUE(moduleManager->IsEvaluatedModule(cjsRecordName));
+    // The executed module replaces the stale record instead of adding a duplicate entry.
+    EXPECT_EQ(moduleManager->GetResolvedModulesSize(), resolvedModuleCount);
+    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(moduleRecordName));
+    ASSERT_TRUE(environment->Get(thread, index0).IsResolvedRecordBinding());
+    JSHandle<ResolvedRecordBinding> restoredBinding(thread, environment->Get(thread, index0));
+    EXPECT_EQ(restoredBinding->GetModuleRecordNameString(), cjsRecordName);
+    EXPECT_EQ(restoredBinding->GetBindingName(thread),
+        thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue());
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, RestoreUpdatedBindingMixedEnvEntries)
