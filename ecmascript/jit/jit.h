@@ -265,7 +265,11 @@ private:
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
+#if ECMASCRIPT_ENABLE_ARK_STEED
     JitBackend jitBackend_ { JitBackend::ARKSTEED };
+#else
+    JitBackend jitBackend_ { JitBackend::FASTJIT };
+#endif
     bool isApp_ { false };
     bool isProfileNeedDump_ { true };
     uint32_t hotnessThreshold_ { 0 };

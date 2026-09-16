@@ -2835,7 +2835,11 @@ private:
     bool enableTraceCallNum_{false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
+#if ECMASCRIPT_ENABLE_ARK_STEED
     JitBackend compilerJitBackend_ {JitBackend::ARKSTEED};
+#else
+    JitBackend compilerJitBackend_ {JitBackend::FASTJIT};
+#endif
     bool enableDFXHiSysEvent_ {true};
     bool enableAPPJIT_ {false};
     bool isEnableJitDfxDump_ {false};
