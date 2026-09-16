@@ -98,9 +98,12 @@ void SharedGCEvacuator::FlipUpdateLocalRoot(EcmaVM *vm)
     ObjectXRay::VisitVMRoots(vm, rootVisitor_);
 #if ECMASCRIPT_ENABLE_ARK_STEED
     Heap *heap = const_cast<Heap *>(vm->GetHeap());
-    heap->GetEmbeddedCodeRefSet()->VisitSharedTargets(rootVisitor_);
-    if (!heap->GetEmbeddedCodeRefSet()->UpdateSharedTargets()) {
-        LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references";
+    auto *refs = heap->GetEmbeddedCodeRefSet();
+    if (!refs->IsEmpty()) {
+        refs->VisitSharedTargets(rootVisitor_);
+        if (!refs->UpdateSharedTargets()) {
+            LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references";
+        }
     }
 #endif
 }

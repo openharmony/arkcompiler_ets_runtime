@@ -149,7 +149,9 @@ void FullGC::Mark()
 
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+    if (!heap_->GetEmbeddedCodeRefSet()->IsEmpty()) {
+        marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+    }
 #endif
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningMarkTaskFinished();
@@ -160,7 +162,8 @@ void FullGC::Mark()
     heap_->SetParallelGCEnabled(prev);
 
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    if (!heap_->GetEmbeddedCodeRefSet()->UpdateMarkedLocalTargets()) {
+    auto *refs = heap_->GetEmbeddedCodeRefSet();
+    if (!refs->IsEmpty() && !refs->UpdateMarkedLocalTargets()) {
         LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
     }
 #endif
@@ -203,7 +206,9 @@ void FullGC::MarkUntilFixPointImpl()
         marker->ProcessMarkStack(MAIN_THREAD_INDEX);
         marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-        marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+        if (!heap_->GetEmbeddedCodeRefSet()->IsEmpty()) {
+            marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+        }
 #endif
 
         while (holder->PopFreshWeakAggregate(&weakAggregate)) {

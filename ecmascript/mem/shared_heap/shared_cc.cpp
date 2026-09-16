@@ -405,9 +405,12 @@ void SharedCC::UpdateRoot()
         thread->Iterate(rootVisitor);
 #if ECMASCRIPT_ENABLE_ARK_STEED
         Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-        heap->GetEmbeddedCodeRefSet()->VisitSharedTargets(rootVisitor);
-        if (!heap->GetEmbeddedCodeRefSet()->UpdateSharedTargets()) {
-            LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references during SharedCC";
+        auto *refs = heap->GetEmbeddedCodeRefSet();
+        if (!refs->IsEmpty()) {
+            refs->VisitSharedTargets(rootVisitor);
+            if (!refs->UpdateSharedTargets()) {
+                LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references during SharedCC";
+            }
         }
 #endif
     });

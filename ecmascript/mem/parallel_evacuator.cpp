@@ -507,16 +507,19 @@ void ParallelEvacuator::UpdateRoot()
 
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    bool refsUpdated = false;
-    if (heap_->IsYoungMark()) {
-        heap_->GetEmbeddedCodeRefSet()->VisitYoungTargets(updateRootVisitor_);
-        refsUpdated = heap_->GetEmbeddedCodeRefSet()->UpdateYoungTargets();
-    } else {
-        heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(updateRootVisitor_);
-        refsUpdated = heap_->GetEmbeddedCodeRefSet()->UpdateMarkedLocalTargets();
-    }
-    if (!refsUpdated) {
-        LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
+    auto *refs = heap_->GetEmbeddedCodeRefSet();
+    if (!refs->IsEmpty()) {
+        bool refsUpdated = false;
+        if (heap_->IsYoungMark()) {
+            refs->VisitYoungTargets(updateRootVisitor_);
+            refsUpdated = refs->UpdateYoungTargets();
+        } else {
+            refs->VisitMarkedLocalTargets(updateRootVisitor_);
+            refsUpdated = refs->UpdateMarkedLocalTargets();
+        }
+        if (!refsUpdated) {
+            LOG_GC(FATAL) << "Failed to update ArkSteed embedded heap references";
+        }
     }
 #endif
 }
