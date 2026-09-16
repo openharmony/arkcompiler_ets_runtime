@@ -138,9 +138,11 @@ void ConcurrentMarker::ReMark()
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
-    marker->ProcessMarkStack(MAIN_THREAD_INDEX);
-    heap_->WaitRunningMarkTaskFinished();
+    if (!heap_->GetEmbeddedCodeRefSet()->IsEmpty()) {
+        marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+        marker->ProcessMarkStack(MAIN_THREAD_INDEX);
+        heap_->WaitRunningMarkTaskFinished();
+    }
 #endif
 }
 

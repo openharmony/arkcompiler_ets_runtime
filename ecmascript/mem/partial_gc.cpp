@@ -182,9 +182,11 @@ void PartialGC::Mark()
     Marker *marker = heap_->GetNonMovableMarker();
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
-    marker->ProcessMarkStack(MAIN_THREAD_INDEX);
-    heap_->WaitRunningMarkTaskFinished();
+    if (!heap_->GetEmbeddedCodeRefSet()->IsEmpty()) {
+        marker->MarkEmbeddedCodeRefs(MAIN_THREAD_INDEX);
+        marker->ProcessMarkStack(MAIN_THREAD_INDEX);
+        heap_->WaitRunningMarkTaskFinished();
+    }
 #endif
 }
 
