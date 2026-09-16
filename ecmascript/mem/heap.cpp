@@ -2669,17 +2669,17 @@ bool Heap::TryTriggerConcurrentMarking(MarkReason markReason)
     if (!CheckCanTriggerConcurrentMarking()) {
         return false;
     }
-    if (fullMarkRequested_) {
-        markType_ = MarkType::MARK_FULL;
-        OPTIONAL_LOG(ecmaVm_, INFO) << " fullMarkRequested, trigger full mark.";
-        TriggerConcurrentMarking(markReason);
-        return true;
-    }
     if (InSensitiveStatus() && !ObjectExceedHighSensitiveThresholdForCM()) {
         return false;
     }
     if (IsJustFinishStartup() && !ObjectExceedJustFinishStartupThresholdForCM()) {
         return false;
+    }
+    if (fullMarkRequested_) {
+        markType_ = MarkType::MARK_FULL;
+        OPTIONAL_LOG(ecmaVm_, INFO) << " fullMarkRequested, trigger full mark.";
+        TriggerConcurrentMarking(markReason);
+        return true;
     }
 
     // fixme: refactor?

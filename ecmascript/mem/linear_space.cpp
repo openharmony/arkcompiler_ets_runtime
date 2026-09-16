@@ -564,15 +564,21 @@ void SemiSpace::AddOverShootSize(size_t size)
 
 bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
 {
-    if (allocatedSizeSinceGC <= initialCapacity_ * GROW_OBJECT_SURVIVAL_RATE / GROWING_FACTOR) {
-        return false;
-    }
     size_t committedSize = GetCommittedSize();
-    double curObjectSurvivalRate = static_cast<double>(survivalObjectSize_) / allocatedSizeSinceGC;
+    // A flow at or below the small-flow threshold carries no meaningful survival
+    // signal (the survivors were accounted in the previous generation): map it to NaN
+    // so curObjectSurvivalRate votes for neither grow nor shrink.
+    size_t minValidFlow = initialCapacity_ * GROW_OBJECT_SURVIVAL_RATE / GROWING_FACTOR;
+    double curObjectSurvivalRate = allocatedSizeSinceGC <= minValidFlow ?
+        std::numeric_limits<double>::quiet_NaN() :
+        static_cast<double>(survivalObjectSize_) / allocatedSizeSinceGC;
     double committedSurvivalRate = static_cast<double>(committedSize) / initialCapacity_;
     SetOverShootSize(0);
     double allocSpeed = localHeap_->GetMemController()->GetNewSpaceAllocationThroughputPerMS();
-    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE || committedSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
+    // Coverage recovery (committed-driven): the envelope must keep covering the committed
+    // size that survives the GC, e.g. a balloon handed off partially across a semi-space
+    // swap. Grow the capacity until it covers the committed size and realign overshoot.
+    if (committedSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
         size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
         while (committedSize >= newCapacity && newCapacity < maximumCapacity_) {
             newCapacity = newCapacity * GROWING_FACTOR;
@@ -588,7 +594,11 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
                 JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);   // 2: double
         }
         return true;
-    } else if (initialCapacity_ < (MIN_GC_INTERVAL_MS * allocSpeed) &&
+    }
+    // Flow/throughput-driven grow (at most one doubling): high survival rate, or the
+    // current capacity cannot sustain the allocation speed for one GC interval.
+    if ((curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE ||
+        initialCapacity_ < (MIN_GC_INTERVAL_MS * allocSpeed)) &&
         initialCapacity_ < maximumCapacity_) {
         size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
         SetInitialCapacity(std::min(newCapacity, maximumCapacity_));
