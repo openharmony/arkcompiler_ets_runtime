@@ -31,6 +31,36 @@ using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
 
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm) {}
 
+bool ModuleManager::IsModuleNameInImportScope(const CString &moduleName) const
+{
+    if (moduleName.empty()) {
+        return false;
+    }
+    for (const ModuleImportStackScope *scope = moduleImportScopeTop_; scope != nullptr; scope = scope->previous_) {
+        if (scope->moduleName_ == moduleName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ModuleManager::EnterModuleImportScope(ModuleImportStackScope *scope)
+{
+    ASSERT(scope != nullptr);
+    bool isCircularImport = IsModuleNameInImportScope(scope->moduleName_);
+    scope->previous_ = moduleImportScopeTop_;
+    moduleImportScopeTop_ = scope;
+    return isCircularImport;
+}
+
+void ModuleManager::ExitModuleImportScope(ModuleImportStackScope *scope)
+{
+    ASSERT(scope != nullptr);
+    ASSERT(moduleImportScopeTop_ == scope);
+    moduleImportScopeTop_ = scope->previous_;
+    scope->previous_ = nullptr;
+}
+
 JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module)
 {
     // Clone isolate module at shared-heap to mark sendable class.

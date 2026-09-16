@@ -1080,11 +1080,11 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
         return index;
     }
 
+    ModuleImportStackScope scope(thread, module);
     if (status == ModuleStatus::EVALUATING) {
         return index;
     }
     ASSERT(status == ModuleStatus::INSTANTIATED);
-    ModuleImportStackScope scope(thread, module);
     module->SetStatus(ModuleStatus::EVALUATING);
     module->SetDFSIndex(index);
     module->SetDFSAncestorIndex(index);
@@ -1305,6 +1305,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, JSHandle<SourceTex
         ModuleStatus status = module->GetStatus();
         if (status == ModuleStatus::EVALUATING &&
                 stateVisit.threadId == thread->GetThreadId()) {
+            ModuleImportStackScope circularScope(thread, module);
             return index;
         }
         if (status == ModuleStatus::ERRORED) {

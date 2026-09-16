@@ -44,6 +44,31 @@ public:
         return JSTaggedValue::Undefined();
     }
 
+    static bool IsModuleInImportStack(ModuleManager *moduleManager,
+                                      const JSHandle<SourceTextModule> &module)
+    {
+        CString moduleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
+        if (moduleName.empty()) {
+            return false;
+        }
+        std::string_view stack = moduleManager->GetModuleImportStackData();
+        std::string_view expectedName(moduleName.c_str(), moduleName.size());
+        size_t lineStart = stack.find('\n');
+        while (lineStart != std::string_view::npos) {
+            lineStart++;
+            size_t lineEnd = stack.find('\n', lineStart);
+            if (lineEnd == std::string_view::npos) {
+                lineEnd = stack.size();
+            }
+            size_t separator = stack.find(' ', lineStart);
+            if (separator < lineEnd && stack.substr(separator + 1, lineEnd - separator - 1) == expectedName) {
+                return true;
+            }
+            lineStart = lineEnd < stack.size() ? lineEnd : std::string_view::npos;
+        }
+        return false;
+    }
+
     static void SetUpTestCase()
     {
         GTEST_LOG_(INFO) << "SetUpTestCase";
@@ -516,6 +541,309 @@ HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_EmptyModuleName)
     
     // Reset options
     instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_SameLogicalModuleDifferentObjects
+ * @tc.desc: Different module objects with the same logical name are tracked as the same module
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_SameLogicalModuleDifferentObjects)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module1 = instance->GetFactory()->NewSourceTextModule();
+    JSHandle<SourceTextModule> module2 = instance->GetFactory()->NewSourceTextModule();
+    module1->SetEcmaModuleRecordNameString("same_name.ets");
+    module2->SetEcmaModuleRecordNameString("same_name.ets");
+
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, module1));
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, module2));
+    {
+        ModuleImportStackScope scope1(thread, module1);
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, module1));
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, module2));
+        {
+            ModuleImportStackScope scope2(thread, module2);
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, module1));
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, module2));
+        }
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, module1));
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, module2));
+    }
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, module1));
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, module2));
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_ReentrantModuleKeepsOuterScope
+ * @tc.desc: Leaving a repeated inner module scope keeps the outer scope active
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_ReentrantModuleKeepsOuterScope)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("reentrant_module.ets");
+
+    {
+        ModuleImportStackScope outerScope(thread, module);
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, module));
+        {
+            ModuleImportStackScope innerScope(thread, module);
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, module));
+        }
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, module));
+    }
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_EmptyModuleNameNested
+ * @tc.desc: An unnamed module scope does not pop or unlink its parent scope
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_EmptyModuleNameNested)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> parentModule = instance->GetFactory()->NewSourceTextModule();
+    parentModule->SetEcmaModuleRecordNameString("parent_module.ets");
+    JSHandle<SourceTextModule> unnamedModule = instance->GetFactory()->NewSourceTextModule();
+
+    {
+        ModuleImportStackScope parentScope(thread, parentModule);
+        std::string parentStack(moduleManager->GetModuleImportStackData());
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, parentModule));
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, unnamedModule));
+        {
+            ModuleImportStackScope unnamedScope(thread, unnamedModule);
+            EXPECT_EQ(moduleManager->GetModuleImportStackData(), parentStack);
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, parentModule));
+            EXPECT_FALSE(IsModuleInImportStack(moduleManager, unnamedModule));
+        }
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), parentStack);
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, parentModule));
+    }
+    EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, parentModule));
+}
+
+/**
+ * @tc.name: ModuleManager_ImportScopeCircularDetectionByLogicalName
+ * @tc.desc: Circular imports are detected by logical module name instead of object identity
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_ImportScopeCircularDetectionByLogicalName)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> firstModule = instance->GetFactory()->NewSourceTextModule();
+    JSHandle<SourceTextModule> sameNameModule = instance->GetFactory()->NewSourceTextModule();
+    firstModule->SetEcmaModuleRecordNameString("same_name.ets");
+    sameNameModule->SetEcmaModuleRecordNameString("same_name.ets");
+
+    // Keep the scopes inactive so the manager APIs can be verified directly.
+    instance->GetJSOptions().SetArkProperties(instance->GetJSOptions().GetDefaultProperties());
+    ModuleImportStackScope firstScope(thread, firstModule);
+    ModuleImportStackScope sameNameScope(thread, sameNameModule);
+    ModuleImportStackScope reentrantScope(thread, firstModule);
+
+    EXPECT_FALSE(moduleManager->EnterModuleImportScope(&firstScope));
+    EXPECT_TRUE(moduleManager->EnterModuleImportScope(&sameNameScope));
+    EXPECT_TRUE(moduleManager->EnterModuleImportScope(&reentrantScope));
+    moduleManager->ExitModuleImportScope(&reentrantScope);
+    EXPECT_TRUE(moduleManager->EnterModuleImportScope(&reentrantScope));
+    moduleManager->ExitModuleImportScope(&reentrantScope);
+    moduleManager->ExitModuleImportScope(&sameNameScope);
+    EXPECT_TRUE(moduleManager->EnterModuleImportScope(&reentrantScope));
+    moduleManager->ExitModuleImportScope(&reentrantScope);
+    moduleManager->ExitModuleImportScope(&firstScope);
+    EXPECT_FALSE(moduleManager->EnterModuleImportScope(&reentrantScope));
+    moduleManager->ExitModuleImportScope(&reentrantScope);
+}
+
+/**
+ * @tc.name: ModuleManager_ImportScopeCanBeReusedAfterExit
+ * @tc.desc: Exiting a scope clears its link so the same scope can be entered again
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_ImportScopeCanBeReusedAfterExit)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("reusable_scope.ets");
+
+    instance->GetJSOptions().SetArkProperties(instance->GetJSOptions().GetDefaultProperties());
+    ModuleImportStackScope scope(thread, module);
+
+    EXPECT_FALSE(moduleManager->EnterModuleImportScope(&scope));
+    moduleManager->ExitModuleImportScope(&scope);
+
+    EXPECT_FALSE(moduleManager->EnterModuleImportScope(&scope));
+    moduleManager->ExitModuleImportScope(&scope);
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_MultiModuleCycleRestoresChain
+ * @tc.desc: A-B-A cycle keeps both outer scopes active and restores stack order while unwinding
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_MultiModuleCycleRestoresChain)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+    JSHandle<SourceTextModule> moduleA = instance->GetFactory()->NewSourceTextModule();
+    JSHandle<SourceTextModule> moduleB = instance->GetFactory()->NewSourceTextModule();
+    moduleA->SetEcmaModuleRecordNameString("cycle_a.ets");
+    moduleB->SetEcmaModuleRecordNameString("cycle_b.ets");
+
+    {
+        ModuleImportStackScope outerA(thread, moduleA);
+        {
+            ModuleImportStackScope scopeB(thread, moduleB);
+            {
+                ModuleImportStackScope innerA(thread, moduleA);
+                EXPECT_EQ(moduleManager->GetModuleImportStackData(),
+                    "\nModuleImportStack:\n#0 cycle_a.ets\n#1 cycle_b.ets\n#2 cycle_a.ets");
+                EXPECT_TRUE(IsModuleInImportStack(moduleManager, moduleA));
+                EXPECT_TRUE(IsModuleInImportStack(moduleManager, moduleB));
+            }
+            EXPECT_EQ(moduleManager->GetModuleImportStackData(),
+                "\nModuleImportStack:\n#0 cycle_b.ets\n#1 cycle_a.ets");
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, moduleA));
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, moduleB));
+        }
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:\n#0 cycle_a.ets");
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, moduleA));
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, moduleB));
+    }
+    EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, moduleA));
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, moduleB));
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_UsesCapturedLogicalName
+ * @tc.desc: An active scope keeps the logical module name captured on entry
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_UsesCapturedLogicalName)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("original_name.ets");
+
+    {
+        ModuleImportStackScope outerScope(thread, module);
+        module->SetEcmaModuleRecordNameString("renamed_module.ets");
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+        {
+            ModuleImportStackScope innerScope(thread, module);
+            EXPECT_EQ(moduleManager->GetModuleImportStackData(),
+                "\nModuleImportStack:\n#0 renamed_module.ets\n#1 original_name.ets");
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, module));
+        }
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:\n#0 original_name.ets");
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+    }
+    EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_EmptyNameBecomesNamed
+ * @tc.desc: A scope skipped for an empty name stays inactive after the module is named
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_EmptyNameBecomesNamed)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+
+    {
+        ModuleImportStackScope unnamedScope(thread, module);
+        module->SetEcmaModuleRecordNameString("named_later.ets");
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+        {
+            ModuleImportStackScope namedScope(thread, module);
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, module));
+            EXPECT_EQ(moduleManager->GetModuleImportStackData(),
+                "\nModuleImportStack:\n#0 named_later.ets");
+        }
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    }
+    EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_DisabledChildKeepsActiveParent
+ * @tc.desc: A child constructed while tracing is disabled does not unlink or pop its active parent
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_DisabledChildKeepsActiveParent)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> parent = instance->GetFactory()->NewSourceTextModule();
+    JSHandle<SourceTextModule> child = instance->GetFactory()->NewSourceTextModule();
+    parent->SetEcmaModuleRecordNameString("enabled_parent.ets");
+    child->SetEcmaModuleRecordNameString("disabled_child.ets");
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    {
+        ModuleImportStackScope parentScope(thread, parent);
+        std::string parentStack(moduleManager->GetModuleImportStackData());
+        instance->GetJSOptions().SetArkProperties(instance->GetJSOptions().GetDefaultProperties());
+        {
+            ModuleImportStackScope childScope(thread, child);
+            EXPECT_EQ(moduleManager->GetModuleImportStackData(), parentStack);
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, parent));
+            EXPECT_FALSE(IsModuleInImportStack(moduleManager, child));
+        }
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), parentStack);
+        EXPECT_TRUE(IsModuleInImportStack(moduleManager, parent));
+    }
+    EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    EXPECT_FALSE(IsModuleInImportStack(moduleManager, parent));
+}
+
+/**
+ * @tc.name: ModuleImportStackScope_EnabledChildInsideDisabledParent
+ * @tc.desc: An inactive parent does not make an enabled child using the same module look circular
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_EnabledChildInsideDisabledParent)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("toggle_option.ets");
+    instance->GetJSOptions().SetArkProperties(instance->GetJSOptions().GetDefaultProperties());
+
+    {
+        ModuleImportStackScope disabledScope(thread, module);
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+        instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+        {
+            ModuleImportStackScope enabledScope(thread, module);
+            EXPECT_TRUE(IsModuleInImportStack(moduleManager, module));
+            EXPECT_EQ(moduleManager->GetModuleImportStackData(),
+                "\nModuleImportStack:\n#0 toggle_option.ets");
+        }
+        EXPECT_FALSE(IsModuleInImportStack(moduleManager, module));
+        EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    }
+    EXPECT_EQ(moduleManager->GetModuleImportStackData(), "\nModuleImportStack:");
+    instance->GetJSOptions().SetArkProperties(instance->GetJSOptions().GetDefaultProperties());
 }
 
 /**
