@@ -218,21 +218,6 @@ public:
         return dropframeManager_.CheckIsSendableMethod();
     }
 
-    void EnableObjectHashDisplay()
-    {
-        isObjHashDisplayEnabled_ = true;
-    }
-
-    void DisableObjectHashDisplay()
-    {
-        isObjHashDisplayEnabled_ = false;
-    }
-
-    bool IsObjHashDisplayEnabled()
-    {
-        return isObjHashDisplayEnabled_;
-    }
-
     void EnableRunningTestcases()
     {
         isRunningTestcases_ = true;
@@ -284,7 +269,6 @@ private:
     bool isMixedDebugEnabled_ { false };
     bool isMixedStackEnabled_ { false };
     bool isSignalInterrupt_ {false};
-    bool isObjHashDisplayEnabled_ { true };
     bool isRunningTestcases_ { false };
     bool asyncStackTrace_ {false};
     ProtocolHandler *debuggerHandler_ {nullptr};
