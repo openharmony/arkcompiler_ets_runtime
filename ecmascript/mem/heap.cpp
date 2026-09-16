@@ -1645,7 +1645,7 @@ void Heap::Destroy()
         delete compressGCMarker_;
         compressGCMarker_ = nullptr;
     }
-    if (Runtime::GetInstance()->IsHybridVm() && unifiedGCMarker_ != nullptr) {
+    if (unifiedGCMarker_ != nullptr) {
         delete unifiedGCMarker_;
         unifiedGCMarker_ = nullptr;
     }
@@ -3639,7 +3639,7 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     fullGC_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
-    if (Runtime::GetInstance()->IsHybridVm()) {
+    if (unifiedGCMarker_ != nullptr) {
         unifiedGCMarker_->workManager_ = workManager;
     }
     // fixme: refactor?
