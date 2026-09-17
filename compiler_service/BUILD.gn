@@ -49,6 +49,7 @@ ohos_shared_library("libcompiler_service") {
   }
   shlib_type = "sa"
   version_script = "libaot_compiler_service.map"
+  ldflags = [ "-Wl,--exclude-libs,ALL" ]
   sources = [
     "${js_root}/common_components/log/log.cpp",
     "${js_root}/ecmascript/compiler/aot_compiler_stats.cpp",
