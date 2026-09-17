@@ -631,6 +631,11 @@ ark_disasm [选项] 输入文件 输出文件
 <td class="cellrowborder" valign="top" width="50%" headers="mcps1.1.3.1.2 "><p id="p369871173312"><a name="p369871173312"></a><a name="p369871173312"></a>输出更多关于类和方法在文件中的信息。默认值是false</p>
 </td>
 </tr>
+<tr id="row194197407327"><td class="cellrowborder" valign="top" width="50%" headers="mcps1.1.3.1.1 "><p id="p154205401326"><a name="p154205401326"></a><a name="p154205401326"></a>--version</p>
+</td>
+<td class="cellrowborder" valign="top" width="50%" headers="mcps1.1.3.1.2 "><p id="p369871173313"><a name="p369871173313"></a><a name="p369871173313"></a>打印版本信息，包括当前和所支持的最低的文件格式版本</p>
+</td>
+</tr>
 </tbody>
 </table>
 
