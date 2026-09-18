@@ -250,6 +250,16 @@ bool EmbeddedCodeRefSet::UpdateMarkedLocalTargets()
 
 bool EmbeddedCodeRefSet::UpdateSharedTargets()
 {
+    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsAppJit() &&
+        !refsByOwner_.empty()) {
+        static thread_local bool jitFortEnabled = false;
+        if (!jitFortEnabled) {
+            if (!JitFort::InitJitFort()) {
+                return false;
+            }
+            jitFortEnabled = true;
+        }
+    }
     return UpdateTargets(TargetDomain::SHARED, false);
 }
 
