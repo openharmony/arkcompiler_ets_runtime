@@ -337,7 +337,7 @@ void SharedCC::ProcessWeakReference()
     TRACE_GC(GCStats::Scope::ScopeId::UpdateWeekRef, sHeap_->GetEcmaGCStats());
 
     SharedCCEvacuator evacuator(sHeap_, GetTlabAllocator(DAEMON_THREAD_INDEX));
-    UpdateRecordWeakReference(evacuator);
+    UpdateRecordWeakReference();
 
     WeakRootVisitor weakVisitor = [&evacuator](TaggedObject *object) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(object);
@@ -879,12 +879,12 @@ void SharedCC::SetStringTableCopyOrSweeping(bool enabled)
     }
 }
 
-void SharedCC::UpdateRecordWeakReference(SharedCCEvacuator &evacuator)
+void SharedCC::UpdateRecordWeakReference()
 {
     auto workManager = sHeap_->GetWorkManager();
-    auto processWeakReference = [&evacuator](SharedGCWorkNodeHolder *holder) {
+    auto processWeakReference = [](SharedGCWorkNodeHolder *holder) {
         ProcessQueue *queue = holder->GetWeakReferenceQueue();
-        UpdateSharedCCWeakReferences(queue, evacuator);
+        UpdateSharedCCWeakReferences(queue);
     };
     auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = 0; i < totalThreadCount; i++) {
