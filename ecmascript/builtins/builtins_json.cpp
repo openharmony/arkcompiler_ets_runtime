@@ -36,6 +36,43 @@ void InitWithTransformType(JSHandle<GlobalEnv> &env, TransformType transformType
         constructor.Update(env->GetSObjectFunction());
     }
 }
+
+bool ParseSendableArguments(EcmaRuntimeCallInfo *argv, uint32_t argc, ParseOptions &parseOptions)
+{
+    if (argc >= 2) {  // 2: two args
+        JSHandle<JSTaggedValue> reviverVal = base::BuiltinsBase::GetCallArg(argv, 1);
+        if (!reviverVal->IsUndefined()) {
+            return false;
+        }
+    }
+    if (argc != 3) {  // 3: three args
+        return true;
+    }
+    JSThread *thread = argv->GetThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> options = base::BuiltinsBase::GetCallArg(argv, 2);  // 2: two args
+    if (!options->IsECMAObject()) {
+        return true;
+    }
+    JSHandle<JSTaggedValue> modeKey(factory->NewFromStdString("bigIntMode"));
+    JSHandle<JSTaggedValue> typeKey(factory->NewFromStdString("parseReturnType"));
+    JSHandle<JSTaggedValue> type = JSTaggedValue::GetProperty(thread, options, typeKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (type->IsInt() && type->GetInt() == 1) {
+        parseOptions.returnType = ParseReturnType::MAP;
+    }
+    JSHandle<JSTaggedValue> modeValue = JSTaggedValue::GetProperty(thread, options, modeKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (modeValue->IsInt()) {
+        int val = modeValue->GetInt();
+        if (val == 2) {  // 2: two args
+            parseOptions.bigIntMode = BigIntMode::ALWAYS_PARSE_AS_BIGINT;
+        } else if (val == 1) {
+            parseOptions.bigIntMode = BigIntMode::PARSE_AS_BIGINT;
+        }
+    }
+    return true;
+}
 }  // namespace
 
 using Internalize = base::Internalize;
@@ -56,6 +93,48 @@ JSTaggedValue BuiltinsSendableJson::Parse(EcmaRuntimeCallInfo *argv)
         }
     }
     return BuiltinsJson::ParseWithTransformType(argv, TransformType::SENDABLE);
+}
+
+JSTaggedValue BuiltinsSendableJson::ParseSendable(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Json, Parse);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    uint32_t argc = argv->GetArgsNumber();
+    if (argc == 0 || argc > 3) {  // 3: three args
+        JSHandle<JSObject> syntaxError = factory->GetJSError(base::ErrorType::SYNTAX_ERROR,
+                                                             "arg is empty or arg more than three", StackCheck::NO);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
+    }
+
+    JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
+    ParseOptions parseOptions;
+    if (!ParseSendableArguments(argv, argc, parseOptions)) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), GET_MESSAGE_STRING(ReviverOnlySupportUndefined),
+                                    JSTaggedValue::Exception());
+    }
+
+    JSHandle<EcmaString> parseString = JSTaggedValue::ToString(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> result;
+    if (EcmaStringAccessor(parseString).IsUtf8()) {
+        panda::ecmascript::base::Utf8JsonParser parser(thread, TransformType::SENDABLE, parseOptions);
+        result = parser.ParseSendable(parseString);
+    } else {
+        panda::ecmascript::base::Utf16JsonParser parser(thread, TransformType::SENDABLE, parseOptions);
+        result = parser.ParseSendable(*parseString);
+    }
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    if (result->IsHeapObject() && !result->IsJSShared() && !result->IsString()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(ClassNotDerivedFromShared),
+                                    JSTaggedValue::Exception());
+    }
+    return result.GetTaggedValue();
 }
 
 JSTaggedValue BuiltinsBigIntJson::Parse(EcmaRuntimeCallInfo *argv)

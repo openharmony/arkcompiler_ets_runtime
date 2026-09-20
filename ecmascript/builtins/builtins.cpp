@@ -1842,6 +1842,7 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::THREE, BUILTINS_STUB_ID(JsonStringify));
     SetFunction(env, jsonObject, "stringifySendable", SendableJson::Stringify, FunctionLength::THREE);
     SetFunction(env, jsonObject, "stringifyBigInt", BigIntJson::Stringify, FunctionLength::THREE);
+    SetFrozenFunction(env, jsonObject, "parseSendableV2", SendableJson::ParseSendable, FunctionLength::THREE);
 
     PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
     JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCIIReadOnly("JSON"));
