@@ -68,6 +68,19 @@ JSTaggedValue CreateFastNumberValue(JSThread *thread, const JsonHelper::ParseOpt
 template<typename T>
 JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
 {
+    return g_isEnableCMCGC ? LaunchImpl<true, false>(begin, end) : LaunchImpl<false, false>(begin, end);
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::LaunchSendable(Text begin, Text end)
+{
+    return g_isEnableCMCGC ? LaunchImpl<true, true>(begin, end) : LaunchImpl<false, true>(begin, end);
+}
+
+template<typename T>
+template<bool isEnableCMCGC, bool isSendable>
+JSHandle<JSTaggedValue> JsonParser<T>::LaunchImpl(Text begin, Text end)
+{
     // check empty
     if (UNLIKELY(begin == end)) {
         return JSHandle<JSTaggedValue>(thread_, [&]() -> JSTaggedValue {
@@ -95,7 +108,12 @@ JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
     initialJSObjectClass_ =
         JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, objectFunc));
 
-    JSTaggedValue result = g_isEnableCMCGC ? ParseJSONText<true>() : ParseJSONText<false>();
+    JSTaggedValue result;
+    if constexpr (isSendable) {
+        result = isEnableCMCGC ? ParseJSONTextSendable<true>() : ParseJSONTextSendable<false>();
+    } else {
+        result = isEnableCMCGC ? ParseJSONText<true>() : ParseJSONText<false>();
+    }
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
     return JSHandle<JSTaggedValue>(thread_, result);
 }
@@ -390,6 +408,265 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
 }
 
 template<typename T>
+template<bool isEnableCMCGC>
+JSTaggedValue JsonParser<T>::ParseJSONTextSendable()
+{
+    std::vector<JsonContinuation> continuationList;
+    std::vector<JSHandle<JSTaggedValue>> elementsList;
+    std::vector<JSHandle<JSTaggedValue>> propertyList;
+    continuationList.reserve(16); // 16: initial capacity
+    elementsList.reserve(16); // 16: initial capacity
+    propertyList.reserve(16); // 16: initial capacity
+    JsonContinuation continuation(ContType::RETURN, 0);
+    while (true) {
+        JSHandle<JSTaggedValue> parseValue = ParseNextSendableValue(continuation, continuationList,
+                                                                    elementsList, propertyList);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        if (ReduceSendableContinuation<isEnableCMCGC>(continuation, continuationList, elementsList,
+                                                      propertyList, parseValue)) {
+            return parseValue.GetTaggedValue();
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
+    }
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::ParseNextSendableValue(
+    JsonContinuation &continuation, std::vector<JsonContinuation> &continuationList,
+    std::vector<JSHandle<JSTaggedValue>> &elementsList,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    JSHandle<JSTaggedValue> parseValue;
+    while (true) {
+        bool hasLeafValue = ParseSendableToken(continuation, continuationList, elementsList,
+                                               propertyList, parseValue);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
+        if (hasLeafValue) {
+            break;
+        }
+    }
+    return parseValue;
+}
+
+template<typename T>
+bool JsonParser<T>::ParseSendableToken(
+    JsonContinuation &continuation, std::vector<JsonContinuation> &continuationList,
+    std::vector<JSHandle<JSTaggedValue>> &elementsList,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList, JSHandle<JSTaggedValue> &parseValue)
+{
+    SkipStartWhiteSpace();
+    Tokens token = ParseToken();
+    if (current_ > range_) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end in JSON",
+                                           false, rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    switch (token) {
+        case Tokens::OBJECT:
+            if (EmptyObjectCheck()) {
+                parseValue = CreateEmptySJsonObject();
+                GetNextNonSpaceChar();
+                return true;
+            }
+            continuationList.emplace_back(std::move(continuation));
+            continuation = JsonContinuation(ContType::OBJECT, propertyList.size());
+            ParseKeyAndColon("Unexpected Object Prop in JSON", "Unexpected Object in JSON", propertyList);
+            return false;
+        case Tokens::MAP:
+            if (EmptyObjectCheck()) {
+                parseValue = JSHandle<JSTaggedValue>(CreateSharedMap());
+                GetNextNonSpaceChar();
+                return true;
+            }
+            continuationList.emplace_back(std::move(continuation));
+            continuation = JsonContinuation(ContType::MAP, propertyList.size());
+            ParseKeyAndColon("Unexpected MAP Prop in JSON", "Unexpected MAP in JSON", propertyList);
+            return false;
+        case Tokens::ARRAY:
+            if (EmptyArrayCheck()) {
+                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSSArray());
+                GetNextNonSpaceChar();
+                return true;
+            }
+            continuationList.emplace_back(std::move(continuation));
+            continuation = JsonContinuation(ContType::ARRAY, elementsList.size());
+            return false;
+        default:
+            parseValue = ParseSendableLeafValue(token, continuation.type_);
+            return true;
+    }
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::ParseSendableLeafValue(Tokens token, ContType contType)
+{
+    switch (token) {
+        case Tokens::LITERAL_TRUE:
+            return JSHandle<JSTaggedValue>(thread_, ParseLiteralTrue());
+        case Tokens::LITERAL_FALSE:
+            return JSHandle<JSTaggedValue>(thread_, ParseLiteralFalse());
+        case Tokens::LITERAL_NULL:
+            return JSHandle<JSTaggedValue>(thread_, ParseLiteralNull());
+        case Tokens::NUMBER:
+            return JSHandle<JSTaggedValue>(thread_, ParseNumber(IsInObjOrArrayOrMap(contType)));
+        case Tokens::STRING:
+            return ParseString(IsInObjOrArrayOrMap(contType));
+        default:
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Invalid Token",
+                                               JSHandle<JSTaggedValue>(), rawString_,
+                                               current_ - begin_ - slicedOffset_);
+    }
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+bool JsonParser<T>::ReduceSendableContinuation(
+    JsonContinuation &continuation, std::vector<JsonContinuation> &continuationList,
+    std::vector<JSHandle<JSTaggedValue>> &elementsList,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList, JSHandle<JSTaggedValue> &parseValue)
+{
+    while (true) {
+        switch (continuation.type_) {
+            case ContType::RETURN:
+                ASSERT(continuationList.empty());
+                ASSERT(elementsList.empty());
+                ASSERT(propertyList.empty());
+                if (current_ <= range_) {
+                    THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                       "Unexpected Text in JSON: Remaining Text Before Return",
+                                                       false, rawString_,
+                                                       current_ - begin_ - slicedOffset_);
+                }
+                return true;
+            case ContType::ARRAY:
+                if (!ReduceSendableArrayFrame(continuation, continuationList, elementsList,
+                                              parseValue)) {
+                    return false;
+                }
+                continue;
+            case ContType::OBJECT:
+                if (!ReduceSendableObjectFrame<isEnableCMCGC>(continuation, continuationList,
+                                                              propertyList, parseValue)) {
+                    return false;
+                }
+                continue;
+            case ContType::MAP:
+                if (!ReduceSendableMapFrame<isEnableCMCGC>(continuation, continuationList, propertyList,
+                                            parseValue)) {
+                    return false;
+                }
+                continue;
+        }
+        return false;
+    }
+}
+
+template<typename T>
+bool JsonParser<T>::ReduceSendableArrayFrame(
+    JsonContinuation &continuation, std::vector<JsonContinuation> &continuationList,
+    std::vector<JSHandle<JSTaggedValue>> &elementsList, JSHandle<JSTaggedValue> &parseValue)
+{
+    elementsList.emplace_back(parseValue);
+    SkipStartWhiteSpace();
+    if (*current_ == ',') {
+        Advance();
+        return false;
+    }
+    parseValue = CreateSJsonArray(continuation, elementsList);
+    if (*current_ != ']') {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON",
+                                           false, rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    Advance();
+    elementsList.resize(continuation.index_);
+    continuation = std::move(continuationList.back());
+    continuationList.pop_back();
+    return true;
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+bool JsonParser<T>::ReduceSendableObjectFrame(
+    JsonContinuation &continuation, std::vector<JsonContinuation> &continuationList,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList, JSHandle<JSTaggedValue> &parseValue)
+{
+    propertyList.emplace_back(parseValue);
+    SkipStartWhiteSpace();
+    if (*current_ == ',') {
+        GetNextNonSpaceChar();
+        ParseKeyAndColon("Unexpected Object Prop in JSON", "Unexpected Object in JSON",
+                         propertyList);
+        return false;
+    }
+    parseValue = CreateSendableJsonObject<isEnableCMCGC>(continuation, propertyList);
+    if (UNLIKELY(*current_ != '}')) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
+                                           false, rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    Advance();
+    propertyList.resize(continuation.index_);
+    continuation = std::move(continuationList.back());
+    continuationList.pop_back();
+    return true;
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+bool JsonParser<T>::ReduceSendableMapFrame(
+    JsonContinuation &continuation, std::vector<JsonContinuation> &continuationList,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList, JSHandle<JSTaggedValue> &parseValue)
+{
+    propertyList.emplace_back(parseValue);
+    SkipStartWhiteSpace();
+    if (*current_ == ',') {
+        GetNextNonSpaceChar();
+        ParseKeyAndColon("Unexpected MAP Prop in JSON", "Unexpected MAP in JSON", propertyList);
+        return false;
+    }
+    parseValue = CreateSendableJsonMap<isEnableCMCGC>(continuation, propertyList);
+    if (UNLIKELY(*current_ != '}')) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
+                                           false, rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    Advance();
+    propertyList.resize(continuation.index_);
+    continuation = std::move(continuationList.back());
+    continuationList.pop_back();
+    return true;
+}
+
+template<typename T>
+bool JsonParser<T>::ParseKeyAndColon(const char* propErrMsg, const char* colonErrMsg,
+                                     std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    SkipStartWhiteSpace();
+    if (UNLIKELY(*current_ != '"')) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, propErrMsg, false,
+                                           rawString_, current_ - begin_ - slicedOffset_);
+    }
+#if ENABLE_V70_OPTIMIZATION
+    JSHandle<JSTaggedValue> key = this->ParseObjectKey();
+#else
+    JSHandle<JSTaggedValue> key = ParseString(true);
+#endif
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+    SkipStartWhiteSpace();
+    if (UNLIKELY(*current_ != ':')) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, colonErrMsg, false,
+                                           rawString_, current_ - begin_ - slicedOffset_);
+    }
+    Advance();
+    propertyList.emplace_back(key);
+    return true;
+}
+
+template<typename T>
 JSHandle<JSTaggedValue> JsonParser<T>::CreateJsonArray(JsonContinuation continuation,
     std::vector<JSHandle<JSTaggedValue>> &elementsList)
 {
@@ -517,6 +794,262 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonObject(JsonContinuation contin
 }
 
 template<typename T>
+template<bool isEnableCMCGC>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateSendableJsonObject(
+    JsonContinuation continuation,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    const size_t start = continuation.index_;
+    const size_t pairSlotCount = propertyList.size() - start;
+    ASSERT((pairSlotCount & 1U) == 0U);
+    const uint64_t fieldNumWide = pairSlotCount / 2U;
+    if (UNLIKELY(fieldNumWide > std::numeric_limits<uint32_t>::max())) {
+        THROW_RANGE_ERROR_AND_RETURN(thread_, "Too many JSON object properties",
+                                     JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+    }
+    const uint32_t fieldNum = static_cast<uint32_t>(fieldNumWide);
+
+    if (fieldNum == 0U) {
+        return CreateEmptySJsonObject();
+    }
+    JSHandle<JSTaggedValue> jsonPrototype = GetSJsonPrototype();
+    if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
+        return CreateSendableJsonObjectInline<isEnableCMCGC>(jsonPrototype, start, pairSlotCount, propertyList);
+    }
+    return CreateSendableJsonObjectDict<isEnableCMCGC>(jsonPrototype, start, pairSlotCount, propertyList);
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateEmptySJsonObject()
+{
+    JSHandle<JSTaggedValue> jsonPrototype = GetSJsonPrototype();
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(0);
+    JSHandle<JSHClass> hclass = factory_->NewSEcmaHClass(
+        JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT,
+        jsonPrototype, JSHandle<JSTaggedValue>(layout));
+    return JSHandle<JSTaggedValue>(factory_->NewSharedOldSpaceJSObject(hclass));
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateSendableJsonObjectInline(
+    const JSHandle<JSTaggedValue> &jsonPrototype, size_t start, size_t pairSlotCount,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    const uint32_t fieldNum = static_cast<uint32_t>(pairSlotCount / 2U); // 2: key-value pair
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(fieldNum);
+    JSHandle<TaggedArray> propertyArray =
+        CreateSendableJsonPropertyArray<isEnableCMCGC>(start, pairSlotCount, propertyList);
+    JSHandle<JSHClass> hclass = factory_->NewSEcmaHClass(
+        JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
+        JSHandle<JSTaggedValue>(jsonPrototype), JSHandle<JSTaggedValue>(layout));
+    JSMutableHandle<NumberDictionary> elementsDic(thread_,
+        NumberDictionary::CreateInSharedHeap(thread_));
+    uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
+    bool hasElement = DistributeSendableJsonInlineProperties<isEnableCMCGC>(hclass, layout, propertyArray, start,
+                                                                            pairSlotCount, propertyList, index,
+                                                                            elementsDic);
+    return FinalizeSendableJsonInlineObject(hclass, layout, index, start, propertyList, hasElement, elementsDic);
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+JSHandle<TaggedArray> JsonParser<T>::CreateSendableJsonPropertyArray(
+    size_t start, size_t pairSlotCount, std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    JSHandle<TaggedArray> propertyArray = factory_->NewSTaggedArray(pairSlotCount);
+    for (size_t i = 0; i < pairSlotCount; i += 2) { // 2: prop name and value
+        JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
+        auto newKey = keyHandle.GetTaggedValue();
+        auto stringAccessor = EcmaStringAccessor(newKey);
+        if (!stringAccessor.IsInternString()) {
+            newKey = JSTaggedValue(thread_->GetEcmaVM()->GetFactory()->InternString(keyHandle));
+        }
+        propertyArray->Set(thread_, i, newKey);
+        propertyArray->Set(thread_, i + 1, JSTaggedValue(int(FieldType::NONE)));
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
+    }
+    return propertyArray;
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+bool JsonParser<T>::DistributeSendableJsonInlineProperties(
+    const JSHandle<JSHClass> &hclass, const JSHandle<LayoutInfo> &layout,
+    const JSHandle<TaggedArray> &propertyArray, size_t start, size_t pairSlotCount,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList, uint32_t &index,
+    JSMutableHandle<NumberDictionary> &elementsDic)
+{
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefinedVal =
+        thread_->GlobalConstants()->GetHandledUndefined();
+    JSMutableHandle<JSTaggedValue> eleIndexKey(thread_, JSTaggedValue::Undefined());
+    bool hasElement = false;
+    for (size_t i = 0; i < pairSlotCount; i += 2) { // 2: key-value pair
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
+        PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
+        key.Update(propertyArray->Get(thread_, i));
+        ASSERT(key->IsString());
+        SharedFieldType type = SharedFieldType(static_cast<uint32_t>(
+            FieldType(propertyArray->Get(thread_, i + 1).GetInt())));
+#if ENABLE_V70_OPTIMIZATION
+        int entry = layout->FindElement(thread_, *hclass, key.GetTaggedValue(), index);
+#else
+        int entry = layout->FindElementWithCache(thread_, *hclass, key.GetTaggedValue(), index);
+#endif
+        if (entry != -1) {
+            UpdateDuplicatedSendableJsonProperty(layout, type, entry, start, i, propertyList);
+            continue;
+        }
+        int64_t eleIndex =
+            ObjectFastOperator::TryToElementsIndex(thread_, key.GetTaggedValue());
+        if (eleIndex < 0) {
+            propertyList[start + (index << 1)] = propertyList[start + i];
+            propertyList[start + (index << 1) + 1] = propertyList[start + i + 1];
+        }
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetSharedFieldType(type);
+        attributes.SetOffset(index);
+        if (eleIndex >= 0) {
+            undefinedVal = propertyList[start + i + 1];
+            eleIndexKey.Update(JSTaggedValue(eleIndex));
+            JSHandle<NumberDictionary> newElementsDic = NumberDictionary::Put(
+                thread_, elementsDic, eleIndexKey, undefinedVal, attributes);
+            elementsDic.Update(newElementsDic);
+            hasElement = true;
+            continue;
+        }
+        layout->AddKey(thread_, index++, key.GetTaggedValue(), attributes);
+    }
+    return hasElement;
+}
+
+template<typename T>
+void JsonParser<T>::UpdateDuplicatedSendableJsonProperty(const JSHandle<LayoutInfo> &layout,
+    SharedFieldType type, int entry, size_t start, size_t i,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    PropertyAttributes attributes = layout->GetAttr(thread_, entry);
+    attributes.SetSharedFieldType(type);
+    layout->SetNormalAttr(thread_, entry, attributes);
+    propertyList[start + (static_cast<uint32_t>(entry) << 1)] = propertyList[start + i];
+    propertyList[start + (static_cast<uint32_t>(entry) << 1) + 1] = propertyList[start + i + 1];
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::FinalizeSendableJsonInlineObject(
+    const JSHandle<JSHClass> &hclass, const JSHandle<LayoutInfo> &layout, uint32_t index,
+    size_t start, std::vector<JSHandle<JSTaggedValue>> &propertyList, bool hasElement,
+    const JSHandle<NumberDictionary> &elementsDic)
+{
+    hclass->SetLayout(thread_, layout);
+    hclass->SetNumberOfProps(index);
+    auto inlinedProps = hclass->GetInlinedProperties();
+    if (inlinedProps > index) {
+        uint32_t duplicatedSize = (inlinedProps - index) * JSTaggedValue::TaggedTypeSize();
+        ASSERT(hclass->GetObjectSize() >= duplicatedSize);
+        hclass->SetObjectSize(hclass->GetObjectSize() - duplicatedSize);
+    }
+    JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
+    uint32_t inlineIdx = 0;
+    size_t size = (hclass->GetInlinedProperties() << 1);
+    for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+        obj->SetPropertyInlinedProps(thread_, inlineIdx++,
+            propertyList[start + i + 1].GetTaggedValue());
+    }
+
+    if (hasElement) {
+        JSHandle<TaggedArray> elementsDicHdl(elementsDic);
+        JSHandle<TaggedArray> elements =
+            factory_->NewAndCopySNameDictionary(elementsDicHdl, elementsDicHdl->GetLength());
+        obj->SetElements(thread_, elements);
+        hclass->SetIsDictionaryElement(true);
+    }
+    return JSHandle<JSTaggedValue>(obj);
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateSendableJsonObjectDict(
+    const JSHandle<JSTaggedValue> &jsonPrototype, size_t start, size_t pairSlotCount,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    const uint32_t fieldNum = static_cast<uint32_t>(pairSlotCount / 2U); // 2: key-value pair
+    JSMutableHandle<NameDictionary> dict(thread_,
+        NameDictionary::CreateInSharedHeap(thread_, NameDictionary::ComputeHashTableSize(fieldNum)));
+    JSMutableHandle<NumberDictionary> elements(thread_, JSTaggedValue::Undefined());
+    bool hasElement = false;
+    FillSendableJsonDictProperties<isEnableCMCGC>(dict, elements, hasElement, start, pairSlotCount,
+                                                  propertyList);
+    JSHandle<JSHClass> hclass = factory_->NewSEcmaHClassDictMode(
+        JSSharedObject::SIZE, 0U, JSType::JS_SHARED_OBJECT, jsonPrototype);
+    JSHandle<JSObject> object = factory_->NewSharedOldSpaceJSObject(hclass);
+    object->SetProperties(thread_, dict);
+    if (hasElement) {
+        object->SetElements(thread_, JSHandle<TaggedArray>(elements));
+        hclass->SetIsDictionaryElement(true);
+    }
+
+    ASSERT(hclass->IsDictionaryMode());
+    ASSERT(hclass->GetInlinedProperties() == 0U);
+    ASSERT(hclass->GetObjectSize() == JSSharedObject::SIZE);
+    return JSHandle<JSTaggedValue>(object);
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+void JsonParser<T>::FillSendableJsonDictProperties(JSMutableHandle<NameDictionary> &dict,
+    JSMutableHandle<NumberDictionary> &elements, bool &hasElement, size_t start,
+    size_t pairSlotCount, std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> elementKey(thread_, JSTaggedValue::Undefined());
+    for (size_t i = 0U; i < pairSlotCount; i += 2U) {
+        PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
+        attributes.SetSharedFieldType(SharedFieldType::NONE);
+        attributes.SetDictSharedFieldType(SharedFieldType::NONE);
+
+        key.Update(propertyList[start + i]);
+        value.Update(propertyList[start + i + 1U]);
+        int64_t elementIndex = ObjectFastOperator::TryToElementsIndex(
+            thread_, key.GetTaggedValue());
+        if (elementIndex >= 0) {
+            if (!hasElement) {
+                elements.Update(NumberDictionary::CreateInSharedHeap(thread_));
+                hasElement = true;
+            }
+            elementKey.Update(JSTaggedValue(elementIndex));
+            int entry = elements->FindEntry(thread_, elementKey.GetTaggedValue());
+            if (entry >= 0) {
+                elements->UpdateValue(thread_, entry, value.GetTaggedValue());
+            } else {
+                JSHandle<NumberDictionary> newElements = NumberDictionary::PutIfAbsent(
+                    thread_, elements, elementKey, value, attributes);
+                elements.Update(newElements);
+            }
+        } else {
+            int entry = dict->FindEntry(thread_, key.GetTaggedValue());
+            if (entry >= 0) {
+                dict->UpdateValue(thread_, entry, value.GetTaggedValue());
+            } else {
+                JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(
+                    thread_, dict, key, value, attributes);
+                dict.Update(newDict);
+            }
+        }
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
+    }
+}
+
+template<typename T>
 JSHandle<JSSharedMap> JsonParser<T>::CreateSharedMap()
 {
     JSHandle<JSTaggedValue> proto = GetSMapPrototype();
@@ -593,6 +1126,35 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonMap(JsonContinuation continuat
         dict.Update(newDict);
     }
     jsMap->SetProperties(thread_, dict);
+    return JSHandle<JSTaggedValue>(jsMap);
+}
+
+template<typename T>
+template<bool isEnableCMCGC>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateSendableJsonMap(
+    JsonContinuation continuation,
+    std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    size_t start = continuation.index_;
+    size_t size = propertyList.size() - start;
+    const uint64_t fieldNumWide = size / 2U;
+    if (UNLIKELY(fieldNumWide > std::numeric_limits<uint32_t>::max())) {
+        THROW_RANGE_ERROR_AND_RETURN(thread_, "Too many JSON map entries",
+                                     JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+    }
+    uint32_t fieldNum = static_cast<uint32_t>(fieldNumWide);  // 2: key-value pair
+    JSHandle<JSSharedMap> jsMap = CreateSharedMap();
+    if (fieldNum == 0U) {
+        return JSHandle<JSTaggedValue>(jsMap);
+    }
+    for (size_t i = 0U; i < size; i += 2U) { // 2: key-value pair
+        JSSharedMap::Set(thread_, jsMap,
+                         propertyList[start + i], propertyList[start + i + 1U]);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
+    }
     return JSHandle<JSTaggedValue>(jsMap);
 }
 
@@ -1459,6 +2021,30 @@ JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHan
 #if ENABLE_V70_OPTIMIZATION
     ResetObjectKeyCache();
 #endif
+    uint32_t len = PrepareUtf8Source(strHandle);
+    auto *heap = const_cast<Heap *>(thread_->GetEcmaVM()->GetHeap());
+    auto listenerId = heap->AddGCListener(UpdatePointersListener, this);
+    auto res = Launch(begin_ + slicedOffset_, begin_ + slicedOffset_ + len);
+    heap->RemoveGCListener(listenerId);
+    return res;
+}
+
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseSendable(const JSHandle<EcmaString> &strHandle)
+{
+    ASSERT(*strHandle != nullptr);
+#if ENABLE_V70_OPTIMIZATION
+    ResetObjectKeyCache();
+#endif
+    uint32_t len = PrepareUtf8Source(strHandle);
+    auto *heap = const_cast<Heap *>(thread_->GetEcmaVM()->GetHeap());
+    auto listenerId = heap->AddGCListener(UpdatePointersListener, this);
+    auto res = LaunchSendable(begin_ + slicedOffset_, begin_ + slicedOffset_ + len);
+    heap->RemoveGCListener(listenerId);
+    return res;
+}
+
+uint32_t Utf8JsonParser::PrepareUtf8Source(const JSHandle<EcmaString> &strHandle)
+{
     auto stringAccessor = EcmaStringAccessor(strHandle);
     uint32_t len = stringAccessor.GetLength();
     ASSERT(len != UINT32_MAX);
@@ -1477,11 +2063,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHan
         sourceString_ = JSHandle<EcmaString>(thread_, flatten);
     }
     begin_ = EcmaStringAccessor(sourceString_).GetDataUtf8();
-    auto *heap = const_cast<Heap *>(thread_->GetEcmaVM()->GetHeap());
-    auto listenerId = heap->AddGCListener(UpdatePointersListener, this);
-    auto res = Launch(begin_ + slicedOffset_, begin_ + slicedOffset_ + len);
-    heap->RemoveGCListener(listenerId);
-    return res;
+    return len;
 }
 
 void Utf8JsonParser::ParticalParseString(std::string& str, Text current, Text nextCurrent)
@@ -1759,14 +2341,33 @@ JSHandle<JSTaggedValue> Utf16JsonParser::Parse(EcmaString *str)
 #else
     // Key caching is disabled; ParseObjectKey still uses the regular key path.
 #endif
+    CVector<uint16_t> buf;
+    uint32_t len = PrepareUtf16Source(str, buf);
+    return Launch(begin_, begin_ + len);
+}
+
+JSHandle<JSTaggedValue> Utf16JsonParser::ParseSendable(EcmaString *str)
+{
+    ASSERT(str != nullptr);
+#if ENABLE_V70_OPTIMIZATION
+    ResetObjectKeyCache();
+#else
+    // Key caching is disabled; ParseObjectKey still uses the regular key path.
+#endif
+    CVector<uint16_t> buf;
+    uint32_t len = PrepareUtf16Source(str, buf);
+    return LaunchSendable(begin_, begin_ + len);
+}
+
+uint32_t Utf16JsonParser::PrepareUtf16Source(EcmaString *str, CVector<uint16_t> &buf)
+{
     uint32_t len = EcmaStringAccessor(str).GetLength();
-    CVector<uint16_t> buf(len + 1, 0);
+    buf.assign(len + 1, 0);
     EcmaStringAccessor(str).WriteToFlatUtf16(thread_, buf.data(), len);
-    Text begin = buf.data();
-    begin_ = begin;
+    begin_ = buf.data();
     rawString_ = JSHandle<EcmaString>(thread_, str);
     slicedOffset_ = 0;
-    return Launch(begin, begin + len);
+    return len;
 }
 
 void Utf16JsonParser::ParticalParseString(std::string& str, Text current, Text nextCurrent)

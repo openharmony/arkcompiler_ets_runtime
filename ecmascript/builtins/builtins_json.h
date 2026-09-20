@@ -43,6 +43,7 @@ class BuiltinsSendableJson : public base::BuiltinsBase {
 public:
     static JSTaggedValue Parse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Stringify(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ParseSendable(EcmaRuntimeCallInfo *argv);
 };
 
 class BuiltinsBigIntJson : public base::BuiltinsBase {

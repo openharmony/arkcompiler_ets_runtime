@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cerrno>
+#include <limits>
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/base/json_helper.h"
@@ -33,9 +34,15 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
+
+namespace panda::ecmascript {
+class NameDictionary;
+class NumberDictionary;
+}
 
 namespace panda::ecmascript::base {
 constexpr unsigned int UNICODE_DIGIT_LENGTH = 4;
@@ -128,6 +135,10 @@ protected:
     NO_MOVE_SEMANTIC(JsonParser);
 
     JSHandle<JSTaggedValue> Launch(Text begin, Text end);
+    JSHandle<JSTaggedValue> LaunchSendable(Text begin, Text end);
+
+    template<bool isEnableCMCGC, bool isSendable>
+    JSHandle<JSTaggedValue> LaunchImpl(Text begin, Text end);
 
     inline bool IsInObjOrArrayOrMap(ContType type)
     {
@@ -164,6 +175,9 @@ protected:
     template<bool isEnableCMCGC>
     JSTaggedValue ParseJSONText();
 
+    template<bool isEnableCMCGC>
+    JSTaggedValue ParseJSONTextSendable();
+
     JSHandle<JSTaggedValue> CreateJsonArray(JsonContinuation continuation,
                                             std::vector<JSHandle<JSTaggedValue>> &elementsList);
 
@@ -177,7 +191,80 @@ protected:
     template<bool isEnableCMCGC>
     JSHandle<JSTaggedValue> CreateSJsonObject(JsonContinuation continuation,
                                               std::vector<JSHandle<JSTaggedValue>> &propertyList);
-    
+    template<bool isEnableCMCGC>
+    JSHandle<JSTaggedValue> CreateSendableJsonObject(
+        JsonContinuation continuation,
+        std::vector<JSHandle<JSTaggedValue>> &propertyList);
+
+    JSHandle<JSTaggedValue> CreateEmptySJsonObject();
+
+    template<bool isEnableCMCGC>
+    JSHandle<JSTaggedValue> CreateSendableJsonObjectInline(const JSHandle<JSTaggedValue> &jsonPrototype,
+                                                           size_t start, size_t pairSlotCount,
+                                                           std::vector<JSHandle<JSTaggedValue>> &propertyList);
+
+    template<bool isEnableCMCGC>
+    JSHandle<JSTaggedValue> CreateSendableJsonObjectDict(const JSHandle<JSTaggedValue> &jsonPrototype,
+                                                         size_t start, size_t pairSlotCount,
+                                                         std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    bool ParseKeyAndColon(const char* propErrMsg, const char* colonErrMsg,
+                          std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    JSHandle<JSTaggedValue> ParseNextSendableValue(JsonContinuation &continuation,
+                                                   std::vector<JsonContinuation> &continuationList,
+                                                   std::vector<JSHandle<JSTaggedValue>> &elementsList,
+                                                   std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    bool ParseSendableToken(JsonContinuation &continuation,
+                            std::vector<JsonContinuation> &continuationList,
+                            std::vector<JSHandle<JSTaggedValue>> &elementsList,
+                            std::vector<JSHandle<JSTaggedValue>> &propertyList,
+                            JSHandle<JSTaggedValue> &parseValue);
+    JSHandle<JSTaggedValue> ParseSendableLeafValue(Tokens token, ContType contType);
+    template<bool isEnableCMCGC>
+    JSHandle<TaggedArray> CreateSendableJsonPropertyArray(size_t start, size_t pairSlotCount,
+                                                          std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    template<bool isEnableCMCGC>
+    bool DistributeSendableJsonInlineProperties(const JSHandle<JSHClass> &hclass,
+                                                const JSHandle<LayoutInfo> &layout,
+                                                const JSHandle<TaggedArray> &propertyArray, size_t start,
+                                                size_t pairSlotCount,
+                                                std::vector<JSHandle<JSTaggedValue>> &propertyList,
+                                                uint32_t &index,
+                                                JSMutableHandle<NumberDictionary> &elementsDic);
+    void UpdateDuplicatedSendableJsonProperty(const JSHandle<LayoutInfo> &layout, SharedFieldType type,
+                                              int entry, size_t start, size_t i,
+                                              std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    JSHandle<JSTaggedValue> FinalizeSendableJsonInlineObject(const JSHandle<JSHClass> &hclass,
+                                                             const JSHandle<LayoutInfo> &layout,
+                                                             uint32_t index, size_t start,
+                                                             std::vector<JSHandle<JSTaggedValue>> &propertyList,
+                                                             bool hasElement,
+                                                             const JSHandle<NumberDictionary> &elementsDic);
+    template<bool isEnableCMCGC>
+    void FillSendableJsonDictProperties(JSMutableHandle<NameDictionary> &dict,
+                                        JSMutableHandle<NumberDictionary> &elements, bool &hasElement,
+                                        size_t start, size_t pairSlotCount,
+                                        std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    template<bool isEnableCMCGC>
+    bool ReduceSendableContinuation(JsonContinuation &continuation,
+                                    std::vector<JsonContinuation> &continuationList,
+                                    std::vector<JSHandle<JSTaggedValue>> &elementsList,
+                                    std::vector<JSHandle<JSTaggedValue>> &propertyList,
+                                    JSHandle<JSTaggedValue> &parseValue);
+    bool ReduceSendableArrayFrame(JsonContinuation &continuation,
+                                  std::vector<JsonContinuation> &continuationList,
+                                  std::vector<JSHandle<JSTaggedValue>> &elementsList,
+                                  JSHandle<JSTaggedValue> &parseValue);
+    template<bool isEnableCMCGC>
+    bool ReduceSendableObjectFrame(JsonContinuation &continuation,
+                                   std::vector<JsonContinuation> &continuationList,
+                                   std::vector<JSHandle<JSTaggedValue>> &propertyList,
+                                   JSHandle<JSTaggedValue> &parseValue);
+    template<bool isEnableCMCGC>
+    bool ReduceSendableMapFrame(JsonContinuation &continuation,
+                                std::vector<JsonContinuation> &continuationList,
+                                std::vector<JSHandle<JSTaggedValue>> &propertyList,
+                                JSHandle<JSTaggedValue> &parseValue);
+
     JSHandle<JSSharedMap> CreateSharedMap();
 
     JSHandle<JSMap> CreateMap();
@@ -187,6 +274,9 @@ protected:
 
     JSHandle<JSTaggedValue> CreateSJsonMap(JsonContinuation continuation,
                                            std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    template<bool isEnableCMCGC>
+    JSHandle<JSTaggedValue> CreateSendableJsonMap(JsonContinuation continuation,
+                                                  std::vector<JSHandle<JSTaggedValue>> &propertyList);
     
     JSTaggedValue SetPropertyByValue(const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
                                      const JSHandle<JSTaggedValue> &value);
@@ -300,6 +390,7 @@ public:
     NO_MOVE_SEMANTIC(Utf8JsonParser);
 
     JSHandle<JSTaggedValue> PUBLIC_API Parse(const JSHandle<EcmaString> &strHandle);
+    JSHandle<JSTaggedValue> PUBLIC_API ParseSendable(const JSHandle<EcmaString> &strHandle);
 
 private:
     void ParticalParseString(std::string& str, Text current, Text nextCurrent) override;
@@ -334,6 +425,8 @@ private:
 #if ENABLE_V70_OPTIMIZATION
     std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> objectKeyCache_ {};
 #endif
+
+    uint32_t PrepareUtf8Source(const JSHandle<EcmaString> &strHandle);
 };
 
 class Utf16JsonParser final : public JsonParser<uint16_t> {
@@ -347,6 +440,7 @@ public:
     NO_MOVE_SEMANTIC(Utf16JsonParser);
 
     JSHandle<JSTaggedValue> Parse(EcmaString *str);
+    JSHandle<JSTaggedValue> ParseSendable(EcmaString *str);
 
 private:
     void ParticalParseString(std::string& str, Text current, Text nextCurrent) override;
@@ -377,6 +471,7 @@ private:
 #if ENABLE_V70_OPTIMIZATION
     std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> objectKeyCache_ {};
 #endif
+    uint32_t PrepareUtf16Source(EcmaString *str, CVector<uint16_t> &buf);
 };
 
 class Internalize {
