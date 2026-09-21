@@ -104,7 +104,10 @@ declare_args() {
 
   # Control whether to include the C interpreter in arm64 builds.
   enable_c_interpreter = false
+  enable_c_interpreter_arm64 = false
 }
+
+enable_c_interpreter_arm64 = enable_c_interpreter && (current_cpu == "arm64")
 
 if (defined(enable_cmc_gc)) {
   ets_runtime_enable_cmc_gc = enable_cmc_gc
