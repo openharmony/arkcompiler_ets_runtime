@@ -113,7 +113,7 @@ private:
     void SetStringTableCopyOrSweeping(bool enabled);
 
     // Helpers
-    void UpdateRecordWeakReference(SharedCCEvacuator &evacuator);
+    void UpdateRecordWeakReference();
     void LogThreadStatesBeforeCopy();
     void EstimatePostCCSize();
     int CalculateCopyThreadNum();

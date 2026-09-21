@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/heap.h"
@@ -118,6 +119,85 @@ HWTEST_F_L0(SharedCCTest, WeakRefSurvivalTest)
     JSTaggedValue afterGC = sOld1->Get(thread, 0);
     ASSERT_TRUE(afterGC.IsWeak());
     EXPECT_EQ(afterGC.GetWeakReferent(), sOld2.GetTaggedValue().GetRawHeapObject());
+}
+
+HWTEST_F_L0(SharedCCTest, DeadWeakRefClearedTest)
+{
+    constexpr size_t ARRAY_LEN = 10;
+    JSHandle<TaggedArray> holder = AllocateSharedArray(ARRAY_LEN);
+    {
+        EcmaHandleScope temporaryScope(thread);
+        JSHandle<TaggedArray> dead = AllocateSharedArray(ARRAY_LEN);
+        auto weakRef = dead.GetTaggedValue();
+        weakRef.CreateWeakRef();
+        holder->Set(thread, 0, weakRef);
+    }
+    AllocateSharedGarbage();
+
+    CollectSharedCC();
+
+    JSTaggedValue afterGC = holder->Get(thread, 0);
+    EXPECT_TRUE(afterGC.IsUndefined());
+}
+
+HWTEST_F_L0(SharedCCTest, WeakRefChainDeadTailTest)
+{
+    constexpr size_t ARRAY_LEN = 10;
+    JSHandle<TaggedArray> holderA = AllocateSharedArray(ARRAY_LEN);
+    JSHandle<TaggedArray> holderB = AllocateSharedArray(ARRAY_LEN);
+    {
+        EcmaHandleScope temporaryScope(thread);
+        JSHandle<TaggedArray> deadC = AllocateSharedArray(ARRAY_LEN);
+        auto weakToC = deadC.GetTaggedValue();
+        weakToC.CreateWeakRef();
+        holderB->Set(thread, 0, weakToC);
+    }
+    auto weakToB = holderB.GetTaggedValue();
+    weakToB.CreateWeakRef();
+    holderA->Set(thread, 0, weakToB);
+    AllocateSharedGarbage();
+
+    CollectSharedCC();
+
+    JSTaggedValue aWeak = holderA->Get(thread, 0);
+    ASSERT_TRUE(aWeak.IsWeak());
+    EXPECT_EQ(aWeak.GetWeakReferent(), holderB.GetTaggedValue().GetRawHeapObject());
+    JSTaggedValue bWeak = holderB->Get(thread, 0);
+    EXPECT_TRUE(bWeak.IsUndefined());
+}
+
+HWTEST_F_L0(SharedCCTest, WeakRefChainMultipleRoundsTest)
+{
+    constexpr size_t ARRAY_LEN = 10;
+    std::vector<JSHandle<TaggedArray>> weakHolders;
+    std::vector<JSHandle<TaggedArray>> targetHolders;
+    for (int round = 0; round < 3; round++) {
+        JSHandle<TaggedArray> holderA = AllocateSharedArray(ARRAY_LEN);
+        JSHandle<TaggedArray> holderB = AllocateSharedArray(ARRAY_LEN);
+        {
+            EcmaHandleScope temporaryScope(thread);
+            JSHandle<TaggedArray> deadC = AllocateSharedArray(ARRAY_LEN);
+            auto weakToC = deadC.GetTaggedValue();
+            weakToC.CreateWeakRef();
+            holderB->Set(thread, 0, weakToC);
+        }
+        auto weakToB = holderB.GetTaggedValue();
+        weakToB.CreateWeakRef();
+        holderA->Set(thread, 0, weakToB);
+        weakHolders.push_back(holderA);
+        targetHolders.push_back(holderB);
+        AllocateSharedGarbage();
+
+        CollectSharedCC();
+
+        for (size_t i = 0; i < weakHolders.size(); i++) {
+            JSTaggedValue aWeak = weakHolders[i]->Get(thread, 0);
+            ASSERT_TRUE(aWeak.IsWeak());
+            EXPECT_EQ(aWeak.GetWeakReferent(), targetHolders[i].GetTaggedValue().GetRawHeapObject());
+            JSTaggedValue bWeak = targetHolders[i]->Get(thread, 0);
+            EXPECT_TRUE(bWeak.IsUndefined());
+        }
+    }
 }
 
 HWTEST_F_L0(SharedCCTest, LocalToSharedRefTest)

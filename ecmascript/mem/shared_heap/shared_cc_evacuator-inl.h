@@ -82,7 +82,7 @@ inline bool SharedCCEvacuator::SetForwardingAddress(TaggedObject *object, const 
     return result == oldValue;
 }
 
-inline void ProcessSharedCCWeakReferenceSlot(ObjectSlot &slot, SharedCCEvacuator &evacuator)
+inline void ProcessSharedCCWeakReferenceSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (!value.IsWeak()) {
@@ -90,35 +90,18 @@ inline void ProcessSharedCCWeakReferenceSlot(ObjectSlot &slot, SharedCCEvacuator
     }
     auto header = value.GetTaggedWeakRef();
     Region *objectRegion = Region::ObjectAddressToRange(header);
-    if (objectRegion->IsFromRegion()) {
-        if (!objectRegion->Test(header)) {
-            slot.Clear();
-            return;
-        }
-        MarkWord markWord(header, RELAXED_LOAD);
-        if (markWord.IsForwardingAddress()) {
-            TaggedObject *dst = markWord.ToForwardingAddress();
-            auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawHeapObject();
-            slot.Update(weakRef);
-        } else {
-            TaggedObject *dst = evacuator.Copy(header, markWord);
-            auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawHeapObject();
-            slot.Update(weakRef);
-        }
-        return;
-    }
     if (!objectRegion->InSharedSweepableSpace() || objectRegion->Test(header)) {
         return;
     }
     slot.Clear();
 }
 
-inline void UpdateSharedCCWeakReferences(ProcessQueue *queue, SharedCCEvacuator &evacuator)
+inline void UpdateSharedCCWeakReferences(ProcessQueue *queue)
 {
     auto *obj = queue->PopBack();
     while (obj != nullptr) {
         ObjectSlot slot(ToUintPtr(obj));
-        ProcessSharedCCWeakReferenceSlot(slot, evacuator);
+        ProcessSharedCCWeakReferenceSlot(slot);
         obj = queue->PopBack();
     }
 }
