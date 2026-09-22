@@ -435,8 +435,21 @@ JSTaggedValue ContainersTreeMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    const int initSize = tmap->GetSize(thread);
+    bool growthReported = false;
     while (index < elements) {
         int entriesIndex = entries->GetPrimitive(index).GetInt();
+        if (entriesIndex < 0 || entriesIndex >= iteratedMap->Capacity()) {
+            // A structurally modified tree leaves stale entry indices here: the reads
+            // below run out of bounds. Detection only, the original flow continues.
+            ContainerError::ReportSecurityFault("ContainersTreeMap.ForEach", "stale-entry-index", entriesIndex,
+                                                static_cast<int32_t>(elements), iteratedMap->Capacity());
+        } else if (iteratedMap->GetKey(thread, entriesIndex).IsHole()) {
+            // A removed entry leaks the internal Hole sentinel to the callback below.
+            // Detection only, the original flow continues.
+            ContainerError::ReportSecurityFault("ContainersTreeMap.ForEach", "hole-leak", entriesIndex,
+                                                static_cast<int32_t>(elements));
+        }
         key.Update(iteratedMap->GetKey(thread, entriesIndex));
         value.Update(iteratedMap->GetValue(thread, entriesIndex));
         // Let funcResult be Call(callbackfn, T, «e, e, S»).
@@ -445,6 +458,13 @@ JSTaggedValue ContainersTreeMap::ForEach(EcmaRuntimeCallInfo *argv)
         info->SetCallArg(value.GetTaggedValue(), key.GetTaggedValue(), self.GetTaggedValue());
         JSTaggedValue ret = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ret);
+        if (!growthReported && tmap->GetSize(thread) > initSize) {
+            // The callback keeps inserting, so the re-sync below raises the loop bound
+            // on every visit (non-terminating forEach). Detection only.
+            growthReported = true;
+            ContainerError::ReportSecurityFault("ContainersTreeMap.ForEach", "growth-during-iteration",
+                                                static_cast<int32_t>(index), initSize);
+        }
         // check entries should be update, size will be update in tmap set or remove.
         if (tmap->GetSize(thread) != static_cast<int>(length)) {
             iteratedMap.Update(tmap->GetTreeMap(thread));

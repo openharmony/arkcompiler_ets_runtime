@@ -111,3 +111,11 @@ ARK_RUNTIME_INCOMPATIBLE:
   FUNCTIONNAME: {type: STRING, desc: Name of the incompatible function}
   STACK: {type: STRING, desc: Function call stack}
   BUNDLE_NAME: {type: STRING, desc: Application bundle name}
+
+ARK_SECURITY_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: ARKTSRUNTIME SECURITY FAULT EVENT, preserve: true}
+  FUNCTION_NAME: {type: STRING, desc: The function name that detected the fault}
+  ERROR_TYPE: {type: STRING, desc: The type of the security fault}
+  OFFSET: {type: INT32, desc: The offset parameter of the fault}
+  LENGTH: {type: INT32, desc: The length parameter of the fault}
+  INDEX: {type: INT32, desc: The index parameter of the fault}

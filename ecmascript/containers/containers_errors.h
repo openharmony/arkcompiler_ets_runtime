@@ -37,6 +37,12 @@ public:
     static PUBLIC_API JSTaggedValue BindError(JSThread *thread, const char *msg);
     static PUBLIC_API JSTaggedValue ParamError(JSThread *thread, const char *msg);
     static PUBLIC_API JSTaggedValue ReferenceError(JSThread *thread, const char *msg);
+    // Detection-only helper for security faults (out-of-range access, type confusion,
+    // invariant violation, ...): prints an error log and reports the ARK_SECURITY_FAULT
+    // HiSysEvent. Never throws and never changes the caller's control flow - callers
+    // must fall through and keep the original behavior.
+    static PUBLIC_API void ReportSecurityFault(const char *funcName, const char *errorType, int32_t index = -1,
+                                               int32_t length = -1, int32_t offset = -1);
 };
 } // namespace panda::ecmascript::containers
 #endif // ECMASCRIPT_CONTAINERS_CONTAINERS_ERROR_H

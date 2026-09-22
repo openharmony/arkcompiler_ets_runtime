@@ -76,6 +76,44 @@ public:
             return JSTaggedValue::Undefined();
         }
 
+        static JSTaggedValue TestGrowthFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
+            JSHandle<JSTaggedValue> map = GetCallArg(argv, 2); // 2 means the third arg
+            if (map->IsJSAPITreeMap() && key->IsNumber() && !key->IsHole() &&
+                key->GetInt() == 1 && !value->IsHole()) {
+                JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(100)); // 100: length
+                JSAPITreeMap::Set(thread, JSHandle<JSAPITreeMap>::Cast(map), newKey, value);
+            }
+            JSHandle<JSTaggedValue> thisArg = GetThis(argv);
+            if (thisArg->IsJSAPITreeMap() && key->IsNumber() && !key->IsHole()) {
+                JSAPITreeMap::Set(thread, JSHandle<JSAPITreeMap>::Cast(thisArg), key, value);
+            }
+            return JSTaggedValue::Undefined();
+        }
+
+        static JSTaggedValue TestHoleLeakFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
+            JSHandle<JSTaggedValue> map = GetCallArg(argv, 2); // 2 means the third arg
+            if (map->IsJSAPITreeMap() && key->IsNumber() && !key->IsHole() &&
+                key->GetInt() == 1 && !value->IsHole()) {
+                JSHandle<JSTaggedValue> removedKey(thread, JSTaggedValue(2)); // 2: length
+                JSAPITreeMap::Delete(thread, JSHandle<JSAPITreeMap>::Cast(map), removedKey);
+                JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(100)); // 100: length
+                JSAPITreeMap::Set(thread, JSHandle<JSAPITreeMap>::Cast(map), newKey, value);
+            }
+            JSHandle<JSTaggedValue> thisArg = GetThis(argv);
+            if (thisArg->IsJSAPITreeMap() && key->IsNumber() && !key->IsHole()) {
+                JSAPITreeMap::Set(thread, JSHandle<JSAPITreeMap>::Cast(thisArg), key, value);
+            }
+            return JSTaggedValue::Undefined();
+        }
+
         static JSTaggedValue TestCompareFunction(EcmaRuntimeCallInfo *argv)
         {
             JSThread *thread = argv->GetThread();
@@ -150,6 +188,44 @@ protected:
         TestHelper::TearDownFrame(thread, prev);
         JSHandle<JSAPITreeMap> map(thread, result);
         return map;
+    }
+
+    void CreateTreeMapWithEntries(const JSHandle<JSAPITreeMap> &tmap, int numbers)
+    {
+        for (int i = 1; i <= numbers; i++) {
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tmap.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(i));
+            callInfo->SetCallArg(1, JSTaggedValue(i));
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            JSTaggedValue result = ContainersTreeMap::Set(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+            EXPECT_TRUE(result.IsJSAPITreeMap());
+        }
+    }
+
+    JSHandle<JSTaggedValue> CreateKeysIterator(const JSHandle<JSAPITreeMap> &tmap)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tmap.GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSHandle<JSTaggedValue> iterKeys(thread, ContainersTreeMap::Keys(callInfo));
+        TestHelper::TearDownFrame(thread, prev);
+        return iterKeys;
+    }
+
+    JSTaggedValue CallIteratorNext(const JSHandle<JSTaggedValue> &iterKeys)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(iterKeys.GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = JSAPITreeMapIterator::Next(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
     }
 };
 
@@ -1434,5 +1510,149 @@ HWTEST_F_L0(ContainersTreeMapTest, ExceptionReturn2)
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, ForEach);
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, GetLength);
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, IsEmpty);
+}
+
+HWTEST_F_L0(ContainersTreeMapTest, ForEachGrowthDuringIterationTest001)
+{
+    constexpr int nodeNumbers = 4; // 4: length
+    constexpr int insertedKey = 100; // 100: length
+    JSHandle<JSAPITreeMap> tmap = CreateJSAPITreeMap();
+    for (int i = 1; i <= nodeNumbers; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8: args
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tmap.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsJSAPITreeMap());
+    }
+    EXPECT_EQ(tmap->GetSize(thread), nodeNumbers);
+
+    JSHandle<JSAPITreeMap> dmap = CreateJSAPITreeMap();
+    {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestGrowthFunc));
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8: args
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tmap.GetTaggedValue());
+        callInfo->SetCallArg(0, func.GetTaggedValue());
+        callInfo->SetCallArg(1, dmap.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeMap::ForEach(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsUndefined());
+    }
+    EXPECT_EQ(tmap->GetSize(thread), nodeNumbers + 1);
+    EXPECT_EQ(dmap->GetSize(thread), nodeNumbers + 1);
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6: args
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tmap.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(insertedKey));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeMap::Get(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue(1));
+    }
+}
+
+HWTEST_F_L0(ContainersTreeMapTest, ForEachHoleLeakTest001)
+{
+    constexpr int nodeNumbers = 4; // 4: length
+    JSHandle<JSAPITreeMap> tmap = CreateJSAPITreeMap();
+    for (int i = 1; i <= nodeNumbers; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8: args
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tmap.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsJSAPITreeMap());
+    }
+    EXPECT_EQ(tmap->GetSize(thread), nodeNumbers);
+
+    JSHandle<JSAPITreeMap> dmap = CreateJSAPITreeMap();
+    {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestHoleLeakFunc));
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8: args
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tmap.GetTaggedValue());
+        callInfo->SetCallArg(0, func.GetTaggedValue());
+        callInfo->SetCallArg(1, dmap.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeMap::ForEach(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsUndefined());
+    }
+    EXPECT_EQ(tmap->GetSize(thread), nodeNumbers);
+    EXPECT_EQ(dmap->GetSize(thread), nodeNumbers - 1);
+}
+
+HWTEST_F_L0(ContainersTreeMapTest, TreeMapIteratorHoleLeakTest001)
+{
+    constexpr int nodeNumbers = 4; // 4: length
+    JSHandle<JSAPITreeMap> tmap = CreateJSAPITreeMap();
+    CreateTreeMapWithEntries(tmap, nodeNumbers);
+    JSHandle<JSTaggedValue> iterKeys = CreateKeysIterator(tmap);
+    ASSERT_TRUE(iterKeys->IsJSAPITreeMapIterator());
+
+    JSHandle<JSTaggedValue> first(thread, CallIteratorNext(iterKeys));
+    EXPECT_EQ(JSIterator::IteratorValue(thread, first)->GetInt(), 1);
+
+    {
+        JSHandle<JSTaggedValue> removedKey(thread, JSTaggedValue(2)); // 2: length
+        JSAPITreeMap::Delete(thread, tmap, removedKey);
+        JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(100)); // 100: length
+        JSHandle<JSTaggedValue> newValue(thread, JSTaggedValue(1));
+        JSAPITreeMap::Set(thread, tmap, newKey, newValue);
+    }
+    EXPECT_EQ(tmap->GetSize(thread), nodeNumbers);
+
+    for (int i = 1; i < nodeNumbers; i++) {
+        JSHandle<JSTaggedValue> next(thread, CallIteratorNext(iterKeys));
+        EXPECT_FALSE(JSIterator::IteratorComplete(thread, next));
+    }
+}
+
+HWTEST_F_L0(ContainersTreeMapTest, TreeMapIteratorHoleLeakCompleteTest001)
+{
+    constexpr int nodeNumbers = 4; // 4: length
+    JSHandle<JSAPITreeMap> tmap = CreateJSAPITreeMap();
+    CreateTreeMapWithEntries(tmap, nodeNumbers);
+    JSHandle<JSTaggedValue> iterKeys = CreateKeysIterator(tmap);
+    ASSERT_TRUE(iterKeys->IsJSAPITreeMapIterator());
+
+    JSHandle<JSTaggedValue> first(thread, CallIteratorNext(iterKeys));
+    EXPECT_EQ(JSIterator::IteratorValue(thread, first)->GetInt(), 1);
+
+    {
+        JSHandle<JSTaggedValue> removedKey(thread, JSTaggedValue(2)); // 2: length
+        JSAPITreeMap::Delete(thread, tmap, removedKey);
+        JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(100)); // 100: length
+        JSHandle<JSTaggedValue> newValue(thread, JSTaggedValue(1));
+        JSAPITreeMap::Set(thread, tmap, newKey, newValue);
+    }
+
+    int visited = 1; // 1 means the first next() above
+    for (int i = 0; i < nodeNumbers; i++) {
+        JSHandle<JSTaggedValue> next(thread, CallIteratorNext(iterKeys));
+        if (JSIterator::IteratorComplete(thread, next)) {
+            break;
+        }
+        visited++;
+    }
+    EXPECT_EQ(visited, nodeNumbers);
 }
 }  // namespace panda::test

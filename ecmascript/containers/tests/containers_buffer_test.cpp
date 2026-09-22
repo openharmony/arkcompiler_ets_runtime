@@ -1975,4 +1975,47 @@ HWTEST_F_L0(ContainersBufferTest, CompareTest009)
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_EQ(result, JSTaggedValue(0));
 }
+
+HWTEST_F_L0(ContainersBufferTest, WriteEmptyBufferOffsetUnderflowTest001)
+{
+    JSHandle<JSAPIFastBuffer> buf = CreateJSAPIBuffer(0);
+    EXPECT_EQ(buf->GetLength(), 0u);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> strHandle = factory->NewFromStdString("abc");
+
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                          ContainersBufferTest::GetArgvCount(5)); // 5: args
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(buf.GetTaggedValue());
+    callInfo->SetCallArg(0, strHandle.GetTaggedValue());
+    callInfo->SetCallArg(1, JSTaggedValue(5));
+    callInfo->SetCallArg(2, JSTaggedValue::Hole());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    JSTaggedValue result = ContainersBuffer::Write(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_EQ(result, JSTaggedValue(0));
+    EXPECT_FALSE(thread->HasPendingException());
+
+    auto callInfo0 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                           ContainersBufferTest::GetArgvCount(5)); // 5: args
+    callInfo0->SetFunction(JSTaggedValue::Undefined());
+    callInfo0->SetThis(buf.GetTaggedValue());
+    callInfo0->SetCallArg(0, strHandle.GetTaggedValue());
+    callInfo0->SetCallArg(1, JSTaggedValue(0));
+    callInfo0->SetCallArg(2, JSTaggedValue::Hole());
+    [[maybe_unused]] auto prev0 = TestHelper::SetupFrame(thread, callInfo0);
+    JSTaggedValue result0 = ContainersBuffer::Write(callInfo0);
+    TestHelper::TearDownFrame(thread, prev0);
+    EXPECT_EQ(result0, JSTaggedValue::Exception());
+    thread->ClearException();
+}
+
+HWTEST_F_L0(ContainersBufferTest, ReportSecurityFaultTest001)
+{
+    ContainerError::ReportSecurityFault("UtTestFunc", "ut-error-type");
+    EXPECT_FALSE(thread->HasPendingException());
+
+    ContainerError::ReportSecurityFault("UtTestFunc", "ut-error-type", 1, 2, 3); // 1 2 3 means explicit args
+    EXPECT_FALSE(thread->HasPendingException());
+}
 };  // namespace panda::test

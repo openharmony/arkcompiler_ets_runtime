@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/containers/containers_buffer.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/containers/tests/containers_test_helper.h"
@@ -21,6 +22,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value_wrapper-inl.h"
@@ -1023,5 +1025,147 @@ HWTEST_F_L0(ContainersFastBufferTest, BufferConstructorShareFromBufferOffsetPlus
     // actualAvailable = 10 - 8 = 2, maxLength = min(2, 10) = 2
     EXPECT_EQ(buffer->GetLength(), 2);
     EXPECT_EQ(buffer->GetOffset(), 8);
+}
+
+HWTEST_F_L0(ContainersFastBufferTest, WriteBigUInt64SecurityFaultTest001)
+{
+    JSHandle<JSAPIFastBuffer> buffer = CreateJSAPIBuffer(8); // 8: length
+
+    JSHandle<JSTaggedValue> boolValue(thread, JSTaggedValue::True());
+    JSTaggedValue normal = JSAPIFastBuffer::WriteBigUInt64(thread, buffer, boolValue, 0, false);
+    EXPECT_EQ(normal, JSTaggedValue(8)); // 8 means offset + byteSize
+    EXPECT_FALSE(thread->HasPendingException());
+    JSTaggedValue normalRead = JSAPIFastBuffer::ReadBigUInt64(thread, buffer, 0, false);
+    EXPECT_TRUE(normalRead.IsBigInt());
+
+    JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(42)); // 42 means a number value
+    constexpr uint32_t wrappedOffset = 0xFFFFFFFF;
+    JSTaggedValue result = JSAPIFastBuffer::WriteBigUInt64(thread, buffer, numberValue, wrappedOffset, false);
+    EXPECT_EQ(result, JSTaggedValue(7));
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+HWTEST_F_L0(ContainersFastBufferTest, WriteBigInt64SecurityFaultTest001)
+{
+    JSHandle<JSAPIFastBuffer> buffer = CreateJSAPIBuffer(8); // 8: length
+
+    JSHandle<JSTaggedValue> boolValue(thread, JSTaggedValue::True());
+    JSTaggedValue normal = JSAPIFastBuffer::WriteBigInt64(thread, buffer, boolValue, 0, false);
+    EXPECT_EQ(normal, JSTaggedValue(8)); // 8 means offset + byteSize
+    EXPECT_FALSE(thread->HasPendingException());
+
+    JSHandle<JSTaggedValue> numberValue(thread, JSTaggedValue(42)); // 42 means a number value
+    constexpr uint32_t wrappedOffset = 0xFFFFFFFF;
+    JSTaggedValue result = JSAPIFastBuffer::WriteBigInt64(thread, buffer, numberValue, wrappedOffset, false);
+    EXPECT_EQ(result, JSTaggedValue(7));
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
+}
+
+HWTEST_F_L0(ContainersFastBufferTest, ReadBigUInt64SecurityFaultTest001)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> arrayBufferValue(thread,
+        BuiltinsArrayBuffer::AllocateArrayBuffer(thread, env->GetArrayBufferFunction(), 8)); // 8 means byteLength
+    ASSERT_TRUE(arrayBufferValue->IsArrayBuffer());
+
+    JSHandle<JSFunction> newTarget(thread, InitializeBufferConstructor());
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                             ContainersFastBufferTest::GetArgvCount(5)); // 5: args
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
+    objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+    objCallInfo->SetCallArg(0, arrayBufferValue.GetTaggedValue());
+    objCallInfo->SetCallArg(1, JSTaggedValue(0)); // 0 means byteOffset
+    objCallInfo->SetCallArg(2, JSTaggedValue(8)); // 8 means length
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+    JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.IsJSAPIBuffer());
+    JSHandle<JSAPIFastBuffer> buffer(thread, result);
+    EXPECT_EQ(buffer->GetLength(), 8u);
+
+    JSTaggedValue normal = JSAPIFastBuffer::ReadBigUInt64(thread, buffer, 0, false);
+    EXPECT_TRUE(normal.IsBigInt());
+    EXPECT_FALSE(thread->HasPendingException());
+
+    JSHandle<JSArrayBuffer>::Cast(arrayBufferValue)->Detach(thread);
+    constexpr uint32_t wrappedOffset = 0xFFFFFFFF;
+    JSTaggedValue fault = JSAPIFastBuffer::ReadBigUInt64(thread, buffer, wrappedOffset, false);
+    EXPECT_TRUE(fault.IsUndefined());
+    EXPECT_FALSE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(ContainersFastBufferTest, ReadBigInt64SecurityFaultTest001)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> arrayBufferValue(thread,
+        BuiltinsArrayBuffer::AllocateArrayBuffer(thread, env->GetArrayBufferFunction(), 8)); // 8 means byteLength
+    ASSERT_TRUE(arrayBufferValue->IsArrayBuffer());
+
+    JSHandle<JSFunction> newTarget(thread, InitializeBufferConstructor());
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                             ContainersFastBufferTest::GetArgvCount(5));
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
+    objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+    objCallInfo->SetCallArg(0, arrayBufferValue.GetTaggedValue());
+    objCallInfo->SetCallArg(1, JSTaggedValue(0)); // 0 means byteOffset
+    objCallInfo->SetCallArg(2, JSTaggedValue(8)); // 8 means length
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+    JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.IsJSAPIBuffer());
+    JSHandle<JSAPIFastBuffer> buffer(thread, result);
+    EXPECT_EQ(buffer->GetLength(), 8u);
+
+    JSTaggedValue normal = JSAPIFastBuffer::ReadBigInt64(thread, buffer, 0, false);
+    EXPECT_TRUE(normal.IsBigInt());
+    EXPECT_FALSE(thread->HasPendingException());
+
+    JSHandle<JSArrayBuffer>::Cast(arrayBufferValue)->Detach(thread);
+    constexpr uint32_t wrappedOffset = 0xFFFFFFFF;
+    JSTaggedValue fault = JSAPIFastBuffer::ReadBigInt64(thread, buffer, wrappedOffset, false);
+    EXPECT_TRUE(fault.IsUndefined());
+    EXPECT_FALSE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(ContainersFastBufferTest, WriteUInt8AndReadUInt8OffsetOverflowTest001)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> arrayBufferValue(thread,
+        BuiltinsArrayBuffer::AllocateArrayBuffer(thread, env->GetArrayBufferFunction(), 16)); // 16 means byteLength
+    ASSERT_TRUE(arrayBufferValue->IsArrayBuffer());
+
+    JSHandle<JSFunction> newTarget(thread, InitializeBufferConstructor());
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                             ContainersFastBufferTest::GetArgvCount(5));
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
+    objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+    objCallInfo->SetCallArg(0, arrayBufferValue.GetTaggedValue());
+    objCallInfo->SetCallArg(1, JSTaggedValue(1)); // 1 means byteOffset
+    objCallInfo->SetCallArg(2, JSTaggedValue(8)); // 8 means length
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+    JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.IsJSAPIBuffer());
+    JSHandle<JSAPIFastBuffer> buffer(thread, result);
+    EXPECT_EQ(buffer->GetLength(), 8u);
+    EXPECT_EQ(buffer->GetOffset(), 1u);
+
+    JSHandle<JSTaggedValue> controlValue(thread, JSTaggedValue(7)); // 7: length
+    JSTaggedValue normalWrite = JSAPIFastBuffer::WriteUInt8(thread, buffer, controlValue, 0, false);
+    EXPECT_EQ(normalWrite, JSTaggedValue(1)); // 1 means offset + byteSize
+    JSTaggedValue normalRead = JSAPIFastBuffer::ReadUInt8(thread, buffer, 0, false);
+    EXPECT_EQ(normalRead, JSTaggedValue(7));
+    EXPECT_FALSE(thread->HasPendingException());
+
+    JSHandle<JSTaggedValue> faultValue(thread, JSTaggedValue(5)); // 5: length
+    constexpr uint32_t wrappedOffset = 0xFFFFFFFF;
+    JSTaggedValue faultWrite = JSAPIFastBuffer::WriteUInt8(thread, buffer, faultValue, wrappedOffset, false);
+    EXPECT_EQ(faultWrite, JSTaggedValue(0)); // UINT32_MAX + 1 wraps to 0
+    EXPECT_FALSE(thread->HasPendingException());
+    JSTaggedValue faultRead = JSAPIFastBuffer::ReadUInt8(thread, buffer, wrappedOffset, false);
+    EXPECT_EQ(faultRead, JSTaggedValue(5));
+    EXPECT_FALSE(thread->HasPendingException());
 }
 };  // namespace panda::test

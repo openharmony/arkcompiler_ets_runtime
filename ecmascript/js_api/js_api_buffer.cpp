@@ -1378,6 +1378,11 @@ JSTaggedValue JSAPIFastBuffer::WriteBigUInt64(JSThread *thread, const JSHandle<J
     bool isLossLess;
     ASSERT(value->IsBigInt() || value->IsNumber() || value->IsBoolean());
     BigInt::BigIntToUint64(thread, value, &valueNum, &isLossLess);
+    if (thread->HasPendingException()) {
+        // The conversion failed and left valueNum uninitialized: the comparison below
+        // reads uninitialized memory. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("JSAPIFastBuffer.WriteBigUInt64", "uninitialized-value-read");
+    }
     uint64_t left = 0;
     uint64_t right = UINT64_MAX;
     if (valueNum > right || valueNum < left) {
@@ -1393,6 +1398,13 @@ JSTaggedValue JSAPIFastBuffer::WriteBigUInt64(JSThread *thread, const JSHandle<J
             << " and <= " << buffer->GetLength() - NumberSize::BIGUINT64 << ". Received value is: " << offset;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    if (offset > buffer->GetLength() || NumberSize::BIGUINT64 > buffer->GetLength() - offset) {
+        // "offset + 8" wrapped around the check above, so the write below goes out of
+        // bounds. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("JSAPIFastBuffer.WriteBigUInt64", "offset-overflow", -1,
+                                            static_cast<int32_t>(buffer->GetLength()),
+                                            static_cast<int32_t>(offset));
     }
     JSAPIFastBuffer::SetValueByIndex(thread, typedArray.GetTaggedValue(), offset, value.GetTaggedValue(), type,
                                      littleEndian);
@@ -1412,6 +1424,13 @@ JSTaggedValue JSAPIFastBuffer::ReadBigUInt64(JSThread *thread, const JSHandle<JS
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    if (offset > buffer->GetLength() || NumberSize::BIGUINT64 > buffer->GetLength() - offset) {
+        // "offset + 8" wrapped around the check above, so the read below goes out of
+        // bounds. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("JSAPIFastBuffer.ReadBigUInt64", "offset-overflow", -1,
+                                            static_cast<int32_t>(buffer->GetLength()),
+                                            static_cast<int32_t>(offset));
+    }
     return JSAPIFastBuffer::GetValueByIndex(thread, typedArray.GetTaggedValue(), offset, type, littleEndian);
 }
 
@@ -1426,6 +1445,11 @@ JSTaggedValue JSAPIFastBuffer::WriteBigInt64(JSThread *thread, const JSHandle<JS
     bool isLossLess;
     ASSERT(value->IsBigInt() || value->IsNumber() || value->IsBoolean());
     BigInt::BigIntToInt64(thread, value, &valueNum, &isLossLess);
+    if (thread->HasPendingException()) {
+        // The conversion failed and left valueNum uninitialized: the comparison below
+        // reads uninitialized memory. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("JSAPIFastBuffer.WriteBigInt64", "uninitialized-value-read");
+    }
     int64_t left = INT64_MIN;
     int64_t right = INT64_MAX;
     if (valueNum > right || valueNum < left) {
@@ -1441,6 +1465,13 @@ JSTaggedValue JSAPIFastBuffer::WriteBigInt64(JSThread *thread, const JSHandle<JS
             << " and <= " << buffer->GetLength() - NumberSize::BIGUINT64 << ". Received value is: " << offset;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    if (offset > buffer->GetLength() || NumberSize::BIGUINT64 > buffer->GetLength() - offset) {
+        // "offset + 8" wrapped around the check above, so the write below goes out of
+        // bounds. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("JSAPIFastBuffer.WriteBigInt64", "offset-overflow", -1,
+                                            static_cast<int32_t>(buffer->GetLength()),
+                                            static_cast<int32_t>(offset));
     }
     JSAPIFastBuffer::SetValueByIndex(thread, typedArray.GetTaggedValue(), offset, value.GetTaggedValue(), type,
                                      littleEndian);
@@ -1459,6 +1490,13 @@ JSTaggedValue JSAPIFastBuffer::ReadBigInt64(JSThread *thread, const JSHandle<JSA
             << " and <= " << buffer->GetLength() - NumberSize::BIGINT64 << ". Received value is: " << offset;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    if (offset > buffer->GetLength() || NumberSize::BIGINT64 > buffer->GetLength() - offset) {
+        // "offset + 8" wrapped around the check above, so the read below goes out of
+        // bounds. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("JSAPIFastBuffer.ReadBigInt64", "offset-overflow", -1,
+                                            static_cast<int32_t>(buffer->GetLength()),
+                                            static_cast<int32_t>(offset));
     }
     return JSAPIFastBuffer ::GetValueByIndex(thread, typedArray.GetTaggedValue(), offset, type, littleEndian);
 }

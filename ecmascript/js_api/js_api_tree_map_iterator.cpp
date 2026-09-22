@@ -25,6 +25,23 @@ namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
 using ContainerError = containers::ContainerError;
 using ErrorFlag = containers::ErrorFlag;
+static void ReportStaleEntryFaults(JSThread *thread, const JSHandle<TaggedTreeMap> &map, int keyIndex,
+                                   uint32_t elements)
+{
+    if (keyIndex < 0 || keyIndex >= map->Capacity()) {
+        // Stale entry index after concurrent modification: the reads in the caller run
+        // out of bounds. Detection only, the original flow continues.
+        ContainerError::ReportSecurityFault("TreeMapIterator.Next", "stale-entry-index", keyIndex,
+                                            static_cast<int32_t>(elements), map->Capacity());
+    } else if (map->GetKey(thread, keyIndex).IsHole()) {
+        // A structurally modified tree leaves the internal Hole sentinel at the
+        // stale entry: it leaks to JS in the caller. Detection only, the original
+        // flow continues.
+        ContainerError::ReportSecurityFault("TreeMapIterator.Next", "hole-leak", keyIndex,
+                                            static_cast<int32_t>(elements));
+    }
+}
+
 JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -62,6 +79,7 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
         IterationKind itemKind = IterationKind(iter->GetIterationKind());
 
         int keyIndex = entries->Get(thread, index).GetInt();
+        ReportStaleEntryFaults(thread, map, keyIndex, elements);
         iter->SetNextIndex(index + 1);
 
         JSHandle<JSTaggedValue> key(thread, map->GetKey(thread, keyIndex));
