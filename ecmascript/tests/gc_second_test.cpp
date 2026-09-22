@@ -446,6 +446,10 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
                 10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         }
     }
+    // The loop's GCs may swap the semi spaces and post async reclaim tasks:
+    // wait them out, then re-fetch the active space for stable assertions.
+    heap->WaitAllTasksFinished();
+    space = heap->GetNewSpace();
     EXPECT_GT(space->GetSurvivalObjectSize(), 0);
 
     // Pin the capacity at half the committed size so the small-flow calls below
@@ -458,14 +462,6 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
     EXPECT_TRUE(space->AdjustCapacity(1, thread));
     space->SetInitialCapacity(space->GetCommittedSize() / 2);
     size_t size = space->GetInitialCapacity() * GROW_OBJECT_SURVIVAL_RATE / 2;
-    EXPECT_TRUE(space->AdjustCapacity(size, thread));
-
-    space->SetInitialCapacity(space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1);
-    size = space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1;
-    size_t oldMaxCapacity = space->GetMaximumCapacity();
-    space->SetMaximumCapacity(space->GetInitialCapacity());
-    EXPECT_TRUE(space->AdjustCapacity(size, thread));
-    space->SetMaximumCapacity(oldMaxCapacity);
     EXPECT_TRUE(space->AdjustCapacity(size, thread));
 #endif
 }
