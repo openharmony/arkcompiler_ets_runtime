@@ -180,25 +180,8 @@ public:
     void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
     void ResetConstPoolLiterals(const CString &recordName);
 
-    CUnorderedSet<CString, CStringHash>& GetModuleImportSet()
-    {
-        return moduleImportSet_;
-    }
-
-    bool IsModuleInImportSet(const CString& moduleName)
-    {
-        return moduleImportSet_.find(moduleName) != moduleImportSet_.end();
-    }
- 
-    void InsertModuleToImportSet(const CString& moduleName)
-    {
-        moduleImportSet_.insert(moduleName);
-    }
- 
-    void EraseModuleFromImportSet(const CString& moduleName)
-    {
-        moduleImportSet_.erase(moduleName);
-    }
+    bool EnterModuleImportScope(ModuleImportStackScope *scope);
+    void ExitModuleImportScope(ModuleImportStackScope *scope);
 
     std::string_view GetModuleImportStackData() const
     {
@@ -244,6 +227,8 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
+    bool IsModuleNameInImportScope(const CString &moduleName) const;
+
     void RemoveModuleFromCacheToPending(const CString &recordName);
 
     bool IsPendingRemovalModule(const CString &recordName)
@@ -269,7 +254,7 @@ private:
 #endif
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     std::string moduleImportData_ {"\nModuleImportStack:"};
-    CUnorderedSet<CString, CStringHash> moduleImportSet_;
+    ModuleImportStackScope *moduleImportScopeTop_ {nullptr};
     // for module deregister. <recordName <unsharedConstPoolIndex, value index>>.
     CUnorderedMap<CString, CUnorderedMap<uint32_t, std::vector<uint32_t>>> classLiteralConstPoolMap_;
 #if ENABLE_MODULE_MEMORY_OPTIMIZATION
@@ -282,7 +267,6 @@ private:
     friend class PatchLoader;
     friend class ModuleDeregister;
     friend class SharedModuleManager;
-    friend class ModuleImportStackScope;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_MODULE_MANAGER_H

@@ -26,20 +26,20 @@
 
 namespace panda::ecmascript {
 ModuleImportStackScope::ModuleImportStackScope(JSThread *thread, JSHandle<SourceTextModule> module)
-    : enableModuleStack_(thread->GetEcmaVM()->GetJSOptions().EnableModuleImportStack())
+    : enableModuleStack_(thread->GetEcmaVM()->GetJSOptions().EnableModuleImportStack()),
+      moduleName_(SourceTextModule::GetModuleName(module.GetTaggedValue()))
 {
     if (enableModuleStack_) {
-        moduleName_ = SourceTextModule::GetModuleName(module.GetTaggedValue());
         moduleManager_ = thread->GetModuleManager();
         if (!moduleName_.empty()) {
             PushModuleImportStack(moduleName_);
+            bool isCircularImport = moduleManager_->EnterModuleImportScope(this);
+            active_ = true;
             // Check for circular dependency
-            if (moduleManager_->IsModuleInImportSet(moduleName_)) {
+            if (isCircularImport) {
                 LOG_ECMA(WARN) << "Circular Module: circular dependency detected for module: " << moduleName_;
                 ModuleMessageHelper::PrintCircularImportModuleStack(thread, moduleName_,
                     moduleManager_->GetModuleImportStackData());
-            } else {
-                moduleManager_->InsertModuleToImportSet(moduleName_);
             }
             truncatedStack_ = moduleManager_->GetImportStackDataForCPPCrash(
                 moduleName_, 64 * 1024); // 64 * 1024 = 64KB
@@ -51,12 +51,12 @@ ModuleImportStackScope::ModuleImportStackScope(JSThread *thread, JSHandle<Source
 
 ModuleImportStackScope::~ModuleImportStackScope()
 {
-    if (enableModuleStack_) {
-        ResetCrashObject(handle_);
-        PopModuleImportStack(moduleName_);
-        // Remove from module import set
-        moduleManager_->EraseModuleFromImportSet(moduleName_);
+    if (!active_) {
+        return;
     }
+    ResetCrashObject(handle_);
+    moduleManager_->ExitModuleImportScope(this);
+    PopModuleImportStack(moduleName_);
 }
 
 void ModuleImportStackScope::PushModuleImportStack(const CString &moduleName)

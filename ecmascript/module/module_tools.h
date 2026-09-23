@@ -104,12 +104,16 @@ private:
     int GetNumberOfDigits(int number) const;
     std::string FormatStackNumber(int stackIndex, int totalDepth) const;
     int GetModuleImportStackDepth() const;
-    
+
     bool enableModuleStack_ {false};
-    ModuleManager* moduleManager_;
+    bool active_ {false};
+    ModuleManager *moduleManager_ {nullptr};
+    ModuleImportStackScope *previous_ {nullptr};
     CString moduleName_;
     uintptr_t handle_ {0};
     std::string truncatedStack_;
+
+    friend class ModuleManager;
 };
 
 class ModuleTools {
