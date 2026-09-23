@@ -508,6 +508,13 @@ JSTaggedValue ContainersBuffer::Write(EcmaRuntimeCallInfo *argv)
             RANGE_ERROR_CHECK(secondArg, offset, 0, buffer->GetLength() - 1);
             offset = GetValueUInt32(secondArg);
         }
+        if (buffer->GetLength() == 0 && offset > 0) {
+            // "GetLength() - 1" underflowed above, so the range check let a huge offset
+            // pass: the write below goes out of bounds. Detection only, the original
+            // flow continues.
+            ContainerError::ReportSecurityFault("ContainersBuffer.Write", "empty-buffer-offset-underflow",
+                                                static_cast<int32_t>(offset));
+        }
         uint32_t maxLength = buffer->GetLength() - offset;
         JSHandle<JSTaggedValue> thirdArg = GetCallArg(argv, 2);  // 2 means the third arg
         if (thirdArg->IsNumber()) {
