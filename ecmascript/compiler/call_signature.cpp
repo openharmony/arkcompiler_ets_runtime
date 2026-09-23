@@ -318,6 +318,11 @@ DEF_CALL_SIGNATURE(SetPropertyByName)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(EnsurePropertiesCapacity)
+{
+    TWO_ARGS_CALL_SIGNATURE(EnsurePropertiesCapacity, VariableType::JS_ANY());
+}
+
 DEF_CALL_SIGNATURE(DeprecatedSetPropertyByName)
 {
     constexpr size_t paramCount = 5;
@@ -1619,9 +1624,36 @@ DEF_CALL_SIGNATURE(ArkSteedCallEntry)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(ArkSteedDeoptimizationEntry)
+{
+    // This entry has a custom register-preserving ABI; the signature only registers its assembler stub identity.
+    CallSignature entry("ArkSteedDeoptimizationEntry", 0, 0,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::NATIVE_POINTER());
+    *callSign = entry;
+    std::array<VariableType, 0> params = {};
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(SteedCallAndPushArgv)
 {
-    AOT_CALL_SIGNATURE(SteedCallAndPushArgv)
+    /* 6 : 6 input parameters */
+    CallSignature steedCallAndPushArgv("SteedCallAndPushArgv", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = steedCallAndPushArgv;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(), // glue
+        VariableType::INT64(),          // actual argC
+        VariableType::NATIVE_POINTER(), // actual argV
+        VariableType::JS_ANY(),         // call target
+        VariableType::JS_ANY(),         // new target
+        VariableType::JS_ANY(),         // thisobj
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
@@ -2530,6 +2562,23 @@ DEF_CALL_SIGNATURE(GetActualArgvNoGC)
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(ArkSteedDeoptimize)
+{
+    CallSignature deoptimize("ArkSteedDeoptimize", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+                             VariableType::NATIVE_POINTER());
+    *callSign = deoptimize;
+    std::array<VariableType, 4> parameters = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::NATIVE_POINTER(),  // returnPc
+        VariableType::NATIVE_POINTER(),  // inputFp
+        VariableType::NATIVE_POINTER(),  // snapshot
+    };
+    callSign->SetParameters(parameters.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
 DEF_CALL_SIGNATURE(InsertOldToNewRSet)

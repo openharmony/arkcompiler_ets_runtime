@@ -20,7 +20,13 @@
 namespace panda::ecmascript::arksteed {
 
 ArkSteedAssembler::ArkSteedAssembler(Chunk *chunk, JSThread *compilerThread, JSThread *entryThread)
-    : assembler_(chunk), compilerThread_(compilerThread), entryThread_(entryThread)
+    : assembler_(chunk),
+#if defined(PANDA_TARGET_ARM64)
+      chunk_(chunk),
+      veneerBranches_(chunk),
+#endif
+      compilerThread_(compilerThread),
+      entryThread_(entryThread)
 {}
 
 ArkSteedAssembler::~ArkSteedAssembler() = default;
@@ -41,6 +47,13 @@ void ArkSteedAssembler::RecordComment(const char *str)
     }
     uint32_t pcOffset = static_cast<uint32_t>(assembler_.GetCurrentPosition());
     comments_.Add(pcOffset, str);
+}
+
+void ArkSteedAssembler::RecordCommentAt(uint32_t pcOffset, const char *str)
+{
+    if (enableComments_) {
+        comments_.Add(pcOffset, str);
+    }
 }
 
 void ArkSteedAssembler::Disassemble(std::ostream &os, const uint8_t *commentsData, uint32_t commentsSize)

@@ -46,6 +46,13 @@ public:
         LOG_GC(FATAL) << "can not call this method";
     }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    virtual void MarkEmbeddedCodeRefs([[maybe_unused]] uint32_t threadId)
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
+#endif
+
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {
         LOG_GC(FATAL) << "can not call this method";
@@ -78,6 +85,9 @@ public:
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
     void MarkJitCodeMap(uint32_t threadId) override;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    void MarkEmbeddedCodeRefs(uint32_t threadId) override;
+#endif
 private:
     template <bool cmsGC>
     void ProcessYoungGCMarkStack(uint32_t threadId);
@@ -99,6 +109,9 @@ public:
 
 protected:
     void MarkJitCodeMap(uint32_t threadId) override;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    void MarkEmbeddedCodeRefs(uint32_t threadId) override;
+#endif
     void ProcessMarkStack(uint32_t threadId) override;
 
 private:

@@ -963,7 +963,10 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Bind(&aotCall);
         {
 #if ECMASCRIPT_ENABLE_ARK_STEED
-            // Bound calls to ArkSteed code need the ArkSteed argv bridge, not the common AOT call stub.
+            Label notArkSteed;
+            __ Btq(JSFunctionBase::IsArkSteedEntryBit::START_BIT, compiledCodeFlag);
+            __ Jnb(&notArkSteed);
+
             __ Movq(jsfunc, rdx);
             __ Movq(r10, rsi);
             __ Subq(NUM_MANDATORY_JSFUNC_ARGS, rsi);
@@ -974,18 +977,19 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
             __ Movq(RTSTUB_ID(SteedCallWithArgVAndPushArgv), r11);
             __ Movq(Operand(rdi, r11, Scale::Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r11);
             __ Callq(r11);
-#else
+            __ Jmp(&popArgs);
+            __ Bind(&notArkSteed);
+#endif
             // output: glue:rdi argc:rsi calltarget:rdx argv:rcx this:r8 newtarget:r9
             __ Movq(jsfunc, rdx);
             __ Movq(r10, rsi);
-            auto funcSlotOffSet = kungfu::ArgumentAccessor::GetFixArgsNum() +
-                                  kungfu::ArgumentAccessor::GetExtraArgsNum();
-            __ Leaq(Operand(rsp, funcSlotOffSet * FRAME_SLOT_SIZE), rcx); // 5: skip argc and argv func new this
+            auto userArgSlotOffset = kungfu::ArgumentAccessor::GetFixArgsNum() +
+                                     kungfu::ArgumentAccessor::GetExtraArgsNum();
+            __ Leaq(Operand(rsp, userArgSlotOffset * FRAME_SLOT_SIZE), rcx); // skip argc, argv, func, newTarget, this
             __ Movq(JSTaggedValue::VALUE_UNDEFINED, r9);
             __ Movq(kungfu::CommonStubCSigns::JsBoundCallInternal, r10);
             __ Movq(Operand(rdi, r10, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), rax);
             __ Callq(rax); // call JSCall
-#endif
             __ Jmp(&popArgs);
         }
     }

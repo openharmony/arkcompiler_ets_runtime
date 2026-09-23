@@ -16,16 +16,22 @@
 #ifndef ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
 #define ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
 
+#include <utility>
+#include <vector>
+
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/frames.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value_wrapper.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 namespace panda::ecmascript {
 class JSThread;
+class FrameIterator;
+struct SteedFunctionFrame;
 enum class SpecVregIndex: int {
     INLINE_DEPTH = -1,  // INLINE_DEPTH wont be decoded, and put it here to
                         // avoiding confilict with the decoding of inlined frame args below
@@ -136,11 +142,16 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    bool CollectSteedDeoptContextFromRuntime(FrameIterator &it, SteedFunctionFrame *frame,
+                                             MachineCode *machineCode);
+#endif
     void DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
+    void CollectMaterializedVregs(const std::vector<std::pair<VRegId, JSTaggedType>> &deoptValues, size_t shift);
     bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
-    JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
-    void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);
+    JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc, bool isArkSteedEagerDeopt);
+    void UpdateAndDumpDeoptInfo(kungfu::DeoptType type, bool dumpJsStackTrace);
     static PUBLIC_API std::string DisplayItems(kungfu::DeoptType type);
     static PUBLIC_API int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);
     static PUBLIC_API size_t ComputeShift(size_t depth);
@@ -152,6 +163,7 @@ public:
     static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,
                                                         FrameType *prevFrameTypeAddress, uintptr_t prevFrameCallSiteSp);
     static void PrepareForLazyDeopt(JSThread *thread);
+    static bool PrepareForExceptionLazyDeopt(JSThread *thread, JSTaggedType *startFrame = nullptr);
     void ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint8_t* &resumePc,
                           AsmInterpretedFrame *statePtr);
     bool NeedOverwriteAcc(const uint8_t *pc) const;
@@ -202,7 +214,7 @@ private:
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
-    void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth);
+    void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth, bool dumpJsStackTrace);
     int64_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
     static void ResetJitHotness(JSThread *thread, JSFunction *jsFunc);
     JSThread *thread_ {nullptr};
@@ -220,6 +232,7 @@ private:
     size_t inlineDepth_ {0};
     uint32_t type_ {static_cast<uint32_t>(DeoptType::NONE)};
     bool isRecursiveCall_ {false};
+    bool isArkSteedFrame_ {false};
 };
 
 }  // namespace panda::ecmascript

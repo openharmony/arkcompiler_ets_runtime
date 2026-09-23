@@ -20,42 +20,48 @@
 #include "ecmascript/arksteed/arksteed_pgo_dependency_recorder.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedAccessInfoFactory {
 public:
-    ArkSteedAccessInfoFactory(JSThread *compilerThread, const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo,
+    ArkSteedAccessInfoFactory(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                               JitCompilationEnv *env)
         : ArkSteedAccessInfoFactory(compilerThread, bytecodeInfo, env, nullptr)
     {}
 
-    ArkSteedAccessInfoFactory(JSThread *compilerThread, const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo,
+    ArkSteedAccessInfoFactory(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                               JitCompilationEnv *env, ArkSteedHeapBroker *broker)
-        : compilerThread_(compilerThread), bytecodeInfo_(bytecodeInfo), env_(env),
+        : compilerThread_(compilerThread),
+          bytecodeInfo_(bytecodeInfo),
+          env_(env),
           broker_(broker == nullptr ? &ownedBroker_ : broker),
-          feedbackReader_(compilerThread_, bytecodeInfo_, broker_)
+          feedbackReader_(compilerThread_, bytecodeInfo_, broker_),
+          dependencyRecorder_(compilerThread_, env_, broker_)
     {}
 
     bool TryBuildNamedStoreAccessInfo(int slotIndex, NamedStoreAccessSet *access) const;
     bool TryBuildNamedLoadAccessInfo(int slotIndex, NamedLoadAccessSet *access) const;
+    bool TryBuildValueLoadAccessInfo(ValueLoadAccessSet *access) const;
+    bool TryBuildElementStoreAccessInfo(int slotIndex, ElementStoreAccessInfo *access) const;
 
 private:
     bool ComputeNamedStoreAccessInfo(const NamedAccessFeedback &feedback, NamedStoreAccessSet *access) const;
-    bool ComputeNamedLoadAccessInfo(const NamedAccessFeedback &feedback, NamedLoadAccessSet *access) const;
-    bool TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback, NamedStoreAccessInfo *info) const;
+    bool ComputeNamedLoadAccessInfo(const NamedAccessFeedback &feedback, AccessFeedbackSlotKind slotKind,
+                                    NamedLoadAccessSet *access) const;
+    bool TryMakeNamedStoreAccessInfo(const NamedAccessCaseFeedback &caseFeedback, ArkSteedNameRef name,
+                                     NamedStoreAccessInfo *info) const;
     bool TryMakeNamedLoadAccessInfo(const NamedAccessCaseFeedback &caseFeedback, NamedLoadAccessInfo *info) const;
-    bool RegisterDependencies(const PropertyAccessSet &access) const;
+    bool RegisterDependencies(PropertyAccessSet *access) const;
 
     JSThread *compilerThread_ {nullptr};
-    const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo_;
+    kungfu::BytecodeInfo bytecodeInfo_;
     JitCompilationEnv *env_ {nullptr};
     ArkSteedHeapBroker ownedBroker_ {compilerThread_, env_};
     ArkSteedHeapBroker *broker_ {nullptr};
     ArkSteedFeedbackReader feedbackReader_;
-    ArkSteedPGODependencyRecorder dependencyRecorder_ {compilerThread_, env_};
+    ArkSteedPGODependencyRecorder dependencyRecorder_;
 };
 
 }  // namespace panda::ecmascript::arksteed

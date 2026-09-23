@@ -31,8 +31,8 @@ using VRegIDType = kungfu::VRegIDType;
  *       - ThisObject: index = nL + 2
  *       - User-provided args: falls in index range [nL + 3, nL + nP)
  *   - Extra:
- *       - Env: index = nL + nP
- *       - Acc: index = nL + nP + 1
+ *       - LexicalEnv: index = nL + nP
+ *       -        Acc: index = nL + nP + 1
  * where nL = number of local virtual registers, nP = number of parameters.
  *
  * Unless specially specified, expressions like "number of virtual registers", "NumVRegs", etc.
@@ -47,53 +47,33 @@ enum FixedParamVRegIndex : VRegIDType {
 };
 
 enum ExtraVRegIndex : VRegIDType {
-    ENV_EXTRA_INDEX,
+    LEXICAL_ENV_EXTRA_INDEX,
     ACC_EXTRA_INDEX,
     EXTRA_VREG_COUNT,
 };
 
-inline VirtualRegister VRegOfLocal(VRegIDType localIndex)
+inline VRegIDType VRegOfLocal(VRegIDType localIndex)
 {
-    return VirtualRegister{localIndex};
+    return localIndex;
 }
-inline VirtualRegister VRegOfParam(VRegIDType numLocal, VRegIDType paramIndex)
+inline VRegIDType VRegOfParam(VRegIDType numLocal, VRegIDType paramIndex)
 {
-    return VirtualRegister{numLocal + paramIndex};
+    return numLocal + paramIndex;
 }
-inline VirtualRegister VRegOfEnv(VRegIDType numLocal, VRegIDType numParams)
+inline VRegIDType VRegOfLexicalEnv(VRegIDType numLocal, VRegIDType numParams)
 {
-    return VirtualRegister{numLocal + numParams + ENV_EXTRA_INDEX};
+    return numLocal + numParams + LEXICAL_ENV_EXTRA_INDEX;
 }
-inline VirtualRegister VRegOfAcc(VRegIDType numLocal, VRegIDType numParams)
+inline VRegIDType VRegOfAcc(VRegIDType numLocal, VRegIDType numParams)
 {
-    return VirtualRegister{numLocal + numParams + ACC_EXTRA_INDEX};
+    return numLocal + numParams + ACC_EXTRA_INDEX;
 }
 constexpr VRegIDType NumVRegs(VRegIDType numLocal, VRegIDType numParams)
 {
     return numLocal + numParams + EXTRA_VREG_COUNT;
 }
 
-static std::string VRegDisplayStringImpl(VirtualRegister vreg, VRegIDType numLocal, VRegIDType numParams)
-{
-    if (vreg.GetId() < numLocal) {
-        return "v" + std::to_string(vreg.GetId());
-    }
-    if (vreg.GetId() < numLocal + numParams) {
-        return "a" + std::to_string(vreg.GetId() - numLocal);
-    }
-    if (vreg == VRegOfEnv(numLocal, numParams)) {
-        return "env";
-    }
-    if (vreg == VRegOfAcc(numLocal, numParams)) {
-        return "acc";
-    }
-    return "<invalid>";
-}
-
-inline std::string VRegDisplayString(VirtualRegister vreg, VRegIDType numLocal, VRegIDType numParams)
-{
-    return VRegDisplayStringImpl(vreg, numLocal, numParams);
-}
+std::string VRegDisplayString(VRegIDType vreg, VRegIDType numLocal, VRegIDType numParams);
 }  // namespace panda::ecmascript::arksteed
 
 #endif  // ECMASCRIPT_ARKSTEED_VREG_H

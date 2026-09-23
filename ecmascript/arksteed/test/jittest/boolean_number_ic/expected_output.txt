@@ -1,4 +1,0 @@
-true
-function valueOf() { [native code] }
-function valueOf() { [native code] }
-abc

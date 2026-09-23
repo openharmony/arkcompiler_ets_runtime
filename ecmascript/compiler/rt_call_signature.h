@@ -103,6 +103,10 @@ static_assert(static_cast<int>(kungfu::RuntimeStubCSigns::ID_CallRuntime) ==
               static_cast<int>(kungfu::RuntimeStubCSigns::ASM_STUB_ID_CallRuntime));
 static_assert(static_cast<int>(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry) ==
               static_cast<int>(kungfu::RuntimeStubCSigns::ASM_STUB_ID_AsmInterpreterEntry));
+#if ECMASCRIPT_ENABLE_ARK_STEED
+static_assert(static_cast<int>(kungfu::RuntimeStubCSigns::ID_ArkSteedDeoptimize) ==
+              static_cast<int>(kungfu::RuntimeStubCSigns::NOGCSTUB_ID_ArkSteedDeoptimize));
+#endif
 #define RTSTUB_ID(name) kungfu::RuntimeStubCSigns::ID_##name
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_RT_CALL_SIGNATURE_H

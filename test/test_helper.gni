@@ -5188,6 +5188,7 @@ template("host_jit_js_test_action") {
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
     _jit_run_options_ =
         " --asm-interpreter=true" + " --compiler-enable-jit=true" +
+        " --compiler-jit-backend=fastjit" +
         " --compiler-enable-jit-pgo=true" +
         " --compiler-jit-hotness-threshold=5" + " --enable-pgo-profiler=true" +
         " --compiler-enable-litecg=true" + " --entry-point=${_target_name_} "
@@ -5248,6 +5249,7 @@ template("host_jit_js_test_action") {
           " --enable-force-gc=false" +
           " --asm-interpreter=true" +
           " --compiler-enable-jit=true" +
+          " --compiler-jit-backend=fastjit" +
           " --compiler-enable-jit-pgo=true" +
           " --compiler-jit-hotness-threshold=5" +
           " --compiler-enable-litecg=true" +
@@ -5360,6 +5362,7 @@ template("host_jit_test_action") {
   _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
   _jit_run_options_ =
       " --asm-interpreter=true" + " --compiler-enable-jit=true" +
+      " --compiler-jit-backend=fastjit" +
       " --compiler-enable-jit-pgo=true" +
       " --compiler-jit-hotness-threshold=5" + " --enable-pgo-profiler=true" +
       " --compiler-enable-litecg=true" + " --enable-force-gc=false" +
@@ -5433,6 +5436,7 @@ template("host_jit_test_action") {
         " --enable-force-gc=false" +
         " --asm-interpreter=true" +
         " --compiler-enable-jit=true" +
+        " --compiler-jit-backend=fastjit" +
         " --compiler-enable-jit-pgo=true" +
         " --compiler-jit-hotness-threshold=5" +
         " --compiler-enable-litecg=true" +

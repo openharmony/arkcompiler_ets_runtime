@@ -18,6 +18,7 @@
 #include "ecmascript/ic/ic_runtime_stub-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/base/gc_helper.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

@@ -42,4 +42,49 @@ bool ArkSteedHeapBroker::GetFeedbackForNamedAccess(const ArkSteedFeedbackReader 
     return true;
 }
 
+bool ArkSteedHeapBroker::GetFeedbackForOperation(const ArkSteedFeedbackReader &reader,
+                                                 OperationFeedback *feedback) const
+{
+    *feedback = {};
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForOperation");
+    return reader.ReadOperationFeedback(feedback);
+}
+
+bool ArkSteedHeapBroker::GetFeedbackForValueAccess(const ArkSteedFeedbackReader &reader,
+                                                   ValueAccessFeedback *feedback) const
+{
+    *feedback = {};
+    uint32_t slotId = 0;
+    if (!reader.TryGetFeedbackSlotId(&slotId)) {
+        return false;
+    }
+    if (TryGetCachedValueAccessFeedback(slotId, feedback)) {
+        return true;
+    }
+
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForValueAccess");
+    if (!reader.ReadValueAccessFeedback(feedback)) {
+        *feedback = {};
+        return false;
+    }
+    CacheValueAccessFeedback(*feedback);
+    return true;
+}
+
+bool ArkSteedHeapBroker::GetFeedbackForElementAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
+                                                     ElementAccessFeedback *feedback) const
+{
+    *feedback = {};
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForElementAccess");
+    return reader.ReadElementAccessFeedback(slotIndex, feedback);
+}
+
+bool ArkSteedHeapBroker::GetFeedbackForGlobalAccess(const ArkSteedFeedbackReader &reader,
+                                                    GlobalAccessFeedback *feedback) const
+{
+    *feedback = {};
+    SerializingScope scope(this, "ArkSteedHeapBroker::GetFeedbackForGlobalAccess");
+    return reader.ReadGlobalAccessFeedback(feedback);
+}
+
 }  // namespace panda::ecmascript::arksteed

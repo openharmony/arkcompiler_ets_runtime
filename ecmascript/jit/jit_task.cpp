@@ -14,9 +14,13 @@
  */
 
 #include "ecmascript/jit/jit_task.h"
+
+#include <limits>
+
 #include "ecmascript/base/config.h"
 #include "common_components/heap/heap_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/platform/file.h"
@@ -181,12 +185,32 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
     }
 
     if (codeDesc.codeType == MachineCodeType::ARKSTEED_CODE) {
-        // ArkSteed payload: [code] [stackmap] [heapConstants]
+        // ArkSteed payload: [code] [stackmap] [heapConstants] [translation info] [translation]
+        size_t translationPayloadSize = 0;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        CHECK(codeDesc.arkSteedTranslationSize <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.arkSteedTranslationSize <=
+              std::numeric_limits<size_t>::max() - (MachineCode::DATA_ALIGN - 1U));
+        size_t translationSizeAlign = AlignUp(codeDesc.arkSteedTranslationSize, MachineCode::DATA_ALIGN);
+        CHECK(MachineCode::ARKSTEED_TRANSLATION_INFO_SIZE <=
+              std::numeric_limits<size_t>::max() - translationSizeAlign);
+        translationPayloadSize = MachineCode::ARKSTEED_TRANSLATION_INFO_SIZE + translationSizeAlign;
+#endif
+        CHECK(codeDesc.codeSizeAlign <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.stackMapSizeAlign <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.heapConstantTableSizeAlign <= std::numeric_limits<uint32_t>::max());
+        CHECK(codeDesc.stackMapSizeAlign <=
+              std::numeric_limits<size_t>::max() - codeDesc.heapConstantTableSizeAlign);
+        size_t nonTextSize = codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
+        CHECK(nonTextSize <= std::numeric_limits<size_t>::max() - translationPayloadSize);
+        nonTextSize += translationPayloadSize;
+        CHECK(codeDesc.codeSizeAlign <= std::numeric_limits<size_t>::max() - nonTextSize);
+        size_t payLoadSize = codeDesc.codeSizeAlign + nonTextSize;
+        CHECK(payLoadSize <= std::numeric_limits<uint32_t>::max());
         if (Jit::GetInstance()->IsEnableJitFort()) {
-            size_t payLoadSize = codeDesc.codeSizeAlign + codeDesc.stackMapSizeAlign +
-                                 codeDesc.heapConstantTableSizeAlign;
-            size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
-                static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            constexpr size_t objectAlignment = static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT);
+            CHECK(payLoadSize <= std::numeric_limits<size_t>::max() - MachineCode::SIZE - (objectAlignment - 1U));
+            size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE, objectAlignment);
             codeDesc.instructionsSize = codeDesc.codeSizeAlign;
             LOG_JIT(DEBUG) << "InstallCode:: ArkSteed MachineCode Object size to allocate: "
                 << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
@@ -195,10 +219,10 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
                 return payLoadSize;
             } else {
                 // regular sized: instructions in separate JitFort space
-                return payLoadSize - codeDesc.codeSizeAlign;
+                return nonTextSize;
             }
         } else {
-            return codeDesc.codeSizeAlign + codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
+            return payLoadSize;
         }
     }
 
@@ -382,9 +406,8 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     if (compilerTier_.IsFastJit()) {
-        jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
+        jsFunction_->SetJitCompiledFuncEntry(hostThread_, machineCodeObj, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
-        jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
         LOG_JIT(INFO) << "Install fast jit machine code, method name: " << GetMethodName()
@@ -436,6 +459,7 @@ void JitTask::CloneProfileTypeInfo()
         JSHandle<ProfileTypeInfo> profileTypeInfo(hostThread_,
             ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject()));
         newProfileTypeInfo = factory->NewProfileTypeInfo(slotSize);
+        ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
         for (uint32_t i = 0; i < slotSize; i++) {
             JSTaggedValue value = profileTypeInfo->GetICSlot(hostThread_, i);
             newProfileTypeInfo->SetICSlot(hostThread_, i, value);
@@ -447,7 +471,7 @@ void JitTask::CloneProfileTypeInfo()
 JitTask::~JitTask()
 {
     ReleaseSustainingJSHandle();
-    jit_->DeleteJitCompilerTask(compilerTask_);
+    jit_->DeleteJitCompilerTask(compilerTask_, compilerTier_.IsArkSteed());
     jit_->DecJitTaskCnt(hostThread_);
     ASSERT(dependencies_ != nullptr);
     delete dependencies_;

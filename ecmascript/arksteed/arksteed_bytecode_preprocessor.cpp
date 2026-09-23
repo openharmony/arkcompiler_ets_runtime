@@ -15,307 +15,958 @@
 
 #include "ecmascript/arksteed/arksteed_bytecode_preprocessor.h"
 
-#include "ecmascript/arksteed/arksteed_bytecode_context.h"
-#include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
-#include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/mem/chunk_containers.h"
+#include "code_data_accessor-inl.h"  // IWYU pragma: keep
+#include "ecmascript/arksteed/arksteed_vreg.h"
+#include "ecmascript/jit/jit_profiler.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
+#include "method_data_accessor-inl.h"  // IWYU pragma: keep
 
 namespace panda::ecmascript::arksteed {
-using namespace panda::ecmascript::kungfu;
+static kungfu::Bytecodes g_bytecodes;
 
-void BytecodePreprocessor::Initialize(BytecodeContext *context)
+using BasicBlockInfo = BytecodePreprocessor::BasicBlockInfo;
+
+#define BLOCK_INDEX_FROM_PTR(ptr) (static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)))
+#define BLOCK_INDEX_TO_PTR(index) (reinterpret_cast<BasicBlockInfo *>(static_cast<uintptr_t>(index)))
+
+BytecodePreprocessor::BytecodePreprocessor(JitCompilationEnv *env, Chunk *chunk)
+    : env_(env),
+      method_(env->GetMethodLiteral()),
+      numLocalVRegs_(method_->GetNumVregsWithCallField()),
+      numParamVRegs_(method_->GetNumArgsForArkSteed()),
+      bcSizeBytes_(MethodLiteral::GetCodeSize(env_->GetJSPandaFile(), method_->GetMethodId())),
+      tryBlocks_(chunk),
+      basicBlocks_(chunk),
+      bytecodes_(chunk),
+      rpoList_(chunk),
+      bcOffsets_(chunk),
+      bcBlockIndices_(chunk),
+      bcIndexOfOffset_(chunk),
+      jumpTargetBcIndices_(chunk),
+      loopHeaders_(chunk),
+      numJumpPredecessors_(chunk)
+{}
+
+bool BytecodePreprocessor::Run()
 {
-    context_ = context;
-    lastBcIndex_ = static_cast<uint32_t>(context_->GetBytecodeCount()) - 1;
-    hasTryCatch_ = !context_->GetExceptionInfo().empty();
-    // Init postOrderList
-    postOrderList_.resize(lastBcIndex_ + 1);
-    for (uint32_t i = 0; i <= lastBcIndex_; i++) {
-        postOrderList_[i] = i;
+    if (!CollectBytecodeInfo()) {
+        return false;
     }
-    BuildBasicBlocksAndReorderBytecode();
+    CollectTryCatchBlockInfo();
+    BuildBasicBlocks();
+    CanonicalizeLoopsDFS();
+    SplitCriticalEdges();
+    SetBasicBlockPointers();
+    LoopAnalysis();
+    MakeRPO();
+    ClearDeadPredecessors();
+    return true;
 }
 
-void BytecodePreprocessor::BuildBasicBlocksAndReorderBytecode()
+uint32_t BytecodePreprocessor::JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uint32_t bcOffset)
 {
-    BuildBasicBlock();
-    BuildCFGEdges();
-    BuildPostOrderListAndReorderBytecode();
+    // Used by READ_INST_*_0() macros below
+    const uint8_t *pc = env_->GetMethodPcStart() + bcOffset;
+    int32_t jumpOffset = 0;
+    switch (bytecodes_[bcIndex].GetOpcode()) {
+        case kungfu::EcmaOpcode::JEQZ_IMM8:
+        case kungfu::EcmaOpcode::JNEZ_IMM8:
+        case kungfu::EcmaOpcode::JMP_IMM8:
+            jumpOffset = static_cast<int8_t>(READ_INST_8_0());
+            break;
+        case kungfu::EcmaOpcode::JNEZ_IMM16:
+        case kungfu::EcmaOpcode::JEQZ_IMM16:
+        case kungfu::EcmaOpcode::JMP_IMM16:
+            jumpOffset = static_cast<int16_t>(READ_INST_16_0());
+            break;
+        case kungfu::EcmaOpcode::JMP_IMM32:
+        case kungfu::EcmaOpcode::JNEZ_IMM32:
+        case kungfu::EcmaOpcode::JEQZ_IMM32:
+            jumpOffset = static_cast<int32_t>(READ_INST_32_0());
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    uint32_t jumpTargetOffset = static_cast<uint32_t>(bcOffset + jumpOffset);
+    return bcIndexOfOffset_[jumpTargetOffset];
 }
 
-void BytecodePreprocessor::BuildBasicBlock()
+// (1) This function should be called before SetBasicBlockPointers().
+//     In this helper we store indices instead of pointers into the pointer fields.
+//     See below for details.
+// (2) This function adds elements to basicBlocks_ vectors.
+//     Be careful with pointer & reference invalidated.
+uint32_t BytecodePreprocessor::AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors)
 {
-    // Find block starts
-    blockStarts_.insert(0);
-    const auto &bytecodeInfo = context_->GetInfoData();
+    uint32_t fakeJumpBlockIndex = static_cast<uint32_t>(basicBlocks_.size());
+    basicBlocks_.emplace_back(BasicBlockInfo {
+        // To be initialized later in MakeRPO()
+        .rpoIndex = NULL_INDEX,
+        // Synthetic block: Use [NULL_INDEX, NULL_INDEX - 1] to represent an empty range
+        .startBcIndex = NULL_INDEX,
+        .endBcIndex = NULL_INDEX - 1,
+        .catchBlockState = CatchBlockProfileState::UNKNOWN,
+        // No fallthrough
+        .fallthroughBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+        .jumpBlock = BLOCK_INDEX_TO_PTR(targetBlockIndex),
+        // No exception can be thrown in this jump-only block
+        .catchBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+        // To be initialized later
+        .loopHeaderBlock = nullptr,
+        .loopBackBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+        .jumpPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
+        .catchPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
+    });
+    numJumpPredecessors_.emplace_back(numJumpPredecessors);
+    return fakeJumpBlockIndex;
+}
 
-    auto markAsBlockStart = [this](uint32_t index) {
-        ASSERT(index <= lastBcIndex_);
-        blockStarts_.insert(index);
-    };
-    auto markNextBCAsBlockStart = [this](uint32_t curIndex) {
-        if (curIndex + 1 <= lastBcIndex_) {
-            blockStarts_.insert(curIndex + 1);
+// -------- Initialization steps: called one-by-one --------
+
+bool BytecodePreprocessor::CollectBytecodeInfo()
+{
+    if (bcSizeBytes_ == 0) {
+        return false;
+    }
+    bytecodes_.reserve(bcSizeBytes_);
+    bcIndexOfOffset_.resize(bcSizeBytes_ + 1, NULL_INDEX);
+
+    const uint8_t *startPc = env_->GetMethodPcStart();
+    BytecodeInstruction bcIns(startPc);
+    BytecodeInstruction bcInsLast = bcIns.JumpTo(bcSizeBytes_);
+
+    VRegIDType envVRegIndex = VRegOfLexicalEnv(numLocalVRegs_, numParamVRegs_);
+    auto jitProfiler = env_->GetPGOProfiler()->GetJITProfile();
+
+    auto makeBytecodeDetails = [startPc, envVRegIndex, jitProfiler](uint32_t curOffset) {
+        kungfu::BytecodeInfo res;
+        res.SetMetaData(g_bytecodes.GetBytecodeMetaData(startPc + curOffset));
+        // For jump instructions, only the opcode metadata is loaded
+        if (!res.GetMetaData().IsJump()) {
+            kungfu::BytecodeInfo::InitBytecodeInfo(res, startPc + curOffset, curOffset, envVRegIndex);
         }
+        if (jitProfiler != nullptr) {
+            bool insufficientFlag = jitProfiler->BoolMapContains(static_cast<int32_t>(curOffset));
+            res.SetInsufficientProfile(insufficientFlag);
+        }
+        return res;
     };
 
-    for (uint32_t index = 0; index <= lastBcIndex_; ++index) {
-        const auto &info = bytecodeInfo[index];
-        if (info.IsJump()) {
-            markAsBlockStart(context_->GetJumpTargetBcIndex(index));
-            markNextBCAsBlockStart(index);
-        } else if (info.IsReturn() || info.IsThrow()) {
-            markNextBCAsBlockStart(index);
-        }
+    for (; bcIns.GetAddress() != bcInsLast.GetAddress(); bcIns = bcIns.GetNext()) {
+        const uint8_t *curPc = bcIns.GetAddress();
+        uint32_t curOffset = static_cast<uint32_t>(curPc - startPc);
+        bcIndexOfOffset_[curOffset] = static_cast<uint32_t>(bytecodes_.size());
+
+        bytecodes_.push_back(makeBytecodeDetails(curOffset));
+        bcOffsets_.push_back(curOffset);
     }
 
-    MarkExceptionBlockStarts();
-    CreateBlockInfoEntries();
+    uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
+    // May be used in CollectTryCatchBlockInfo() when converting endBcIndex from offset
+    bcIndexOfOffset_[bcSizeBytes_] = bcCount;
+
+    jumpTargetBcIndices_.resize(bcCount, NULL_INDEX);
+    for (uint32_t i = 0; i < bcCount; i++) {
+        if (bytecodes_[i].IsJump()) {
+            jumpTargetBcIndices_[i] = JumpTargetBcIndexOfBytecode(i, bcOffsets_[i]);
+        }
+    }
+    return true;
 }
 
-void BytecodePreprocessor::MarkExceptionBlockStarts()
+void BytecodePreprocessor::CollectTryCatchBlockInfo()
 {
-    if (!hasTryCatch_) {
+    using CDATryBlock = panda_file::CodeDataAccessor::TryBlock;
+    using CDACatchBlock = panda_file::CodeDataAccessor::CatchBlock;
+
+    const panda_file::File *pf = env_->GetJSPandaFile()->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, method_->GetMethodId());
+    panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
+
+    ChunkSet<uint32_t> catchOffsets(GetChunk());
+    catchOffsets.insert(bcSizeBytes_);
+    cda.EnumerateTryBlocks([&catchOffsets](CDATryBlock &tryBlock) {
+        tryBlock.EnumerateCatchBlocks([&catchOffsets](CDACatchBlock &catchBlock) {
+            catchOffsets.insert(catchBlock.GetHandlerPc());
+            return true;
+        });
+        return true;
+    });
+    cda.EnumerateTryBlocks([this, &catchOffsets](CDATryBlock &tryBlock) {
+        // Half-open range [tryStartOffset, tryEndOffset) read from Panda file
+        uint32_t tryStartOffset = tryBlock.GetStartPc();
+        uint32_t tryEndOffset = tryBlock.GetStartPc() + tryBlock.GetLength();
+        if (tryStartOffset == tryEndOffset) {
+            return true;
+        }
+        // Converts to closed range [startBcIndex, endBcIndex]
+        uint32_t startBcIndex = bcIndexOfOffset_[tryStartOffset];
+        uint32_t endBcIndex = bcIndexOfOffset_[tryEndOffset] - 1;
+
+        TryBlockInfo curInfoItem {startBcIndex, endBcIndex, NULL_INDEX, CatchBlockProfileState::UNKNOWN};
+        tryBlock.EnumerateCatchBlocks([&](CDACatchBlock &catchBlock) {
+            uint32_t pcOffset = catchBlock.GetHandlerPc();
+            uint32_t catchBcIndex = bcIndexOfOffset_[pcOffset];
+            ASSERT(curInfoItem.catchBcIndex == NULL_INDEX && "Expects exactly 1 catch block.");
+            curInfoItem.catchBcIndex = catchBcIndex;
+
+            // Code size of catch block is optional in ABC file. Approximate size is taken when codeSize == 0
+            uint32_t catchSize = catchBlock.GetCodeSize();
+            uint32_t catchEndOffset = catchSize == 0 ? *catchOffsets.upper_bound(pcOffset) : pcOffset + catchSize;
+            uint32_t catchEndBcIndex = bcIndexOfOffset_[catchEndOffset];
+
+            // A catch block is assumed to be never-executed if at least 1 bytecode is marked IsInsufficientProfile()
+            for (uint32_t bcIndex = catchBcIndex; bcIndex < catchEndBcIndex; bcIndex++) {
+                if (bytecodes_[bcIndex].IsInsufficientProfile()) {
+                    curInfoItem.catchBlockState = CatchBlockProfileState::NEVER_EXECUTED;
+                    break;
+                }
+            }
+            LOG_COMPILER(DEBUG) << "Exception handler profile state: pc = [" << pcOffset << ", " << catchEndOffset
+                                << "), state = " << CatchBlockProfileStateString(curInfoItem.catchBlockState);
+            return true;
+        });
+        tryBlocks_.push_back(curInfoItem);
+        return true;
+    });
+}
+
+// Note: A hack is used before the graph is fully constructed,
+//       in which block indices (in basicBlocks_ array) are stored into the const BasicBlockInfo* fields
+//       to prevent pointer invalidation after vector relocation,
+//       as new basic blocks will be added on loop canonicalization, splitting critical edges, etc. (see below).
+//       Equivalent to union {
+//           /* Before the graph is finished, we use this field temporarily */
+//           uintptr_t jumpBlockIndex;
+//           /* After the graph is finished, we use this field */
+//           const BasicBlockInfo *jumpBlock;
+//       } yet we do not expose this union to keep a clean, user-friendly interface design.
+
+namespace {
+enum : uint8_t {
+    NOT_START_OF_BLOCK = 0,
+    START_OF_NON_CATCH_BLOCK = 1,
+    START_OF_CATCH_BLOCK = 2,
+};
+}
+
+void BytecodePreprocessor::BuildBasicBlocks()
+{
+    uint32_t bcCount = static_cast<uint32_t>(bytecodes_.size());
+    if (bcCount == 0)
         return;
+
+    ChunkVector<uint8_t> blockStartMarks(bcCount, NOT_START_OF_BLOCK, GetChunk());
+    MarkBasicBlockStarts(blockStartMarks, bcCount);
+    CreateBasicBlocks(blockStartMarks, bcCount);
+    InitializeBlockEdges();
+}
+
+void BytecodePreprocessor::MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
+{
+    // Catch block as higher priority than non-catch block
+    auto markNonCatchBlockStart = [&blockStartMarks](uint32_t index) {
+        if (blockStartMarks[index] != START_OF_CATCH_BLOCK) {
+            blockStartMarks[index] = START_OF_NON_CATCH_BLOCK;
+        }
+    };
+    bool nextIsBlockStart = false;
+    for (uint32_t i = 0; i < bcCount; i++) {
+        if (nextIsBlockStart) {
+            markNonCatchBlockStart(i);
+            nextIsBlockStart = false;
+        }
+        const BytecodeInfo &curBcInfo = bytecodes_[i];
+        if (curBcInfo.IsJump()) {
+            markNonCatchBlockStart(jumpTargetBcIndices_[i]);
+            nextIsBlockStart = true;
+        } else if (curBcInfo.IsThrow() || curBcInfo.IsReturn()) {
+            nextIsBlockStart = true;
+        }
     }
-    for (const auto &exItem : context_->GetExceptionInfo()) {
-        blockStarts_.insert(exItem.startBcIndex);
-        if (exItem.endBcIndex <= lastBcIndex_) {
-            blockStarts_.insert(exItem.endBcIndex);
+    markNonCatchBlockStart(0);
+    for (const TryBlockInfo &tryBlock : tryBlocks_) {
+        markNonCatchBlockStart(tryBlock.startBcIndex);
+        if (tryBlock.endBcIndex + 1 < bcCount) {
+            markNonCatchBlockStart(tryBlock.endBcIndex + 1);
         }
-        for (uint32_t catchBcIndex : exItem.catchBcIndices) {
-            blockStarts_.insert(catchBcIndex);
-        }
+        blockStartMarks[tryBlock.catchBcIndex] = START_OF_CATCH_BLOCK;
     }
 }
 
-void BytecodePreprocessor::CreateBlockInfoEntries()
+void BytecodePreprocessor::CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount)
 {
-    blocksInfo_.reserve(blockStarts_.size());
-    uint32_t blockId = 0;
-    for (uint32_t start : blockStarts_) {
-        blocksInfo_.emplace_back(BlockInfo(blockId++, start));
-    }
+    uint32_t startBcIndex = 0;
+    uint32_t blockCount = 0;
 
-    // Set end indices
-    for (size_t i = 0; i < blocksInfo_.size(); ++i) {
-        if (i + 1 < blocksInfo_.size()) {
-            blocksInfo_[i].endBcIndex = blocksInfo_[i + 1].startBcIndex - 1;
-        } else {
-            blocksInfo_[i].endBcIndex = lastBcIndex_;
-        }
-    }
+    auto appendBasicBlock = [&](uint32_t nextStartBcIndex) {
+        basicBlocks_.emplace_back(BasicBlockInfo {
+            .rpoIndex = NULL_INDEX,
+            .startBcIndex = startBcIndex,
+            .endBcIndex = nextStartBcIndex - 1,
+            .catchBlockState = CatchBlockProfileState::UNKNOWN,
+            .fallthroughBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+            .jumpBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+            .catchBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+            .loopHeaderBlock = nullptr,
+            .loopBackBlock = BLOCK_INDEX_TO_PTR(NULL_INDEX),
+            .jumpPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
+            .catchPredecessors = ChunkVector<const BasicBlockInfo *>(GetChunk()),
+        });
+        startBcIndex = nextStartBcIndex;
+        blockCount += 1;
+    };
 
-    index2BlockId_.resize(lastBcIndex_ + 1);
-    for (const auto &block : blocksInfo_) {
-        for (uint32_t bcIndex = block.startBcIndex; bcIndex <= block.endBcIndex; ++bcIndex) {
-            index2BlockId_[bcIndex] = block.id;
+    bcBlockIndices_.resize(bcCount);
+    for (uint32_t i = 0; i < bcCount; i++) {
+        if (i > 0 && blockStartMarks[i] != NOT_START_OF_BLOCK) {
+            appendBasicBlock(i);
         }
+        if (i == 0 || blockStartMarks[i] == START_OF_CATCH_BLOCK) {
+            AppendSyntheticJump(blockCount + 1, 0);
+            blockCount += 1;
+        }
+        bcBlockIndices_[i] = blockCount;
     }
+    appendBasicBlock(bcCount);
 }
 
-void BytecodePreprocessor::BuildCFGEdges()
+void BytecodePreprocessor::InitializeBlockEdges()
 {
-    const auto &bytecodeInfo = context_->GetInfoData();
-    for (auto &block : blocksInfo_) {
-        const auto &info = bytecodeInfo[block.endBcIndex];
-
-        uint32_t nextBcIndex = block.endBcIndex + 1;
-        if (info.IsJump()) {
-            uint32_t targetIndex = context_->GetJumpTargetBcIndex(block.endBcIndex);
-            ASSERT(targetIndex <= lastBcIndex_);
-            uint32_t targetBlockId = FindBlockIdByBcIndex(targetIndex);
-            block.jump.emplace_back(targetBlockId);
-
-            if (info.IsCondJump() && nextBcIndex <= lastBcIndex_) {
-                uint32_t nextBlockId = FindBlockIdByBcIndex(nextBcIndex);
-                block.succ.emplace_back(nextBlockId);
-            }
-        } else if (!info.IsReturn() && !info.IsThrow()) {
-            // Fall through to next block
-            if (nextBcIndex <= lastBcIndex_) {
-                uint32_t nextBlockId = FindBlockIdByBcIndex(nextBcIndex);
-                block.succ.emplace_back(nextBlockId);
-            }
+    uint32_t blockCount = static_cast<uint32_t>(basicBlocks_.size());
+    for (uint32_t i = 0; i < blockCount; i++) {
+        BasicBlockInfo &curBlock = basicBlocks_[i];
+        if (curBlock.startBcIndex == NULL_INDEX) {
+            continue;  // Skips synthetic header blocks created above
         }
+        ASSERT(curBlock.startBcIndex <= curBlock.endBcIndex && "Expects at least 1 bytecode instruction");
 
-        // Handle try-catch edges
-        if (!hasTryCatch_) {
-            continue;
+        const BytecodeInfo &lastBc = bytecodes_[curBlock.endBcIndex];
+        bool isJump = lastBc.IsJump();
+        bool isUnconditionalJump = isJump && !lastBc.IsCondJump();
+        if (isJump) {
+            uint32_t jumpTargetBcIndex = jumpTargetBcIndices_[curBlock.endBcIndex];
+            uint32_t jumpTargetBlockIndex = bcBlockIndices_[jumpTargetBcIndex];
+            curBlock.jumpBlock = BLOCK_INDEX_TO_PTR(jumpTargetBlockIndex);
         }
-        bool canThrow = false;
-        for (uint32_t bcIndex = block.startBcIndex; bcIndex <= block.endBcIndex; ++bcIndex) {
-            const auto &bcInfo = bytecodeInfo[bcIndex];
-            if (bcInfo.IsGeneral() && !bcInfo.NoThrow()) {
-                canThrow = true;
+        if (!lastBc.IsReturn() && !lastBc.IsThrow() && !isUnconditionalJump) {
+            ASSERT(i + 1 < blockCount && "Malformed bytecode");
+            curBlock.fallthroughBlock = BLOCK_INDEX_TO_PTR(i + 1);
+        }
+        bool throws = false;
+        for (uint32_t j = curBlock.startBcIndex; j <= curBlock.endBcIndex; j++) {
+            if (bytecodes_[j].IsGeneral() && !bytecodes_[j].NoThrow()) {
+                throws = true;
                 break;
             }
         }
-        if (!canThrow) {
+        if (!throws) {
             continue;
         }
-        for (const auto &exItem : context_->GetExceptionInfo()) {
-            if (block.startBcIndex < exItem.startBcIndex || block.startBcIndex >= exItem.endBcIndex) {
+        const TryBlockInfo *matchedTryBlock = nullptr;
+        for (const auto &tryBlock : tryBlocks_) {
+            if (!tryBlock.ContainsBytecode(curBlock.startBcIndex)) {
                 continue;
             }
-            for (uint32_t catchBcIndex : exItem.catchBcIndices) {
-                uint32_t catchBlockId = FindBlockIdByBcIndex(catchBcIndex);
-                block.catches.emplace_back(catchBlockId);
-            }
+            matchedTryBlock = &tryBlock;
+            break;
         }
-        block.SortCatches(blocksInfo_);
+        if (matchedTryBlock != nullptr) {
+            uint32_t catchBlockIndex = bcBlockIndices_[matchedTryBlock->catchBcIndex] - 1;
+            curBlock.catchBlock = BLOCK_INDEX_TO_PTR(catchBlockIndex);
+            curBlock.catchBlockState = matchedTryBlock->catchBlockState;
+            basicBlocks_[catchBlockIndex].catchPredecessors.push_back(BLOCK_INDEX_TO_PTR(i));
+        }
     }
 }
 
-void BytecodePreprocessor::BuildPostOrderListAndReorderBytecode()
-{
-    postOrderList_.clear();
-    std::deque<size_t> pendingList;
-    std::vector<bool> visited(blocksInfo_.size(), false);
-    auto firstBlockId = 0;
-    pendingList.emplace_back(firstBlockId);
+// Ensures all loops are in a canonical form where:
+// (1) each loop ends with an unconditional jump block (named J) which jumps to the header;
+// (2) J is the only block inside this loop which jumps to the header.
+// Precondition: The input bytecode sequence forms reducible loops only.
+struct BytecodePreprocessor::LoopCanonicalizer {
+    // DFS states (white: unvisited, grey: in DFS stack; black: visited)
+    enum : uint8_t { WHITE = 0, GREY = 1, BLACK = 2 };
+    enum : uint8_t { NOT_REDIRECTED = 0, LOOP_BACK_REDIRECTED = 1, LOOP_ENTRY_REDIRECTED = 2 };
 
-    while (!pendingList.empty()) {
-        size_t blockId = pendingList.back();
-        bool changed = false;
-        visited[blockId] = true;
+    BytecodePreprocessor *parent_;
+    ChunkVector<BasicBlockInfo> &blocks_;
+    ChunkVector<uint32_t> &numJumpPredecessors_;
+    ChunkVector<uint8_t> colors_;
+    ChunkVector<uint8_t> redirection_;
+    ChunkVector<uint32_t> dfsPredecessor_;
 
-        for (const auto &jumpId : blocksInfo_[blockId].jump) {
-            if (!visited[jumpId]) {
-                pendingList.emplace_back(jumpId);
-                changed = true;
-                break;
+    explicit LoopCanonicalizer(BytecodePreprocessor *parent)
+        : parent_(parent),
+          blocks_(parent->basicBlocks_),
+          numJumpPredecessors_(parent->numJumpPredecessors_),
+          colors_(blocks_.size(), WHITE, parent->GetChunk()),
+          redirection_(blocks_.size(), NOT_REDIRECTED, parent->GetChunk()),
+          dfsPredecessor_(blocks_.size(), NULL_INDEX, parent->GetChunk())
+    {}
+
+    void Run()
+    {
+        uint32_t blockCount = static_cast<uint32_t>(blocks_.size());
+        numJumpPredecessors_.assign(blockCount, 0);
+
+        for (uint32_t i = 0; i < blockCount; i++) {
+            if (colors_[i] == WHITE) {
+                DoDFS(i);
             }
         }
-        if (changed) {
+    }
+
+    void DoDFS(uint32_t blockIndex)
+    {
+        colors_[blockIndex] = GREY;
+        TryVisitSuccessor<0>(blockIndex);  // INDEX = 0: fallthrough
+        TryVisitSuccessor<1>(blockIndex);  // INDEX = 1: jump
+        TryVisitCatchBlock(blockIndex);
+        colors_[blockIndex] = BLACK;
+        // Accessible loop headers are added to the list by post-order,
+        // so that inner loop is always before its parent.
+        if (BLOCK_INDEX_FROM_PTR(blocks_[blockIndex].loopBackBlock) != NULL_INDEX) {
+            parent_->loopHeaders_.push_back(blockIndex);
+        }
+    }
+
+    // (1) Be careful when you use pointers or references to items in basicBlocks_
+    //     since they may be invalidated after relocation on adding basic blocks via AppendSyntheticJump().
+    // (2) All BasicBlockInfo "pointers" are indices actually.
+    //     Use BLOCK_INDEX_FROM_PTR and BLOCK_INDEX_TO_PTR to extract and store the index value.
+    template <int INDEX>
+    void TryVisitSuccessor(uint32_t blockIndex)
+    {
+        uint32_t toIndex = GetToIndex<INDEX>(blockIndex);
+        if (toIndex == NULL_INDEX) {
+            return;
+        }
+        if (colors_[toIndex] == GREY) {
+            TryVisitGreySuccessor<INDEX>(blockIndex, toIndex);
+        } else if (colors_[toIndex] == BLACK) {
+            TryVisitBlackSuccessor<INDEX>(blockIndex, toIndex);
+        } else {
+            numJumpPredecessors_[toIndex] += 1;
+            dfsPredecessor_[toIndex] = blockIndex;
+            DoDFS(toIndex);
+        }
+    }
+
+    void TryVisitCatchBlock(uint32_t blockIndex)
+    {
+        uint32_t toIndex = BLOCK_INDEX_FROM_PTR(blocks_[blockIndex].catchBlock);
+        if (toIndex != NULL_INDEX) {
+            if (colors_[toIndex] == WHITE) {
+                DoDFS(toIndex);
+            } else {
+                ASSERT(colors_[toIndex] == BLACK);
+            }
+        }
+    }
+
+    template <int INDEX>
+    void TryVisitGreySuccessor(uint32_t blockIndex, uint32_t toIndex)
+    {
+        // We encounter a loop. The header block is in the DFS stack.
+        uint32_t prevLoopBackIndex = BLOCK_INDEX_FROM_PTR(blocks_[toIndex].loopBackBlock);
+        if (LIKELY(prevLoopBackIndex == NULL_INDEX)) {
+            // (1) blockIndex -> toIndex is the first loop back edge we've ever met.
+            blocks_[toIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(blockIndex);
+            numJumpPredecessors_[toIndex] += 1;
+        } else if (redirection_[toIndex] == NOT_REDIRECTED) {
+            // (2) blockIndex -> toIndex is the second loop back edge.
+            //     We need to create a common loop back block (index denoted as RB) and then
+            //     redirect as blockIndex -> RB -> toIndex
+            redirection_[toIndex] = LOOP_BACK_REDIRECTED;
+            // RB -> toIndex. 2 : numPredecessors of RB (may be incremented later)
+            uint32_t newLoopBackIndex = parent_->AppendSyntheticJump(toIndex, 2);
+            blocks_[toIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(newLoopBackIndex);
+            LOG_COMPILER(DEBUG) << "Creates block #" << newLoopBackIndex << " as loop-back block of #" << toIndex;
+            // prevLoopBackIndex -> RB
+            BasicBlockInfo &prevLoopBackBlock = blocks_[prevLoopBackIndex];
+            if (BLOCK_INDEX_FROM_PTR(prevLoopBackBlock.fallthroughBlock) == toIndex) {
+                prevLoopBackBlock.fallthroughBlock = BLOCK_INDEX_TO_PTR(newLoopBackIndex);
+            } else {
+                ASSERT(BLOCK_INDEX_FROM_PTR(prevLoopBackBlock.jumpBlock) == toIndex);
+                prevLoopBackBlock.jumpBlock = BLOCK_INDEX_TO_PTR(newLoopBackIndex);
+            }
+            // blockIndex -> RB
+            RedirectTarget<INDEX>(blockIndex, newLoopBackIndex);
+            // numJumpPredecessors_[toIndex] is not incremented
+        } else {
+            // (3) blockIndex -> toIndex is the third loop back edge or later.
+            //     Redirects as blockIndex -> RB (created before)
+            uint32_t loopBackBlockIndex = BLOCK_INDEX_FROM_PTR(blocks_[toIndex].loopBackBlock);
+            RedirectTarget<INDEX>(blockIndex, loopBackBlockIndex);
+            numJumpPredecessors_[loopBackBlockIndex] += 1;
+        }
+    }
+
+    template <int INDEX>
+    void TryVisitBlackSuccessor(uint32_t blockIndex, uint32_t toIndex)
+    {
+        if (BLOCK_INDEX_FROM_PTR(blocks_[toIndex].loopBackBlock) == NULL_INDEX) {
+            numJumpPredecessors_[toIndex] += 1;
+            return;
+        }
+        ASSERT(numJumpPredecessors_[toIndex] == 2);  // 2: One is entry and another is loop-back
+        ASSERT(dfsPredecessor_[toIndex] != NULL_INDEX);
+
+        if (redirection_[toIndex] != LOOP_ENTRY_REDIRECTED) {
+            // (1) blockIndex -> toIndex is the second loop entry edge.
+            //     We need to create a loop pre-header (index denoted as RE) and then
+            //     redirect as blockIndex -> RE -> toIndex
+            redirection_[toIndex] = LOOP_ENTRY_REDIRECTED;
+            uint32_t prevEntryIndex = dfsPredecessor_[toIndex];
+            // RE -> toIndex. 2 : numPredecessors or RE (may be incremented later)
+            uint32_t preheaderIndex = parent_->AppendSyntheticJump(toIndex, 2);
+            dfsPredecessor_[toIndex] = preheaderIndex;
+            LOG_COMPILER(DEBUG) << "Creates block #" << preheaderIndex << " as pre-header block of #" << toIndex;
+            // prevEntryIndex -> RE
+            BasicBlockInfo &prevEntryBlock = blocks_[prevEntryIndex];
+            if (BLOCK_INDEX_FROM_PTR(prevEntryBlock.fallthroughBlock) == toIndex) {
+                prevEntryBlock.fallthroughBlock = BLOCK_INDEX_TO_PTR(preheaderIndex);
+            } else {
+                ASSERT(BLOCK_INDEX_FROM_PTR(prevEntryBlock.jumpBlock) == toIndex);
+                prevEntryBlock.jumpBlock = BLOCK_INDEX_TO_PTR(preheaderIndex);
+            }
+            // blockIndex -> RE
+            RedirectTarget<INDEX>(blockIndex, preheaderIndex);
+        } else {
+            // (2) blockIndex -> toIndex is the third loop entry edge or later.
+            //     Redirects as blockIndex -> RE (created before)
+            uint32_t preheaderIndex = dfsPredecessor_[toIndex];
+            RedirectTarget<INDEX>(blockIndex, preheaderIndex);
+            numJumpPredecessors_[preheaderIndex] += 1;
+        }
+    }
+
+    template <int INDEX>
+    uint32_t GetToIndex(uint32_t blockIndex) const
+    {
+        if constexpr (INDEX == 0) {
+            return BLOCK_INDEX_FROM_PTR(blocks_[blockIndex].fallthroughBlock);
+        } else {
+            return BLOCK_INDEX_FROM_PTR(blocks_[blockIndex].jumpBlock);
+        }
+    }
+
+    template <int INDEX>
+    void RedirectTarget(uint32_t blockIndex, uint32_t targetIndex)
+    {
+        if constexpr (INDEX == 0) {
+            blocks_[blockIndex].fallthroughBlock = BLOCK_INDEX_TO_PTR(targetIndex);
+        } else {
+            blocks_[blockIndex].jumpBlock = BLOCK_INDEX_TO_PTR(targetIndex);
+        }
+    }
+};
+
+void BytecodePreprocessor::CanonicalizeLoopsDFS()
+{
+    LoopCanonicalizer runner(this);
+    runner.Run();
+}
+
+void BytecodePreprocessor::SplitCriticalEdges()
+{
+    uint32_t blockCount = static_cast<uint32_t>(basicBlocks_.size());
+    for (uint32_t i = 0; i < blockCount; i++) {
+        uint32_t fallthroughIndex = BLOCK_INDEX_FROM_PTR(basicBlocks_[i].fallthroughBlock);
+        uint32_t jumpIndex = BLOCK_INDEX_FROM_PTR(basicBlocks_[i].jumpBlock);
+
+        if (fallthroughIndex == NULL_INDEX || jumpIndex == NULL_INDEX) {
             continue;
         }
-
-        // to do: (catch)
-
-        for (const auto &succId : blocksInfo_[blockId].succ) {
-            if (!visited[succId]) {
-                pendingList.emplace_back(succId);
-                changed = true;
-                break;
+        if (numJumpPredecessors_[fallthroughIndex] >= 2) {  // 2: critical edge threshold (needs split)
+            // 1 : numJumpPredecessors_ = 1 (which is current block)
+            uint32_t nextBlockIndex = AppendSyntheticJump(fallthroughIndex, 1);
+            LOG_COMPILER(DEBUG) << "Edge-split (previously fallthrough): Block #" << i << " -> #" << nextBlockIndex
+                                << " -> #" << fallthroughIndex;
+            // Redirect loop-back block of the fallthrough target if necessary
+            if (BLOCK_INDEX_FROM_PTR(basicBlocks_[fallthroughIndex].loopBackBlock) == i) {
+                basicBlocks_[fallthroughIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
             }
+            basicBlocks_[i].fallthroughBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
         }
-        if (changed) {
+        if (numJumpPredecessors_[jumpIndex] >= 2) {  // 2: critical edge threshold (needs split)
+            // 1 : numJumpPredecessors_ = 1 (which is current block)
+            uint32_t nextBlockIndex = AppendSyntheticJump(jumpIndex, 1);
+            LOG_COMPILER(DEBUG) << "Edge-split (previously jump): Block #" << i << " -> #" << nextBlockIndex << " -> #"
+                                << jumpIndex;
+            // Redirect loop-back block of the jump target if necessary
+            if (BLOCK_INDEX_FROM_PTR(basicBlocks_[jumpIndex].loopBackBlock) == i) {
+                basicBlocks_[jumpIndex].loopBackBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
+            }
+            basicBlocks_[i].jumpBlock = BLOCK_INDEX_TO_PTR(nextBlockIndex);
+        }
+    }
+}
+
+// Now the graph is completed. We can safely convert the block indices to corresponding pointers.
+void BytecodePreprocessor::SetBasicBlockPointers()
+{
+    BasicBlockInfo *head = basicBlocks_.data();
+
+    uint32_t blockCount = static_cast<uint32_t>(basicBlocks_.size());
+    ASSERT(numJumpPredecessors_.size() == blockCount);
+    for (uint32_t i = 0; i < blockCount; i++) {
+        basicBlocks_[i].jumpPredecessors.assign(numJumpPredecessors_[i], nullptr);
+    }
+    ChunkVector<uint32_t> nextPredIndex(blockCount, 0, GetChunk());
+
+    for (BasicBlockInfo &curBlock : basicBlocks_) {
+        uint32_t loopBackIndex = BLOCK_INDEX_FROM_PTR(curBlock.loopBackBlock);
+        curBlock.loopBackBlock = (loopBackIndex != NULL_INDEX) ? head + loopBackIndex : nullptr;
+    }
+
+    for (BasicBlockInfo &curBlock : basicBlocks_) {
+        uint32_t fallthroughIndex = BLOCK_INDEX_FROM_PTR(curBlock.fallthroughBlock);
+        if (fallthroughIndex != NULL_INDEX) {
+            BasicBlockInfo *fallthroughBlock = head + fallthroughIndex;
+            curBlock.fallthroughBlock = fallthroughBlock;
+            // Order of predecessors except the loop-back block is unspecified
+            fallthroughBlock->jumpPredecessors[nextPredIndex[fallthroughIndex]++] = &curBlock;
+        } else {
+            curBlock.fallthroughBlock = nullptr;
+        }
+
+        uint32_t jumpIndex = BLOCK_INDEX_FROM_PTR(curBlock.jumpBlock);
+        if (jumpIndex != NULL_INDEX) {
+            BasicBlockInfo *jumpBlock = head + jumpIndex;
+            curBlock.jumpBlock = jumpBlock;
+            // Whether curBlock -> jumpBlock is a loop-back edge
+            if (jumpBlock->loopBackBlock == &curBlock) {
+                // Source of loop-back edge must be an unconditional jump after edge-splitting
+                ASSERT(curBlock.fallthroughBlock == nullptr);
+                // Loop-back block is always the last predecessor of loop header
+                jumpBlock->jumpPredecessors.back() = &curBlock;
+            } else {
+                // Order of other predecessors is unspecified
+                jumpBlock->jumpPredecessors[nextPredIndex[jumpIndex]++] = &curBlock;
+            }
+        } else {
+            curBlock.jumpBlock = nullptr;
+        }
+
+        if (curBlock.catchBlock != BLOCK_INDEX_TO_PTR(NULL_INDEX)) {
+            curBlock.catchBlock = head + BLOCK_INDEX_FROM_PTR(curBlock.catchBlock);
+        } else {
+            curBlock.catchBlock = nullptr;
+        }
+        for (const BasicBlockInfo *&catchPred : curBlock.catchPredecessors) {
+            catchPred = head + BLOCK_INDEX_FROM_PTR(catchPred);
+        }
+    }
+    // Validation (optimized out in Release build)
+    for (uint32_t i = 0; i < blockCount; i++) {
+        ASSERT(nextPredIndex[i] == numJumpPredecessors_[i] - basicBlocks_[i].IsLoopHeader());
+    }
+}
+
+// Note: Const-qualified pointers are exposed in the header as we do not expect the user
+//       to modify the fields via a non-const pointer.
+//       Const-cast is needed during preprocessing to initialize the fields.
+#define BLOCK_PTR_CONST_CAST(ptr) const_cast<BasicBlockInfo *>(ptr)
+
+void BytecodePreprocessor::LoopAnalysis()
+{
+    auto dfs = [&](auto &dfs, BasicBlockInfo *cur, BasicBlockInfo *header) -> void {
+        if (cur == header) {
+            return;
+        }
+        cur->loopHeaderBlock = header;
+        auto visitPredecessor = [&](const BasicBlockInfo *pred) {
+            if (pred->loopHeaderBlock == nullptr) {
+                dfs(dfs, BLOCK_PTR_CONST_CAST(pred), header);
+                return;
+            }
+            if (pred->loopHeaderBlock != header) {
+                // pred belongs to an inner loop
+                const BasicBlockInfo *innerHeader = pred->loopHeaderBlock;
+                if (innerHeader->loopHeaderBlock == nullptr) {
+                    dfs(dfs, BLOCK_PTR_CONST_CAST(innerHeader), header);
+                }
+            }
+        };
+        for (const BasicBlockInfo *pred : cur->jumpPredecessors) {
+            visitPredecessor(pred);
+        }
+        for (const BasicBlockInfo *pred : cur->catchPredecessors) {
+            visitPredecessor(pred);
+        }
+    };
+    // Collects basic blocks in each loop.
+    // If block B is a loop header, B->loopHeaderBlock is the header of its parent loop.
+    for (uint32_t headerIndex : loopHeaders_) {
+        BasicBlockInfo *curLoopHeader = &basicBlocks_[headerIndex];
+        ASSERT(curLoopHeader->loopHeaderBlock == nullptr);
+        ASSERT(curLoopHeader->loopBackBlock != nullptr);
+        dfs(dfs, BLOCK_PTR_CONST_CAST(curLoopHeader->loopBackBlock), curLoopHeader);
+    }
+}
+
+void BytecodePreprocessor::MakeRPO()
+{
+    if (basicBlocks_.empty()) {
+        return;
+    }
+    uint32_t nextPostOrderIndex = 0;
+    auto dfs = [&](auto &dfs, BasicBlockInfo *curBlock) -> void {
+        constexpr uint32_t VISITING_TAG = static_cast<uint32_t>(-2);  // -2: visiting marker for DFS
+        curBlock->rpoIndex = VISITING_TAG;
+
+        if (curBlock->catchBlock != nullptr && curBlock->catchBlock->rpoIndex == NULL_INDEX) {
+            dfs(dfs, BLOCK_PTR_CONST_CAST(curBlock->catchBlock));
+        }
+
+        BasicBlockInfo *fallthroughBlock = BLOCK_PTR_CONST_CAST(curBlock->fallthroughBlock);
+        BasicBlockInfo *jumpBlock = BLOCK_PTR_CONST_CAST(curBlock->jumpBlock);
+
+        bool fallthroughs = fallthroughBlock != nullptr && fallthroughBlock->rpoIndex == NULL_INDEX;
+        bool jumps = jumpBlock != nullptr && jumpBlock->rpoIndex == NULL_INDEX;
+
+        // We adjust the DFS order to improve the chance (yet do not guarantee)
+        // that RPO index of blocks in a loop will be continuous.
+        if (fallthroughs && jumps) {
+            const BasicBlockInfo *curLoop = curBlock->IsLoopHeader() ? curBlock : curBlock->loopHeaderBlock;
+            if (jumpBlock->loopHeaderBlock != curLoop) {
+                // Jumps out of current loop (note: we assume that multi-level break does not exist in input)
+                ASSERT(fallthroughBlock->loopHeaderBlock == curLoop);
+                dfs(dfs, jumpBlock);
+                dfs(dfs, fallthroughBlock);
+            } else {
+                dfs(dfs, fallthroughBlock);
+                dfs(dfs, jumpBlock);
+            }
+        } else if (fallthroughs) {
+            dfs(dfs, fallthroughBlock);
+        } else if (jumps) {
+            dfs(dfs, jumpBlock);
+        }
+
+        curBlock->rpoIndex = nextPostOrderIndex++;
+        rpoList_.emplace_back(curBlock);
+    };
+
+    // Starts from the first block
+    dfs(dfs, &basicBlocks_.front());
+    // Post-order index -> Reversed post-order index
+    for (BasicBlockInfo &curBlock : basicBlocks_) {
+        if (curBlock.rpoIndex != NULL_INDEX) {
+            curBlock.rpoIndex = nextPostOrderIndex - 1 - curBlock.rpoIndex;
+        }
+    }
+    auto compareRPOIndex = [](const BasicBlockInfo *lhs, const BasicBlockInfo *rhs) {
+        return lhs->rpoIndex < rhs->rpoIndex;
+    };
+    for (BasicBlockInfo &curBlock : basicBlocks_) {
+        std::sort(curBlock.jumpPredecessors.begin(), curBlock.jumpPredecessors.end(), compareRPOIndex);
+        std::sort(curBlock.catchPredecessors.begin(), curBlock.catchPredecessors.end(), compareRPOIndex);
+    }
+    // Post-order -> Reversed post-order
+    std::reverse(rpoList_.begin(), rpoList_.end());
+}
+
+void BytecodePreprocessor::ClearDeadPredecessors()
+{
+    if (rpoList_.size() == basicBlocks_.size()) {
+        return;  // No dead basic blocks_.
+    }
+    auto pred = [](const BasicBlockInfo *block) { return block->rpoIndex == NULL_INDEX; };
+    for (BasicBlockInfo &curBlock : basicBlocks_) {
+        auto it = std::remove_if(curBlock.jumpPredecessors.begin(), curBlock.jumpPredecessors.end(), pred);
+        curBlock.jumpPredecessors.erase(it, curBlock.jumpPredecessors.end());
+
+        it = std::remove_if(curBlock.catchPredecessors.begin(), curBlock.catchPredecessors.end(), pred);
+        curBlock.catchPredecessors.erase(it, curBlock.catchPredecessors.end());
+    }
+}
+
+namespace {
+struct PrintIndex {
+    uint32_t index_;
+    explicit PrintIndex(uint32_t index) : index_(index) {}
+};
+
+struct PrintBasicBlockIndex {
+    uint32_t index_;
+    explicit PrintBasicBlockIndex(uint32_t index) : index_(index) {}
+};
+
+std::ostream &operator<<(std::ostream &out, PrintIndex printIndex)
+{
+    // Covers NULL_INDEX and NULL_INDEX - 1
+    if (printIndex.index_ >= BytecodePreprocessor::NULL_INDEX - 1) {
+        out << "NULL";
+    } else {
+        out << printIndex.index_;
+    }
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, PrintBasicBlockIndex printIndex)
+{
+    if (printIndex.index_ == BytecodePreprocessor::NULL_INDEX) {
+        out << "NULL";
+    } else {
+        out << "BB[" << printIndex.index_ << ']';
+    }
+    return out;
+}
+}  // namespace
+
+std::string BytecodePreprocessor::Dump() const
+{
+    std::ostringstream out;
+    out << DumpBasicBlocksString();
+    out << DumpTryBlocksString();
+    out << "\nGraphviz source code (basic blocks labelled by RPO index):\n" << DumpCFGAsGraphviz();
+    return std::move(out).str();
+}
+
+std::string BytecodePreprocessor::DumpBasicBlocksString() const
+{
+    auto printBB = [this](const BasicBlockInfo *block) {
+        return PrintBasicBlockIndex(block == nullptr ? NULL_INDEX : block - basicBlocks_.data());
+    };
+
+    std::ostringstream out;
+    out << "\nBasic blocks:";
+    for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
+        const BasicBlockInfo &curBlock = basicBlocks_[i];
+        // 2: width for block index
+        out << "\n[" << std::setw(2) << i << "] rpoIndex = " << PrintIndex(curBlock.rpoIndex);
+        out << ", startBcIndex = " << PrintIndex(curBlock.startBcIndex);
+        out << ", endBcIndex = " << PrintIndex(curBlock.endBcIndex);
+        out << "\n     fallthroughBlock = " << printBB(curBlock.fallthroughBlock);
+        out << "\n     jumpBlock = " << printBB(curBlock.jumpBlock);
+        out << "\n     catchBlock = " << printBB(curBlock.catchBlock) << " ("
+            << CatchBlockProfileStateString(curBlock.catchBlockState) << ')';
+        out << "\n     loopHeaderBlock = " << printBB(curBlock.loopHeaderBlock);
+        out << "\n     loopBackBlock = " << printBB(curBlock.loopBackBlock);
+        out << "\n     jumpPredecessors = [";
+        bool first = true;
+        for (const BasicBlockInfo *predBlock : curBlock.jumpPredecessors) {
+            first ? (void)(first = false) : (void)(out << ", ");
+            out << printBB(predBlock);
+        }
+        out << "]\n     catchPredecessors = [";
+        first = true;
+        for (const BasicBlockInfo *predBlock : curBlock.catchPredecessors) {
+            first ? (void)(first = false) : (void)(out << ", ");
+            out << printBB(predBlock);
+        }
+        out << ']';
+    }
+    return std::move(out).str();
+}
+
+std::string BytecodePreprocessor::DumpTryBlocksString() const
+{
+    std::ostringstream out;
+    out << "\nCatch blocks:";
+    for (size_t i = 0, tryBlockCount = tryBlocks_.size(); i < tryBlockCount; i++) {
+        const TryBlockInfo &curTryBlock = tryBlocks_[i];
+        // 2: width for block index
+        out << "\n[" << std::setw(2) << i << "] startBcIndex = " << curTryBlock.startBcIndex;
+        out << "\n     endBcIndex = " << curTryBlock.endBcIndex;
+        out << "\n     catchBcIndex = " << curTryBlock.catchBcIndex;
+        out << "\n     catchBlockState = " << CatchBlockProfileStateString(curTryBlock.catchBlockState);
+    }
+    return std::move(out).str();
+}
+
+std::string BytecodePreprocessor::DumpCFGAsGraphviz() const
+{
+    std::ostringstream out;
+    out << "digraph CFG {\n";
+    out << "    rankdir=TB;\n";
+    out << "    node [shape=box, style=filled, fontname=\"Courier\"];\n\n";
+    DumpGraphvizNodes(out);
+    out << "\n";
+    DumpGraphvizEdges(out);
+    out << "}\n";
+    return std::move(out).str();
+}
+
+void BytecodePreprocessor::DumpGraphvizNodes(std::ostream &out) const
+{
+    for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
+        const BasicBlockInfo &block = basicBlocks_[i];
+        if (block.IsDead()) {
             continue;
         }
-
-        uint32_t startBcIndex = blocksInfo_[blockId].startBcIndex;
-        uint32_t endBcIndex = blocksInfo_[blockId].endBcIndex;
-        for (uint32_t index = endBcIndex;; --index) {
-            postOrderList_.emplace_back(index);
-            if (index == startBcIndex) {
-                break;
-            }
+        std::string color;
+        if (block.IsLoopHeader()) {
+            color = "lightskyblue";
+        } else if (block.IsEndOfLoop()) {
+            color = "lightgreen";
+        } else if (block.IsCatchBlockHeader()) {
+            color = "lightyellow";
+        } else if (block.IsSynthetic()) {
+            color = "lightgray";
+        } else {
+            color = "white";
         }
-        pendingList.pop_back();
-    }
-
-    std::reverse(postOrderList_.begin(), postOrderList_.end());
-
-    // Build index2PostOrderList mapping
-    index2PostOrderList_.resize(lastBcIndex_ + 1);
-    for (size_t i = 0; i < postOrderList_.size(); ++i) {
-        uint32_t index = postOrderList_[i];
-        index2PostOrderList_[index] = static_cast<uint32_t>(i);
-    }
-
-    CalculatePredecessorCounts(visited);
-#ifndef NDEBUG
-    DumpPostOrderListAndCFG();
-#endif
-}
-
-void BytecodePreprocessor::PrintJumpTarget(const BlockInfo &block)
-{
-    if (!block.jump.empty()) {
-        std::string jumpStr = "jmp=[";
-        for (size_t i = 0; i < block.jump.size(); ++i) {
-            jumpStr += std::to_string(block.jump[i]);
-            if (i < block.jump.size() - 1) {
-                jumpStr += ",";
-            }
+        out << "    BB" << block.rpoIndex << " [";
+        out << "label=\"BB" << block.rpoIndex;
+        if (block.IsLoopHeader()) {
+            out << "\\n(loop header)";
         }
-        jumpStr += "]";
-        LOG_COMPILER(INFO) << "  " << jumpStr;
+        if (block.IsEndOfLoop()) {
+            out << "\\n(loop tail)";
+        }
+        if (block.IsCatchBlockHeader()) {
+            out << "\\n(catch entry)";
+        }
+        if (!block.IsSynthetic()) {
+            out << "\\nbcs " << block.startBcIndex << "-" << block.endBcIndex;
+        } else {
+            out << "\\n(synthetic)";
+        }
+        out << "\", fillcolor=" << color << "];\n";
     }
 }
 
-void BytecodePreprocessor::PrintFallThroughSuccessors(const BlockInfo &block)
+void BytecodePreprocessor::DumpGraphvizEdges(std::ostream &out) const
 {
-    if (!block.succ.empty()) {
-        std::string succStr = "succ=[";
-        for (size_t j = 0; j < block.succ.size(); ++j) {
-            succStr += std::to_string(block.succ[j]);
-            if (j < block.succ.size() - 1) {
-                succStr += ",";
+    auto rpoLabel = [](const BasicBlockInfo *block) {
+        if (block == nullptr || block->IsDead()) {
+            return std::string("(nil)");
+        }
+        return std::to_string(block->rpoIndex);
+    };
+    for (size_t i = 0, blockCount = basicBlocks_.size(); i < blockCount; i++) {
+        const BasicBlockInfo &block = basicBlocks_[i];
+        if (block.IsDead()) {
+            continue;
+        }
+        if (block.HasFallthrough() && !block.fallthroughBlock->IsDead()) {
+            out << "    BB" << block.rpoIndex;
+            out << " -> BB" << block.fallthroughBlock->rpoIndex;
+            out << " [style=solid];\n";
+        }
+        if (block.IsJump() && !block.jumpBlock->IsDead()) {
+            out << "    BB" << block.rpoIndex;
+            out << " -> BB" << block.jumpBlock->rpoIndex;
+            if (block.IsEndOfLoop()) {
+                out << " [style=solid, penwidth=3];\n";
+                out << "    // " << rpoLabel(&block) << " -> " << rpoLabel(block.jumpBlock) << " is a loop back edge\n";
+            } else {
+                out << " [style=solid];\n";
             }
         }
-        succStr += "]";
-        LOG_COMPILER(INFO) << "  " << succStr;
-    }
-}
-
-void BytecodePreprocessor::DumpPostOrderListAndCFG()
-{
-    LOG_COMPILER(INFO) << "========== PostOrder List (RPO) ==========";
-    LOG_COMPILER(INFO) << "Total bytecode indices: " << postOrderList_.size();
-
-    // Build bcIndex to blockId map
-    std::map<uint32_t, uint32_t> bcIndexToBlockId;
-    for (const auto &block : blocksInfo_) {
-        for (uint32_t idx = block.startBcIndex; idx <= block.endBcIndex; ++idx) {
-            bcIndexToBlockId[idx] = block.id;
-        }
-    }
-
-    const auto &bytecodeInfo = context_->GetInfoData();
-    for (size_t i = 0; i < postOrderList_.size(); ++i) {
-        uint32_t bcIndex = postOrderList_[i];
-        const auto &info = bytecodeInfo[bcIndex];
-        uint32_t blockId = bcIndexToBlockId[bcIndex];
-        LOG_COMPILER(INFO) << "[" << i << "] bcIndex=" << bcIndex << " blockId=" << blockId
-                           << " opcode=" << GetEcmaOpcodeStr(info.GetOpcode());
-    }
-    LOG_COMPILER(INFO) << "====================================";
-
-    // Print basic block CFG information
-    LOG_COMPILER(INFO) << "========== Basic Block CFG ==========";
-    LOG_COMPILER(INFO) << "Total blocks: " << blocksInfo_.size();
-    for (const auto &block : blocksInfo_) {
-        LOG_COMPILER(INFO) << "Block[" << block.id << "] bcRange=[" << block.startBcIndex << "," << block.endBcIndex
-                           << "]";
-        PrintJumpTarget(block);
-        PrintFallThroughSuccessors(block);
-    }
-    LOG_COMPILER(INFO) << "====================================";
-}
-
-void BytecodePreprocessor::CalculatePredecessorCounts(const std::vector<bool> &visited)
-{
-    predecessorCount_.resize(lastBcIndex_ + 1, 1);
-    predecessorCount_[0] += 1;
-    for (size_t i = 0; i < blocksInfo_.size(); ++i) {
-        if (visited[i]) {
-            predecessorCount_[blocksInfo_[i].startBcIndex] -= 1;
-            for (const auto &jumpId : blocksInfo_[i].jump) {
-                predecessorCount_[blocksInfo_[jumpId].startBcIndex] += 1;
-            }
-            for (const auto &succId : blocksInfo_[i].succ) {
-                predecessorCount_[blocksInfo_[succId].startBcIndex] += 1;
-            }
-            // to do: catch blocks need to be handled later
+        if (block.catchBlock != nullptr && !block.catchBlock->IsDead()) {
+            out << "    BB" << block.rpoIndex;
+            out << " -> BB" << block.catchBlock->rpoIndex;
+            out << " [style=dashed, color=red];\n";
         }
     }
 }
 
-bool BytecodePreprocessor::IsLogEnabled() const
-{
-    return context_->IsLogEnabled();
-}
-
+#undef BLOCK_INDEX_FROM_PTR
+#undef BLOCK_INDEX_TO_PTR
 }  // namespace panda::ecmascript::arksteed

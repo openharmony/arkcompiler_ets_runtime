@@ -469,6 +469,7 @@ private:
     V(ToBooleanTrue)                            \
     V(ToBooleanFalse)                           \
     V(SetPropertyByName)                        \
+    V(EnsurePropertiesCapacity)                 \
     V(DeprecatedSetPropertyByName)              \
     V(SetPropertyByNameWithOwn)                 \
     V(SetPropertyByValue)                       \
@@ -534,6 +535,7 @@ private:
     V(SuperCallAndCheckToBaseline)              \
     V(CallThisRangeAndCheckToBaseline)          \
     V(ArkSteedCallEntry)                        \
+    V(ArkSteedDeoptimizationEntry)              \
     V(SteedCallAndPushArgv)                     \
     V(SteedCallWithArgVAndPushArgv)             \
     V(GeneratorReEnterAsmInterp)                \
@@ -591,6 +593,7 @@ private:
     V(FatalPrintCustom)                         \
     V(FatalPrintIfFalse)                            \
     V(GetActualArgvNoGC)                        \
+    V(ArkSteedDeoptimize)                       \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \

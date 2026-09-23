@@ -13,144 +13,256 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_H
-#define ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_H
+#ifndef ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_NEW_H
+#define ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_NEW_H
 
-#include "ecmascript/arksteed/arksteed_compiler.h"
-#include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/arksteed/arksteed_vreg.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/chunk_containers.h"
-#include "libpandafile/bytecode_instruction.h"
 
 namespace panda::ecmascript::arksteed {
-using namespace panda::ecmascript::kungfu;
+using BytecodeInfo = kungfu::BytecodeInfo;
 
-// Basic block information
-struct BlockInfo {
-    uint32_t id;                    // Block ID
-    uint32_t startBcIndex;          // Start bytecode index
-    uint32_t endBcIndex;            // End bytecode index
-    std::vector<uint32_t> jump;     // Jump target block IDs
-    std::vector<uint32_t> succ;     // Fall-through successor block IDs
-    std::vector<uint32_t> catches;  // Catch block IDs (for try blocks)
-
-    BlockInfo() : id(0), startBcIndex(0), endBcIndex(0) {}
-
-    BlockInfo(uint32_t id, uint32_t start) : id(id), startBcIndex(start), endBcIndex(0) {}
-
-    // Sort catch blocks by startBcIndex (execution order)
-    void SortCatches(const ChunkVector<BlockInfo> &blocksInfo)
-    {
-        if (catches.empty()) {
-            return;
-        }
-        std::sort(catches.begin(), catches.end(), [&blocksInfo](uint32_t a, uint32_t b) {
-            return blocksInfo[a].startBcIndex < blocksInfo[b].startBcIndex;
-        });
-    }
+enum class CatchBlockProfileState : uint8_t {
+    UNKNOWN = 0,
+    NEVER_EXECUTED = 1,
 };
 
-class BytecodeContext;  // Forward declaration
+constexpr const char *CatchBlockProfileStateString(CatchBlockProfileState state)
+{
+    switch (state) {
+        case CatchBlockProfileState::UNKNOWN:
+            return "unknown";
+        case CatchBlockProfileState::NEVER_EXECUTED:
+            return "never_executed";
+        default:
+            return "<INVALID>";
+    }
+}
 
 class BytecodePreprocessor {
 public:
-    explicit BytecodePreprocessor(Chunk *chunk)
-        : blockStarts_(chunk),
-          blocksInfo_(chunk),
-          index2BlockId_(chunk),
-          postOrderList_(chunk),
-          index2PostOrderList_(chunk),
-          predecessorCount_(chunk)
-    {}
-    ~BytecodePreprocessor() = default;
+    static constexpr uint32_t NULL_INDEX = static_cast<uint32_t>(-1);
 
-    void Initialize(BytecodeContext *context);
+    struct TryBlockInfo {
+        // [startBcIndex, endBcIndex]
+        uint32_t startBcIndex;
+        uint32_t endBcIndex;
+        // Start position of the innermost catch block
+        uint32_t catchBcIndex;
+        // Whether the catch block is executed
+        CatchBlockProfileState catchBlockState;
 
-    // Block information accessors
-    const BlockInfo &GetBlockById(uint32_t blockId) const
+        bool ContainsBytecode(uint32_t bcIndex) const;
+    };
+
+    struct BasicBlockInfo {
+        // Index by the RPO order. NULL_INDEX if this block is dead (inaccessible from the start).
+        uint32_t rpoIndex;
+        // [startBcIndex, endBcIndex]
+        // For synthetic block (which contains only an unconditional jump),
+        // the range is [NULL_INDEX, NULL_INDEX - 1].
+        uint32_t startBcIndex;
+        uint32_t endBcIndex;
+        // State of catchBlock (moved here for better object layout).
+        CatchBlockProfileState catchBlockState;
+        // nullptr if this block is terminating (RETURN, THROW) or unconditional jump.
+        const BasicBlockInfo *fallthroughBlock;
+        // nullptr if this block is not a jump.
+        const BasicBlockInfo *jumpBlock;
+        // nullptr if one of the following happens:
+        // (1) no corresponding catch block in the input bytecode, or
+        // (2) no bytecode can throw exception in this block.
+        const BasicBlockInfo *catchBlock;
+        // Header of the innermost loop that current block belongs to.
+        // nullptr if this block does not belong to any loop.
+        // If this block is already a loop header (IsLoopHeader() return true),
+        // loopHeaderBlock points to the parent loop header if such parent exists, or nullptr otherwise.
+        const BasicBlockInfo *loopHeaderBlock;
+        // If this block is a loop header, then loopBackBlock is the one from which the loop jumps back to header.
+        // nullptr if this block is not a loop header.
+        const BasicBlockInfo *loopBackBlock;
+        // List of basic blocks which jumps directly to this basic block.
+        ChunkVector<const BasicBlockInfo *> jumpPredecessors;
+        // List of basic blocks whose exceptions are caught directly by this basic block.
+        ChunkVector<const BasicBlockInfo *> catchPredecessors;
+
+        bool ContainsBytecode(uint32_t bcIndex) const;
+        bool HasFallthrough() const;
+        bool IsFallthrough() const;
+        bool IsJump() const;
+        bool IsConditionalJump() const;
+        bool IsDead() const;
+        bool IsLoopHeader() const;
+        bool IsCatchBlockHeader() const;
+        bool IsEndOfLoop() const;
+        bool IsSynthetic() const;
+    };
+
+    BytecodePreprocessor(JitCompilationEnv *env, Chunk *chunk);
+
+    bool Run();
+
+    uint32_t GetNumBytecodes() const
     {
-        return blocksInfo_[blockId];
+        return static_cast<uint32_t>(bytecodes_.size());
     }
 
-    size_t GetBlockCount() const
+    uint32_t GetNumLiveBasicBlocks() const
     {
-        return blocksInfo_.size();
+        return static_cast<uint32_t>(rpoList_.size());
     }
 
-    const ChunkVector<uint32_t> &GetIndex2BlockId() const
+    uint32_t GetNumAllBasicBlocks() const
     {
-        return index2BlockId_;
+        return static_cast<uint32_t>(basicBlocks_.size());
     }
 
-    const ChunkVector<uint32_t> &GetPostOrderList() const
+    const BasicBlockInfo *GetBasicBlockByRPO(uint32_t rpoIndex) const
     {
-        return postOrderList_;
+        return rpoList_[rpoIndex];
     }
 
-    ChunkVector<uint32_t> &GetPostOrderList()
+    const BytecodeInfo *GetBytecode(uint32_t bcIndex) const
     {
-        return postOrderList_;
+        return &bytecodes_[bcIndex];
     }
 
-    const ChunkVector<uint32_t> &GetIndex2PostOrderList() const
+    uint32_t GetBytecodeOffset(uint32_t bcIndex) const
     {
-        return index2PostOrderList_;
+        return bcOffsets_[bcIndex];
     }
 
-    const ChunkVector<uint32_t> &GetPredecessorCount() const
+    VRegIDType GetNumLocalVRegs() const
     {
-        return predecessorCount_;
+        return numLocalVRegs_;
+    }
+    VRegIDType GetNumParamVRegs() const
+    {
+        return numParamVRegs_;
+    }
+    VRegIDType GetNumVRegs() const
+    {
+        return arksteed::NumVRegs(GetNumLocalVRegs(), GetNumParamVRegs());
     }
 
-    ChunkVector<uint32_t> &GetPredecessorCount()
+    JitCompilationEnv *GetEnv() const
     {
-        return predecessorCount_;
+        return env_;
+    }
+    MethodLiteral *GetMethod() const
+    {
+        return method_;
     }
 
-    ChunkVector<uint32_t> &GetIndex2PostOrderList()
+    Chunk *GetChunk() const
     {
-        return index2PostOrderList_;
+        return tryBlocks_.get_allocator().chunk();
     }
 
-    uint32_t FindBlockIdByBcIndex(uint32_t bcIndex) const
-    {
-        // to do: Refactor this algorithm to O(1) complexity
-        auto it =
-            std::upper_bound(blocksInfo_.begin(), blocksInfo_.end(), bcIndex, [](uint32_t idx, const BlockInfo &block) {
-                return idx < block.startBcIndex;
-            });
-        ASSERT(it != blocksInfo_.begin());
-        return (it - 1)->id;
-    }
-
-    bool IsLogEnabled() const;
+    std::string Dump() const;
+    std::string DumpCFGAsGraphviz() const;
 
 private:
-    void BuildBasicBlocksAndReorderBytecode();
-    void BuildBasicBlock();
-    void MarkExceptionBlockStarts();
-    void CreateBlockInfoEntries();
-    void BuildCFGEdges();
-    void BuildPostOrderListAndReorderBytecode();
-    void CalculatePredecessorCounts(const std::vector<bool> &visited);
-    void PrintJumpTarget(const BlockInfo &block);
-    void PrintFallThroughSuccessors(const BlockInfo &block);
-    void DumpPostOrderListAndCFG();
+    struct LoopCanonicalizer;
 
-    BytecodeContext *context_ = nullptr;  // Reference to BytecodeContext (not owned)
+    uint32_t JumpTargetBcIndexOfBytecode(uint32_t bcIndex, uint32_t bcOffset);
+    uint32_t AppendSyntheticJump(uint32_t targetBlockIndex, uint32_t numJumpPredecessors);
 
-    ChunkSet<uint32_t> blockStarts_;
-    ChunkVector<BlockInfo> blocksInfo_;
-    ChunkVector<uint32_t> index2BlockId_;
-    ChunkVector<uint32_t> postOrderList_;
-    ChunkVector<uint32_t> index2PostOrderList_;
-    ChunkVector<uint32_t> predecessorCount_;
+    bool CollectBytecodeInfo();
+    void CollectTryCatchBlockInfo();
+    void BuildBasicBlocks();
+    void MarkBasicBlockStarts(ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
+    void CreateBasicBlocks(const ChunkVector<uint8_t> &blockStartMarks, uint32_t bcCount);
+    void InitializeBlockEdges();
+    void CanonicalizeLoopsDFS();
+    void SplitCriticalEdges();
+    void SetBasicBlockPointers();
+    void LoopAnalysis();
+    void MakeRPO();
+    void ClearDeadPredecessors();
 
-    uint32_t lastBcIndex_ = 0;
-    bool hasTryCatch_ = false;  // True if method has try-catch blocks
+    std::string DumpBasicBlocksString() const;
+    std::string DumpTryBlocksString() const;
+    void DumpGraphvizNodes(std::ostream &out) const;
+    void DumpGraphvizEdges(std::ostream &out) const;
+
+    JitCompilationEnv *env_;
+    MethodLiteral *method_;
+
+    VRegIDType numLocalVRegs_;
+    VRegIDType numParamVRegs_;
+    uint32_t bcSizeBytes_;
+
+    ChunkVector<TryBlockInfo> tryBlocks_;
+    ChunkVector<BasicBlockInfo> basicBlocks_;
+    ChunkVector<BytecodeInfo> bytecodes_;
+    ChunkVector<const BasicBlockInfo *> rpoList_;
+
+    // Auxiliary data
+    ChunkVector<uint32_t> bcOffsets_;
+    ChunkVector<uint32_t> bcBlockIndices_;
+    ChunkVector<uint32_t> bcIndexOfOffset_;
+    ChunkVector<uint32_t> jumpTargetBcIndices_;
+    ChunkVector<uint32_t> loopHeaders_;
+    ChunkVector<uint32_t> numJumpPredecessors_;
 };
 
+inline bool BytecodePreprocessor::TryBlockInfo::ContainsBytecode(uint32_t bcIndex) const
+{
+    return bcIndex >= startBcIndex && bcIndex <= endBcIndex;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::ContainsBytecode(uint32_t bcIndex) const
+{
+    return bcIndex >= startBcIndex && bcIndex <= endBcIndex;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::HasFallthrough() const
+{
+    return fallthroughBlock != nullptr;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsFallthrough() const
+{
+    return fallthroughBlock != nullptr && jumpBlock == nullptr;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsJump() const
+{
+    return jumpBlock != nullptr;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsConditionalJump() const
+{
+    return jumpBlock != nullptr && fallthroughBlock != nullptr;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsDead() const
+{
+    return rpoIndex == NULL_INDEX;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsLoopHeader() const
+{
+    return loopBackBlock != nullptr;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsCatchBlockHeader() const
+{
+    return !catchPredecessors.empty();
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsEndOfLoop() const
+{
+    return jumpBlock != nullptr && jumpBlock->loopBackBlock == this;
+}
+
+inline bool BytecodePreprocessor::BasicBlockInfo::IsSynthetic() const
+{
+    return startBcIndex == NULL_INDEX;
+}
 }  // namespace panda::ecmascript::arksteed
 
-#endif  // ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_H
+#endif  // ECMASCRIPT_ARKSTEED_BYTECODE_PREPROCESSOR_NEW_H

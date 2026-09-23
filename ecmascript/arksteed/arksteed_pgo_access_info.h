@@ -17,13 +17,18 @@
 #define ECMASCRIPT_ARKSTEED_PGO_ACCESS_INFO_H
 
 #include <array>
+#include <vector>
 
 #include "ecmascript/arksteed/arksteed_heap_ref.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/on_heap.h"
 
 namespace panda::ecmascript::arksteed {
 
-static constexpr uint32_t MAX_NAMED_IC_POLY_CASES = 4;
+static constexpr uint32_t MAX_IC_POLY_CASES = 4;
+static constexpr uint32_t MAX_NAMED_IC_POLY_CASES = MAX_IC_POLY_CASES;
+static constexpr uint32_t MAX_ELEMENT_IC_POLY_CASES = MAX_IC_POLY_CASES;
 
 enum class AccessMode : uint8_t {
     NAMED_LOAD,
@@ -54,13 +59,35 @@ enum class AccessKind : uint8_t {
 enum class AccessDependencyKind : uint8_t {
     NONE,
     HCLASS,
-    PROTOTYPE_CELL,
+    PROTOTYPE_CHAIN,
+    NOT_PROTOTYPE,
 };
 
 enum class AccessFeedbackSlotKind : uint8_t {
     UNKNOWN,
     NAMED_LOAD,
     NAMED_STORE,
+    VALUE_LOAD,
+    ELEMENT_STORE,
+};
+
+enum class ValueLoadAccessKind : uint8_t {
+    UNSUPPORTED,
+    NAMED,
+    ELEMENT,
+};
+
+enum class ElementLoadKind : uint8_t {
+    UNSUPPORTED,
+    NORMAL,
+    STRING,
+    TYPED_ARRAY,
+};
+
+enum class ElementStoreKind : uint8_t {
+    UNSUPPORTED,
+    JS_ARRAY,
+    TYPED_ARRAY,
 };
 
 enum class AccessFieldRepresentation : uint8_t {
@@ -94,7 +121,11 @@ struct AccessFeedbackSource {
 
 struct AccessDependencyInfo {
     AccessDependencyKind hclassDependency {AccessDependencyKind::NONE};
-    AccessDependencyKind protoCellDependency {AccessDependencyKind::NONE};
+    AccessDependencyKind protoChainDependency {AccessDependencyKind::NONE};
+    AccessDependencyKind notPrototypeDependency {AccessDependencyKind::NONE};
+    bool canAssumeStableHClass {false};
+    bool canAssumeStableProtoChain {false};
+    bool canAssumeNotPrototype {false};
 };
 
 struct AccessGuardInfo {
@@ -126,13 +157,16 @@ struct PropertyAccessInfo {
     ArkSteedNameRef name {};
     ArkSteedObjectRef constant {};
     ArkSteedHClassRef transitionHClass {};
+    ArkSteedHClassRef holderHClass {};
     ArkSteedHClassRef fieldOwnerHClass {};
     ArkSteedHClassRef fieldHClass {};
+    uint32_t holderDepth {0};
     bool holderIsReceiver {true};
     bool hasProtoCell {false};
     bool hasNotFoundProtoCellGuard {false};
     bool hasTransitionHClass {false};
     bool hasFieldHClass {false};
+    bool isSharedStore {false};
 
     bool IsInvalid() const
     {
@@ -196,7 +230,12 @@ struct PropertyAccessInfo {
 
     bool HasHolder() const
     {
-        return !holderIsReceiver && !holder.IsUndefined();
+        return HasHolderHClass();
+    }
+
+    bool HasHolderHClass() const
+    {
+        return !holderIsReceiver && holderHClass.IsSafeForCompile();
     }
 
     bool HasTransitionHClass() const
@@ -218,6 +257,55 @@ struct PropertyAccessSet {
 
 using NamedStoreAccessSet = PropertyAccessSet;
 using NamedLoadAccessSet = PropertyAccessSet;
+
+struct ElementLoadAccessInfo {
+    ArkSteedHClassRef expectedHClass {};
+    uint64_t handlerInfo {0};
+    ElementLoadKind kind {ElementLoadKind::UNSUPPORTED};
+};
+
+struct ValueLoadAccessSet {
+    ValueLoadAccessKind kind {ValueLoadAccessKind::UNSUPPORTED};
+    AccessFeedbackSource feedback {};
+    ArkSteedNameRef key {};
+    NamedLoadAccessSet named {};
+    std::array<ElementLoadAccessInfo, MAX_NAMED_IC_POLY_CASES> elements {};
+    uint32_t elementCount {0};
+};
+
+struct ElementStoreAccessCase {
+    ArkSteedHClassRef expectedHClass {};
+    ElementsKind elementsKind {ElementsKind::NONE};
+};
+
+struct ElementStoreTransitionGroup {
+    ArkSteedHClassRef targetHClass {};
+    std::array<ArkSteedHClassRef, MAX_ELEMENT_IC_POLY_CASES> transitionSources {};
+    uint32_t sourceCount {0};
+    ElementsKind targetElementsKind {ElementsKind::NONE};
+    bool useExactHClassTransition {false};
+};
+
+struct ElementStoreAccessInfo {
+    AccessFeedbackSource feedback {};
+    std::array<ElementStoreAccessCase, MAX_ELEMENT_IC_POLY_CASES> cases {};
+    uint32_t caseCount {0};
+    std::array<ElementStoreTransitionGroup, MAX_ELEMENT_IC_POLY_CASES> transitionGroups {};
+    uint32_t transitionGroupCount {0};
+    ElementStoreKind kind {ElementStoreKind::UNSUPPORTED};
+    JSType typedArrayType {JSType::INVALID};
+    OnHeapMode onHeapMode {OnHeapMode::NONE};
+
+    bool IsJSArray() const
+    {
+        return kind == ElementStoreKind::JS_ARRAY;
+    }
+
+    bool IsTypedArray() const
+    {
+        return kind == ElementStoreKind::TYPED_ARRAY;
+    }
+};
 
 }  // namespace panda::ecmascript::arksteed
 

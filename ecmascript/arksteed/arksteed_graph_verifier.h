@@ -67,10 +67,8 @@ public:
     //      parameter required for common stubs)
     //    - DeoptVertex: Validates GetInputCount() >= 3 (frame state requires
     //      function, context, and accumulator at minimum)
-    //    - ReturnVertex: Validates GetInputCount() is 0 or 1 (RETURNUNDEFINED
-    //      vs RETURN with value)
-    //    - ThrowVertex: Validates GetInputCount() matches hasInput_ flag
-    //      (0 for rethrow, 1 for throw with exception)
+    //    - ReturnVertex: Uses the fixed-input verifier for the return value
+    //    - ThrowVertex: Variable-input vertex; input count depends on runtime stub
     //    - PhiVertex: Validates GetInputCount() > 0 and all inputs have
     //      consistent ValueRepresentation (type consistency at SSA merge)
     //
@@ -82,7 +80,7 @@ public:
     void ProcessVertex(VertexT *vertex, [[maybe_unused]] const ArkSteedState &state)
     {
         // Verify all inputs have valid opcodes
-        for (int i = 0; i < vertex->GetInputCount(); i++) {
+        for (uint32_t i = 0, n = vertex->GetInputCount(); i < n; i++) {
             ValueVertex *input = vertex->GetInput(i);
             ASSERT(input != nullptr);
             VertexOpcode opcode = input->GetOpcode();

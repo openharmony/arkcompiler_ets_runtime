@@ -23,6 +23,14 @@
 
 namespace panda::ecmascript::arksteed {
 
+template <typename RegisterT>
+struct RegListRegisterTraits {
+    static constexpr RegisterT FromCode(int code)
+    {
+        return RegisterT::FromCode(code);
+    }
+};
+
 // RegListBase - Bitmask-based register list
 template <typename RegisterT>
 class RegListBase {
@@ -44,17 +52,17 @@ public:
 
     constexpr void Set(RegisterT reg)
     {
-        bits_ |= (storage_t{1} << reg.Code());
+        bits_ |= (storage_t {1} << reg.Code());
     }
 
     void Clear(RegisterT reg)
     {
-        bits_ &= ~(storage_t{1} << reg.Code());
+        bits_ &= ~(storage_t {1} << reg.Code());
     }
 
     constexpr bool Has(RegisterT reg) const
     {
-        return (bits_ & (storage_t{1} << reg.Code())) != 0;
+        return (bits_ & (storage_t {1} << reg.Code())) != 0;
     }
 
     void Clear(const RegListBase &other)
@@ -154,19 +162,26 @@ public:
     {
         ASSERT(!IsEmpty());
         int firstCode = __builtin_ctzll(bits_);
-        return RegisterT::FromCode(firstCode);
+        return RegListRegisterTraits<RegisterT>::FromCode(firstCode);
     }
 
     constexpr RegisterT Last() const
     {
         ASSERT(!IsEmpty());
-        int lastCode = 8 * sizeof(bits_) - 1 - __builtin_clzll(bits_);  // 8: bits per byte
-        return RegisterT::FromCode(lastCode);
+        int lastCode = 8 * sizeof(uint64_t) - 1 - __builtin_clzll(bits_);  // 8: bits per byte
+        return RegListRegisterTraits<RegisterT>::FromCode(lastCode);
     }
 
     constexpr RegisterT PopFirst()
     {
         RegisterT reg = First();
+        Clear(reg);
+        return reg;
+    }
+
+    constexpr RegisterT PopLast()
+    {
+        RegisterT reg = Last();
         Clear(reg);
         return reg;
     }

@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_ARKSTEED_PGO_DEPENDENCY_RECORDER_H
 #define ECMASCRIPT_ARKSTEED_PGO_DEPENDENCY_RECORDER_H
 
+#include "ecmascript/arksteed/arksteed_heap_broker.h"
 #include "ecmascript/arksteed/arksteed_pgo_access_info.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
@@ -26,40 +27,84 @@ namespace panda::ecmascript::arksteed {
 
 class ArkSteedPGODependencyRecorder {
 public:
-    ArkSteedPGODependencyRecorder(JSThread *compilerThread, JitCompilationEnv *env)
-        : compilerThread_(compilerThread), env_(env)
+    ArkSteedPGODependencyRecorder(JSThread *compilerThread, JitCompilationEnv *env, const ArkSteedHeapBroker *broker)
+        : compilerThread_(compilerThread), env_(env), broker_(broker)
     {}
 
-    bool Install(const PropertyAccessSet &access) const
+    bool Install(PropertyAccessSet *access) const
     {
-        if (access.caseCount == 0) {
+        if (access == nullptr || access->caseCount == 0) {
             return false;
         }
-        for (uint32_t i = 0; i < access.caseCount; ++i) {
-            if (!Validate(access.cases[i])) {
+        for (uint32_t i = 0; i < access->caseCount; ++i) {
+            if (!Validate(access->cases[i])) {
                 return false;
             }
         }
-        for (uint32_t i = 0; i < access.caseCount; ++i) {
-            if (!Install(access.cases[i])) {
+        for (uint32_t i = 0; i < access->caseCount; ++i) {
+            if (!Install(&access->cases[i])) {
                 return false;
             }
         }
         return true;
     }
 
-private:
-    bool Install(const PropertyAccessInfo &access) const
+    bool InstallStableHClass(ArkSteedHClassRef hclass) const
     {
-        if (access.dependencies.hclassDependency == AccessDependencyKind::HCLASS &&
-            !DependOnStableHClass(access.expectedHClass)) {
+        return CheckStableHClass(hclass) && DependOnStableHClass(hclass);
+    }
+
+    bool InstallArrayDetector() const
+    {
+        if (!CanUseLazyDeopt()) {
             return false;
         }
-        if (access.dependencies.protoCellDependency == AccessDependencyKind::PROTOTYPE_CELL) {
-            bool dependOnFullProtoChain = access.IsNotFound() && !access.HasHolder();
-            return DependOnStableProtoChain(access.expectedHClass, access.holder,
-                                            access.holderIsReceiver || dependOnFullProtoChain,
-                                            access.hasProtoCell);
+        auto *dependencies = env_->GetDependencies();
+        return dependencies != nullptr &&
+               dependencies->DependOnArrayDetector(env_->GetGlobalEnv().GetObject<GlobalEnv>());
+    }
+
+    bool InstallStableProtoChain(ArkSteedHClassRef receiverHClass) const
+    {
+        if (!CanUseLazyDeopt()) {
+            return false;
+        }
+        JSTaggedValue receiverHClassValue = JSTaggedValue::Undefined();
+        if (broker_ == nullptr || !broker_->TryResolveRef(receiverHClass, &receiverHClassValue) ||
+            !receiverHClassValue.IsJSHClass()) {
+            return false;
+        }
+        if (receiverHClassValue.IsInSharedHeap()) {
+            return true;
+        }
+        auto *dependencies = env_->GetDependencies();
+        return dependencies != nullptr && dependencies->DependOnStableProtoChain(
+                                              compilerThread_, JSHClass::Cast(receiverHClassValue.GetTaggedObject()),
+                                              nullptr, env_->GetGlobalEnv().GetObject<GlobalEnv>());
+    }
+
+    bool InstallNotPrototype(ArkSteedHClassRef receiverHClass) const
+    {
+        return DependOnNotPrototype(receiverHClass);
+    }
+
+private:
+    bool Install(PropertyAccessInfo *access) const
+    {
+        if (access->dependencies.hclassDependency == AccessDependencyKind::HCLASS) {
+            bool canAssumeStableHClass = DependOnStableHClass(access->expectedHClass);
+            if (CanUseLazyDeopt() && !canAssumeStableHClass) {
+                return false;
+            }
+            access->dependencies.canAssumeStableHClass = canAssumeStableHClass;
+        }
+        if (access->dependencies.protoChainDependency == AccessDependencyKind::PROTOTYPE_CHAIN) {
+            bool dependOnFullProtoChain = access->IsNotFound() && !access->HasHolder();
+            access->dependencies.canAssumeStableProtoChain = DependOnStableProtoChain(
+                access->expectedHClass, *access, access->holderIsReceiver || dependOnFullProtoChain);
+        }
+        if (access->dependencies.notPrototypeDependency == AccessDependencyKind::NOT_PROTOTYPE) {
+            access->dependencies.canAssumeNotPrototype = DependOnNotPrototype(access->expectedHClass);
         }
         return true;
     }
@@ -70,69 +115,101 @@ private:
             !CheckStableHClass(access.expectedHClass)) {
             return false;
         }
-        if (access.dependencies.protoCellDependency == AccessDependencyKind::PROTOTYPE_CELL) {
-            bool dependOnFullProtoChain = access.IsNotFound() && !access.HasHolder();
-            return CheckStableProtoChain(access.expectedHClass, access.holder,
-                                         access.holderIsReceiver || dependOnFullProtoChain,
-                                         access.hasProtoCell);
-        }
         return true;
     }
 
     bool CheckStableHClass(ArkSteedHClassRef hclass) const
     {
-        if (!hclass.IsSafeForCompile() || !hclass.Value().IsJSHClass()) {
+        JSTaggedValue hclassValue = JSTaggedValue::Undefined();
+        if (broker_ == nullptr || !broker_->TryResolveRef(hclass, &hclassValue) || !hclassValue.IsJSHClass()) {
             return false;
         }
-        return kungfu::LazyDeoptAllDependencies::CheckStableHClass(JSHClass::Cast(hclass.Value().GetTaggedObject()));
+        return kungfu::LazyDeoptAllDependencies::CheckStableHClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
     }
 
-    bool CheckStableProtoChain(ArkSteedHClassRef receiverHClass, ArkSteedObjectRef holder,
-                               bool holderIsReceiver, bool hasProtoCell) const
+    bool TryResolveHolderHClass(const PropertyAccessInfo &access, JSHClass *receiver, bool holderIsReceiver,
+                                JSHClass **holderHClass) const
     {
-        if (!hasProtoCell || !receiverHClass.IsSafeForCompile() || !receiverHClass.Value().IsJSHClass()) {
-            return false;
+        *holderHClass = receiver;
+        if (holderIsReceiver) {
+            return true;
         }
-        JSHClass *receiver = JSHClass::Cast(receiverHClass.Value().GetTaggedObject());
-        JSHClass *holderHClass = receiver;
-        if (!holderIsReceiver) {
-            if (!holder.IsSafeForCompile() || !holder.Value().IsHeapObject()) {
-                return false;
-            }
-            holderHClass = holder.Value().GetTaggedObject()->GetClass();
+        JSTaggedValue holderHClassValue = JSTaggedValue::Undefined();
+        if (broker_->TryResolveRef(access.holderHClass, &holderHClassValue) && holderHClassValue.IsJSHClass()) {
+            *holderHClass = JSHClass::Cast(holderHClassValue.GetTaggedObject());
+            return true;
         }
-        return kungfu::LazyDeoptAllDependencies::CheckStableProtoChain(compilerThread_, receiver, holderHClass,
-                                                                       env_->GetGlobalEnv().GetObject<GlobalEnv>());
+        return false;
     }
 
     bool DependOnStableHClass(ArkSteedHClassRef hclass) const
     {
-        if (!hclass.IsSafeForCompile() || !hclass.Value().IsJSHClass()) {
+        JSTaggedValue hclassValue = JSTaggedValue::Undefined();
+        if (broker_ == nullptr || !broker_->TryResolveRef(hclass, &hclassValue) || !hclassValue.IsJSHClass()) {
             return false;
         }
-        return env_->GetDependencies()->DependOnStableHClass(JSHClass::Cast(hclass.Value().GetTaggedObject()));
+        if (hclassValue.IsInSharedHeap()) {
+            return true;
+        }
+        if (!CanUseLazyDeopt()) {
+            return false;
+        }
+        auto *dependencies = env_ == nullptr ? nullptr : env_->GetDependencies();
+        return dependencies != nullptr &&
+               dependencies->DependOnStableHClass(JSHClass::Cast(hclassValue.GetTaggedObject()));
     }
 
-    bool DependOnStableProtoChain(ArkSteedHClassRef receiverHClass, ArkSteedObjectRef holder,
-                                  bool holderIsReceiver, bool hasProtoCell) const
+    bool DependOnStableProtoChain(ArkSteedHClassRef receiverHClass, const PropertyAccessInfo &access,
+                                  bool holderIsReceiver) const
     {
-        if (!hasProtoCell || !receiverHClass.IsSafeForCompile() || !receiverHClass.Value().IsJSHClass()) {
+        if (!CanUseLazyDeopt()) {
             return false;
         }
-        JSHClass *receiver = JSHClass::Cast(receiverHClass.Value().GetTaggedObject());
-        JSHClass *holderHClass = receiver;
-        if (!holderIsReceiver) {
-            if (!holder.IsSafeForCompile() || !holder.Value().IsHeapObject()) {
-                return false;
-            }
-            holderHClass = holder.Value().GetTaggedObject()->GetClass();
+        JSTaggedValue receiverHClassValue = JSTaggedValue::Undefined();
+        if (broker_ == nullptr || !broker_->TryResolveRef(receiverHClass, &receiverHClassValue) ||
+            !receiverHClassValue.IsJSHClass()) {
+            return false;
         }
-        return env_->GetDependencies()->DependOnStableProtoChain(compilerThread_, receiver, holderHClass,
-                                                                 env_->GetGlobalEnv().GetObject<GlobalEnv>());
+        JSHClass *receiver = JSHClass::Cast(receiverHClassValue.GetTaggedObject());
+        JSHClass *holderHClass = nullptr;
+        if (!TryResolveHolderHClass(access, receiver, holderIsReceiver, &holderHClass)) {
+            return false;
+        }
+        if (receiverHClassValue.IsInSharedHeap()) {
+            return true;
+        }
+        auto *dependencies = env_ == nullptr ? nullptr : env_->GetDependencies();
+        return dependencies != nullptr &&
+               dependencies->DependOnStableProtoChain(compilerThread_, receiver, holderHClass,
+                                                      env_->GetGlobalEnv().GetObject<GlobalEnv>());
+    }
+
+    bool DependOnNotPrototype(ArkSteedHClassRef receiverHClass) const
+    {
+        if (!CanUseLazyDeopt()) {
+            return false;
+        }
+        JSTaggedValue receiverHClassValue = JSTaggedValue::Undefined();
+        if (broker_ == nullptr || !broker_->TryResolveRef(receiverHClass, &receiverHClassValue) ||
+            !receiverHClassValue.IsJSHClass()) {
+            return false;
+        }
+        JSHClass *receiver = JSHClass::Cast(receiverHClassValue.GetTaggedObject());
+        if (receiverHClassValue.IsInSharedHeap()) {
+            return !receiver->IsPrototype();
+        }
+        auto *dependencies = env_ == nullptr ? nullptr : env_->GetDependencies();
+        return dependencies != nullptr && dependencies->DependOnNotPrototype(receiver);
+    }
+
+    bool CanUseLazyDeopt() const
+    {
+        return env_ != nullptr && env_->GetJSOptions().IsEnableJitLazyDeopt();
     }
 
     JSThread *compilerThread_ {nullptr};
     JitCompilationEnv *env_ {nullptr};
+    const ArkSteedHeapBroker *broker_ {nullptr};
 };
 
 }  // namespace panda::ecmascript::arksteed

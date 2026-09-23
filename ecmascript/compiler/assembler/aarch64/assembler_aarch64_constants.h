@@ -100,6 +100,9 @@ enum BitwiseOpCode {
     ANDS_Shift   = 0x6a000000,
     ORR_Imm      = 0x32000000,
     ORR_Shift    = 0x2a000000,
+    ORN_Shift    = 0x2a200000,
+    EOR_Imm      = 0x52000000,
+    EOR_Shift    = 0x4a000000,
 };
 
 // branch code
@@ -122,6 +125,11 @@ enum BranchOpCode {
 enum AdrOpCode {
     Adr         = 0x10000000,
     AdrMask     = 0xff000000,
+};
+
+enum LoadLiteralOpCode {
+    LDR_LITERAL_X = 0x58000000,
+    LDR_LITERAL_MASK = 0xff000000,
 };
 
 // brk code
@@ -164,6 +172,9 @@ enum LoadStoreOpCode {
     LDR_Post     = 0xb8400400,
     LDR_Pre      = 0xb8400c00,
     LDR_Offset   = 0xb9400000,
+    LDR_D_Post   = 0xfc400400,
+    LDR_D_Pre    = 0xfc400c00,
+    LDR_D_Offset = 0xfd400000,
     LDRB_Post    = 0x38400400,
     LDRB_Pre     = 0x38400c00,
     LDRB_Offset  = 0x39400000,
@@ -173,6 +184,13 @@ enum LoadStoreOpCode {
     STR_Post     = 0xb8000400,
     STR_Pre      = 0xb8000c00,
     STR_Offset   = 0xb9000000,
+    STR_D_Post   = 0xfc000400,
+    STR_D_Pre    = 0xfc000c00,
+    STR_D_Offset = 0xfd000000,
+    STR_Register = 0xb8200800,
+    STRB_Register = 0x38200800,
+    STRH_Register = 0x78200800,
+    STLR          = 0x889ffc00,
     LDR_Register = 0xb8600800,
     LDRB_Register = 0x38600800,
     LDRH_Register = 0x78600800,
@@ -189,8 +207,33 @@ enum  AddrMode {
 enum LogicShiftOpCode {
     LSL_Reg = 0x1AC02000,
     LSR_Reg = 0x1AC02400,
+    ASR_Reg = 0x1AC02800,
     UBFM    = 0x53000000,
+    SBFM    = 0x13000000,
     BFM     = 0xB3400000,
+};
+
+enum DataProcessing2SourceOpCode {
+    SDIV = 0x1AC00C00,
+};
+
+enum DataProcessing3SourceOpCode {
+    MADD = 0x1B000000,
+    MSUB = 0x1B008000,
+    SMADDL = 0x9B200000,
+};
+
+enum FloatingPointOpCode {
+    FP64 = 0x00400000,
+    FCMP = 0x1E202000,
+    FMOV_XD = 0x9E660000,
+    FMUL = 0x1E200800,
+    FDIV = 0x1E201800,
+    FADD = 0x1E202800,
+    FSUB = 0x1E203800,
+    FNEG = 0x1E214000,
+    FCVTZS = 0x1E380000,
+    SCVTF = 0x1E220000,
 };
 
 enum NopOpCode {
@@ -205,6 +248,7 @@ enum RetOpCode {
     V(COMMON_REG, Rd, 4, 0)             \
     V(COMMON_REG, Rn, 9, 5)             \
     V(COMMON_REG, Rm, 20, 16)           \
+    V(COMMON_REG, Ra, 14, 10)           \
     V(COMMON_REG, Rt, 4, 0)             \
     V(COMMON_REG, Rt2, 14, 10)          \
     V(COMMON_REG, Sf, 31, 31)

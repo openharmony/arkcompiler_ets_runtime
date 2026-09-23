@@ -118,11 +118,6 @@ private:
         ArkSteedState state(nullptr);
         state.SetNextBlock(nullptr);
 
-        // Process RootConstants
-        for (const auto &[index, vertex] : graph->GetRootConstants()) {
-            derivedProcessor_.ProcessVertex(vertex, state);
-        }
-
         // Process Int32Constants
         for (const auto &[value, vertex] : graph->GetInt32Constants()) {
             derivedProcessor_.ProcessVertex(vertex, state);
@@ -140,6 +135,10 @@ private:
 
         // Process TaggedConstants
         for (const auto &[value, vertex] : graph->GetTaggedConstants()) {
+            derivedProcessor_.ProcessVertex(vertex, state);
+        }
+
+        for (const auto &[handleIndex, vertex] : graph->GetHeapConstants()) {
             derivedProcessor_.ProcessVertex(vertex, state);
         }
     }
@@ -166,43 +165,6 @@ private:
 
 private:
     DerivedProcessor derivedProcessor_;
-};
-
-// ============================================================================
-// Example processors (for reference only - can be removed)
-// ============================================================================
-
-// Example: A simple debug printer processor
-class DebugPrintProcessor {
-public:
-    void PreProcessGraph(Graph *graph)
-    {
-        std::cout << "=== Processing Graph ===" << std::endl;
-    }
-
-    void PreProcessBlock(BB *block)
-    {
-        std::cout << "Block " << block->GetId() << ":" << std::endl;
-    }
-
-    void ProcessVertex(ControlVertex *vertex, [[maybe_unused]] const ArkSteedState &state)
-    {
-        std::cout << "  Control Vertex (opcode: " << OpcodeToString(vertex->GetOpcode()) << ")" << std::endl;
-    }
-
-    void PostPhiProcessing() {}
-
-    void ProcessVertex(NonControlVertex *vertex, [[maybe_unused]] const ArkSteedState &state)
-    {
-        std::cout << "  NonControl Vertex (opcode: " << OpcodeToString(vertex->GetOpcode()) << ")" << std::endl;
-    }
-
-    void PostProcessBlock(BB *block) {}
-
-    void PostProcessGraph(Graph *graph)
-    {
-        std::cout << "=== Finished Processing Graph ===" << std::endl;
-    }
 };
 
 }  // namespace panda::ecmascript::arksteed

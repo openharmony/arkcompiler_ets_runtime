@@ -454,7 +454,7 @@ bool JitFort::IsResourceAvailable()
     return isResourceAvailable_;
 }
 
-void JitFort::InitJitFort()
+bool JitFort::InitJitFort()
 {
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JIT::InitJitFortResource", "");
@@ -462,18 +462,19 @@ void JitFort::InitJitFort()
     if (fd < 0) {
         isResourceAvailable_ = false;
         LOG_JIT(ERROR) << "Failed to init jitfort resource, open xpm failed: " << strerror(errno);
-        return;
+        return false;
     }
     FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
     int rc = ioctl(fd, XPM_SET_JITFORT_ENABLE, 0);
-    if (rc < 0) {
+    if (rc < 0 && errno != EEXIST) {
         isResourceAvailable_ = false;
         LOG_JIT(ERROR) << "Failed to init jitfort resource, enable xpm failed: " << strerror(errno);
         Close(reinterpret_cast<fd_t>(fd));
-        return;
+        return false;
     }
     Close(reinterpret_cast<fd_t>(fd));
 #endif
+    return true;
 }
 
 void JitFort::InitJitFortResource()

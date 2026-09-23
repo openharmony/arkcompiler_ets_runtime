@@ -1563,6 +1563,9 @@ JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRunti
 JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT()) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -1579,6 +1582,9 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT()) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -1596,6 +1602,10 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::ArkSteedCompileSync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT() ||
+        Jit::GetInstance()->GetJitBackend() != JitBackend::ARKSTEED) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -1609,9 +1619,34 @@ JSTaggedValue BuiltinsArkTools::ArkSteedCompileSync(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::ArkSteedIsCompiled(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    if (!jsFunction->IsCompiledCode()) {
+        return JSTaggedValue::False();
+    }
+    JSTaggedValue machineCode = jsFunction->GetMachineCode(thread);
+    if (!machineCode.IsMachineCodeObject()) {
+        return JSTaggedValue::False();
+    }
+    return JSTaggedValue(MachineCode::Cast(machineCode.GetTaggedObject())->GetIsArkSteedCode());
+}
+
 JSTaggedValue BuiltinsArkTools::ArkSteedCompileAsync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJIT() ||
+        Jit::GetInstance()->GetJitBackend() != JitBackend::ARKSTEED) {
+        return JSTaggedValue::False();
+    }
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 

@@ -13,742 +13,132 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_H
-#define ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_H
+#ifndef ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_NEW_H
+#define ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_NEW_H
 
-#include "ecmascript/arksteed/arksteed_bytecode_context.h"
-#include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
-#include "ecmascript/arksteed/arksteed_compiler.h"
-#include "ecmascript/arksteed/arksteed_framestate.h"
-#include "ecmascript/arksteed/arksteed_graph.h"
-#include "ecmascript/arksteed/arksteed_helper.h"
+#include "ecmascript/arksteed/arksteed_bb.h"
+#include "ecmascript/arksteed/arksteed_bc_frame_state.h"
+#include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
+#include "ecmascript/arksteed/arksteed_bytecode_preprocessor.h"
 #include "ecmascript/arksteed/arksteed_pgo_context.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/compiler/common_stub_csigns.h"
 
 namespace panda::ecmascript::arksteed {
-using namespace panda::ecmascript::kungfu;
+class CompileInfoFacts;
+class Graph;
 
-class BytecodeAnalysis;
-class ValueVertex;
-class ControlVertex;
-
-class ArkSteedGraphBuilder : public ArkSteedHelper<ArkSteedGraphBuilder> {
+class GraphBuilder {
 public:
-    ArkSteedGraphBuilder(JSThread *compilerThread, uintptr_t glueAddr, Graph *graph, JitCompilationEnv *env)
-        : ArkSteedHelper<ArkSteedGraphBuilder>(graph, this),
-          compilerThread_(compilerThread),
-          glueAddr_(glueAddr),
-          env_(env),
-          pgoContext_(compilerThread, env),
-          bytecodeContext_(graph->GetChunk()),
-          mergeStates_(graph->GetChunk()),
-          predecessorCountReductions_(graph->GetChunk()),
-          jumpTargets_(graph->GetChunk()),
-          currentFrameState_(nullptr),
-          bytecodeAnalysis_(nullptr)
-    {}
+    GraphBuilder(JSThread *compilerThread, Graph *destGraph, uintptr_t glueAddr, BytecodePreprocessor *preproc,
+                 BytecodeAnalysis *analysis);
 
-    ~ArkSteedGraphBuilder() = default;
-
-    bool Build();
-
-    VRegIDType NumLocalVRegs() const
-    {
-        return numLocal_;
-    }
-    VRegIDType NumParamVRegs() const
-    {
-        return numParams_;
-    }
-
-    ValueVertex *GetActualArgc()
-    {
-        return NewVertexNoInput<ActualArgcVertex>();
-    }
-    ValueVertex *GetGlue()
-    {
-        return glue_;
-    }
-    ValueVertex *GetGlobalEnv() const
-    {
-        // to do: optimize
-        ASSERT(currentFrameState_ != nullptr);
-        ValueVertex *lexicalEnv = currentFrameState_->GetEnv();
-        int32_t globalEnvOffset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE);
-        return const_cast<ArkSteedGraphBuilder *>(this)->NewVertex<LoadTaggedFieldVertex>({lexicalEnv},
-                                                                                          globalEnvOffset);
-    }
-
-    ValueVertex *GetSharedConstPool()
-    {
-        ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-        int32_t methodOffset = static_cast<int32_t>(JSFunctionBase::METHOD_OFFSET);
-        ValueVertex *method = NewVertex<LoadTaggedFieldVertex>({jsFunc}, methodOffset);
-        int32_t constpoolOffset = static_cast<int32_t>(Method::CONSTANT_POOL_OFFSET);
-        return NewVertex<LoadTaggedFieldVertex>({method}, constpoolOffset);
-    }
-
-    ValueVertex *GetModuleFromFunction()
-    {
-        ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-        int32_t moduleOffset = static_cast<int32_t>(JSFunction::ECMA_MODULE_OFFSET);
-        return NewVertex<LoadTaggedFieldVertex>({jsFunc}, moduleOffset);
-    }
-
-    ValueVertex *GetStringFromConstPool(ValueVertex *stringId)
-    {
-        ValueVertex *glue = GetGlue();
-        ValueVertex *constpool = GetSharedConstPool();
-        return NewCommonStubCall({glue, constpool, stringId}, CommonStubCSigns::GetStringFromConstPool);
-    }
-
-    ValueVertex *GetObjectFromConstPool(ValueVertex *index)
-    {
-        ValueVertex *glue = GetGlue();
-        ValueVertex *constpool = GetSharedConstPool();
-        ValueVertex *module = GetModuleFromFunction();
-        return NewCommonStubCall({glue, constpool, index, module}, CommonStubCSigns::GetObjectFromConstPool);
-    }
-
-    ValueVertex *GetMethodFromConstPool(ValueVertex *index)
-    {
-        ValueVertex *constpool = GetSharedConstPool();
-        return NewVertex<CallRuntimeVertex>({constpool, index}, RTSTUB_ID(GetMethodFromCache));
-    }
-
-    ValueVertex *GetValueFromTaggedArray(ValueVertex *array, uint32_t index)
-    {
-        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        return NewVertex<LoadTaggedFieldVertex>({array}, offset);
-    }
-
-    ValueVertex *SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
-    {
-        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
-        return NewVertex<StoreTaggedFieldVertex>({array, value}, offset);
-    }
-
-    ValueVertex *GetTaggedArrayFromValueIn(uint32_t inputSize, uint32_t startIndex = 0)
-    {
-        ASSERT(startIndex + inputSize <= GetInputSize());
-        ValueVertex *taggedLength = NewTaggedVertexFromRawInt32(static_cast<int>(inputSize));
-        ValueVertex *taggedArray = NewVertex<CallRuntimeVertex>({taggedLength}, RTSTUB_ID(NewTaggedArray));
-
-        for (uint32_t idx = 0; idx < inputSize; ++idx) {
-            ValueVertex *arg = LoadRegister(startIndex + idx);
-            SetValueToTaggedArray(taggedArray, idx, arg);
-        }
-        return taggedArray;
-    }
-
-    ValueVertex *GetTaggedLength(uint32_t inputSize)
-    {
-        return NewTaggedVertexFromRawInt32(static_cast<int>(inputSize));
-    }
-
-    ValueVertex *GetLexicalEnv(ValueVertex *jsFunc)
-    {
-        int32_t lexEnvOffset = static_cast<int32_t>(JSFunction::LEXICAL_ENV_OFFSET);
-        return NewVertex<LoadTaggedFieldVertex>({jsFunc}, lexEnvOffset);
-    }
-
-    ValueVertex *LoadRegister(int index) const
-    {
-        auto info = iterator_.GetCurrentBytecodeInfo();
-        auto &input = info.inputs[index];
-        ASSERT(std::holds_alternative<VirtualRegister>(input));
-        return currentFrameState_->Get(std::get<VirtualRegister>(input));
-    }
-
-    ValueVertex *NewTaggedVertexFromRawInt32(int number)
-    {
-        return GetTaggedConstant(JSTaggedValue(number).GetRawData());
-    }
-
-    ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
-    {
-        ASSERT(ref.IsSafeForCompile());
-        if (!ref.IsHeapObject()) {
-            return GetTaggedConstant(ref.Value().GetRawData());
-        }
-        LOG_COMPILER(FATAL) << "AccessInfo heap objects are compile-time only and must not be embedded in codegen.";
-        UNREACHABLE();
-    }
-
-    ICSlotIdType GetICSlotId(int index) const
-    {
-        auto info = iterator_.GetCurrentBytecodeInfo();
-        auto &input = info.inputs[index];
-        ASSERT(std::holds_alternative<ICSlotId>(input));
-        return std::get<ICSlotId>(input).GetId();
-    }
-
-    uint16_t GetConstDataId(int index) const
-    {
-        auto info = iterator_.GetCurrentBytecodeInfo();
-        auto &input = info.inputs[index];
-        ASSERT(std::holds_alternative<ConstDataId>(input));
-        return std::get<ConstDataId>(input).GetId();
-    }
-
-    ImmValueType GetImmediate(int index) const
-    {
-        auto info = iterator_.GetCurrentBytecodeInfo();
-        auto &input = info.inputs[index];
-        ASSERT(std::holds_alternative<Immediate>(input));
-        return std::get<Immediate>(input).GetValue();
-    }
-
-    uint32_t GetInputSize() const
-    {
-        auto info = iterator_.GetCurrentBytecodeInfo();
-        return info.inputs.size();
-    }
-
-    InterpreterFrameState *CurrentFrameState()
-    {
-        return currentFrameState_;
-    }
-    const InterpreterFrameState *CurrentFrameState() const
-    {
-        return currentFrameState_;
-    }
-
-    //==========================================================================
-    //                              Block Completion
-    //==========================================================================
-
-    template <typename ControlVertexT, typename... Args>
-    BB *FinishBlock(std::initializer_list<ValueVertex *> controlInputs, Args &&...args)
-    {
-        ControlVertexT *control = NewControlVertex<ControlVertexT>(controlInputs, std::forward<Args>(args)...);
-        BB *block = CurrentBlock();
-        GetGraph()->Add(block);
-        SetCurrentBlock(nullptr);
-        LOG_COMPILER(DEBUG) << "Block #" << block->GetId() << " finished";
-        return block;
-    }
-
-    class ReduceResult {
-    public:
-        enum class Kind : uint8_t {
-            DONE_WITH_PAYLOAD,
-            DONE_WITHOUT_PAYLOAD,
-            DONE_WITH_ABORT,
-        };
-
-        static ReduceResult Done(ValueVertex *value)
-        {
-            ASSERT(value != nullptr);
-            return ReduceResult(Kind::DONE_WITH_PAYLOAD, value);
-        }
-
-        static ReduceResult Done()
-        {
-            return ReduceResult(Kind::DONE_WITHOUT_PAYLOAD, nullptr);
-        }
-
-        static ReduceResult DoneWithAbort()
-        {
-            return ReduceResult(Kind::DONE_WITH_ABORT, nullptr);
-        }
-
-        bool IsDoneWithValue() const
-        {
-            return kind_ == Kind::DONE_WITH_PAYLOAD;
-        }
-
-        bool IsDoneWithAbort() const
-        {
-            return kind_ == Kind::DONE_WITH_ABORT;
-        }
-
-        ValueVertex *Value() const
-        {
-            ASSERT(IsDoneWithValue());
-            return value_;
-        }
-
-    private:
-        explicit ReduceResult(Kind kind, ValueVertex *value) : kind_(kind), value_(value) {}
-
-        Kind kind_;
-        ValueVertex *value_;
-    };
-
-    enum class BranchResult : uint8_t {
-        DEFAULT,
-        ALWAYS_TRUE,
-        ALWAYS_FALSE,
-        ABORT,
-    };
+    bool Run();
 
 private:
-    enum class BranchType : uint8_t { TRUE_BRANCH, FALSE_BRANCH };
-    class BranchBuilder;
+    using BasicBlockInfo = BytecodePreprocessor::BasicBlockInfo;
+    using CommonStubID = kungfu::CommonStubCSigns::ID;
+    using RuntimeStubID = kungfu::RuntimeStubCSigns::ID;
 
-public:
-    ReduceResult Select(CallbackRef<BranchResult(BranchBuilder &)> cond, CallbackRef<ReduceResult()> ifTrue,
-                        CallbackRef<ReduceResult()> ifFalse);
+    struct CatchBlockInputData;
+    struct BytecodeVisitor;
 
-private:
-    ValueVertex *NewCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
-    void LowerCallStubWithIC(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
-    void LowerCallStubWithICPreserveAcc(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args);
-    ValueVertex *NewCommonStubCall(std::initializer_list<ValueVertex *> args, const CommonStubCSigns::ID stubId);
-    void ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId, const std::vector<ValueVertex *> &args) const;
-
-    void MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex);
-    void StartNewBlock(BB *predecessor, MergePointFrameState *mergeState, BBRef *refsToBlock);
-    void StartNewBlockWithMergeState(uint32_t index);
-    void ProcessMergePointPredecessors(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock);
-    void TrySplitCriticalEdge(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock, uint32_t predIndex);
-
-    class ArkSteedSubGraphBuilder {
-    public:
-        class SubGraphVariable {
-        public:
-            explicit SubGraphVariable(int index) : pseudoRegister_(VRegOfLocal(index)) {}
-
-        private:
-            friend class ArkSteedSubGraphBuilder;
-            VirtualRegister pseudoRegister_;
-        };
-
-        class Label {
-        public:
-            Label(ArkSteedSubGraphBuilder *subBuilder, uint32_t predecessorCount);
-            Label(ArkSteedSubGraphBuilder *subBuilder, uint32_t predecessorCount,
-                  std::initializer_list<SubGraphVariable *> liveVariables);
-
-        private:
-            friend class ArkSteedSubGraphBuilder;
-            friend class BranchBuilder;
-            ArkSteedSubGraphBuilder *subBuilder_;
-            uint32_t predecessorCount_;
-            MergePointFrameState *variableMergeState_ = nullptr;
-            LivenessBitSet *mergeLiveSet_ = nullptr;
-            BBRef ref_;
-        };
-
-        class LoopLabel {
-        public:
-            LoopLabel(ArkSteedSubGraphBuilder *subBuilder, MergePointFrameState *mergeState, BBRef *loopHeaderRef,
-                      BB *loopHeaderBlock)
-                : subBuilder_(subBuilder),
-                  mergeState_(mergeState),
-                  loopHeaderRef_(loopHeaderRef),
-                  loopHeaderBlock_(loopHeaderBlock)
-            {}
-
-        private:
-            friend class ArkSteedSubGraphBuilder;
-            ArkSteedSubGraphBuilder *subBuilder_;
-            MergePointFrameState *mergeState_;
-            BBRef *loopHeaderRef_;
-            BB *loopHeaderBlock_;
-        };
-
-        ArkSteedSubGraphBuilder(ArkSteedGraphBuilder *builder, int variableCount);
-
-        void Set(const SubGraphVariable &var, ValueVertex *value)
-        {
-            subGraphFrame_->Set(var.pseudoRegister_, value);
-        }
-
-        ValueVertex *Get(const SubGraphVariable &var) const
-        {
-            return subGraphFrame_->Get(var.pseudoRegister_);
-        }
-
-        LoopLabel BeginLoop(std::initializer_list<SubGraphVariable *> loopVars);
-        void EndLoop(LoopLabel *loopLabel);
-
-        template <typename ControlVertexT, typename... Args>
-        ReduceResult GotoIfTrue(Label *trueTarget, std::initializer_list<ValueVertex *> controlInputs, Args &&...args);
-
-        template <typename ControlVertexT, typename... Args>
-        ReduceResult GotoIfFalse(Label *falseTarget, std::initializer_list<ValueVertex *> controlInputs,
-                                 Args &&...args);
-
-        void Goto(Label *label);
-        void GotoOrTrim(Label *label);
-        void Bind(Label *label);
-        ReduceResult TrimPredecessorsAndBind(Label *label);
-        void TrimUnmergedPredecessors(Label *label, uint32_t num = 1);
-        ReduceResult Branch(std::initializer_list<SubGraphVariable *> vars,
-                            CallbackRef<BranchResult(BranchBuilder &)> cond,
-                            CallbackRef<ReduceResult()> ifTrue,
-                            CallbackRef<ReduceResult()> ifFalse);
-
-    private:
-        friend class BranchBuilder;
-
-        void MergeIntoLabel(Label *label, BB *predecessor);
-
-        ArkSteedGraphBuilder *builder_;
-        VRegIDType numLocal_;
-        VRegIDType numParams_;
-        InterpreterFrameState *subGraphFrame_;
-    };
-
-    static inline BranchType ReverseBranchType(BranchType jumpType)
+    VRegIDType LexicalEnvIndex() const
     {
-        switch (jumpType) {
-            case BranchType::TRUE_BRANCH:
-                return BranchType::FALSE_BRANCH;
-            case BranchType::FALSE_BRANCH:
-                return BranchType::TRUE_BRANCH;
-        }
+        return VRegOfLexicalEnv(numLocal_, numParams_);
+    }
+    VRegIDType AccIndex() const
+    {
+        return VRegOfAcc(numLocal_, numParams_);
     }
 
-    class BranchBuilder {
-    public:
-        enum Mode {
-            JUMP_BYTECODE_TARGET,
-            JUMP_LABEL_TARGET,
-        };
-
-        struct BytecodeJumpTarget {
-            BytecodeJumpTarget(uint32_t jumpTargetBcIndex, uint32_t fallthroughBcIndex)
-                : jumpTargetBcIndex(jumpTargetBcIndex), fallthroughBcIndex(fallthroughBcIndex)
-            {}
-            uint32_t jumpTargetBcIndex;
-            uint32_t fallthroughBcIndex;
-        };
-
-        struct JumpLabel {
-            explicit JumpLabel(ArkSteedSubGraphBuilder::Label *jumpLabel) : jumpLabel(jumpLabel), fallthroughTarget {}
-            {}
-            ArkSteedSubGraphBuilder::Label *jumpLabel;
-            BBRef fallthroughTarget;
-            BB *fallthroughBlock = nullptr;
-        };
-
-        union Data {
-            Data(uint32_t jumpTargetBcIndex, uint32_t fallthroughBcIndex)
-                : bytecodeTarget(jumpTargetBcIndex, fallthroughBcIndex)
-            {}
-            explicit Data(ArkSteedSubGraphBuilder::Label *jumpLabel) : labelTarget(jumpLabel) {}
-            BytecodeJumpTarget bytecodeTarget;
-            JumpLabel labelTarget;
-        };
-
-        BranchBuilder(ArkSteedGraphBuilder *builder, BranchType jumpType)
-            : builder_(builder),
-              subBuilder_(nullptr),
-              jumpType_(jumpType),
-              data_(builder_->iterator_.GetJumpTargetBcIndex(), builder_->iterator_.NextIndex())
-        {}
-
-        BranchBuilder(ArkSteedGraphBuilder *builder, ArkSteedSubGraphBuilder *subBuilder, BranchType jumpType,
-                      ArkSteedSubGraphBuilder::Label *jumpLabel)
-            : builder_(builder), subBuilder_(subBuilder), jumpType_(jumpType), data_(jumpLabel)
-        {}
-
-        Mode GetMode() const
-        {
-            return subBuilder_ == nullptr ? JUMP_BYTECODE_TARGET : JUMP_LABEL_TARGET;
-        }
-
-        BranchType GetCurrentBranchType() const
-        {
-            return jumpType_;
-        }
-
-        uint32_t JumpTargetBcIndex() const
-        {
-            ASSERT(GetMode() == JUMP_BYTECODE_TARGET);
-            return data_.bytecodeTarget.jumpTargetBcIndex;
-        }
-
-        uint32_t FallthroughBcIndex() const
-        {
-            ASSERT(GetMode() == JUMP_BYTECODE_TARGET);
-            return data_.bytecodeTarget.fallthroughBcIndex;
-        }
-
-        ArkSteedSubGraphBuilder::Label *JumpLabel() const
-        {
-            ASSERT(GetMode() == JUMP_LABEL_TARGET);
-            return data_.labelTarget.jumpLabel;
-        }
-
-        ArkSteedSubGraphBuilder *SubBuilder() const
-        {
-            ASSERT(GetMode() == JUMP_LABEL_TARGET);
-            return subBuilder_;
-        }
-
-        void SwapTargets()
-        {
-            jumpType_ = ReverseBranchType(jumpType_);
-        }
-
-        BBRef *JumpTarget();
-        BBRef *FallThrough();
-        BBRef *TrueTarget();
-        BBRef *FalseTarget();
-
-        template <typename ControlVertexT, typename... Args>
-        void Build(std::initializer_list<ValueVertex *> inputs, Args &&...args);
-
-    private:
-        ArkSteedGraphBuilder *builder_;
-        ArkSteedSubGraphBuilder *subBuilder_;
-        BranchType jumpType_;
-        Data data_;
-
-        void StartFallthroughBlock(BB *predecessor);
-    };
-
-    BranchBuilder CreateBranchBuilder(BranchType jumpType)
+    JSRuntimeOptions *GetOptions() const
     {
-        return BranchBuilder(this, jumpType);
+        return &preproc_->GetEnv()->GetJSOptions();
     }
 
-    BranchResult BuildBranchIfTrue(BranchBuilder &builder, ValueVertex *vertex);
-
-    void InitializeGraph();
-
-    void InitializeGlobalsAndParameters();
-
-    void InitializeCurrentFrameState();
-
-    void BuildMergeStates();
-
-    void BuildBody();
-
-    void ValidateAfterBuilding();
-
-    uint32_t PredecessorCount(uint32_t index) const;
-    void ReduceBytecodePredecessorCount(uint32_t index, uint32_t num = 1);
-    void MarkDeadLoopBackedge(uint32_t index);
-    void MarkDeadPredecessorsForSuccessors(uint32_t index, const BytecodeInfo &bytecodeInfo);
-    const LivenessBitSet *GetInLivenessFor(uint32_t index) const;
-    void ValidateMergeStateAfterBuilding(uint32_t index, MergePointFrameState *mergeState);
-
-    void ProcessBytecode();
-
-    // Lower method declarations - matching slowpath_lowering.cpp
-    void LowerLoadString();
-    void LowerLoadBigInt();
-    void LowerLoadConst(const BytecodeInfo &info, kungfu::EcmaOpcode opcode);
-    void LowerMoveValues(const BytecodeInfo &info);
-    void LowerCreateEmptyObject();
-    void LowerCreateEmptyArray();
-    void LowerCreateObjectWithBuffer();
-    void LowerCreateArrayWithBuffer();
-    void LowerCreateObjectWithExcludedKeys();
-    void LowerCreateRegExpWithLiteral();
-    void LowerNewObjRange();
-    void LowerAdd2();
-    void LowerSub2();
-    void LowerMul2();
-    void LowerDiv2();
-    void LowerMod2();
-    void LowerExp();
-    void LowerNeg();
-    void LowerInc();
-    void LowerDec();
-    void LowerShl2();
-    void LowerShr2();
-    void LowerAshr2();
-    void LowerAnd2();
-    void LowerOr2();
-    void LowerXor2();
-    void LowerNot();
-    void LowerEq();
-    void LowerNotEq();
-    void LowerLess();
-    void LowerLessEq();
-    void LowerGreater();
-    void LowerGreaterEq();
-    void LowerStrictEq();
-    void LowerStrictNotEq();
-    void LowerTypeOf();
-    void LowerToNumber();
-    void LowerToNumeric();
-    void LowerIsIn();
-    void LowerInstanceOf();
-    void LowerTestIn();
-    void LowerJumpConstant();
-    void LowerJumpIfTrue();
-    void LowerJumpIfFalse();
-    void LowerCallArg0();
-    void LowerCallArg1();
-    void LowerCallArgs2();
-    void LowerCallArgs3();
-    void LowerCallRange();
-    void LowerReturn(kungfu::EcmaOpcode opcode);
-    void LowerThrow();
-    void LowerLoadObjByName();
-    void LowerStoreObjByName();
-    void LowerLoadObjByValue();
-    void LowerStoreObjByValue();
-    void LowerLdObjByIndex();
-    void LowerStObjByIndex();
-    void LowerGetIterator();
-    void LowerGetPropIterator();
-    void LowerCloseIterator();
-    void LowerGetNextPropName();
-    void LowerGetTemplateObject();
-    void LowerStoreArraySpread();
-    void LowerCallThis0();
-    void LowerCallThis1();
-    void LowerCallThis2();
-    void LowerCallThis3();
-    void LowerCallThisRange();
-    void LowerCallSpread();
-    void LowerGetUnmappedArgs();
-    void LowerCreateIterResultObj();
-    void LowerTryLdGlobalByName();
-    void LowerStGlobalVar();
-    void LowerNewObjApply();
-    void LowerThrowConstAssignment();
-    void LowerThrowNotExists();
-    void LowerThrowPatternNonCoercible();
-    void LowerThrowIfNotObject();
-    void LowerThrowUndefinedIfHole();
-    void LowerThrowUndefinedIfHoleWithName();
-    void LowerThrowIfSuperNotCorrectCall();
-    void LowerThrowDeleteSuperProperty();
-    void LowerLdSymbol();
-    void LowerLdGlobal();
-    void LowerDelObjProp();
-    void LowerDefineMethod();
-    void LowerStModuleVar();
-    void LowerSetObjectWithProto();
-    void LowerDynamicImport();
-    void LowerLdExternalModuleVar();
-    void LowerGetModuleNamespace();
-    void LowerSuperCallThisRange();
-    void LowerSuperCallArrowRange();
-    void LowerSuperCallSpread();
-    void LowerSuperCallForwardAllArgs();
-    void LowerIsTrueOrFalse(bool isTrue);
-    void LowerCopyDataProperties();
-    void LowerStOwnByValue();
-    void LowerStOwnByIndex();
-    void LowerStOwnByName();
-    void LowerNewLexicalEnv();
-    void LowerNewLexicalEnvWithName();
-    void LowerPopLexicalEnv();
-    void LowerLdSuperByValue();
-    void LowerStSuperByValue();
-    void LowerTryStGlobalByName();
-    void LowerStConstToGlobalRecord(bool isConst);
-    void LowerStOwnByValueWithNameSet();
-    void LowerStOwnByNameWithNameSet();
-    void LowerLdGlobalVar();
-    void LowerDefineGetterSetterByValue();
-    void LowerLdThisByValue();
-    void LowerStThisByValue();
-    void LowerLdSuperByName();
-    void LowerStSuperByName();
-    void LowerLdLexVar();
-    void LowerStLexVar();
-    void LowerDefineClassWithBuffer();
-    void LowerDefineFunc();
-    void LowerCopyRestArgs();
-    void LowerLdPatchVar();
-    void LowerStPatchVar();
-    void LowerLdLocalModuleVar();
-    void LowerLdThisByName();
-    void LowerStThisByName();
-    void LowerLdPrivateProperty();
-    void LowerStPrivateProperty();
-    void LowerNotifyConcurrentResult();
-    void LowerDefinePropertyByName();
-    void LowerDefineFieldByName();
-    void LowerDefineFieldByValue();
-    void LowerDefineFieldByIndex();
-    void LowerToPropertyKey();
-    void LowerCreatePrivateProperty();
-    void LowerDefinePrivateProperty();
-
-    void BuildThrow(kungfu::RuntimeStubCSigns::ID id, ValueVertex *input);
-
-    bool HasTryCatch() const
+    bool IsLazyDeoptEnabled() const
     {
-        return bytecodeContext_.HasTryCatch();
+        return GetOptions()->IsEnableJitLazyDeopt();
     }
 
-    const ExceptionInfo &GetExceptionInfo() const
-    {
-        return bytecodeContext_.GetExceptionInfo();
-    }
+    void DebugLog();
+    void InitializeStartBlock(SharedBCFrameState frameState);
+    void ProcessDeadBasicBlock(uint32_t rpoIndex);
+    void ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
+    void ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex);
+    void FinishDeadLoopBackEdge(BB *owner, uint32_t rpoIndex);
+    BB *VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex);
 
-    // to do: To be removed
-    std::string VRegDisplayString(VirtualRegister vreg) const
-    {
-        return arksteed::VRegDisplayString(vreg, numLocal_, numParams_);
-    }
+    void InitFrameState(SharedBCFrameState framestate, uint32_t rpoIndex);
+    void InitFrameStateForLoopHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
+    void InitFrameStateForCatchBlockHeader(SharedBCFrameState framestate, uint32_t rpoIndex);
 
-    [[maybe_unused]] JSThread *compilerThread_;
-    uintptr_t glueAddr_{0};
-    JitCompilationEnv *env_;
+    void InitCompileInfoFacts(uint32_t rpoIndex);
+    void InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex);
+    bool HasEmittedNormalEdge(uint32_t predRpoIndex, uint32_t targetRpoIndex) const;
+    void WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex);
+    void MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex, uint32_t actualPredIndex,
+                         uint32_t actualNumPreds);
+
+    PhiVertex *NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg);
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    PhiVertex *NewPhiVertexWith(BB *owner, const InputRange &inputs, VRegIDType vreg);
+
+    // VertexT should be neither control vertex nor Phi
+    template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    VertexT *NewVertex(BB *owner, const InputRange &inputs, Args &&...args);
+
+    template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    VertexT *NewVertex(CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs, Args &&...args);
+
+    JumpVertex *FinishBlockWithJump(BB *owner, BB *target);
+    JumpLoopVertex *FinishBlockWithJumpLoop(BB *owner, BB *target);
+
+    [[deprecated("Use FinishBlockWithBranch<BranchVertexT>() instead")]]
+    ControlVertex *FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse);
+
+    template <class BranchVertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    BranchVertexT *FinishBlockWithBranch(BB *owner, const InputRange &inputs, BB *targetIfTrue, BB *targetIfFalse,
+                                         Args &&...args);
+
+    // VertexT should be control vertex
+    template <class VertexT, class InputRange = std::initializer_list<ValueVertex *>, class... Args>
+    VertexT *FinishBlockWith(BB *owner, const InputRange &inputs, Args &&...args);
+
+    BB *NewBlock();
+    BB *ActivateNonCatchBlock(uint32_t rpoIndex);
+    BB *ActivateCatchBlock(CatchBlockInputData **inputData, uint32_t rpoIndex);
+    LoadTaggedFieldVertex *ActivateGlobalEnv();
+
+    Graph *graph_;
+    JSThread *compilerThread_;
+    uintptr_t glueAddr_;
+    BytecodePreprocessor *preproc_;
+    BytecodeAnalysis *analysis_;
+
     ArkSteedPGOContext pgoContext_;
-    ValueVertex *glue_{nullptr};
-    ArkSteedCompilationOptions options_;
-    // to do: Huge object. Consider referencing instead of copying
-    BytecodeContext bytecodeContext_;
-    BytecodeIterator iterator_;
-    ChunkVector<MergePointFrameState *> mergeStates_;
-    ChunkVector<uint32_t> predecessorCountReductions_;
-    ChunkVector<BBRef> jumpTargets_;
-    BB *startBlock_{nullptr};
 
-    MethodLiteral *method_{nullptr};
+    // Frequently used fields. Cached for performance.
+    uint32_t numLocal_;   // Equivalent to preproc_->GetNumLocalRegs()
+    uint32_t numParams_;  // Equivalent to preproc_->GetNumParamRegs()
+    Chunk *chunk_;        // Equivalent to preproc_->GetChunk()
 
-    InterpreterFrameState *currentFrameState_{nullptr};
-    BytecodeAnalysis *bytecodeAnalysis_{nullptr};
+    // Constants frequently used
+    ValueVertex *glue_ = nullptr;
+    ValueVertex *undefinedValue_ = nullptr;
+    InitialValueVertex *initialActualArgc_ = nullptr;
+    ValueVertex *actualArgc_ = nullptr;
+    ValueVertex *taggedActualArgc_ = nullptr;
+    InitialValueVertex *initialLexicalEnv_ = nullptr;
+    LoadTaggedFieldVertex *lazyGlobalEnv_ = nullptr;
 
-    VRegIDType numLocal_;
-    VRegIDType numParams_;
-    // to do: Never changes. Can be removed.
-    size_t entryPoint_ = 0;
+    ChunkVector<BB *> blocks_;
+    // Entry blocks are stable CFG targets; exit blocks track the final block after any subgraph lowering.
+    ChunkVector<BB *> exitBlocks_;
+    ChunkVector<CondensedBCFrameState> frameStates_;
+    ChunkVector<CompileInfoFacts *> compileInfoFacts_;
+    ChunkVector<CatchBlockInputData *> catchBlockInputs_;
 };
-
-template <typename ControlVertexT, typename... Args>
-inline ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::GotoIfTrue(
-    Label *trueTarget, std::initializer_list<ValueVertex *> controlInputs, Args &&...args)
-{
-    if (builder_->CurrentBlock() == nullptr) {
-        TrimUnmergedPredecessors(trueTarget);
-        return ReduceResult::DoneWithAbort();
-    }
-    BranchBuilder branchBuilder(builder_, this, BranchType::TRUE_BRANCH, trueTarget);
-    branchBuilder.Build<ControlVertexT>(controlInputs, std::forward<Args>(args)...);
-    return ReduceResult::Done();
-}
-
-template <typename ControlVertexT, typename... Args>
-inline ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::GotoIfFalse(
-    Label *falseTarget, std::initializer_list<ValueVertex *> controlInputs, Args &&...args)
-{
-    if (builder_->CurrentBlock() == nullptr) {
-        TrimUnmergedPredecessors(falseTarget);
-        return ReduceResult::DoneWithAbort();
-    }
-    BranchBuilder branchBuilder(builder_, this, BranchType::FALSE_BRANCH, falseTarget);
-    branchBuilder.Build<ControlVertexT>(controlInputs, std::forward<Args>(args)...);
-    return ReduceResult::Done();
-}
-
-template <typename ControlVertexT, typename... Args>
-inline void ArkSteedGraphBuilder::BranchBuilder::Build(std::initializer_list<ValueVertex *> controlInputs,
-                                                       Args &&...args)
-{
-    BB *result =
-        builder_->FinishBlock<ControlVertexT>(controlInputs, std::forward<Args>(args)..., TrueTarget(), FalseTarget());
-    StartFallthroughBlock(result);
-}
-
 }  // namespace panda::ecmascript::arksteed
 
-#endif  // ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_H
+#endif  // ECMASCRIPT_ARKSTEED_GRAPH_BUILDER_NEW_H

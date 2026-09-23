@@ -813,6 +813,7 @@ public:
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value, uint32_t receiverHClassIndex);
     inline GateRef JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type);
+    GateRef HasArkSteedEntry(GateRef jsFunc);
     GateRef ComputeTaggedArraySize(GateRef length);
     GateRef HeapAlloc(GateRef glue, GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef TaggedIsHeapObjectOp(GateRef value);

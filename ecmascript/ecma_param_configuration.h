@@ -332,7 +332,7 @@ public:
         return DEFAULT_STACK_SIZE;
     }
 
-    static size_t GetDefaultReservedStackSize()
+    static constexpr size_t GetDefaultReservedStackSize()
     {
         return DEFAULT_RESERVED_STACK_SIZE;
     }

@@ -986,7 +986,9 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     __ Bind(&aotCall);
     {
 #if ECMASCRIPT_ENABLE_ARK_STEED
-        // Bound calls to ArkSteed code need the ArkSteed argv bridge, not the common AOT call stub.
+        Label notArkSteed;
+        __ Tbz(compiledCodeFlag, JSFunctionBase::IsArkSteedEntryBit::START_BIT, &notArkSteed);
+
         __ Mov(x1, x19);
         __ Sub(x1, x1, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
         __ Mov(x2, boundTarget);
@@ -994,7 +996,9 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Ldr(x4, MemoryOperand(fpReg, 4 * FRAME_SLOT_SIZE)); // 4: this fp slot index
         __ Add(x5, fpReg, Immediate(5 * FRAME_SLOT_SIZE)); // 5: argv fp slot index
         __ CallAssemblerStub(RTSTUB_ID(SteedCallWithArgVAndPushArgv), false);
-#else
+        __ B(&popArgs);
+        __ Bind(&notArkSteed);
+#endif
         // output: glue:x0 argc:x1 calltarget:x2 argv:x3 this:x4 newtarget:x5
         __ Mov(x1, x19);
         __ Mov(x2, boundTarget);
@@ -1008,7 +1012,6 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Add(codeAddress, x0, baseAddress);
         __ Ldr(codeAddress, MemoryOperand(codeAddress, boundCallInternalId, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Blr(codeAddress);
-#endif
         __ B(&popArgs);
     }
     __ Bind(&slowCall);

@@ -48,6 +48,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
                                               uintptr_t prevFp);
 
 PUBLIC_API extern "C" JSTaggedType LazyDeoptEntry();
+PUBLIC_API extern "C" bool PrepareForExceptionLazyDeopt(uintptr_t argGlue);
+PUBLIC_API extern "C" bool PrepareForExceptionLazyDeoptFromLeaveFrame(uintptr_t argGlue);
+
 class RuntimeStubs {
 public:
     static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);
@@ -119,6 +122,10 @@ public:
     static void CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget);
     static void CopyArgvArray(uintptr_t argGlue, uintptr_t argv, uint64_t argc);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    static uintptr_t ArkSteedDeoptimize(uintptr_t argGlue, uintptr_t returnPc,
+                                        uintptr_t inputFp, uintptr_t snapshot);
+#endif
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -529,7 +536,7 @@ private:
     static inline JSTaggedValue RuntimeOptConstructGeneric(JSThread *thread, JSHandle<JSFunction> ctor,
                                                            JSHandle<JSTaggedValue> newTgt,
                                                            JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
-    static inline JSTaggedValue GetResultValue(JSThread *thread, bool isAotMethod, JSHandle<JSFunction> ctor,
+    static inline JSTaggedValue GetResultValue(JSThread *thread, bool isCompiledCode, JSHandle<JSFunction> ctor,
         CVector<JSTaggedType> &values, JSHandle<JSTaggedValue> newTgt, uint32_t &size, JSHandle<JSTaggedValue> obj);
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);

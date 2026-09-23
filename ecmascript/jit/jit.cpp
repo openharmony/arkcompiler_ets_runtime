@@ -168,8 +168,17 @@ void Jit::ConfigJitFortOptions(EcmaVM *vm)
 void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit)
 {
     LockHolder holder(setEnableLock_);
+#if !ECMASCRIPT_ENABLE_ARK_STEED
+    if (isEnableFastJit && options.GetCompilerJitBackend() == JitBackend::ARKSTEED) {
+        LOG_JIT(ERROR) << "ArkSteed JIT backend is not available in this build";
+        return;
+    }
+#endif
     bool enableJit = isEnableFastJit || isEnableBaselineJit;
     if (enableJit) {
+        if (!initialized_) {
+            jitBackend_ = options.GetCompilerJitBackend();
+        }
         // disable evacuate nonmovable space in jit.
         Runtime::GetInstance()->DisableEvacuateNonMovableSpace();
         CreateJitResources();
@@ -185,7 +194,9 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
         if (!IsAppJit()) {
             JitFort::InitJitFort();
         }
-        jitResources_->InitJitEnv(options);
+        if (!jitResources_->InitJitEnv(options)) {
+            return;
+        }
         initialized_ = true;
     }
 
@@ -276,6 +287,16 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     if ((!jit->IsEnableBaselineJit() && tier.IsBaseLine()) ||
         (!jit->IsEnableFastJit() && tier.IsFastJit())) {
         return;
+    }
+
+    if (tier.IsFastJit()) {
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        if (jit->GetJitBackend() == JitBackend::ARKSTEED) {
+            CompileArkSteed(vm, jsFunction, CompilerTier::Tier::ARKSTEED, osrOffset, mode);
+            return;
+        }
+#endif
+        tier = CompilerTier::Tier::FAST;
     }
 
     if (!vm->IsEnableOsr() && osrOffset != MachineCode::INVALID_OSR_OFFSET) {
@@ -395,9 +416,9 @@ void *Jit::CreateJitCompilerTask(JitTask *jitTask)
     return jitResources_->CreateJitCompilerTask(jitTask);
 }
 
-void Jit::DeleteJitCompilerTask(void *compiler)
+void Jit::DeleteJitCompilerTask(void *compiler, bool isArkSteed)
 {
-    jitResources_->DeleteJitCompilerTask(compiler);
+    jitResources_->DeleteJitCompilerTask(compiler, isArkSteed);
 }
 
 void Jit::ClearTask(const std::function<bool(common::Task *task)> &checkClear)
@@ -526,6 +547,10 @@ void Jit::CompileArkSteed(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
                           CompilerTier tier, int32_t osrOffset, JitCompileMode mode)
 {
     auto jit = Jit::GetInstance();
+    if (!jit->IsEnableFastJit() || jit->GetJitBackend() != JitBackend::ARKSTEED) {
+        return;
+    }
+    ASSERT(tier.IsArkSteed());
 
     if (!vm->IsEnableOsr() && osrOffset != MachineCode::INVALID_OSR_OFFSET) {
         return;

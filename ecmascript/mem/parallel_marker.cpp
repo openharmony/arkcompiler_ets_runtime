@@ -122,7 +122,7 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     if (heap_->IsYoungMark()) {
         return;
     }
-    auto generateVisitor = [](auto &objectVisitor) {
+    auto visitJitCodeMap = [this](auto &objectVisitor) {
         JitCodeMapVisitor visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
             auto it = jitCodeMaps.begin();
             while (it != jitCodeMaps.end()) {
@@ -139,26 +139,38 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
                 ++it;
             }
         };
-        return visitor;
-    } ;
-    JitCodeMapVisitor visitor;
+        ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
+    };
     if (heap_->GetCmsGC()) {
         ASSERT(!heap_->GetEvacuateNonMovableSpace());
         OldGCMarkObjectVisitor<true, false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-        visitor = generateVisitor(objectVisitor);
+        visitJitCodeMap(objectVisitor);
     } else {
         if (heap_->GetEvacuateNonMovableSpace()) {
             OldGCMarkObjectVisitor<false, true> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-            visitor = generateVisitor(objectVisitor);
+            visitJitCodeMap(objectVisitor);
         } else {
             OldGCMarkObjectVisitor<false, false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-            visitor = generateVisitor(objectVisitor);
+            visitJitCodeMap(objectVisitor);
         }
     }
-    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
     heap_->WaitRunningMarkTaskFinished();
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+void NonMovableMarker::MarkEmbeddedCodeRefs(uint32_t threadId)
+{
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->IsYoungMark()) {
+        YoungGCMarkRootVisitor visitor(holder);
+        heap_->GetEmbeddedCodeRefSet()->VisitYoungTargets(visitor);
+        return;
+    }
+    OldGCMarkRootVisitor visitor(holder);
+    heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(visitor);
+}
+#endif
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
@@ -340,6 +352,22 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
         MarkJitCodeMapImpl<false>(threadId);
     }
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+void CompressGCMarker::MarkEmbeddedCodeRefs(uint32_t threadId)
+{
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->GetEvacuateNonMovableSpace()) {
+        FullGCRunner<true> runner(heap_, holder, isAppSpawn_);
+        FullGCMarkRootVisitor<true> &visitor = runner.GetMarkRootVisitor();
+        heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(visitor);
+    } else {
+        FullGCRunner<false> runner(heap_, holder, isAppSpawn_);
+        FullGCMarkRootVisitor<false> &visitor = runner.GetMarkRootVisitor();
+        heap_->GetEmbeddedCodeRefSet()->VisitMarkedLocalTargets(visitor);
+    }
+}
+#endif
 
 template <bool evacuateNonMovableSpace>
 void CompressGCMarker::MarkJitCodeMapImpl(uint32_t threadId)

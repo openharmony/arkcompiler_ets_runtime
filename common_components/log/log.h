@@ -181,10 +181,11 @@ public:
     }
     ~StdLog()
     {
+        stream_ << '\n';
         if constexpr (level >= Level::ERROR) { //LCOV_EXCL_BR_LINE
-            std::cerr << stream_.str().c_str() << std::endl;
+            std::cerr << stream_.str() << std::flush;
         } else { //LCOV_EXCL_BR_LINE
-            std::cout << stream_.str().c_str() << std::endl;
+            std::cout << stream_.str() << std::flush;
         }
 
         if constexpr (level == Level::FATAL) { //LCOV_EXCL_BR_LINE

@@ -106,6 +106,13 @@ void AssemblerX64::Addl(Immediate src, Register dst)
     }
 }
 
+void AssemblerX64::Addl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    EmitU8(0x01);
+    EmitModrm(src, dst);
+}
+
 void AssemblerX64::Subq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
@@ -158,6 +165,43 @@ void AssemblerX64::Subl(Immediate src, Register dst)
     }
 }
 
+void AssemblerX64::Subl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    EmitU8(0x29);
+    EmitModrm(src, dst);
+}
+
+void AssemblerX64::Imull(Register src, Register dst)
+{
+    EmitRexPrefixl(dst, src);
+    EmitU8(0x0F);
+    EmitU8(0xAF);
+    EmitModrm(dst, src);
+}
+
+void AssemblerX64::Imull(Register src)
+{
+    EmitRexPrefix(src);
+    // F7 /5: signed multiply EDX:EAX by r/m32.
+    EmitU8(0xF7);
+    EmitModrm(5, src);
+}
+
+void AssemblerX64::Cdq()
+{
+    EmitU8(0x99);
+}
+
+void AssemblerX64::Idivl(Register src)
+{
+    if (src.HighBit()) {
+        EmitU8(REX_PREFIX_FIXED_BITS | src.HighBit());
+    }
+    EmitU8(0xF7);
+    EmitU8(0xF8 | src.LowBits());
+}
+
 void AssemblerX64::Cmpq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
@@ -205,6 +249,14 @@ void AssemblerX64::Cmpq(Register src, Register dst)
     // 39: Cmp r/m64, r64
     EmitU8(0x39);
     EmitModrm(src, dst);
+}
+
+void AssemblerX64::Cmpq(Register src, const Operand &dst)
+{
+    EmitRexPrefix(src, dst);
+    // 39: Cmp r/m64, r64
+    EmitU8(0x39);
+    EmitOperand(src, dst);
 }
 
 void AssemblerX64::Cmpl(Immediate src, Register dst)
@@ -411,6 +463,22 @@ void AssemblerX64::EmitJnz(int32_t offset)
     }
 }
 
+void AssemblerX64::EmitJl(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        // 7C : Jl rel8
+        EmitU8(0x7C);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        // 0F 8C: Jl rel32
+        EmitU8(0x0F);
+        EmitU8(0x8C);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
 void AssemblerX64::EmitJle(int32_t offset)
 {
     offset--;
@@ -511,6 +579,62 @@ void AssemblerX64::EmitJnb(int32_t offset)
         // 0F 83: Jnb rel32
         EmitU8(0x0F);
         EmitU8(0x83);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
+void AssemblerX64::EmitJo(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        EmitU8(0x70);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        EmitU8(0x0F);
+        EmitU8(0x80);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
+void AssemblerX64::EmitJno(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        EmitU8(0x71);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        EmitU8(0x0F);
+        EmitU8(0x81);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
+void AssemblerX64::EmitJp(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        EmitU8(0x7A);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        EmitU8(0x0F);
+        EmitU8(0x8A);
+        EmitI32(offset - SIZE_OF_INT32);
+    }
+}
+
+void AssemblerX64::EmitJnp(int32_t offset)
+{
+    offset--;
+    if (InRange8(offset)) {
+        EmitU8(0x7B);
+        EmitI8(offset - SIZE_OF_INT8);
+    } else {
+        offset--;
+        EmitU8(0x0F);
+        EmitU8(0x8B);
         EmitI32(offset - SIZE_OF_INT32);
     }
 }
@@ -858,6 +982,13 @@ void AssemblerX64::Movl(Register src, Register dst)
     EmitModrm(src, dst);
 }
 
+void AssemblerX64::Movsxd(Register src, Register dst)
+{
+    EmitRexPrefix(dst, src);
+    EmitU8(0x63);
+    EmitModrm(dst, src);
+}
+
 void AssemblerX64::Movl(const Operand &src, Register dst)
 {
     EmitRexPrefixl(dst, src);
@@ -872,6 +1003,23 @@ void AssemblerX64::Movl(Register src, const Operand& dst)
     // 0x89: Move r32 to r/m64
     EmitU8(0x89);
     EmitOperand(src, dst);
+}
+
+void AssemblerX64::Movb(Register src, const Operand &dst)
+{
+    if (src.HighBit() != 0 || dst.rex_ != 0 || src.LowBits() >= 4) {  // 4: SPL/BPL/SIL/DIL require REX.
+        EmitU8(REX_PREFIX_FIXED_BITS | (src.HighBit() << 2) | dst.rex_);
+    }
+    EmitU8(0x88);
+    EmitOperand(src.LowBits(), dst);
+}
+
+void AssemblerX64::Movw(Register src, const Operand &dst)
+{
+    EmitU8(0x66);
+    EmitRexPrefixl(src, dst);
+    EmitU8(0x89);
+    EmitOperand(src.LowBits(), dst);
 }
 
 void AssemblerX64::Testq(Immediate src, Register dst)
@@ -1030,6 +1178,14 @@ void AssemblerX64::Shrl(Immediate src, Register dst)
     EmitI8(static_cast<int8_t>(src.Value()));
 }
 
+void AssemblerX64::ShrlCl(Register dst)
+{
+    EmitRexPrefix(dst);
+    // D3 /5: shr r/m32, cl
+    EmitU8(0xD3);
+    EmitModrm(5, dst);
+}
+
 void AssemblerX64::Shr(Immediate src, Register dst)
 {
     Shrq(src, dst);
@@ -1079,6 +1235,14 @@ void AssemblerX64::Andl(Immediate src, Register dst)
     }
 }
 
+void AssemblerX64::Andl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 21: and r/m32, r32
+    EmitU8(0x21);
+    EmitModrm(src, dst);
+}
+
 void AssemblerX64::And(Register src, Register dst)
 {
     EmitRexPrefix(src, dst);
@@ -1114,6 +1278,62 @@ void AssemblerX64::Orq(Register src, Register dst)
     EmitRexPrefix(src, dst);
     // 09 : Or r/m64, r64
     EmitU8(0x09);
+    EmitModrm(src, dst);
+}
+
+void AssemblerX64::Orl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    if (InRange8(src.Value())) {
+        // 83 /1: or r/m32, imm8
+        EmitU8(0x83);
+        EmitModrm(1, dst);
+        EmitI8(static_cast<int8_t>(src.Value()));
+    } else if (dst == rax) {
+        // 0D: or eax, imm32
+        EmitU8(0x0D);
+        EmitI32(src.Value());
+    } else {
+        // 81 /1: or r/m32, imm32
+        EmitU8(0x81);
+        EmitModrm(1, dst);
+        EmitI32(src.Value());
+    }
+}
+
+void AssemblerX64::Orl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 09: or r/m32, r32
+    EmitU8(0x09);
+    EmitModrm(src, dst);
+}
+
+void AssemblerX64::Xorl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    if (InRange8(src.Value())) {
+        // 83 /6: xor r/m32, imm8
+        EmitU8(0x83);
+        EmitModrm(6, dst);
+        EmitI8(static_cast<int8_t>(src.Value()));
+    } else if (dst == rax) {
+        // 35: xor eax, imm32
+        EmitU8(0x35);
+        EmitI32(src.Value());
+    } else {
+        // 81 /6: xor r/m32, imm32
+        EmitU8(0x81);
+        EmitModrm(6, dst);
+        EmitI32(src.Value());
+    }
+}
+
+void AssemblerX64::Xorl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 31: xor r/m32, r32
+    EmitU8(0x31);
     EmitModrm(src, dst);
 }
 
@@ -1177,6 +1397,38 @@ void AssemblerX64::Jle(Label *target, Distance distance)
         // 0F 8E: Jle rel32
         EmitU8(0x0F);
         EmitU8(0x8E);
+        EmitI32(emitPos);
+    }
+}
+
+void AssemblerX64::Jl(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJl(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        // +1: skip opcode
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        // 7C : Jl rel8
+        EmitU8(0x7C);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        // 2: skip opcode
+        target->LinkTo(pos + 2);
+        // 0F 8C: Jl rel32
+        EmitU8(0x0F);
+        EmitU8(0x8C);
         EmitI32(emitPos);
     }
 }
@@ -1346,6 +1598,31 @@ void AssemblerX64::Shll(Immediate src, Register dst)
     EmitI8(static_cast<int8_t>(src.Value()));
 }
 
+void AssemblerX64::ShllCl(Register dst)
+{
+    EmitRexPrefix(dst);
+    // D3 /4: shl r/m32, cl
+    EmitU8(0xD3);
+    EmitModrm(4, dst);
+}
+
+void AssemblerX64::Sarl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    // C1 /7: sar r/m32, imm8
+    EmitU8(0xC1);
+    EmitModrm(7, dst);
+    EmitI8(static_cast<int8_t>(src.Value()));
+}
+
+void AssemblerX64::SarlCl(Register dst)
+{
+    EmitRexPrefix(dst);
+    // D3 /7: sar r/m32, cl
+    EmitU8(0xD3);
+    EmitModrm(7, dst);
+}
+
 void AssemblerX64::Shlq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
@@ -1412,6 +1689,126 @@ void AssemblerX64::Jnb(Label *target, Distance distance)
     }
 }
 
+void AssemblerX64::Jo(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJo(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        // +1: skip opcode
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        // 70 : Jo rel8
+        EmitU8(0x70);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        // 2: skip opcode
+        target->LinkTo(pos + 2);
+        // 0F 80: Jo rel32
+        EmitU8(0x0F);
+        EmitU8(0x80);
+        EmitI32(emitPos);
+    }
+}
+
+void AssemblerX64::Jno(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJno(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        // +1: skip opcode
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        // 71 : Jno rel8
+        EmitU8(0x71);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        // 2: skip opcode
+        target->LinkTo(pos + 2);
+        // 0F 81: Jno rel32
+        EmitU8(0x0F);
+        EmitU8(0x81);
+        EmitI32(emitPos);
+    }
+}
+
+void AssemblerX64::Jp(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJp(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        EmitU8(0x7A);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        target->LinkTo(pos + 2);
+        EmitU8(0x0F);
+        EmitU8(0x8A);
+        EmitI32(emitPos);
+    }
+}
+
+void AssemblerX64::Jnp(Label *target, Distance distance)
+{
+    if (target->IsBound()) {
+        int32_t offset = static_cast<int32_t>(target->GetPos() - GetCurrentPosition());
+        EmitJnp(offset);
+        return;
+    }
+    auto pos = GetCurrentPosition();
+    int32_t emitPos = 0;
+    if (distance == Distance::Near) {
+        if (target->IsLinkedNear()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedNearPos() - pos);
+        }
+        target->LinkNearPos(pos + 1);
+        ASSERT(InRange8(emitPos));
+        EmitU8(0x7B);
+        EmitI8(static_cast<int8_t>(emitPos));
+    } else {
+        if (target->IsLinked()) {
+            emitPos = static_cast<int32_t>(target->GetLinkedPos());
+        }
+        target->LinkTo(pos + 2);
+        EmitU8(0x0F);
+        EmitU8(0x8B);
+        EmitI32(emitPos);
+    }
+}
+
 void AssemblerX64::Movsd(XMMRegister dst, XMMRegister src)
 {
     // movsd xmm_dst, xmm_src
@@ -1443,6 +1840,30 @@ void AssemblerX64::Movsd(XMMRegister dst, const Operand &src)
     EmitOperand(dst.LowBits(), src);
 }
 
+void AssemblerX64::Movss(XMMRegister dst, const Operand &src)
+{
+    // movss xmm_dst, m32_src: F3 0F 10 /r
+    EmitU8(0xF3);
+    if (dst.HighBit() || src.rex_) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.rex_);  // 2: REX.R bit position
+    }
+    EmitU8(0x0F);
+    EmitU8(0x10);
+    EmitOperand(dst.LowBits(), src);
+}
+
+void AssemblerX64::Cvtss2sd(XMMRegister src, XMMRegister dst)
+{
+    // cvtss2sd xmm_dst, xmm_src: F3 0F 5A /r
+    EmitU8(0xF3);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());  // 2: REX.R bit position
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());  // 3: ModR/M reg field position
+}
+
 void AssemblerX64::Movq(XMMRegister dst, Register src)
 {
     // movq xmm_dst, r64_src
@@ -1454,5 +1875,189 @@ void AssemblerX64::Movq(XMMRegister dst, Register src)
     EmitU8(0x6E);
     // ModR/M: Mod=11 (register), Reg=dst.LowBits(), RM=src.LowBits()
     EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());  // 3: Reg field position in ModR/M
+}
+
+void AssemblerX64::Movsd(const Operand &dst, XMMRegister src)
+{
+    // movsd m64_dst, xmm_src
+    // Store scalar double-precision floating-point value from XMM register to memory
+    // Encoding: F2 0F 11 /r (with memory operand)
+    EmitU8(0xF2);  // mandatory prefix
+    if (src.HighBit() || dst.rex_) {
+        EmitU8(0x40 | (src.HighBit() << 2) | dst.rex_);
+    }
+    EmitU8(0x0F);
+    EmitU8(0x11);
+    EmitOperand(src.LowBits(), dst);
+}
+
+void AssemblerX64::Movss(const Operand &dst, XMMRegister src)
+{
+    EmitU8(0xF3);
+    if (src.HighBit() || dst.rex_) {
+        EmitU8(REX_PREFIX_FIXED_BITS | (src.HighBit() << 2) | dst.rex_);
+    }
+    EmitU8(0x0F);
+    EmitU8(0x11);
+    EmitOperand(src.LowBits(), dst);
+}
+
+void AssemblerX64::Cvtsd2ss(XMMRegister src, XMMRegister dst)
+{
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(REX_PREFIX_FIXED_BITS | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Movq(Register dst, XMMRegister src)
+{
+    // movq r64_dst, xmm_src
+    // Encoding: 66 REX.W 0F 7E /r
+    EmitU8(0x66);
+    EmitU8(0x48 | (src.HighBit() << 2) | dst.HighBit());
+    EmitU8(0x0F);
+    EmitU8(0x7E);
+    EmitU8(0xC0 | (src.LowBits() << 3) | dst.LowBits());
+}
+
+void AssemblerX64::Cvtsi2sd(Register src, XMMRegister dst)
+{
+    // cvtsi2sd xmm_dst, r64_src
+    // Encoding: F2 REX.W 0F 2A /r
+    EmitU8(0xF2);
+    EmitU8(0x48 | (dst.HighBit() << 2) | src.HighBit());
+    EmitU8(0x0F);
+    EmitU8(0x2A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Cvtsi2sd32(Register src, XMMRegister dst)
+{
+    // cvtsi2sd xmm_dst, r32_src
+    // Encoding: F2 [REX] 0F 2A /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x2A);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Addsd(XMMRegister src, XMMRegister dst)
+{
+    // addsd xmm_dst, xmm_src
+    // Encoding: F2 0F 58 /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x58);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Subsd(XMMRegister src, XMMRegister dst)
+{
+    // subsd xmm_dst, xmm_src
+    // Encoding: F2 0F 5C /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5C);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Mulsd(XMMRegister src, XMMRegister dst)
+{
+    // mulsd xmm_dst, xmm_src
+    // Encoding: F2 0F 59 /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x59);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Divsd(XMMRegister src, XMMRegister dst)
+{
+    // divsd xmm_dst, xmm_src
+    // Encoding: F2 0F 5E /r
+    EmitU8(0xF2);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x5E);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Ucomisd(XMMRegister src, XMMRegister dst)
+{
+    // ucomisd xmm_dst, xmm_src
+    // Encoding: 66 0F 2E /r
+    EmitU8(0x66);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x2E);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Negl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xF7);
+    EmitModrm(3, dst);
+}
+
+void AssemblerX64::Incl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xFF);
+    EmitModrm(0, dst);
+}
+
+void AssemblerX64::Decl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xFF);
+    EmitModrm(1, dst);
+}
+
+void AssemblerX64::Notl(Register dst)
+{
+    EmitRexPrefixL(dst);
+    EmitU8(0xF7);
+    EmitModrm(2, dst);
+}
+
+void AssemblerX64::Xorpd(XMMRegister src, XMMRegister dst)
+{
+    EmitU8(0x66);
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());
+    }
+    EmitU8(0x0F);
+    EmitU8(0x57);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
+}
+
+void AssemblerX64::Cvttsd2si64(XMMRegister src, Register dst)
+{
+    EmitU8(0xF2);
+    EmitU8(0x48 | (dst.HighBit() << 2) | src.HighBit());
+    EmitU8(0x0F);
+    EmitU8(0x2C);
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());
 }
 }  // panda::ecmascript::x64

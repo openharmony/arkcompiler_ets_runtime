@@ -1349,8 +1349,10 @@ ecma_source += [
 
 if (ets_runtime_enable_ark_steed) {
   ecma_source += [
+    "ecmascript/arksteed/arksteed_deopt_helper.cpp",
     "ecmascript/arksteed/arksteed_safepoint_table.cpp",
     "ecmascript/arksteed/arksteed_task.cpp",
+    "ecmascript/mem/embedded_code_ref_set.cpp",
   ]
 }
 

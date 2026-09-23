@@ -18,6 +18,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "securec.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace panda::ecmascript::arksteed {
@@ -47,7 +48,9 @@ void CommentList::Add(uint32_t pcOffset, std::string_view comment)
 {
     CommentEntry entry(pcOffset, comment);
     byteCount_ += entry.Size();
-    comments_.push_back(std::move(entry));
+    auto it = std::upper_bound(comments_.begin(), comments_.end(), pcOffset,
+                               [](uint32_t offset, const CommentEntry &entryIn) { return offset < entryIn.pcOffset; });
+    comments_.insert(it, std::move(entry));
 }
 
 const std::vector<CommentEntry> &CommentList::GetComments() const
@@ -80,8 +83,8 @@ void CommentList::Emit(uint8_t *buffer) const
     for (const auto &entry : comments_) {
         *reinterpret_cast<uint32_t *>(current + OFFSET_TO_PC) = entry.pcOffset;
         *reinterpret_cast<uint32_t *>(current + OFFSET_TO_COMMENT_SIZE) = entry.CommentLength();
-        if (memcpy_s(current + OFFSET_TO_COMMENT_STRING, entry.CommentLength(),
-            entry.comment.c_str(), entry.CommentLength()) != EOK) {
+        if (memcpy_s(current + OFFSET_TO_COMMENT_STRING, entry.CommentLength(), entry.comment.c_str(),
+                     entry.CommentLength()) != EOK) {
             LOG_JIT(FATAL) << "memcpy failed in Emit";
         }
         current += entry.Size();

@@ -3175,14 +3175,19 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructBoundFunction(JSThread *thread, J
     return RuntimeOptConstruct(thread, target, newTargetMutable, newPreArgs, args);
 }
 
-JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, JSHandle<JSFunction> ctor,
+JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isCompiledCode, JSHandle<JSFunction> ctor,
     CVector<JSTaggedType> &values, JSHandle<JSTaggedValue> newTgt, uint32_t &size, JSHandle<JSTaggedValue> obj)
 {
     JSTaggedValue resultValue;
-    if (isAotMethod && thread->HasSwitchedToStwStub()) {
+    if (isCompiledCode && thread->HasSwitchedToStwStub()) {
         uint32_t numArgs = ctor->GetCallTarget(thread)->GetNumArgsWithCallField();
         bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        if (ctor->HasArkSteedEntry()) {
+            resultValue = thread->GetEcmaVM()->ExecuteArkSteed(size, values.data(), prevFp);
+        } else
+#endif
         if (ctor->IsCompiledFastCall()) {
             if (needPushArgv) {
                 values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
@@ -3192,10 +3197,6 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
                 size = numArgs;
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
-#if ECMASCRIPT_ENABLE_ARK_STEED
-        } else if (isAotMethod) {
-            resultValue = thread->GetEcmaVM()->ExecuteArkSteed(size, values.data(), prevFp);
-#endif
         } else {
             resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
@@ -3230,7 +3231,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     CVector<JSTaggedType> values;
     bool isCompiledCode = ctor->IsCompiledCode();
     if (isCompiledCode) {
-        if (ctor->IsCompiledFastCall()) {
+        if (!ctor->HasArkSteedEntry() && ctor->IsCompiledFastCall()) {
             values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
             values.emplace_back(ctor.GetTaggedValue().GetRawData());
             values.emplace_back(obj.GetTaggedValue().GetRawData());

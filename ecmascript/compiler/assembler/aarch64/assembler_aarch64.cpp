@@ -15,11 +15,17 @@
 
 
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/base/bit_helper.h"
 
 
 namespace panda::ecmascript::aarch64 {
 using namespace panda::ecmascript::base;
 static const uint64_t HWORD_MASK = 0xFFFF;
+
+static uint32_t FPType(const VRegister &reg)
+{
+    return reg.IsD() ? FloatingPointOpCode::FP64 : 0;
+}
 
 LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
 {
@@ -282,6 +288,13 @@ void AssemblerAarch64::Ldr(const Register &rt, const MemoryOperand &operand)
     Ldr(rt, operand, Scale::Q);
 }
 
+void AssemblerAarch64::Ldr(const Register &rt, Label *label)
+{
+    int32_t offsetImm = LinkAndGetInstOffsetToLabel(label);
+    offsetImm >>= 2U;
+    EmitU32(LDR_LITERAL_X | BranchImm19(offsetImm) | rt.GetId());
+}
+
 void AssemblerAarch64::Ldrh(const Register &rt, const MemoryOperand &operand)
 {
     ASSERT(rt.IsW());
@@ -327,8 +340,73 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
         EmitU32(instructionCode);
         return;
     }
-    LOG_ECMA(FATAL) << "this branch is unreachable";
-    UNREACHABLE();
+    ASSERT(operand.GetExtendOption() != Extend::NO_EXTEND);
+    uint32_t shift = GetShiftOfLdr(operand, Scale::Q, regX);
+    Register rm = operand.GetRegisterOffset();
+    Register rn = operand.GetRegBase();
+    uint32_t extendField =
+        (operand.GetExtendOption() << LDR_STR_Extend_LOWBITS) & LDR_STR_Extend_MASK;
+    uint32_t shiftField = (shift << LDR_STR_S_LOWBITS) & LDR_STR_S_MASK;
+    // 30: 30bit indicate the size of STR Reg
+    uint32_t instructionCode = (regX << 30) | LoadStoreOpCode::STR_Register | Rm(rm.GetId()) |
+                               extendField | shiftField | Rn(rn.GetId()) | Rt(rt.GetId());
+    EmitU32(instructionCode);
+}
+
+void AssemblerAarch64::Stlr(const Register &rt, const MemoryOperand &operand)
+{
+    ASSERT(rt.IsW());
+    ASSERT(operand.IsImmediateOffset());
+    ASSERT(operand.GetAddrMode() == AddrMode::OFFSET);
+    ASSERT(operand.GetImmediate().Value() == 0);
+    uint32_t instructionCode = LoadStoreOpCode::STLR |
+        Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(instructionCode);
+}
+
+void AssemblerAarch64::Strb(const Register &rt, const MemoryOperand &operand)
+{
+    ASSERT(rt.IsW());
+    if (!operand.IsImmediateOffset()) {
+        StrRegisterOffset(rt, operand, Scale::B);
+        return;
+    }
+    ASSERT(operand.GetAddrMode() == OFFSET);
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT(offset >= 0 && offset <= 4095);  // 4095: unsigned imm12 byte offset.
+    uint32_t code =
+        0x39000000 | (static_cast<uint32_t>(offset) << 10) | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Strh(const Register &rt, const MemoryOperand &operand)
+{
+    ASSERT(rt.IsW());
+    if (!operand.IsImmediateOffset()) {
+        StrRegisterOffset(rt, operand, Scale::H);
+        return;
+    }
+    ASSERT(operand.GetAddrMode() == OFFSET);
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT(offset >= 0 && (offset % 2) == 0 && offset <= 8190);  // 8190: unsigned imm12 scaled by 2.
+    uint32_t code =
+        0x79000000 | (static_cast<uint32_t>(offset / 2) << 10) | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::StrRegisterOffset(const Register &rt, const MemoryOperand &operand, Scale scale)
+{
+    ASSERT(rt.IsW() && !operand.IsImmediateOffset());
+    ASSERT(operand.GetExtendOption() != Extend::NO_EXTEND);
+    ASSERT(scale == Scale::B || scale == Scale::H);
+    uint32_t op = scale == Scale::B ? LoadStoreOpCode::STRB_Register : LoadStoreOpCode::STRH_Register;
+    uint32_t shift = GetShiftOfLdr(operand, scale, false);
+    uint32_t extendField =
+        (operand.GetExtendOption() << LDR_STR_Extend_LOWBITS) & LDR_STR_Extend_MASK;
+    uint32_t shiftField = (shift << LDR_STR_S_LOWBITS) & LDR_STR_S_MASK;
+    uint32_t code = op | Rm(operand.GetRegisterOffset().GetId()) | extendField | shiftField |
+                    Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    EmitU32(code);
 }
 
 void AssemblerAarch64::Ldur(const Register &rt, const MemoryOperand &operand)
@@ -666,6 +744,11 @@ void AssemblerAarch64::And(const Register &rd, const Register &rn, const Logical
     BitWiseOpImm(AND_Imm, rd, rn, imm.Value());
 }
 
+void AssemblerAarch64::Eor(const Register &rd, const Register &rn, const LogicalImmediate &imm)
+{
+    BitWiseOpImm(EOR_Imm, rd, rn, imm.Value());
+}
+
 void AssemblerAarch64::Ands(const Register &rd, const Register &rn, const LogicalImmediate &imm)
 {
     BitWiseOpImm(ANDS_Imm, rd, rn, imm.Value());
@@ -681,6 +764,12 @@ void AssemblerAarch64::And(const Register &rd, const Register &rn, const Operand
 {
     ASSERT(operand.IsShifted());
     BitWiseOpShift(AND_Shift, rd, rn, operand);
+}
+
+void AssemblerAarch64::Eor(const Register &rd, const Register &rn, const Operand &operand)
+{
+    ASSERT(operand.IsShifted());
+    BitWiseOpShift(EOR_Shift, rd, rn, operand);
 }
 
 void AssemblerAarch64::Ands(const Register &rd, const Register &rn, const Operand &operand)
@@ -716,6 +805,19 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, const Registe
     EmitU32(code);
 }
 
+void AssemblerAarch64::Asr(const Register &rd, const Register &rn, const Register &rm)
+{
+    uint32_t code = Sf(!rd.IsW()) | ASR_Reg | Rm(rm.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Mvn(const Register &rd, const Register &rn)
+{
+    const Register &zero = rd.IsW() ? wzr : xzr;
+    uint32_t code = Sf(!rd.IsW()) | ORN_Shift | Rm(rn.GetId()) | Rn(zero.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
 {
     bool sf = !rd.IsW();
@@ -723,6 +825,16 @@ void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned imm
     uint32_t immr_field = (immr << BITWISE_OP_Immr_LOWBITS) & BITWISE_OP_Immr_MASK;
     uint32_t imms_field = (imms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK;
     uint32_t code = Sf(sf) | UBFM | n | immr_field | imms_field | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Sbfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
+{
+    bool sf = !rd.IsW();
+    uint32_t n = (sf << BITWISE_OP_N_LOWBITS) & BITWISE_OP_N_MASK;
+    uint32_t immr_field = (immr << BITWISE_OP_Immr_LOWBITS) & BITWISE_OP_Immr_MASK;
+    uint32_t imms_field = (imms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK;
+    uint32_t code = Sf(sf) | SBFM | n | immr_field | imms_field | Rn(rn.GetId()) | Rd(rd.GetId());
     EmitU32(code);
 }
 
@@ -749,6 +861,12 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
         // and is always the preferred disassembly
     }
     Ubfm(rd, rn, shift, imms);
+}
+
+void AssemblerAarch64::Asr(const Register &rd, const Register &rn, unsigned shift)
+{
+    unsigned imms = rd.IsW() ? 31 : 63;  // 31, 63: ASR aliases SBFM with top bit as imms.
+    Sbfm(rd, rn, shift, imms);
 }
 
 void AssemblerAarch64::Adr(const Register &rd, Label *label)
@@ -825,6 +943,95 @@ void AssemblerAarch64::Subs(const Register &rd, const Register &rn, const Operan
             AddSubReg(SUB_Extend, rd, rn, true, operand);
         }
     }
+}
+
+void AssemblerAarch64::Mul(const Register &rd, const Register &rn, const Register &rm)
+{
+    const Register &zero = rd.IsW() ? wzr : xzr;
+    uint32_t code = Sf(!rd.IsW()) | MADD | Rm(rm.GetId()) | Ra(zero.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Smull(const Register &rd, const Register &rn, const Register &rm)
+{
+    ASSERT(rd.IsX());
+    ASSERT(rn.IsW() && rm.IsW());
+    uint32_t code = SMADDL | Rm(rm.GetId()) | Ra(xzr.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Sdiv(const Register &rd, const Register &rn, const Register &rm)
+{
+    uint32_t code = Sf(!rd.IsW()) | SDIV | Rm(rm.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Msub(const Register &rd, const Register &rn, const Register &rm, const Register &ra)
+{
+    uint32_t code = Sf(!rd.IsW()) | MSUB | Rm(rm.GetId()) | Ra(ra.GetId()) | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Scvtf(const VRegister &vd, const Register &rn)
+{
+    uint32_t code = Sf(!rn.IsW()) | FPType(vd) | SCVTF | Rn(rn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fcvt(const VRegister &vd, const VRegister &vn)
+{
+    ASSERT(vd.IsD() && vn.IsS());
+    constexpr uint32_t FCVT_DS = 0x1E22C000U;
+    EmitU32(FCVT_DS | Rn(vn.GetId()) | Rd(vd.GetId()));
+}
+
+void AssemblerAarch64::Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FADD | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FSUB | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FMUL | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vd) | FDIV | Rm(vm.GetId()) | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fneg(const VRegister &vd, const VRegister &vn)
+{
+    uint32_t code = FPType(vd) | FNEG | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fcmp(const VRegister &vn, const VRegister &vm)
+{
+    uint32_t code = FPType(vn) | FCMP | Rm(vm.GetId()) | Rn(vn.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::Fcvtzs(const Register &rd, const VRegister &vn)
+{
+    uint32_t code = Sf(!rd.IsW()) | FPType(vn) | FCVTZS | Rn(vn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
+void AssemblerAarch64::FcvtFloat32(const VRegister &vd, const VRegister &vn)
+{
+    ASSERT(vd.IsS() && vn.IsD());
+    uint32_t code = 0x1E624000 | Rn(vn.GetId()) | Rd(vd.GetId());
+    EmitU32(code);
 }
 
 bool AssemblerAarch64::IsAddSubImm(uint64_t imm)
@@ -1042,7 +1249,7 @@ void AssemblerAarch64::Bind(Label *target)
     ASSERT(!target->IsBound());
     if (target->IsLinked()) {
         uint32_t linkPos = target->GetLinkedPos();
-        while (linkPos != 0) {
+        while (true) {
             int32_t offset = GetLinkOffsetFromBranchInst(linkPos);
             int32_t disp = static_cast<int32_t>(pos - linkPos);
             SetRealOffsetToBranchInst(linkPos, disp);
@@ -1092,6 +1299,11 @@ int32_t AssemblerAarch64::ImmBranch(uint32_t branchCode)
         }
     } else if ((branchCode & AdrOpCode::AdrMask) == AdrOpCode::Adr) {
         immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
+    } else if ((branchCode & LDR_LITERAL_MASK) == LDR_LITERAL_X) {
+        immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
+        if ((immOffset & (1 << (BRANCH_Imm19_WIDTH - 1))) != 0) {
+            immOffset |= static_cast<int32_t>(~((1U << BRANCH_Imm19_WIDTH) - 1U));
+        }
     } else {
         UNREACHABLE();
     }
@@ -1117,6 +1329,9 @@ void AssemblerAarch64::SetRealOffsetToBranchInst(uint32_t linkPos, int32_t disp)
         branchCode &= ~BRANCH_Imm14_MASK;
         branchCode |= (immOffset << BRANCH_Imm14_LOWBITS) & BRANCH_Imm14_MASK;
     } else if ((branchCode & AdrOpCode::AdrMask) == AdrOpCode::Adr) {
+        branchCode &= ~BRANCH_Imm19_MASK;
+        branchCode |= (immOffset << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK;
+    } else if ((branchCode & LDR_LITERAL_MASK) == LDR_LITERAL_X) {
         branchCode &= ~BRANCH_Imm19_MASK;
         branchCode |= (immOffset << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK;
     }
@@ -1274,23 +1489,122 @@ void AssemblerAarch64::Fmov(const VRegister &vd, const Register &rn)
     EmitU32(encoding);
 }
 
-void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
+void AssemblerAarch64::Fmov(const Register &rd, const VRegister &vn)
 {
-    // LDR Dt, [Xn, #imm] - Load SIMD&FP Register (64-bit)
-    // Encoding: opc 11 11 00 01 1 imm12 Rn Rt
-    // opc = 11 for 64-bit D register
-    // imm12 = offset / 8 (must be aligned)
+    uint32_t encoding = FMOV_XD;
+    encoding |= static_cast<uint32_t>(vn.Code()) << 5;  // 5: Dn field position
+    encoding |= static_cast<uint32_t>(rd.Code());       // d (Xd)
+    EmitU32(encoding);
+}
+
+bool AssemblerAarch64::TryFmov(const VRegister &vd, double immediate)
+{
+    ASSERT(vd.IsD());
+    uint64_t bits = base::bit_cast<uint64_t>(immediate);
+
+    // An ARM64 FP immediate expands an 8-bit value as aBbb.bbbb.bbcd.efgh followed by 48 zero bits.
+    if ((bits & 0xFFFFFFFFFFFFULL) != 0) {
+        return false;
+    }
+
+    // The expanded exponent requires bits[61:54] to match and bits[62:61] to be opposite.
+    uint32_t exponentPattern = static_cast<uint32_t>((bits >> 48U) & 0x3FC0U);
+    if (exponentPattern != 0 && exponentPattern != 0x3FC0U) {
+        return false;
+    }
+    if (((bits ^ (bits << 1U)) & 0x4000000000000000ULL) == 0) {
+        return false;
+    }
+
+    // Pack sign, the complemented exponent bit, and the top six fraction/exponent bits into imm8.
+    uint32_t imm8 = static_cast<uint32_t>(((bits >> 56U) & 0x80U) |
+                                          ((bits >> 55U) & 0x40U) |
+                                          ((bits >> 48U) & 0x3FU));
+    constexpr uint32_t FMOV_D_IMMEDIATE = 0x1E601000U;
+    constexpr uint32_t IMM8_SHIFT = 13U;
+    EmitU32(FMOV_D_IMMEDIATE | (imm8 << IMM8_SHIFT) | static_cast<uint32_t>(vd.Code()));
+    return true;
+}
+
+void AssemblerAarch64::EmitLoadStoreD(const VRegister &vt, const MemoryOperand &operand, uint32_t offsetOpcode,
+                                      uint32_t preIndexOpcode, uint32_t postIndexOpcode)
+{
+    constexpr int64_t D_REGISTER_SIZE_IN_BYTES = D_REG_SIZE / B_REG_SIZE;
+    constexpr int64_t SIGNED_IMMEDIATE_BOUND = static_cast<int64_t>(1U << (LDR_STR_Imm9_WIDTH - 1U));
+    constexpr int64_t UNSIGNED_IMMEDIATE_MAX = static_cast<int64_t>((1U << LDR_STR_Imm12_WIDTH) - 1U);
+
     ASSERT(operand.IsImmediateOffset());
     ASSERT(operand.GetRegBase().IsX());
+    ASSERT(vt.IsD());
+
+    int64_t immediate = operand.GetImmediate().Value();
+    const AddrMode addrMode = operand.GetAddrMode();
+    const bool isSignedImmediate = addrMode != AddrMode::OFFSET;
+    if (isSignedImmediate) {
+        ASSERT(immediate >= -SIGNED_IMMEDIATE_BOUND && immediate < SIGNED_IMMEDIATE_BOUND);
+    } else {
+        ASSERT(immediate >= 0 && (immediate % D_REGISTER_SIZE_IN_BYTES) == 0);
+        immediate /= D_REGISTER_SIZE_IN_BYTES;
+        ASSERT(immediate <= UNSIGNED_IMMEDIATE_MAX);
+    }
+
+    uint32_t opcode = 0;
+    switch (addrMode) {
+        case AddrMode::OFFSET:
+            opcode = offsetOpcode;
+            break;
+        case AddrMode::PREINDEX:
+            opcode = preIndexOpcode;
+            break;
+        case AddrMode::POSTINDEX:
+            opcode = postIndexOpcode;
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    uint32_t instructionCode = opcode | LoadAndStoreImm(static_cast<uint32_t>(immediate), isSignedImmediate) |
+                               Rn(operand.GetRegBase().GetId()) | Rt(vt.GetId());
+    EmitU32(instructionCode);
+}
+
+void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
+{
+    if (vt.IsD()) {
+        EmitLoadStoreD(vt, operand, LoadStoreOpCode::LDR_D_Offset, LoadStoreOpCode::LDR_D_Pre,
+                       LoadStoreOpCode::LDR_D_Post);
+        return;
+    }
+
+    ASSERT(operand.IsImmediateOffset());
+    ASSERT(operand.GetRegBase().IsX());
+    ASSERT(operand.GetAddrMode() == AddrMode::OFFSET);
+    ASSERT(vt.IsS());
 
     int64_t offset = operand.GetImmediate().Value();
-    ASSERT((offset % 8) == 0 && offset >= 0 && offset <= 32760);  // 8, 32760: max offset for 12-bit imm scaled by 8
-    uint32_t imm12 = static_cast<uint32_t>(offset / 8);  // 8: bytes per 64-bit register
+    constexpr int64_t scale = S_REG_SIZE / B_REG_SIZE;
+    ASSERT((offset % scale) == 0 && offset >= 0 && offset <= 4095 * scale);
+    uint32_t imm12 = static_cast<uint32_t>(offset / scale);
 
-    uint32_t encoding = 0x3FC40000;  // opc=11, fixed bits
-    encoding |= (imm12 << 10);                          // 10: imm12 field position
+    uint32_t encoding = 0xBD400000U;
+    encoding |= (imm12 << 10);  // 10: imm12 field position
     encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
-    encoding |= static_cast<uint32_t>(vt.Code());       // Rt (Dt)
+    encoding |= static_cast<uint32_t>(vt.Code());  // Rt (St)
+    EmitU32(encoding);
+}
+
+void AssemblerAarch64::Str(const VRegister &vt, const MemoryOperand &operand)
+{
+    EmitLoadStoreD(vt, operand, LoadStoreOpCode::STR_D_Offset, LoadStoreOpCode::STR_D_Pre,
+                   LoadStoreOpCode::STR_D_Post);
+}
+void AssemblerAarch64::StrFloat32(const VRegister &vt, const MemoryOperand &operand)
+{
+    ASSERT(vt.IsS() && operand.IsImmediateOffset() && operand.GetRegBase().IsX());
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT(offset >= 0 && (offset % 4) == 0 && offset <= 16380);  // 16380: imm12 scaled by 4.
+    uint32_t encoding = 0xBD000000 | (static_cast<uint32_t>(offset / 4) << 10) |
+                        (static_cast<uint32_t>(operand.GetRegBase().Code()) << 5) | static_cast<uint32_t>(vt.Code());
     EmitU32(encoding);
 }
 }   // namespace panda::ecmascript::aarch64

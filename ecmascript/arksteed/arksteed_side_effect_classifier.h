@@ -1,0 +1,176 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef ECMASCRIPT_ARKSTEED_SIDE_EFFECT_CLASSIFIER_H
+#define ECMASCRIPT_ARKSTEED_SIDE_EFFECT_CLASSIFIER_H
+
+#include "ecmascript/arksteed/arksteed_compile_info_facts.h"
+#include "ecmascript/arksteed/arksteed_opcode.h"
+#include "ecmascript/log_wrapper.h"
+
+namespace panda::ecmascript::arksteed {
+
+class ArkSteedSideEffectClassifier {
+public:
+    static SideEffectDescriptor Classify(StoreTaggedFieldVertex *vertex)
+    {
+        uint32_t propertyId = vertex->GetPropertyId();
+        PropertyKey key = propertyId != StoreTaggedFieldVertex::UNKNOWN_PROPERTY_ID ? PropertyKey::Named(propertyId)
+                                                                                    : PropertyKey::Unknown();
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreTaggedFieldVertex::OBJECT_INDEX);
+        descriptor.propertyKey = key;
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreTaggedFieldWithBarrierVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreTaggedFieldWithBarrierVertex::OBJECT_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreSharedFieldWithBarrierVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreSharedFieldWithBarrierVertex::OBJECT_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(EnsurePropertiesCapacityVertex *vertex)
+    {
+        (void)vertex;
+        return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
+    }
+
+    static SideEffectDescriptor Classify(StoreInt32FieldVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreInt32FieldVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreDoubleFieldVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreDoubleFieldVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreInt32FieldWithRepVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreInt32FieldWithRepVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreDoubleFieldWithRepVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreDoubleFieldWithRepVertex::STORE_TARGET_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(TransitionHClassWithBarrierVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::MAP_TRANSITION;
+        descriptor.receiver = vertex->GetInput(TransitionHClassWithBarrierVertex::OBJECT_INDEX);
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreTaggedFieldByHClassVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::FIELD_WRITE;
+        descriptor.receiver = vertex->GetInput(StoreTaggedFieldByHClassVertex::OBJECT_INDEX);
+        descriptor.propertyKey = PropertyKey::Unknown();
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(StoreTaggedElementVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreTaggedElementVertex::OBJECT_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreTaggedElementWithBarrierVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreTaggedElementWithBarrierVertex::OBJECT_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreIntTypedArrayElementVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreIntTypedArrayElementVertex::RECEIVER_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreFloatTypedArrayElementVertex *vertex)
+    {
+        return ElementsWrite(vertex->GetInput(StoreFloatTypedArrayElementVertex::RECEIVER_INDEX));
+    }
+
+    static SideEffectDescriptor Classify(StoreEnvSlotVertex *vertex)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::ENV_SLOT_WRITE;
+        descriptor.env = vertex->GetInput(StoreEnvSlotVertex::ENV_INDEX);
+        descriptor.envSlot = vertex->GetOffset();
+        descriptor.envSlotValue = vertex->GetInput(StoreEnvSlotVertex::VALUE_INDEX);
+        return descriptor;
+    }
+
+    static SideEffectDescriptor Classify(CallRuntimeVertex *vertex)
+    {
+        return SideEffectDescriptor {vertex->GetSideEffectKind()};
+    }
+
+    static SideEffectDescriptor Classify(CallCommonStubVertex *vertex)
+    {
+        return SideEffectDescriptor {vertex->GetSideEffectKind()};
+    }
+
+    template <typename VertexT>
+    static SideEffectDescriptor Classify(VertexT *vertex)
+    {
+        static_assert(CanWrite(VertexT::PROPERTIES));
+        LOG_COMPILER(WARN) << "ArkSteed side-effect classifier fallback for " << OpcodeToString(vertex->GetOpcode());
+        return SideEffectDescriptor {SideEffectKind::UNKNOWN_CALL};
+    }
+
+private:
+    static SideEffectDescriptor ElementsWrite(ValueVertex *receiver)
+    {
+        SideEffectDescriptor descriptor;
+        descriptor.kind = SideEffectKind::ELEMENTS_WRITE;
+        descriptor.receiver = receiver;
+        return descriptor;
+    }
+};
+
+}  // namespace panda::ecmascript::arksteed
+
+#endif  // ECMASCRIPT_ARKSTEED_SIDE_EFFECT_CLASSIFIER_H

@@ -455,6 +455,7 @@ void FrameIterator::Advance()
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
+                needCheckLazyDeoptFrame = true;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -547,6 +548,10 @@ uintptr_t *FrameIterator::GetReturnAddrAddress() const
         }
         case FrameType::ASM_INTERPRETER_BRIDGE_FRAME : {
             auto frame = GetFrame<AsmInterpretedBridgeFrame>();
+            return const_cast<uintptr_t *>(frame->GetReturnAddrAddress());
+        }
+        case FrameType::STEED_FUNCTION_FRAME: {
+            auto frame = GetFrame<SteedFunctionFrame>();
             return const_cast<uintptr_t *>(frame->GetReturnAddrAddress());
         }
         default:
@@ -1021,7 +1026,7 @@ void SteedFunctionFrame::IterateSafePointTable(const FrameIterator& it, RootVisi
     uintptr_t start = it.GetCallSiteSp();
     intptr_t end = static_cast<intptr_t>(fp) + kTaggedSlot0OffsetFromFp -
                    static_cast<intptr_t>(safepointTable.GetNumTaggedSlots() + safepointTable.GetNumUntaggedSlots() +
-                                         entry->numExtraSpillSlots) *
+                                         entry->GetNumExtraSpillSlots()) *
                    static_cast<intptr_t>(sizeof(uintptr_t));
     if (start >= static_cast<uintptr_t>(end)) {
         return;
@@ -1033,7 +1038,27 @@ void SteedFunctionFrame::IterateSafePointTable(const FrameIterator& it, RootVisi
 void SteedFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it,
     std::vector<kungfu::ARKDeopt>& deopts) const
 {
-    it.CollectArkDeopt(deopts);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+    MachineCode *machineCode = MachineCode::Cast(JSTaggedValue(machineCodeSlot.GetTaggedType()).GetTaggedObject());
+    uint8_t *safepointTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    uint32_t safepointTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    arksteed::ArkSteedSafepointTable safepointTable(safepointTableAddr, safepointTableSize);
+    if (!safepointTable.IsValid()) {
+        LOG_ECMA(ERROR) << "ArkSteedSafepointTable is invalid";
+        return;
+    }
+    uint32_t literalCount = safepointTable.GetDeoptLiteralCount();
+    if (static_cast<size_t>(literalCount) * sizeof(uint64_t) > machineCode->GetHeapConstantTableSize()) {
+        LOG_ECMA(ERROR) << "ArkSteed deopt literal table exceeds MachineCode storage";
+        return;
+    }
+    auto *deoptLiterals = reinterpret_cast<const uint64_t *>(machineCode->GetHeapConstantTableAddress());
+    if (!safepointTable.GetDeoptInfo(static_cast<uint32_t>(it.GetOptimizedReturnAddr()),
+                                     deoptLiterals, literalCount, deopts)) {
+        LOG_ECMA(ERROR) << "ArkSteed deopt literal metadata is invalid";
+    }
+#endif
 }
 
 void SteedFunctionFrame::GetFuncCalleeRegAndOffset(

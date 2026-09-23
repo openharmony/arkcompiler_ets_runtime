@@ -15,28 +15,31 @@
 
 #include "ecmascript/arksteed/arksteed_compiler.h"
 
+#include <limits>
+#include <utility>
+#include <vector>
+
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#include "ecmascript/arksteed/arksteed_graph_builder.h"
 #include "ecmascript/arksteed/arksteed_codegen.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_graph_printer.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 #include "ecmascript/arksteed/arksteed_graph_verifier.h"
 #include "ecmascript/arksteed/arksteed_regalloc.h"
 #include "ecmascript/arksteed/arksteed_regalloc_processors.h"
+#include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
 #include "ecmascript/arksteed/arksteed_safepoint_table.h"
 #include "ecmascript/arksteed/arksteed_task.h"
 #include "ecmascript/compiler/jit_compiler.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/jit/jit_profiler.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/machine_code.h"
-
-#ifdef ARKSTEED_REFACTORED
-#include "ecmascript/arksteed/arksteed_graph_builder_new.h"
-#else
-#include "ecmascript/arksteed/arksteed_graph_builder.h"
-#endif
 
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "ecmascript/compiler/jit_signcode.h"
+#include "ecmascript/mem/jit_fort.h"
 #include "jit_buffer_integrity.h"
 #endif
 
@@ -72,11 +75,6 @@ static void LogAsm(ArkSteedAssembler *assembler)
         LOG_COMPILER(INFO) << line;
     }
     LOG_COMPILER(INFO) << "================================================";
-
-    std::ostringstream commentOut;
-    for (const auto &entry : comments.GetComments()) {
-        commentOut << "0x" << std::hex << entry.pcOffset << std::dec << " " << entry.comment << "\n";
-    }
 }
 
 ArkSteedCompilationOptions::ArkSteedCompilationOptions(JSRuntimeOptions runtimeOptions)
@@ -108,6 +106,14 @@ ArkSteedCompilerTask::~ArkSteedCompilerTask()
         delete safepointTableBuilder_;
         safepointTableBuilder_ = nullptr;
     }
+    if (translationBuilder_ != nullptr) {
+        delete translationBuilder_;
+        translationBuilder_ = nullptr;
+    }
+    if (deoptLiteralTableBuilder_ != nullptr) {
+        delete deoptLiteralTableBuilder_;
+        deoptLiteralTableBuilder_ = nullptr;
+    }
 }
 
 ArkSteedCompilerTask *ArkSteedCompilerTask::CreateJitCompilerTask(ArkSteedTask *arkSteedTask)
@@ -115,29 +121,60 @@ ArkSteedCompilerTask *ArkSteedCompilerTask::CreateJitCompilerTask(ArkSteedTask *
     return new (std::nothrow) ArkSteedCompilerTask(arkSteedTask);
 }
 
+void ArkSteedCompilerTask::DebugLogOnCompilationStart()
+{
+    if (!common::Log::LogIsLoggable(Level::INFO, Component::COMPILER)) {
+        return;
+    }
+    JitCompilationEnv *env = jitCompilationEnv_.get();
+    MethodLiteral *method = env->GetMethodLiteral();
+    LOG_COMPILER(INFO) << "======== ArkSteedCompilerTask: Starts compiling: "
+                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId()) << " ========";
+}
+
+void ArkSteedCompilerTask::DebugLogOnCompilationDone()
+{
+    if (!common::Log::LogIsLoggable(Level::INFO, Component::COMPILER)) {
+        return;
+    }
+    JitCompilationEnv *env = jitCompilationEnv_.get();
+    MethodLiteral *method = env->GetMethodLiteral();
+    LOG_COMPILER(INFO) << "======== ArkSteedCompilerTask: Finished compiling: "
+                       << MethodLiteral::ParseFunctionName(env->GetJSPandaFile(), method->GetMethodId()) << " ========";
+}
+
 bool ArkSteedCompilerTask::BuildGraph(JSThread *compilerThread, uintptr_t hostGlueAddr)
 {
-#ifdef ARKSTEED_REFACTORED
-    (void)compilerThread;  // Unused
+    JitCompilationEnv *env = jitCompilationEnv_.get();
+    if (env->GetJSOptions().IsEnableJITPGO()) {
+        auto jitProfiler = env->GetPGOProfiler()->GetJITProfile();
+        if (jitProfiler != nullptr) {
+            MethodLiteral *method = env->GetMethodLiteral();
+            const JSPandaFile *jsPandaFile = env->GetJSPandaFile();
+            jitProfiler->SetCompilationEnv(env);
+            jitProfiler->InitChunk(chunk_.get());
+            jitProfiler->ProfileBytecode(env->GetJSThread(), profileTypeInfo_, method->GetMethodId(),
+                                         env->GetMethodAbcId(), env->GetMethodPcStart(),
+                                         method->GetCodeSize(jsPandaFile, method->GetMethodId()),
+                                         jsPandaFile->GetPandaFile()->GetHeader(), jsFunction_, env->GetGlobalEnv());
+        }
+    }
 
-    BytecodePreprocessorNew preproc(jitCompilationEnv_.get(), chunk_.get());
+    BytecodePreprocessor preproc(env, chunk_.get());
     if (!preproc.Run()) {
+        LOG_COMPILER(WARN) << "JIT compilation halts due to bytecode preprocessing error.";
         return false;
     }
-    BytecodeAnalysisNew analysis(&preproc);
+    BytecodeAnalysis analysis(&preproc);
     if (!analysis.Run()) {
+        LOG_COMPILER(WARN) << "JIT compilation halts due to bytecode analysis error.";
         return false;
     }
-    GraphBuilderNew graphBuilder(graph_, hostGlueAddr, &preproc, &analysis);
+    GraphBuilder graphBuilder(compilerThread, graph_, hostGlueAddr, &preproc, &analysis);
     if (!graphBuilder.Run()) {
+        LOG_COMPILER(WARN) << "JIT compilation halts due to graph building error.";
         return false;
     }
-#else
-    ArkSteedGraphBuilder graphBuilder(compilerThread, hostGlueAddr, graph_, jitCompilationEnv_.get());
-    if (!graphBuilder.Build()) {
-        return false;
-    }
-#endif
     return true;
 }
 
@@ -161,6 +198,8 @@ void ArkSteedCompilerTask::RunPreRegallocProcessors()
 
 bool ArkSteedCompilerTask::Compile()
 {
+    DebugLogOnCompilationStart();
+
     ArkSteedCompileTimeScope totalScope(arkSteedTask_);
     NativeAreaAllocator *allocator = arkSteedTask_->GetCompilerVM()->GetNativeAreaAllocator();
     chunk_ = std::make_unique<Chunk>(allocator);
@@ -169,31 +208,38 @@ bool ArkSteedCompilerTask::Compile()
     // Allocate FuncEntryDes from chunk (persists until ArkSteedCompilerTask destroyed)
     funcEntryDes_ = chunk_->New<FuncEntryDes>();
 
-    // Create graph labeller for debugging - scoped for entire compilation
-    ArkSteedGraphLabeller graphLabeller;
-    ArkSteedGraphLabellerScope labellerScope(&graphLabeller);
+    // Debug vertex labels are scoped for the entire compilation
+    VertexLabelScope vertexLabelScope;
 
     // Graph building phase
     auto *compilerThread = arkSteedTask_->GetCompilerThread();
     auto *hostThread = arkSteedTask_->GetHostThread();
     uintptr_t hostGlueAddr = hostThread->GetGlueAddr();
 
+    ArkSteedPGOContext pgoContext(compilerThread, jitCompilationEnv_.get());
+
     if (!BuildGraph(compilerThread, hostGlueAddr)) {
         return false;
     }
+
+    WriteBarrierValueKindPass writeBarrierValueKindPass(graph_);
+    writeBarrierValueKindPass.Run();
+
     // Verify graph integrity
-    // to do: Post-build optimizations (when enabled)
     VerifyGraph(graph_);
     RunPreRegallocProcessors();
 
     // Print graph with labeller if option is enabled
     if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintGraph()) {
-        LOG_COMPILER(INFO) << "===== After register allocation pre-processing =====";
-        GraphProcessor<GraphPrinter> graphPrinterProcessor(chunk_.get(), true);
+        LOG_COMPILER(INFO) << "===== Starts Graph Dump =====";
+        bool withColors = arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintWithColors();
+        GraphProcessor<GraphPrinter> graphPrinterProcessor(chunk_.get(), withColors);
         graphPrinterProcessor.Run(graph_);
+        LOG_COMPILER(INFO) << "===== Finishes Graph Dump =====";
     }
 
     // Register allocation
+    graph_->SetReuseStackSlots(arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedReuseStackSlots());
     ArkSteedRegisterAllocator registerAllocator(graph_);
 
     // Code generation
@@ -204,22 +250,28 @@ bool ArkSteedCompilerTask::Compile()
 #ifdef JIT_ENABLE_CODE_SIGN
     EnableCodeSign();
 #endif
-    safepointTableBuilder_ = new ArkSteedSafepointTableBuilder();
-    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_);
+    safepointTableBuilder_ = new ArkSteedSafepointTableBuilder(chunk_.get());
+    translationBuilder_ = new DeoptTranslationBuilder();
+    deoptLiteralTableBuilder_ = new DeoptLiteralTableBuilder();
+    bool withColors = arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintWithColors();
+    ArkSteedCodeGenerator codegen(assembler_, graph_, safepointTableBuilder_, translationBuilder_,
+                                  deoptLiteralTableBuilder_, withColors);
     codegen.Generate();
     if (arkSteedTask_->GetHostVM()->GetJSOptions().GetCompilerArkSteedPrintCode()) {
         LogAsm(assembler_);
     }
 
+    DebugLogOnCompilationDone();
     return true;
 }
 
 #ifdef JIT_ENABLE_CODE_SIGN
 void ArkSteedCompilerTask::EnableCodeSign()
 {
-    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign()) {
-        kungfu::JitSignCode *singleton = kungfu::JitSignCode::GetInstance();
-        singleton->Reset();
+    kungfu::JitSignCode *singleton = kungfu::JitSignCode::GetInstance();
+    singleton->Reset();
+    if (Jit::GetInstance()->IsEnableJitFort() && !Jit::GetInstance()->IsDisableCodeSign() &&
+        JitFort::IsResourceAvailable()) {
         OHOS::Security::CodeSign::JitCodeSigner *jitSigner = CreateJitCodeSigner();
         singleton->SetCodeSigner(jitSigner);
         assembler_->EnableCodeSign();
@@ -234,6 +286,18 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
 
     codeDesc.codeType = MachineCodeType::ARKSTEED_CODE;
 
+    const auto &heapConstantHandles = jitCompilationEnv_->GetHeapConstantTable();
+    std::vector<JSHandle<JSTaggedValue>> deoptLiteralHandles;
+    const auto &deoptLiteralHandleIndices = deoptLiteralTableBuilder_->GetHandleIndices();
+    deoptLiteralHandles.reserve(deoptLiteralHandleIndices.size());
+    for (uint32_t handleIndex : deoptLiteralHandleIndices) {
+        CHECK(handleIndex < heapConstantHandles.size());
+        deoptLiteralHandles.push_back(heapConstantHandles[handleIndex]);
+    }
+    CHECK(deoptLiteralHandles.size() <= std::numeric_limits<uint32_t>::max());
+    safepointTableBuilder_->SetDeoptLiteralCount(static_cast<uint32_t>(deoptLiteralHandles.size()));
+    arkSteedTask_->SetDeoptLiteralData(std::move(deoptLiteralHandles));
+
     // Safepoint table
     safepointTableBuilder_->SetFrameSlots(graph_->GetTaggedStackSlots(), graph_->GetUntaggedStackSlots());
     size_t safepointSize = safepointTableBuilder_->GetTableSize();
@@ -245,10 +309,13 @@ void ArkSteedCompilerTask::FillCodeDesc(MachineCodeDesc &codeDesc)
         codeDesc.stackMapOrOffsetTableAddr = 0;
         codeDesc.stackMapOrOffsetTableSize = 0;
     }
+    LOG_COMPILER(DEBUG) << safepointTableBuilder_->DumpMemoryUsage();
 
-    // Heap constant table (empty for now, to be filled from JitCompilationEnv)
-    codeDesc.heapConstantTableAddr = 0;
-    codeDesc.heapConstantTableSize = 0;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    arkSteedTask_->SetDeoptTranslationData(translationBuilder_->Encode());
+#endif
+
+    arkSteedTask_->SetEmbeddedRefData(assembler_->GetEmbeddedRefRelocations(), heapConstantHandles);
 
     // Frame info - fill FuncEntryDes
     // Set funcEntry to point to heap-allocated FuncEntryDes

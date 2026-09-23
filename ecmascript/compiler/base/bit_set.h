@@ -39,6 +39,13 @@ public:
         }
     }
 
+    // Shallow copy is banned. Use CopyFrom() instead.
+    BitSet(const BitSet &other) = delete;
+    BitSet &operator=(const BitSet &other) = delete;
+
+    BitSet(BitSet &&other) = default;
+    BitSet &operator=(BitSet &&other) = default;
+
     ~BitSet()
     {
         if (UseWords()) {

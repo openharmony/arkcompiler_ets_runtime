@@ -68,21 +68,21 @@ public:
         return inputCount_;
     }
 
-    void AddGeneralTemporary(ArkSteedRegister reg)
+    void RequireSpecificTemporary(ArkSteedRegister reg)
     {
-        generalTemporaries_.Set(reg);
+        requiredSpecificGPRs_.Set(reg);
     }
-    void AddDoubleTemporary(ArkSteedDoubleRegister reg)
+    void RequireSpecificDoubleTemporary(ArkSteedDoubleRegister reg)
     {
-        doubleTemporaries_.Set(reg);
+        requiredSpecificFPRs_.Set(reg);
     }
-    void ClearGeneralTemporaries()
+    const ArkSteedRegList &GetRequiredSpecificGPRs() const
     {
-        generalTemporaries_.Reset();
+        return requiredSpecificGPRs_;
     }
-    void ClearDoubleTemporaries()
+    const ArkDoubleRegList &GetRequiredSpecificFPRs() const
     {
-        doubleTemporaries_.Reset();
+        return requiredSpecificFPRs_;
     }
     const ArkSteedRegList &GetGeneralTemporaries() const
     {
@@ -105,29 +105,14 @@ public:
         return !generalTemporaries_.IsEmpty() || !doubleTemporaries_.IsEmpty();
     }
 
-    template <size_t N>
-    std::array<ArkSteedRegister, N> TakeGeneralTemporaries() const
+    void SetDeferredRegisterSnapshot(const DeferredRegisterSnapshot &snapshot)
     {
-        return TakeTemporaries<ArkSteedRegister, N>();
-    }
-    template <size_t N>
-    std::array<ArkSteedDoubleRegister, N> TakeDoubleTemporaries() const
-    {
-        return TakeTemporaries<ArkSteedDoubleRegister, N>();
+        deferredRegisterSnapshot_ = snapshot;
     }
 
-    template <typename RegisterT, size_t N>
-    std::array<RegisterT, N> TakeTemporaries() const
+    const DeferredRegisterSnapshot &GetDeferredRegisterSnapshot() const
     {
-        RegListBase<RegisterT> temporaries = GetTemporaries<RegisterT>();
-        ASSERT(temporaries.Count() <= N);
-
-        std::array<RegisterT, N> res;
-        for (size_t i = 0; i < N; i++) {
-            res[i] = temporaries.First();
-            temporaries.PopFirst();
-        }
-        return res;
+        return deferredRegisterSnapshot_;
     }
 
     // Template methods for temporaries
@@ -152,19 +137,22 @@ public:
     }
 
     template <typename RegisterT>
-    void ClearTemporaries()
+    const RegListBase<RegisterT> &GetRequiredSpecificTemporaries() const
     {
         if constexpr (std::is_same_v<RegisterT, ArkSteedRegister>) {
-            generalTemporaries_.Reset();
+            return requiredSpecificGPRs_;
         } else {
-            doubleTemporaries_.Reset();
+            return requiredSpecificFPRs_;
         }
     }
 
 protected:
     VertexId id_ = INVALID_VERTEX_ID;
+    ArkSteedRegList requiredSpecificGPRs_;
+    ArkDoubleRegList requiredSpecificFPRs_;
     ArkSteedRegList generalTemporaries_;
     ArkDoubleRegList doubleTemporaries_;
+    DeferredRegisterSnapshot deferredRegisterSnapshot_;
     InputLocation *inputLocations_ = nullptr;
     int inputCount_ = 0;
 };
@@ -204,7 +192,7 @@ public:
 
     LiveRange GetLiveRange()
     {
-        return LiveRange{id_, endId_};
+        return LiveRange {id_, endId_};
     }
     VertexId GetEndId() const
     {
@@ -316,6 +304,12 @@ public:
                 return AllocatedState(LocationState::LocationKind::REGISTER, GetRepresentation(), reg.Code());
             }
         }
+        if (!IsLoadable()) {
+            const InstructionOperand &resultOp = result_.GetOperand();
+            if (resultOp.IsAllocated()) {
+                return resultOp;
+            }
+        }
         ASSERT(IsLoadable());
         return spillSlot_;
     }
@@ -373,6 +367,10 @@ public:
     }
     void SetHint(const InstructionOperand &hint)
     {
+        // First hint wins; later hints are ignored.
+        if (HasHint()) {
+            return;
+        }
         hint_ = hint;
     }
     void ClearHint()

@@ -26,6 +26,24 @@ namespace panda::ecmascript::arksteed {
 enum class ProcessedFeedbackKind : uint8_t {
     INSUFFICIENT,
     NAMED_ACCESS,
+    VALUE_ACCESS,
+    ELEMENT_ACCESS,
+    GLOBAL_ACCESS,
+};
+
+enum class ValueAccessFeedbackKind : uint8_t {
+    INSUFFICIENT,
+    NAMED,
+    ELEMENT,
+};
+
+enum class ArkSteedOperationHint : uint8_t {
+    NONE,
+    INT,
+    NUMBER,
+    STRING,
+    NUMBER_OR_STRING,
+    ANY,
 };
 
 struct ProcessedFeedbackBase {
@@ -35,6 +53,19 @@ struct ProcessedFeedbackBase {
     bool IsInsufficient() const
     {
         return kind == ProcessedFeedbackKind::INSUFFICIENT;
+    }
+};
+
+struct OperationFeedback {
+    uint32_t slotId {0};
+    ArkSteedOperationHint hint {ArkSteedOperationHint::NONE};
+    uint32_t rawTypeBits {0};
+    uint32_t trueWeight {0};
+    uint32_t falseWeight {0};
+
+    bool IsInsufficient() const
+    {
+        return hint == ArkSteedOperationHint::NONE;
     }
 };
 
@@ -48,6 +79,31 @@ struct NamedAccessFeedback {
     ArkSteedNameRef name {};
     std::array<NamedAccessCaseFeedback, MAX_NAMED_IC_POLY_CASES> cases {};
     uint32_t caseCount {0};
+};
+
+struct ValueAccessFeedback {
+    ProcessedFeedbackBase base {};
+    ValueAccessFeedbackKind kind {ValueAccessFeedbackKind::INSUFFICIENT};
+    ArkSteedNameRef key {};
+    std::array<NamedAccessCaseFeedback, MAX_NAMED_IC_POLY_CASES> cases {};
+    uint32_t caseCount {0};
+};
+
+struct ElementAccessCaseFeedback {
+    ArkSteedHClassRef expectedHClass {};
+    ArkSteedHandlerRef handler {};
+};
+
+struct ElementAccessFeedback {
+    ProcessedFeedbackBase base {};
+    std::array<ElementAccessCaseFeedback, MAX_ELEMENT_IC_POLY_CASES> cases {};
+    uint32_t caseCount {0};
+};
+
+// Value cell of a global-record or global-object binding cached by a global IC slot.
+struct GlobalAccessFeedback {
+    ProcessedFeedbackBase base {};
+    ArkSteedObjectRef box {};
 };
 
 }  // namespace panda::ecmascript::arksteed

@@ -25,35 +25,27 @@ class ArkSteedHeapRef {
 public:
     ArkSteedHeapRef() = default;
     explicit ArkSteedHeapRef(JSTaggedValue value) : value_(value) {}
-    ArkSteedHeapRef(JSTaggedValue value, bool stable) : value_(value), stable_(stable)
-    {}
-    explicit ArkSteedHeapRef(JSHandle<JSTaggedValue> handle) : handle_(handle), stable_(true)
-    {}
+    ArkSteedHeapRef(JSTaggedValue value, bool stable) : value_(value), stable_(stable) {}
+    explicit ArkSteedHeapRef(JSHandle<JSTaggedValue> handle) : handle_(handle), stable_(true) {}
 
     ArkSteedHeapRef &operator=(JSTaggedValue value) = delete;
 
     JSTaggedValue Value() const
     {
-        if (handle_.GetAddress() != 0U) {
-            return handle_.GetTaggedValue();
-        }
+        ASSERT(!HasHandle());
         return value_;
     }
 
-    bool IsUndefined() const
+    bool HasHandle() const
     {
-        return Value().IsUndefined();
+        return handle_.GetAddress() != 0U;
     }
 
-    bool IsHeapObject() const
-    {
-        return Value().IsHeapObject();
-    }
+    bool IsUndefined() const = delete;
 
-    bool IsInt() const
-    {
-        return Value().IsInt();
-    }
+    bool IsHeapObject() const = delete;
+
+    bool IsInt() const = delete;
 
     bool IsStable() const
     {
@@ -67,30 +59,28 @@ public:
 
     bool IsSafeToEmbed() const = delete;
 
-    uint64_t GetLargeUInt() const
-    {
-        return Value().GetLargeUInt();
-    }
+    uint64_t GetLargeUInt() const = delete;
 
-    bool operator==(const ArkSteedHeapRef &other) const
-    {
-        return Value() == other.Value();
-    }
+    bool operator==(const ArkSteedHeapRef &other) const = delete;
 
-    bool operator!=(const ArkSteedHeapRef &other) const
-    {
-        return !(*this == other);
-    }
+    bool operator!=(const ArkSteedHeapRef &other) const = delete;
 
-    operator JSTaggedValue() const
-    {
-        return Value();
-    }
+    operator JSTaggedValue() const = delete;
 
 private:
+    JSTaggedValue ValueAllowHandleDeref() const
+    {
+        if (HasHandle()) {
+            return handle_.GetTaggedValue();
+        }
+        return value_;
+    }
+
     JSTaggedValue value_ {JSTaggedValue::Undefined()};
     JSHandle<JSTaggedValue> handle_ {};
     bool stable_ {false};
+
+    friend class ArkSteedHeapBroker;
 };
 
 using ArkSteedObjectRef = ArkSteedHeapRef;

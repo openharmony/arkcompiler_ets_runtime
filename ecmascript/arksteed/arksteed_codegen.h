@@ -17,23 +17,35 @@
 #define ECMASCRIPT_ARKSTEED_CODEGEN_H
 
 #include "ecmascript/arksteed/arksteed_assembler.h"
+#include "ecmascript/arksteed/arksteed_deferred_code.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
+
+#include <utility>
+#include <vector>
 
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedSafepointTableBuilder;
+class DeoptLiteralTableBuilder;
+class DeoptTranslationBuilder;
 class GapMoveResolver;
 
 class ArkSteedCodeGenerator {
 public:
     ArkSteedCodeGenerator(ArkSteedAssembler *assembler, Graph *graph,
-                          ArkSteedSafepointTableBuilder *safepointBuilder = nullptr)
+                          ArkSteedSafepointTableBuilder *safepointBuilder = nullptr,
+                          DeoptTranslationBuilder *translationBuilder = nullptr,
+                          DeoptLiteralTableBuilder *deoptLiteralTableBuilder = nullptr, bool withColors = false)
         : assembler_(assembler),
           graph_(graph),
           safepointBuilder_(safepointBuilder),
-          blockColorAssignment_(graph->GetChunk())
+          translationBuilder_(translationBuilder),
+          deoptLiteralTableBuilder_(deoptLiteralTableBuilder),
+          eagerDeoptTargetsById_(graph->GetChunk()),
+          blockColorAssignment_(graph->GetChunk()),
+          deferredCode_(graph->GetChunk()),
+          withColors_(withColors)
     {}
 
     void Generate();
@@ -44,23 +56,48 @@ private:
     void ProcessValueVertex(ValueVertex *valueVertex);
     void ProcessNonControlVertex(NonControlVertex *vertex);
     void ProcessControlVertex(ControlVertex *vertex);
-    void DeconstructPhisInSuccessor(BB *successor, int predecessorId);
-    void CollectPhiMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
-                         ArkSteedRegList *registersSetByPhis, ArkDoubleRegList *doubleRegistersSetByPhis,
+    void DeconstructPhisInSuccessor(BB *successor, uint32_t predecessorId);
+    void CollectPhiMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver, BB *successor,
+                         int predecessorId, ArkSteedRegList *registersSetByPhis,
+                         ArkDoubleRegList *doubleRegistersSetByPhis,
                          ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
-    void CollectRegisterStateMoves(GapMoveResolver *resolver, BB *successor, int predecessorId,
-                                   const ArkSteedRegList &registersSetByPhis,
+    void CollectRegisterStateMoves(GapMoveResolver *generalResolver, GapMoveResolver *doubleResolver, BB *successor,
+                                   int predecessorId, const ArkSteedRegList &registersSetByPhis,
                                    const ArkDoubleRegList &doubleRegistersSetByPhis,
                                    ChunkVector<std::pair<AllocatedState, ValueVertex *>> *constantMoves);
     void LoadConstantToRegister(const ValueVertex *constVertex, ArkSteedRegister reg);
-    void ExecuteConstantPhiMove(const AllocatedState &dest, ValueVertex *constVertex,
-                                const ArkSteedRegister *scratchGPR = nullptr);
+    void ExecuteConstantMove(const AllocatedState &dest, ValueVertex *constVertex,
+                             const ArkSteedRegister *scratchGPR = nullptr,
+                             const ArkSteedDoubleRegister *scratchFPR = nullptr);
     void ExecuteGapMove(const InstructionOperand &dest, const InstructionOperand &src,
-                        const ArkSteedRegister *scratchGPR = nullptr);
+                        const ArkSteedRegister *scratchGPR = nullptr,
+                        const ArkSteedDoubleRegister *scratchFPR = nullptr);
     void StoreStubStackArgument(const Vertex *callVertex, int paramIdx, ArkSteedAssembler::MemoryOperand destMem);
+
+    struct EagerDeoptTarget {
+        Label label;
+        DeoptId deoptId;
+
+        explicit EagerDeoptTarget(DeoptId translationId) : deoptId(translationId) {}
+    };
+
+    Label *RecordEagerDeoptTarget(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
+    void BranchToEagerDeoptTarget(Condition condition, const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
+    void EmitEagerDeoptExit(const EagerDeoptimizableMixin *vertex, kungfu::DeoptType type);
+    void EmitQueuedEagerDeoptExits();
+    void EmitEagerDeoptStackOverflow();
 
     int PrepareCommonStubStackArguments(const Vertex *callVertex, int argCount);
     int PrepareRuntimeStubStackArguments(const Vertex *callVertex, int argCount, int runtimeId);
+    void LoadSteedExpectedArgc(ArkSteedRegister target, ArkSteedRegister expectedArgc);
+    void ComputeSteedCallSlotCount(CallVertex *call, ArkSteedRegister slotCount);
+    void PrepareArkSteedCall(CallVertex *call, ArkSteedRegister target, ArkSteedRegister scratch);
+    void FreeArkSteedCallFrame(CallVertex *call);
+    void EmitCallArkSteed(CallVertex *call, ArkSteedRegister target, ArkSteedRegister scratch, Label *exit);
+    void EmitCallGeneric(CallVertex *call, ArkSteedRegister scratch);
+    void EmitReturnWithPendingException();
+    void EmitReturnIfPendingException();
+    int PrepareTrampolineArguments(CallVertex *call, ArkSteedRegister scratch);
 
     template <class VertexT>
     void VisitNonControlVertex(VertexT *vertex);
@@ -79,11 +116,11 @@ private:
 
     void RecordComment(const char *msg);
     void RecordBlockComment(BB *block);
-    void RecordVertexComment(Vertex *vertex);
-    void AppendVertexInputInfo(std::ostringstream *ss, Vertex *vertex);
+    void RecordVertexComment(uint32_t pcBefore, Vertex *vertex);
     void AppendVertexSuccessorInfo(std::ostringstream *ss, Vertex *vertex);
     void RecordGapMoveComment(const InstructionOperand &src, const InstructionOperand &dest, PhiVertex *phi);
     void RecordSpillComment();
+    void EmitDeferredCode();
 
     int ComputeDeferredBlocks();
     void ReorderDeferredBlocks(int deferredCount);
@@ -92,48 +129,25 @@ private:
     bool AllPredecessorsDeferred(BB *block) const;
     bool AllSuccessorsDeferred(BB *block);
 
-    // Block color management for IR visualization
-    static constexpr const char *BLOCK_COLORS[] = {
-        "\033[33m",  // Yellow
-        "\033[36m",  // Cyan
-        "\033[35m",  // Magenta
-        "\033[32m",  // Green
-        "\033[31m",  // Red
-        "\033[34m",  // Blue
-    };
-    static constexpr int NUM_BLOCK_COLORS = 6;
-    static constexpr const char *COLOR_RESET = "\033[0m";
-
-    // Graph coloring for block colors - ensures adjacent blocks have different colors
     void ComputeBlockColors();
     void BuildBlockAdjacencyList(std::vector<std::vector<int>> *adjacentBlocks);
     void AssignBlockColors(const std::vector<std::vector<int>> &adjacentBlocks);
     int GetBlockColorIndex(int blockId) const;
 
-    const char *GetBlockColor(int blockId) const
-    {
-        return BLOCK_COLORS[GetBlockColorIndex(blockId)];
-    }
-
-    void SetCurrentBlockColor(int blockId)
-    {
-        currentBlockColor_ = GetBlockColor(blockId);
-    }
-
-    const char *GetCurrentBlockColor() const
-    {
-        return currentBlockColor_;
-    }
-
     ArkSteedAssembler *assembler_;
     Graph *graph_;
     ArkSteedSafepointTableBuilder *safepointBuilder_;
-    const char *currentBlockColor_ = "";
+    DeoptTranslationBuilder *translationBuilder_;
+    DeoptLiteralTableBuilder *deoptLiteralTableBuilder_;
+    ChunkVector<EagerDeoptTarget *> eagerDeoptTargetsById_;
+    int currentBlockColorIndex_ = 0;
     BB *currentLayoutNextBlock_ = nullptr;
 
     // Block color assignment for CFG coloring (only computed when comments enabled)
     ChunkVector<int> blockColorAssignment_;
+    ArkSteedDeferredCodeList deferredCode_;
     bool blockColorsComputed_ = false;
+    bool withColors_;
 };
 
 }  // namespace panda::ecmascript::arksteed

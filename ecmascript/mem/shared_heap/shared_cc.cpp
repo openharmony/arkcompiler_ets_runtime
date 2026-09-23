@@ -403,6 +403,16 @@ void SharedCC::UpdateRoot()
         ObjectXRay::VisitVMRoots(thread->GetEcmaVM(), rootVisitor);
         thread->GetEcmaVM()->IterateGlobalEnvField(rootVisitor);
         thread->Iterate(rootVisitor);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+        auto *refs = heap->GetEmbeddedCodeRefSet();
+        if (!refs->IsEmpty()) {
+            refs->VisitSharedTargets(rootVisitor);
+            if (!refs->UpdateSharedTargets()) {
+                LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references during SharedCC";
+            }
+        }
+#endif
     });
 }
 

@@ -3732,17 +3732,20 @@ inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef fun
     GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
     GateRef oldVal = LoadPrimitive(VariableType::INT32(), function, bitFieldOffset);
 
-    GateRef mask = Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT);
+    GateRef mask = Int32(JSFunctionBase::COMPILED_CODE_FLAGS_MASK);
     GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)), value);
     Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal, MemoryAttribute::NoBarrier());
 }
 
-inline void StubBuilder::SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall)
+inline void StubBuilder::SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall,
+                                              GateRef isArkSteed)
 {
     SetCodeEntryToFunctionFromFuncEntry(glue, jsFunc, codeEntry);
     GateRef compiledCodeFastCallBits = Int32Add(Int32(1),
                                                 Int32LSL(isFastCall, Int32(JSFunctionBase::IsFastCallBit::START_BIT)));
-    SetCompiledCodeFlagToFunction(glue, jsFunc, compiledCodeFastCallBits);
+    GateRef compiledCodeFlags = Int32Or(compiledCodeFastCallBits,
+        Int32LSL(isArkSteed, Int32(JSFunctionBase::IsArkSteedEntryBit::START_BIT)));
+    SetCompiledCodeFlagToFunction(glue, jsFunc, compiledCodeFlags);
 }
 
 inline GateRef StubBuilder::GetIsFastCall(GateRef machineCode)
@@ -3750,6 +3753,12 @@ inline GateRef StubBuilder::GetIsFastCall(GateRef machineCode)
     GateRef bitfield = LoadPrimitive(VariableType::INT32(), machineCode, IntPtr(MachineCode::BIT_FIELD_OFFSET));
     return Int32And(Int32LSR(bitfield, Int32(MachineCode::IsFastCallBits::START_BIT)),
                     Int32((1LU << MachineCode::IsFastCallBits::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::GetIsArkSteedCode(GateRef machineCode)
+{
+    GateRef bitfield = LoadPrimitive(VariableType::INT32(), machineCode, IntPtr(MachineCode::BIT_FIELD_OFFSET));
+    return Int32And(Int32LSR(bitfield, Int32(MachineCode::IsArkSteedCodeBits::START_BIT)), Int32(1));
 }
 
 inline void StubBuilder::SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateRef function, GateRef value)
@@ -3989,6 +3998,11 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
 inline GateRef StubBuilder::JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type)
 {
     return env_->GetBuilder()->JudgeAotAndFastCall(jsFunc, type);
+}
+
+inline GateRef StubBuilder::HasArkSteedEntry(GateRef jsFunc)
+{
+    return env_->GetBuilder()->HasArkSteedEntry(jsFunc);
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)

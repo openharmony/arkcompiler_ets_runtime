@@ -18,7 +18,6 @@
 
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/log_wrapper.h"
@@ -49,7 +48,7 @@ struct ArrowTarget {
 
 class GraphPrinter {
 public:
-    explicit GraphPrinter(Chunk *chunk, bool hasRegallocData);
+    explicit GraphPrinter(Chunk *chunk, bool withColors = false);
 
     void PreProcessGraph(Graph *graph);
     void PostProcessGraph(Graph *graph);
@@ -70,17 +69,14 @@ private:
     std::string FormatControlVertexTargets(ControlVertex *vertex) const;
     std::string Indent() const;
 
-    std::string ValueRepresentationToString(ValueRepresentation repr) const;
-    std::string FormatVertexStubInfo(Vertex *vertex) const;
-    std::string FormatVertexInputs(Vertex *vertex, ArkSteedGraphLabeller *labeller) const;
     std::string FormatVertexAnnotations(Vertex *vertex) const;
     void PrintConstants(Graph *graph);
     bool HasConstantsToPrint(Graph *graph) const;
-    void PrintRootConstants(Graph *graph, ArkSteedGraphLabeller *labeller);
-    void PrintInt32Constants(Graph *graph, ArkSteedGraphLabeller *labeller);
-    void PrintIntPtrConstants(Graph *graph, ArkSteedGraphLabeller *labeller);
-    void PrintFloat64Constants(Graph *graph, ArkSteedGraphLabeller *labeller);
-    void PrintTaggedConstants(Graph *graph, ArkSteedGraphLabeller *labeller);
+    void PrintInt32Constants(Graph *graph);
+    void PrintIntPtrConstants(Graph *graph);
+    void PrintFloat64Constants(Graph *graph);
+    void PrintTaggedConstants(Graph *graph);
+    void PrintHeapConstants(Graph *graph);
     std::string DecodeTaggedValue(uint64_t value) const;
 
     size_t AddTarget(BB *target, BB *currentBlock);
@@ -90,9 +86,9 @@ private:
     std::string GetArrowColumn(ChunkSet<size_t> *arrowsStarting);
 
     Chunk *chunk_;
-    bool hasRegallocData_;
+    bool withColors_;
     int totalVertices_;
-    int totalBlocks_;
+    uint32_t totalBlocks_;
     BB *currentBlock_;
     int verticesInCurrentBlock_;
 

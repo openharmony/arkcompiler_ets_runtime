@@ -17,7 +17,6 @@
 #define ECMASCRIPT_ARKSTEED_GRAPH_H
 
 #include "ecmascript/arksteed/arksteed_bb.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -38,13 +37,12 @@ public:
         : chunk_(chunk),
           blocks_(chunk),
           parameters_(chunk),
-          rootConstants_(chunk),
           int32Constants_(chunk),
-          intPtrConstants_(chunk),
+          int64Constants_(chunk),
           float64Constants_(chunk),
           taggedConstants_(chunk),
+          heapConstants_(chunk),
           maxCallStackArgs_(0),
-          maxDeoptedStackSize_(0),
           taggedStackSlots_(0),
           untaggedStackSlots_(0),
           maxBlockId_(0),
@@ -54,19 +52,20 @@ public:
 
     // ========================================= Constant Accessors =========================================
 
-    ValueVertex *GetRootConstant(RootConstantVertex::RootIndex index)
-    {
-        return GetOrAddNewConstantVertex(rootConstants_, index);
-    }
-
     ValueVertex *GetInt32Constant(int32_t value)
     {
         return GetOrAddNewConstantVertex(int32Constants_, value);
     }
 
+    ValueVertex *GetInt64Constant(int64_t value)
+    {
+        return GetOrAddNewConstantVertex(int64Constants_, value);
+    }
+
+    // TODO: adaptation for 32-bit platform — forwards to GetInt64Constant for now
     ValueVertex *GetIntPtrConstant(intptr_t value)
     {
-        return GetOrAddNewConstantVertex(intPtrConstants_, value);
+        return GetInt64Constant(static_cast<int64_t>(value));
     }
 
     ValueVertex *GetFloat64Constant(double value)
@@ -79,9 +78,16 @@ public:
         return GetOrAddNewConstantVertex(taggedConstants_, value);
     }
 
-    const ChunkMap<RootConstantVertex::RootIndex, RootConstantVertex *> &GetRootConstants() const
+    ValueVertex *GetHeapConstant(uint32_t handleIndex, uint16_t staticNodeType)
     {
-        return rootConstants_;
+        auto it = heapConstants_.find(handleIndex);
+        if (it != heapConstants_.end()) {
+            ASSERT(it->second->GetStaticNodeType() == staticNodeType);
+            return it->second;
+        }
+        HeapConstantVertex *vertex = Vertex::New<HeapConstantVertex>(chunk_, 0, handleIndex, staticNodeType);
+        heapConstants_.emplace(handleIndex, vertex);
+        return vertex;
     }
 
     const ChunkMap<int32_t, Int32ConstantVertex *> &GetInt32Constants() const
@@ -89,9 +95,15 @@ public:
         return int32Constants_;
     }
 
-    const ChunkMap<intptr_t, IntPtrConstantVertex *> &GetIntPtrConstants() const
+    const ChunkMap<int64_t, Int64ConstantVertex *> &GetInt64Constants() const
     {
-        return intPtrConstants_;
+        return int64Constants_;
+    }
+
+    // TODO: adaptation for 32-bit platform — forwards to GetInt64Constants for now
+    const ChunkMap<int64_t, Int64ConstantVertex *> &GetIntPtrConstants() const
+    {
+        return GetInt64Constants();
     }
 
     const ChunkMap<double, Float64ConstantVertex *> &GetFloat64Constants() const
@@ -104,19 +116,24 @@ public:
         return taggedConstants_;
     }
 
-    BB *operator[](int i)
+    const ChunkMap<uint32_t, HeapConstantVertex *> &GetHeapConstants() const
+    {
+        return heapConstants_;
+    }
+
+    BB *operator[](uint32_t i)
     {
         return blocks_[i];
     }
 
-    const BB *operator[](int i) const
+    const BB *operator[](uint32_t i) const
     {
         return blocks_[i];
     }
 
-    int NumBlocks() const
+    uint32_t NumBlocks() const
     {
-        return static_cast<int>(blocks_.size());
+        return static_cast<uint32_t>(blocks_.size());
     }
 
     void Add(BB *block)
@@ -163,9 +180,9 @@ public:
         parameters_.push_back(param);
     }
 
-    ValueVertex *GetParameter(int index) const
+    ValueVertex *GetParameter(uint32_t index) const
     {
-        if (index < 0 || index >= static_cast<int>(parameters_.size())) {
+        if (index >= parameters_.size()) {
             return nullptr;
         }
         return parameters_[index];
@@ -214,24 +231,14 @@ public:
     }
 
     // Max call stack args for code generation
-    void SetMaxCallStackArgs(int args)
+    void SetMaxCallStackArgs(uint32_t args)
     {
         maxCallStackArgs_ = args;
     }
 
-    int GetMaxCallStackArgs() const
+    uint32_t GetMaxCallStackArgs() const
     {
         return maxCallStackArgs_;
-    }
-
-    void SetMaxDeoptedStackSize(int size)
-    {
-        maxDeoptedStackSize_ = size;
-    }
-
-    int GetMaxDeoptedStackSize() const
-    {
-        return maxDeoptedStackSize_;
     }
 
     void SetTaggedStackSlots(uint32_t slots)
@@ -254,23 +261,17 @@ public:
         return untaggedStackSlots_;
     }
 
-    // Debugging
-    void Print() const;
+    void SetReuseStackSlots(bool reuse)
+    {
+        reuseStackSlots_ = reuse;
+    }
+
+    bool GetReuseStackSlots() const
+    {
+        return reuseStackSlots_;
+    }
 
 private:
-    Chunk *chunk_;
-    ChunkVector<BB *> blocks_;
-    ChunkVector<ValueVertex *> parameters_;
-    ChunkMap<RootConstantVertex::RootIndex, RootConstantVertex *> rootConstants_;
-    ChunkMap<int32_t, Int32ConstantVertex *> int32Constants_;
-    ChunkMap<intptr_t, IntPtrConstantVertex *> intPtrConstants_;
-    ChunkMap<double, Float64ConstantVertex *> float64Constants_;
-    ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
-    int maxCallStackArgs_ = 0;
-    int maxDeoptedStackSize_ = 0;
-    uint32_t taggedStackSlots_ = 0;
-    uint32_t untaggedStackSlots_ = 0;
-
     template <typename VertexT, typename T>
     VertexT *GetOrAddNewConstantVertex(ChunkMap<T, VertexT *> &container, T constant)
     {
@@ -279,17 +280,25 @@ private:
             return it->second;
         }
         VertexT *vertex = Vertex::New<VertexT>(chunk_, 0, constant);
-        ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
-        if (labeller != nullptr) {
-            labeller->RegisterVertex(vertex);
-        }
         container.emplace(constant, vertex);
         return vertex;
     }
 
+    Chunk *chunk_;
+    ChunkVector<BB *> blocks_;
+    ChunkVector<ValueVertex *> parameters_;
+    ChunkMap<int32_t, Int32ConstantVertex *> int32Constants_;
+    ChunkMap<int64_t, Int64ConstantVertex *> int64Constants_;
+    ChunkMap<double, Float64ConstantVertex *> float64Constants_;
+    ChunkMap<uint64_t, TaggedConstantVertex *> taggedConstants_;
+    ChunkMap<uint32_t, HeapConstantVertex *> heapConstants_;
+    uint32_t maxCallStackArgs_ = 0;
+    uint32_t taggedStackSlots_ = 0;
+    uint32_t untaggedStackSlots_ = 0;
     uint32_t maxBlockId_;
     bool hasRecursiveCalls_;
     bool mayHaveUnreachableBlocks_;
+    bool reuseStackSlots_ = true;
 };
 
 }  // namespace panda::ecmascript::arksteed

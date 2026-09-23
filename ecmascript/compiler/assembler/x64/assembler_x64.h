@@ -84,15 +84,43 @@ public:
     // Floating-point operations
     void Movsd(XMMRegister dst, XMMRegister src);
     void Movsd(XMMRegister dst, const Operand &src);  // Load double from memory to XMM
+    void Movsd(const Operand &dst, XMMRegister src);  // Store double from XMM to memory
+    void Movss(XMMRegister dst, const Operand &src);  // Load float from memory to XMM
+    void Cvtss2sd(XMMRegister src, XMMRegister dst);
+    void Movss(const Operand &dst, XMMRegister src);
+    void Cvtsd2ss(XMMRegister src, XMMRegister dst);
+    void Movb(Register src, const Operand &dst);
+    void Movw(Register src, const Operand &dst);
     void Movq(XMMRegister dst, Register src);  // Move from GP register to XMM register
+    void Movq(Register dst, XMMRegister src);  // Move from XMM register to GP register
+    void Cvtsi2sd(Register src, XMMRegister dst);
+    void Cvtsi2sd32(Register src, XMMRegister dst);
+    void Addsd(XMMRegister src, XMMRegister dst);
+    void Subsd(XMMRegister src, XMMRegister dst);
+    void Mulsd(XMMRegister src, XMMRegister dst);
+    void Divsd(XMMRegister src, XMMRegister dst);
+    void Ucomisd(XMMRegister src, XMMRegister dst);
     void Addq(Immediate src, Register dst);
     void Addq(Register src, Register dst);
     void Addl(Immediate src, Register dst);
+    void Addl(Register src, Register dst);
     void Subq(Immediate src, Register dst);
     void Subq(Register src, Register dst);
     void Subl(Immediate src, Register dst);
+    void Subl(Register src, Register dst);
+    void Imull(Register src, Register dst);
+    void Imull(Register src);
+    void Negl(Register dst);
+    void Incl(Register dst);
+    void Decl(Register dst);
+    void Notl(Register dst);
+    void Xorpd(XMMRegister src, XMMRegister dst);
+    void Cvttsd2si64(XMMRegister src, Register dst);
+    void Cdq();
+    void Idivl(Register src);
     void Cmpq(Immediate src, Register dst);
     void Cmpq(Register src, Register dst);
+    void Cmpq(Register src, const Operand &dst);
     void Cmpl(Immediate src, Register dst);
     void Cmpb(Immediate src, Register dst);
     void Cmp(Immediate src, Register dst);
@@ -107,9 +135,14 @@ public:
 
     void Andq(Immediate src, Register dst);
     void Andl(Immediate src, Register dst);
+    void Andl(Register src, Register dst);
     void And(Register src, Register dst);
     void Or(Immediate src, Register dst);
+    void Orl(Immediate src, Register dst);
+    void Orl(Register src, Register dst);
     void Orq(Register src, Register dst);
+    void Xorl(Immediate src, Register dst);
+    void Xorl(Register src, Register dst);
     void Btq(Immediate src, Register dst);
     void Btl(Immediate src, Register dst);
     void Cmpl(Register src, Register dst);
@@ -123,12 +156,18 @@ public:
     void Jne(Label *target, Distance distance = Distance::Far);
     void Jbe(Label *target, Distance distance = Distance::Far);
     void Jnz(Label *target, Distance distance = Distance::Far);
+    void Jl(Label *target, Distance distance = Distance::Far);
     void Jle(Label *target, Distance distance = Distance::Far);
     void Jae(Label *target, Distance distance = Distance::Far);
     void Jnb(Label *target, Distance distance = Distance::Far);
+    void Jo(Label *target, Distance distance = Distance::Far);
+    void Jno(Label *target, Distance distance = Distance::Far);
+    void Jp(Label *target, Distance distance = Distance::Far);
+    void Jnp(Label *target, Distance distance = Distance::Far);
     void Leaq(const Operand &src, Register dst);
     void Leal(const Operand &src, Register dst);
     void Movl(Register src, Register dst);
+    void Movsxd(Register src, Register dst);
     void Movl(const Operand &src, Register dst);
     void Movl(Register dst, const Operand& src);
     void Movzbq(const Operand &src, Register dst);
@@ -137,8 +176,12 @@ public:
     void Movabs(uint64_t src, Register dst);
     void Shrq(Immediate src, Register dst);
     void Shrl(Immediate src, Register dst);
+    void ShrlCl(Register dst);
     void Shr(Immediate src, Register dst);
     void Shll(Immediate src, Register dst);
+    void ShllCl(Register dst);
+    void Sarl(Immediate src, Register dst);
+    void SarlCl(Register dst);
     void Shlq(Immediate src, Register dst);
     void Btsl(Register src, Register dst);
     void Testq(Immediate src, Register dst);
@@ -227,6 +270,7 @@ private:
     void EmitJne(int32_t offset);
     void EmitJbe(int32_t offset);
     void EmitJnz(int32_t offset);
+    void EmitJl(int32_t offset);
     void EmitJle(int32_t offset);
     void EmitJae(int32_t offset);
     void EmitJg(int32_t offset);
@@ -234,6 +278,10 @@ private:
     void EmitJe(int32_t offset);
     void EmitCall(int32_t offset);
     void EmitJnb(int32_t offset);
+    void EmitJo(int32_t offset);
+    void EmitJno(int32_t offset);
+    void EmitJp(int32_t offset);
+    void EmitJnp(int32_t offset);
     // +---+---+---+---+---+---+---+---+
     // | 0   1   0   0 | W | R | X | B |
     // +---+---+---+---+---+---+---+---+

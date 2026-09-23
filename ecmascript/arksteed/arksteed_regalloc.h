@@ -16,26 +16,46 @@
 #ifndef ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_H
 #define ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_H
 
+#include <cstdint>
 #include "ecmascript/arksteed/arksteed_bb.h"
-#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
+#include "ecmascript/arksteed/arksteed_register_merge_state.h"
 #include "ecmascript/arksteed/arksteed_reglist.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
 
 namespace panda::ecmascript::arksteed {
 
 class Graph;
-class ArkSteedGraphLabeller;
 class BB;
 class Vertex;
 class ValueVertex;
 class PhiVertex;
 class ControlVertex;
-class VertexInput;
 class InputLocation;
 class RegallocValueVertexInfo;
 class InstructionOperand;
+
+template <typename RegisterT>
+RegisterT GetRegisterHint(const InstructionOperand &hint)
+{
+    if (!hint.IsUnallocated()) {
+        return RegisterT::Invalid();
+    }
+
+    const UnallocatedState operand = UnallocatedState::Cast(hint);
+    if constexpr (std::is_same_v<RegisterT, ArkSteedRegister>) {
+        if (operand.HasFixedRegisterPolicy()) {
+            return ArkSteedRegister::FromCode(operand.GetFixedRegisterIndex());
+        }
+    } else {
+        static_assert(std::is_same_v<RegisterT, ArkSteedDoubleRegister>);
+        if (operand.HasFixedFPRegisterPolicy()) {
+            return RegListRegisterTraits<ArkSteedDoubleRegister>::FromCode(operand.GetFixedRegisterIndex());
+        }
+    }
+    return RegisterT::Invalid();
+}
 
 // =============================================================================
 // RegisterSnapshot - Manages register state during code generation
@@ -203,15 +223,16 @@ public:
     // Allocate a register for the given vertex
     AllocatedState AllocateRegister(ValueVertex *vertex, const InstructionOperand &hint)
     {
-        // to do: use hint
         ASSERT(!UnblockedFreeIsEmpty());
-        RegisterT reg = UnblockedFree().First();
+        RegisterT reg = GetRegisterHint<RegisterT>(hint);
+        if (!reg.IsValid() || !UnblockedFree().Has(reg)) {
+            reg = UnblockedFree().First();
+        }
         RemoveFromFree(reg);
         SetValue(reg, vertex);
         return OperandForVertexRegister(vertex, reg);
     }
 
-    // to do: hint not use now
     InstructionOperand TryChooseInputRegister(ValueVertex *vertex, const InstructionOperand &hint)
     {
         auto *vertexInfo = vertex->GetRegallocInfo();
@@ -227,7 +248,10 @@ public:
         // Prefer to return an existing blocked register
         RegTList blockedResult = resultRegisters & blocked_;
         if (!blockedResult.IsEmpty()) {
-            RegisterT reg = blockedResult.First();
+            RegisterT reg = GetRegisterHint<RegisterT>(hint);
+            if (!reg.IsValid() || !blockedResult.Has(reg)) {
+                reg = blockedResult.First();
+            }
             return OperandForVertexRegister(vertex, reg);
         }
         // Otherwise use the first result register
@@ -236,8 +260,26 @@ public:
         return OperandForVertexRegister(vertex, reg);
     }
 
-    // to do: Not use now
-    // Try to use an unblocked register that already has the value
+    InstructionOperand TryChooseUnblockedInputRegister(ValueVertex *vertex)
+    {
+        auto *vertexInfo = vertex->GetRegallocInfo();
+        RegTList resultRegisters;
+        if constexpr (IS_GENERAL_REGISTER) {
+            resultRegisters = vertexInfo->GetRegisterResult();
+        } else {
+            resultRegisters = vertexInfo->GetDoubleRegisterResult();
+        }
+        if (resultRegisters.IsEmpty()) {
+            return InstructionOperand();  // INVALID
+        }
+        RegTList unblockedResult = resultRegisters - blocked_;
+        if (!unblockedResult.IsEmpty()) {
+            RegisterT reg = unblockedResult.First();
+            Block(reg);
+            return OperandForVertexRegister(vertex, reg);
+        }
+        return InstructionOperand();  // INVALID
+    }
 
 private:
     ValueVertex *values_[RegisterT::NUM_REGISTERS] = {nullptr};
@@ -296,6 +338,9 @@ private:
 
     struct SpillLocations {
         int top = 0;
+        // Sorted from earliest freedAtPosition to latest freedAtPosition.
+        // Allocations reuse the newest freed slot whose freedAtPosition is
+        // before the new value's live-range start (found via binary search).
         std::vector<SpillInfo> freeSlots;
     };
 
@@ -314,7 +359,6 @@ private:
     void TryAllocatePhisToInput(ChunkVector<PhiVertex *> &phis);
     void TryAllocatePhisToRegister(ChunkVector<PhiVertex *> &phis);
     void SpillRemainingPhis(ChunkVector<PhiVertex *> &phis);
-    void LogPhiAllocationResult(ChunkVector<PhiVertex *> &phis);
 
     void MarkAsClobbered(ValueVertex *vertex, const AllocatedState &location);
 
@@ -322,7 +366,10 @@ private:
     void AssignArbitraryRegisterInput(Vertex *resultVertex, const Input &input);
     void AssignAnyInput(const Input &input);
     void AssignInputs(Vertex *vertex);
-    void VerifyInputs(Vertex *vertex);
+    void AssignDeoptInputs(Vertex *vertex);
+    void AssignDeoptInput(ValueVertex *vertex, InputLocation *location);
+    void AssignEagerDeoptFrameSourceLocations(Vertex *vertex);
+    void AssignDeoptFrameSourceLocation(ValueVertex *value, InputLocation *sourceLocation);
 
     void AssignFixedTemporaries(Vertex *vertex);
     template <typename RegisterT>
@@ -336,6 +383,7 @@ private:
     void SpillRegisters();
     void SpillAndClearRegisters();
     void SpillCatchPhiInputsOfIndex(BB *catchBlock, uint32_t index);
+    void SaveDeferredRegisterSnapshot(Vertex *vertex);
 
     // SpillAndClearRegisters as inline template, calls ClearRegisters with spill=true
     template <typename RegisterT>
@@ -343,6 +391,9 @@ private:
     {
         ClearRegisters<RegisterT, true>(registers);
     }
+
+    template <typename RegisterT>
+    void SpillAndClearRegisters(RegisterSnapshot<RegisterT> &registers, RegListBase<RegisterT> clobbered);
 
     void ClearRegisters();
 
@@ -398,31 +449,43 @@ private:
     AllocatedState AllocateRegisterAtEnd(ValueVertex *vertex);
 
     template <typename RegisterT>
+    void EnsureFreeRegisterAtEnd(RegisterSnapshot<RegisterT> &registers, const InstructionOperand &hint);
+    template <typename RegisterT>
+    RegisterT FindReusableBlockedInputRegister(RegisterSnapshot<RegisterT> &registers, RegisterT hintReg);
+    template <typename RegisterT>
+    RegisterT FindLastUseBlockedRegister(RegisterSnapshot<RegisterT> &registers, RegisterT hintReg);
+
+    template <typename RegisterT>
     AllocatedState ForceAllocate(RegisterSnapshot<RegisterT> &registers, RegisterT reg, ValueVertex *vertex);
 
     // Template helper to allocate register
     template <typename RegisterT>
-    AllocatedState AllocateRegisterInternal(RegisterSnapshot<RegisterT> &registers, ValueVertex *vertex);
+    AllocatedState AllocateRegisterInternal(RegisterSnapshot<RegisterT> &registers, ValueVertex *vertex,
+                                            const InstructionOperand &hint);
 
     AllocatedState ForceAllocate(ArkSteedRegister reg, ValueVertex *vertex);
     AllocatedState ForceAllocate(ArkSteedDoubleRegister reg, ValueVertex *vertex);
     AllocatedState ForceAllocate(const Input &input, ValueVertex *vertex);
 
     // Phi allocation helpers
+    template <typename RegisterT>
+    void SetLoopPhiRegisterHint(PhiVertex *phi, RegisterT reg);
     void TryAllocateToInput(PhiVertex *phi);
 
     void VerifyRegisterState();
     bool AllUsedRegistersLiveAt(BB *block);
 
+    void HoistLoopReloads(BB *target);
+    void HoistLoopSpills(BB *target);
     void InitializeBranchTargetPhis(int predecessorId, BB *target);
     void InitializeBranchTargetRegisterValues(ControlVertex *control, BB *target);
     void MergeRegisterValues(ControlVertex *control, BB *target, int predecessorId);
     template <typename RegisterT>
     void MergeRegisterState(RegisterSnapshot<RegisterT> &registers, RegisterT reg, RegisterState &state,
-                            ControlVertex *control, BB *target, int predecessorId, int predecessorCount);
+                            ControlVertex *control, BB *target, uint32_t predecessorId, uint32_t predecessorCount);
     template <typename RegisterT>
     void CreateRegisterMerge(RegisterSnapshot<RegisterT> &registers, RegisterT reg, RegisterState &state,
-                             ControlVertex *control, BB *target, int predecessorId, int predecessorCount,
+                             ControlVertex *control, BB *target, uint32_t predecessorId, uint32_t predecessorCount,
                              ValueVertex *vertex, ValueVertex *incoming, const AllocatedState &registerOperand);
     void InitializeConditionalBranchTarget(ControlVertex *controlVertex, BB *target);
     void InitializeEmptyBlockRegisterValues(ControlVertex *source, BB *target);
@@ -431,15 +494,11 @@ private:
 
     void ClearRegisterValues();
     void InitializeRegisterValues(RegisterMergeState &registerState);
-    void DebugDumpRegisterValues(RegisterMergeState &registerState, uint32_t predecessorCount);
 
     template <typename Function>
     void ForEachRegisterMergeState(RegisterMergeState &mergeState, Function &&f);
 
     bool IsCurrentVertexLastUse(ValueVertex *vertex);
-
-    // to do: Remove this function after debugging done
-    void DumpCurrentRegisters(std::string_view prompt = "");
 
     Graph *graph_;
     BB *currentBlock_ = nullptr;

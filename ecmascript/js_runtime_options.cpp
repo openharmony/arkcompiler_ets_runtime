@@ -69,6 +69,10 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-arksteed-print-method-name: Enable printing method name via ArkSteed runtime stub. "
     "Default: 'true'\n"
     "--compiler-arksteed-print-code:       Enable printing ArkSteed generated code. Default: 'false'\n"
+    "--compiler-arksteed-print-with-colors: Enable ANSI colors in ArkSteed graph dump. Default: 'false'\n"
+    "--compiler-arksteed-reuse-stack-slots: Enable stack slot reuse in ArkSteed regalloc. Default: 'true'\n"
+    "--compiler-arksteed-deopt-on-insufficient-profile: Enable ArkSteed eager deopt for insufficient profile. "
+    "Default: 'true'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
@@ -194,6 +198,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n"
     "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
+    "--compiler-jit-backend:               JIT backend: 'arksteed' or 'fastjit'. Default: 'arksteed'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
     "--compiler-enable-framework-aot:      Enable frame aot: Default: 'true'\n"
     "--compiler-enable-pgo-space:          Enable pgo space used for compiler. Default: 'true'\n"
@@ -261,6 +266,12 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-arksteed-enable-code-comment", required_argument, nullptr,
          OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT},
         {"compiler-arksteed-print-code", required_argument, nullptr, OPTION_COMPILER_ARKSTEED_PRINT_CODE},
+        {"compiler-arksteed-print-with-colors", required_argument, nullptr,
+         OPTION_COMPILER_ARKSTEED_PRINT_WITH_COLORS},
+        {"compiler-arksteed-reuse-stack-slots", required_argument, nullptr,
+         OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS},
+        {"compiler-arksteed-deopt-on-insufficient-profile", required_argument, nullptr,
+         OPTION_COMPILER_ARKSTEED_DEOPT_ON_INSUFFICIENT_PROFILE},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"compiler-log-all-methods-time", required_argument, nullptr, OPTION_COMPILER_LOG_ALL_METHODS_TIME},
@@ -368,6 +379,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
         {"compiler-enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
+        {"compiler-jit-backend", required_argument, nullptr, OPTION_COMPILER_JIT_BACKEND},
         {"compiler-enable-dfx-hisys-event", required_argument, nullptr, OPTION_COMPILER_ENABLE_DFX_HISYS_EVENT},
         {"compiler-enable-osr", required_argument, nullptr, OPTION_COMPILER_ENABLE_OSR},
         {"compiler-trace-jit", required_argument, nullptr, OPTION_COMPILER_TRACE_JIT},
@@ -911,6 +923,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_ARKSTEED_PRINT_WITH_COLORS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedPrintWithColors(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedReuseStackSlots(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_DEOPT_ON_INSUFFICIENT_PROFILE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedDeoptOnInsufficientProfile(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_ASM_OPT_LEVEL:
                 ret = ParseUint32Param("compiler-opt-level", &argUint32);
                 if (ret) {
@@ -1288,6 +1324,17 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 if (ret) {
                     SetEnableJIT(argBool);
                 } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_JIT_BACKEND:
+                if (std::string(optarg) == "arksteed") {
+                    SetCompilerJitBackend(JitBackend::ARKSTEED);
+                } else if (std::string(optarg) == "fastjit") {
+                    SetCompilerJitBackend(JitBackend::FASTJIT);
+                } else {
+                    LOG_ECMA(ERROR) << "Invalid compiler-jit-backend: '" << optarg
+                                    << "', expected 'arksteed' or 'fastjit'";
                     return false;
                 }
                 break;

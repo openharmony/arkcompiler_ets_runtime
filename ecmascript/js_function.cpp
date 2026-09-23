@@ -636,8 +636,16 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 #endif
 
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    res = thread->GetEcmaVM()->ExecuteArkSteed(actualNumArgs, args.data(), prevFp);
-#else
+    if (mainFunc->HasArkSteedEntry()) {
+        args = {mainFunc.GetTaggedType(), JSTaggedValue::Undefined().GetRawData(), thisArg.GetTaggedType()};
+        if (cjsInfo != nullptr) {
+            args.insert(args.end(), {cjsInfo->exportsHdl.GetTaggedType(), cjsInfo->requireHdl.GetTaggedType(),
+                                     cjsInfo->moduleHdl.GetTaggedType(), cjsInfo->filenameHdl.GetTaggedType(),
+                                     cjsInfo->dirnameHdl.GetTaggedType()});
+        }
+        res = thread->GetEcmaVM()->ExecuteArkSteed(args.size() - NUM_MANDATORY_JSFUNC_ARGS, args.data(), prevFp);
+    } else
+#endif
     if (mainFunc->IsCompiledFastCall()) {
         // entry of aot
         args = JSFunction::GetArgsData(thread, true, thisArg, mainFunc, cjsInfo);
@@ -647,7 +655,6 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         // entry of aot
         res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
     }
-#endif
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), mainFunc.GetTaggedType());
@@ -702,10 +709,10 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
 #if ECMASCRIPT_ENABLE_ARK_STEED
-    size_t actualNumArgs = info->GetArgsNumber();
-    // Steed entry: call runtime stub ArkSteedCallEntry
-    resultValue = thread->GetEcmaVM()->ExecuteArkSteed(actualNumArgs, info->GetArgs(), prevFp);
-#else
+    if (func->HasArkSteedEntry()) {
+        resultValue = thread->GetEcmaVM()->ExecuteArkSteed(info->GetArgsNumber(), info->GetArgs(), prevFp);
+    } else
+#endif
     if (func->IsCompiledFastCall()) {
         if (needPushArgv) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
@@ -718,7 +725,6 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(),
             info->GetArgs(), prevFp, needPushArgv);
     }
-#endif
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
@@ -1332,12 +1338,13 @@ bool JSFunction::IsSharedFunction() const
     return false;
 }
 
-void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
+void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall, bool isArkSteed)
 {
     ASSERT(codeEntry != 0);
     SetCodeEntry(codeEntry);
-    SetIsCompiledFastCall(isFastCall);
-    SetCompiledCodeBit(true);
+    uint32_t bitField = IsCompiledCodeBit::Update(GetBitField(), true);
+    bitField = IsFastCallBit::Update(bitField, isFastCall);
+    SetBitField(IsArkSteedEntryBit::Update(bitField, isArkSteed));
 }
 
 void JSFunction::SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall)
@@ -1346,7 +1353,7 @@ void JSFunction::SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode>
     ASSERT(codeEntry != 0);
 
     SetMachineCode(thread, machineCode);
-    SetCompiledFuncEntry(codeEntry, isFastCall);
+    SetCompiledFuncEntry(codeEntry, isFastCall, machineCode->GetIsArkSteedCode());
 }
 
 void JSFunction::SetJitHotnessCnt(const JSThread *thread, uint16_t cnt)
@@ -1370,8 +1377,7 @@ uint16_t JSFunction::GetJitHotnessCnt(const JSThread *thread) const
 
 void JSFunctionBase::ClearCompiledCodeFlags()
 {
-    SetCompiledCodeBit(false);
-    SetIsCompiledFastCall(false);
+    SetBitField(GetBitField() & ~COMPILED_CODE_FLAGS_MASK);
 }
 
 void JSFunction::ClearMachineCode(const JSThread *thread)

@@ -65,7 +65,7 @@ public:
         return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
     }
 
-    void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
+    void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall, bool isArkSteed = false);
 
     void SetIsCompiledFastCall(bool isFastCall)
     {
@@ -108,6 +108,9 @@ public:
     {
         uint32_t bitField = GetBitField();
         uint32_t newValue = IsCompiledCodeBit::Update(bitField, isCompiled);
+        if (!isCompiled) {
+            newValue = IsArkSteedEntryBit::Update(newValue, false);
+        }
         SetBitField(newValue);
     }
 
@@ -118,6 +121,11 @@ public:
     }
 
     void ClearCompiledCodeFlags();
+
+    bool HasArkSteedEntry() const
+    {
+        return IsArkSteedEntryBit::Decode(GetBitField());
+    }
 
     void SetTaskConcurrentFuncFlag(bool value)
     {
@@ -189,6 +197,10 @@ public:
     using JitCompilingFlagBit = TaskConcurrentFuncFlagBit::NextFlag; // offset 3
     using BaselinejitCompilingFlagBit = JitCompilingFlagBit::NextFlag; // offset 4
     using IsCallNapiBit = BaselinejitCompilingFlagBit::NextFlag; // offset 5
+    // Describes the current CodeEntry. Set only together with IsCompiledCodeBit.
+    using IsArkSteedEntryBit = IsCallNapiBit::NextFlag; // offset 6
+    static constexpr uint32_t COMPILED_CODE_FLAGS_MASK =
+        COMPILED_CODE_FASTCALL_BITS | IsArkSteedEntryBit::Mask();
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)

@@ -309,6 +309,7 @@ void name##Stub::GenerateX64(Assembler *assembler)                              
     assemblerX64->Align16();                                                                      \
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
 #define DECLARE_ARKSTEED_TRAMPOLINE_X64_GENERATE(name)                                            \
 void name##Stub::GenerateX64(Assembler *assembler)                                                \
 {                                                                                                 \
@@ -316,6 +317,7 @@ void name##Stub::GenerateX64(Assembler *assembler)                              
     x64::ArkSteedCall::name(assemblerX64);                                                        \
     assemblerX64->Align16();                                                                      \
 }
+#endif
 
 
 #define DECLARE_JSCALL_TRAMPOLINE_AARCH64_GENERATE(name)                                                \
@@ -346,12 +348,14 @@ void name##Stub::GenerateAarch64(Assembler *assembler)                          
     aarch64::BaselineCall::name(assemblerAarch64);                                                      \
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
 #define DECLARE_ARKSTEED_TRAMPOLINE_AARCH64_GENERATE(name)                                              \
 void name##Stub::GenerateAarch64(Assembler *assembler)                                                  \
 {                                                                                                       \
     aarch64::ExtendedAssembler *assemblerAarch64 = static_cast<aarch64::ExtendedAssembler*>(assembler); \
     aarch64::ArkSteedCall::name(assemblerAarch64);                                                      \
 }
+#endif
 
 
 JS_CALL_TRAMPOLINE_LIST(DECLARE_JSCALL_TRAMPOLINE_X64_GENERATE)

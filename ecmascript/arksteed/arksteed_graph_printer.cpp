@@ -17,14 +17,10 @@
 
 #include <sstream>
 
+#include "ecmascript/arksteed/arksteed_dump_helper.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
-#include "ecmascript/arksteed/arksteed_graph_labeller.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_opcode_list.h"
-#include "ecmascript/base/bit_helper.h"
-#include "ecmascript/compiler/common_stub_csigns.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/js_tagged_value_wrapper.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -87,9 +83,9 @@ struct Connection {
     uint8_t connected = 0;
 };
 
-GraphPrinter::GraphPrinter(Chunk *chunk, bool hasRegallocData)
+GraphPrinter::GraphPrinter(Chunk *chunk, bool withColors)
     : chunk_(chunk),
-      hasRegallocData_(hasRegallocData),
+      withColors_(withColors),
       totalVertices_(0),
       totalBlocks_(0),
       currentBlock_(nullptr),
@@ -114,7 +110,7 @@ void GraphPrinter::PreProcessGraph(Graph *graph)
     for (BB *block : *graph) {
         blockOrder_.push_back(block);
         // Skip predecessor processing for blocks without register merge state
-        if (block->HasRegisterMerge()) {
+        if (block->HasRegisterMergeState()) {
             const auto &predecessors = block->GetPredecessors();
             for (BB *pred : predecessors) {
                 successorsMap_[pred].push_back(block);
@@ -145,8 +141,6 @@ void GraphPrinter::PostProcessGraph(Graph *graph)
 
 void GraphPrinter::PrintConstants(Graph *graph)
 {
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
-
     if (!HasConstantsToPrint(graph)) {
         return;
     }
@@ -154,90 +148,53 @@ void GraphPrinter::PrintConstants(Graph *graph)
     LOG_COMPILER(INFO) << "";
     LOG_COMPILER(INFO) << "Constants:";
 
-    PrintRootConstants(graph, labeller);
-    PrintInt32Constants(graph, labeller);
-    PrintIntPtrConstants(graph, labeller);
-    PrintFloat64Constants(graph, labeller);
-    PrintTaggedConstants(graph, labeller);
+    PrintInt32Constants(graph);
+    PrintIntPtrConstants(graph);
+    PrintFloat64Constants(graph);
+    PrintTaggedConstants(graph);
+    PrintHeapConstants(graph);
 }
 
 bool GraphPrinter::HasConstantsToPrint(Graph *graph) const
 {
-    return !graph->GetRootConstants().empty() || !graph->GetInt32Constants().empty() ||
-           !graph->GetFloat64Constants().empty() || !graph->GetTaggedConstants().empty();
+    return !graph->GetInt32Constants().empty() || !graph->GetFloat64Constants().empty() ||
+           !graph->GetTaggedConstants().empty() || !graph->GetHeapConstants().empty();
 }
 
-void GraphPrinter::PrintRootConstants(Graph *graph, ArkSteedGraphLabeller *labeller)
-{
-    for (const auto &[index, vertex] : graph->GetRootConstants()) {
-        std::string line = "  ";
-        if (labeller != nullptr) {
-            line += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-        }
-        line += "RootConstant ";
-        switch (index) {
-            case RootConstantVertex::RootIndex::UNDEFINED:
-                line += "Undefined";
-                break;
-            case RootConstantVertex::RootIndex::NULL_VALUE:
-                line += "Null";
-                break;
-            case RootConstantVertex::RootIndex::TRUE_VALUE:
-                line += "True";
-                break;
-            case RootConstantVertex::RootIndex::FALSE_VALUE:
-                line += "False";
-                break;
-            default:
-                line += "Unknown(" + std::to_string(static_cast<int>(index)) + ")";
-                break;
-        }
-        LOG_COMPILER(INFO) << line;
-    }
-}
-
-void GraphPrinter::PrintInt32Constants(Graph *graph, ArkSteedGraphLabeller *labeller)
+void GraphPrinter::PrintInt32Constants(Graph *graph)
 {
     for (const auto &[value, vertex] : graph->GetInt32Constants()) {
         std::string line = "  ";
-        if (labeller != nullptr) {
-            line += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-        }
+        line += FormatVertexLabel(vertex) + ": ";
         line += "Int32Constant " + std::to_string(value);
         LOG_COMPILER(INFO) << line;
     }
 }
 
-void GraphPrinter::PrintIntPtrConstants(Graph *graph, ArkSteedGraphLabeller *labeller)
+void GraphPrinter::PrintIntPtrConstants(Graph *graph)
 {
     for (const auto &[value, vertex] : graph->GetIntPtrConstants()) {
         std::string prefix = "  ";
-        if (labeller != nullptr) {
-            prefix += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-        }
+        prefix += FormatVertexLabel(vertex) + ": ";
         LOG_COMPILER(INFO) << prefix << "IntPtrConstant 0x" << std::hex << value << std::dec;
     }
 }
 
-void GraphPrinter::PrintFloat64Constants(Graph *graph, ArkSteedGraphLabeller *labeller)
+void GraphPrinter::PrintFloat64Constants(Graph *graph)
 {
     for (const auto &[value, vertex] : graph->GetFloat64Constants()) {
         std::string line = "  ";
-        if (labeller != nullptr) {
-            line += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-        }
+        line += FormatVertexLabel(vertex) + ": ";
         line += "Float64Constant " + std::to_string(value);
         LOG_COMPILER(INFO) << line;
     }
 }
 
-void GraphPrinter::PrintTaggedConstants(Graph *graph, ArkSteedGraphLabeller *labeller)
+void GraphPrinter::PrintTaggedConstants(Graph *graph)
 {
     for (const auto &[value, vertex] : graph->GetTaggedConstants()) {
         std::string line = "  ";
-        if (labeller != nullptr) {
-            line += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-        }
+        line += FormatVertexLabel(vertex) + ": ";
         line += "TaggedConstant 0x";
         std::ostringstream hexStream;
         hexStream << std::hex << value;
@@ -247,17 +204,25 @@ void GraphPrinter::PrintTaggedConstants(Graph *graph, ArkSteedGraphLabeller *lab
     }
 }
 
+void GraphPrinter::PrintHeapConstants(Graph *graph)
+{
+    for (const auto &[handleIndex, vertex] : graph->GetHeapConstants()) {
+        std::string line = "  ";
+        line += FormatVertexLabel(vertex) + ": ";
+        line += "HeapConstant handle=" + std::to_string(handleIndex);
+        LOG_COMPILER(INFO) << line;
+    }
+}
+
 std::string GraphPrinter::DecodeTaggedValue(uint64_t value) const
 {
-    using JSTaggedValue = ecmascript::JSTaggedValue;
-
-    // Check for tagged int
-    if ((value & JSTaggedValue::TAG_MARK) == JSTaggedValue::TAG_INT) {
-        int32_t intValue = static_cast<int32_t>(value);
-        return " (tagged int: " + std::to_string(intValue) + ")";
+    JSTaggedValue tagged(value);
+    if (tagged.IsInt()) {
+        return " (tagged int: " + std::to_string(tagged.GetInt()) + ")";
     }
-
-    // Check for special values using switch
+    if (tagged.IsDouble()) {
+        return " (tagged double: " + std::to_string(tagged.GetDouble()) + ")";
+    }
     switch (value) {
         case JSTaggedValue::VALUE_UNDEFINED:
             return " (tagged undefined)";
@@ -274,25 +239,9 @@ std::string GraphPrinter::DecodeTaggedValue(uint64_t value) const
         default:
             break;
     }
-
-    // Check for other boolean values
-    if ((value & JSTaggedValue::TAG_BOOLEAN_MASK) == JSTaggedValue::TAG_BOOLEAN_MASK) {
-        return " (tagged boolean)";
-    }
-
-    // Check for tagged double
-    // 48: double value occupies 48 bits in tagged representation
-    if (value >= JSTaggedValue::DOUBLE_ENCODE_OFFSET && value < (JSTaggedValue::DOUBLE_ENCODE_OFFSET + (1ULL << 48))) {
-        double doubleValue = base::bit_cast<double>(value - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
-        return " (tagged double: " + std::to_string(doubleValue) + ")";
-    }
-
-    // Check for heap object
-    if ((value & JSTaggedValue::TAG_HEAPOBJECT_MASK) == JSTaggedValue::TAG_OBJECT) {
+    if (tagged.IsObject()) {
         return " (tagged heap object)";
     }
-
-    // Unknown type
     return " (tagged unknown)";
 }
 
@@ -320,25 +269,16 @@ void GraphPrinter::PreProcessBlock(BB *block)
         AddTarget(block, nullptr);
     }
 
-    LOG_COMPILER(INFO) << GetArrowColumn(nullptr) <<
-        "------------------------------------------------------------------------";
+    LOG_COMPILER(INFO) << GetArrowColumn(nullptr)
+                       << "------------------------------------------------------------------------";
 
-    const char *blockTypeName = block->IsLoopHeader()    ? "Loop Header"
+    const char *blockTypeName = block->IsLoopHeader()         ? "Loop Header"
                                 : block->IsExceptionHandler() ? "Exception Handler"
                                                               : "Other";
     LOG_COMPILER(INFO) << PrintBlockArrows(block) << "Block " << block->GetId() << " (" << blockTypeName << ')';
-
-    if (block->HasRegisterMerge()) {
+    if (block->HasRegisterMergeState()) {
         PrintPredecessors(block);
     }
-
-    std::string controlLine = GetArrowColumn(nullptr) + "  Control vertex: ";
-    if (ControlVertex *control = block->GetControlVertex()) {
-        controlLine += OpcodeToString(control->GetOpcode());
-    } else {
-        controlLine += "(none)";
-    }
-    LOG_COMPILER(INFO) << controlLine;
 }
 
 void GraphPrinter::PostProcessBlock(BB *block)
@@ -401,10 +341,14 @@ void GraphPrinter::ProcessVertex(ControlVertex *vertex, const ArkSteedState &sta
             }
             break;
         }
-        case VertexOpcode::BranchIfTrue: {
+        case VertexOpcode::BranchIfTrue:
+        case VertexOpcode::BranchIfInt32Compare:
+        case VertexOpcode::BranchIfFloat64Compare:
+        case VertexOpcode::BranchIfReferenceEqual:
+        case VertexOpcode::BranchIfObjectType: {
             BB *ifTrue = nullptr;
             BB *ifFalse = nullptr;
-            if (BranchIfTrueVertex *branch = vertex->TryCast<BranchIfTrueVertex>()) {
+            if (BranchControlVertex *branch = vertex->TryCast<BranchControlVertex>()) {
                 ifTrue = branch->IfTrue();
                 ifFalse = branch->IfFalse();
             }
@@ -429,66 +373,9 @@ void GraphPrinter::ProcessVertex(ControlVertex *vertex, const ArkSteedState &sta
     PrintVertex(vertex, &arrowsStartingHere);
 }
 
-std::string GraphPrinter::FormatVertexStubInfo(Vertex *vertex) const
-{
-    std::string line;
-    if (vertex->Is<CallRuntimeVertex>()) {
-        CallRuntimeVertex *callRuntime = vertex->Cast<CallRuntimeVertex>();
-        line += " [" + kungfu::RuntimeStubCSigns::GetRTName(static_cast<int>(callRuntime->GetRuntimeId())) + "]";
-    } else if (vertex->Is<CallCommonStubVertex>()) {
-        CallCommonStubVertex *callStub = vertex->Cast<CallCommonStubVertex>();
-        line += " [" + kungfu::CommonStubCSigns::GetName(callStub->GetStubId()) + "]";
-    } else if (vertex->Is<ValueVertex>()) {
-        ValueVertex *valueVertex = vertex->Cast<ValueVertex>();
-        line += " [" + ValueRepresentationToString(valueVertex->GetValueRepresentation()) + "]";
-    }
-    return line;
-}
-
-std::string GraphPrinter::FormatVertexInputs(Vertex *vertex, ArkSteedGraphLabeller *labeller) const
-{
-    std::string line;
-    for (int i = 0; i < vertex->GetInputCount(); ++i) {
-        if (i > 0) {
-            line += ", ";
-        }
-        ValueVertex *input = vertex->GetInput(i);
-        if (input != nullptr && labeller != nullptr) {
-            line += labeller->GetVertexLabel(input, hasRegallocData_);
-        } else if (input != nullptr) {
-            line += "v?";
-        } else {
-            line += "null";
-        }
-    }
-    return line;
-}
-
 std::string GraphPrinter::FormatVertexAnnotations(Vertex *vertex) const
 {
     std::string line;
-    VertexProperties props = vertex->GetProperties();
-    line += " {";
-    if (props.CanEagerDeopt())
-        line += " eager-deopt";
-    else if (props.CanLazyDeopt())
-        line += " lazy-deopt";
-    else if (props.IsDeoptCheckpoint())
-        line += " deopt-checkpoint";
-    if (props.CanThrow()) {
-        line += " can-throw";
-    }
-    if (props.CanRead()) {
-        line += " can-read";
-    }
-    if (props.CanWrite()) {
-        line += " can-write";
-    }
-    if (props.CanAllocate()) {
-        line += " can-allocate";
-    }
-    line += " }";
-
     if (vertex->Is<ValueVertex>()) {
         auto *valueVertex = vertex->Cast<ValueVertex>();
         auto *regallocInfo = valueVertex->GetRegallocInfo();
@@ -511,18 +398,8 @@ std::string GraphPrinter::FormatVertexAnnotations(Vertex *vertex) const
 void GraphPrinter::PrintVertex(Vertex *vertex, ChunkSet<size_t> *arrowsStartingHere)
 {
     std::string line = GetArrowColumn(arrowsStartingHere);
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
     line += "  ";
-    if (labeller != nullptr) {
-        line += labeller->GetVertexLabel(vertex, hasRegallocData_) + ": ";
-    } else {
-        line += "v?: ";
-    }
-    line += OpcodeToString(vertex->GetOpcode());
-    line += FormatVertexStubInfo(vertex);
-    line += "(";
-    line += FormatVertexInputs(vertex, labeller);
-    line += ")";
+    line += vertex->Dump(withColors_);
     line += FormatVertexAnnotations(vertex);
     LOG_COMPILER(INFO) << line;
 }
@@ -543,10 +420,14 @@ std::string GraphPrinter::FormatControlVertexTargets(ControlVertex *vertex) cons
             }
             break;
         }
-        case VertexOpcode::BranchIfTrue: {
+        case VertexOpcode::BranchIfTrue:
+        case VertexOpcode::BranchIfInt32Compare:
+        case VertexOpcode::BranchIfFloat64Compare:
+        case VertexOpcode::BranchIfReferenceEqual:
+        case VertexOpcode::BranchIfObjectType: {
             BB *ifTrue = nullptr;
             BB *ifFalse = nullptr;
-            if (BranchIfTrueVertex *branch = vertex->TryCast<BranchIfTrueVertex>()) {
+            if (BranchControlVertex *branch = vertex->TryCast<BranchControlVertex>()) {
                 ifTrue = branch->IfTrue();
                 ifFalse = branch->IfFalse();
             }
@@ -569,28 +450,6 @@ std::string GraphPrinter::FormatControlVertexTargets(ControlVertex *vertex) cons
     }
 
     return result;
-}
-
-std::string GraphPrinter::ValueRepresentationToString(ValueRepresentation repr) const
-{
-    switch (repr) {
-        case ValueRepresentation::TAGGED:
-            return "Tagged";
-        case ValueRepresentation::INT32:
-            return "Int32";
-        case ValueRepresentation::UINT32:
-            return "Uint32";
-        case ValueRepresentation::FLOAT64:
-            return "Float64";
-        case ValueRepresentation::HOLEY_FLOAT64:
-            return "HoleyFloat64";
-        case ValueRepresentation::INT_PTR:
-            return "IntPtr";
-        case ValueRepresentation::NONE:
-            return "None";
-        default:
-            return "Unknown";
-    }
 }
 
 size_t GraphPrinter::AddTarget(BB *target, BB *currentBlock)
@@ -642,20 +501,55 @@ bool GraphPrinter::AddTargetIfNotNext(BB *target, BB *nextBlock, BB *currentBloc
     return true;
 }
 
-std::string GraphPrinter::PrintBlockArrows(BB* block)
+namespace {
+constexpr size_t NULL_COLOR_INDEX = static_cast<size_t>(-1);
+struct ArrowRun {
+    size_t color;
+    std::string glyphs;
+};
+
+void AppendRun(std::vector<ArrowRun> *runs, size_t color, std::string glyphs)
+{
+    if (glyphs.empty()) {
+        return;
+    }
+    if (!runs->empty() && runs->back().color == color) {
+        runs->back().glyphs += std::move(glyphs);
+        return;
+    }
+    runs->push_back(ArrowRun {color, std::move(glyphs)});
+}
+
+std::string RenderArrowRuns(const std::vector<ArrowRun> &runs, bool withColors)
+{
+    std::ostringstream out;
+    for (const ArrowRun &run : runs) {
+        if (run.color == NULL_COLOR_INDEX) {
+            out << run.glyphs;
+            continue;
+        }
+        WITH_ANSI_COLOR_SCOPE(NthFaintColor(out, run.color, withColors))
+        {
+            out << run.glyphs;
+        }
+    }
+    return out.str();
+}
+}  // namespace
+
+std::string GraphPrinter::PrintBlockArrows(BB *block)
 {
     if (loopHeaders_.erase(block) > 0) {
         AddTarget(block, nullptr);
     }
 
-    std::string arrowLine;
+    std::vector<ArrowRun> runs;
     ChunkVector<size_t> terminitedIndices(chunk_);
-    int lineColor = -1;
-    int currentColor = -1;
+    size_t lineColor = NULL_COLOR_INDEX;
     bool sawEnd = false;
 
     for (size_t i = 0; i < targets_.size(); ++i) {
-        int desiredColor = lineColor;
+        size_t desiredColor = lineColor;
         Connection c;
 
         if (sawEnd) {
@@ -663,7 +557,7 @@ std::string GraphPrinter::PrintBlockArrows(BB* block)
         }
 
         if (targets_[i] == block) {
-            desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+            desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
             lineColor = desiredColor;
             c.Connect(RIGHT);
             if (targets_[i].isBackward) {
@@ -676,45 +570,33 @@ std::string GraphPrinter::PrintBlockArrows(BB* block)
             sawEnd = true;
         } else if (targets_[i] && activeArrows_.find(i) != activeArrows_.end()) {
             if (!targets_[i].isBackward) {
-                desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+                desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
                 c.AddVertical();
             }
         }
 
-        if (currentColor != desiredColor && desiredColor != -1) {
-            arrowLine += "\033[0;3";
-            arrowLine += std::to_string(desiredColor);
-            arrowLine += "m";
-            currentColor = desiredColor;
-        }
-
-        arrowLine += c.ToString();
+        AppendRun(&runs, desiredColor, c.ToString());
     }
 
     if (!terminitedIndices.empty()) {
-        arrowLine += "►";
-    }
-
-    if (currentColor != -1) {
-        arrowLine += "\033[0m";
+        AppendRun(&runs, lineColor, "►");
     }
 
     for (size_t idx : terminitedIndices) {
         targets_[idx] = ArrowTarget();
     }
 
-    return arrowLine;
+    return RenderArrowRuns(runs, withColors_);
 }
 
 std::string GraphPrinter::GetArrowColumn(ChunkSet<size_t> *arrowsStarting)
 {
-    std::string arrowColumn;
-    int lineColor = -1;
-    int currentColor = -1;
+    std::vector<ArrowRun> runs;
+    size_t lineColor = NULL_COLOR_INDEX;
     bool sawStart = false;
 
     for (size_t i = 0; i < targets_.size(); ++i) {
-        int desiredColor = lineColor;
+        size_t desiredColor = lineColor;
         Connection c;
 
         if (sawStart) {
@@ -722,7 +604,7 @@ std::string GraphPrinter::GetArrowColumn(ChunkSet<size_t> *arrowsStarting)
         }
 
         if (arrowsStarting != nullptr && arrowsStarting->find(i) != arrowsStarting->end()) {
-            desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+            desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
             lineColor = desiredColor;
             c.Connect(RIGHT);
             if (i < targets_.size() && targets_[i].isBackward) {
@@ -736,26 +618,15 @@ std::string GraphPrinter::GetArrowColumn(ChunkSet<size_t> *arrowsStarting)
 
         if (c.connected == 0 && targets_[i] && activeArrows_.find(i) != activeArrows_.end()) {
             if (!targets_[i].isBackward) {
-                desiredColor = (i % 6) + 1;  // 6: number of available ANSI colors
+                desiredColor = i % AnsiColorScope::NUM_FAINT_COLORS;
                 c.AddVertical();
             }
         }
 
-        if (currentColor != desiredColor && desiredColor != -1) {
-            arrowColumn += "\033[0;3";
-            arrowColumn += std::to_string(desiredColor);
-            arrowColumn += "m";
-            currentColor = desiredColor;
-        }
-
-        arrowColumn += c.ToString();
+        AppendRun(&runs, desiredColor, c.ToString());
     }
 
-    if (currentColor != -1) {
-        arrowColumn += "\033[0m";
-    }
-
-    return arrowColumn;
+    return RenderArrowRuns(runs, withColors_);
 }
 
 }  // namespace panda::ecmascript::arksteed

@@ -16,14 +16,9 @@
 #ifndef ECMASCRIPT_ARKSTEED_FEEDBACK_READER_H
 #define ECMASCRIPT_ARKSTEED_FEEDBACK_READER_H
 
-#include <variant>
-
 #include "ecmascript/arksteed/arksteed_heap_broker.h"
 #include "ecmascript/arksteed/arksteed_processed_feedback.h"
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 
@@ -31,27 +26,32 @@ namespace panda::ecmascript::arksteed {
 
 class ArkSteedFeedbackReader {
 public:
-    ArkSteedFeedbackReader(JSThread *compilerThread, const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo,
+    ArkSteedFeedbackReader(JSThread *compilerThread, const kungfu::BytecodeInfo &bytecodeInfo,
                            ArkSteedHeapBroker *broker)
         : compilerThread_(compilerThread), bytecodeInfo_(bytecodeInfo), broker_(broker)
     {}
 
     bool ReadNamedAccessFeedback(int slotIndex, NamedAccessFeedback *feedback) const;
-    bool TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const;
+    bool ReadValueAccessFeedback(ValueAccessFeedback *feedback) const;
+    bool ReadElementAccessFeedback(int slotIndex, ElementAccessFeedback *feedback) const;
+    bool ReadGlobalAccessFeedback(GlobalAccessFeedback *feedback) const;
+    bool TryGetFeedbackSlotId(int index, bool allowImmediate, uint32_t *slotId) const;  // input slot
+    bool TryGetFeedbackSlotId(uint32_t *slotId) const;                                  // primary slot
+    bool ReadOperationFeedback(OperationFeedback *feedback) const;
 
 private:
-    struct NamedICMonoSnapshot {
+    struct ICMonoSnapshot {
         ArkSteedHClassRef expectedHClass;
         JSTaggedValue handler;
         uint32_t slotId {0};
     };
 
-    struct NamedICCaseSnapshot {
+    struct ICCaseSnapshot {
         ArkSteedHClassRef expectedHClass;
         JSTaggedValue handler;
     };
 
-    struct NamedICPolySnapshot {
+    struct ICPolySnapshot {
         TaggedArray *polyArray {nullptr};
         uint32_t caseCount {0};
         uint32_t slotId {0};
@@ -59,15 +59,17 @@ private:
 
     bool TryReadNamedAccessName(ArkSteedNameRef *name) const;
     bool TryGetConstDataId(int index, uint16_t *constDataId) const;
-    NamedAccessCaseFeedback MakeNamedAccessCaseFeedback(ArkSteedHClassRef expectedHClass,
-                                                        JSTaggedValue handler) const;
-    bool TryGetNamedICMonoSnapshot(int slotIndex, NamedICMonoSnapshot *snapshot) const;
-    bool TryGetNamedICPolySnapshot(int slotIndex, NamedICPolySnapshot *snapshot) const;
-    bool TryGetNamedICPolyCase(const NamedICPolySnapshot &snapshot, uint32_t caseIndex,
-                               NamedICCaseSnapshot *icCase) const;
+    NamedAccessCaseFeedback MakeNamedAccessCaseFeedback(ArkSteedHClassRef expectedHClass, JSTaggedValue handler) const;
+    ElementAccessCaseFeedback MakeElementAccessCaseFeedback(ArkSteedHClassRef expectedHClass,
+                                                            JSTaggedValue handler) const;
+    bool TryGetICMonoSnapshot(int slotIndex, ICMonoSnapshot *snapshot) const;
+    bool TryGetICPolySnapshot(int slotIndex, ICPolySnapshot *snapshot) const;
+    bool TryGetICPolyCase(const ICPolySnapshot &snapshot, uint32_t caseIndex, ICCaseSnapshot *icCase) const;
+
+    ArkSteedOperationHint MakeOperationHint(uint32_t rawBits) const;
 
     JSThread *compilerThread_ {nullptr};
-    const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo_;
+    kungfu::BytecodeInfo bytecodeInfo_;
     ArkSteedHeapBroker *broker_ {nullptr};
 };
 

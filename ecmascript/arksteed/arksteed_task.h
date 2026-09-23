@@ -16,9 +16,13 @@
 #ifndef ECMASCRIPT_ARKSTEED_TASK_H
 #define ECMASCRIPT_ARKSTEED_TASK_H
 
+#include <cstdint>
+#include <vector>
+
 #include "ecmascript/common.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/mem/embedded_code_ref.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -26,10 +30,14 @@ class ArkSteedTask : public JitTask {
 public:
     ArkSteedTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
                  CompilerTier tier, CString &methodName, int32_t offset, JitCompileMode mode);
-    ~ArkSteedTask() = default;
+    ~ArkSteedTask();
 
     void Compile();
     void InstallCode() override;
+    void PUBLIC_API SetDeoptTranslationData(std::vector<uint8_t> data);
+    void PUBLIC_API SetDeoptLiteralData(std::vector<JSHandle<JSTaggedValue>> literals);
+    void PUBLIC_API SetEmbeddedRefData(const std::vector<EmbeddedCodeRefReloc> &relocations,
+                                       const std::vector<JSHandle<JSTaggedValue>> &handles);
 
     class AsyncTask : public common::Task {
     public:
@@ -40,12 +48,17 @@ public:
     private:
         std::shared_ptr<ArkSteedTask> task_;
     };
+
+private:
+    std::vector<uint8_t> deoptTranslationData_;
+    std::vector<JSHandle<JSTaggedValue>> deoptLiteralHandles_;
+    std::vector<EmbeddedCodeRefReloc> embeddedRefRelocations_;
+    std::vector<JSHandle<JSTaggedValue>> embeddedRefHandles_;
 };
 
 class ArkSteedCompileTimeScope : public ClockScope {
 public:
-    explicit ArkSteedCompileTimeScope(ArkSteedTask *task)
-        : task_(task), isAppJit_(false)
+    explicit ArkSteedCompileTimeScope(ArkSteedTask *task) : task_(task), isAppJit_(false)
     {
         if (task_ != nullptr) {
             auto *jit = task_->GetJit();

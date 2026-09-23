@@ -1,4 +1,0 @@
-true
-Boolean.ValueOf
-function valueOf() { [native code] }
-boolean.valueOf

@@ -134,6 +134,9 @@ enum CommandValues {
     OPTION_COMPILER_ARKSTEED_PRINT_METHOD_NAME,
     OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT,
     OPTION_COMPILER_ARKSTEED_PRINT_CODE,
+    OPTION_COMPILER_ARKSTEED_PRINT_WITH_COLORS,
+    OPTION_COMPILER_ARKSTEED_REUSE_STACK_SLOTS,
+    OPTION_COMPILER_ARKSTEED_DEOPT_ON_INSUFFICIENT_PROFILE,
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_COMPILER_LOG_SNAPSHOT,
@@ -282,8 +285,15 @@ enum CommandValues {
     // .hap file descriptor passed from compiler_service via Binder
     OPTION_HAP_FD,
 
+    OPTION_COMPILER_JIT_BACKEND,
+
     // OPTION_LAST should at the last
     OPTION_LAST,
+};
+
+enum class JitBackend : uint8_t {
+    ARKSTEED,
+    FASTJIT,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -976,6 +986,36 @@ public:
         return compilerArkSteedPrintCode_;
     }
 
+    void SetCompilerArkSteedPrintWithColors(bool value)
+    {
+        compilerArkSteedPrintWithColors_ = value;
+    }
+
+    bool GetCompilerArkSteedPrintWithColors() const
+    {
+        return compilerArkSteedPrintWithColors_;
+    }
+
+    void SetCompilerArkSteedReuseStackSlots(bool value)
+    {
+        compilerArkSteedReuseStackSlots_ = value;
+    }
+
+    bool GetCompilerArkSteedReuseStackSlots() const
+    {
+        return compilerArkSteedReuseStackSlots_;
+    }
+
+    void SetCompilerArkSteedDeoptOnInsufficientProfile(bool value)
+    {
+        compilerArkSteedDeoptOnInsufficientProfile_ = value;
+    }
+
+    bool GetCompilerArkSteedDeoptOnInsufficientProfile() const
+    {
+        return compilerArkSteedDeoptOnInsufficientProfile_;
+    }
+
     void SetCompilerLogSnapshot(bool value)
     {
         compilerLogSnapshot_ = value;
@@ -1443,6 +1483,16 @@ public:
     bool IsEnableJIT() const
     {
         return enableFastJIT_;
+    }
+
+    void SetCompilerJitBackend(JitBackend value)
+    {
+        compilerJitBackend_ = value;
+    }
+
+    JitBackend GetCompilerJitBackend() const
+    {
+        return compilerJitBackend_;
     }
 
     void SetEnableDFXHiSysEvent(bool value)
@@ -2742,6 +2792,9 @@ private:
     bool compilerArkSteedPrintMethodName_ {false};
     bool compilerArkSteedEnableCodeComment_ {false};
     bool compilerArkSteedPrintCode_ {false};
+    bool compilerArkSteedPrintWithColors_ {false};
+    bool compilerArkSteedReuseStackSlots_ {true};
+    bool compilerArkSteedDeoptOnInsufficientProfile_ {true};
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
     bool enableCompilerLogAllMethodsTime_ {false};
@@ -2782,6 +2835,11 @@ private:
     bool enableTraceCallNum_{false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    JitBackend compilerJitBackend_ {JitBackend::ARKSTEED};
+#else
+    JitBackend compilerJitBackend_ {JitBackend::FASTJIT};
+#endif
     bool enableDFXHiSysEvent_ {true};
     bool enableAPPJIT_ {false};
     bool isEnableJitDfxDump_ {false};

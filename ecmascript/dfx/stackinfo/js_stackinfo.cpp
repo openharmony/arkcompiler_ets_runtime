@@ -173,6 +173,11 @@ void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, 
 {
     ASSERT(!jsErrorObj.GetTaggedValue().IsUndefined());
     JSTaggedValue machineCodeTagVal = func->GetMachineCode(thread);
+    if (!machineCodeTagVal.IsMachineCodeObject()) {
+        // The function may have been deoptimized and its MachineCode field cleared (set to Undefined)
+        // while a stale JIT frame is still on the stack during stacktrace construction.
+        return;
+    }
     MachineCode *machineCode = MachineCode::Cast(machineCodeTagVal.GetTaggedObject());
     std::string methodName = method->ParseFunctionName(thread);
     if (methodName.empty()) {

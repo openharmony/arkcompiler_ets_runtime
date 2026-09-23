@@ -19,6 +19,7 @@
 #include <array>
 #include <optional>
 
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/arksteed/arksteed_heap_ref.h"
 #include "ecmascript/arksteed/arksteed_processed_feedback.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
@@ -67,9 +68,7 @@ public:
         bool ownsSerializing_ {false};
     };
 
-    ArkSteedHeapBroker(JSThread *compilerThread, JitCompilationEnv *env)
-        : compilerThread_(compilerThread), env_(env)
-    {}
+    ArkSteedHeapBroker(JSThread *compilerThread, JitCompilationEnv *env) : compilerThread_(compilerThread), env_(env) {}
 
     void StartSerializing() const
     {
@@ -141,6 +140,20 @@ public:
         return MakeStableHeapRef(value, false);
     }
 
+    bool TryGetGlobalConstantRef(ConstantIndex index, ArkSteedNameRef *name) const
+    {
+        if (!SerializingAllowed()) {
+            return false;
+        }
+        JSThread *hostThread = env_->GetHostThread();
+        JSTaggedValue value = hostThread->GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(index));
+        if (!value.IsString()) {
+            return false;
+        }
+        *name = MakeNameRef(value);
+        return name->IsSafeForCompile();
+    }
+
     bool TryGetNameFromConstantPool(uint16_t cpIdx, ArkSteedNameRef *name) const
     {
         if (!SerializingAllowed()) {
@@ -155,6 +168,52 @@ public:
         return name->IsSafeForCompile();
     }
 
+    bool TryGetMethodFromConstantPool(uint16_t cpIdx, ArkSteedObjectRef *method) const
+    {
+        ASSERT(method != nullptr);
+        if (!SerializingAllowed() || env_->GetMethodLiteral() == nullptr) {
+            return false;
+        }
+        uint32_t methodOffset = env_->GetMethodLiteral()->GetMethodId().GetOffset();
+        JSTaggedValue constpool = env_->GetConstantPoolByMethodOffset(methodOffset);
+        if (!constpool.IsConstantPool()) {
+            return false;
+        }
+        JSTaggedValue methodValue = env_->GetMethodFromCache(constpool, cpIdx);
+        if (!methodValue.IsMethod()) {
+            return false;
+        }
+        *method = MakeObjectRef(methodValue);
+        return method->IsSafeForCompile();
+    }
+
+    bool TryRecordHeapConstant(const ArkSteedHeapRef &ref, uint32_t *handleIndex, JSTaggedValue *currentValue) const
+    {
+        ASSERT(handleIndex != nullptr);
+        ASSERT(currentValue != nullptr);
+        if (!SerializingAllowed() || !ref.IsSafeForCompile()) {
+            return false;
+        }
+        JSTaggedValue value = ref.ValueAllowHandleDeref();
+        if (!value.IsHeapObject()) {
+            return false;
+        }
+        JSHandle<JSTaggedValue> handle = ref.HasHandle() ? ref.handle_ : env_->NewJSHandle(value);
+        *handleIndex = env_->RecordHeapConstant(handle);
+        *currentValue = value;
+        return true;
+    }
+
+    bool TryResolveRef(const ArkSteedHeapRef &ref, JSTaggedValue *value) const
+    {
+        if (!ref.IsSafeForCompile() || value == nullptr) {
+            return false;
+        }
+        SerializingScope scope(this, "ArkSteedHeapBroker::TryResolveRef");
+        *value = ref.ValueAllowHandleDeref();
+        return true;
+    }
+
     JSThread *GetCompilerThread() const
     {
         return compilerThread_;
@@ -162,6 +221,14 @@ public:
 
     bool GetFeedbackForNamedAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
                                    NamedAccessFeedback *feedback) const;
+
+    bool GetFeedbackForValueAccess(const ArkSteedFeedbackReader &reader, ValueAccessFeedback *feedback) const;
+    bool GetFeedbackForElementAccess(const ArkSteedFeedbackReader &reader, int slotIndex,
+                                     ElementAccessFeedback *feedback) const;
+
+    bool GetFeedbackForGlobalAccess(const ArkSteedFeedbackReader &reader, GlobalAccessFeedback *feedback) const;
+
+    bool GetFeedbackForOperation(const ArkSteedFeedbackReader &reader, OperationFeedback *feedback) const;
 
     bool TryGetCachedNamedAccessFeedback(AccessFeedbackSource source, NamedAccessFeedback *feedback) const
     {
@@ -180,6 +247,22 @@ public:
         namedAccessFeedbackCache_[index] = {true, feedback.base.source, feedback};
     }
 
+    bool TryGetCachedValueAccessFeedback(uint32_t slotId, ValueAccessFeedback *feedback) const
+    {
+        const auto &entry = valueAccessFeedbackCache_[slotId % FEEDBACK_CACHE_SIZE];
+        if (!entry.valid || entry.source.slotId != slotId) {
+            return false;
+        }
+        *feedback = entry.feedback;
+        return true;
+    }
+
+    void CacheValueAccessFeedback(const ValueAccessFeedback &feedback) const
+    {
+        uint32_t index = feedback.base.source.slotId % FEEDBACK_CACHE_SIZE;
+        valueAccessFeedbackCache_[index] = {true, feedback.base.source, feedback};
+    }
+
 private:
     static constexpr uint32_t FEEDBACK_CACHE_SIZE = 16;
 
@@ -187,6 +270,12 @@ private:
         bool valid {false};
         AccessFeedbackSource source {};
         NamedAccessFeedback feedback {};
+    };
+
+    struct ValueAccessFeedbackCacheEntry {
+        bool valid {false};
+        AccessFeedbackSource source {};
+        ValueAccessFeedback feedback {};
     };
 
     static bool IsSameFeedbackSource(AccessFeedbackSource left, AccessFeedbackSource right)
@@ -212,14 +301,14 @@ private:
         if (!value.IsHeapObject()) {
             return allowPrimitive ? ArkSteedHeapRef(value, true) : ArkSteedHeapRef();
         }
-        JSHandle<JSTaggedValue> handle = env_->NewJSHandle(value);
-        return ArkSteedHeapRef(handle);
+        return ArkSteedHeapRef(env_->NewJSHandle(value));
     }
 
     JSThread *compilerThread_ {nullptr};
     JitCompilationEnv *env_ {nullptr};
     mutable ArkSteedBrokerMode mode_ {ArkSteedBrokerMode::SERIALIZED};
     mutable std::array<NamedAccessFeedbackCacheEntry, FEEDBACK_CACHE_SIZE> namedAccessFeedbackCache_ {};
+    mutable std::array<ValueAccessFeedbackCacheEntry, FEEDBACK_CACHE_SIZE> valueAccessFeedbackCache_ {};
 };
 
 }  // namespace panda::ecmascript::arksteed

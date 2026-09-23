@@ -15,73 +15,47 @@
 
 #include "ecmascript/arksteed/arksteed_graph_builder.h"
 
-#include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
-#include "ecmascript/arksteed/arksteed_bytecode_analysis_new.h"
-#include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
-#include "ecmascript/arksteed/arksteed_bytecode_preprocessor_new.h"
-#include "ecmascript/arksteed/arksteed_opcode.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/global_env.h"
+#include <algorithm>
+#include <cstdint>
+#include <cmath>
+#include <limits>
+
+#include "securec.h"
+
+#include "ecmascript/accessor_data.h"
+#include "ecmascript/arksteed/arksteed_compile_info_facts.h"
+#include "ecmascript/arksteed/arksteed_constant_folding.h"
+#include "ecmascript/arksteed/arksteed_graph.h"
+#include "ecmascript/arksteed/arksteed_register_merge_state.h"
+#include "ecmascript/arksteed/arksteed_side_effect_classifier.h"
+#include "ecmascript/arksteed/arksteed_write_barrier_value_kind_pass.h"
+#include "ecmascript/base/bit_helper.h"
+#include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
+#include "ecmascript/ecma_string-inl.h"  // IWYU pragma: keep
+#include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/elements.h"
+#include "ecmascript/global_env_constants.h"
+#include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/ic_info.h"
+#include "ecmascript/ic/property_box.h"
+#include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/ic/profile_type_info_cell.h"
+#include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/js_array.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/js_typed_array.h"
+#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/lexical_env.h"
+#include "ecmascript/string/base_string.h"
 
 namespace panda::ecmascript::arksteed {
-namespace kungfu = panda::ecmascript::kungfu;
-
 namespace {
-VRegIDType CheckedSubGraphVariableCount(int variableCount)
-{
-    ASSERT(variableCount >= 0);
-    return static_cast<VRegIDType>(variableCount);
-}
-
-const char *ValueRepresentationName(ValueRepresentation repr)
-{
-    switch (repr) {
-        case ValueRepresentation::TAGGED:
-            return "tagged";
-        case ValueRepresentation::INT32:
-            return "int32";
-        case ValueRepresentation::UINT32:
-            return "uint32";
-        case ValueRepresentation::FLOAT64:
-            return "float64";
-        case ValueRepresentation::HOLEY_FLOAT64:
-            return "holey_float64";
-        case ValueRepresentation::INT_PTR:
-            return "intptr";
-        case ValueRepresentation::NONE:
-            return "none";
-    }
-    return "unknown";
-}
-
-const char *MachineTypeName(kungfu::MachineType machineType)
-{
-    switch (machineType) {
-        case kungfu::MachineType::NOVALUE:
-            return "novalue";
-        case kungfu::MachineType::ANYVALUE:
-            return "anyvalue";
-        case kungfu::MachineType::ARCH:
-            return "arch";
-        case kungfu::MachineType::FLEX:
-            return "flex";
-        case kungfu::MachineType::I1:
-            return "i1";
-        case kungfu::MachineType::I8:
-            return "i8";
-        case kungfu::MachineType::I16:
-            return "i16";
-        case kungfu::MachineType::I32:
-            return "i32";
-        case kungfu::MachineType::I64:
-            return "i64";
-        case kungfu::MachineType::F32:
-            return "f32";
-        case kungfu::MachineType::F64:
-            return "f64";
-    }
-    return "unknown";
-}
+constexpr uint32_t CALL_ARG0 = 0;
+constexpr uint32_t CALL_ARG1 = 1;
+constexpr uint32_t CALL_ARG2 = CALL_ARG1 + 1;
+constexpr uint32_t CALL_ARG3 = CALL_ARG2 + 1;
 
 bool IsTaggedCallType(kungfu::VariableType type)
 {
@@ -103,2599 +77,8619 @@ bool MatchesCallSignatureType(const ValueVertex *value, kungfu::VariableType typ
             return true;
         case kungfu::MachineType::ARCH:
         case kungfu::MachineType::I64:
-            return value->IsIntPtr();
+            return value->IsInt64();
         case kungfu::MachineType::I1:
         case kungfu::MachineType::I8:
         case kungfu::MachineType::I16:
         case kungfu::MachineType::I32:
-            return value->IsInt32() || value->IsUint32() || value->IsIntPtr();
+            return value->IsInt32() || value->IsUInt32() || value->IsInt64();
         case kungfu::MachineType::F32:
         case kungfu::MachineType::F64:
             return value->IsAnyFloat64();
     }
     return true;
 }
-}  // namespace
 
-const LivenessBitSet *ArkSteedGraphBuilder::GetInLivenessFor(uint32_t index) const
+void ValidateCommonStubCallArgs(Span<ValueVertex *const> inputs, CommonStubID id)
 {
-    ASSERT(bytecodeAnalysis_ != nullptr);
-    return &bytecodeAnalysis_->GetInLiveness(index);
-}
-
-bool ArkSteedGraphBuilder::Build()
-{
-    InitializeGraph();
-    // Start basic block
-    startBlock_ = BB::New(GetChunk());
-    SetCurrentBlock(startBlock_);
-    InitializeGlobalsAndParameters();
-    InitializeCurrentFrameState();
-    BuildMergeStates();
-    if (options_.printMethodName) {
-        ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-        NewVertex<CallRuntimeVertex>({jsFunc}, RTSTUB_ID(PrintMethodName));
-    }
-    // Finishes the basic block
-    MergeCurrentFrameStateTo(FinishBlock<JumpVertex>({}, &jumpTargets_[entryPoint_]), entryPoint_);
-    BuildBody();
 #ifndef NDEBUG
-    ValidateAfterBuilding();
-#endif
-    return true;
-}
-
-void ArkSteedGraphBuilder::InitializeGraph()
-{
-    method_ = env_->GetMethodLiteral();
-
-    const char *recordName = method_->GetRecordNameWithSymbol(env_->GetJSPandaFile(), method_->GetMethodId());
-    const char *methodName = method_->GetMethodName(env_->GetJSPandaFile(), method_->GetMethodId());
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Starts compiling " << recordName << " :: " << methodName;
-#endif
-
-    options_ = ArkSteedCompilationOptions(env_->GetJSOptions());
-    bytecodeContext_.Initialize(method_, env_, &options_);
-
-    iterator_ = BytecodeIterator(&bytecodeContext_);
-    jumpTargets_.resize(bytecodeContext_.GetBytecodeCount());
-
-    numParams_ = method_->GetNumArgsForArkSteed();
-    numLocal_ = method_->GetNumVregsWithCallField();
-
-    bytecodeAnalysis_ = GetChunk()->New<BytecodeAnalysis>(GetChunk(), bytecodeContext_, numLocal_, numParams_);
-    bytecodeAnalysis_->AnalyzeLivenessAndAssignments(&bytecodeContext_, &options_);
-}
-
-void ArkSteedGraphBuilder::InitializeGlobalsAndParameters()
-{
-    ASSERT(glueAddr_ != 0);
-    glue_ = GetIntPtrConstant(static_cast<intptr_t>(glueAddr_));
-
-    // caller argument area (in fp-slot words): +2 argc, +3 call-target, +4 new-target, +5 this, +6... user args.
-    const int32_t kCallTargetFpSlotIndex = 3;
-
-    for (uint32_t i = 0; i < numParams_; i++) {
-        ValueVertex *v = NewVertexNoInput<InitialValueVertex>(static_cast<int32_t>(i + kCallTargetFpSlotIndex));
-        GetGraph()->AddParameter(v);
-    }
-}
-
-// Precondition: Param vertices have been added to the graph.
-void ArkSteedGraphBuilder::InitializeCurrentFrameState()
-{
-    currentFrameState_ = GetChunk()->New<InterpreterFrameState>(numLocal_, numParams_, GetChunk());
-    for (VRegIDType i = 0; i < numParams_; i++) {
-        currentFrameState_->SetParam(i, GetGraph()->GetParameter(i));
-    }
-    ValueVertex *undefinedValue = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-    for (VRegIDType i = 0; i < numLocal_; i++) {
-        currentFrameState_->SetLocal(i, undefinedValue);
-    }
-    // Fixed header lexicalEnv is at [fp - 24], i.e. slot -3 in word units.
-    currentFrameState_->SetEnv(NewVertexNoInput<InitialValueVertex>(-3));
-    currentFrameState_->SetAcc(undefinedValue);
-}
-
-ValueVertex *ArkSteedGraphBuilder::NewCallStubWithIC(const CommonStubCSigns::ID stubId,
-                                                     const std::vector<ValueVertex *> &args)
-{
-    std::vector<ValueVertex *> allArgs;
-    allArgs.reserve(args.size() + 3);  // 3: glue + jsFunc + slotId
-    allArgs.push_back(GetGlue());
-    allArgs.insert(allArgs.end(), args.begin(), args.end());
-    allArgs.push_back(currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX));
-    allArgs.push_back(GetInt32Constant(static_cast<int>(GetICSlotId(0))));
-
-    ValidateCommonStubCallArgs(stubId, allArgs);
-    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
-}
-
-void ArkSteedGraphBuilder::LowerCallStubWithIC(const CommonStubCSigns::ID stubId,
-                                               const std::vector<ValueVertex *> &args)
-{
-    currentFrameState_->SetAcc(NewCallStubWithIC(stubId, args));
-}
-
-void ArkSteedGraphBuilder::LowerCallStubWithICPreserveAcc(const CommonStubCSigns::ID stubId,
-                                                          const std::vector<ValueVertex *> &args)
-{
-    NewCallStubWithIC(stubId, args);
-}
-
-ValueVertex *ArkSteedGraphBuilder::NewCommonStubCall(std::initializer_list<ValueVertex *> args,
-                                                     const CommonStubCSigns::ID stubId)
-{
-    std::vector<ValueVertex *> allArgs(args);
-    ValidateCommonStubCallArgs(stubId, allArgs);
-    return NewVertex<CallCommonStubVertex>(allArgs, stubId);
-}
-
-void ArkSteedGraphBuilder::ValidateCommonStubCallArgs(const CommonStubCSigns::ID stubId,
-                                                      const std::vector<ValueVertex *> &args) const
-{
-    const CallSignature *signature = CommonStubCSigns::Get(stubId);
-    size_t actualCount = args.size();
+    const kungfu::CallSignature *signature = kungfu::CommonStubCSigns::Get(id);
+    size_t actualCount = inputs.size();
     size_t expectedCount = signature->GetParametersCount();
     if (actualCount != expectedCount) {
         LOG_ECMA(FATAL) << "ArkSteed CommonStub argument count mismatch, stub: " << signature->GetName()
                         << ", expected: " << expectedCount << ", actual: " << actualCount;
         UNREACHABLE();
     }
-
     kungfu::VariableType *params = signature->GetParametersType();
     if (params == nullptr) {
         return;
     }
+    const auto *inputArr = inputs.begin();
     for (size_t i = 0; i < expectedCount; ++i) {
-        if (!MatchesCallSignatureType(args[i], params[i])) {
-            LOG_ECMA(FATAL) << "ArkSteed CommonStub argument type mismatch, stub: " << signature->GetName()
-                            << ", index: " << i
-                            << ", expected machine type: " << MachineTypeName(params[i].GetMachineType())
-                            << ", actual representation: "
-                            << ValueRepresentationName(args[i]->GetValueRepresentation());
+        if (MatchesCallSignatureType(inputArr[i], params[i])) {
+            continue;
+        }
+        const char *reprName = ValueRepresentationName(inputArr[i]->GetValueRepresentation());
+        LOG_ECMA(FATAL) << "ArkSteed CommonStub argument type mismatch, stub: " << signature->GetName()
+                        << ", index: " << i
+                        << ", expected machine type: " << MachineTypeToStr(params[i].GetMachineType())
+                        << ", actual representation: " << reprName;
+        UNREACHABLE();
+    }
+#else
+    (void)inputs;  // // No-op in Release build
+    (void)id;
+#endif
+}
+
+void ValidateCommonStubCallArgs(std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+{
+    auto span = Span<ValueVertex *const> {inputs.begin(), inputs.size()};
+    ValidateCommonStubCallArgs(span, id);
+}
+
+bool SupportsI32CheckedBinOp(BinaryOpKind kind)
+{
+    switch (kind) {
+        case BinaryOpKind::ADD:
+        case BinaryOpKind::SUB:
+        case BinaryOpKind::MUL:
+        case BinaryOpKind::DIV:
+        case BinaryOpKind::MOD:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool SupportsF64BinOp(BinaryOpKind kind)
+{
+    switch (kind) {
+        case BinaryOpKind::ADD:
+        case BinaryOpKind::SUB:
+        case BinaryOpKind::MUL:
+        case BinaryOpKind::DIV:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool IsEqualityCompare(JSCondition kind)
+{
+    return kind == JSCondition::EQUAL || kind == JSCondition::NOT_EQUAL || kind == JSCondition::STRICT_EQUAL ||
+           kind == JSCondition::STRICT_NOT_EQUAL;
+}
+
+bool IsStrictEqualityCompare(JSCondition kind)
+{
+    return kind == JSCondition::STRICT_EQUAL || kind == JSCondition::STRICT_NOT_EQUAL;
+}
+
+bool IsEqualCompare(JSCondition kind)
+{
+    return kind == JSCondition::EQUAL || kind == JSCondition::STRICT_EQUAL;
+}
+
+bool IsReferenceComparableRootValue(ValueVertex *node)
+{
+    if (node == nullptr) {
+        return false;
+    }
+    auto *constant = node->TryCast<TaggedConstantVertex>();
+    if (constant == nullptr) {
+        return false;
+    }
+    JSTaggedValue tagged(constant->GetValue());
+    return tagged.IsBoolean() || tagged.IsNull() || tagged.IsUndefined() || tagged.IsHole();
+}
+
+bool IsReferenceComparableType(NodeInfo::NodeType type)
+{
+    using NodeType = NodeInfo::NodeType;
+    constexpr NodeType referenceComparable =
+        NodeInfo::UnionNodeType(NodeInfo::UnionNodeType(NodeType::NULL_OR_UNDEFINED, NodeType::BOOLEAN),
+                                NodeInfo::UnionNodeType(NodeType::SYMBOL, NodeType::JS_RECEIVER));
+    return NodeInfo::NodeTypeIs(type, referenceComparable);
+}
+
+bool StrictTypesCanBeEqual(NodeInfo::NodeType leftType, NodeInfo::NodeType rightType)
+{
+    if (NodeInfo::NodeTypeCanBe(NodeInfo::IntersectNodeType(leftType, rightType), NodeInfo::NodeType::UNKNOWN)) {
+        return true;
+    }
+    return NodeInfo::NodeTypeCanBe(leftType, NodeInfo::NodeType::NUMBER) &&
+           NodeInfo::NodeTypeCanBe(rightType, NodeInfo::NodeType::NUMBER);
+}
+
+bool EvaluateInt32Compare(JSCondition kind, int32_t left, int32_t right)
+{
+    switch (kind) {
+        case JSCondition::EQUAL:
+        case JSCondition::STRICT_EQUAL:
+            return left == right;
+        case JSCondition::NOT_EQUAL:
+        case JSCondition::STRICT_NOT_EQUAL:
+            return left != right;
+        case JSCondition::LESS_THAN:
+            return left < right;
+        case JSCondition::LESS_THAN_OR_EQUAL:
+            return left <= right;
+        case JSCondition::GREATER_THAN:
+            return left > right;
+        case JSCondition::GREATER_THAN_OR_EQUAL:
+            return left >= right;
+    }
+    UNREACHABLE();
+}
+
+bool EvaluateFloat64Compare(JSCondition kind, double left, double right)
+{
+    bool unordered = std::isnan(left) || std::isnan(right);
+    switch (kind) {
+        case JSCondition::EQUAL:
+        case JSCondition::STRICT_EQUAL:
+            return !unordered && left == right;
+        case JSCondition::NOT_EQUAL:
+        case JSCondition::STRICT_NOT_EQUAL:
+            return unordered || left != right;
+        case JSCondition::LESS_THAN:
+            return !unordered && left < right;
+        case JSCondition::LESS_THAN_OR_EQUAL:
+            return !unordered && left <= right;
+        case JSCondition::GREATER_THAN:
+            return !unordered && left > right;
+        case JSCondition::GREATER_THAN_OR_EQUAL:
+            return !unordered && left >= right;
+    }
+    UNREACHABLE();
+}
+
+Condition Int32ConditionFromCompare(JSCondition kind)
+{
+    switch (kind) {
+        case JSCondition::EQUAL:
+        case JSCondition::STRICT_EQUAL:
+            return Condition::EQUAL;
+        case JSCondition::NOT_EQUAL:
+        case JSCondition::STRICT_NOT_EQUAL:
+            return Condition::NOT_EQUAL;
+        case JSCondition::LESS_THAN:
+            return Condition::LESS_THAN;
+        case JSCondition::LESS_THAN_OR_EQUAL:
+            return Condition::LESS_THAN_OR_EQUAL;
+        case JSCondition::GREATER_THAN:
+            return Condition::GREATER_THAN;
+        case JSCondition::GREATER_THAN_OR_EQUAL:
+            return Condition::GREATER_THAN_OR_EQUAL;
+    }
+    UNREACHABLE();
+}
+
+JSCondition InvertCompare(JSCondition kind)
+{
+    switch (kind) {
+        case JSCondition::EQUAL:
+            return JSCondition::NOT_EQUAL;
+        case JSCondition::NOT_EQUAL:
+            return JSCondition::EQUAL;
+        case JSCondition::STRICT_EQUAL:
+            return JSCondition::STRICT_NOT_EQUAL;
+        case JSCondition::STRICT_NOT_EQUAL:
+            return JSCondition::STRICT_EQUAL;
+        default:
+            UNREACHABLE();
+    }
+}
+
+// ---- Common-subexpression elimination helpers (available expressions) ----
+// Standard 64-bit FNV-1a constants. The hash is only an available-expression lookup key;
+// CompileInfoFacts::FindExpression still checks opcode, inputs, options, and effect epoch.
+constexpr uint64_t CSE_FNV_OFFSET_BASIS = 14695981039346656037ULL;
+constexpr uint64_t CSE_FNV_PRIME = 1099511628211ULL;
+
+uint64_t CseHashCombine(uint64_t hash, uint64_t value)
+{
+    hash ^= value;
+    hash *= CSE_FNV_PRIME;
+    return hash;
+}
+
+uint64_t CseHashValue(ValueVertex *value)
+{
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value));
+}
+
+uint32_t CseHashExpression(VertexOpcode opcode, const CompileInfoFacts::ExpressionInputs &inputs,
+                           const CompileInfoFacts::ExpressionOptions &options)
+{
+    uint64_t hash = CseHashCombine(CSE_FNV_OFFSET_BASIS, static_cast<uint64_t>(opcode));
+    for (ValueVertex *input : inputs) {
+        hash = CseHashCombine(hash, CseHashValue(input));
+    }
+    for (uint64_t option : options) {
+        hash = CseHashCombine(hash, option);
+    }
+    return static_cast<uint32_t>(hash ^ (hash >> 32U));  // 32: fold 64-bit hash to 32-bit hash.
+}
+
+template <typename T>
+void CseAppendExpressionOption(CompileInfoFacts::ExpressionOptions &options, const T &value)
+{
+    using RawT = std::remove_cv_t<std::remove_reference_t<T>>;
+    if constexpr (std::is_enum_v<RawT>) {
+        options.push_back(static_cast<uint64_t>(value));
+    } else if constexpr (std::is_integral_v<RawT>) {
+        options.push_back(static_cast<uint64_t>(value));
+    } else if constexpr (std::is_pointer_v<RawT>) {
+        options.push_back(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value)));
+    } else if constexpr (std::is_floating_point_v<RawT>) {
+        if constexpr (sizeof(RawT) == sizeof(uint32_t)) {
+            options.push_back(base::bit_cast<uint32_t>(value));
+        } else {
+            options.push_back(base::bit_cast<uint64_t>(value));
+        }
+    } else {
+        static_assert(std::is_trivially_copyable_v<RawT>, "Unsupported available-expression option type");
+        static_assert(sizeof(RawT) <= sizeof(uint64_t), "Available-expression option is too large");
+        uint64_t bits = 0;
+        if (memcpy_s(&bits, sizeof(bits), &value, sizeof(value)) != EOK) {
             UNREACHABLE();
         }
+        options.push_back(bits);
     }
 }
 
-void ArkSteedGraphBuilder::BuildMergeStates()
+template <typename... Args>
+void CseBuildExpressionOptions(CompileInfoFacts::ExpressionOptions &options, const Args &...args)
 {
-    auto &jumpLoop = bytecodeContext_.GetJumpLoop();
-    size_t n = bytecodeContext_.GetBytecodeCount();
+    (CseAppendExpressionOption(options, args), ...);
+}
 
-    mergeStates_.assign(n, nullptr);
-    predecessorCountReductions_.assign(n, 0);
-    for (iterator_.GotoStart(); !iterator_.Done(); ++iterator_) {
-        auto curIndex = iterator_.Index();
-        if (!jumpLoop[curIndex]) {
-            continue;
-        }
-        auto targetIndex = iterator_.GetJumpTargetBcIndex();
-        ASSERT(mergeStates_[targetIndex] == nullptr && "Unexpected assignment before.");
-        mergeStates_[targetIndex] =
-            MergePointFrameState::NewForLoop(targetIndex,
-                                             bytecodeContext_.GetPredecessorCount()[targetIndex],
-                                             &bytecodeAnalysis_->GetInLiveness(targetIndex),
-                                             &bytecodeAnalysis_->GetLoopInfo(targetIndex),
-                                             chunk_);
+constexpr bool CseIsExcludedAvailableExpressionOpcode(VertexOpcode opcode)
+{
+    switch (opcode) {
+        case VertexOpcode::Int32Constant:
+        case VertexOpcode::Int64Constant:
+        case VertexOpcode::Float64Constant:
+        case VertexOpcode::TaggedConstant:
+        case VertexOpcode::HeapConstant:
+        case VertexOpcode::InitialValue:
+        case VertexOpcode::ActualArgc:
+        case VertexOpcode::Call:
+        case VertexOpcode::CallRuntime:
+        case VertexOpcode::CallCommonStub:
+        case VertexOpcode::Deopt:
+        case VertexOpcode::Phi:
+            return true;
+        default:
+            return false;
     }
 }
 
-void ArkSteedGraphBuilder::BuildBody()
+template <typename VertexT>
+constexpr bool CseCanUseAvailableExpression()
 {
-    auto bytecodeCount = bytecodeContext_.GetBytecodeCount();
-    for (iterator_.GotoStart(); !iterator_.Done(); ++iterator_) {
-        uint32_t index = iterator_.Index();
-        auto bytecodeInfo = iterator_.GetCurrentBytecodeInfo();
-
-        if (mergeStates_[index] != nullptr) {
-            if (mergeStates_[index]->PredecessorCount() == 0) {
-                ASSERT(CurrentBlock() == nullptr);
-                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
-                continue;
-            }
-            if (CurrentBlock() != nullptr) {
-                // Previous basic block was NOT finished (fallthrough).
-                MergeCurrentFrameStateTo(FinishBlock<JumpVertex>({}, &jumpTargets_[index]), index);
-            }
-            if (mergeStates_[index]->IsUnmergedUnreachableLoop()) {
-                ASSERT(CurrentBlock() == nullptr);
-                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
-                continue;
-            }
-            StartNewBlockWithMergeState(index);
-        } else {
-            if (CurrentBlock() == nullptr) {
-                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
-                continue;
-            }
-        }
-        ProcessBytecode();
-        if (bytecodeInfo.needFallThrough()) {
-            uint32_t fallThroughIndex = iterator_.NextIndex();
-            if (fallThroughIndex >= bytecodeCount) {
-                LOG_COMPILER(WARN) << "Malformed bytecode #" << index << ": the last bytecode goes fallthrough.";
-                continue;
-            }
-            uint32_t nextRPOIndex = iterator_.NextRPOIndex();
-            if (fallThroughIndex != nextRPOIndex) {
-                BB *block = FinishBlock<JumpVertex>({}, &jumpTargets_[fallThroughIndex]);
-                MergeCurrentFrameStateTo(block, fallThroughIndex);
-            }
-        }
-    }
-    // The last bytecode shall finish the last basic block.
-    ASSERT(currentBlock_ == nullptr);
-}
-
-void ArkSteedGraphBuilder::ValidateAfterBuilding()
-{
-    for (iterator_.GotoStart(); !iterator_.Done(); ++iterator_) {
-        uint32_t index = iterator_.Index();
-        MergePointFrameState *mergeState = mergeStates_[index];
-        if (mergeState == nullptr) {
-            continue;
-        }
-        ValidateMergeStateAfterBuilding(index, mergeState);
+    if constexpr (!std::is_base_of_v<ValueVertex, VertexT>) {
+        return false;
+    } else {
+        return !CseIsExcludedAvailableExpressionOpcode(OpcodeOf<VertexT>) && CanParticipateInCSE(VertexT::PROPERTIES);
     }
 }
+}  // namespace
 
-void ArkSteedGraphBuilder::ValidateMergeStateAfterBuilding(uint32_t index, MergePointFrameState *mergeState)
-{
-    if (mergeState->PredecessorCount() == 0) {
-        if (mergeState->PredecessorsSoFar() != 0) {
-            LOG_COMPILER(FATAL) << "INVALID merge state for bytecode #" << index << ": unreachable merge point has "
-                                << mergeState->PredecessorsSoFar() << " predecessors merged.";
-        }
-        return;
-    }
-    if (mergeState->PredecessorsSoFar() != mergeState->PredecessorCount()) {
-        LOG_COMPILER(FATAL) << "INVALID merge state for bytecode #" << index << ": PredecessorsSoFar() which is "
-                            << mergeState->PredecessorsSoFar() << " does not match PredecessorCount() which is "
-                            << mergeState->PredecessorCount();
-    }
-    LOG_COMPILER(DEBUG) << "OK: merge state for bytecode #" << index;
-}
-
-ArkSteedGraphBuilder::BranchResult ArkSteedGraphBuilder::BuildBranchIfTrue(BranchBuilder &builder, ValueVertex *vertex)
-{
-    auto emitUnconditionalBytecodeBranch = [this, &builder](bool conditionTrue) {
-        bool takeJumpTarget =
-            builder.GetCurrentBranchType() == BranchType::TRUE_BRANCH ? conditionTrue : !conditionTrue;
-        ASSERT(builder.GetMode() == BranchBuilder::JUMP_BYTECODE_TARGET);
-
-        uint32_t destIndex = takeJumpTarget ? builder.JumpTargetBcIndex() : builder.FallthroughBcIndex();
-        uint32_t trimmedIndex = takeJumpTarget ? builder.FallthroughBcIndex() : builder.JumpTargetBcIndex();
-        if (trimmedIndex != destIndex) {
-            ReduceBytecodePredecessorCount(trimmedIndex);
-        }
-        BB *block = FinishBlock<JumpVertex>({}, &jumpTargets_[destIndex]);
-        MergeCurrentFrameStateTo(block, destIndex);
+// Condensed storage: [vA, vA, vA, vB, vB, vB, vB, vB, vB, vC, vC, vC, vC]
+//                 => [(vA, 3),    (vB, 6),                (vC, 4)]
+struct GraphBuilder::CatchBlockInputData {
+    struct InputEntry {
+        ValueVertex *vertex;
+        uint32_t count;
     };
 
-    if (RootConstantVertex *root = vertex->TryCast<RootConstantVertex>()) {
-        switch (root->GetIndex()) {
-            case RootConstantVertex::RootIndex::TRUE_VALUE:
-                if (builder.GetMode() == BranchBuilder::JUMP_LABEL_TARGET) {
-                    return BranchResult::ALWAYS_TRUE;
+    uint32_t totalCount;
+    const kungfu::BitSet *liveIn;
+    // inputs[i] = List of inputs for the i-th live-in virtual register
+    ChunkVector<ChunkVector<InputEntry>> inputs;
+    // Merge from all the vertices whose exceptions may be caught here
+    CompileInfoFacts *facts;
+
+    explicit CatchBlockInputData(const kungfu::BitSet &liveIn, Chunk *chunk)
+        : totalCount(0), liveIn(&liveIn), inputs(chunk), facts(nullptr)
+    {
+        size_t numLive = liveIn.Count();
+        inputs.reserve(numLive);
+        for (size_t i = 0; i < numLive; i++) {
+            inputs.emplace_back(chunk);
+        }
+    }
+
+    // Returns the index of this catch predecessor
+    uint32_t AddCatchPredecessor(const SharedBCFrameState frameState, ValueVertex *alt)
+    {
+        VRegIDType liveIndex = 0;
+        // -1: Skips acc, which will be overwritten by the exception object
+        for (VRegIDType i = 0, n = frameState.NumVRegs(); i < n - 1; i++) {
+            if (!liveIn->TestBit(i)) {
+                continue;
+            }
+            ValueVertex *value = frameState.Get(i);
+            if (value == nullptr) {
+                value = alt;
+            }
+            auto &curInputList = inputs[liveIndex++];
+            if (curInputList.empty() || curInputList.back().vertex != value) {
+                curInputList.push_back({.vertex = value, .count = 1});
+            } else {
+                curInputList.back().count += 1;
+            }
+        }
+        uint32_t curInputIndex = totalCount;
+        totalCount += 1;
+        return curInputIndex;
+    }
+
+    void AddCompileInfoFacts(const CompileInfoFacts &incoming)
+    {
+        if (facts == nullptr) {
+            facts = incoming.Clone();
+            return;
+        }
+        facts->Merge(incoming);
+    }
+};
+
+GraphBuilder::GraphBuilder(JSThread *compilerThread, Graph *destGraph, uintptr_t glueAddr,
+                           BytecodePreprocessor *preproc, BytecodeAnalysis *analysis)
+    : graph_(destGraph),
+      compilerThread_(compilerThread),
+      glueAddr_(glueAddr),
+      preproc_(preproc),
+      analysis_(analysis),
+      pgoContext_(compilerThread, preproc->GetEnv()),
+      numLocal_(preproc->GetNumLocalVRegs()),
+      numParams_(preproc->GetNumParamVRegs()),
+      chunk_(preproc->GetChunk()),
+      blocks_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      exitBlocks_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      frameStates_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      compileInfoFacts_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk()),
+      catchBlockInputs_(preproc->GetNumLiveBasicBlocks(), preproc->GetChunk())
+{}
+
+bool GraphBuilder::Run()
+{
+    ASSERT(preproc_->GetNumLiveBasicBlocks() > 0);
+    DebugLog();
+
+    SharedBCFrameState frameState(preproc_->GetNumVRegs(), nullptr, chunk_);
+    InitializeStartBlock(frameState);
+    frameStates_[0] = CondensedBCFrameState(frameState, analysis_->GetLiveOutOfBlock(0), chunk_);
+
+    // 1 : Skips the start block (which is initialized before)
+    for (uint32_t i = 1, n = preproc_->GetNumLiveBasicBlocks(); i < n; i++) {
+        if (blocks_[i] == nullptr) {
+            ProcessDeadBasicBlock(i);
+            continue;
+        }
+        frameState.Reset(nullptr);
+        ProcessBasicBlock(frameState, i);
+        frameStates_[i] = CondensedBCFrameState(frameState, analysis_->GetLiveOutOfBlock(i), chunk_);
+    }
+    return true;
+}
+
+void GraphBuilder::DebugLog()
+{
+    if (!common::Log::LogIsLoggable(Level::DEBUG, Component::COMPILER)) {
+        return;
+    }
+    LOG_COMPILER(DEBUG) << "arksteed::GraphBuilder: Starts graph building with "
+                           "NumLocalVRegs = "
+                        << numLocal_ << ", NumParamVRegs = " << numParams_;
+
+    std::string dumpStr = preproc_->Dump();
+    std::istringstream preprocStream(dumpStr);
+    std::string line;
+    while (std::getline(preprocStream, line)) {
+        LOG_COMPILER(DEBUG) << line;
+    }
+
+    dumpStr = analysis_->Dump();
+    std::istringstream analysisStream(dumpStr);
+    while (std::getline(analysisStream, line)) {
+        LOG_COMPILER(DEBUG) << line;
+    }
+}
+
+void GraphBuilder::InitializeStartBlock(SharedBCFrameState frameState)
+{
+    glue_ = graph_->GetIntPtrConstant(glueAddr_);
+    undefinedValue_ = graph_->GetTaggedConstant(JSTaggedValue::VALUE_UNDEFINED);
+
+    compileInfoFacts_[0] = chunk_->New<CompileInfoFacts>(chunk_);
+    compileInfoFacts_[0]->EnsureType(undefinedValue_, NodeInfo::NodeType::UNDEFINED);
+
+    blocks_[0] = BB::New(chunk_);
+    // caller argument area (in fp-slot words): +2 argc, +3 call-target, +4 new-target, +5 this, +6... user args.
+    const int32_t ACTUAL_ARGC_FP_SLOT_INDEX = 2;
+    const int32_t CALL_TARGET_FP_SLOT_INDEX = 3;
+    initialActualArgc_ = NewVertex<InitialValueVertex>(blocks_[0], {}, ACTUAL_ARGC_FP_SLOT_INDEX);
+    for (uint32_t i = 0, n = numParams_; i < n; i++) {
+        int32_t slotIndex = static_cast<int32_t>(i + CALL_TARGET_FP_SLOT_INDEX);
+        auto *v = NewVertex<InitialValueVertex>(blocks_[0], {}, slotIndex);
+        graph_->AddParameter(v);
+        frameState.Set(VRegOfParam(numLocal_, i), v);
+    }
+    actualArgc_ = NewVertex<ActualArgcVertex>(blocks_[0], {});
+    taggedActualArgc_ = NewVertex<I32ToTaggedIntVertex>(blocks_[0], {actualArgc_});
+
+    // -3 : Fixed header lexicalEnv is at slot -3 in word units.
+    initialLexicalEnv_ = NewVertex<InitialValueVertex>(blocks_[0], {}, -3);
+    frameState.SetLexicalEnv(initialLexicalEnv_);
+    FinishBlockWithJump(blocks_[0], ActivateNonCatchBlock(1));
+    exitBlocks_[0] = blocks_[0];
+}
+
+void GraphBuilder::ProcessDeadBasicBlock(uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    if (!bcBlock->IsEndOfLoop()) {
+        LOG_COMPILER(DEBUG) << "Skips block #" << rpoIndex << " which is dead.";
+        return;
+    }
+    uint32_t headerRpoIndex = bcBlock->jumpBlock->rpoIndex;
+    if (blocks_[headerRpoIndex] == nullptr) {
+        LOG_COMPILER(DEBUG) << "Skips block #" << rpoIndex << " which is dead.";
+        return;
+    }
+    // For the rare case where the loop-back block is dead (due to pattern like if (true) break),
+    // a dummy basic block is created, which simply jumps the loop header.
+    // Uses JumpLoopVertex so that LivenessProcessor can pop the loop from loopUsedVertices_.
+    blocks_[rpoIndex] = BB::New(chunk_);
+    FinishDeadLoopBackEdge(blocks_[rpoIndex], rpoIndex);
+    exitBlocks_[rpoIndex] = blocks_[rpoIndex];
+}
+
+void GraphBuilder::FinishDeadLoopBackEdge(BB *owner, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(bcBlock->IsEndOfLoop());
+    uint32_t headerRpoIndex = bcBlock->jumpBlock->rpoIndex;
+    ASSERT(blocks_[headerRpoIndex] != nullptr);
+    FinishBlockWithJumpLoop(owner, blocks_[headerRpoIndex]);
+
+    for (PhiVertex *phi : blocks_[headerRpoIndex]->GetPhis()) {
+        ASSERT(phi->GetInputCount() == 2);  // 2 : Two jumpPredecessors: one is entry, the other is loop-back
+        phi->SetInput(1, undefinedValue_);
+    }
+}
+
+void GraphBuilder::ProcessBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    if (bcBlock->IsCatchBlockHeader()) {
+        ProcessCatchBlockHead(frameState, rpoIndex);
+        return;
+    }
+    InitCompileInfoFacts(rpoIndex);
+    if (bcBlock->IsLoopHeader()) {
+        blocks_[rpoIndex]->SetIsLoopHeader(true);
+    }
+    bcBlock->IsLoopHeader() ? InitFrameStateForLoopHeader(frameState, rpoIndex) : InitFrameState(frameState, rpoIndex);
+
+    if (bcBlock->IsSynthetic()) {
+        // Edge-split block, etc. No bytecode inside.
+        BB *target = ActivateNonCatchBlock(bcBlock->jumpBlock->rpoIndex);
+        if (bcBlock->IsEndOfLoop()) {
+            FinishBlockWithJumpLoop(blocks_[rpoIndex], target);
+        } else {
+            FinishBlockWithJump(blocks_[rpoIndex], target);
+        }
+        exitBlocks_[rpoIndex] = blocks_[rpoIndex];
+    } else {
+        exitBlocks_[rpoIndex] = VisitBytecodesOfBasicBlock(frameState, rpoIndex);
+    }
+    if (bcBlock->IsEndOfLoop()) {
+        ControlVertex *control = exitBlocks_[rpoIndex]->GetControlVertex();
+        if (control->Is<DeoptVertex>()) {
+            // Keep the structural backedge needed by loop phis and liveness after the real path deopts.
+            FinishDeadLoopBackEdge(BB::New(chunk_), rpoIndex);
+        } else {
+            ASSERT(control->Is<JumpLoopVertex>());
+            WriteBackFrameStateToLoopHeader(frameState, rpoIndex);
+        }
+    }
+}
+
+void GraphBuilder::ProcessCatchBlockHead(SharedBCFrameState frameState, uint32_t rpoIndex)
+{
+    blocks_[rpoIndex]->SetIsExceptionHandler(true);
+    InitCompileInfoFactsForCatchBlock(rpoIndex);
+    InitFrameStateForCatchBlockHeader(frameState, rpoIndex);
+
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(bcBlock->jumpBlock != nullptr && !bcBlock->jumpBlock->IsSynthetic());
+
+    // Catch block header is always synthetic. Only an unconditional jump.
+    ASSERT(bcBlock->IsJump());
+    FinishBlockWithJump(blocks_[rpoIndex], ActivateNonCatchBlock(bcBlock->jumpBlock->rpoIndex));
+    exitBlocks_[rpoIndex] = blocks_[rpoIndex];
+}
+
+bool GraphBuilder::HasEmittedNormalEdge(uint32_t predRpoIndex, uint32_t targetRpoIndex) const
+{
+    BB *predExit = exitBlocks_[predRpoIndex];
+    BB *target = blocks_[targetRpoIndex];
+    if (predExit == nullptr || target == nullptr) {
+        return false;
+    }
+    const auto &predecessors = target->GetPredecessors();
+    return std::find(predecessors.begin(), predecessors.end(), predExit) != predecessors.end();
+}
+
+void GraphBuilder::InitFrameState(SharedBCFrameState frameState, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+
+    BB *target = blocks_[rpoIndex];
+    uint32_t actualNumPreds = target->PredecessorCount();
+    uint32_t actualPredIndex = 0;
+    for (const BasicBlockInfo *predecessor : bcBlock->jumpPredecessors) {
+        uint32_t predRpoIndex = predecessor->rpoIndex;
+        if (!HasEmittedNormalEdge(predRpoIndex, rpoIndex)) {
+            continue;
+        }
+        ASSERT(actualPredIndex < actualNumPreds);
+        ASSERT(target->GetPredecessor(actualPredIndex) == exitBlocks_[predRpoIndex]);
+        MergeFrameState(frameState, rpoIndex, predRpoIndex, actualPredIndex++, actualNumPreds);
+    }
+    ASSERT(actualPredIndex == actualNumPreds);
+}
+
+void GraphBuilder::InitFrameStateForLoopHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2 : One is entry, the other is loop-back
+
+    kungfu::BitSet phiCandidates(chunk_, frameState.NumVRegs());
+    phiCandidates.CopyFrom(analysis_->GetLiveInOfBlock(rpoIndex));
+    phiCandidates.Intersect(analysis_->GetKillSetOfBlock(rpoIndex));
+
+    for (uint32_t vregIndex = 0, n = frameState.NumVRegs(); vregIndex < n; vregIndex++) {
+        if (phiCandidates.TestBit(vregIndex)) {
+            // 2 : One is entry, the other is loop-back
+            frameState.Set(vregIndex, NewPhiVertex(blocks_[rpoIndex], 2, vregIndex));
+        }
+    }
+    uint32_t predRpoIndex = blockInfo->jumpPredecessors[0]->rpoIndex;
+    ASSERT(blocks_[predRpoIndex] != nullptr);
+    // 0 : The first predecessor which is loop entry; 2 : Two jumpPredecessors, one is entry, the other is loop-back
+    MergeFrameState(frameState, rpoIndex, predRpoIndex, 0, 2);
+}
+
+void GraphBuilder::InitFrameStateForCatchBlockHeader(SharedBCFrameState frameState, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *bcBlock = preproc_->GetBasicBlockByRPO(rpoIndex);
+    // For catch blocks, acc is always initialized as the exception object
+    frameState.SetAcc(NewVertex<LoadExceptionVertex>(blocks_[rpoIndex], {glue_}));
+
+    CatchBlockInputData *data = catchBlockInputs_[rpoIndex];
+    ASSERT(data != nullptr);
+    ASSERT(data->totalCount >= 1);
+
+    const kungfu::BitSet &liveIn = analysis_->GetLiveInOfBlock(rpoIndex);
+    VRegIDType liveIndex = 0;
+    // -1: Skips acc, which is numbered as the last
+    for (VRegIDType vregIndex = 0, n = frameState.NumVRegs(); vregIndex < n - 1; vregIndex++) {
+        if (!liveIn.TestBit(vregIndex)) {
+            continue;
+        }
+        const auto &curInputList = data->inputs[liveIndex++];
+        ASSERT(!curInputList.empty());
+
+        if (curInputList.size() == 1) {
+            // Same inputs
+            frameState.Set(vregIndex, curInputList[0].vertex);
+            continue;
+        }
+        PhiVertex *phi = NewPhiVertex(blocks_[rpoIndex], data->totalCount, vregIndex);
+        uint32_t inputIndex = 0;
+        for (const auto &[input, count] : curInputList) {
+            // Decompress input list
+            for (uint32_t j = 0; j < count; j++) {
+                phi->SetInput(inputIndex++, input);
+            }
+        }
+        frameState.Set(vregIndex, phi);
+    }
+}
+
+void GraphBuilder::InitCompileInfoFacts(uint32_t rpoIndex)
+{
+    const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(!blockInfo->IsCatchBlockHeader() && "Use InitCompileInfoFactsForCatchBlock() instead.");
+
+    if (blockInfo->IsLoopHeader()) {
+        ASSERT(blockInfo->jumpPredecessors.size() == 2);  // 2: loop entry and loop backedge
+        uint32_t entryPredIndex = blockInfo->jumpPredecessors[0]->rpoIndex;
+        ASSERT(compileInfoFacts_[entryPredIndex] != nullptr);
+        compileInfoFacts_[rpoIndex] = compileInfoFacts_[entryPredIndex]->CloneForLoopHeader();
+        return;
+    }
+
+    CompileInfoFacts *facts = nullptr;
+    for (const BasicBlockInfo *predecessor : blockInfo->jumpPredecessors) {
+        uint32_t predRpoIndex = predecessor->rpoIndex;
+        if (!HasEmittedNormalEdge(predRpoIndex, rpoIndex)) {
+            continue;
+        }
+        ASSERT(compileInfoFacts_[predRpoIndex] != nullptr);
+        if (facts == nullptr) {
+            facts = compileInfoFacts_[predRpoIndex]->Clone();
+        } else {
+            facts->Merge(*compileInfoFacts_[predRpoIndex]);
+        }
+    }
+    ASSERT(facts != nullptr);
+    compileInfoFacts_[rpoIndex] = facts;
+}
+
+void GraphBuilder::InitCompileInfoFactsForCatchBlock(uint32_t rpoIndex)
+{
+    CatchBlockInputData *data = catchBlockInputs_[rpoIndex];
+    ASSERT(data != nullptr);
+    ASSERT(data->facts != nullptr);
+    compileInfoFacts_[rpoIndex] = data->facts;
+}
+
+void GraphBuilder::WriteBackFrameStateToLoopHeader(SharedBCFrameState current, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
+    ASSERT(blockInfo->IsJump());
+    ASSERT(blockInfo->jumpBlock->jumpPredecessors.size() == 2);  // 2 : One is entry, the other is loop-back
+
+    uint32_t headerIndex = blockInfo->jumpBlock->rpoIndex;
+    for (PhiVertex *phi : blocks_[headerIndex]->GetPhis()) {
+        ASSERT(phi->GetInputCount() == 2);  // 2 : One is entry, the other is loop-back
+        ValueVertex *fromCurrent = current.Get(phi->GetOwner().GetId());
+        phi->SetInput(1, fromCurrent != nullptr ? fromCurrent : undefinedValue_);
+    }
+}
+
+void GraphBuilder::MergeFrameState(SharedBCFrameState dest, uint32_t rpoIndex, uint32_t predRpoIndex,
+                                   uint32_t actualPredIndex, uint32_t actualNumPreds)
+{
+    const kungfu::BitSet &liveIn = analysis_->GetLiveInOfBlock(rpoIndex);
+    frameStates_[predRpoIndex].ForEach([&, this](ValueVertex *fromPred, VRegIDType vregIndex) {
+        if (!liveIn.TestBit(vregIndex)) {
+            return;
+        }
+        ValueVertex *cur = dest.Get(vregIndex);
+        if (cur == fromPred) {
+            return;
+        }
+        if (cur == nullptr) {
+            dest.Set(vregIndex, fromPred);
+            return;
+        }
+        PhiVertex *phi = cur->TryCast<PhiVertex>();
+        if (phi != nullptr && cur->GetOwner() == blocks_[rpoIndex]) {
+            phi->SetInput(actualPredIndex, fromPred);
+            return;
+        }
+        phi = NewPhiVertex(blocks_[rpoIndex], actualNumPreds, vregIndex);
+        for (uint32_t k = 0; k < actualPredIndex; k++) {
+            phi->SetInput(k, cur);
+        }
+        phi->SetInput(actualPredIndex, fromPred);
+        dest.Set(vregIndex, phi);
+    });
+}
+
+PhiVertex *GraphBuilder::NewPhiVertex(BB *owner, uint32_t numPredecessors, VRegIDType vreg)
+{
+    PhiVertex *phi = PhiVertex::New(chunk_, numPredecessors, VirtualRegister(vreg));
+    phi->SetOwner(owner);
+    owner->AddPhiVertex(phi);
+    return phi;
+}
+
+template <class InputRange>
+PhiVertex *GraphBuilder::NewPhiVertexWith(BB *owner, const InputRange &inputs, VRegIDType vreg)
+{
+    uint32_t numInputs = static_cast<uint32_t>(std::size(inputs));
+    PhiVertex *phi = NewPhiVertex(owner, numInputs, vreg);
+
+    auto iter = std::begin(inputs);
+    for (uint32_t i = 0; i < numInputs; i++) {
+        phi->SetInput(i, *iter);
+        ++iter;
+    }
+    return phi;
+}
+
+template <class VertexT, class InputRange, class... Args>
+VertexT *GraphBuilder::NewVertex(BB *owner, const InputRange &inputs, Args &&...args)
+{
+    VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
+    vertex->SetOwner(owner);
+    owner->AddVertex(vertex);
+    // At most one of: eager_deopt, lazy_deopt
+    static_assert(CanEagerDeopt(VertexT::PROPERTIES) + CanLazyDeopt(VertexT::PROPERTIES) <= 1);
+
+    return vertex;
+}
+
+template <class VertexT, class InputRange, class... Args>
+VertexT *GraphBuilder::NewVertex(CompileInfoFacts *compileInfoFacts, BB *owner, const InputRange &inputs,
+                                 Args &&...args)
+{
+    if constexpr (CseCanUseAvailableExpression<VertexT>()) {
+        CompileInfoFacts::ExpressionInputs expressionInputs(chunk_);
+        for (ValueVertex *input : inputs) {
+            expressionInputs.push_back(input);
+        }
+
+        CompileInfoFacts::ExpressionOptions options(chunk_);
+        CseBuildExpressionOptions(options, args...);
+        uint32_t hash = CseHashExpression(OpcodeOf<VertexT>, expressionInputs, options);
+        // Read operations are versioned by the effect epoch.
+        bool needsEpochCheck = CanRead(VertexT::PROPERTIES);
+        ValueVertex *cached =
+            compileInfoFacts->FindExpression(hash, OpcodeOf<VertexT>, expressionInputs, options, needsEpochCheck);
+        // The cached vertex is reusable if one of the following conditions is true:
+        // 1. The cached vertex is not a read vertex;
+        // 2. For read vertices, the cached vertex is created in the current block.
+        // Note: Constraint 2 can be relaxed in the future such that the cached vertex dominates current block.
+        if (cached != nullptr && (!needsEpochCheck || cached->GetOwner() == owner)) {
+            return cached->Cast<VertexT>();
+        }
+
+        VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
+        vertex->SetOwner(owner);
+        owner->AddVertex(vertex);
+        compileInfoFacts->AddExpression(hash, vertex, expressionInputs, options, needsEpochCheck);
+        return vertex;
+    }
+    VertexT *vertex = NewVertex<VertexT>(owner, inputs, std::forward<Args>(args)...);
+    if constexpr (CanWrite(VertexT::PROPERTIES)) {
+        compileInfoFacts->MarkPossibleSideEffect(ArkSteedSideEffectClassifier::Classify(vertex));
+    }
+    return vertex;
+}
+
+JumpVertex *GraphBuilder::FinishBlockWithJump(BB *owner, BB *target)
+{
+    auto *jumpVertex = FinishBlockWith<JumpVertex>(owner, {}, target);
+    jumpVertex->SetPredecessorId(target->PredecessorCount());
+    target->AddPredecessor(owner);
+    return jumpVertex;
+}
+
+JumpLoopVertex *GraphBuilder::FinishBlockWithJumpLoop(BB *owner, BB *target)
+{
+    auto *jumpLoopVertex = FinishBlockWith<JumpLoopVertex>(owner, {}, chunk_, target);
+    jumpLoopVertex->SetPredecessorId(target->PredecessorCount());
+    target->AddPredecessor(owner);
+    return jumpLoopVertex;
+}
+
+ControlVertex *GraphBuilder::FinishBlockWithBranch(BB *owner, ValueVertex *input, BB *targetIfTrue, BB *targetIfFalse)
+{
+    auto finishWithTargets = [targetIfTrue, targetIfFalse, owner](ControlVertex *vertex) {
+        targetIfTrue->AddPredecessor(owner);
+        targetIfFalse->AddPredecessor(owner);
+        return vertex;
+    };
+
+    if (auto *compare = input->TryCast<I32ConditionCheckVertex>()) {
+        return finishWithTargets(
+            FinishBlockWith<BranchIfInt32CompareVertex>(owner,
+                                                        {compare->GetInput(I32ConditionCheckVertex::LEFT_INDEX),
+                                                         compare->GetInput(I32ConditionCheckVertex::RIGHT_INDEX)},
+                                                        targetIfTrue, targetIfFalse, compare->GetCondition()));
+    }
+    if (auto *compare = input->TryCast<F64ConditionCheckVertex>()) {
+        return finishWithTargets(
+            FinishBlockWith<BranchIfFloat64CompareVertex>(owner,
+                                                          {compare->GetInput(F64ConditionCheckVertex::LEFT_INDEX),
+                                                           compare->GetInput(F64ConditionCheckVertex::RIGHT_INDEX)},
+                                                          targetIfTrue, targetIfFalse, compare->GetCondition()));
+    }
+    if (auto *equal = input->TryCast<TaggedEqualVertex>()) {
+        return finishWithTargets(FinishBlockWith<BranchIfReferenceEqualVertex>(
+            owner, {equal->GetInput(TaggedEqualVertex::LEFT_INDEX), equal->GetInput(TaggedEqualVertex::RIGHT_INDEX)},
+            targetIfTrue, targetIfFalse));
+    }
+    if (auto *notEqual = input->TryCast<TaggedNotEqualVertex>()) {
+        return finishWithTargets(
+            FinishBlockWith<BranchIfReferenceEqualVertex>(owner,
+                                                          {notEqual->GetInput(TaggedNotEqualVertex::LEFT_INDEX),
+                                                           notEqual->GetInput(TaggedNotEqualVertex::RIGHT_INDEX)},
+                                                          targetIfFalse, targetIfTrue));
+    }
+
+    auto *branchVertex = FinishBlockWith<BranchIfTrueVertex>(owner, {input}, targetIfTrue, targetIfFalse);
+    return finishWithTargets(branchVertex);
+}
+
+template <class BranchVertexT, class InputRange, class... Args>
+BranchVertexT *GraphBuilder::FinishBlockWithBranch(BB *owner, const InputRange &inputs, BB *targetIfTrue,
+                                                   BB *targetIfFalse, Args &&...args)
+{
+    auto *vertex =
+        FinishBlockWith<BranchVertexT>(owner, inputs, targetIfTrue, targetIfFalse, std::forward<Args>(args)...);
+    targetIfTrue->AddPredecessor(owner);
+    targetIfFalse->AddPredecessor(owner);
+    return vertex;
+}
+
+template <class VertexT, class InputRange, class... Args>
+VertexT *GraphBuilder::FinishBlockWith(BB *owner, const InputRange &inputs, Args &&...args)
+{
+    VertexT *vertex = Vertex::New<VertexT>(chunk_, inputs, std::forward<Args>(args)...);
+    vertex->SetOwner(owner);
+    owner->SetControlVertex(vertex);
+    graph_->Add(owner);
+    // Control vertices cannot have lazy deopt, throw, or write side effects
+    // Note: ThrowVertex is a special case that can throw
+    static_assert(!CanLazyDeopt(VertexT::PROPERTIES) && !CanWrite(VertexT::PROPERTIES));
+
+    return vertex;
+}
+
+BB *GraphBuilder::NewBlock()
+{
+    BB *result = BB::New(chunk_);
+    // TODO: For legacy code only. To be removed.
+    result->SetRegisterMergeState(chunk_->New<RegisterMergeState>());
+    return result;
+}
+
+BB *GraphBuilder::ActivateNonCatchBlock(uint32_t rpoIndex)
+{
+    if (blocks_[rpoIndex] == nullptr) {
+        blocks_[rpoIndex] = NewBlock();
+    }
+    return blocks_[rpoIndex];
+}
+
+BB *GraphBuilder::ActivateCatchBlock(GraphBuilder::CatchBlockInputData **inputData, uint32_t rpoIndex)
+{
+    if (UNLIKELY(blocks_[rpoIndex] == nullptr)) {
+        blocks_[rpoIndex] = NewBlock();
+        catchBlockInputs_[rpoIndex] = chunk_->New<CatchBlockInputData>(analysis_->GetLiveInOfBlock(rpoIndex), chunk_);
+    }
+    ASSERT(catchBlockInputs_[rpoIndex] != nullptr);
+    *inputData = catchBlockInputs_[rpoIndex];
+    return blocks_[rpoIndex];
+}
+
+LoadTaggedFieldVertex *GraphBuilder::ActivateGlobalEnv()
+{
+    if (UNLIKELY(lazyGlobalEnv_ == nullptr)) {
+        int32_t globalEnvOffset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE);
+        lazyGlobalEnv_ = NewVertex<LoadTaggedFieldVertex>(blocks_[0], {initialLexicalEnv_}, globalEnvOffset);
+    }
+    return lazyGlobalEnv_;
+}
+
+constexpr uintptr_t NO_CATCH_BLOCK_TAG = 1;
+
+struct GraphBuilder::BytecodeVisitor {
+    struct NamedLoadAccessInfo {
+        JSHClass *receiverHClass {nullptr};
+        JSHClass *holderHClass {nullptr};
+        ArkSteedObjectRef holderRef {};
+        uint32_t holderHandleIndex {JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX};
+        std::vector<JSHClass *> lookupStartObjectHClasses;
+        std::vector<ArkSteedHClassRef> lookupStartObjectHClassRefs;
+        std::vector<JSHClass *> expectedPrototypeHClasses;
+        std::vector<ArkSteedHClassRef> expectedPrototypeHClassRefs;
+        PropertyLookupResult plr;
+        uint32_t holderDepth {0};
+        bool isConst {false};
+        bool canAssumeStableHClasses {false};
+        bool hasStableProtoChain {false};
+    };
+
+    using NamedLoadAccessInfoOpt = std::optional<NamedLoadAccessInfo>;
+    using NamedLoadAccessInfosOpt = std::optional<std::vector<NamedLoadAccessInfo>>;
+
+    bool Visit(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (currentBlock->GetControlVertex() != nullptr) {
+            return false;
+        }
+        currentBcInfo = bcInfo;
+        currentBcIndex = bcIndex;
+        if (self->GetOptions()->GetCompilerArkSteedDeoptOnInsufficientProfile() && bcInfo->IsInsufficientProfile()) {
+            EmitUnconditionalDeopt();
+            return false;
+        }
+
+        switch (bcInfo->GetOpcode()) {
+            case kungfu::EcmaOpcode::NOP:  // Nop: Nothing to do
+                break;
+            // -------- Category #1: Register Moves --------
+            case kungfu::EcmaOpcode::MOV_V4_V4:
+            case kungfu::EcmaOpcode::MOV_V8_V8:
+            case kungfu::EcmaOpcode::MOV_V16_V16:
+                frameState.Set(bcInfo->vregOut[0], LoadRegister(bcInfo, 0));
+                break;
+            case kungfu::EcmaOpcode::STA_V8:
+                frameState.Set(bcInfo->vregOut[0], frameState.GetAcc());
+                break;
+            case kungfu::EcmaOpcode::LDA_V8:
+                frameState.SetAcc(LoadRegister(bcInfo, 0));
+                break;
+            case kungfu::EcmaOpcode::LDFUNCTION:
+                frameState.SetAcc(LoadParam(CALL_TARGET_PARAM_INDEX));
+                break;
+            case kungfu::EcmaOpcode::LDNEWTARGET:
+                frameState.SetAcc(LoadParam(NEW_TARGET_PARAM_INDEX));
+                break;
+            case kungfu::EcmaOpcode::LDTHIS:
+                frameState.SetAcc(LoadParam(THIS_OBJECT_PARAM_INDEX));
+                break;
+            // -------- Category #2: Constant Loads --------
+            case kungfu::EcmaOpcode::LDNAN:
+                LowerLdTaggedConstant(base::NumberHelper::GetNaN());
+                break;
+            case kungfu::EcmaOpcode::LDINFINITY:
+                LowerLdTaggedConstant(base::NumberHelper::GetPositiveInfinity());
+                break;
+            case kungfu::EcmaOpcode::LDUNDEFINED:
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_UNDEFINED);
+                break;
+            case kungfu::EcmaOpcode::LDNULL:
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_NULL);
+                break;
+            case kungfu::EcmaOpcode::LDTRUE:
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_TRUE);
+                break;
+            case kungfu::EcmaOpcode::LDFALSE:
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_FALSE);
+                break;
+            case kungfu::EcmaOpcode::LDHOLE:
+                LowerLdTaggedConstant(JSTaggedValue::VALUE_HOLE);
+                break;
+            case kungfu::EcmaOpcode::LDAI_IMM32:
+                LowerLdaiImm32(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::FLDAI_IMM64:
+                LowerFldaiImm64(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDBIGINT_ID16:
+                LowerLdBigInt(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDA_STR_ID16:
+                LowerLdString(bcInfo);
+                break;
+            // -------- Category #3: Unary Arithmetic --------
+            case kungfu::EcmaOpcode::INC_IMM8:
+                LowerInc();
+                break;
+            case kungfu::EcmaOpcode::DEC_IMM8:
+                LowerDec();
+                break;
+            case kungfu::EcmaOpcode::NEG_IMM8:
+                LowerNeg();
+                break;
+            case kungfu::EcmaOpcode::NOT_IMM8:
+                LowerNot();
+                break;
+            // -------- Category #4: Binary Arithmetic --------
+            case kungfu::EcmaOpcode::ADD2_IMM8_V8:
+                LowerAdd2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::SUB2_IMM8_V8:
+                LowerSub2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::MUL2_IMM8_V8:
+                LowerMul2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DIV2_IMM8_V8:
+                LowerDiv2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::MOD2_IMM8_V8:
+                LowerMod2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::EXP_IMM8_V8:
+                LowerExp(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::SHL2_IMM8_V8:
+                LowerShl2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::SHR2_IMM8_V8:
+                LowerShr2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::ASHR2_IMM8_V8:
+                LowerAshr2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::AND2_IMM8_V8:
+                LowerAnd2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::OR2_IMM8_V8:
+                LowerOr2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::XOR2_IMM8_V8:
+                LowerXor2(bcInfo);
+                break;
+            // -------- Category #5: Comparisons --------
+            case kungfu::EcmaOpcode::EQ_IMM8_V8:
+                LowerEq(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::NOTEQ_IMM8_V8:
+                LowerNotEq(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LESS_IMM8_V8:
+                LowerLess(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LESSEQ_IMM8_V8:
+                LowerLessEq(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::GREATER_IMM8_V8:
+                LowerGreater(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::GREATEREQ_IMM8_V8:
+                LowerGreaterEq(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+                LowerStrictNotEq(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STRICTEQ_IMM8_V8:
+                LowerStrictEq(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::ISTRUE:
+            case kungfu::EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+                LowerIsTrue();
+                break;
+            case kungfu::EcmaOpcode::ISFALSE:
+            case kungfu::EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
+                LowerIsFalse();
+                break;
+            // -------- Category #6: Type Conversions --------
+            case kungfu::EcmaOpcode::TONUMBER_IMM8:
+                LowerToNumber();
+                break;
+            case kungfu::EcmaOpcode::TONUMERIC_IMM8:
+                LowerToNumeric();
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
+                LowerToPropertyKey();
+                break;
+            // -------- Category #7: Property Access --------
+            case kungfu::EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
+                LowerTryLdGlobalByName(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
+                LowerLdGlobalVar(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::STGLOBALVAR_IMM16_ID16:
+                LowerStGlobalVar(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::LDSYMBOL:
+                LowerLdSymbol();
+                break;
+            case kungfu::EcmaOpcode::LDGLOBAL:
+                LowerLdGlobal();
+                break;
+            case kungfu::EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
+                LowerLdObjByName(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+                LowerStObjByName(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+            case kungfu::EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+            case kungfu::EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+                LowerLdObjByIndex(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
+            case kungfu::EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
+            case kungfu::EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
+                LowerStObjByIndex(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+            case kungfu::EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+                LowerLdObjByValue(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+            case kungfu::EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+                LowerStObjByValue(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
+            case kungfu::EcmaOpcode::STOWNBYVALUE_IMM16_V8_V8:
+                LowerStOwnByValue(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
+            case kungfu::EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
+            case kungfu::EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
+                LowerStOwnByIndex(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+                LowerStOwnByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDTHISBYVALUE_IMM8:
+            case kungfu::EcmaOpcode::LDTHISBYVALUE_IMM16:
+                LowerLdThisByValue(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+            case kungfu::EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+                LowerStThisByValue(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+                LowerLdThisByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+                LowerStThisByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
+            case kungfu::EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
+                LowerLdSuperByValue(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
+            case kungfu::EcmaOpcode::STSUPERBYVALUE_IMM16_V8_V8:
+                LowerStSuperByValue(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
+                LowerLdSuperByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::STSUPERBYNAME_IMM16_ID16_V8:
+                LowerStSuperByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16:
+                LowerTryStGlobalByName(bcInfo, bcIndex);
+                break;
+            case kungfu::EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
+                LowerStConstToGlobalRecord(bcInfo, true);
+                break;
+            case kungfu::EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16:
+                LowerStConstToGlobalRecord(bcInfo, false);
+                break;
+            case kungfu::EcmaOpcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
+            case kungfu::EcmaOpcode::STOWNBYVALUEWITHNAMESET_IMM16_V8_V8:
+                LowerStOwnByValueWithNameSet(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8:
+                LowerStOwnByNameWithNameSet(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+                LowerLdPrivateProperty(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+                LowerStPrivateProperty(bcInfo);
+                break;
+            // -------- Category #8: Function Calls --------
+            case kungfu::EcmaOpcode::CALLARG0_IMM8:
+                LowerCallArg0();
+                break;
+            case kungfu::EcmaOpcode::CALLARG1_IMM8_V8:
+                LowerCallArg1(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+                LowerCallArgs2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+                LowerCallArgs3(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+                LowerCallInit(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLTHIS0_IMM8_V8:
+                LowerCallThis0(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+                LowerCallThis1(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+                LowerCallThis2(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+                LowerCallThis3(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+            case kungfu::EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+                LowerCallRange(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case kungfu::EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+                LowerCallThisRange(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case kungfu::EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case kungfu::EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case kungfu::EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+            case kungfu::EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
+                LowerCallThisWithName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::APPLY_IMM8_V8_V8:
+                LowerCallSpread(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+            case kungfu::EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+                LowerSuperCallThisRange(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
+            case kungfu::EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
+                LowerSuperCallArrowRange(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+                LowerSuperCallSpread(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
+                LowerSuperCallForwardAllArgs(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
+            case kungfu::EcmaOpcode::NEWOBJAPPLY_IMM16_V8:
+                LowerNewObjApply(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+            case kungfu::EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+            case kungfu::EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+                LowerNewObjRange(bcInfo);
+                break;
+            // -------- Category #9: Object/Array Creation --------
+            case kungfu::EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
+                LowerCreateIterResultObj(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+            case kungfu::EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+                LowerCreateEmptyArray();
+                break;
+            case kungfu::EcmaOpcode::CREATEEMPTYOBJECT:
+                LowerCreateEmptyObject();
+                break;
+            case kungfu::EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+            case kungfu::EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+                LowerCreateObjectWithBuffer(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8:
+            case kungfu::EcmaOpcode::WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8:
+                LowerCreateObjectWithExcludedKeys(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+            case kungfu::EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+                LowerCreateArrayWithBuffer(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
+            case kungfu::EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
+                LowerCreateRegExpWithLiteral(bcInfo);
+                break;
+            // -------- Category #10: Class/Function/Field Definition --------
+            case kungfu::EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+            case kungfu::EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+                LowerDefineMethod(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
+                LowerDefineGetterSetterByValue(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
+            case kungfu::EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+                LowerDefineClassWithBuffer(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+            case kungfu::EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
+                LowerDefineFunc(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
+                LowerDefinePropertyByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+                LowerDefineFieldByName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
+                LowerDefineFieldByValue(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
+                LowerDefineFieldByIndex(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
+                LowerCreatePrivateProperty(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8:
+                LowerDefinePrivateProperty(bcInfo);
+                break;
+            // -------- Category #11: Iterators --------
+            case kungfu::EcmaOpcode::GETPROPITERATOR:
+                LowerGetPropIterator();
+                break;
+            case kungfu::EcmaOpcode::CLOSEITERATOR_IMM8_V8:
+            case kungfu::EcmaOpcode::CLOSEITERATOR_IMM16_V8:
+                LowerCloseIterator(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::GETITERATOR_IMM8:
+            case kungfu::EcmaOpcode::GETITERATOR_IMM16:
+                LowerGetIterator();
+                break;
+            case kungfu::EcmaOpcode::GETNEXTPROPNAME_V8:
+                LowerGetNextPropName(bcInfo);
+                break;
+            // -------- Category #12: Lexical Environment --------
+            case kungfu::EcmaOpcode::NEWLEXENV_IMM8:
+            case kungfu::EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
+                LowerNewLexicalEnv(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
+            case kungfu::EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
+                LowerNewLexicalEnvWithName(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::POPLEXENV:
+                LowerPopLexicalEnv(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+            case kungfu::EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+            case kungfu::EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+                LowerLdLexVar(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STLEXVAR_IMM4_IMM4:
+            case kungfu::EcmaOpcode::STLEXVAR_IMM8_IMM8:
+            case kungfu::EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
+                LowerStLexVar(bcInfo);
+                break;
+            // -------- Category #13: Modules --------
+            case kungfu::EcmaOpcode::STMODULEVAR_IMM8:
+            case kungfu::EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
+                LowerStModuleVar(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::DYNAMICIMPORT:
+                LowerDynamicImport();
+                break;
+            case kungfu::EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+            case kungfu::EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+            case kungfu::EcmaOpcode::CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8:
+            case kungfu::EcmaOpcode::CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16:
+                LowerLdExternalModuleVar(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::GETMODULENAMESPACE_IMM8:
+            case kungfu::EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
+                LowerGetModuleNamespace(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+                LowerLdPatchVar(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16:
+                LowerStPatchVar(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+            case kungfu::EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+                LowerLdLocalModuleVar(bcInfo);
+                break;
+            // -------- Category #14: Miscellaneous --------
+            case kungfu::EcmaOpcode::GETUNMAPPEDARGS:
+                LowerGetUnmappedArgs();
+                break;
+            case kungfu::EcmaOpcode::TYPEOF_IMM8:
+            case kungfu::EcmaOpcode::TYPEOF_IMM16:
+                LowerTypeOf();
+                break;
+            case kungfu::EcmaOpcode::DELOBJPROP_V8:
+                LowerDelObjProp(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::ISIN_IMM8_V8:
+                LowerIsIn(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::INSTANCEOF_IMM8_V8:
+                LowerInstanceOf(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
+            case kungfu::EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
+                LowerGetTemplateObject();
+                break;
+            case kungfu::EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
+            case kungfu::EcmaOpcode::SETOBJECTWITHPROTO_IMM16_V8:
+                LowerSetObjectWithProto(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::COPYDATAPROPERTIES_V8:
+                LowerCopyDataProperties(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::STARRAYSPREAD_V8_V8:
+                LowerStoreArraySpread(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::COPYRESTARGS_IMM8:
+            case kungfu::EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
+                LowerCopyRestArgs(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
+                LowerTestIn(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
+                LowerNotifyConcurrentResult();
+                break;
+            // -------- Category #15: Exceptions --------
+            case kungfu::EcmaOpcode::THROW_PREF_NONE:
+                LowerThrow();
+                break;
+            case kungfu::EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
+                LowerThrowConstAssignment(bcInfo);
+                break;
+            case kungfu::EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
+                LowerThrowNotExists();
+                break;
+            case kungfu::EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
+                LowerThrowPatternNonCoercible();
+                break;
+            case kungfu::EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
+                LowerThrowDeleteSuperProperty();
+                break;
+            case kungfu::EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
+                if (LowerThrowIfNotObject(bcInfo) == LoweringResult::BLOCK_TERMINATED) {
+                    return false;
                 }
-                emitUnconditionalBytecodeBranch(true);
-                return BranchResult::ALWAYS_TRUE;
-            case RootConstantVertex::RootIndex::FALSE_VALUE:
-            case RootConstantVertex::RootIndex::NULL_VALUE:
-            case RootConstantVertex::RootIndex::UNDEFINED:
-                if (builder.GetMode() == BranchBuilder::JUMP_LABEL_TARGET) {
-                    return BranchResult::ALWAYS_FALSE;
+                break;
+            case kungfu::EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
+                if (LowerThrowUndefinedIfHole(bcInfo) == LoweringResult::BLOCK_TERMINATED) {
+                    return false;
                 }
-                emitUnconditionalBytecodeBranch(false);
-                return BranchResult::ALWAYS_FALSE;
+                break;
+            case kungfu::EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
+                if (LowerThrowUndefinedIfHoleWithName(bcInfo) == LoweringResult::BLOCK_TERMINATED) {
+                    return false;
+                }
+                break;
+            case kungfu::EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
+            case kungfu::EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
+                LowerThrowIfSuperNotCorrectCall(bcInfo);
+                break;
+            // -------- Category #16: Control Flow --------
+            case kungfu::EcmaOpcode::JEQZ_IMM8:
+            case kungfu::EcmaOpcode::JEQZ_IMM16:
+            case kungfu::EcmaOpcode::JEQZ_IMM32:
+                LowerJumpIfZero();
+                break;
+            case kungfu::EcmaOpcode::JNEZ_IMM8:
+            case kungfu::EcmaOpcode::JNEZ_IMM16:
+            case kungfu::EcmaOpcode::JNEZ_IMM32:
+                LowerJumpIfNonZero();
+                break;
+            case kungfu::EcmaOpcode::JMP_IMM8:
+            case kungfu::EcmaOpcode::JMP_IMM16:
+            case kungfu::EcmaOpcode::JMP_IMM32:
+                LowerJumpConstant();
+                break;
+            case kungfu::EcmaOpcode::RETURNUNDEFINED:
+                self->FinishBlockWith<ReturnVertex>(currentBlock, {self->undefinedValue_});
+                break;
+            case kungfu::EcmaOpcode::RETURN:
+                self->FinishBlockWith<ReturnVertex>(currentBlock, {frameState.GetAcc()});
+                break;
+            default:
+                UNREACHABLE();
+        }
+        return true;
+    }
+
+    void EmitUnconditionalDeopt()
+    {
+        currentBlock->SetDeferred(true);
+        constexpr auto DEOPT_TYPE = kungfu::DeoptType::INSUFFICIENTPROFILE;
+        uint32_t bytecodeOffset = self->preproc_->GetBytecodeOffset(currentBcIndex);
+        auto *deopt = self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, DEOPT_TYPE, bytecodeOffset);
+        deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
+    }
+
+    // -------- Category #2: Constant Loads --------
+
+    void LowerLdTaggedConstant(JSTaggedType taggedValue)
+    {
+        frameState.SetAcc(self->graph_->GetTaggedConstant(taggedValue));
+    }
+
+    void LowerLdaiImm32(const BytecodeInfo *bcInfo)
+    {
+        frameState.SetAcc(TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0)));
+    }
+
+    void LowerFldaiImm64(const BytecodeInfo *bcInfo)
+    {
+        JSTaggedType taggedValue = JSTaggedValue(base::bit_cast<double>(GetImmediate(bcInfo, 0))).GetRawData();
+        frameState.SetAcc(self->graph_->GetTaggedConstant(taggedValue));
+    }
+
+    void LowerLdString(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *res = StringFromConstPool(stringId);
+        compileInfoFacts_->EnsureType(res, NodeInfo::NodeType::STRING);
+        frameState.SetAcc(res);
+    }
+
+    void LowerLdBigInt(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *numberBigInt = StringFromConstPool(stringId);
+        RuntimeCallToAccWithLazyDeopt({numberBigInt}, RTSTUB_ID(LdBigInt));
+    }
+
+    // -------- Category #3: Unary Arithmetic --------
+
+    void LowerInc()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::INC, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Inc);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerDec()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::DEC, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Dec);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerNeg()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::NEG, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Neg);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerNot()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::NOT, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildUnaryOperation(CommonStubID::Not);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    // -------- Category #4: Binary Arithmetic --------
+
+    ValueVertex *TaggedConstantFromFoldedValue(JSTaggedValue value)
+    {
+        ValueVertex *constant = self->graph_->GetTaggedConstant(value.GetRawData());
+        compileInfoFacts_->EnsureType(constant, NodeTypeFromJSTaggedValue(value));
+        return constant;
+    }
+
+    void LowerAdd2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ADD, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::ADD);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerSub2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SUB, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::SUB);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerMul2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::MUL, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::MUL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerDiv2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::DIV, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::DIV);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerMod2(const BytecodeInfo * /*bcInfo*/)
+    {
+        ValueVertex *result = BuildBinaryOperation(BinaryOpKind::MOD);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerExp(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *left = LoadRegister(bcInfo, 0);
+        ValueVertex *right = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({left, right}, RTSTUB_ID(Exp));
+    }
+
+    void LowerShl2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHL, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_LEFT);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerShr2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::SHR, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerAshr2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::ASHR, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerAnd2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::AND, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_AND);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerOr2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::OR, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_OR);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerXor2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldBinaryConstant(x, y, BinaryFoldOp::XOR, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        ValueVertex *result = BuildBitwiseOperation(IntBitwiseKind::BITWISE_XOR);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    // -------- Category #5: Comparisons --------
+
+    bool TryFoldCompareAtBytecode(const BytecodeInfo *bcInfo, BinaryFoldOp foldOp)
+    {
+        ValueVertex *x = LoadRegister(bcInfo, 0);
+        ValueVertex *y = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (!TryFoldBinaryConstant(x, y, foldOp, &folded)) {
+            return false;
+        }
+        frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+        return true;
+    }
+
+    void LowerEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::EQ)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerNotEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::NOT_EQ)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::NOT_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerLess(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::LESS_THAN);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerLessEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::LESS_EQ)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::LESS_THAN_OR_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerGreater(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::GREATER_THAN);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerGreaterEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::GREATER_EQ)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::GREATER_THAN_OR_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerStrictNotEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_NOT_EQ)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::STRICT_NOT_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerStrictEq(const BytecodeInfo *bcInfo)
+    {
+        if (TryFoldCompareAtBytecode(bcInfo, BinaryFoldOp::STRICT_EQ)) {
+            return;
+        }
+        ValueVertex *result = BuildCompareOperation(JSCondition::STRICT_EQUAL);
+        frameState.SetAcc(result);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, result);
+    }
+
+    void LowerIsTrue()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        ValueVertex *result = nullptr;
+        bool toBoolean = false;
+        if (TryFoldToBooleanConstant(value, &toBoolean)) {
+            uint64_t value = toBoolean ? JSTaggedValue::VALUE_TRUE : JSTaggedValue::VALUE_FALSE;
+            result = TaggedConstantFromFoldedValue(JSTaggedValue(value));
+        }
+        if (result == nullptr) {
+            result = TryBuildKnownIntToBoolean(value, true);
+        }
+        if (result == nullptr) {
+            result = CommonStubCall({glue, value}, CommonStubID::ToBooleanTrue);
+        }
+        frameState.SetAcc(result);
+    }
+
+    void LowerIsFalse()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        ValueVertex *result = nullptr;
+        bool toBoolean = false;
+        if (TryFoldToBooleanConstant(value, &toBoolean)) {
+            uint64_t value = toBoolean ? JSTaggedValue::VALUE_FALSE : JSTaggedValue::VALUE_TRUE;
+            result = TaggedConstantFromFoldedValue(JSTaggedValue(value));
+        }
+        if (result == nullptr) {
+            result = TryBuildKnownIntToBoolean(value, false);
+        }
+        if (result == nullptr) {
+            result = CommonStubCall({glue, value}, CommonStubID::ToBooleanFalse);
+        }
+        frameState.SetAcc(result);
+    }
+
+    // -------- Category #6: Type Conversions --------
+
+    void LowerToNumber()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMBER, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::NUMBER)) {
+            frameState.SetAcc(value);
+            return;
+        }
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(ToNumber));
+    }
+
+    void LowerToNumeric()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        JSTaggedValue folded;
+        if (TryFoldUnaryConstant(value, UnaryFoldOp::TO_NUMERIC, &folded)) {
+            frameState.SetAcc(TaggedConstantFromFoldedValue(folded));
+            return;
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::NUMBER) ||
+            compileInfoFacts_->CheckType(value, NodeInfo::NodeType::BIGINT)) {
+            frameState.SetAcc(value);
+            return;
+        }
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(ToNumeric));
+    }
+
+    void LowerToPropertyKey()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(ToPropertyKey));
+    }
+
+    // -------- Category #7: Property Access --------
+
+    void LowerLdObjByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        ValueVertex *receiver = frameState.GetAcc();
+        uint16_t constDataId = GetConstDataId(bcInfo, 1);
+        if (TryBuildLoadNamedProperty(bcInfo, bcIndex, receiver, constDataId)) {
+            return;
+        }
+        ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName);
+    }
+
+    void LowerStObjByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 2);  // 2: receiver register index
+        uint16_t constDataId = GetConstDataId(bcInfo, 1);
+        ValueVertex *value = frameState.GetAcc();
+        auto serializingScope =
+            self->pgoContext_.CreateSerializingScope("GraphBuilder::BytecodeVisitor::LowerStObjByName");
+        NamedStoreAccessSet access;
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        if (factory.TryBuildNamedStoreAccessInfo(0, &access) &&
+            TryLowerNamedStoreAccessSet(bcIndex, access, receiver, value)) {
+            return;
+        }
+        if (TryBuildStoreNamedProperty(bcIndex, receiver, constDataId, value)) {
+            return;
+        }
+        ValueVertex *id = self->graph_->GetIntPtrConstant(static_cast<intptr_t>(constDataId));
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
+    }
+
+    void LowerLdObjByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *key = frameState.GetAcc();
+        if (TryFoldConstantStringElement(receiver, key)) {
+            return;
+        }
+        if (TryBuildLoadPropertyByValue(bcInfo, bcIndex, receiver, key)) {
+            return;
+        }
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
+    }
+
+    void LowerStObjByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *key = LoadRegister(bcInfo, 2);  // 2: key register index
+        ValueVertex *value = frameState.GetAcc();
+        ElementStoreAccessInfo access;
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        if (factory.TryBuildElementStoreAccessInfo(0, &access) &&
+            TryLowerElementStore(bcIndex, access, receiver, key, value)) {
+            return;
+        }
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
+    }
+
+    void LowerLdObjByIndex(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
+        CommonStubCallToAccWithLazyDeopt({glue, receiver, index, GlobalEnv()}, CommonStubID::LdObjByIndex);
+    }
+
+    void LowerStObjByIndex(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 0);
+        ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *value = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StObjByIndex);
+    }
+
+    void LowerLdThisByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
+        ValueVertex *key = frameState.GetAcc();
+        if (TryBuildLoadPropertyByValue(bcInfo, bcIndex, receiver, key)) {
+            return;
+        }
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, key, GlobalEnv()}, CommonStubID::GetPropertyByValue);
+    }
+
+    void LowerStThisByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
+        ValueVertex *key = LoadRegister(bcInfo, 1);
+        ValueVertex *value = frameState.GetAcc();
+        ElementStoreAccessInfo access;
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        if (factory.TryBuildElementStoreAccessInfo(0, &access) &&
+            TryLowerElementStore(bcIndex, access, receiver, key, value)) {
+            return;
+        }
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, key, value, GlobalEnv()}, CommonStubID::SetPropertyByValue);
+    }
+
+    void LowerLdThisByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
+        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {receiver, id, GlobalEnv()}, CommonStubID::GetPropertyByName);
+    }
+
+    void LowerStThisByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadParam(THIS_OBJECT_PARAM_INDEX);
+        ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+        ValueVertex *value = frameState.GetAcc();
+        CommonStubCallWithICAndLazyDeopt(bcInfo, {receiver, id, value, GlobalEnv()}, CommonStubID::SetPropertyByName);
+    }
+
+    void LowerLdSuperByValue(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *propKey = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({thisObj, propKey, jsFunc}, RTSTUB_ID(OptLdSuperByValue));
+    }
+
+    void LowerStSuperByValue(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *propKey = LoadRegister(bcInfo, 1);
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({thisObj, propKey, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
+    }
+
+    void LowerLdSuperByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *thisObj = frameState.GetAcc();
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *prop = StringFromConstPool(stringId);
+        RuntimeCallToAccWithLazyDeopt({thisObj, prop, jsFunc}, RTSTUB_ID(OptLdSuperByValue));
+    }
+
+    void LowerStSuperByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *thisObj = LoadRegister(bcInfo, 1);
+        ValueVertex *value = frameState.GetAcc();
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *prop = StringFromConstPool(stringId);
+        RuntimeCallWithLazyDeopt({thisObj, prop, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
+    }
+
+    void LowerStOwnByValue(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 0);
+        ValueVertex *key = LoadRegister(bcInfo, 1);
+        ValueVertex *value = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, key, value, GlobalEnv()}, CommonStubID::StOwnByValue);
+    }
+
+    void LowerStOwnByIndex(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 0);
+        ValueVertex *index = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *value = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, index, value, GlobalEnv()}, CommonStubID::StOwnByIndex);
+    }
+
+    void LowerStOwnByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *propKey = StringFromConstPool(stringId);
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *accValue = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, accValue, GlobalEnv()}, CommonStubID::StOwnByName);
+    }
+
+    void LowerStOwnByValueWithNameSet(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 0);
+        ValueVertex *propKey = LoadRegister(bcInfo, 1);
+        ValueVertex *accValue = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, accValue, GlobalEnv()},
+                                    CommonStubID::StOwnByValueWithNameSet);
+    }
+
+    void LowerStOwnByNameWithNameSet(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *propKey = StringFromConstPool(stringId);
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *accValue = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, accValue, GlobalEnv()},
+                                    CommonStubID::StOwnByNameWithNameSet);
+    }
+
+    bool TryBuildLoadGlobalCell(uint32_t bcIndex, const BytecodeInfo *bcInfo)
+    {
+        std::optional<ArkSteedObjectRef> boxRef = TryGetGlobalCellBox(bcInfo);
+        if (!boxRef.has_value()) {
+            return false;
+        }
+        ValueVertex *box = GetHeapConstant(boxRef.value());
+        if (box == nullptr) {
+            return false;
+        }
+        frameState.SetAcc(BuildGlobalCellBoxValue(bcIndex, box));
+        return true;
+    }
+
+    bool TryBuildStoreGlobalCell(uint32_t bcIndex, const BytecodeInfo *bcInfo)
+    {
+        std::optional<ArkSteedObjectRef> boxRef = TryGetGlobalCellBox(bcInfo);
+        if (!boxRef.has_value()) {
+            return false;
+        }
+        ValueVertex *box = GetHeapConstant(boxRef.value());
+        if (box == nullptr) {
+            return false;
+        }
+        BuildGlobalCellBoxValue(bcIndex, box);
+        BuildStoreTaggedField(box, static_cast<int32_t>(PropertyBox::VALUE_OFFSET), frameState.GetAcc());
+        return true;
+    }
+
+    void LowerTryLdGlobalByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (!TryBuildLoadGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::TryLdGlobalByName);
+        }
+    }
+
+    void LowerTryStGlobalByName(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (!TryBuildStoreGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            ValueVertex *value = frameState.GetAcc();
+            CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::TryStGlobalByName);
+        }
+    }
+
+    void LowerLdGlobalVar(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (!TryBuildLoadGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {id, GlobalEnv()}, CommonStubID::LdGlobalVar);
+        }
+    }
+
+    void LowerStGlobalVar(const BytecodeInfo *bcInfo, uint32_t bcIndex)
+    {
+        if (!TryBuildStoreGlobalCell(bcIndex, bcInfo)) {
+            ValueVertex *id = self->graph_->GetIntPtrConstant(GetConstDataId<intptr_t>(bcInfo, 1));
+            ValueVertex *value = frameState.GetAcc();
+            CommonStubCallWithICAndLazyDeopt(bcInfo, {id, value, GlobalEnv()}, CommonStubID::StGlobalVar);
+        }
+    }
+
+    void LowerStConstToGlobalRecord(const BytecodeInfo *bcInfo, bool isConst)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *propKey = StringFromConstPool(stringId);
+        ValueVertex *value = frameState.GetAcc();
+        ValueVertex *isConstGate = isConst ? self->graph_->GetTaggedConstant(JSTaggedValue::True().GetRawData())
+                                           : self->graph_->GetTaggedConstant(JSTaggedValue::False().GetRawData());
+        RuntimeCallWithLazyDeopt({propKey, value, isConstGate}, RTSTUB_ID(StGlobalRecord));
+    }
+
+    void LowerLdGlobal()
+    {
+        constexpr int32_t offset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE + GlobalEnv::JS_GLOBAL_OBJECT_INDEX *
+                                                                                     JSTaggedValue::TaggedTypeSize());
+
+        frameState.SetAcc(
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
+    }
+
+    void LowerLdSymbol()
+    {
+        constexpr int32_t offset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE + GlobalEnv::SYMBOL_FUNCTION_INDEX *
+                                                                                     JSTaggedValue::TaggedTypeSize());
+
+        frameState.SetAcc(
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {GlobalEnv()}, offset));
+    }
+
+    void LowerLdPrivateProperty(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *levelIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
+        ValueVertex *obj = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(LdPrivateProperty));
+    }
+
+    void LowerStPrivateProperty(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *levelIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
+        ValueVertex *obj = LoadRegister(bcInfo, 3);         // 3: obj register index
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 4);  // 4: lexicalEnv register index
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(StPrivateProperty));
+    }
+
+    // -------- Category #8: Function Calls --------
+
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallVertex *BuildCallVertex(const InputRange &inputs, uint32_t actualArgc)
+    {
+        auto *call = self->NewVertex<CallVertex>(compileInfoFacts_, currentBlock, inputs, actualArgc);
+        UpdateCatchBlockData(call);
+        return call;
+    }
+
+    void LowerCallArg0()
+    {
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, undefined}, CALL_ARG0);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallArg1(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *a0Value = LoadRegister(bcInfo, 0);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value}, CALL_ARG1);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallArgs2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *a0Value = LoadRegister(bcInfo, 0);
+        ValueVertex *a1Value = LoadRegister(bcInfo, 1);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value, a1Value}, CALL_ARG2);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallArgs3(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *a0Value = LoadRegister(bcInfo, 0);
+        ValueVertex *a1Value = LoadRegister(bcInfo, 1);
+        ValueVertex *a2Value = LoadRegister(bcInfo, 2);  // 2: third argument register index
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, undefined, a0Value, a1Value, a2Value}, CALL_ARG3);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThis0(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj}, CALL_ARG0);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallInit(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj}, CALL_ARG0);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThis1(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *a0Value = LoadRegister(bcInfo, 1);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value}, CALL_ARG1);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThis2(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *a0Value = LoadRegister(bcInfo, 1);
+        ValueVertex *a1Value = LoadRegister(bcInfo, 2);  // 2: second argument register index
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value, a1Value}, CALL_ARG2);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThis3(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *a0Value = LoadRegister(bcInfo, 1);
+        ValueVertex *a1Value = LoadRegister(bcInfo, 2);  // 2: second argument register index
+        ValueVertex *a2Value = LoadRegister(bcInfo, 3);  // 3: third argument register index
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+
+        CallVertex *call = BuildCallVertex({func, undefined, thisObj, a0Value, a1Value, a2Value}, CALL_ARG3);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallRange(const BytecodeInfo *bcInfo)
+    {
+        uint32_t inputSize = bcInfo->inputs.size();
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *undefined = self->undefinedValue_;
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        args.push_back(func);
+        args.push_back(undefined);
+        args.push_back(undefined);
+        for (uint32_t idx = 0; idx < inputSize; idx++) {
+            args.push_back(LoadRegister(bcInfo, static_cast<int>(idx)));
+        }
+        CallVertex *call = BuildCallVertex(args, inputSize);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThisRange(const BytecodeInfo *bcInfo)
+    {
+        // -1 : Skips the receiver
+        uint32_t argc = bcInfo->inputs.size() - 1;
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        ValueVertex *undefined = self->undefinedValue_;
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        args.push_back(func);
+        args.push_back(undefined);
+        args.push_back(thisObj);
+        for (uint32_t idx = 0; idx < argc; idx++) {
+            args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));
+        }
+        CallVertex *call = BuildCallVertex(args, argc);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallThisWithName(const BytecodeInfo *bcInfo)
+    {
+        constexpr uint32_t FIXED_INPUTS = 2;
+        ASSERT(bcInfo->inputs.size() >= FIXED_INPUTS);
+        uint32_t argc = bcInfo->inputs.size() - FIXED_INPUTS;
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *thisObj = LoadRegister(bcInfo, 0);
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        BB *callBlock = self->NewBlock();
+        BB *throwBlock = self->NewBlock();
+        self->FinishBlockWithBranch<BranchIfCallableVertex>(currentBlock, {func}, callBlock, throwBlock);
+
+        currentBlock = throwBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *stringId = self->graph_->GetInt32Constant(
+                GetConstDataId<int>(bcInfo, static_cast<int>(bcInfo->inputs.size() - 1)));
+            ValueVertex *funcName = StringFromConstPool(stringId);
+            auto *throws = self->FinishBlockWith<ThrowVertex>(
+                currentBlock, {funcName, func}, RTSTUB_ID(ThrowNotCallableException));
+            UpdateCatchBlockData(throws);
+        }
+
+        currentBlock = callBlock;
+        compileInfoFacts_ = entryFacts;
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        args.push_back(func);
+        args.push_back(self->undefinedValue_);
+        args.push_back(thisObj);
+        for (uint32_t idx = 0; idx < argc; idx++) {
+            args.push_back(LoadRegister(bcInfo, static_cast<int>(idx + 1)));
+        }
+        CallVertex *call = BuildCallVertex(args, argc);
+        frameState.SetAcc(call);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, call);
+    }
+
+    void LowerCallSpread(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *thisArg = LoadRegister(bcInfo, 0);
+        ValueVertex *argsArray = LoadRegister(bcInfo, 1);
+
+        RuntimeCallToAccWithLazyDeopt({func, thisArg, argsArray}, RTSTUB_ID(CallSpread));
+    }
+
+    void LowerSuperCallThisRange(const BytecodeInfo *bcInfo)
+    {
+        uint32_t inputSize = bcInfo->inputs.size();
+
+        ValueVertex *thisFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
+        ValueVertex *taggedInputSize = TaggedConstantFromInt32(static_cast<int>(inputSize));
+        ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedInputSize, inputSize);
+
+        RuntimeCallToAccWithLazyDeopt({thisFunc, newTarget, taggedArray, taggedInputSize}, RTSTUB_ID(OptSuperCall));
+    }
+
+    void LowerSuperCallArrowRange(const BytecodeInfo *bcInfo)
+    {
+        uint32_t argc = bcInfo->inputs.size();
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
+        ValueVertex *taggedArgc = TaggedConstantFromInt32(static_cast<int>(argc));
+        ValueVertex *taggedArray = TaggedArrayFromValueIn(bcInfo, taggedArgc, argc);
+
+        RuntimeCallToAccWithLazyDeopt({func, newTarget, taggedArray, taggedArgc}, RTSTUB_ID(OptSuperCall));
+    }
+
+    void LowerSuperCallSpread(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *array = LoadRegister(bcInfo, 0);
+        ValueVertex *func = frameState.GetAcc();
+        ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
+
+        ValueVertex *argsArray = CommonStubCall({glue, array, GlobalEnv()}, CommonStubID::GetCallSpreadArgs);
+        RuntimeCallToAccWithLazyDeopt({func, newTarget, argsArray}, RTSTUB_ID(OptSuperCallSpread));
+    }
+
+    void LowerSuperCallForwardAllArgs(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *func = LoadRegister(bcInfo, 0);
+        ValueVertex *superFunc = CommonStubCall({glue, func}, CommonStubID::GetPrototype);
+        ValueVertex *newTarget = LoadParam(NEW_TARGET_PARAM_INDEX);
+        ValueVertex *taggedActualArgc = TaggedActualArgc();
+
+        RuntimeCallToAccWithLazyDeopt({superFunc, newTarget, taggedActualArgc}, RTSTUB_ID(OptSuperCallForwardAllArgs));
+    }
+
+    void LowerNewObjApply(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *target = LoadRegister(bcInfo, 0);
+        ValueVertex *args = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({target, args}, RTSTUB_ID(NewObjApply));
+    }
+
+    void LowerNewObjRange(const BytecodeInfo *bcInfo)
+    {
+        uint32_t inputSize = bcInfo->inputs.size();
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        for (uint32_t idx = 0; idx < inputSize; idx++) {
+            args.push_back(LoadRegister(bcInfo, idx));
+        }
+        RuntimeCallToAccWithLazyDeopt(args, RTSTUB_ID(OptNewObjRange));
+    }
+
+    // -------- Category #9: Object/Array Creation --------
+
+    void LowerCreateEmptyObject()
+    {
+        RuntimeCallToAccWithLazyDeopt({}, RTSTUB_ID(CreateEmptyObject));
+    }
+
+    void LowerCreateEmptyArray()
+    {
+        CommonStubCallToAccWithLazyDeopt({glue, GlobalEnv()}, CommonStubID::CreateEmptyArray);
+    }
+
+    void LowerCreateObjectWithBuffer(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *index = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *obj = ObjectFromConstPool(index);
+        ValueVertex *lexEnv = LoadRegister(bcInfo, 1);
+        CommonStubCallToAccWithLazyDeopt({glue, obj, lexEnv}, CommonStubID::CreateObjectHavingMethod);
+    }
+
+    void LowerCreateObjectWithExcludedKeys(const BytecodeInfo *bcInfo)
+    {
+        uint32_t inputSize = bcInfo->inputs.size();
+        ChunkVector<ValueVertex *> args(self->chunk_);
+        for (uint32_t idx = 0; idx < inputSize; idx++) {
+            args.push_back(LoadRegister(bcInfo, idx));
+        }
+        RuntimeCallToAccWithLazyDeopt(args, RTSTUB_ID(OptCreateObjectWithExcludedKeys));
+    }
+
+    void LowerCreateArrayWithBuffer(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *index = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *slotId = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 1));
+
+        CommonStubCallToAccWithLazyDeopt({glue, index, jsFunc, slotId, GlobalEnv()},
+                                         CommonStubID::CreateArrayWithBuffer);
+    }
+
+    void LowerCreateRegExpWithLiteral(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *pattern = StringFromConstPool(stringId);
+        ValueVertex *flags = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+
+        RuntimeCallToAccWithLazyDeopt({pattern, flags}, RTSTUB_ID(CreateRegExpWithLiteral));
+    }
+
+    void LowerCreateIterResultObj(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *value = LoadRegister(bcInfo, 0);
+        ValueVertex *done = LoadRegister(bcInfo, 1);
+        RuntimeCallToAccWithLazyDeopt({value, done}, RTSTUB_ID(CreateIterResultObj));
+    }
+
+    // -------- Category #10: Class/Function/Field Definition --------
+
+    void LowerDefineMethod(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *taggedMethodId = TaggedConstantFromInt32(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *length = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *env = LoadRegister(bcInfo, 2);  // 2: env register index
+        ValueVertex *homeObject = frameState.GetAcc();
+        ValueVertex *module = ModuleFromFunction();
+        ValueVertex *method = MethodFromConstPool(taggedMethodId);
+
+#if ECMASCRIPT_ENABLE_IC
+        // 3 : slotId operand index
+        ValueVertex *slotId = TaggedConstantFromInt32(GetICSlotId<int>(bcInfo, 3));
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+
+        RuntimeCallToAccWithLazyDeopt({method, homeObject, length, env, module, slotId, jsFunc},
+                                      RTSTUB_ID(DefineMethod));
+#else
+        RuntimeCallToAcc({method, homeObject, length, env, module}, RTSTUB_ID(DefineMethod));
+#endif
+    }
+
+    void LowerDefineFunc(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *slotId = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
+        ValueVertex *methodId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 1));
+        // 2: length operand index
+        ValueVertex *length = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 2));
+        // 3: lexicalEnv register index
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);
+
+        CommonStubCallToAccWithLazyDeopt({glue, jsFunc, methodId, length, lexicalEnv, slotId, GlobalEnv()},
+                                         CommonStubID::Definefunc);
+    }
+
+    void LowerDefineClassWithBuffer(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *methodId = TaggedConstantFromInt32(GetConstDataId<int>(bcInfo, 0));
+        ValueVertex *literalId = TaggedConstantFromInt32(GetConstDataId<int>(bcInfo, 1));
+        ValueVertex *length = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
+        ValueVertex *proto = LoadRegister(bcInfo, 3);       // 3: proto register index
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 4);  // 4: lexicalEnv register index
+        ValueVertex *sharedConstPool = SharedConstPool();
+        ValueVertex *module = ModuleFromFunction();
+
+#if ECMASCRIPT_ENABLE_IC
+        ValueVertex *slotId = TaggedConstantFromInt32(GetICSlotId<int>(bcInfo, 5));  // 5 : Slot ID index
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+
+        RuntimeCallToAccWithLazyDeopt(
+            {proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length, slotId, jsFunc},
+            RTSTUB_ID(CreateClassWithBuffer));
+#else
+        RuntimeCallToAcc({proto, lexicalEnv, sharedConstPool, methodId, literalId, module, length},
+                         RTSTUB_ID(CreateClassWithBuffer));
+#endif
+    }
+
+    void LowerDefineGetterSetterByValue(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *obj = LoadRegister(bcInfo, 0);
+        ValueVertex *prop = LoadRegister(bcInfo, 1);
+        ValueVertex *getter = LoadRegister(bcInfo, 2);  // 2: getter register index
+        ValueVertex *setter = LoadRegister(bcInfo, 3);  // 3: setter register index
+        ValueVertex *acc = frameState.GetAcc();
+        ValueVertex *undefinedValue = self->undefinedValue_;
+        ValueVertex *taggedOne = TaggedConstantFromInt32(1);
+
+        RuntimeCallToAccWithLazyDeopt({obj, prop, getter, setter, acc, undefinedValue, taggedOne},
+                                      RTSTUB_ID(DefineGetterSetterByValue));
+    }
+
+    void LowerDefinePropertyByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 1));
+        ValueVertex *prop = StringFromConstPool(stringId);
+        ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
+        ValueVertex *value = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
+    }
+
+    void LowerDefineFieldByName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *stringId = self->graph_->GetInt32Constant(GetConstDataId<int>(bcInfo, 1));
+        ValueVertex *prop = StringFromConstPool(stringId);
+        ValueVertex *obj = LoadRegister(bcInfo, 2);  // 2: obj register index
+        ValueVertex *value = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, obj, prop, value, GlobalEnv()}, CommonStubID::DefineField);
+    }
+
+    void LowerDefineFieldByValue(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *propKey = LoadRegister(bcInfo, 0);
+        ValueVertex *acc = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
+    }
+
+    void LowerDefineFieldByIndex(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 1);
+        ValueVertex *propKey = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *acc = frameState.GetAcc();
+        CommonStubCallWithLazyDeopt({glue, receiver, propKey, acc, GlobalEnv()}, CommonStubID::DefineField);
+    }
+
+    void LowerCreatePrivateProperty(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *count = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *literalId = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
+        ValueVertex *constpool = SharedConstPool();
+        ValueVertex *module = ModuleFromFunction();
+
+        RuntimeCallWithLazyDeopt({lexicalEnv, count, constpool, literalId, module}, RTSTUB_ID(CreatePrivateProperty));
+    }
+
+    void LowerDefinePrivateProperty(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *levelIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *obj = LoadRegister(bcInfo, 2);         // 2: obj register index
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(DefinePrivateProperty));
+    }
+
+    // -------- Category #11: Iterators --------
+
+    void LowerGetIterator()
+    {
+        ValueVertex *obj = frameState.GetAcc();
+        CommonStubCallToAccWithLazyDeopt({glue, obj, GlobalEnv()}, CommonStubID::GetIterator);
+    }
+
+    void LowerGetPropIterator()
+    {
+        ValueVertex *object = frameState.GetAcc();
+        CommonStubCallToAccWithLazyDeopt({glue, object, GlobalEnv()}, CommonStubID::Getpropiterator);
+    }
+
+    void LowerCloseIterator(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *iterator = LoadRegister(bcInfo, 0);
+        RuntimeCallToAccWithLazyDeopt({iterator}, RTSTUB_ID(CloseIterator));
+    }
+
+    void LowerGetNextPropName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *iterator = LoadRegister(bcInfo, 0);
+        RuntimeCallToAccWithLazyDeopt({iterator}, RTSTUB_ID(GetNextPropNameSlowpath));
+    }
+
+    // -------- Category #12: Lexical Environment --------
+
+    int32_t GetLexicalEnvSlotOffset(uint16_t slot) const
+    {
+        return static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                    (LexicalEnv::RESERVED_ENV_LENGTH + slot) * JSTaggedValue::TaggedTypeSize());
+    }
+
+    int32_t GetLexicalEnvParentOffset() const
+    {
+        return static_cast<int32_t>(TaggedArray::DATA_OFFSET +
+                                    LexicalEnv::PARENT_ENV_INDEX * JSTaggedValue::TaggedTypeSize());
+    }
+
+    ValueVertex *BuildEnvSlotLoad(ValueVertex *env, int32_t offset)
+    {
+        ASSERT(env != nullptr);
+        bool isConstantField = IsEnvConstantFieldOffset(offset);
+        ValueVertex *cached = nullptr;
+        if (isConstantField) {
+            cached = compileInfoFacts_->LookupEnvConstant(env, offset);
+        } else {
+            cached = compileInfoFacts_->LookupEnvSlot(env, offset);
+        }
+        if (cached != nullptr) {
+            return cached;
+        }
+
+        ValueVertex *value = self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {env}, offset);
+        if (isConstantField) {
+            compileInfoFacts_->RecordEnvConstant(env, offset, value);
+        } else {
+            compileInfoFacts_->RecordEnvSlot(env, offset, value);
+        }
+        return value;
+    }
+
+    ValueVertex *BuildLexicalEnvAtLevel(ValueVertex *baseEnv, uint16_t level)
+    {
+        ValueVertex *env = baseEnv;
+        for (uint16_t i = 0; i < level; ++i) {
+            env = BuildEnvSlotLoad(env, GetLexicalEnvParentOffset());
+        }
+        return env;
+    }
+
+    void LowerNewLexicalEnv(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *parent = LoadRegister(bcInfo, 1);
+        ValueVertex *numVars = self->graph_->GetInt32Constant(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *newEnv =
+            CommonStubCall({glue, parent, numVars}, CommonStubID::NewLexicalEnv, SideEffectKind::SAFE_CALL);
+
+        frameState.SetAcc(newEnv);
+        frameState.SetLexicalEnv(newEnv);
+        compileInfoFacts_->RecordEnvConstant(newEnv, GetLexicalEnvParentOffset(), parent);
+    }
+
+    void LowerNewLexicalEnvWithName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *level = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *slotId = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        ValueVertex *parent = LoadRegister(bcInfo, 2);  // 2: env register index
+        ValueVertex *newEnv = RuntimeCall({level, slotId, parent, jsFunc}, RTSTUB_ID(OptNewLexicalEnvWithName),
+                                          SideEffectKind::SAFE_CALL);
+
+        frameState.SetAcc(newEnv);
+        frameState.SetLexicalEnv(newEnv);
+        compileInfoFacts_->RecordEnvConstant(newEnv, GetLexicalEnvParentOffset(), parent);
+    }
+
+    void LowerPopLexicalEnv(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *currentEnv = LoadRegister(bcInfo, 0);
+        ValueVertex *parentEnv = BuildEnvSlotLoad(currentEnv, GetLexicalEnvParentOffset());
+
+        frameState.SetAcc(parentEnv);
+        frameState.SetLexicalEnv(parentEnv);
+        compileInfoFacts_->ClearEnvSlotsFor(currentEnv);
+    }
+
+    void LowerLdLexVar(const BytecodeInfo *bcInfo)
+    {
+        uint16_t level = GetImmediate<uint16_t>(bcInfo, 0);
+        uint16_t slot = GetImmediate<uint16_t>(bcInfo, 1);
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
+        ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
+        frameState.SetAcc(BuildEnvSlotLoad(targetEnv, GetLexicalEnvSlotOffset(slot)));
+    }
+
+    void LowerStLexVar(const BytecodeInfo *bcInfo)
+    {
+        uint16_t level = GetImmediate<uint16_t>(bcInfo, 0);
+        uint16_t slot = GetImmediate<uint16_t>(bcInfo, 1);
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 2);  // 2: lexicalEnv register index
+        ValueVertex *value = frameState.GetAcc();
+        ASSERT(value != nullptr);
+        ValueVertex *targetEnv = BuildLexicalEnvAtLevel(lexicalEnv, level);
+        int32_t offset = GetLexicalEnvSlotOffset(slot);
+        self->NewVertex<StoreEnvSlotVertex>(compileInfoFacts_, currentBlock, {targetEnv, value}, offset);
+        if (ClassifyDirectWriteBarrierValueKind(value) != ArkSteedWriteBarrierValueKind::NonHeap) {
+            self->NewVertex<SetValueWithBarrierVertex>(compileInfoFacts_, currentBlock, {glue, targetEnv, value},
+                                                       offset);
+        }
+        compileInfoFacts_->RecordEnvSlot(targetEnv, offset, value);
+    }
+
+    // -------- Category #13: Modules --------
+
+    void LowerLdExternalModuleVar(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        RuntimeCallToAccWithLazyDeopt({index, jsFunc}, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc));
+    }
+
+    void LowerGetModuleNamespace(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        RuntimeCallToAccWithLazyDeopt({index, jsFunc}, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc));
+    }
+
+    void LowerLdLocalModuleVar(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        RuntimeCallToAccWithLazyDeopt({index, jsFunc}, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc));
+    }
+
+    void LowerStModuleVar(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({index, value, jsFunc}, RTSTUB_ID(StModuleVarByIndexOnJSFunc));
+    }
+
+    void LowerDynamicImport()
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *specifier = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({specifier, jsFunc}, RTSTUB_ID(DynamicImport));
+    }
+
+    void LowerLdPatchVar(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        RuntimeCallToAccWithLazyDeopt({index}, RTSTUB_ID(LdPatchVar));
+    }
+
+    void LowerStPatchVar(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *index = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({index, value}, RTSTUB_ID(StPatchVar));
+    }
+
+    // -------- Category #14: Miscellaneous --------
+
+    enum class TypeOfKind : uint8_t {
+        UNDEFINED,
+        OBJECT,
+        NUMBER,
+        BOOLEAN,
+        STRING,
+        SYMBOL,
+        FUNCTION,
+        BIGINT,
+        NATIVE_MODULE_FAILURE_INFO,
+        UNKNOWN,
+    };
+
+    static TypeOfKind TypeOfKindFromHClass(const JSHClass *hclass)
+    {
+        if (hclass == nullptr) {
+            return TypeOfKind::UNKNOWN;
+        }
+        JSType type = hclass->GetObjectType();
+        if (type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST) {
+            return TypeOfKind::STRING;
+        }
+        if (type == JSType::SYMBOL) {
+            return TypeOfKind::SYMBOL;
+        }
+        if (hclass->IsCallable()) {
+            return TypeOfKind::FUNCTION;
+        }
+        if (type == JSType::BIGINT) {
+            return TypeOfKind::BIGINT;
+        }
+        if (type == JSType::NATIVE_MODULE_FAILURE_INFO) {
+            return TypeOfKind::NATIVE_MODULE_FAILURE_INFO;
+        }
+        return TypeOfKind::OBJECT;
+    }
+
+    static TypeOfKind TypeOfKindFromConstant(JSTaggedValue value)
+    {
+        if (value.IsUndefined()) {
+            return TypeOfKind::UNDEFINED;
+        }
+        if (value.IsNull()) {
+            return TypeOfKind::OBJECT;
+        }
+        if (value.IsInt() || value.IsDouble()) {
+            return TypeOfKind::NUMBER;
+        }
+        if (value.IsTrue() || value.IsFalse()) {
+            return TypeOfKind::BOOLEAN;
+        }
+        if (value.IsHole()) {
+            return TypeOfKind::UNKNOWN;
+        }
+        if (value.IsHeapObject()) {
+            return TypeOfKindFromHClass(value.GetTaggedObject()->GetClass());
+        }
+        return TypeOfKind::UNKNOWN;
+    }
+
+    static TypeOfKind TypeOfKindFromKnownType(NodeInfo::NodeType knownType)
+    {
+        if (NodeInfo::IsEmptyNodeType(knownType) || knownType == NodeInfo::NodeType::UNKNOWN) {
+            return TypeOfKind::UNKNOWN;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::UNDEFINED)) {
+            return TypeOfKind::UNDEFINED;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::NULL_TYPE)) {
+            return TypeOfKind::OBJECT;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::NUMBER)) {
+            return TypeOfKind::NUMBER;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::BOOLEAN)) {
+            return TypeOfKind::BOOLEAN;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::STRING)) {
+            return TypeOfKind::STRING;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::SYMBOL)) {
+            return TypeOfKind::SYMBOL;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::JS_FUNCTION)) {
+            return TypeOfKind::FUNCTION;
+        }
+        if (NodeInfo::NodeTypeIs(knownType, NodeInfo::NodeType::BIGINT)) {
+            return TypeOfKind::BIGINT;
+        }
+        if (NodeInfo::NodeTypeIs(
+                knownType, NodeInfo::UnionNodeType(NodeInfo::NodeType::JS_ARRAY, NodeInfo::NodeType::JS_TYPED_ARRAY))) {
+            return TypeOfKind::OBJECT;
+        }
+        return TypeOfKind::UNKNOWN;
+    }
+
+    TypeOfKind TypeOfKindFromPossibleHClasses(ValueVertex *value) const
+    {
+        std::optional<NodeInfo::PossibleHClasses> hclasses = compileInfoFacts_->TryGetPossibleHClasses(value);
+        if (!hclasses.has_value() || hclasses->empty()) {
+            return TypeOfKind::UNKNOWN;
+        }
+        TypeOfKind kind = TypeOfKindFromHClass(hclasses->front());
+        bool allAgree = std::all_of(hclasses->begin(), hclasses->end(),
+                                    [kind](const JSHClass *hclass) { return TypeOfKindFromHClass(hclass) == kind; });
+        return allAgree ? kind : TypeOfKind::UNKNOWN;
+    }
+
+    TypeOfKind ClassifyTypeOf(ValueVertex *value) const
+    {
+        if (auto *constant = value->TryCast<TaggedConstantVertex>()) {
+            return TypeOfKindFromConstant(JSTaggedValue(constant->GetValue()));
+        }
+        if (std::optional<ArkSteedHeapRef> constantRef = TryGetConstantHeapRef(value)) {
+            ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+            if (broker != nullptr) {
+                ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::ClassifyTypeOf");
+                JSTaggedValue constant = JSTaggedValue::Undefined();
+                if (broker->TryResolveRef(*constantRef, &constant)) {
+                    return TypeOfKindFromConstant(constant);
+                }
+            }
+        }
+        TypeOfKind kind = TypeOfKindFromKnownType(compileInfoFacts_->GetKnownType(value));
+        if (kind != TypeOfKind::UNKNOWN) {
+            return kind;
+        }
+        return TypeOfKindFromPossibleHClasses(value);
+    }
+
+    ValueVertex *StringFromGlobalConstant(ConstantIndex index)
+    {
+        ValueVertex *constant = nullptr;
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker != nullptr) {
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::StringFromGlobalConstant");
+            ArkSteedNameRef stringRef;
+            if (broker->TryGetGlobalConstantRef(index, &stringRef)) {
+                constant = GetHeapConstant(stringRef);
+            }
+        }
+        ASSERT(constant != nullptr);
+        return constant;
+    }
+
+    static ConstantIndex StringIndexOfTypeOfKind(TypeOfKind kind)
+    {
+        switch (kind) {
+            case TypeOfKind::UNDEFINED:
+                return ConstantIndex::UNDEFINED_STRING_INDEX;
+            case TypeOfKind::OBJECT:
+                return ConstantIndex::OBJECT_STRING_INDEX;
+            case TypeOfKind::NUMBER:
+                return ConstantIndex::NUMBER_STRING_INDEX;
+            case TypeOfKind::BOOLEAN:
+                return ConstantIndex::BOOLEAN_STRING_INDEX;
+            case TypeOfKind::STRING:
+                return ConstantIndex::STRING_STRING_INDEX;
+            case TypeOfKind::SYMBOL:
+                return ConstantIndex::SYMBOL_STRING_INDEX;
+            case TypeOfKind::FUNCTION:
+                return ConstantIndex::FUNCTION_STRING_INDEX;
+            case TypeOfKind::BIGINT:
+                return ConstantIndex::BIGINT_STRING_INDEX;
+            case TypeOfKind::NATIVE_MODULE_FAILURE_INFO:
+                return ConstantIndex::NATIVE_MODULE_FAILURE_INFO_STRING_INDEX;
+            case TypeOfKind::UNKNOWN:
+                break;
+        }
+        UNREACHABLE();
+    }
+
+    void LowerTypeOf()
+    {
+        ValueVertex *obj = frameState.GetAcc();
+        TypeOfKind kind = ClassifyTypeOf(obj);
+        if (kind == TypeOfKind::UNKNOWN) {
+            frameState.SetAcc(CommonStubCall({glue, obj}, CommonStubID::TypeOf));
+            return;
+        }
+        frameState.SetAcc(StringFromGlobalConstant(StringIndexOfTypeOfKind(kind)));
+    }
+
+    void LowerGetUnmappedArgs()
+    {
+        ValueVertex *argv = self->graph_->GetIntPtrConstant(0);
+        ValueVertex *numArgs = ActualArgc();
+        ValueVertex *argvTaggedArray = self->undefinedValue_;
+
+        CommonStubCallToAccWithLazyDeopt({glue, argv, numArgs, argvTaggedArray, GlobalEnv()},
+                                         CommonStubID::GetUnmappedArgs);
+    }
+
+    void LowerCopyRestArgs(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *taggedArgc = TaggedActualArgc();
+        ValueVertex *taggedRestIdx = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 0));
+        RuntimeCallToAccWithLazyDeopt({taggedArgc, taggedRestIdx}, RTSTUB_ID(OptCopyRestArgs));
+    }
+
+    void LowerDelObjProp(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *object = LoadRegister(bcInfo, 0);
+        ValueVertex *prop = frameState.GetAcc();
+        CommonStubCallToAccWithLazyDeopt({glue, object, prop, GlobalEnv()}, CommonStubID::DeleteObjectProperty);
+    }
+
+    void LowerIsIn(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *prop = LoadRegister(bcInfo, 0);
+        ValueVertex *obj = frameState.GetAcc();
+        CommonStubCallToAccWithLazyDeopt({glue, prop, obj, GlobalEnv()}, CommonStubID::IsIn);
+    }
+
+    void LowerInstanceOf(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *object = LoadRegister(bcInfo, 1);
+        ValueVertex *target = frameState.GetAcc();
+        CommonStubCallToAccWithICAndLazyDeopt(bcInfo, {object, target, GlobalEnv()}, CommonStubID::Instanceof);
+    }
+
+    void LowerTestIn(const BytecodeInfo *bcInfo)
+    {
+        // 1: level operand index
+        ValueVertex *levelIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 1));
+        // 2: slot operand index
+        ValueVertex *slotIndex = TaggedConstantFromInt32(GetImmediate<int>(bcInfo, 2));
+        ValueVertex *lexicalEnv = LoadRegister(bcInfo, 3);  // 3: lexicalEnv register index
+        ValueVertex *obj = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(TestIn));
+    }
+
+    void LowerCopyDataProperties(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *target = LoadRegister(bcInfo, 0);
+        ValueVertex *source = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({target, source}, RTSTUB_ID(CopyDataProperties));
+    }
+
+    void LowerStoreArraySpread(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *array = LoadRegister(bcInfo, 0);
+        ValueVertex *index = LoadRegister(bcInfo, 1);
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({array, index, value}, RTSTUB_ID(StArraySpread));
+    }
+
+    void LowerGetTemplateObject()
+    {
+        ValueVertex *value = frameState.GetAcc();
+        RuntimeCallToAccWithLazyDeopt({value}, RTSTUB_ID(GetTemplateObject));
+    }
+
+    void LowerSetObjectWithProto(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *proto = LoadRegister(bcInfo, 0);
+        ValueVertex *obj = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({proto, obj}, RTSTUB_ID(SetObjectWithProto));
+    }
+
+    void LowerNotifyConcurrentResult()
+    {
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *result = frameState.GetAcc();
+        RuntimeCallWithLazyDeopt({result, jsFunc}, RTSTUB_ID(NotifyConcurrentResult));
+    }
+
+    // -------- Category #15: Exceptions --------
+
+    bool TryBuildColdCatchDeopt()
+    {
+        if (!self->IsLazyDeoptEnabled() || !HasNeverExecutedCatchBlock()) {
+            return false;
+        }
+        constexpr auto DEOPT_TYPE = kungfu::DeoptType::INSUFFICIENTPROFILE;
+        auto *deopt = self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, DEOPT_TYPE, currentBcIndex);
+        deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
+        return true;
+    }
+
+    void LowerThrow()
+    {
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *exception = frameState.GetAcc();
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {exception}, RTSTUB_ID(Throw));
+            UpdateCatchBlockData(vertex);
+        }
+    }
+
+    void LowerThrowConstAssignment(const BytecodeInfo *bcInfo)
+    {
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *value = LoadRegister(bcInfo, 0);
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {value}, RTSTUB_ID(ThrowConstAssignment));
+            UpdateCatchBlockData(vertex);
+        }
+    }
+
+    void LowerThrowNotExists()
+    {
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowThrowNotExists));
+            UpdateCatchBlockData(vertex);
+        }
+    }
+
+    void LowerThrowPatternNonCoercible()
+    {
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowPatternNonCoercible));
+            UpdateCatchBlockData(vertex);
+        }
+    }
+
+    void LowerThrowDeleteSuperProperty()
+    {
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowDeleteSuperProperty));
+            UpdateCatchBlockData(vertex);
+        }
+    }
+
+    enum class LoweringResult : uint8_t { CONTINUE, BLOCK_TERMINATED };
+
+    LoweringResult LowerThrowIfNotObject(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *value = LoadRegister(bcInfo, 0);
+
+        constexpr auto JS_RECEIVER = NodeInfo::NodeType::JS_RECEIVER;
+        NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(value);
+        if (!NodeInfo::IsEmptyNodeType(knownType)) {
+            if (NodeInfo::NodeTypeIs(knownType, JS_RECEIVER)) {
+                compileInfoFacts_->RecordNonHole(value);
+                return LoweringResult::CONTINUE;
+            }
+            if (!NodeInfo::NodeTypeCanBe(knownType, JS_RECEIVER)) {
+                currentBlock->SetDeferred(true);
+                if (!TryBuildColdCatchDeopt()) {
+                    auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowIfNotObject));
+                    UpdateCatchBlockData(vertex);
+                }
+                return LoweringResult::BLOCK_TERMINATED;
+            }
+        }
+
+        BB *isHeapObjectBlock = self->NewBlock();
+        BB *checkLowerDoneBlock = self->NewBlock();
+        BB *checkUpperDoneBlock = self->NewBlock();
+
+        // Note: each failure branch requires an independent throwing block to prevent critical edges in the subgraph.
+        BB *notHeapObjectBlock = self->NewBlock();
+        BB *checkLowerFailedBlock = self->NewBlock();
+        BB *checkUpperFailedBlock = self->NewBlock();
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {value}, isHeapObjectBlock,
+                                                                    notHeapObjectBlock);
+
+        // Hot path: value is a heap object → check HClass type range inline.
+        currentBlock = isHeapObjectBlock;
+
+        ValueVertex *hclass = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {value},
+                                                                     static_cast<int32_t>(TaggedObject::HCLASS_OFFSET));
+        ValueVertex *hclassRaw = self->NewVertex<TaggedToRawI64Vertex>(compileInfoFacts_, currentBlock, {hclass});
+
+        ValueVertex *addrMask = self->graph_->GetInt64Constant(static_cast<int64_t>(TaggedObject::GC_STATE_MASK));
+        ValueVertex *hclassMasked = self->NewVertex<I64BitwiseBinaryVertex>(
+            compileInfoFacts_, currentBlock, {hclassRaw, addrMask}, IntBitwiseKind::BITWISE_AND);
+
+        ValueVertex *bitField = self->NewVertex<LoadTaggedFromAddressVertex>(
+            compileInfoFacts_, currentBlock, {hclassMasked}, static_cast<int32_t>(JSHClass::BIT_FIELD_OFFSET));
+        ValueVertex *bitFieldRaw = self->NewVertex<TaggedToRawI64Vertex>(compileInfoFacts_, currentBlock, {bitField});
+
+        // Type is encoded to the first 8 bits of JSHClass::bitfield
+        static_assert(JSHClass::ObjectTypeBits::START_BIT == 0);
+        ValueVertex *typeMask = self->graph_->GetInt64Constant((1U << JSHClass::ObjectTypeBits::SIZE) - 1);
+        ValueVertex *typeBits = self->NewVertex<I64BitwiseBinaryVertex>(
+            compileInfoFacts_, currentBlock, {bitFieldRaw, typeMask}, IntBitwiseKind::BITWISE_AND);
+
+        // Whether type is in [ECMA_OBJECT_FIRST, ECMA_OBJECT_LAST]
+        ValueVertex *firstType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST));
+        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(currentBlock, {typeBits, firstType},
+                                                                checkLowerDoneBlock, checkLowerFailedBlock,
+                                                                Condition::GREATER_THAN_OR_EQUAL);
+
+        currentBlock = checkLowerDoneBlock;
+        ValueVertex *lastType = self->graph_->GetInt64Constant(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST));
+        self->FinishBlockWithBranch<BranchIfInt64CompareVertex>(currentBlock, {typeBits, lastType}, checkUpperDoneBlock,
+                                                                checkUpperFailedBlock, Condition::LESS_THAN_OR_EQUAL);
+
+        for (BB *exceptionBlock : {notHeapObjectBlock, checkLowerFailedBlock, checkUpperFailedBlock}) {
+            currentBlock = exceptionBlock;
+            currentBlock->SetDeferred(true);
+            if (!TryBuildColdCatchDeopt()) {
+                auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {}, RTSTUB_ID(ThrowIfNotObject));
+                UpdateCatchBlockData(vertex);
+            }
+        }
+
+        // Success: value is an ECMA object.
+        currentBlock = checkUpperDoneBlock;
+        compileInfoFacts_->EnsureType(value, JS_RECEIVER);
+        return LoweringResult::CONTINUE;
+    }
+
+    enum class HoleCheckKind : uint8_t { ELIDED, ALWAYS_THROWS, NEEDED };
+
+    HoleCheckKind ClassifyHoleCheck(ValueVertex *receiver)
+    {
+        if (compileInfoFacts_->IsKnownNonHole(receiver)) {
+            return HoleCheckKind::ELIDED;
+        }
+        if (auto *constant = receiver->TryCast<TaggedConstantVertex>(); constant != nullptr) {
+            return constant->GetValue() == JSTaggedValue::VALUE_HOLE ? HoleCheckKind::ALWAYS_THROWS
+                                                                     : HoleCheckKind::ELIDED;
+        }
+        NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(receiver);
+        if (!NodeInfo::IsEmptyNodeType(knownType) && knownType != NodeInfo::NodeType::UNKNOWN) {
+            return HoleCheckKind::ELIDED;
+        }
+        return HoleCheckKind::NEEDED;
+    }
+
+    LoweringResult LowerThrowUndefinedIfHole(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = LoadRegister(bcInfo, 0);
+        ValueVertex *obj = LoadRegister(bcInfo, 1);
+
+        switch (ClassifyHoleCheck(receiver)) {
+            case HoleCheckKind::ELIDED:
+                compileInfoFacts_->RecordNonHole(receiver);
+                return LoweringResult::CONTINUE;
+            case HoleCheckKind::ALWAYS_THROWS:
+                currentBlock->SetDeferred(true);
+                if (!TryBuildColdCatchDeopt()) {
+                    auto *throwVertex =
+                        self->FinishBlockWith<ThrowVertex>(currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+                    UpdateCatchBlockData(throwVertex);
+                }
+                return LoweringResult::BLOCK_TERMINATED;
+            case HoleCheckKind::NEEDED:
+                break;
+        }
+
+        BB *throwBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        self->FinishBlockWith<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock, doneBlock);
+
+        currentBlock = throwBlock;
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            auto *throwVertex =
+                self->FinishBlockWith<ThrowVertex>(currentBlock, {obj}, RTSTUB_ID(ThrowUndefinedIfHole));
+            UpdateCatchBlockData(throwVertex);
+        }
+        currentBlock = doneBlock;
+        compileInfoFacts_->RecordNonHole(receiver);
+        return LoweringResult::CONTINUE;
+    }
+
+    LoweringResult LowerThrowUndefinedIfHoleWithName(const BytecodeInfo *bcInfo)
+    {
+        ValueVertex *receiver = frameState.GetAcc();
+
+        switch (ClassifyHoleCheck(receiver)) {
+            case HoleCheckKind::ELIDED:
+                compileInfoFacts_->RecordNonHole(receiver);
+                return LoweringResult::CONTINUE;
+            case HoleCheckKind::ALWAYS_THROWS:
+                currentBlock->SetDeferred(true);
+                if (!TryBuildColdCatchDeopt()) {
+                    ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
+                    ValueVertex *str = StringFromConstPool(strID);
+                    auto *throwVertex =
+                        self->FinishBlockWith<ThrowVertex>(currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+                    UpdateCatchBlockData(throwVertex);
+                }
+                return LoweringResult::BLOCK_TERMINATED;
+            case HoleCheckKind::NEEDED:
+                break;
+        }
+
+        BB *throwBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {receiver, hole}, throwBlock,
+                                                                  doneBlock);
+
+        currentBlock = throwBlock;
+        currentBlock->SetDeferred(true);
+        if (!TryBuildColdCatchDeopt()) {
+            ValueVertex *strID = self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0));
+            ValueVertex *str = StringFromConstPool(strID);
+            auto *throwVertex =
+                self->FinishBlockWith<ThrowVertex>(currentBlock, {str}, RTSTUB_ID(ThrowUndefinedIfHole));
+            UpdateCatchBlockData(throwVertex);
+        }
+
+        currentBlock = doneBlock;
+        compileInfoFacts_->RecordNonHole(receiver);
+        return LoweringResult::CONTINUE;
+    }
+
+    void LowerThrowIfSuperNotCorrectCall(const BytecodeInfo *bcInfo)
+    {
+        int index = GetImmediate<int>(bcInfo, 0);
+        ValueVertex *thisValue = frameState.GetAcc();
+
+        if (index != 0 && index != 1) {
+            ValueVertex *indexValue = TaggedConstantFromInt32(index);
+            RuntimeCallWithLazyDeopt({indexValue, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+            return;
+        }
+
+        bool throwOnMatch = (index == 0);
+        ValueVertex *undefined = self->undefinedValue_;
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        ValueVertex *indexValue = TaggedConstantFromInt32(index);
+
+        BB *undefinedMatchBlock = self->NewBlock();
+        BB *notUndefinedBlock = self->NewBlock();
+        BB *holeMatchBlock = self->NewBlock();
+        BB *okBlock = self->NewBlock();
+
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {thisValue, undefined},
+                                                                  undefinedMatchBlock, notUndefinedBlock);
+
+        auto emitThrow = [&]() {
+            currentBlock->SetDeferred(true);
+            if (!TryBuildColdCatchDeopt()) {
+                auto *vertex = self->FinishBlockWith<ThrowVertex>(currentBlock, {indexValue, thisValue},
+                                                                  RTSTUB_ID(ThrowIfSuperNotCorrectCall));
+                UpdateCatchBlockData(vertex);
+            }
+        };
+
+        currentBlock = notUndefinedBlock;
+        if (throwOnMatch) {
+            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {thisValue, hole}, holeMatchBlock,
+                                                                      okBlock);
+        } else {
+            BB *throwBlock = self->NewBlock();
+            self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {thisValue, hole}, holeMatchBlock,
+                                                                      throwBlock);
+            currentBlock = throwBlock;
+            emitThrow();
+        }
+
+        currentBlock = undefinedMatchBlock;
+        if (throwOnMatch) {
+            emitThrow();
+        } else {
+            self->FinishBlockWithJump(currentBlock, okBlock);
+        }
+
+        currentBlock = holeMatchBlock;
+        if (throwOnMatch) {
+            emitThrow();
+        } else {
+            self->FinishBlockWithJump(currentBlock, okBlock);
+        }
+
+        currentBlock = okBlock;
+    }
+
+    // -------- Category #16: Control Flow --------
+
+    void LowerJumpIfZero()
+    {
+        ValueVertex *acc = frameState.GetAcc();
+        if (auto *asConstant = acc->TryCast<TaggedConstantVertex>(); asConstant != nullptr) {
+            uint64_t rawValue = asConstant->GetValue();
+
+            if (rawValue == JSTaggedValue::VALUE_TRUE) {
+                LOG_COMPILER(DEBUG) << "LowerJumpIfZero(): TRUE -> Fallthrough";
+                self->FinishBlockWithJump(currentBlock, FallthroughTarget());
+                return;
+            }
+            if (rawValue == JSTaggedValue::VALUE_FALSE) {
+                LOG_COMPILER(DEBUG) << "LowerJumpIfZero(): FALSE -> Jump";
+                self->FinishBlockWithJump(currentBlock, JumpTarget());
+                return;
+            }
+        }
+        self->FinishBlockWithBranch(currentBlock, acc, FallthroughTarget(), JumpTarget());
+    }
+
+    void LowerJumpIfNonZero()
+    {
+        ValueVertex *acc = frameState.GetAcc();
+        if (auto *asConstant = acc->TryCast<TaggedConstantVertex>(); asConstant != nullptr) {
+            uint64_t rawValue = asConstant->GetValue();
+
+            if (rawValue == JSTaggedValue::VALUE_TRUE) {
+                LOG_COMPILER(DEBUG) << "LowerJumpIfNonZero(): TRUE -> Jump";
+                self->FinishBlockWithJump(currentBlock, JumpTarget());
+                return;
+            }
+            if (rawValue == JSTaggedValue::VALUE_FALSE) {
+                LOG_COMPILER(DEBUG) << "LowerJumpIfNonZero(): FALSE -> Fallthrough";
+                self->FinishBlockWithJump(currentBlock, FallthroughTarget());
+                return;
+            }
+        }
+        self->FinishBlockWithBranch(currentBlock, acc, JumpTarget(), FallthroughTarget());
+    }
+
+    void LowerJumpConstant()
+    {
+        ASSERT(blockInfo->IsJump());
+        BB *target = self->ActivateNonCatchBlock(blockInfo->jumpBlock->rpoIndex);
+
+        if (blockInfo->jumpBlock->loopBackBlock == blockInfo) {
+            self->FinishBlockWithJumpLoop(currentBlock, target);
+        } else {
+            self->FinishBlockWithJump(currentBlock, target);
+        }
+    }
+
+    // -------- Deoptimization Helpers --------
+
+    using LazyDeoptFrameState = LazyDeoptimizableMixin::LazyDeoptFrameState;
+    using EagerDeoptFrameState = EagerDeoptimizableMixin::EagerDeoptFrameState;
+
+    DeoptTranslationKind GetDeoptValueKind(ValueVertex *value) const
+    {
+        switch (value->GetValueRepresentation()) {
+            case ValueRepresentation::TAGGED:
+                return DeoptTranslationKind::TAGGED;
+            case ValueRepresentation::INT32:
+                return DeoptTranslationKind::INT32_TO_TAGGED;
+            case ValueRepresentation::FLOAT64:
+            case ValueRepresentation::HOLEY_FLOAT64:
+                return DeoptTranslationKind::FLOAT64_TO_TAGGED_DOUBLE;
+            case ValueRepresentation::UINT32:
+            case ValueRepresentation::INT64:
+            case ValueRepresentation::NONE:
+                break;
+        }
+        UNREACHABLE();
+    }
+
+    template <class DeoptFrameState>
+    void AppendDeoptInput(DeoptFrameState *deoptFrameState, int32_t id, ValueVertex *value)
+    {
+        ValueVertex *frameValue = value == nullptr ? self->undefinedValue_ : value;
+        deoptFrameState->emplace_back(id, frameValue, GetDeoptValueKind(frameValue));
+    }
+
+    template <class DeoptFrameState>
+    void AppendCommonDeoptInputs(uint32_t bcIndex, DeoptFrameState *deoptFrameState)
+    {
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX),
+                         LoadParam(CALL_TARGET_PARAM_INDEX));
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::NEWTARGET_INDEX),
+                         LoadParam(NEW_TARGET_PARAM_INDEX));
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX),
+                         LoadParam(THIS_OBJECT_PARAM_INDEX));
+        int32_t bcOffset = static_cast<int32_t>(self->preproc_->GetBytecodeOffset(bcIndex));
+        deoptFrameState->emplace_back(static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX),
+                                      self->graph_->GetInt32Constant(bcOffset), DeoptTranslationKind::RAW_INT32);
+    }
+
+    void AppendLazyCommonDeoptInputs(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState)
+    {
+        AppendCommonDeoptInputs(bcIndex, deoptFrameState);
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), TaggedActualArgc());
+    }
+
+    void AppendEagerCommonDeoptInputs(uint32_t bcIndex, EagerDeoptFrameState *deoptFrameState)
+    {
+        AppendCommonDeoptInputs(bcIndex, deoptFrameState);
+        ValueVertex *lexicalEnv = frameState.GetLexicalEnv();
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX),
+                         lexicalEnv == self->initialLexicalEnv_ ? self->undefinedValue_ : lexicalEnv);
+        deoptFrameState->emplace_back(static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX), self->initialActualArgc_,
+                                      DeoptTranslationKind::INT32_TO_TAGGED);
+    }
+
+    template <class DeoptFrameState, class Predicate>
+    void AppendLiveLocalsAndParams(DeoptFrameState *deoptFrameState, VRegIDType firstParamIndex, Predicate predicate)
+    {
+        for (VRegIDType i = 0; i < self->numLocal_; i++) {
+            VRegIDType localIndex = VRegOfLocal(i);
+            if (predicate(localIndex)) {
+                AppendDeoptInput(deoptFrameState, static_cast<int32_t>(localIndex), frameState.Get(localIndex));
+            }
+        }
+        for (VRegIDType i = firstParamIndex; i < self->numParams_; i++) {
+            VRegIDType paramIndex = VRegOfParam(self->numLocal_, i);
+            if (predicate(paramIndex)) {
+                AppendDeoptInput(deoptFrameState, static_cast<int32_t>(paramIndex), LoadParam(i));
+            }
+        }
+    }
+
+    // D refers to dependency
+    void BuildLazyDeoptInputsForDOnly(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState)
+    {
+        const BytecodeInfo *bcInfo = self->preproc_->GetBytecode(bcIndex);
+        const auto &liveOut = self->analysis_->GetLiveOutOfBytecode(bcIndex);
+
+        auto isInVRegOut = [bcInfo](VRegIDType index) {
+            return std::find(bcInfo->vregOut.begin(), bcInfo->vregOut.end(), index) != bcInfo->vregOut.end();
+        };
+
+        AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
+        VRegIDType envIndex = self->LexicalEnvIndex();
+        if (!bcInfo->EnvOut() && !isInVRegOut(envIndex)) {
+            constexpr int32_t ENV_INDEX = static_cast<int32_t>(SpecVregIndex::ENV_INDEX);
+            AppendDeoptInput(deoptFrameState, ENV_INDEX, frameState.GetLexicalEnv());
+        }
+        if (!bcInfo->AccOut()) {
+            constexpr int32_t ACC_INDEX = static_cast<int32_t>(SpecVregIndex::ACC_INDEX);
+            AppendDeoptInput(deoptFrameState, ACC_INDEX, frameState.GetAcc());
+        }
+        AppendLiveLocalsAndParams(deoptFrameState, 0, [&liveOut, &isInVRegOut](VRegIDType index) {
+            return liveOut.TestBit(index) && !isInVRegOut(index);
+        });
+    }
+
+    // E refers to exception
+    void BuildLazyDeoptInputsForEOnly(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState)
+    {
+        ASSERT(blockInfo->catchBlock != nullptr);
+        // Exception lazy-deopt resumes at the catch handler entry. ACC is restored as the exception object by
+        // the lazy-deopt trampoline, not from this payload.
+        const kungfu::BitSet &catchLiveIn = self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex);
+        AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        AppendLiveLocalsAndParams(deoptFrameState, 0,
+                                  [&catchLiveIn](VRegIDType index) { return catchLiveIn.TestBit(index); });
+    }
+
+    // D+E (dependency + exception) lazy deopt.
+    // Lazy-deopt takes live-out - {ACC} which is equivalent to live-in - {ACC} with Ark bytecode.
+    void BuildLazyDeoptInputsForDE(uint32_t bcIndex, LazyDeoptFrameState *deoptFrameState, bool includeAcc)
+    {
+        kungfu::BitSet liveSet(self->chunk_, self->analysis_->GetNumVRegs());
+        liveSet.CopyFrom(self->analysis_->GetLiveInOfBytecode(bcIndex));
+        if (blockInfo->catchBlock != nullptr) {
+            liveSet.Union(self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex));
+        }
+        AppendLazyCommonDeoptInputs(bcIndex, deoptFrameState);
+        AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ENV_INDEX), frameState.GetLexicalEnv());
+        if (includeAcc) {
+            AppendDeoptInput(deoptFrameState, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        }
+        AppendLiveLocalsAndParams(deoptFrameState, 0, [&liveSet](VRegIDType index) { return liveSet.TestBit(index); });
+    }
+
+    EagerDeoptFrameState BuildCurrentEagerDeoptFrameState(uint32_t bcIndex)
+    {
+        EagerDeoptFrameState frameStateValues {self->chunk_};
+        kungfu::BitSet liveSet(self->chunk_, self->analysis_->GetNumVRegs());
+        liveSet.CopyFrom(self->analysis_->GetLiveInOfBytecode(bcIndex));
+        if (blockInfo->catchBlock != nullptr) {
+            liveSet.Union(self->analysis_->GetLiveInOfBlock(blockInfo->catchBlock->rpoIndex));
+        }
+
+        AppendEagerCommonDeoptInputs(bcIndex, &frameStateValues);
+        if (liveSet.TestBit(self->AccIndex())) {
+            AppendDeoptInput(&frameStateValues, static_cast<int32_t>(SpecVregIndex::ACC_INDEX), frameState.GetAcc());
+        }
+        AppendLiveLocalsAndParams(&frameStateValues, FIXED_PARAM_VREG_COUNT,
+                                  [&liveSet](VRegIDType index) { return liveSet.TestBit(index); });
+        return frameStateValues;
+    }
+
+    template <class CallT>
+    bool InputMayBeJSReceiver(CallT *call, size_t index) const
+    {
+        constexpr auto JS_RECEIVER = NodeInfo::NodeType::JS_RECEIVER;
+        const NodeInfo::NodeType knownType = compileInfoFacts_->GetKnownType(call->GetInput(index));
+        return NodeInfo::NodeTypeCanBe(knownType, JS_RECEIVER);
+    }
+
+    bool IsDependencySafeCommonStubCall(CallCommonStubVertex *call) const
+    {
+        constexpr auto JS_RECEIVER = NodeInfo::NodeType::JS_RECEIVER;
+        switch (call->GetCommonStubID()) {
+            // Strict equality is a reference/value comparison and never runs user-defined conversion.
+            case CommonStubID::StrictEqual:
+            case CommonStubID::StrictNotEqual:
+                return true;
+            // Boolean conversion follows ToBoolean and does not call user-defined conversion hooks.
+            case CommonStubID::ToBooleanTrue:
+            case CommonStubID::ToBooleanFalse:
+                return true;
+            // typeof is observable only through the input value category and does not mutate dependencies.
+            case CommonStubID::TypeOf:
+                return true;
+            // These allocation/constant-pool helpers create or load values without observing receiver hooks.
+            case CommonStubID::CreateArrayWithBuffer:
+            case CommonStubID::CreateEmptyArray:
+            case CommonStubID::CreateObjectHavingMethod:
+            case CommonStubID::Definefunc:
+            case CommonStubID::GetObjectFromConstPool:
+            case CommonStubID::GetStringFromConstPool:
+            case CommonStubID::GetUnmappedArgs:
+            case CommonStubID::NewLexicalEnv:
+                return true;
+            // Abstract equality may call user-defined conversion on mixed object/non-object operands.
+            // Unlike relational comparison, object-object equality is a reference check and skips ToPrimitive.
+            case CommonStubID::Equal:
+            case CommonStubID::NotEqual: {
+                // 1 : left operand, after glue.
+                ValueVertex *left = call->GetInput(1);
+                // 2 : right operand, after glue and left operand.
+                ValueVertex *right = call->GetInput(2);
+                if (!NodeInfo::NodeTypeCanBe(compileInfoFacts_->GetKnownType(left), JS_RECEIVER) &&
+                    !NodeInfo::NodeTypeCanBe(compileInfoFacts_->GetKnownType(right), JS_RECEIVER)) {
+                    // If neither side can be an object, abstract equality cannot run user-defined conversion.
+                    return true;
+                }
+                // If both sides are definitely objects, equality is a reference check and still skips conversion.
+                return compileInfoFacts_->CheckType(left, JS_RECEIVER) &&
+                       compileInfoFacts_->CheckType(right, JS_RECEIVER);
+            }
+            // Unary numeric stubs may run ToNumber/ToNumeric on the accumulator operand.
+            case CommonStubID::Inc:
+            case CommonStubID::Dec:
+            case CommonStubID::Neg:
+            case CommonStubID::Not:
+                // 1 : accumulator operand, after glue.
+                return !InputMayBeJSReceiver(call, 1);
+            // Binary arithmetic and bitwise stubs may run ToPrimitive/ToNumeric/ToNumber on either operand.
+            case CommonStubID::Add:
+            case CommonStubID::Sub:
+            case CommonStubID::Mul:
+            case CommonStubID::Div:
+            case CommonStubID::Mod:
+            case CommonStubID::And:
+            case CommonStubID::Or:
+            case CommonStubID::Xor:
+            case CommonStubID::Shl:
+            case CommonStubID::Shr:
+            case CommonStubID::Ashr:
+            case CommonStubID::StringAdd:
+                // 1 : left operand, after glue.
+                // 2 : right operand, after glue and left operand.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // Relational comparison runs ToPrimitive even for object-object inputs, so it cannot use the
+            // object-object equality fast rejection above.
+            case CommonStubID::Less:
+            case CommonStubID::LessEq:
+            case CommonStubID::Greater:
+            case CommonStubID::GreaterEq:
+                // 1 : left operand, after glue.
+                // 2 : right operand, after glue and left operand.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // The `in` operator can consult receiver-side property lookup hooks.
+            case CommonStubID::IsIn:
+                // 1 : property key operand, after glue.
+                // 2 : object operand, after glue and property key.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // `instanceof` may call @@hasInstance on the constructor operand.
+            case CommonStubID::Instanceof:
+                // 2 : constructor operand, after glue and object operand.
+                return !InputMayBeJSReceiver(call, 2);
+            // Define/st-own operations may run receiver/prototype/proxy paths or mutate object shapes.
+            case CommonStubID::DefineField:
+            case CommonStubID::StOwnByValue:
+            case CommonStubID::StOwnByIndex:
+            case CommonStubID::StOwnByName:
+            case CommonStubID::StOwnByValueWithNameSet:
+            case CommonStubID::StOwnByNameWithNameSet:
+                // 1 : receiver operand, after glue.
+                // 2 : property key operand, after glue and receiver.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            // Delete can mutate the receiver shape; the key may also run conversion logic.
+            case CommonStubID::DeleteObjectProperty:
+                // 1 : receiver operand, after glue.
+                // 2 : property key operand, after glue and receiver.
+                return !InputMayBeJSReceiver(call, 1) && !InputMayBeJSReceiver(call, 2);
+            default:
+                return false;
+        }
+    }
+
+    bool IsDependencySafeRuntimeCall(CallRuntimeVertex *call) const
+    {
+        switch (call->GetRuntimeStubID()) {
+            // Allocation and metadata helpers below do not execute user JS and do not invalidate dependencies.
+            case RTSTUB_ID(GetMethodFromCache):
+            case RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc):
+            case RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc):
+            case RTSTUB_ID(LdPatchVar):
+            case RTSTUB_ID(OptNewLexicalEnvWithName):
+                return true;
+            // NumberToString is dependency-safe only when the input cannot be a receiver.
+            case RTSTUB_ID(NumberToString):
+                // 0 : converted value operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Conversion stubs may invoke user-defined valueOf/toString/Symbol.toPrimitive on receiver inputs.
+            case RTSTUB_ID(ToNumber):
+            case RTSTUB_ID(ToNumeric):
+            case RTSTUB_ID(ToPropertyKey):
+                // 0 : converted value operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Iterator slow paths may perform property access or iterator-return callbacks on the receiver.
+            case RTSTUB_ID(GetNextPropNameSlowpath):
+                // 0 : iterator or receiver operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Changing an object's prototype directly invalidates hidden-class/prototype dependencies.
+            case RTSTUB_ID(SetObjectWithProto):
+                // 1 : object operand, after prototype operand.
+                return !InputMayBeJSReceiver(call, 1);
+            // Defining accessors mutates the receiver object's own-property layout.
+            case RTSTUB_ID(DefineGetterSetterByValue):
+                // 0 : receiver object operand.
+                // 1 : property key operand.
+                return !InputMayBeJSReceiver(call, 0) && !InputMayBeJSReceiver(call, 1);
+            // Object spread copies through own-property reads and define-own-property writes.
+            case RTSTUB_ID(CopyDataProperties):
+                // 0 : target object operand.
+                // 1 : source object operand.
+                return !InputMayBeJSReceiver(call, 0) && !InputMayBeJSReceiver(call, 1);
+            // Array spread writes elements to the destination array.
+            case RTSTUB_ID(StArraySpread):
+                // 0 : destination array operand.
+                return !InputMayBeJSReceiver(call, 0);
+            // Exponentiation may run ToNumeric on either operand.
+            case RTSTUB_ID(Exp):
+                // 0 : left operand.
+                // 1 : right operand.
+                return !InputMayBeJSReceiver(call, 0) && !InputMayBeJSReceiver(call, 1);
+            default:
+                return false;
+        }
+    }
+
+    void LoadLazyDeoptFrameStateForThrowableCall(uint32_t bcIndex, Vertex *vertex)
+    {
+        if (!self->IsLazyDeoptEnabled()) {
+            return;
+        }
+        LazyDeoptimizableMixin *deoptMixin = LazyDeoptimizableMixinOf(vertex);
+        if (deoptMixin == nullptr) {
+            return;
+        }
+        // E refers to exception lazy-deopt
+        bool needsE = HasNeverExecutedCatchBlock();
+        // D refers to dependency lazy-deopt.
+        bool needsD = vertex->Is<CallVertex>();
+        if (auto *call = vertex->TryCast<CallCommonStubVertex>()) {
+            needsD = !IsDependencySafeCommonStubCall(call);
+        } else if (auto *call = vertex->TryCast<CallRuntimeVertex>()) {
+            needsD = !IsDependencySafeRuntimeCall(call);
+        }
+        if (!needsE && !needsD) {
+            return;
+        }
+        ThrowableMixin *throwableMixin = ThrowableMixinOf(vertex);
+        ASSERT(!needsE || throwableMixin != nullptr);
+        if (!deoptMixin->HasLazyDeoptFrameState()) {
+            auto *deoptFrameState = self->chunk_->New<LazyDeoptFrameState>(self->chunk_);
+            if (needsE && needsD) {
+                // D+E uses one live-in payload. We assume only ACC may be modified by the bytecode,
+                // so live-in and live-out are equivalent with ACC excluded.
+                BuildLazyDeoptInputsForDE(bcIndex, deoptFrameState, false);
+            } else if (needsE) {
+                // E-only resumes at the catch handler entry, so only the handler live-ins are required.
+                BuildLazyDeoptInputsForEOnly(bcIndex, deoptFrameState);
+            } else {
+                // D-only uses live-out payload
+                BuildLazyDeoptInputsForDOnly(bcIndex, deoptFrameState);
+            }
+            deoptMixin->SetLazyDeoptFrameState(deoptFrameState, self->preproc_->GetBytecodeOffset(bcIndex));
+        }
+        if (needsE && !throwableMixin->HasExceptionLazyDeopt()) {
+            ASSERT(!throwableMixin->HasCatchBlock());
+            throwableMixin->MarkExceptionLazyDeopt();
+        }
+    }
+
+    // -------- Miscellaneous Helpers --------
+
+    bool HasCatchBlock() const
+    {
+        return reinterpret_cast<uintptr_t>(lazyCatchBlock) != NO_CATCH_BLOCK_TAG;
+    }
+
+    bool HasNeverExecutedCatchBlock() const
+    {
+        return HasCatchBlock() && blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED;
+    }
+
+    BB *JumpTarget() const
+    {
+        ASSERT(blockInfo->IsJump());
+        return self->ActivateNonCatchBlock(blockInfo->jumpBlock->rpoIndex);
+    }
+
+    BB *FallthroughTarget() const
+    {
+        ASSERT(blockInfo->HasFallthrough());
+        return self->ActivateNonCatchBlock(blockInfo->fallthroughBlock->rpoIndex);
+    }
+
+    template <class BranchVertexT, class BuildTrue, class BuildFalse, class... BranchArgs>
+    ValueVertex *BuildSelect(std::initializer_list<ValueVertex *> branchInputs, VRegIDType resultVreg,
+                             BuildTrue buildTrue, BuildFalse buildFalse, BranchArgs &&...branchArgs)
+    {
+        BB *trueBlock = self->NewBlock();
+        BB *falseBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        BB *branchBlock = currentBlock;
+
+        self->FinishBlockWith<BranchVertexT>(branchBlock, branchInputs, std::forward<BranchArgs>(branchArgs)...,
+                                             trueBlock, falseBlock);
+        trueBlock->AddPredecessor(branchBlock);
+        falseBlock->AddPredecessor(branchBlock);
+
+        currentBlock = trueBlock;
+        ValueVertex *trueResult = buildTrue();
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = falseBlock;
+        ValueVertex *falseResult = buildFalse();
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = doneBlock;
+        return self->NewPhiVertexWith(currentBlock, {trueResult, falseResult}, resultVreg);
+    }
+
+    ValueVertex *LoadRegister(const BytecodeInfo *bcInfo, int inputIndex) const
+    {
+        auto *vreg = std::get_if<VirtualRegister>(bcInfo->inputs.data() + inputIndex);
+        ASSERT(vreg != nullptr);
+        return frameState.Get(vreg->GetId());
+    }
+
+    ValueVertex *LoadParam(VRegIDType paramIndex) const
+    {
+        VRegIDType vreg = VRegOfParam(self->numLocal_, paramIndex);
+        return frameState.Get(vreg);
+    }
+
+    template <class CastsTo = uint16_t>
+    CastsTo GetConstDataId(const BytecodeInfo *bcInfo, int inputIndex) const
+    {
+        auto *constDataId = std::get_if<kungfu::ConstDataId>(bcInfo->inputs.data() + inputIndex);
+        ASSERT(constDataId != nullptr);
+        return static_cast<CastsTo>(constDataId->GetId());
+    }
+
+    template <class CastsTo = kungfu::ICSlotIdType>
+    CastsTo GetICSlotId(const BytecodeInfo *bcInfo, int inputIndex) const
+    {
+        auto *icSlotId = std::get_if<kungfu::ICSlotId>(bcInfo->inputs.data() + inputIndex);
+        ASSERT(icSlotId != nullptr);
+        return static_cast<CastsTo>(icSlotId->GetId());
+    }
+
+    template <class CastsTo = kungfu::ImmValueType>
+    CastsTo GetImmediate(const BytecodeInfo *bcInfo, int inputIndex) const
+    {
+        auto *imm = std::get_if<kungfu::Immediate>(bcInfo->inputs.data() + inputIndex);
+        ASSERT(imm != nullptr);
+        return static_cast<CastsTo>(imm->GetValue());
+    }
+
+    ValueVertex *GlobalEnv()
+    {
+        if (UNLIKELY(lazyGlobalEnv == nullptr)) {
+            lazyGlobalEnv = self->ActivateGlobalEnv();  // Update self->lazyGlobalEnv_
+        }
+        return lazyGlobalEnv;
+    }
+
+    ValueVertex *ActualArgc()
+    {
+        ASSERT(self->actualArgc_ != nullptr);
+        return self->actualArgc_;
+    }
+
+    ValueVertex *TaggedActualArgc()
+    {
+        ASSERT(self->taggedActualArgc_ != nullptr);
+        return self->taggedActualArgc_;
+    }
+
+    std::optional<ArkSteedHeapRef> TryGetConstantHeapRef(ValueVertex *node) const
+    {
+        if (node == nullptr || !node->IsTagged()) {
+            return std::nullopt;
+        }
+
+        if (auto *constant = node->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue value(constant->GetValue());
+            if (value.IsHole()) {
+                return ArkSteedHeapRef(value, true);
+            }
+            if (!value.IsHeapObject()) {
+                return std::nullopt;
+            }
+            ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+            if (broker == nullptr) {
+                return std::nullopt;
+            }
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryGetConstantHeapRef");
+            ArkSteedHeapRef ref = broker->MakeObjectRef(value);
+            return ref.IsSafeForCompile() ? std::optional<ArkSteedHeapRef>(ref) : std::nullopt;
+        }
+        if (auto *constant = node->TryCast<HeapConstantVertex>()) {
+            JitCompilationEnv *env = self->preproc_->GetEnv();
+            if (env == nullptr || constant->GetHandleIndex() >= env->GetHeapConstantTable().size()) {
+                return std::nullopt;
+            }
+            return ArkSteedHeapRef(env->GetHeapConstantHandle(constant->GetHandleIndex()));
+        }
+        return std::nullopt;
+    }
+
+    bool IsEmptyStringRef(const ArkSteedHeapRef &stringRef) const
+    {
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return false;
+        }
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::IsEmptyStringRef");
+        JSTaggedValue string = JSTaggedValue::Undefined();
+        if (!broker->TryResolveRef(stringRef, &string) || !string.IsString()) {
+            return false;
+        }
+        ALLOW_DEREF_HANDLE;
+        return EcmaStringAccessor(string).GetLength() == 0;
+    }
+
+    bool IsEmptyStringConstant(ValueVertex *value) const
+    {
+        if (std::optional<ArkSteedHeapRef> stringRef = TryGetConstantHeapRef(value)) {
+            return IsEmptyStringRef(*stringRef);
+        }
+
+        auto *call = value->TryCast<CallCommonStubVertex>();
+        if (call == nullptr || call->GetCommonStubID() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
+            return false;
+        }
+
+        auto *stringId = call->GetInput(2)->TryCast<Int32ConstantVertex>();
+        if (stringId == nullptr) {
+            return false;
+        }
+
+        int32_t constDataId = stringId->GetValue();
+        if (constDataId < 0 || constDataId > std::numeric_limits<uint16_t>::max()) {
+            return false;
+        }
+        std::optional<ArkSteedNameRef> stringRef = TryGetNameRefFromConstDataId(static_cast<uint16_t>(constDataId));
+        if (!stringRef.has_value()) {
+            return false;
+        }
+        return IsEmptyStringRef(*stringRef);
+    }
+
+    std::optional<ArkSteedNameRef> TryGetNameRefFromConstDataId(uint16_t constDataId) const
+    {
+        if (self->preproc_->GetEnv() == nullptr || self->preproc_->GetEnv()->GetMethodLiteral() == nullptr) {
+            return std::nullopt;
+        }
+
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return std::nullopt;
+        }
+
+        ArkSteedNameRef name;
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryGetNameRefFromConstDataId");
+        if (!broker->TryGetNameFromConstantPool(constDataId, &name)) {
+            return std::nullopt;
+        }
+        return name;
+    }
+
+    std::optional<PropertyLookupResult> TryLookupPropertyInPGOHClass(JSHClass *hclass,
+                                                                     const ArkSteedNameRef &nameRef) const
+    {
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (hclass == nullptr || broker == nullptr) {
+            return std::nullopt;
+        }
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryLookupPropertyInPGOHClass");
+        JSTaggedValue name = JSTaggedValue::Undefined();
+        if (!broker->TryResolveRef(nameRef, &name) || (!name.IsString() && !name.IsSymbol())) {
+            return std::nullopt;
+        }
+        return JSHClass::LookupPropertyInPGOHClass(self->compilerThread_, hclass, name);
+    }
+
+    std::optional<JSHClass *> TryResolveHClassRef(const ArkSteedHClassRef &hclassRef) const
+    {
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        JSTaggedValue hclassValue = JSTaggedValue::Undefined();
+        if (broker == nullptr || !broker->TryResolveRef(hclassRef, &hclassValue) || !hclassValue.IsJSHClass()) {
+            return std::nullopt;
+        }
+        return JSHClass::Cast(hclassValue.GetTaggedObject());
+    }
+
+    static bool IsSupportedNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo)
+    {
+        if (accessInfo.mode != AccessMode::NAMED_LOAD || !accessInfo.IsDataField() ||
+            accessInfo.fieldRepresentation != AccessFieldRepresentation::TAGGED ||
+            (accessInfo.fieldStorage != AccessFieldStorage::IN_OBJECT &&
+             accessInfo.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) ||
+            !accessInfo.expectedHClass.IsSafeForCompile()) {
+            return false;
+        }
+        return true;
+    }
+
+    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                                                  JSHClass *holderHClass,
+                                                                                  const ArkSteedNameRef &nameRef) const
+    {
+        std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(holderHClass, nameRef);
+        if (!maybePlr.has_value()) {
+            return std::nullopt;
+        }
+        PropertyLookupResult plr = maybePlr.value();
+        bool hasSameStorage = (accessInfo.fieldStorage == AccessFieldStorage::IN_OBJECT && plr.IsInlinedProps() &&
+                               plr.GetOffset() == static_cast<uint32_t>(accessInfo.fieldOffset)) ||
+                              (accessInfo.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY &&
+                               !plr.IsInlinedProps() && plr.GetOffset() == accessInfo.fieldIndex);
+        if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || plr.IsFunction() || plr.IsLoadFromIterResult() ||
+            plr.GetRepresentation() != Representation::TAGGED || !hasSameStorage) {
+            return std::nullopt;
+        }
+        return plr;
+    }
+
+    std::optional<PropertyLookupResult> TryMakePropertyLookupResultFromAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                                                  JSHClass *holderHClass,
+                                                                                  uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        return TryMakePropertyLookupResultFromAccessInfo(accessInfo, holderHClass, nameRef.value());
+    }
+
+    NamedLoadAccessInfoOpt TryConvertNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                         const ArkSteedNameRef &nameRef) const
+    {
+        if (!IsSupportedNamedLoadAccessInfo(accessInfo)) {
+            return std::nullopt;
+        }
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return std::nullopt;
+        }
+        ArkSteedObjectRef holderRef {};
+        uint32_t holderHandleIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        if (!accessInfo.holderIsReceiver) {
+            if (!accessInfo.holder.IsSafeForCompile()) {
+                return std::nullopt;
+            }
+            std::optional<uint32_t> recordedHolderHandleIndex = GetHeapConstantHandleIndex(accessInfo.holder);
+            if (!recordedHolderHandleIndex.has_value()) {
+                return std::nullopt;
+            }
+            holderRef = accessInfo.holder;
+            holderHandleIndex = recordedHolderHandleIndex.value();
+        }
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryConvertNamedLoadAccessInfo");
+        std::optional<JSHClass *> receiverHClass = TryResolveHClassRef(accessInfo.expectedHClass);
+        if (!receiverHClass.has_value() || receiverHClass.value() == nullptr ||
+            !receiverHClass.value()->GetLayout(self->compilerThread_).IsTaggedArray()) {
+            return std::nullopt;
+        }
+        JSHClass *holderHClass = receiverHClass.value();
+        uint32_t holderDepth = 0;
+        std::vector<JSHClass *> expectedPrototypeHClasses;
+        std::vector<ArkSteedHClassRef> expectedPrototypeHClassRefs;
+        if (!accessInfo.holderIsReceiver) {
+            std::optional<JSHClass *> holder = TryResolveHClassRef(accessInfo.fieldOwnerHClass);
+            if (!holder.has_value()) {
+                return std::nullopt;
+            }
+            holderHClass = holder.value();
+            if (holderHClass == nullptr || !holderHClass->GetLayout(self->compilerThread_).IsTaggedArray()) {
+                return std::nullopt;
+            }
+            JSTaggedValue current = receiverHClass.value()->GetPrototype(self->compilerThread_);
+            holderDepth = 1;
+            while (current.IsHeapObject()) {
+                JSHClass *currentHClass = current.GetTaggedObject()->GetClass();
+                expectedPrototypeHClasses.push_back(currentHClass);
+                ArkSteedHClassRef currentHClassRef = broker->MakeHClassRef(JSTaggedValue(currentHClass));
+                if (!currentHClassRef.IsSafeForCompile()) {
+                    return std::nullopt;
+                }
+                expectedPrototypeHClassRefs.push_back(currentHClassRef);
+                if (currentHClass == holderHClass) {
+                    break;
+                }
+                current = currentHClass->GetPrototype(self->compilerThread_);
+                holderDepth++;
+            }
+            if (!current.IsHeapObject()) {
+                return std::nullopt;
+            }
+            if (expectedPrototypeHClasses.empty() || expectedPrototypeHClasses.back() != holderHClass ||
+                expectedPrototypeHClasses.size() != holderDepth) {
+                return std::nullopt;
+            }
+        }
+        std::optional<PropertyLookupResult> plr =
+            TryMakePropertyLookupResultFromAccessInfo(accessInfo, holderHClass, nameRef);
+        if (!plr.has_value()) {
+            return std::nullopt;
+        }
+        bool hasStableProtoChain = holderDepth > 0 && accessInfo.dependencies.canAssumeStableProtoChain;
+        NamedLoadAccessInfo result {
+            .receiverHClass = receiverHClass.value(),
+            .holderHClass = holderHClass,
+            .holderRef = holderRef,
+            .holderHandleIndex = holderHandleIndex,
+            .lookupStartObjectHClasses = {receiverHClass.value()},
+            .lookupStartObjectHClassRefs = {accessInfo.expectedHClass},
+            .expectedPrototypeHClasses = std::move(expectedPrototypeHClasses),
+            .expectedPrototypeHClassRefs = std::move(expectedPrototypeHClassRefs),
+            .plr = plr.value(),
+            .holderDepth = holderDepth,
+            .isConst = false,
+            .canAssumeStableHClasses = accessInfo.dependencies.canAssumeStableHClass,
+            .hasStableProtoChain = hasStableProtoChain,
+        };
+        return result;
+    }
+
+    NamedLoadAccessInfoOpt TryConvertNamedLoadAccessInfo(const PropertyAccessInfo &accessInfo,
+                                                         uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        return TryConvertNamedLoadAccessInfo(accessInfo, nameRef.value());
+    }
+
+    static bool HasSameLoadFieldAccess(const NamedLoadAccessInfo &lhs, const NamedLoadAccessInfo &rhs)
+    {
+        if (lhs.plr.GetData() != rhs.plr.GetData() || lhs.isConst != rhs.isConst ||
+            lhs.holderDepth != rhs.holderDepth) {
+            return false;
+        }
+        if (lhs.holderDepth == 0) {
+            return true;
+        }
+        return lhs.holderHClass == rhs.holderHClass && lhs.holderHandleIndex == rhs.holderHandleIndex &&
+               lhs.expectedPrototypeHClasses == rhs.expectedPrototypeHClasses;
+    }
+
+    static bool AppendHClassIfMissing(std::vector<JSHClass *> *hclasses, std::vector<ArkSteedHClassRef> *hclassRefs,
+                                      JSHClass *hclass, const ArkSteedHClassRef &hclassRef)
+    {
+        ASSERT(hclasses != nullptr && hclassRefs != nullptr);
+        ASSERT(hclasses->size() == hclassRefs->size());
+        if (hclass == nullptr || !hclassRef.IsSafeForCompile()) {
+            return false;
+        }
+        if (std::find(hclasses->begin(), hclasses->end(), hclass) != hclasses->end()) {
+            return true;
+        }
+        hclasses->push_back(hclass);
+        hclassRefs->push_back(hclassRef);
+        return true;
+    }
+
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const PropertyAccessSet &accessSet,
+                                                           const ArkSteedNameRef &nameRef) const
+    {
+        std::vector<NamedLoadAccessInfo> result;
+        for (uint32_t i = 0; i < accessSet.caseCount && i < accessSet.cases.size(); ++i) {
+            NamedLoadAccessInfoOpt accessInfo = TryConvertNamedLoadAccessInfo(accessSet.cases[i], nameRef);
+            if (!accessInfo.has_value()) {
+                return std::nullopt;
+            }
+
+            bool merged = false;
+            for (NamedLoadAccessInfo &existing : result) {
+                if (!HasSameLoadFieldAccess(existing, accessInfo.value())) {
+                    continue;
+                }
+                ASSERT(accessInfo->lookupStartObjectHClasses.size() == accessInfo->lookupStartObjectHClassRefs.size());
+                for (uint32_t i = 0; i < accessInfo->lookupStartObjectHClasses.size(); ++i) {
+                    if (!AppendHClassIfMissing(
+                            &existing.lookupStartObjectHClasses, &existing.lookupStartObjectHClassRefs,
+                            accessInfo->lookupStartObjectHClasses[i], accessInfo->lookupStartObjectHClassRefs[i])) {
+                        return std::nullopt;
+                    }
+                }
+                existing.canAssumeStableHClasses =
+                    existing.canAssumeStableHClasses && accessInfo->canAssumeStableHClasses;
+                existing.hasStableProtoChain = existing.hasStableProtoChain && accessInfo->hasStableProtoChain;
+                merged = true;
+                break;
+            }
+            if (!merged) {
+                result.push_back(std::move(accessInfo.value()));
+            }
+        }
+        if (result.empty()) {
+            return std::nullopt;
+        }
+        return result;
+    }
+
+    NamedLoadAccessInfosOpt TryGetLoadObjByNameAccessInfos(const PropertyAccessSet &accessSet,
+                                                           uint16_t constDataId) const
+    {
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!nameRef.has_value()) {
+            return std::nullopt;
+        }
+        return TryGetLoadObjByNameAccessInfos(accessSet, nameRef.value());
+    }
+    std::optional<int32_t> TryGetInt32Value(ValueVertex *value) const
+    {
+        if (value == nullptr) {
+            return std::nullopt;
+        }
+        if (auto *constant = value->TryCast<Int32ConstantVertex>()) {
+            return constant->GetValue();
+        }
+        if (auto *constant = value->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue tagged(constant->GetValue());
+            return tagged.IsInt() ? std::optional<int32_t>(tagged.GetInt()) : std::nullopt;
+        }
+        return std::nullopt;
+    }
+
+    // Returns the double value of a double constant operand (a Float64ConstantVertex, or a
+    // TaggedConstantVertex holding a tagged double). Int constants return nullopt so that int
+    // DIV/MOD are not folded through the Float64 path.
+    std::optional<double> TryGetFloat64Value(ValueVertex *value) const
+    {
+        if (value == nullptr) {
+            return std::nullopt;
+        }
+        if (auto *constant = value->TryCast<Float64ConstantVertex>()) {
+            return constant->GetValue();
+        }
+        if (auto *constant = value->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue tagged(constant->GetValue());
+            return tagged.IsDouble() ? std::optional<double>(tagged.GetDouble()) : std::nullopt;
+        }
+        return std::nullopt;
+    }
+
+    ValueVertex *BuildTaggedIntToI32(ValueVertex *value)
+    {
+        if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
+            return self->graph_->GetInt32Constant(*constant);
+        }
+        if (ValueVertex *alternative = compileInfoFacts_->TryGetAlternative(value, AlternativeNodes::Kind::INT32)) {
+            return alternative;
+        }
+        ValueVertex *i32 = self->NewVertex<TaggedIntToI32Vertex>(compileInfoFacts_, currentBlock, {value});
+        compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::INT32, i32);
+        return i32;
+    }
+
+    ValueVertex *BuildCheckedTaggedIntToI32(ValueVertex *value)
+    {
+        if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
+            return self->graph_->GetInt32Constant(*constant);
+        }
+        if (ValueVertex *alternative = compileInfoFacts_->TryGetAlternative(value, AlternativeNodes::Kind::INT32)) {
+            return alternative;
+        }
+        std::vector<ValueVertex *> inputs {value};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *i32 = self->NewVertex<CheckedTaggedIntToI32Vertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        i32->Cast<CheckedTaggedIntToI32Vertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+        compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
+        compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::INT32, i32);
+        return i32;
+    }
+
+    ValueVertex *BuildCheckedTaggedString(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::STRING)) {
+            return value;
+        }
+        std::vector<ValueVertex *> inputs {value};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *checked = self->NewVertex<CheckedTaggedStringVertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        checked->Cast<CheckedTaggedStringVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+        compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::STRING);
+        compileInfoFacts_->EnsureType(checked, NodeInfo::NodeType::STRING);
+        return checked;
+    }
+
+    void BuildDeoptIfNotNumber(ValueVertex *value)
+    {
+        std::vector<ValueVertex *> inputs {value};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfNotNumberVertex>(currentBlock, inputs, self->chunk_,
+                                                self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    ValueVertex *BuildNumberToString(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::STRING)) {
+            return value;
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::NUMBER)) {
+            ValueVertex *result = RuntimeCall({value}, RTSTUB_ID(NumberToString));
+            compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::STRING);
+            return result;
+        }
+
+        ValueVertex *result = BuildSelect<BranchIfTaggedStringVertex>(
+            {value}, self->AccIndex(), [&]() -> ValueVertex * { return value; },
+            [&]() -> ValueVertex * {
+                BuildDeoptIfNotNumber(value);
+                ValueVertex *numberResult = RuntimeCall({value}, RTSTUB_ID(NumberToString));
+                compileInfoFacts_->EnsureType(numberResult, NodeInfo::NodeType::STRING);
+                return numberResult;
+            });
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::STRING);
+        return result;
+    }
+
+    ValueVertex *BuildTaggedI32Result(ValueVertex *rawResult)
+    {
+        ValueVertex *taggedResult = self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {rawResult});
+        compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::INT);
+        compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::INT32, rawResult);
+        return taggedResult;
+    }
+
+    ValueVertex *BuildI32WithOverflowTagged(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *leftI32 = BuildTaggedIntToI32(left);
+        ValueVertex *rightI32 = BuildTaggedIntToI32(right);
+        ValueVertex *rawResult = BuildI32BinOpWithOverflow(kind, leftI32, rightI32);
+        ASSERT(rawResult != nullptr);
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *BuildI32BinOpValue(BinaryOpKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        auto inputs = {leftI32, rightI32};
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                return self->NewVertex<I32AddVertex>(compileInfoFacts_, currentBlock, inputs);
+            case BinaryOpKind::SUB:
+                return self->NewVertex<I32SubVertex>(compileInfoFacts_, currentBlock, inputs);
+            case BinaryOpKind::MUL:
+                return self->NewVertex<I32MulVertex>(compileInfoFacts_, currentBlock, inputs);
+            case BinaryOpKind::DIV:
+                return self->NewVertex<I32DivVertex>(compileInfoFacts_, currentBlock, inputs);
+            default:
+                return nullptr;
+        }
+    }
+
+    ValueVertex *BuildI32TaggedBinOpValue(BinaryOpKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        ValueVertex *rawResult = BuildI32BinOpValue(kind, leftI32, rightI32);
+        ASSERT(rawResult != nullptr);
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *BuildI32BinOpWithOverflow(BinaryOpKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        std::vector<ValueVertex *> inputs {leftI32, rightI32};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        switch (kind) {
+            case BinaryOpKind::ADD: {
+                ValueVertex *result = self->NewVertex<I32AddWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32AddWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::SUB: {
+                ValueVertex *result = self->NewVertex<I32SubWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32SubWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::MUL: {
+                ValueVertex *result = self->NewVertex<I32MulWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32MulWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::DIV: {
+                ValueVertex *result = self->NewVertex<I32DivWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<I32DivWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            case BinaryOpKind::MOD: {
+                ValueVertex *result = self->NewVertex<CheckedI32ModVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                result->Cast<CheckedI32ModVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return result;
+            }
+            default:
+                return nullptr;
+        }
+    }
+
+    struct SignedDivisorMagic {
+        int32_t magic;
+        uint32_t shift;
+    };
+
+    static SignedDivisorMagic ComputeSignedDivisorMagic(int32_t divisor)
+    {
+        ASSERT(divisor <= -2 || divisor >= 2);
+        constexpr uint32_t BIT_WIDTH = 32;
+        uint64_t highOne = 1ULL << (BIT_WIDTH - 1U);
+        uint64_t ad =
+            divisor < 0 ? static_cast<uint64_t>(-static_cast<int64_t>(divisor)) : static_cast<uint64_t>(divisor);
+        uint64_t divisorBits = static_cast<uint64_t>(static_cast<int64_t>(divisor));
+        uint64_t t = highOne + (divisorBits >> 63U);
+        uint64_t anc = t - 1U - t % ad;
+        int64_t p = BIT_WIDTH - 1U;
+        uint64_t q1 = highOne / anc;
+        uint64_t r1 = highOne - q1 * anc;
+        uint64_t q2 = highOne / ad;
+        uint64_t r2 = highOne - q2 * ad;
+        uint64_t delta = 0U;
+
+        do {
+            ++p;
+            q1 *= 2U;
+            r1 *= 2U;
+            if (r1 >= anc) {
+                ++q1;
+                r1 -= anc;
+            }
+            q2 *= 2U;
+            r2 *= 2U;
+            if (r2 >= ad) {
+                ++q2;
+                r2 -= ad;
+            }
+            delta = ad - r2;
+        } while (q1 < delta || (q1 == delta && r1 == 0));
+
+        int64_t magic = static_cast<int64_t>(q2) + 1;
+        if (divisor < 0) {
+            magic = -magic;
+        }
+        return {static_cast<int32_t>(magic), static_cast<uint32_t>(p - BIT_WIDTH)};
+    }
+
+    ValueVertex *BuildI32Operand(ValueVertex *value, bool knownInt)
+    {
+        return knownInt ? BuildTaggedIntToI32(value) : BuildCheckedTaggedIntToI32(value);
+    }
+
+    ValueVertex *TryReuseKnownIntOperand(ValueVertex *value, bool knownInt)
+    {
+        if (!knownInt) {
+            return nullptr;
+        }
+        compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
+        return value;
+    }
+
+    ValueVertex *BuildI32DivByConstWithCheckTagged(ValueVertex *left, bool leftKnownInt, int32_t divisor)
+    {
+        SignedDivisorMagic magic = ComputeSignedDivisorMagic(divisor);
+        ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
+        std::vector<ValueVertex *> inputs {leftI32};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *rawResult = self->NewVertex<I32DivByConstWithCheckVertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex), divisor, magic.magic,
+            magic.shift);
+        rawResult->Cast<I32DivByConstWithCheckVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    void BuildDeoptIfInt32Condition(ValueVertex *leftI32, ValueVertex *rightI32, Condition condition,
+                                    kungfu::DeoptType deoptType)
+    {
+        std::vector<ValueVertex *> inputs {leftI32, rightI32};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfInt32ConditionVertex>(currentBlock, inputs, self->chunk_,
+                                                     self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
+                                                     deoptType)
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfFloat64Condition(ValueVertex *leftF64, ValueVertex *rightF64, Condition condition,
+                                      kungfu::DeoptType deoptType)
+    {
+        std::vector<ValueVertex *> inputs {leftF64, rightF64};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfFloat64ConditionVertex>(currentBlock, inputs, self->chunk_,
+                                                       self->preproc_->GetBytecodeOffset(currentBcIndex), condition,
+                                                       deoptType)
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    ValueVertex *BuildTaggedIntConstant(int32_t value)
+    {
+        ValueVertex *constant = self->graph_->GetTaggedConstant(JSTaggedValue(value).GetRawData());
+        compileInfoFacts_->EnsureType(constant, NodeInfo::NodeType::INT);
+        return constant;
+    }
+
+    ValueVertex *TryBuildI32MulByZeroReduction(ValueVertex *value, bool valueKnownInt)
+    {
+        if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
+            if (*constant < 0) {
+                return nullptr;
+            }
+            return BuildTaggedIntConstant(0);
+        }
+
+        ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
+        BuildDeoptIfInt32Condition(valueI32, self->graph_->GetInt32Constant(0), Condition::LESS_THAN,
+                                   kungfu::DeoptType::PRODUCTISNEGATIVEZERO);
+        return BuildTaggedIntConstant(0);
+    }
+
+    ValueVertex *TryBuildI32DivByMinusOneReduction(ValueVertex *value, bool valueKnownInt)
+    {
+        std::optional<int32_t> constant = TryGetInt32Value(value);
+        if (constant.has_value() && *constant == 0) {
+            return nullptr;
+        }
+
+        ValueVertex *valueI32 = BuildI32Operand(value, valueKnownInt);
+        ValueVertex *zeroI32 = self->graph_->GetInt32Constant(0);
+        if (!constant.has_value()) {
+            BuildDeoptIfInt32Condition(valueI32, zeroI32, Condition::EQUAL, kungfu::DeoptType::DIVZERO2);
+        }
+        ValueVertex *rawResult = BuildI32BinOpWithOverflow(BinaryOpKind::SUB, zeroI32, valueI32);
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *TryBuildI32ModByOneReduction(ValueVertex *left, bool leftKnownInt, int32_t divisor)
+    {
+        ASSERT(divisor == 1 || divisor == -1);
+
+        std::optional<int32_t> leftValue = TryGetInt32Value(left);
+        if (leftValue.has_value()) {
+            if (*leftValue < 0 || (divisor == -1 && *leftValue == std::numeric_limits<int32_t>::min())) {
+                return nullptr;
+            }
+            return BuildTaggedIntConstant(0);
+        }
+
+        ValueVertex *leftI32 = BuildI32Operand(left, leftKnownInt);
+        if (divisor == -1) {
+            BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(std::numeric_limits<int32_t>::min()),
+                                       Condition::EQUAL, kungfu::DeoptType::INT32OVERFLOW1);
+        }
+        BuildDeoptIfInt32Condition(leftI32, self->graph_->GetInt32Constant(0), Condition::LESS_THAN,
+                                   kungfu::DeoptType::REMAINDERISNEGATIVEZERO);
+        return BuildTaggedIntConstant(0);
+    }
+
+    ValueVertex *TryBuildI32RightConstantReduction(BinaryOpKind kind, ValueVertex *left, bool leftKnownInt,
+                                                   int32_t rightValue)
+    {
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                if (rightValue == 1) {
+                    // x + 1 -> ++x.
+                    return BuildIntUnaryOp(CommonStubID::Inc, left, leftKnownInt);
+                }
+                if (rightValue == 0) {
+                    // x + 0 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                break;
+            case BinaryOpKind::SUB:
+                if (rightValue == 1) {
+                    // x - 1 -> --x.
+                    return BuildIntUnaryOp(CommonStubID::Dec, left, leftKnownInt);
+                }
+                if (rightValue == 0) {
+                    // x - 0 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                break;
+            case BinaryOpKind::MUL:
+                if (rightValue == 0) {
+                    // x * 0 -> 0, guarding against -0.
+                    return TryBuildI32MulByZeroReduction(left, leftKnownInt);
+                }
+                if (rightValue == 1) {
+                    // x * 1 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                break;
+            case BinaryOpKind::DIV:
+                if (rightValue == -1) {
+                    // x / -1 -> -x, guarding zero and overflow.
+                    return TryBuildI32DivByMinusOneReduction(left, leftKnownInt);
+                }
+                if (rightValue == 1) {
+                    // x / 1 -> x.
+                    return TryReuseKnownIntOperand(left, leftKnownInt);
+                }
+                if (rightValue != 0) {
+                    // x / c -> checked constant-divisor path.
+                    return BuildI32DivByConstWithCheckTagged(left, leftKnownInt, rightValue);
+                }
+                break;
+            case BinaryOpKind::MOD:
+                if (rightValue == 1 || rightValue == -1) {
+                    // x % +/-1 -> 0, guarding -0 and overflow.
+                    return TryBuildI32ModByOneReduction(left, leftKnownInt, rightValue);
+                }
+                break;
             default:
                 break;
         }
+        return nullptr;
     }
 
-    builder.Build<BranchIfTrueVertex>({vertex});
-    return BranchResult::DEFAULT;
-}
-
-void ArkSteedGraphBuilder::ProcessBytecode()
-{
-    auto info = iterator_.GetCurrentBytecodeInfo();
-    auto opcode = info.GetOpcode();
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Processing bytecode #" << iterator_.Index() << ": " << GetEcmaOpcodeStr(opcode);
-#endif
-
-    // All unsupported opcodes should be filtered out by IsArkSteedSupportedBytecode
-    ASSERT(kungfu::IsArkSteedSupportedOpcode(opcode));
-
-    switch (opcode) {
-        // Nop: Nothing to do
-        case kungfu::EcmaOpcode::NOP:
-            break;
-        // Call Instructions
-        case kungfu::EcmaOpcode::CALLARG0_IMM8:
-            LowerCallArg0();
-            break;
-        case kungfu::EcmaOpcode::CALLARG1_IMM8_V8:
-            LowerCallArg1();
-            break;
-        case kungfu::EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-            LowerCallArgs2();
-            break;
-        case kungfu::EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-            LowerCallArgs3();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-            LowerCallThis0();
-            break;
-        case kungfu::EcmaOpcode::CALLTHIS0_IMM8_V8:
-            LowerCallThis0();
-            break;
-        case kungfu::EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            LowerCallThis1();
-            break;
-        case kungfu::EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-            LowerCallThis2();
-            break;
-        case kungfu::EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            LowerCallThis3();
-            break;
-        case kungfu::EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case kungfu::EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            LowerCallRange();
-            break;
-        case kungfu::EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-        case kungfu::EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            LowerCallThisRange();
-            break;
-        case kungfu::EcmaOpcode::APPLY_IMM8_V8_V8:
-            LowerCallSpread();
-            break;
-        case kungfu::EcmaOpcode::GETUNMAPPEDARGS:
-            LowerGetUnmappedArgs();
-            break;
-        case kungfu::EcmaOpcode::INC_IMM8:
-            LowerInc();
-            break;
-        case kungfu::EcmaOpcode::DEC_IMM8:
-            LowerDec();
-            break;
-        case kungfu::EcmaOpcode::GETPROPITERATOR:
-            LowerGetPropIterator();
-            break;
-        case kungfu::EcmaOpcode::CLOSEITERATOR_IMM8_V8:
-        case kungfu::EcmaOpcode::CLOSEITERATOR_IMM16_V8:
-            LowerCloseIterator();
-            break;
-        case kungfu::EcmaOpcode::ADD2_IMM8_V8:
-            LowerAdd2();
-            break;
-        case kungfu::EcmaOpcode::SUB2_IMM8_V8:
-            LowerSub2();
-            break;
-        case kungfu::EcmaOpcode::MUL2_IMM8_V8:
-            LowerMul2();
-            break;
-        case kungfu::EcmaOpcode::DIV2_IMM8_V8:
-            LowerDiv2();
-            break;
-        case kungfu::EcmaOpcode::MOD2_IMM8_V8:
-            LowerMod2();
-            break;
-        case kungfu::EcmaOpcode::EQ_IMM8_V8:
-            LowerEq();
-            break;
-        case kungfu::EcmaOpcode::NOTEQ_IMM8_V8:
-            LowerNotEq();
-            break;
-        case kungfu::EcmaOpcode::LESS_IMM8_V8:
-            LowerLess();
-            break;
-        case kungfu::EcmaOpcode::LESSEQ_IMM8_V8:
-            LowerLessEq();
-            break;
-        case kungfu::EcmaOpcode::GREATER_IMM8_V8:
-            LowerGreater();
-            break;
-        case kungfu::EcmaOpcode::GREATEREQ_IMM8_V8:
-            LowerGreaterEq();
-            break;
-        case kungfu::EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
-            LowerCreateIterResultObj();
-            break;
-        case kungfu::EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
-            LowerTryLdGlobalByName();
-            break;
-        case kungfu::EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-            LowerStGlobalVar();
-            break;
-        case kungfu::EcmaOpcode::GETITERATOR_IMM8:
-        case kungfu::EcmaOpcode::GETITERATOR_IMM16:
-            LowerGetIterator();
-            break;
-        case kungfu::EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
-        case kungfu::EcmaOpcode::NEWOBJAPPLY_IMM16_V8:
-            LowerNewObjApply();
-            break;
-        case kungfu::EcmaOpcode::THROW_PREF_NONE:
-            LowerThrow();
-            break;
-        case kungfu::EcmaOpcode::TYPEOF_IMM8:
-        case kungfu::EcmaOpcode::TYPEOF_IMM16:
-            LowerTypeOf();
-            break;
-        case kungfu::EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
-            LowerThrowConstAssignment();
-            break;
-        case kungfu::EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
-            LowerThrowNotExists();
-            break;
-        case kungfu::EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
-            LowerThrowPatternNonCoercible();
-            break;
-        case kungfu::EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
-            LowerThrowIfNotObject();
-            break;
-        case kungfu::EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
-            LowerThrowUndefinedIfHole();
-            break;
-        case kungfu::EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
-            LowerThrowUndefinedIfHoleWithName();
-            break;
-        case kungfu::EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
-        case kungfu::EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
-            LowerThrowIfSuperNotCorrectCall();
-            break;
-        case kungfu::EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-            LowerThrowDeleteSuperProperty();
-            break;
-        case kungfu::EcmaOpcode::LDSYMBOL:
-            LowerLdSymbol();
-            break;
-        case kungfu::EcmaOpcode::LDGLOBAL:
-            LowerLdGlobal();
-            break;
-        case kungfu::EcmaOpcode::TONUMBER_IMM8:
-            LowerToNumber();
-            break;
-        case kungfu::EcmaOpcode::NEG_IMM8:
-            LowerNeg();
-            break;
-        case kungfu::EcmaOpcode::NOT_IMM8:
-            LowerNot();
-            break;
-        case kungfu::EcmaOpcode::SHL2_IMM8_V8:
-            LowerShl2();
-            break;
-        case kungfu::EcmaOpcode::SHR2_IMM8_V8:
-            LowerShr2();
-            break;
-        case kungfu::EcmaOpcode::ASHR2_IMM8_V8:
-            LowerAshr2();
-            break;
-        case kungfu::EcmaOpcode::AND2_IMM8_V8:
-            LowerAnd2();
-            break;
-        case kungfu::EcmaOpcode::OR2_IMM8_V8:
-            LowerOr2();
-            break;
-        case kungfu::EcmaOpcode::XOR2_IMM8_V8:
-            LowerXor2();
-            break;
-        case kungfu::EcmaOpcode::DELOBJPROP_V8:
-            LowerDelObjProp();
-            break;
-        case kungfu::EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
-        case kungfu::EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
-            LowerDefineMethod();
-            break;
-        case kungfu::EcmaOpcode::EXP_IMM8_V8:
-            LowerExp();
-            break;
-        case kungfu::EcmaOpcode::ISIN_IMM8_V8:
-            LowerIsIn();
-            break;
-        case kungfu::EcmaOpcode::INSTANCEOF_IMM8_V8:
-            LowerInstanceOf();
-            break;
-        case kungfu::EcmaOpcode::STRICTNOTEQ_IMM8_V8:
-            LowerStrictNotEq();
-            break;
-        case kungfu::EcmaOpcode::STRICTEQ_IMM8_V8:
-            LowerStrictEq();
-            break;
-        case kungfu::EcmaOpcode::CREATEEMPTYARRAY_IMM8:
-        case kungfu::EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-            LowerCreateEmptyArray();
-            break;
-        case kungfu::EcmaOpcode::CREATEEMPTYOBJECT:
-            LowerCreateEmptyObject();
-            break;
-        case kungfu::EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
-        case kungfu::EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
-            LowerCreateObjectWithBuffer();
-            break;
-        case kungfu::EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case kungfu::EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            LowerCreateArrayWithBuffer();
-            break;
-        case kungfu::EcmaOpcode::STMODULEVAR_IMM8:
-        case kungfu::EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
-            LowerStModuleVar();
-            break;
-        case kungfu::EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
-        case kungfu::EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
-            LowerGetTemplateObject();
-            break;
-        case kungfu::EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
-        case kungfu::EcmaOpcode::SETOBJECTWITHPROTO_IMM16_V8:
-            LowerSetObjectWithProto();
-            break;
-        case kungfu::EcmaOpcode::LDBIGINT_ID16:
-            LowerLoadBigInt();
-            break;
-        case kungfu::EcmaOpcode::TONUMERIC_IMM8:
-            LowerToNumeric();
-            break;
-        case kungfu::EcmaOpcode::DYNAMICIMPORT:
-            LowerDynamicImport();
-            break;
-        case kungfu::EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
-        case kungfu::EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
-            LowerLdExternalModuleVar();
-            break;
-        case kungfu::EcmaOpcode::GETMODULENAMESPACE_IMM8:
-        case kungfu::EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
-            LowerGetModuleNamespace();
-            break;
-        case kungfu::EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case kungfu::EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-            LowerNewObjRange();
-            break;
-        case kungfu::EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
-            LowerNewObjRange();
-            break;
-        case kungfu::EcmaOpcode::JEQZ_IMM8:
-        case kungfu::EcmaOpcode::JEQZ_IMM16:
-        case kungfu::EcmaOpcode::JEQZ_IMM32:
-            LowerJumpIfFalse();
-            break;
-        case kungfu::EcmaOpcode::JNEZ_IMM8:
-        case kungfu::EcmaOpcode::JNEZ_IMM16:
-        case kungfu::EcmaOpcode::JNEZ_IMM32:
-            LowerJumpIfTrue();
-            break;
-        case kungfu::EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
-        case kungfu::EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            LowerSuperCallThisRange();
-            break;
-        case kungfu::EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
-        case kungfu::EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
-            LowerSuperCallArrowRange();
-            break;
-        case kungfu::EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
-            LowerSuperCallSpread();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
-            LowerSuperCallForwardAllArgs();
-            break;
-        case kungfu::EcmaOpcode::ISTRUE:
-        case kungfu::EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
-            LowerIsTrueOrFalse(true);
-            break;
-        case kungfu::EcmaOpcode::ISFALSE:
-        case kungfu::EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
-            LowerIsTrueOrFalse(false);
-            break;
-        case kungfu::EcmaOpcode::GETNEXTPROPNAME_V8:
-            LowerGetNextPropName();
-            break;
-        case kungfu::EcmaOpcode::COPYDATAPROPERTIES_V8:
-            LowerCopyDataProperties();
-            break;
-        case kungfu::EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8:
-        case kungfu::EcmaOpcode::WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8:
-            LowerCreateObjectWithExcludedKeys();
-            break;
-        case kungfu::EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
-        case kungfu::EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
-            LowerCreateRegExpWithLiteral();
-            break;
-        case kungfu::EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
-        case kungfu::EcmaOpcode::STOWNBYVALUE_IMM16_V8_V8:
-            LowerStOwnByValue();
-            break;
-        case kungfu::EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
-        case kungfu::EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
-        case kungfu::EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
-            LowerStOwnByIndex();
-            break;
-        case kungfu::EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
-        case kungfu::EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
-            LowerStOwnByName();
-            break;
-        case kungfu::EcmaOpcode::NEWLEXENV_IMM8:
-        case kungfu::EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
-            LowerNewLexicalEnv();
-            break;
-        case kungfu::EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
-            LowerNewLexicalEnvWithName();
-            break;
-        case kungfu::EcmaOpcode::POPLEXENV:
-            LowerPopLexicalEnv();
-            break;
-        case kungfu::EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
-        case kungfu::EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
-            LowerLdSuperByValue();
-            break;
-        case kungfu::EcmaOpcode::STSUPERBYVALUE_IMM16_V8_V8:
-        case kungfu::EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
-            LowerStSuperByValue();
-            break;
-        case kungfu::EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16:
-            LowerTryStGlobalByName();
-            break;
-        case kungfu::EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
-            LowerStConstToGlobalRecord(true);
-            break;
-        case kungfu::EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16:
-            LowerStConstToGlobalRecord(false);
-            break;
-        case kungfu::EcmaOpcode::STOWNBYVALUEWITHNAMESET_IMM8_V8_V8:
-        case kungfu::EcmaOpcode::STOWNBYVALUEWITHNAMESET_IMM16_V8_V8:
-            LowerStOwnByValueWithNameSet();
-            break;
-        case kungfu::EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
-        case kungfu::EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8:
-            LowerStOwnByNameWithNameSet();
-            break;
-        case kungfu::EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
-            LowerLdGlobalVar();
-            break;
-        case kungfu::EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-            LowerLoadObjByName();
-            break;
-        case kungfu::EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-        case kungfu::EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-            LowerStoreObjByName();
-            break;
-        case kungfu::EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
-            LowerDefineGetterSetterByValue();
-            break;
-        case kungfu::EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
-        case kungfu::EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
-            LowerLdObjByIndex();
-            break;
-        case kungfu::EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
-            LowerLdObjByIndex();
-            break;
-        case kungfu::EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
-        case kungfu::EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
-            LowerStObjByIndex();
-            break;
-        case kungfu::EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
-            LowerStObjByIndex();
-            break;
-        case kungfu::EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
-        case kungfu::EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
-            LowerLoadObjByValue();
-            break;
-        case kungfu::EcmaOpcode::LDTHISBYVALUE_IMM8:
-        case kungfu::EcmaOpcode::LDTHISBYVALUE_IMM16:
-            LowerLdThisByValue();
-            break;
-        case kungfu::EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
-        case kungfu::EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-            LowerStoreObjByValue();
-            break;
-        case kungfu::EcmaOpcode::STTHISBYVALUE_IMM8_V8:
-        case kungfu::EcmaOpcode::STTHISBYVALUE_IMM16_V8:
-            LowerStThisByValue();
-            break;
-        case kungfu::EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
-            LowerLdSuperByName();
-            break;
-        case kungfu::EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
-        case kungfu::EcmaOpcode::STSUPERBYNAME_IMM16_ID16_V8:
-            LowerStSuperByName();
-            break;
-        case kungfu::EcmaOpcode::STARRAYSPREAD_V8_V8:
-            LowerStoreArraySpread();
-            break;
-        case kungfu::EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case kungfu::EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case kungfu::EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-            LowerLdLexVar();
-            break;
-        case kungfu::EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case kungfu::EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case kungfu::EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-            LowerStLexVar();
-            break;
-        case kungfu::EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
-        case kungfu::EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
-            LowerDefineClassWithBuffer();
-            break;
-        case kungfu::EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
-        case kungfu::EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
-            LowerDefineFunc();
-            break;
-        case kungfu::EcmaOpcode::COPYRESTARGS_IMM8:
-        case kungfu::EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
-            LowerCopyRestArgs();
-            break;
-        case kungfu::EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
-            LowerLdPatchVar();
-            break;
-        case kungfu::EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16:
-            LowerStPatchVar();
-            break;
-        case kungfu::EcmaOpcode::LDLOCALMODULEVAR_IMM8:
-        case kungfu::EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
-            LowerLdLocalModuleVar();
-            break;
-        case kungfu::EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-            LowerLdThisByName();
-            break;
-        case kungfu::EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case kungfu::EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            LowerStThisByName();
-            break;
-        case kungfu::EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
-            LowerLdPrivateProperty();
-            break;
-        case kungfu::EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
-            LowerStPrivateProperty();
-            break;
-        case kungfu::EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
-            LowerTestIn();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
-            LowerNotifyConcurrentResult();
-            break;
-        case kungfu::EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
-            LowerDefinePropertyByName();
-            break;
-        case kungfu::EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
-            LowerDefineFieldByName();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
-            LowerDefineFieldByValue();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
-            LowerDefineFieldByIndex();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
-            LowerToPropertyKey();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
-            LowerCreatePrivateProperty();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8:
-            LowerDefinePrivateProperty();
-            break;
-        case kungfu::EcmaOpcode::CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8:
-        case kungfu::EcmaOpcode::CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16:
-            LowerLdExternalModuleVar();
-            break;
-        case kungfu::EcmaOpcode::LDA_STR_ID16:
-            LowerLoadString();
-            break;
-        case kungfu::EcmaOpcode::JMP_IMM8:
-        case kungfu::EcmaOpcode::JMP_IMM16:
-        case kungfu::EcmaOpcode::JMP_IMM32:
-            LowerJumpConstant();
-            break;
-        case kungfu::EcmaOpcode::LDNAN:
-        case kungfu::EcmaOpcode::LDINFINITY:
-        case kungfu::EcmaOpcode::LDUNDEFINED:
-        case kungfu::EcmaOpcode::LDNULL:
-        case kungfu::EcmaOpcode::LDTRUE:
-        case kungfu::EcmaOpcode::LDFALSE:
-        case kungfu::EcmaOpcode::LDHOLE:
-        case kungfu::EcmaOpcode::LDAI_IMM32:
-        case kungfu::EcmaOpcode::FLDAI_IMM64:
-        case kungfu::EcmaOpcode::LDFUNCTION:
-        case kungfu::EcmaOpcode::LDNEWTARGET:
-        case kungfu::EcmaOpcode::LDTHIS:
-            LowerLoadConst(info, opcode);
-            break;
-        case kungfu::EcmaOpcode::MOV_V4_V4:
-        case kungfu::EcmaOpcode::MOV_V8_V8:
-        case kungfu::EcmaOpcode::MOV_V16_V16:
-        case kungfu::EcmaOpcode::STA_V8:
-        case kungfu::EcmaOpcode::LDA_V8:
-            LowerMoveValues(info);
-            break;
-        case kungfu::EcmaOpcode::RETURNUNDEFINED:
-        case kungfu::EcmaOpcode::RETURN:
-            LowerReturn(opcode);
-            break;
-        default:
-            UNREACHABLE();
-    }
-}
-
-void ArkSteedGraphBuilder::LowerLoadString()
-{
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *res = GetStringFromConstPool(stringId);
-    currentFrameState_->SetAcc(res);
-}
-
-void ArkSteedGraphBuilder::LowerLoadBigInt()
-{
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *numberBigInt = GetStringFromConstPool(stringId);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({numberBigInt}, RTSTUB_ID(LdBigInt)));
-}
-
-void ArkSteedGraphBuilder::LowerLoadConst(const BytecodeInfo &info, kungfu::EcmaOpcode opcode)
-{
-    ValueVertex *vertex = nullptr;
-    switch (opcode) {
-        case EcmaOpcode::LDNAN:
-            vertex = GetTaggedConstant(base::NumberHelper::GetNaN());
-            break;
-        case EcmaOpcode::LDINFINITY:
-            vertex = GetTaggedConstant(base::NumberHelper::GetPositiveInfinity());
-            break;
-        case EcmaOpcode::LDUNDEFINED:
-            vertex = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-            break;
-        case EcmaOpcode::LDNULL:
-            vertex = GetRootConstant(RootConstantVertex::RootIndex::NULL_VALUE);
-            break;
-        case EcmaOpcode::LDTRUE:
-            vertex = GetRootConstant(RootConstantVertex::RootIndex::TRUE_VALUE);
-            break;
-        case EcmaOpcode::LDFALSE:
-            vertex = GetRootConstant(RootConstantVertex::RootIndex::FALSE_VALUE);
-            break;
-        case EcmaOpcode::LDHOLE:
-            vertex = GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
-            break;
-        case EcmaOpcode::LDAI_IMM32:
-            vertex = GetTaggedConstant(std::get<Immediate>(info.inputs[0]).ToJSTaggedValueInt());
-            break;
-        case EcmaOpcode::FLDAI_IMM64:
-            vertex = GetTaggedConstant(std::get<Immediate>(info.inputs[0]).ToJSTaggedValueDouble());
-            break;
-        case EcmaOpcode::LDFUNCTION:
-            vertex = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-            break;
-        case EcmaOpcode::LDNEWTARGET:
-            vertex = currentFrameState_->GetParam(NEW_TARGET_PARAM_INDEX);
-            break;
-        case EcmaOpcode::LDTHIS:
-            vertex = currentFrameState_->GetParam(THIS_OBJECT_PARAM_INDEX);
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-    currentFrameState_->SetAcc(vertex);
-}
-
-void ArkSteedGraphBuilder::LowerMoveValues(const BytecodeInfo &info)
-{
-    ValueVertex *vertex = nullptr;
-    // Get input value
-    if (info.AccIn()) {
-        vertex = currentFrameState_->GetAcc();
-    } else if (!info.inputs.empty()) {
-        vertex = LoadRegister(0);
-    } else {
-        UNREACHABLE();
-    }
-    // Set output value
-    if (info.AccOut()) {
-        currentFrameState_->SetAcc(vertex);
-    } else if (!info.vregOut.empty()) {
-        currentFrameState_->Set(VirtualRegister(info.vregOut[0]), vertex);
-    } else {
-        UNREACHABLE();
-    }
-}
-
-void ArkSteedGraphBuilder::LowerCreateEmptyObject()
-{
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({}, RTSTUB_ID(CreateEmptyObject)));
-}
-
-void ArkSteedGraphBuilder::LowerCreateEmptyArray()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, globalEnv}, CommonStubCSigns::CreateEmptyArray));
-}
-
-void ArkSteedGraphBuilder::LowerCreateObjectWithBuffer()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *index = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *obj = GetObjectFromConstPool(index);
-    ValueVertex *lexEnv = LoadRegister(1);
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, obj, lexEnv}, CommonStubCSigns::CreateObjectHavingMethod));
-}
-
-void ArkSteedGraphBuilder::LowerCreateArrayWithBuffer()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *index = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *slotId = GetInt32Constant(static_cast<int>(GetICSlotId(1)));
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(
-        NewCommonStubCall({glue, index, jsFunc, slotId, globalEnv}, CommonStubCSigns::CreateArrayWithBuffer));
-}
-
-void ArkSteedGraphBuilder::LowerCreateObjectWithExcludedKeys()
-{
-    uint32_t inputSize = GetInputSize();
-    std::vector<ValueVertex *> args;
-    for (uint32_t idx = 0; idx < inputSize; idx++) {
-        args.push_back(LoadRegister(idx));
-    }
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>(args, RTSTUB_ID(OptCreateObjectWithExcludedKeys)));
-}
-
-void ArkSteedGraphBuilder::LowerCreateRegExpWithLiteral()
-{
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *pattern = GetStringFromConstPool(stringId);
-    ValueVertex *flags = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));  // 1: flags operand index
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({pattern, flags}, RTSTUB_ID(CreateRegExpWithLiteral)));
-}
-
-void ArkSteedGraphBuilder::LowerNewObjRange()
-{
-    uint32_t inputSize = GetInputSize();
-    std::vector<ValueVertex *> args;
-    for (uint32_t idx = 0; idx < inputSize; idx++) {
-        args.push_back(LoadRegister(idx));
-    }
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>(args, RTSTUB_ID(OptNewObjRange)));
-}
-
-void ArkSteedGraphBuilder::LowerAdd2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Add));
-}
-
-void ArkSteedGraphBuilder::LowerSub2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Sub));
-}
-
-void ArkSteedGraphBuilder::LowerMul2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Mul));
-}
-
-void ArkSteedGraphBuilder::LowerDiv2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Div));
-}
-
-void ArkSteedGraphBuilder::LowerMod2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Mod));
-}
-
-void ArkSteedGraphBuilder::LowerExp()
-{
-    ValueVertex *left = LoadRegister(0);
-    ValueVertex *right = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({left, right}, RTSTUB_ID(Exp)));
-}
-
-void ArkSteedGraphBuilder::LowerNeg()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Neg));
-}
-
-void ArkSteedGraphBuilder::LowerInc()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Inc));
-}
-
-void ArkSteedGraphBuilder::LowerDec()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Dec));
-}
-
-void ArkSteedGraphBuilder::LowerShl2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Shl));
-}
-
-void ArkSteedGraphBuilder::LowerShr2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Shr));
-}
-
-void ArkSteedGraphBuilder::LowerAshr2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Ashr));
-}
-
-void ArkSteedGraphBuilder::LowerAnd2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::And));
-}
-
-void ArkSteedGraphBuilder::LowerOr2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Or));
-}
-
-void ArkSteedGraphBuilder::LowerXor2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Xor));
-}
-
-void ArkSteedGraphBuilder::LowerNot()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x}, CommonStubCSigns::Not));
-}
-
-void ArkSteedGraphBuilder::LowerEq()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Equal));
-}
-
-void ArkSteedGraphBuilder::LowerNotEq()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::NotEqual));
-}
-
-void ArkSteedGraphBuilder::LowerLess()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Less));
-}
-
-void ArkSteedGraphBuilder::LowerLessEq()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::LessEq));
-}
-
-void ArkSteedGraphBuilder::LowerGreater()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::Greater));
-}
-
-void ArkSteedGraphBuilder::LowerGreaterEq()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::GreaterEq));
-}
-
-void ArkSteedGraphBuilder::LowerStrictEq()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::StrictEqual));
-}
-
-void ArkSteedGraphBuilder::LowerStrictNotEq()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *x = LoadRegister(0);
-    ValueVertex *y = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, x, y, globalEnv}, CommonStubCSigns::StrictNotEqual));
-}
-
-void ArkSteedGraphBuilder::LowerTypeOf()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *obj = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, obj}, CommonStubCSigns::TypeOf));
-}
-
-void ArkSteedGraphBuilder::LowerToNumber()
-{
-    ValueVertex *value = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value}, RTSTUB_ID(ToNumber)));
-}
-
-void ArkSteedGraphBuilder::LowerToNumeric()
-{
-    ValueVertex *value = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value}, RTSTUB_ID(ToNumeric)));
-}
-
-void ArkSteedGraphBuilder::LowerIsIn()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *prop = LoadRegister(0);
-    ValueVertex *obj = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, prop, obj, globalEnv}, CommonStubCSigns::IsIn));
-}
-
-void ArkSteedGraphBuilder::LowerInstanceOf()
-{
-    ValueVertex *object = LoadRegister(1);
-    ValueVertex *target = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::Instanceof, {object, target, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerTestIn()
-{
-    ValueVertex *levelIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));  // 1: level operand index
-    ValueVertex *slotIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(2)));  // 2: slot operand index
-    ValueVertex *lexicalEnv = LoadRegister(3);  // 3: lexicalEnv register index
-    ValueVertex *obj = currentFrameState_->GetAcc();
-
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(TestIn)));
-}
-
-void ArkSteedGraphBuilder::LowerLoadObjByName()
-{
-    ValueVertex *receiver = currentFrameState_->GetAcc();
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::GetPropertyByName, {receiver, id, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerCallArg0()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func}, CommonStubCSigns::CallArg0Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallArg1()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *a0Value = LoadRegister(0);
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, a0Value}, CommonStubCSigns::CallArg1Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallArgs2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *a0Value = LoadRegister(0);
-    ValueVertex *a1Value = LoadRegister(1);
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, a0Value, a1Value}, CommonStubCSigns::CallArg2Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallArgs3()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *a0Value = LoadRegister(0);
-    ValueVertex *a1Value = LoadRegister(1);
-    ValueVertex *a2Value = LoadRegister(2);  // 2: third argument register index
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, a0Value, a1Value, a2Value}, CommonStubCSigns::CallArg3Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallRange()
-{
-    uint32_t inputSize = GetInputSize();
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *taggedArray = GetTaggedArrayFromValueIn(inputSize);
-    ValueVertex *taggedLength = GetTaggedLength(inputSize);
-
-    ValueVertex *result = NewVertex<CallRuntimeVertex>({func, taggedArray, taggedLength}, RTSTUB_ID(CallRange));
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerReturn(kungfu::EcmaOpcode opcode)
-{
-    ValueVertex *value = nullptr;
-    if (opcode == EcmaOpcode::RETURNUNDEFINED) {
-        value = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-    } else {
-        value = currentFrameState_->GetAcc();
-    }
-    FinishBlock<ReturnVertex>({value});
-}
-
-void ArkSteedGraphBuilder::LowerThrow()
-{
-    ValueVertex *exception = currentFrameState_->GetAcc();
-    BuildThrow(RTSTUB_ID(Throw), exception);
-}
-
-void ArkSteedGraphBuilder::LowerThrowConstAssignment()
-{
-    ValueVertex *value = LoadRegister(0);
-    BuildThrow(RTSTUB_ID(ThrowConstAssignment), value);
-}
-
-void ArkSteedGraphBuilder::LowerThrowNotExists()
-{
-    BuildThrow(RTSTUB_ID(ThrowThrowNotExists), nullptr);
-}
-
-void ArkSteedGraphBuilder::LowerThrowPatternNonCoercible()
-{
-    BuildThrow(RTSTUB_ID(ThrowPatternNonCoercible), nullptr);
-}
-
-void ArkSteedGraphBuilder::LowerThrowIfNotObject()
-{
-    // to do: Implement the throw path after subgraph is supported.
-}
-
-void ArkSteedGraphBuilder::LowerThrowUndefinedIfHole()
-{
-    // to do: Implement the throw path after subgraph is supported.
-}
-
-void ArkSteedGraphBuilder::LowerThrowUndefinedIfHoleWithName()
-{
-    // to do: Implement the throw path after subgraph is supported.
-}
-
-void ArkSteedGraphBuilder::LowerThrowIfSuperNotCorrectCall()
-{
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *thisValue = currentFrameState_->GetAcc();
-    NewVertex<ThrowIfSuperNotCorrectCallVertex>({index, thisValue}, RTSTUB_ID(ThrowIfSuperNotCorrectCall));
-}
-
-void ArkSteedGraphBuilder::LowerThrowDeleteSuperProperty()
-{
-    BuildThrow(RTSTUB_ID(ThrowDeleteSuperProperty), nullptr);
-}
-
-void ArkSteedGraphBuilder::LowerStoreObjByName()
-{
-    ValueVertex *receiver = LoadRegister(2);  // 2: receiver register index
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithICPreserveAcc(CommonStubCSigns::SetPropertyByName, {receiver, id, value, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerLoadObjByValue()
-{
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *key = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::GetPropertyByValue, {receiver, key, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerStoreObjByValue()
-{
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *key = LoadRegister(2);  // 2: key register index
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithICPreserveAcc(CommonStubCSigns::SetPropertyByValue, {receiver, key, value, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerLdObjByIndex()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *index = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, receiver, index, globalEnv}, CommonStubCSigns::LdObjByIndex));
-}
-
-void ArkSteedGraphBuilder::LowerStObjByIndex()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(0);
-    ValueVertex *index = GetInt32Constant(static_cast<int>(GetImmediate(1)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, index, value, globalEnv}, CommonStubCSigns::StObjByIndex);
-}
-
-void ArkSteedGraphBuilder::LowerGetIterator()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *obj = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, obj, globalEnv}, CommonStubCSigns::GetIterator));
-}
-
-void ArkSteedGraphBuilder::LowerGetPropIterator()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *object = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, object, globalEnv}, CommonStubCSigns::Getpropiterator));
-}
-
-void ArkSteedGraphBuilder::LowerCloseIterator()
-{
-    ValueVertex *iterator = LoadRegister(0);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({iterator}, RTSTUB_ID(CloseIterator)));
-}
-
-void ArkSteedGraphBuilder::LowerGetNextPropName()
-{
-    ValueVertex *iterator = LoadRegister(0);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({iterator}, RTSTUB_ID(GetNextPropNameSlowpath)));
-}
-
-void ArkSteedGraphBuilder::LowerGetTemplateObject()
-{
-    ValueVertex *value = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value}, RTSTUB_ID(GetTemplateObject)));
-}
-
-void ArkSteedGraphBuilder::LowerStoreArraySpread()
-{
-    ValueVertex *array = LoadRegister(0);
-    ValueVertex *index = LoadRegister(1);
-    ValueVertex *value = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({array, index, value}, RTSTUB_ID(StArraySpread)));
-}
-
-void ArkSteedGraphBuilder::LowerCallThis0()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, thisObj}, CommonStubCSigns::CallThis0Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallThis1()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *a0Value = LoadRegister(1);
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, thisObj, a0Value}, CommonStubCSigns::CallThis1Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallThis2()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *a0Value = LoadRegister(1);
-    ValueVertex *a1Value = LoadRegister(2);  // 2: second argument register index
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result = NewCommonStubCall({glue, func, thisObj, a0Value, a1Value}, CommonStubCSigns::CallThis2Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallThis3()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *a0Value = LoadRegister(1);
-    ValueVertex *a1Value = LoadRegister(2);  // 2: second argument register index
-    ValueVertex *a2Value = LoadRegister(3);  // 3: third argument register index
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *result =
-        NewCommonStubCall({glue, func, thisObj, a0Value, a1Value, a2Value}, CommonStubCSigns::CallThis3Stub);
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallThisRange()
-{
-    uint32_t inputSize = GetInputSize();
-    ASSERT(inputSize > 0);
-    uint32_t argc = inputSize - 1;  // Skip the receiver.
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *taggedArray = GetTaggedArrayFromValueIn(argc, 1);
-    ValueVertex *taggedLength = GetTaggedLength(argc);
-
-    ValueVertex *result =
-        NewVertex<CallRuntimeVertex>({thisObj, func, taggedArray, taggedLength}, RTSTUB_ID(CallThisRange));
-    currentFrameState_->SetAcc(result);
-}
-
-void ArkSteedGraphBuilder::LowerCallSpread()
-{
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *thisArg = LoadRegister(0);
-    ValueVertex *argsArray = LoadRegister(1);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({func, thisArg, argsArray}, RTSTUB_ID(CallSpread)));
-}
-
-void ArkSteedGraphBuilder::LowerGetUnmappedArgs()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *argv = GetIntPtrConstant(0);
-    ValueVertex *numArgs = GetActualArgc();
-    ValueVertex *argvTaggedArray = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(
-        NewCommonStubCall({glue, argv, numArgs, argvTaggedArray, globalEnv}, CommonStubCSigns::GetUnmappedArgs));
-}
-
-void ArkSteedGraphBuilder::LowerCreateIterResultObj()
-{
-    ValueVertex *value = LoadRegister(0);
-    ValueVertex *done = LoadRegister(1);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value, done}, RTSTUB_ID(CreateIterResultObj)));
-}
-
-void ArkSteedGraphBuilder::LowerTryLdGlobalByName()
-{
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::TryLdGlobalByName, {id, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerStGlobalVar()
-{
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithICPreserveAcc(CommonStubCSigns::StGlobalVar, {id, value, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerNewObjApply()
-{
-    ValueVertex *target = LoadRegister(0);
-    ValueVertex *args = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({target, args}, RTSTUB_ID(NewObjApply)));
-}
-
-void ArkSteedGraphBuilder::LowerLdSymbol()
-{
-    ValueVertex *globalEnv = GetGlobalEnv();
-    // Calculate offset: HEADER_SIZE + SYMBOL_FUNCTION_INDEX * TaggedTypeSize
-    int32_t offset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE +
-                                          GlobalEnv::SYMBOL_FUNCTION_INDEX * JSTaggedValue::TaggedTypeSize());
-    currentFrameState_->SetAcc(NewVertex<LoadTaggedFieldVertex>({globalEnv}, offset));
-}
-
-void ArkSteedGraphBuilder::LowerLdGlobal()
-{
-    ValueVertex *globalEnv = GetGlobalEnv();
-    // Calculate offset: HEADER_SIZE + JS_GLOBAL_OBJECT_INDEX * TaggedTypeSize
-    int32_t offset = static_cast<int32_t>(GlobalEnv::HEADER_SIZE +
-                                          GlobalEnv::JS_GLOBAL_OBJECT_INDEX * JSTaggedValue::TaggedTypeSize());
-    currentFrameState_->SetAcc(NewVertex<LoadTaggedFieldVertex>({globalEnv}, offset));
-}
-
-void ArkSteedGraphBuilder::LowerDelObjProp()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *object = LoadRegister(0);
-    ValueVertex *prop = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    currentFrameState_->SetAcc(
-        NewCommonStubCall({glue, object, prop, globalEnv}, CommonStubCSigns::DeleteObjectProperty));
-    // to do: IsSpecial
-}
-
-void ArkSteedGraphBuilder::LowerDefineMethod()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *methodId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *taggedMethodId = NewVertex<ToTaggedIntVertex>({methodId});
-    ValueVertex *length = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
-    ValueVertex *env = LoadRegister(2);  // 2: env register index
-    ValueVertex *homeObject = currentFrameState_->GetAcc();
-    ValueVertex *module = GetModuleFromFunction();
-    ValueVertex *method = GetMethodFromConstPool(taggedMethodId);
-    ValueVertex *slotId = NewTaggedVertexFromRawInt32(static_cast<int>(GetICSlotId(3)));  // 3: slotId operand index
-
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>(
-#if ECMASCRIPT_ENABLE_IC
-        {method, homeObject, length, env, module, slotId, jsFunc},
-#else
-        {method, homeObject, length, env, module},
-#endif
-        RTSTUB_ID(DefineMethod)));
-}
-
-void ArkSteedGraphBuilder::LowerStModuleVar()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    NewVertex<CallRuntimeVertex>({index, value, jsFunc}, RTSTUB_ID(StModuleVarByIndexOnJSFunc));
-}
-
-void ArkSteedGraphBuilder::LowerSetObjectWithProto()
-{
-    ValueVertex *proto = LoadRegister(0);
-    ValueVertex *obj = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({proto, obj}, RTSTUB_ID(SetObjectWithProto)));
-}
-
-void ArkSteedGraphBuilder::LowerDynamicImport()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *specifier = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({specifier, jsFunc}, RTSTUB_ID(DynamicImport)));
-}
-
-void ArkSteedGraphBuilder::LowerLdExternalModuleVar()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({index, jsFunc}, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc)));
-}
-
-void ArkSteedGraphBuilder::LowerGetModuleNamespace()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({index, jsFunc}, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc)));
-}
-
-void ArkSteedGraphBuilder::LowerSuperCallThisRange()
-{
-    uint32_t inputSize = GetInputSize();
-    ValueVertex *thisFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *newTarget = currentFrameState_->GetParam(NEW_TARGET_PARAM_INDEX);
-    ValueVertex *taggedArray = GetTaggedArrayFromValueIn(inputSize);
-    ValueVertex *taggedLength = NewTaggedVertexFromRawInt32(static_cast<int>(inputSize));
-
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({thisFunc, newTarget, taggedArray, taggedLength}, RTSTUB_ID(OptSuperCall)));
-}
-
-void ArkSteedGraphBuilder::LowerSuperCallArrowRange()
-{
-    uint32_t inputSize = GetInputSize();
-    uint32_t argc = inputSize - 1;
-
-    ValueVertex *func = LoadRegister(argc);
-    ValueVertex *newTarget = currentFrameState_->GetParam(NEW_TARGET_PARAM_INDEX);
-    ValueVertex *taggedArray = GetTaggedArrayFromValueIn(argc);
-    ValueVertex *taggedLength = NewTaggedVertexFromRawInt32(static_cast<int>(argc));
-
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({func, newTarget, taggedArray, taggedLength}, RTSTUB_ID(OptSuperCall)));
-}
-
-void ArkSteedGraphBuilder::LowerSuperCallSpread()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    ValueVertex *array = LoadRegister(0);
-    ValueVertex *func = currentFrameState_->GetAcc();
-    ValueVertex *newTarget = currentFrameState_->GetParam(NEW_TARGET_PARAM_INDEX);
-
-    ValueVertex *argsArray = NewCommonStubCall({glue, array, globalEnv}, CommonStubCSigns::GetCallSpreadArgs);
-
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({func, newTarget, argsArray}, RTSTUB_ID(OptSuperCallSpread)));
-}
-
-void ArkSteedGraphBuilder::LowerSuperCallForwardAllArgs()
-{
-    ValueVertex *func = LoadRegister(0);
-    ValueVertex *superFunc = NewCommonStubCall({GetGlue(), func}, CommonStubCSigns::GetPrototype);
-    ValueVertex *newTarget = currentFrameState_->GetParam(NEW_TARGET_PARAM_INDEX);
-    ValueVertex *actualArgc = NewVertex<ToTaggedIntVertex>({GetActualArgc()});
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({superFunc, newTarget, actualArgc}, RTSTUB_ID(OptSuperCallForwardAllArgs)));
-}
-
-void ArkSteedGraphBuilder::LowerJumpConstant()
-{
-    uint32_t index = iterator_.Index();
-    uint32_t targetBcIndex = iterator_.GetJumpTargetBcIndex();
-    BB *block = nullptr;
-    if (bytecodeContext_.GetJumpLoop()[index]) {
-        block = FinishBlock<JumpLoopVertex>({}, &jumpTargets_[targetBcIndex]);
-        // For JumpLoop, set the predecessor id to PredecessorsSoFar() of the target loop header
-        block->SetPredecessorId(mergeStates_[targetBcIndex]->PredecessorsSoFar());
-    } else {
-        block = FinishBlock<JumpVertex>({}, &jumpTargets_[targetBcIndex]);
-    }
-    MergeCurrentFrameStateTo(block, targetBcIndex);
-}
-
-void ArkSteedGraphBuilder::LowerJumpIfTrue()
-{
-    auto branchBuilder = CreateBranchBuilder(BranchType::TRUE_BRANCH);
-    BuildBranchIfTrue(branchBuilder, currentFrameState_->GetAcc());
-}
-
-void ArkSteedGraphBuilder::LowerJumpIfFalse()
-{
-    auto branchBuilder = CreateBranchBuilder(BranchType::FALSE_BRANCH);
-    BuildBranchIfTrue(branchBuilder, currentFrameState_->GetAcc());
-}
-
-void ArkSteedGraphBuilder::LowerIsTrueOrFalse(bool isTrue)
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *value = currentFrameState_->GetAcc();
-    if (isTrue) {
-        currentFrameState_->SetAcc(NewCommonStubCall({glue, value}, CommonStubCSigns::ToBooleanTrue));
-    } else {
-        currentFrameState_->SetAcc(NewCommonStubCall({glue, value}, CommonStubCSigns::ToBooleanFalse));
-    }
-}
-
-void ArkSteedGraphBuilder::LowerCopyDataProperties()
-{
-    ValueVertex *target = LoadRegister(0);
-    ValueVertex *source = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({target, source}, RTSTUB_ID(CopyDataProperties)));
-}
-
-void ArkSteedGraphBuilder::LowerStOwnByValue()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(0);
-    ValueVertex *key = LoadRegister(1);
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, key, value, globalEnv}, CommonStubCSigns::StOwnByValue);
-}
-
-void ArkSteedGraphBuilder::LowerStOwnByIndex()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(0);
-    ValueVertex *index = GetInt32Constant(static_cast<int>(GetImmediate(1)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, index, value, globalEnv}, CommonStubCSigns::StOwnByIndex);
-}
-
-void ArkSteedGraphBuilder::LowerStOwnByName()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *propKey = GetStringFromConstPool(stringId);
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *accValue = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, propKey, accValue, globalEnv}, CommonStubCSigns::StOwnByName);
-}
-
-void ArkSteedGraphBuilder::LowerNewLexicalEnv()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *parent = LoadRegister(1);
-    ValueVertex *scope = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *newEnv = NewCommonStubCall({glue, parent, scope}, CommonStubCSigns::NewLexicalEnv);
-    currentFrameState_->SetAcc(newEnv);
-    currentFrameState_->SetEnv(newEnv);
-}
-
-void ArkSteedGraphBuilder::LowerNewLexicalEnvWithName()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *level = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *slotId = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
-    ValueVertex *newEnv = NewVertex<CallRuntimeVertex>(
-        {level, slotId, LoadRegister(2), jsFunc},  // 2: env register index
-        RTSTUB_ID(OptNewLexicalEnvWithName));
-    currentFrameState_->SetAcc(newEnv);
-    currentFrameState_->SetEnv(newEnv);
-}
-
-void ArkSteedGraphBuilder::LowerPopLexicalEnv()
-{
-    ValueVertex *currentEnv = LoadRegister(0);
-    ValueVertex *parentEnv = GetValueFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
-    currentFrameState_->SetAcc(parentEnv);
-    currentFrameState_->SetEnv(parentEnv);
-}
-
-void ArkSteedGraphBuilder::LowerLdSuperByValue()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *propKey = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({thisObj, propKey, jsFunc}, RTSTUB_ID(OptLdSuperByValue)));
-}
-
-void ArkSteedGraphBuilder::LowerStSuperByValue()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *thisObj = LoadRegister(0);
-    ValueVertex *propKey = LoadRegister(1);
-    ValueVertex *value = currentFrameState_->GetAcc();
-    NewVertex<CallRuntimeVertex>({thisObj, propKey, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
-}
-
-void ArkSteedGraphBuilder::LowerTryStGlobalByName()
-{
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithICPreserveAcc(CommonStubCSigns::TryStGlobalByName, {id, value, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerStConstToGlobalRecord(bool isConst)
-{
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *propKey = GetStringFromConstPool(stringId);
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *isConstGate = isConst ? GetTaggedConstant(JSTaggedValue::True().GetRawData())
-                                       : GetTaggedConstant(JSTaggedValue::False().GetRawData());
-    NewVertex<CallRuntimeVertex>({propKey, value, isConstGate}, RTSTUB_ID(StGlobalRecord));
-}
-
-void ArkSteedGraphBuilder::LowerStOwnByValueWithNameSet()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(0);
-    ValueVertex *propKey = LoadRegister(1);
-    ValueVertex *accValue = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, propKey, accValue, globalEnv}, CommonStubCSigns::StOwnByValueWithNameSet);
-}
-
-void ArkSteedGraphBuilder::LowerStOwnByNameWithNameSet()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *propKey = GetStringFromConstPool(stringId);
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *accValue = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, propKey, accValue, globalEnv}, CommonStubCSigns::StOwnByNameWithNameSet);
-}
-
-void ArkSteedGraphBuilder::LowerLdGlobalVar()
-{
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::LdGlobalVar, {id, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerDefineGetterSetterByValue()
-{
-    ValueVertex *obj = LoadRegister(0);
-    ValueVertex *prop = LoadRegister(1);
-    ValueVertex *getter = LoadRegister(2);  // 2: getter register index
-    ValueVertex *setter = LoadRegister(3);  // 3: setter register index
-    ValueVertex *acc = currentFrameState_->GetAcc();
-    ValueVertex *undefinedValue = GetRootConstant(RootConstantVertex::RootIndex::UNDEFINED);
-    ValueVertex *taggedOne = NewTaggedVertexFromRawInt32(1);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({obj, prop, getter, setter, acc, undefinedValue, taggedOne},
-                                                            RTSTUB_ID(DefineGetterSetterByValue)));
-}
-
-void ArkSteedGraphBuilder::LowerLdThisByValue()
-{
-    ValueVertex *receiver = currentFrameState_->GetParam(THIS_OBJECT_PARAM_INDEX);
-    ValueVertex *key = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::GetPropertyByValue, {receiver, key, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerStThisByValue()
-{
-    ValueVertex *receiver = currentFrameState_->GetParam(THIS_OBJECT_PARAM_INDEX);
-    ValueVertex *key = LoadRegister(1);
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithICPreserveAcc(CommonStubCSigns::SetPropertyByValue, {receiver, key, value, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerLdSuperByName()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *thisObj = currentFrameState_->GetAcc();
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *prop = GetStringFromConstPool(stringId);
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({thisObj, prop, jsFunc}, RTSTUB_ID(OptLdSuperByValue)));
-}
-
-void ArkSteedGraphBuilder::LowerStSuperByName()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *thisObj = LoadRegister(1);
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *prop = GetStringFromConstPool(stringId);
-    NewVertex<CallRuntimeVertex>({thisObj, prop, value, jsFunc}, RTSTUB_ID(OptStSuperByValue));
-}
-
-void ArkSteedGraphBuilder::LowerLdLexVar()
-{
-    ValueVertex *level = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *slot = GetInt32Constant(static_cast<int>(GetImmediate(1)));
-    ValueVertex *lexicalEnv = LoadRegister(2);  // 2: lexicalEnv register index
-    ValueVertex *glue = GetGlue();
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, level, slot, lexicalEnv}, CommonStubCSigns::LdLexVar));
-}
-
-void ArkSteedGraphBuilder::LowerStLexVar()
-{
-    ValueVertex *level = GetInt32Constant(static_cast<int>(GetImmediate(0)));
-    ValueVertex *slot = GetInt32Constant(static_cast<int>(GetImmediate(1)));
-    ValueVertex *lexicalEnv = LoadRegister(2);  // 2: lexicalEnv register index
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *glue = GetGlue();
-    NewCommonStubCall({glue, level, slot, lexicalEnv, value}, CommonStubCSigns::StLexVar);
-}
-
-void ArkSteedGraphBuilder::LowerDefineClassWithBuffer()
-{
-    // Bytecode format: ID16_ID16_ID16_IMM16_V8 (methodId, literalId, length, proto, lexicalEnv, slotId)
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *methodId = NewTaggedVertexFromRawInt32(static_cast<int>(GetConstDataId(0)));
-    ValueVertex *literalId = NewTaggedVertexFromRawInt32(static_cast<int>(GetConstDataId(1)));
-    ValueVertex *length = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(2)));  // 2: length operand index
-    ValueVertex *proto = LoadRegister(3);  // 3: proto register index
-    ValueVertex *lexicalEnv = LoadRegister(4);  // 4: lexicalEnv register index
-    ValueVertex *slotId = NewTaggedVertexFromRawInt32(static_cast<int>(GetICSlotId(5)));  // 5: slotId operand index
-    ValueVertex *sharedConstPool = GetSharedConstPool();
-    ValueVertex *module = GetModuleFromFunction();
-
-    std::vector<ValueVertex *> args = {
-        proto,
-        lexicalEnv,
-        sharedConstPool,
-        methodId,
-        literalId,
-        module,
-        length,
-#if ECMASCRIPT_ENABLE_IC
-        slotId,
-        jsFunc
-#endif
-    };
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>(args, RTSTUB_ID(CreateClassWithBuffer)));
-}
-
-void ArkSteedGraphBuilder::LowerDefineFunc()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *slotId = GetInt32Constant(static_cast<int>(GetICSlotId(0)));
-    ValueVertex *methodId = GetInt32Constant(static_cast<int>(GetConstDataId(1)));
-    ValueVertex *length = GetInt32Constant(static_cast<int>(GetImmediate(2)));  // 2: length operand index
-    ValueVertex *lexicalEnv = LoadRegister(3);  // 3: lexicalEnv register index
-    ValueVertex *globalEnv = GetGlobalEnv();
-
-    currentFrameState_->SetAcc(NewCommonStubCall({glue, jsFunc, methodId, length, lexicalEnv, slotId, globalEnv},
-                                                 CommonStubCSigns::Definefunc));
-}
-
-void ArkSteedGraphBuilder::LowerCopyRestArgs()
-{
-    ValueVertex *actualArgc = GetActualArgc();
-    ValueVertex *taggedArgc = NewVertex<ToTaggedIntVertex>({actualArgc});
-    ValueVertex *taggedRestIdx = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({taggedArgc, taggedRestIdx}, RTSTUB_ID(OptCopyRestArgs)));
-}
-
-void ArkSteedGraphBuilder::LowerLdPatchVar()
-{
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({index}, RTSTUB_ID(LdPatchVar)));
-}
-
-void ArkSteedGraphBuilder::LowerStPatchVar()
-{
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    NewVertex<CallRuntimeVertex>({index, value}, RTSTUB_ID(StPatchVar));
-}
-
-void ArkSteedGraphBuilder::LowerLdLocalModuleVar()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *index = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({index, jsFunc}, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc)));
-}
-
-void ArkSteedGraphBuilder::LowerLdThisByName()
-{
-    ValueVertex *receiver = currentFrameState_->GetParam(THIS_OBJECT_PARAM_INDEX);
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithIC(CommonStubCSigns::GetPropertyByName, {receiver, id, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerStThisByName()
-{
-    ValueVertex *receiver = currentFrameState_->GetParam(THIS_OBJECT_PARAM_INDEX);
-    ValueVertex *id = GetIntPtrConstant(static_cast<intptr_t>(GetConstDataId(1)));
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    LowerCallStubWithICPreserveAcc(CommonStubCSigns::SetPropertyByName, {receiver, id, value, globalEnv});
-}
-
-void ArkSteedGraphBuilder::LowerLdPrivateProperty()
-{
-    ValueVertex *levelIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
-    ValueVertex *slotIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(2)));  // 2: slot operand index
-    ValueVertex *lexicalEnv = LoadRegister(3);  // 3: lexicalEnv register index
-    ValueVertex *obj = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(
-        NewVertex<CallRuntimeVertex>({lexicalEnv, levelIndex, slotIndex, obj}, RTSTUB_ID(LdPrivateProperty)));
-}
-
-void ArkSteedGraphBuilder::LowerStPrivateProperty()
-{
-    ValueVertex *levelIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
-    ValueVertex *slotIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(2)));  // 2: slot operand index
-    ValueVertex *obj = LoadRegister(3);  // 3: obj register index
-    ValueVertex *lexicalEnv = LoadRegister(4);  // 4: lexicalEnv register index
-    ValueVertex *value = currentFrameState_->GetAcc();
-    NewVertex<CallRuntimeVertex>({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(StPrivateProperty));
-}
-
-void ArkSteedGraphBuilder::LowerNotifyConcurrentResult()
-{
-    ValueVertex *jsFunc = currentFrameState_->GetParam(CALL_TARGET_PARAM_INDEX);
-    ValueVertex *result = currentFrameState_->GetAcc();
-    NewVertex<CallRuntimeVertex>({result, jsFunc}, RTSTUB_ID(NotifyConcurrentResult));
-}
-
-void ArkSteedGraphBuilder::LowerDefinePropertyByName()
-{
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(1)));
-    ValueVertex *prop = GetStringFromConstPool(stringId);
-    ValueVertex *obj = LoadRegister(2);  // 2: obj register index
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *glue = GetGlue();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, obj, prop, value, globalEnv}, CommonStubCSigns::DefineField);
-}
-
-void ArkSteedGraphBuilder::LowerDefineFieldByName()
-{
-    ValueVertex *stringId = GetInt32Constant(static_cast<int>(GetConstDataId(1)));
-    ValueVertex *prop = GetStringFromConstPool(stringId);
-    ValueVertex *obj = LoadRegister(2);  // 2: obj register index
-    ValueVertex *value = currentFrameState_->GetAcc();
-    ValueVertex *glue = GetGlue();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, obj, prop, value, globalEnv}, CommonStubCSigns::DefineField);
-}
-
-void ArkSteedGraphBuilder::LowerDefineFieldByValue()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *propKey = LoadRegister(0);
-    ValueVertex *acc = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, propKey, acc, globalEnv}, CommonStubCSigns::DefineField);
-}
-
-void ArkSteedGraphBuilder::LowerDefineFieldByIndex()
-{
-    ValueVertex *glue = GetGlue();
-    ValueVertex *receiver = LoadRegister(1);
-    ValueVertex *propKey = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *acc = currentFrameState_->GetAcc();
-    ValueVertex *globalEnv = GetGlobalEnv();
-    NewCommonStubCall({glue, receiver, propKey, acc, globalEnv}, CommonStubCSigns::DefineField);
-}
-
-void ArkSteedGraphBuilder::LowerToPropertyKey()
-{
-    ValueVertex *value = currentFrameState_->GetAcc();
-    currentFrameState_->SetAcc(NewVertex<CallRuntimeVertex>({value}, RTSTUB_ID(ToPropertyKey)));
-}
-
-void ArkSteedGraphBuilder::LowerCreatePrivateProperty()
-{
-    ValueVertex *count = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *literalId = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
-    ValueVertex *lexicalEnv = LoadRegister(2);  // 2: lexicalEnv register index
-    ValueVertex *constpool = GetSharedConstPool();
-    ValueVertex *module = GetModuleFromFunction();
-
-    NewVertex<CallRuntimeVertex>({lexicalEnv, count, constpool, literalId, module}, RTSTUB_ID(CreatePrivateProperty));
-}
-
-void ArkSteedGraphBuilder::LowerDefinePrivateProperty()
-{
-    ValueVertex *levelIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(0)));
-    ValueVertex *slotIndex = NewTaggedVertexFromRawInt32(static_cast<int>(GetImmediate(1)));
-    ValueVertex *obj = LoadRegister(2);  // 2: obj register index
-    ValueVertex *lexicalEnv = LoadRegister(3);  // 3: lexicalEnv register index
-    ValueVertex *value = currentFrameState_->GetAcc();
-    NewVertex<CallRuntimeVertex>({lexicalEnv, levelIndex, slotIndex, obj, value}, RTSTUB_ID(DefinePrivateProperty));
-}
-
-void ArkSteedGraphBuilder::MergeCurrentFrameStateTo(BB *predecessor, uint32_t destIndex)
-{
-    ASSERT(predecessor != nullptr);
-    if (mergeStates_[destIndex] == nullptr) {
-        const LivenessBitSet *liveness = GetInLivenessFor(destIndex);
-        uint32_t predCount = PredecessorCount(destIndex);
-        ASSERT(predCount > 0);
-        mergeStates_[destIndex] = MergePointFrameState::New(destIndex, predCount, liveness, GetChunk());
-    }
-    mergeStates_[destIndex]->MergeFrom(*currentFrameState_, predecessor);
-}
-
-ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Label::Label(ArkSteedSubGraphBuilder *subBuilder,
-                                                            uint32_t predecessorCount)
-    : subBuilder_(subBuilder),
-      predecessorCount_(predecessorCount),
-      mergeLiveSet_(subBuilder->builder_->GetChunk()->New<LivenessBitSet>(
-          subBuilder->builder_->GetChunk(), subBuilder->numLocal_, subBuilder->numParams_))
-{
-}
-
-ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Label::Label(ArkSteedSubGraphBuilder *subBuilder,
-                                                            uint32_t predecessorCount,
-                                                            std::initializer_list<SubGraphVariable *> liveVariables)
-    : Label(subBuilder, predecessorCount)
-{
-    for (SubGraphVariable *var : liveVariables) {
-        ASSERT(var != nullptr);
-        mergeLiveSet_->Set(var->pseudoRegister_);
-    }
-}
-
-ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::ArkSteedSubGraphBuilder(ArkSteedGraphBuilder *builder, int variableCount)
-    : builder_(builder),
-      numLocal_(CheckedSubGraphVariableCount(variableCount)),
-      numParams_(0),
-      subGraphFrame_(builder->GetChunk()->New<InterpreterFrameState>(numLocal_, numParams_, builder->GetChunk()))
-{
-    InterpreterFrameState *parentFrame = builder_->CurrentFrameState();
-    ASSERT(parentFrame != nullptr);
-    subGraphFrame_->SetEnv(parentFrame->GetEnv());
-    subGraphFrame_->SetAcc(parentFrame->GetAcc());
-}
-
-void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::MergeIntoLabel(Label *label, BB *predecessor)
-{
-    ASSERT(label != nullptr);
-    ASSERT(label->subBuilder_ == this);
-    ASSERT(predecessor != nullptr);
-
-    if (label->variableMergeState_ == nullptr) {
-        label->variableMergeState_ = MergePointFrameState::New(
-            BytecodeContext::INVALID_BC_INDEX, label->predecessorCount_, label->mergeLiveSet_, builder_->GetChunk());
-    }
-    label->variableMergeState_->MergeFrom(*subGraphFrame_, predecessor);
-}
-
-void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::TrimUnmergedPredecessors(Label *label, uint32_t num)
-{
-    ASSERT(label != nullptr);
-    ASSERT(label->subBuilder_ == this);
-    ASSERT(num <= label->predecessorCount_);
-
-    if (num == 0) {
-        return;
-    }
-
-    label->predecessorCount_ -= num;
-    if (label->variableMergeState_ != nullptr) {
-        label->variableMergeState_->ReducePredecessorCount(num);
-    }
-}
-
-void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Goto(Label *label)
-{
-    ASSERT(builder_->CurrentBlock() != nullptr);
-    BB *predecessor = builder_->FinishBlock<JumpVertex>({}, &label->ref_);
-    MergeIntoLabel(label, predecessor);
-}
-
-void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::GotoOrTrim(Label *label)
-{
-    if (builder_->CurrentBlock() == nullptr) {
-        TrimUnmergedPredecessors(label);
-        return;
-    }
-    Goto(label);
-}
-
-void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Bind(Label *label)
-{
-    ASSERT(label != nullptr);
-    ASSERT(label->subBuilder_ == this);
-    ASSERT(builder_->CurrentBlock() == nullptr);
-    ASSERT(label->variableMergeState_ != nullptr);
-    ASSERT(label->variableMergeState_->PredecessorsSoFar() == label->predecessorCount_);
-
-    subGraphFrame_->CopyFrom(*label->variableMergeState_);
-
-    builder_->StartNewBlock(nullptr, label->variableMergeState_, &label->ref_);
-    builder_->ProcessMergePointPredecessors(label->variableMergeState_, &label->ref_, builder_->CurrentBlock());
-}
-
-ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::TrimPredecessorsAndBind(Label *label)
-{
-    ASSERT(label != nullptr);
-
-    uint32_t predecessorsSoFar =
-        label->variableMergeState_ == nullptr ? 0 : label->variableMergeState_->PredecessorsSoFar();
-    if (predecessorsSoFar == 0) {
-        builder_->SetCurrentBlock(nullptr);
-        return ReduceResult::DoneWithAbort();
-    }
-
-    ASSERT(predecessorsSoFar <= label->predecessorCount_);
-    builder_->SetCurrentBlock(nullptr);
-    TrimUnmergedPredecessors(label, label->predecessorCount_ - predecessorsSoFar);
-    Bind(label);
-    return ReduceResult::Done();
-}
-
-ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::LoopLabel ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::BeginLoop(
-    std::initializer_list<SubGraphVariable *> loopVars)
-{
-    constexpr uint32_t kLoopHeaderPredecessorCount = 2;
-    Chunk *chunk = builder_->GetChunk();
-    auto *loopHeaderRef = chunk->New<BBRef>();
-    auto *loopInfo = chunk->New<LoopInfo>(chunk, BytecodeContext::INVALID_BC_INDEX, BytecodeContext::INVALID_BC_INDEX,
-                                          numLocal_, numParams_);
-    auto *loopHeaderLiveness = chunk->New<LivenessBitSet>(chunk, numLocal_, numParams_);
-    for (SubGraphVariable *var : loopVars) {
-        ASSERT(var != nullptr);
-        loopHeaderLiveness->Set(var->pseudoRegister_);
-        loopInfo->AddDef(var->pseudoRegister_);
-    }
-
-    BB *loopPredecessor = builder_->FinishBlock<JumpVertex>({}, loopHeaderRef);
-    MergePointFrameState *loopState = MergePointFrameState::NewForLoop(
-        BytecodeContext::INVALID_BC_INDEX, kLoopHeaderPredecessorCount, loopHeaderLiveness, loopInfo, chunk);
-    loopState->MergeFrom(*subGraphFrame_, loopPredecessor);
-    builder_->StartNewBlock(nullptr, loopState, loopHeaderRef);
-    BB *loopHeaderBlock = builder_->CurrentBlock();
-    builder_->ProcessMergePointPredecessors(loopState, loopHeaderRef, loopHeaderBlock);
-    subGraphFrame_->CopyFrom(*loopState);
-    return LoopLabel(this, loopState, loopHeaderRef, loopHeaderBlock);
-}
-
-void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::EndLoop(LoopLabel *loopLabel)
-{
-    ASSERT(loopLabel != nullptr);
-    ASSERT(loopLabel->subBuilder_ == this);
-    ASSERT(loopLabel->loopHeaderBlock_ != nullptr);
-
-    if (builder_->CurrentBlock() == nullptr) {
-        loopLabel->mergeState_->ReducePredecessorCount();
-        loopLabel->mergeState_->ClearIsLoop();
-        loopLabel->mergeState_->ClearLoopInfo();
-        return;
-    }
-
-    BB *loopBackedge = builder_->FinishBlock<JumpLoopVertex>({}, loopLabel->loopHeaderRef_);
-    loopLabel->mergeState_->MergeFrom(*subGraphFrame_, loopBackedge);
-    ASSERT(loopLabel->mergeState_->PredecessorsSoFar() == loopLabel->mergeState_->PredecessorCount());
-    loopBackedge->SetPredecessorId(loopLabel->mergeState_->PredecessorCount() - 1);
-}
-
-ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Branch(
-    std::initializer_list<SubGraphVariable *> vars, CallbackRef<BranchResult(BranchBuilder &)> cond,
-    CallbackRef<ReduceResult()> ifTrue, CallbackRef<ReduceResult()> ifFalse)
-{
-    constexpr uint32_t kBinaryBranchPredecessorCount = 2;
-
-    Label elseBranch(this, 1);
-    BranchBuilder branchBuilder(builder_, this, BranchType::FALSE_BRANCH, &elseBranch);
-    BranchResult branchResult = cond(branchBuilder);
-    switch (branchResult) {
-        case BranchResult::ALWAYS_TRUE:
-            return ifTrue();
-        case BranchResult::ALWAYS_FALSE:
-            return ifFalse();
-        case BranchResult::ABORT:
-            return ReduceResult::DoneWithAbort();
-        case BranchResult::DEFAULT:
-            break;
-    }
-
-    Label done(this, kBinaryBranchPredecessorCount, vars);
-    ReduceResult trueResult = ifTrue();
-    GotoOrTrim(&done);
-
-    Bind(&elseBranch);
-    ReduceResult falseResult = ifFalse();
-    if (trueResult.IsDoneWithAbort() && falseResult.IsDoneWithAbort()) {
-        return ReduceResult::DoneWithAbort();
-    }
-
-    GotoOrTrim(&done);
-    ReduceResult bindResult = TrimPredecessorsAndBind(&done);
-    if (bindResult.IsDoneWithAbort()) {
-        return bindResult;
-    }
-    return ReduceResult::Done();
-}
-
-ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::Select(CallbackRef<BranchResult(BranchBuilder &)> cond,
-                                                                CallbackRef<ReduceResult()> ifTrue,
-                                                                CallbackRef<ReduceResult()> ifFalse)
-{
-    constexpr uint32_t kBinaryBranchPredecessorCount = 2;
-
-    ArkSteedSubGraphBuilder subGraph(this, 1);
-    ArkSteedSubGraphBuilder::SubGraphVariable resultVar(0);
-    ArkSteedSubGraphBuilder::Label elseBranch(&subGraph, 1);
-    BranchBuilder branchBuilder(this, &subGraph, BranchType::FALSE_BRANCH, &elseBranch);
-    BranchResult branchResult = cond(branchBuilder);
-    switch (branchResult) {
-        case BranchResult::ALWAYS_TRUE:
-            return ifTrue();
-        case BranchResult::ALWAYS_FALSE:
-            return ifFalse();
-        case BranchResult::ABORT:
-            return ReduceResult::DoneWithAbort();
-        case BranchResult::DEFAULT:
-            break;
-    }
-
-    ArkSteedSubGraphBuilder::Label done(&subGraph, kBinaryBranchPredecessorCount, {&resultVar});
-    auto completeArm = [&subGraph, &resultVar, &done](const ReduceResult &result) {
-        if (result.IsDoneWithValue()) {
-            subGraph.Set(resultVar, result.Value());
+    ValueVertex *TryBuildI32LeftConstantReduction(BinaryOpKind kind, int32_t leftValue, ValueVertex *right,
+                                                  bool rightKnownInt)
+    {
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                if (leftValue == 1) {
+                    // 1 + x -> ++x.
+                    return BuildIntUnaryOp(CommonStubID::Inc, right, rightKnownInt);
+                }
+                if (leftValue == 0) {
+                    // 0 + x -> x.
+                    return TryReuseKnownIntOperand(right, rightKnownInt);
+                }
+                break;
+            case BinaryOpKind::MUL:
+                if (leftValue == 0) {
+                    // 0 * x -> 0, guarding against -0.
+                    return TryBuildI32MulByZeroReduction(right, rightKnownInt);
+                }
+                if (leftValue == 1) {
+                    // 1 * x -> x.
+                    return TryReuseKnownIntOperand(right, rightKnownInt);
+                }
+                break;
+            default:
+                break;
         }
-        subGraph.GotoOrTrim(&done);
-        return result.IsDoneWithAbort();
-    };
-
-    bool truePathAborted = completeArm(ifTrue());
-    subGraph.Bind(&elseBranch);
-    bool falsePathAborted = completeArm(ifFalse());
-    if (truePathAborted && falsePathAborted) {
-        return ReduceResult::DoneWithAbort();
-    }
-    subGraph.Bind(&done);
-    return ReduceResult::Done(subGraph.Get(resultVar));
-}
-
-uint32_t ArkSteedGraphBuilder::PredecessorCount(uint32_t index) const
-{
-    ASSERT(index < static_cast<uint32_t>(bytecodeContext_.GetPredecessorCount().size()));
-    ASSERT(index < static_cast<uint32_t>(predecessorCountReductions_.size()));
-    uint32_t staticPredecessorCount = bytecodeContext_.GetPredecessorCount()[index];
-    ASSERT(predecessorCountReductions_[index] <= staticPredecessorCount);
-    return staticPredecessorCount - predecessorCountReductions_[index];
-}
-
-void ArkSteedGraphBuilder::ReduceBytecodePredecessorCount(uint32_t index, uint32_t num)
-{
-    if (num == 0) {
-        return;
+        return nullptr;
     }
 
-    ASSERT(index < static_cast<uint32_t>(predecessorCountReductions_.size()));
-    ASSERT(num <= PredecessorCount(index));
-
-    predecessorCountReductions_[index] += num;
-    if (mergeStates_[index] != nullptr) {
-        mergeStates_[index]->ReducePredecessorCount(num);
-    }
-}
-
-void ArkSteedGraphBuilder::MarkDeadLoopBackedge(uint32_t index)
-{
-    if (mergeStates_[index] == nullptr && PredecessorCount(index) == 0) {
-        return;
-    }
-
-    ASSERT(PredecessorCount(index) > 0);
-    if (mergeStates_[index] != nullptr) {
-        ASSERT(mergeStates_[index]->IsLoopHeader());
-        ASSERT(mergeStates_[index]->PredecessorCount() == PredecessorCount(index));
-        ASSERT(mergeStates_[index]->PredecessorsSoFar() + 1 == mergeStates_[index]->PredecessorCount());
-        mergeStates_[index]->ReducePredecessorCount();
-        mergeStates_[index]->ClearIsLoop();
-        mergeStates_[index]->ClearLoopInfo();
-    }
-    predecessorCountReductions_[index]++;
-}
-
-void ArkSteedGraphBuilder::MarkDeadPredecessorsForSuccessors(uint32_t index, const BytecodeInfo &bytecodeInfo)
-{
-    if (bytecodeInfo.IsCondJump()) {
-        uint32_t jumpTarget = bytecodeContext_.GetJumpTargetBcIndex(index);
-        uint32_t fallthrough = index + 1;
-        ReduceBytecodePredecessorCount(jumpTarget);
-        if (fallthrough < bytecodeContext_.GetBytecodeCount() && fallthrough != jumpTarget) {
-            ReduceBytecodePredecessorCount(fallthrough);
-        }
-        return;
-    }
-
-    if (bytecodeInfo.IsJump()) {
-        uint32_t jumpTarget = bytecodeContext_.GetJumpTargetBcIndex(index);
-        if (bytecodeContext_.GetJumpLoop()[index]) {
-            MarkDeadLoopBackedge(jumpTarget);
-        } else {
-            ReduceBytecodePredecessorCount(jumpTarget);
-        }
-        return;
-    }
-
-    if (bytecodeInfo.needFallThrough()) {
-        uint32_t nextIndex = index + 1;
-        if (nextIndex < bytecodeContext_.GetBytecodeCount()) {
-            ReduceBytecodePredecessorCount(nextIndex);
-        }
-    }
-}
-
-void ArkSteedGraphBuilder::StartNewBlock(BB *predecessor, MergePointFrameState *mergeState, BBRef *refsToBlock)
-{
-    ASSERT(CurrentBlock() == nullptr);
-
-    BB *current = BB::New(GetChunk());
-    if (mergeState == nullptr) {
-        ASSERT(predecessor != nullptr);
-        current->SetPredecessorCount(1);
-        current->AddPredecessor(predecessor);
-    } else {
-        uint32_t numPreds = mergeState->PredecessorCount();
-        current->SetPredecessorCount(numPreds);
-        current->SetRegisterMergeState(&mergeState->RegisterState());
-        if (mergeState->IsLoopHeader()) {
-            current->SetLoopHeader(true);
-        }
-        if (mergeState->IsExceptionHandler()) {
-            current->SetExceptionHandler(true);
-        }
-        for (PhiVertex *phi : mergeState->Phis()) {
-            phi->SetOwner(current);
-            current->GetPhis().push_back(phi);
-            RegisterVertexWithLabeller(phi);
-        }
-    }
-
-    SetCurrentBlock(current);
-    if (refsToBlock != nullptr) {
-        refsToBlock->Bind(current);
-    }
-}
-
-void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
-{
-#ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "Creating new basic block at bytecode #" << index << " (with merge state)";
-#endif
-    ASSERT(mergeStates_[index] != nullptr);
-
-    StartNewBlock(nullptr, mergeStates_[index], &jumpTargets_[index]);
-    BB *current = CurrentBlock();
-
-    // For all virtual registers not in LiveIn(B) where B is current basic block,
-    // it is either defined in B (which will be updated to currentFrameState_ during bytecode visiting) or
-    // ignored.
-    mergeStates_[index]->FrameState().ForEach([this](ValueVertex *vertex, VirtualRegister reg) {
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "\tLive-in virtual register " << VRegDisplayString(reg) << " -> Vertex "
-                            << GetCurrentGraphLabeller()->GetVertexInputLabel(vertex);
-#endif
-        currentFrameState_->Set(reg, vertex);
-    });
-
-    ProcessMergePointPredecessors(mergeStates_[index], &jumpTargets_[index], current);
-}
-
-void ArkSteedGraphBuilder::ProcessMergePointPredecessors(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock)
-{
-    ASSERT(mergeState != nullptr);
-    ASSERT(ref != nullptr);
-    ASSERT(mergeBlock != nullptr);
-
-    uint32_t numPreds = mergeState->PredecessorCount();
-    if (numPreds <= 1) {
-        return;
-    }
-    if (mergeState->IsExceptionHandler()) {
-        LOG_COMPILER(WARN) << "to do: Exception handlers are not supported now.";
-    } else if (mergeState->IsLoopHeader()) {
-        // 1 : The loop edge shall be guaranteed to be an unconditional jump.
-        ASSERT(mergeState->PredecessorsSoFar() == numPreds - 1);
-        for (uint32_t i = 0; i + 1 < numPreds; i++) {
-            TrySplitCriticalEdge(mergeState, ref, mergeBlock, i);
-        }
-    } else {
-        ASSERT(mergeState->PredecessorsSoFar() == numPreds);
-        for (uint32_t i = 0; i < numPreds; i++) {
-            TrySplitCriticalEdge(mergeState, ref, mergeBlock, i);
-        }
-    }
-}
-
-void ArkSteedGraphBuilder::TrySplitCriticalEdge(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock,
-                                                uint32_t predIndex)
-{
-    ASSERT(mergeState != nullptr);
-    ASSERT(ref != nullptr);
-    ASSERT(mergeBlock != nullptr);
-
-    BB *predecessor = mergeState->PredecessorAt(predIndex);
-    BranchIfTrueVertex *branchIf = predecessor->GetControlVertex()->TryCast<BranchIfTrueVertex>();
-    if (branchIf == nullptr) {
-        predecessor->SetPredecessorId(predIndex);
-        return;  // A basic block has multiple successors (excluding catch blocks) only if it's
-                 // BranchIfTrueVertex.
-    }
-    // to do: State initialization
-    RegisterMergeState *state = GetChunk()->New<RegisterMergeState>();
-    BB *splitBlock = BB::New(GetChunk());
-    splitBlock->SetPredecessorCount(1);
-    splitBlock->SetRegisterMergeState(state);
-    GetGraph()->Add(splitBlock);
-
-    JumpVertex *splitJump = Vertex::New<JumpVertex>(GetChunk(), {}, ref->BlockRef());
-    splitJump->SetOwner(splitBlock);
-    splitBlock->SetControlVertex(splitJump);
-    RegisterVertexWithLabeller(splitJump);
-
-    splitBlock->AddPredecessor(predecessor);
-    splitBlock->SetPredecessorId(predIndex);
-    mergeState->SetPredecessorAt(predIndex, splitBlock);
-    ASSERT(!!(branchIf->IfTrue() == mergeBlock) + !!(branchIf->IfFalse() == mergeBlock) == 1);
-    if (branchIf->IfTrue() == mergeBlock) {
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Creates edge-split block at predecessor #" << predIndex << " of merge block #"
-                            << mergeBlock->GetId() << " (splitting true-branch)";
-#endif
-        branchIf->SetIfTrue(splitBlock);
-    } else if (branchIf->IfFalse() == mergeBlock) {
-#ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Creates edge-split block at predecessor #" << predIndex << " of merge block #"
-                            << mergeBlock->GetId() << " (splitting false-branch)";
-#endif
-        branchIf->SetIfFalse(splitBlock);
-    }
-}
-
-void ArkSteedGraphBuilder::BranchBuilder::StartFallthroughBlock(BB *predecessor)
-{
-    switch (GetMode()) {
-        case Mode::JUMP_BYTECODE_TARGET: {
-            auto &data = data_.bytecodeTarget;
-            builder_->MergeCurrentFrameStateTo(predecessor, data.jumpTargetBcIndex);
-            builder_->MergeCurrentFrameStateTo(predecessor, data.fallthroughBcIndex);
-            break;
-        }
-        case Mode::JUMP_LABEL_TARGET: {
-            auto &data = data_.labelTarget;
-            subBuilder_->MergeIntoLabel(data.jumpLabel, predecessor);
-            if (data.fallthroughBlock == nullptr) {
-                data.fallthroughBlock = BB::New(builder_->GetChunk());
-                data.fallthroughBlock->AddPredecessor(predecessor);
-                data.fallthroughTarget.Bind(data.fallthroughBlock);
+    ValueVertex *TryBuildI32BinaryReduction(BinaryOpKind kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                            bool rightKnownInt)
+    {
+        if (std::optional<int32_t> rightValue = TryGetInt32Value(right)) {
+            if (ValueVertex *reduced = TryBuildI32RightConstantReduction(kind, left, leftKnownInt, *rightValue)) {
+                return reduced;
             }
-            builder_->SetCurrentBlock(data.fallthroughBlock);
+        }
+
+        if (std::optional<int32_t> leftValue = TryGetInt32Value(left)) {
+            if (ValueVertex *reduced = TryBuildI32LeftConstantReduction(kind, *leftValue, right, rightKnownInt)) {
+                return reduced;
+            }
+        }
+        return nullptr;
+    }
+
+    ValueVertex *BuildI32BinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        ASSERT(SupportsI32CheckedBinOp(kind));
+
+        bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+        bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+        return BuildI32CheckedBinOp(kind, left, right, leftKnownInt, rightKnownInt);
+    }
+
+    ValueVertex *BuildI32CheckedBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                      bool rightKnownInt)
+    {
+        ASSERT(SupportsI32CheckedBinOp(kind));
+
+        bool leftIsConst = TryGetInt32Value(left).has_value();
+        bool rightIsConst = TryGetInt32Value(right).has_value();
+        if (leftIsConst || rightIsConst) {
+            if (ValueVertex *reduced = TryBuildI32BinaryReduction(kind, left, right, leftKnownInt, rightKnownInt)) {
+                return reduced;
+            }
+        }
+
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32WithOverflowTagged(kind, left, right);
+        }
+
+        ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
+        ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
+        ValueVertex *rawResult = BuildI32BinOpWithOverflow(kind, leftI32, rightI32);
+        ASSERT(rawResult != nullptr);
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *TryBuildProvenIntBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (!SupportsI32CheckedBinOp(kind)) {
+            return nullptr;
+        }
+        bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+        bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+        if (!leftKnownInt || !rightKnownInt) {
+            return nullptr;
+        }
+        return BuildI32BinOp(kind, left, right);
+    }
+
+    ValueVertex *BuildCheckedNumberToF64(ValueVertex *value)
+    {
+        if (ValueVertex *alternative =
+                compileInfoFacts_->TryGetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64)) {
+            return alternative;
+        }
+        if (std::optional<int32_t> constant = TryGetInt32Value(value)) {
+            return self->graph_->GetFloat64Constant(static_cast<double>(*constant));
+        }
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *i32 = BuildTaggedIntToI32(value);
+            ValueVertex *f64 = self->NewVertex<I32ToF64Vertex>(compileInfoFacts_, currentBlock,
+                                                               std::initializer_list<ValueVertex *> {i32});
+            compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
+            return f64;
+        }
+        std::vector<ValueVertex *> inputs {value};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *f64 = self->NewVertex<CheckedNumberToF64Vertex>(currentBlock, inputs, self->chunk_,
+                                                                     self->preproc_->GetBytecodeOffset(currentBcIndex));
+        f64->Cast<CheckedNumberToF64Vertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+        compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::NUMBER);
+        compileInfoFacts_->SetAlternative(value, AlternativeNodes::Kind::HOLEY_FLOAT64, f64);
+        return f64;
+    }
+
+    ValueVertex *BuildF64BinOpValue(BinaryOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
+    {
+        auto inputs = {leftF64, rightF64};
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                return self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, inputs);
+            case BinaryOpKind::SUB:
+                return self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, inputs);
+            case BinaryOpKind::MUL:
+                return self->NewVertex<F64MulVertex>(compileInfoFacts_, currentBlock, inputs);
+            case BinaryOpKind::DIV:
+                return self->NewVertex<F64DivVertex>(compileInfoFacts_, currentBlock, inputs);
+            default:
+                return nullptr;
+        }
+    }
+
+    bool IsPositiveZero(ValueVertex *value) const
+    {
+        auto *constant = value->TryCast<Float64ConstantVertex>();
+        return constant != nullptr && constant->GetValue() == 0.0 && !std::signbit(constant->GetValue());
+    }
+
+    bool IsNegativeZero(ValueVertex *value) const
+    {
+        auto *constant = value->TryCast<Float64ConstantVertex>();
+        return constant != nullptr && constant->GetValue() == 0.0 && std::signbit(constant->GetValue());
+    }
+
+    bool IsFloat64One(ValueVertex *value) const
+    {
+        auto *constant = value->TryCast<Float64ConstantVertex>();
+        return constant != nullptr && constant->GetValue() == 1.0;
+    }
+
+    ValueVertex *BuildTaggedF64Value(ValueVertex *rawResult)
+    {
+        ValueVertex *taggedResult =
+            self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {rawResult});
+        compileInfoFacts_->EnsureType(taggedResult, NodeInfo::NodeType::DOUBLE);
+        compileInfoFacts_->SetAlternative(taggedResult, AlternativeNodes::Kind::HOLEY_FLOAT64, rawResult);
+        return taggedResult;
+    }
+
+    ValueVertex *TryBuildF64Identity(BinaryOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
+    {
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                if (IsNegativeZero(rightF64)) {
+                    return BuildTaggedF64Value(leftF64);
+                }
+                break;
+            case BinaryOpKind::SUB:
+                if (IsPositiveZero(rightF64)) {
+                    return BuildTaggedF64Value(leftF64);
+                }
+                break;
+            case BinaryOpKind::MUL:
+            case BinaryOpKind::DIV:
+                if (IsFloat64One(rightF64)) {
+                    return BuildTaggedF64Value(leftF64);
+                }
+                break;
+            default:
+                break;
+        }
+        return nullptr;
+    }
+
+    ValueVertex *BuildF64TaggedBinOpValue(BinaryOpKind kind, ValueVertex *leftF64, ValueVertex *rightF64)
+    {
+        if (ValueVertex *identity = TryBuildF64Identity(kind, leftF64, rightF64)) {
+            return identity;
+        }
+        ValueVertex *rawResult = BuildF64BinOpValue(kind, leftF64, rightF64);
+        if (rawResult == nullptr) {
+            return nullptr;
+        }
+        return BuildTaggedF64Value(rawResult);
+    }
+
+    ValueVertex *BuildF64NumberBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        ASSERT(SupportsF64BinOp(kind));
+        ValueVertex *leftF64 = BuildCheckedNumberToF64(left);
+        ValueVertex *rightF64 = BuildCheckedNumberToF64(right);
+        ValueVertex *taggedResult = BuildF64TaggedBinOpValue(kind, leftF64, rightF64);
+        ASSERT(taggedResult != nullptr);
+        return taggedResult;
+    }
+
+    ValueVertex *BuildCheckedNonNegativeI32ToTaggedInt(ValueVertex *rawResult)
+    {
+        std::vector<ValueVertex *> inputs {rawResult};
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        ValueVertex *tagged = self->NewVertex<CheckedNonNegativeI32ToTaggedIntVertex>(
+            currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+        tagged->Cast<CheckedNonNegativeI32ToTaggedIntVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+        compileInfoFacts_->EnsureType(tagged, NodeInfo::NodeType::INT);
+        compileInfoFacts_->SetAlternative(tagged, AlternativeNodes::Kind::INT32, rawResult);
+        return tagged;
+    }
+
+    ValueVertex *BuildGenericBitwiseBinOp(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        switch (kind) {
+            case IntBitwiseKind::BITWISE_AND:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::And);
+            case IntBitwiseKind::BITWISE_OR:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Or);
+            case IntBitwiseKind::BITWISE_XOR:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Xor);
+            case IntBitwiseKind::SHIFT_LEFT:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Shl);
+            case IntBitwiseKind::SHIFT_RIGHT_LOGICAL:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Shr);
+            case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Ashr);
+        }
+        UNREACHABLE();
+    }
+
+    ValueVertex *TryBuildI32BitwiseReduction(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        std::optional<int32_t> leftValue = TryGetInt32Value(left);
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        auto knownInt = [this](ValueVertex *value) -> ValueVertex * {
+            compileInfoFacts_->EnsureType(value, NodeInfo::NodeType::INT);
+            return value;
+        };
+        auto taggedIntConstant = [this](int32_t value) -> ValueVertex * {
+            ValueVertex *constant = self->graph_->GetTaggedConstant(JSTaggedValue(value).GetRawData());
+            compileInfoFacts_->EnsureType(constant, NodeInfo::NodeType::INT);
+            return constant;
+        };
+
+        if (leftValue.has_value() && rightValue.has_value()) {
+            int32_t lhs = *leftValue;
+            uint32_t shift = static_cast<uint32_t>(*rightValue) & 31U;
+            switch (kind) {
+                case IntBitwiseKind::BITWISE_AND:
+                    return taggedIntConstant(lhs & *rightValue);
+                case IntBitwiseKind::BITWISE_OR:
+                    return taggedIntConstant(lhs | *rightValue);
+                case IntBitwiseKind::BITWISE_XOR:
+                    return taggedIntConstant(lhs ^ *rightValue);
+                case IntBitwiseKind::SHIFT_LEFT:
+                    return taggedIntConstant(static_cast<int32_t>(static_cast<uint32_t>(lhs) << shift));
+                case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                    return taggedIntConstant(lhs >> static_cast<int32_t>(shift));
+                case IntBitwiseKind::SHIFT_RIGHT_LOGICAL: {
+                    // >>> yields a uint32; fold only when it fits int32 (non-negative), otherwise
+                    // leave it so the SHR tagging path (CheckedNonNegativeI32ToTaggedInt) deopts
+                    // to double as JS requires (e.g. (-1) >>> 0 === 4294967295).
+                    uint32_t ur = static_cast<uint32_t>(lhs) >> shift;
+                    if (ur > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+                        break;
+                    }
+                    return taggedIntConstant(static_cast<int32_t>(ur));
+                }
+                default:
+                    break;
+            }
+        }
+
+        if (rightValue.has_value()) {
+            switch (kind) {
+                case IntBitwiseKind::BITWISE_AND:
+                    if (*rightValue == -1) {
+                        return knownInt(left);
+                    }
+                    if (*rightValue == 0) {
+                        return taggedIntConstant(0);
+                    }
+                    break;
+                case IntBitwiseKind::BITWISE_OR:
+                    if (*rightValue == 0) {
+                        return knownInt(left);
+                    }
+                    if (*rightValue == -1) {
+                        return taggedIntConstant(-1);
+                    }
+                    break;
+                case IntBitwiseKind::BITWISE_XOR:
+                    if (*rightValue == 0) {
+                        return knownInt(left);
+                    }
+                    break;
+                case IntBitwiseKind::SHIFT_LEFT:
+                case IntBitwiseKind::SHIFT_RIGHT_ARITHMETIC:
+                    if ((static_cast<uint32_t>(*rightValue) & 31U) == 0) {
+                        return knownInt(left);
+                    }
+                    break;
+                case IntBitwiseKind::SHIFT_RIGHT_LOGICAL:
+                    break;
+            }
+        }
+
+        if (leftValue.has_value()) {
+            switch (kind) {
+                case IntBitwiseKind::BITWISE_AND:
+                    if (*leftValue == -1) {
+                        return knownInt(right);
+                    }
+                    if (*leftValue == 0) {
+                        return taggedIntConstant(0);
+                    }
+                    break;
+                case IntBitwiseKind::BITWISE_OR:
+                    if (*leftValue == 0) {
+                        return knownInt(right);
+                    }
+                    if (*leftValue == -1) {
+                        return taggedIntConstant(-1);
+                    }
+                    break;
+                case IntBitwiseKind::BITWISE_XOR:
+                    if (*leftValue == 0) {
+                        return knownInt(right);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return nullptr;
+    }
+
+    ValueVertex *BuildI32BitwiseTaggedValue(IntBitwiseKind kind, ValueVertex *leftI32, ValueVertex *rightI32)
+    {
+        ValueVertex *raw =
+            self->NewVertex<I32BitwiseBinaryVertex>(compileInfoFacts_, currentBlock, {leftI32, rightI32}, kind);
+        if (kind != IntBitwiseKind::SHIFT_RIGHT_LOGICAL) {
+            return BuildTaggedI32Result(raw);
+        }
+        return BuildCheckedNonNegativeI32ToTaggedInt(raw);
+    }
+
+    ValueVertex *BuildI32BitwiseBinOp(IntBitwiseKind kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                      bool rightKnownInt)
+    {
+        if (leftKnownInt && rightKnownInt) {
+            if (ValueVertex *reduced = TryBuildI32BitwiseReduction(kind, left, right)) {
+                return reduced;
+            }
+        }
+
+        ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
+        ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
+        return BuildI32BitwiseTaggedValue(kind, leftI32, rightI32);
+    }
+
+    ValueVertex *BuildTruncatingNumberToInt32(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            return BuildTaggedIntToI32(value);
+        }
+        ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
+        return self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, {valueF64});
+    }
+
+    void BuildTruncatingNumberTypedArrayStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
+                                              const ElementStoreAccessInfo &access)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *intValue = BuildTaggedIntToI32(value);
+            self->NewVertex<StoreIntTypedArrayElementVertex>(
+                compileInfoFacts_, currentBlock, {receiver, index, intValue}, access.typedArrayType, access.onHeapMode);
+            return;
+        }
+
+        ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
+        ValueVertex *minInt64 = self->graph_->GetFloat64Constant(-0x1p63);
+        ValueVertex *maxInt64 = self->graph_->GetFloat64Constant(0x1p63);
+        BB *checkUpperBlock = self->NewBlock();
+        BB *fastBlock = self->NewBlock();
+        BB *lowerOverflowBlock = self->NewBlock();
+        BB *upperOverflowBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+
+        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(currentBlock, {doubleValue, minInt64},
+                                                                  checkUpperBlock, lowerOverflowBlock,
+                                                                  Condition::GREATER_THAN_OR_EQUAL);
+
+        currentBlock = checkUpperBlock;
+        self->FinishBlockWithBranch<BranchIfFloat64CompareVertex>(currentBlock, {doubleValue, maxInt64}, fastBlock,
+                                                                  upperOverflowBlock, Condition::LESS_THAN);
+
+        currentBlock = fastBlock;
+        ValueVertex *fastValue = self->NewVertex<F64ToI32TruncVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {doubleValue});
+        self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock, {receiver, index, fastValue},
+                                                         access.typedArrayType, access.onHeapMode);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        for (BB *overflowBlock : {lowerOverflowBlock, upperOverflowBlock}) {
+            currentBlock = overflowBlock;
+            currentBlock->SetDeferred(true);
+            ValueVertex *slowValue = self->NewVertex<DoubleToInt32CallVertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {doubleValue});
+            self->NewVertex<StoreIntTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                             {receiver, index, slowValue}, access.typedArrayType,
+                                                             access.onHeapMode);
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+        }
+
+        currentBlock = doneBlock;
+    }
+
+    void BuildClampedUint8TypedArrayStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
+                                          const ElementStoreAccessInfo &access)
+    {
+        ValueVertex *clampedValue = nullptr;
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *intValue = BuildTaggedIntToI32(value);
+            clampedValue = self->NewVertex<I32ToUint8ClampedVertex>(compileInfoFacts_, currentBlock,
+                                                                    std::initializer_list<ValueVertex *> {intValue});
+        } else {
+            ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
+            clampedValue = self->NewVertex<F64ToUint8ClampedVertex>(compileInfoFacts_, currentBlock,
+                                                                    std::initializer_list<ValueVertex *> {doubleValue});
+        }
+        self->NewVertex<StoreIntTypedArrayElementVertex>(
+            compileInfoFacts_, currentBlock, {receiver, index, clampedValue}, access.typedArrayType, access.onHeapMode);
+    }
+
+    ValueVertex *BuildBitwiseOperation(IntBitwiseKind kind)
+    {
+        ValueVertex *left = LoadRegister(currentBcInfo, 0);
+        ValueVertex *right = frameState.GetAcc();
+        bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+        bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32BitwiseBinOp(kind, left, right, leftKnownInt, rightKnownInt);
+        }
+
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        if (feedback.hint == ArkSteedOperationHint::INT) {
+            LogOperationFeedback(feedback, "Bitwise", "I32BitwiseBinOp");
+            return BuildI32BitwiseBinOp(kind, left, right, false, false);
+        }
+        if (feedback.hint == ArkSteedOperationHint::NUMBER) {
+            LogOperationFeedback(feedback, "Bitwise", "TruncatingI32BitwiseBinOp");
+            ValueVertex *leftI32 = BuildTruncatingNumberToInt32(left);
+            ValueVertex *rightI32 = BuildTruncatingNumberToInt32(right);
+            return BuildI32BitwiseTaggedValue(kind, leftI32, rightI32);
+        }
+        LogOperationFeedback(feedback, "Bitwise", "GenericBitwiseBinOp");
+        return BuildGenericBitwiseBinOp(kind, left, right);
+    }
+
+    ValueVertex *BuildStringAdd(ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *result = CommonStubCall({glue, left, right, self->graph_->GetInt32Constant(0), GlobalEnv()},
+                                             CommonStubID::StringAdd);
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::STRING);
+        return result;
+    }
+
+    ValueVertex *TryBuildStringAdd(ValueVertex *left, ValueVertex *right, const OperationFeedback &feedback)
+    {
+        bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
+        bool rightKnownString = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::STRING);
+
+        if (leftKnownString && rightKnownString) {
+            if (IsEmptyStringConstant(left)) {
+                return right;
+            }
+            if (IsEmptyStringConstant(right)) {
+                return left;
+            }
+            return BuildStringAdd(left, right);
+        }
+
+        switch (feedback.hint) {
+            case ArkSteedOperationHint::STRING: {
+                LogOperationFeedback(feedback, "BinaryStringAdd", "StringAdd");
+                ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
+                ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
+                if (leftKnownString && IsEmptyStringConstant(left)) {
+                    return checkedRight;
+                }
+                if (rightKnownString && IsEmptyStringConstant(right)) {
+                    return checkedLeft;
+                }
+                return BuildStringAdd(checkedLeft, checkedRight);
+            }
+
+            case ArkSteedOperationHint::NUMBER_OR_STRING: {
+                LogOperationFeedback(feedback, "BinaryStringAdd", "StringAdd");
+                if (leftKnownString) {
+                    if (IsEmptyStringConstant(left)) {
+                        return BuildNumberToString(right);
+                    }
+                    return BuildStringAdd(left, BuildNumberToString(right));
+                }
+                if (rightKnownString) {
+                    if (IsEmptyStringConstant(right)) {
+                        return BuildNumberToString(left);
+                    }
+                    return BuildStringAdd(BuildNumberToString(left), right);
+                }
+                return nullptr;
+            }
+
+            default:
+                return nullptr;
+        }
+    }
+
+    ValueVertex *GetBooleanConstant(bool value)
+    {
+        JSTaggedValue tagged(value ? JSTaggedValue::VALUE_TRUE : JSTaggedValue::VALUE_FALSE);
+        return TaggedConstantFromFoldedValue(tagged);
+    }
+
+    ValueVertex *TryBuildKnownIntToBoolean(ValueVertex *value, bool trueIfNonZero)
+    {
+        if (!compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            return nullptr;
+        }
+        ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        Condition condition = trueIfNonZero ? Condition::NOT_EQUAL : Condition::EQUAL;
+        ValueVertex *result =
+            self->NewVertex<I32ConditionCheckVertex>(compileInfoFacts_, currentBlock, {valueI32, zero}, condition);
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildGenericCompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right)
+    {
+        CommonStubID stubId;
+        switch (kind) {
+            case JSCondition::EQUAL:
+                stubId = CommonStubID::Equal;
+                break;
+            case JSCondition::NOT_EQUAL:
+                stubId = CommonStubID::NotEqual;
+                break;
+            case JSCondition::LESS_THAN:
+                stubId = CommonStubID::Less;
+                break;
+            case JSCondition::LESS_THAN_OR_EQUAL:
+                stubId = CommonStubID::LessEq;
+                break;
+            case JSCondition::GREATER_THAN:
+                stubId = CommonStubID::Greater;
+                break;
+            case JSCondition::GREATER_THAN_OR_EQUAL:
+                stubId = CommonStubID::GreaterEq;
+                break;
+            case JSCondition::STRICT_EQUAL:
+                stubId = CommonStubID::StrictEqual;
+                break;
+            case JSCondition::STRICT_NOT_EQUAL:
+                stubId = CommonStubID::StrictNotEqual;
+                break;
+            default:
+                UNREACHABLE();
+        }
+        ValueVertex *result = CommonStubCall({glue, left, right, GlobalEnv()}, stubId);
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildTaggedEqual(ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *result = self->NewVertex<TaggedEqualVertex>(compileInfoFacts_, currentBlock, {left, right});
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildTaggedNotEqual(ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *result = self->NewVertex<TaggedNotEqualVertex>(compileInfoFacts_, currentBlock, {left, right});
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *TryReduceCompareEqualAgainstConstant(JSCondition kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (left == right && IsEqualityCompare(kind) && compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT)) {
+            return GetBooleanConstant(IsEqualCompare(kind));
+        }
+        if (!IsStrictEqualityCompare(kind)) {
+            return nullptr;
+        }
+
+        bool equalResult = IsEqualCompare(kind);
+        NodeInfo::NodeType leftType = compileInfoFacts_->GetKnownType(left);
+        NodeInfo::NodeType rightType = compileInfoFacts_->GetKnownType(right);
+        if (left == right && !NodeInfo::NodeTypeCanBe(leftType, NodeInfo::NodeType::NUMBER)) {
+            return GetBooleanConstant(equalResult);
+        }
+
+        if (!StrictTypesCanBeEqual(leftType, rightType)) {
+            return GetBooleanConstant(!equalResult);
+        }
+
+        if (IsReferenceComparableRootValue(left) || IsReferenceComparableRootValue(right)) {
+            return equalResult ? BuildTaggedEqual(left, right) : BuildTaggedNotEqual(left, right);
+        }
+
+        if (IsReferenceComparableType(leftType) && IsReferenceComparableType(rightType)) {
+            return equalResult ? BuildTaggedEqual(left, right) : BuildTaggedNotEqual(left, right);
+        }
+
+        return nullptr;
+    }
+
+    ValueVertex *BuildI32CompareTaggedValue(JSCondition kind, ValueVertex *left, ValueVertex *right)
+    {
+        std::optional<int32_t> leftValue = TryGetInt32Value(left);
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        if (leftValue.has_value() && rightValue.has_value()) {
+            return GetBooleanConstant(EvaluateInt32Compare(kind, *leftValue, *rightValue));
+        }
+
+        ValueVertex *leftI32 = BuildTaggedIntToI32(left);
+        ValueVertex *rightI32 = BuildTaggedIntToI32(right);
+        ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
+            compileInfoFacts_, currentBlock, {leftI32, rightI32}, Int32ConditionFromCompare(kind));
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildI32CompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right, bool leftKnownInt,
+                                   bool rightKnownInt)
+    {
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32CompareTaggedValue(kind, left, right);
+        }
+
+        ValueVertex *leftI32 = leftKnownInt ? BuildTaggedIntToI32(left) : BuildCheckedTaggedIntToI32(left);
+        ValueVertex *rightI32 = rightKnownInt ? BuildTaggedIntToI32(right) : BuildCheckedTaggedIntToI32(right);
+        ValueVertex *result = self->NewVertex<I32ConditionCheckVertex>(
+            compileInfoFacts_, currentBlock, {leftI32, rightI32}, Int32ConditionFromCompare(kind));
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildF64CompareTaggedValue(JSCondition kind, ValueVertex *leftF64, ValueVertex *rightF64)
+    {
+        if (auto *leftConst = leftF64->TryCast<Float64ConstantVertex>()) {
+            if (auto *rightConst = rightF64->TryCast<Float64ConstantVertex>()) {
+                return GetBooleanConstant(EvaluateFloat64Compare(kind, leftConst->GetValue(), rightConst->GetValue()));
+            }
+        }
+
+        ValueVertex *result = self->NewVertex<F64ConditionCheckVertex>(
+            compileInfoFacts_, currentBlock, {leftF64, rightF64}, Int32ConditionFromCompare(kind));
+        compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+        return result;
+    }
+
+    ValueVertex *BuildF64CompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right)
+    {
+        ValueVertex *leftF64 = BuildCheckedNumberToF64(left);
+        ValueVertex *rightF64 = BuildCheckedNumberToF64(right);
+        return BuildF64CompareTaggedValue(kind, leftF64, rightF64);
+    }
+
+    ValueVertex *BuildStringCompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (kind == JSCondition::EQUAL || kind == JSCondition::STRICT_EQUAL) {
+            ValueVertex *result = self->NewVertex<StringEqualVertex>(currentBlock, {glue, left, right, GlobalEnv()});
+            compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::BOOLEAN);
+            return result;
+        }
+        if (kind == JSCondition::NOT_EQUAL || kind == JSCondition::STRICT_NOT_EQUAL) {
+            // NOT_EQUAL = !EQUAL: build StringEqual then negate the boolean.
+            ValueVertex *equal = BuildStringCompareOp(InvertCompare(kind), left, right);
+            return BuildTaggedNotEqual(equal, GetBooleanConstant(true));
+        }
+        return BuildGenericCompareOp(kind, left, right);
+    }
+
+    ValueVertex *TryBuildStringCompareOp(JSCondition kind, ValueVertex *left, ValueVertex *right,
+                                         const OperationFeedback &feedback)
+    {
+        bool leftKnownString = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING);
+        bool rightKnownString = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::STRING);
+        if (leftKnownString && rightKnownString) {
+            return BuildStringCompareOp(kind, left, right);
+        }
+        if (feedback.hint != ArkSteedOperationHint::STRING) {
+            return nullptr;
+        }
+        LogOperationFeedback(feedback, "CompareString", "StringCompareOp");
+        ValueVertex *checkedLeft = leftKnownString ? left : BuildCheckedTaggedString(left);
+        ValueVertex *checkedRight = rightKnownString ? right : BuildCheckedTaggedString(right);
+        return BuildStringCompareOp(kind, checkedLeft, checkedRight);
+    }
+
+    ValueVertex *TryFoldUint32ComparedToNonPositive(JSCondition kind, ValueVertex *left, ValueVertex *right)
+    {
+        if (left == nullptr || !left->Is<CheckedNonNegativeI32ToTaggedIntVertex>()) {
+            return nullptr;
+        }
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        if (!rightValue.has_value() || *rightValue > 0) {
+            return nullptr;
+        }
+        switch (kind) {
+            case JSCondition::GREATER_THAN_OR_EQUAL:
+                return GetBooleanConstant(true);  // uint32 >= 0 >= right
+            case JSCondition::LESS_THAN:
+                return GetBooleanConstant(false);  // uint32 >= 0, cannot be < right (<=0)
+            case JSCondition::GREATER_THAN:
+                if (*rightValue < 0) {
+                    return GetBooleanConstant(true);  // uint32 >= 0 > right
+                }
+                return nullptr;  // right == 0: uint32 > 0 not always (could be 0)
+            default:
+                return nullptr;  // LE / equality: not always-resolvable
+        }
+    }
+
+    ValueVertex *BuildCompareOperation(JSCondition kind)
+    {
+        ValueVertex *left = LoadRegister(currentBcInfo, 0);
+        ValueVertex *right = frameState.GetAcc();
+
+        if (ValueVertex *result = TryReduceCompareEqualAgainstConstant(kind, left, right)) {
+            return result;
+        }
+
+        if (ValueVertex *result = TryFoldUint32ComparedToNonPositive(kind, left, right)) {
+            return result;
+        }
+
+        bool leftKnownInt = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::INT);
+        bool rightKnownInt = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::INT);
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32CompareOp(kind, left, right, leftKnownInt, rightKnownInt);
+        }
+
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        if (feedback.hint == ArkSteedOperationHint::INT) {
+            LogOperationFeedback(feedback, "Compare", "I32CompareOp");
+            return BuildI32CompareOp(kind, left, right, false, false);
+        }
+
+        bool leftKnownNumber = compileInfoFacts_->CheckType(left, NodeInfo::NodeType::NUMBER);
+        bool rightKnownNumber = compileInfoFacts_->CheckType(right, NodeInfo::NodeType::NUMBER);
+        bool leftKnownNonIntNumber = leftKnownNumber && !leftKnownInt;
+        bool rightKnownNonIntNumber = rightKnownNumber && !rightKnownInt;
+        if (leftKnownNonIntNumber || rightKnownNonIntNumber || feedback.hint == ArkSteedOperationHint::NUMBER) {
+            LogOperationFeedback(feedback, "Compare", "F64CompareOp");
+            return BuildF64CompareOp(kind, left, right);
+        }
+
+        if (leftKnownInt && rightKnownInt) {
+            return BuildI32CompareOp(kind, left, right, leftKnownInt, rightKnownInt);
+        }
+
+        if (ValueVertex *stringCompare = TryBuildStringCompareOp(kind, left, right, feedback)) {
+            return stringCompare;
+        }
+
+        if (IsEqualityCompare(kind) && left == right &&
+            compileInfoFacts_->CheckType(left, NodeInfo::NodeType::STRING)) {
+            return GetBooleanConstant(IsEqualCompare(kind));
+        }
+
+        return BuildGenericCompareOp(kind, left, right);
+    }
+
+    ValueVertex *BuildGenericBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Add);
+            case BinaryOpKind::SUB:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Sub);
+            case BinaryOpKind::MUL:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Mul);
+            case BinaryOpKind::DIV:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Div);
+            case BinaryOpKind::MOD:
+                return CommonStubCall({glue, left, right, GlobalEnv()}, CommonStubID::Mod);
+            case BinaryOpKind::EXP:
+                return RuntimeCall({left, right}, RTSTUB_ID(Exp));
+            default:
+                break;
+        }
+        UNREACHABLE();
+    }
+
+    void LogOperationFeedback(const OperationFeedback &feedback, const char *opcodeName, const char *chosenPath) const
+    {
+        LOG_COMPILER(INFO) << "ArkSteed operation feedback: op=" << opcodeName
+                           << ", bcOffset=" << self->preproc_->GetBytecodeOffset(currentBcIndex)
+                           << ", slotId=" << feedback.slotId << ", rawTypeBits=" << feedback.rawTypeBits
+                           << ", hint=" << static_cast<uint32_t>(feedback.hint) << ", path=" << chosenPath;
+    }
+
+    ValueVertex *BuildNumericBinOp(BinaryOpKind kind, ValueVertex *left, ValueVertex *right,
+                                   const OperationFeedback &feedback)
+    {
+        if (feedback.hint == ArkSteedOperationHint::INT && SupportsI32CheckedBinOp(kind)) {
+            LogOperationFeedback(feedback, "BinaryNumeric", "I32BinOp");
+            return BuildI32BinOp(kind, left, right);
+        }
+        if (feedback.hint == ArkSteedOperationHint::NUMBER && SupportsF64BinOp(kind)) {
+            LogOperationFeedback(feedback, "BinaryNumeric", "F64NumberBinOp");
+            return BuildF64NumberBinOp(kind, left, right);
+        }
+        LogOperationFeedback(feedback, "BinaryNumeric", "GenericBinOp");
+        return BuildGenericBinOp(kind, left, right);
+    }
+
+    ValueVertex *BuildBinaryOperation(BinaryOpKind kind)
+    {
+        ValueVertex *left = LoadRegister(currentBcInfo, 0);
+        ValueVertex *right = frameState.GetAcc();
+        if (ValueVertex *constant = TryBuildConstantBinaryOperation(kind, left, right)) {
+            JSTaggedValue value(constant->Cast<TaggedConstantVertex>()->GetValue());
+            compileInfoFacts_->EnsureType(constant, NodeTypeFromJSTaggedValue(value));
+            return constant;
+        }
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        bool observedNonInt32Result = SupportsF64BinOp(kind) && feedback.hint == ArkSteedOperationHint::NUMBER;
+        if (!observedNonInt32Result) {
+            if (ValueVertex *provenInt = TryBuildProvenIntBinOp(kind, left, right)) {
+                return provenInt;
+            }
+        }
+        if (kind == BinaryOpKind::ADD) {
+            if (ValueVertex *stringAdd = TryBuildStringAdd(left, right, feedback)) {
+                return stringAdd;
+            }
+        }
+        return BuildNumericBinOp(kind, left, right, feedback);
+    }
+
+    ValueVertex *BuildGenericUnaryOp(CommonStubID stubId, ValueVertex *value)
+    {
+        return CommonStubCall({glue, value}, stubId);
+    }
+
+    ValueVertex *BuildIntUnaryOp(CommonStubID stubId, ValueVertex *value, bool valueKnownInt)
+    {
+        ValueVertex *valueI32 = valueKnownInt ? BuildTaggedIntToI32(value) : BuildCheckedTaggedIntToI32(value);
+        std::vector<ValueVertex *> inputs {valueI32};
+
+        switch (stubId) {
+            case CommonStubID::Inc: {
+                EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+                ValueVertex *rawResult = self->NewVertex<I32IncWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                rawResult->Cast<I32IncWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return BuildTaggedI32Result(rawResult);
+            }
+            case CommonStubID::Dec: {
+                EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+                ValueVertex *rawResult = self->NewVertex<I32DecWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                rawResult->Cast<I32DecWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return BuildTaggedI32Result(rawResult);
+            }
+            case CommonStubID::Neg: {
+                EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+                ValueVertex *rawResult = self->NewVertex<I32NegWithOverflowVertex>(
+                    currentBlock, inputs, self->chunk_, self->preproc_->GetBytecodeOffset(currentBcIndex));
+                rawResult->Cast<I32NegWithOverflowVertex>()->SetEagerDeoptFrameState(std::move(deoptFrameState));
+                return BuildTaggedI32Result(rawResult);
+            }
+            case CommonStubID::Not: {
+                ValueVertex *rawResult = self->NewVertex<I32BNotVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {valueI32});
+                return BuildTaggedI32Result(rawResult);
+            }
+            default:
+                return BuildGenericUnaryOp(stubId, value);
+        }
+    }
+
+    ValueVertex *BuildTruncatingI32BNot(ValueVertex *value)
+    {
+        if (compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT)) {
+            ValueVertex *valueI32 = BuildTaggedIntToI32(value);
+            ValueVertex *rawResult = self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, {valueI32});
+            return BuildTaggedI32Result(rawResult);
+        }
+        ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
+        ValueVertex *truncI32 = self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock, {valueF64});
+        ValueVertex *rawResult = self->NewVertex<I32BNotVertex>(compileInfoFacts_, currentBlock, {truncI32});
+        return BuildTaggedI32Result(rawResult);
+    }
+
+    ValueVertex *BuildF64UnaryOp(CommonStubID stubId, ValueVertex *value)
+    {
+        ValueVertex *valueF64 = BuildCheckedNumberToF64(value);
+        switch (stubId) {
+            case CommonStubID::Neg: {
+                ValueVertex *negF64 = self->NewVertex<F64NegVertex>(compileInfoFacts_, currentBlock, {valueF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {negF64});
+                compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
+                return result;
+            }
+            case CommonStubID::Inc: {
+                ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
+                ValueVertex *addF64 =
+                    self->NewVertex<F64AddVertex>(compileInfoFacts_, currentBlock, {valueF64, oneF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {addF64});
+                compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
+                return result;
+            }
+            case CommonStubID::Dec: {
+                ValueVertex *oneF64 = self->graph_->GetFloat64Constant(1.0);
+                ValueVertex *subF64 =
+                    self->NewVertex<F64SubVertex>(compileInfoFacts_, currentBlock, {valueF64, oneF64});
+                ValueVertex *result =
+                    self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {subF64});
+                compileInfoFacts_->EnsureType(result, NodeInfo::NodeType::NUMBER);
+                return result;
+            }
+            case CommonStubID::Not:
+                return BuildTruncatingI32BNot(value);
+            default:
+                return BuildGenericUnaryOp(stubId, value);
+        }
+    }
+
+    ValueVertex *BuildUnaryOperation(CommonStubID stubId)
+    {
+        ValueVertex *value = frameState.GetAcc();
+        if (ValueVertex *constant = TryBuildConstantUnaryOperation(stubId, value)) {
+            return constant;
+        }
+        bool valueKnownInt = compileInfoFacts_->CheckType(value, NodeInfo::NodeType::INT);
+        if (valueKnownInt) {
+            return BuildIntUnaryOp(stubId, value, true);
+        }
+
+        OperationFeedback feedback = self->pgoContext_.ReadOperationFeedback(*currentBcInfo);
+        if (feedback.hint == ArkSteedOperationHint::INT) {
+            LogOperationFeedback(feedback, "Unary", "IntUnaryOp");
+            return BuildIntUnaryOp(stubId, value, false);
+        }
+        if (feedback.hint == ArkSteedOperationHint::NUMBER ||
+            feedback.hint == ArkSteedOperationHint::NUMBER_OR_STRING) {
+            LogOperationFeedback(feedback, "Unary", "F64UnaryOp");
+            return BuildF64UnaryOp(stubId, value);
+        }
+        LogOperationFeedback(feedback, "Unary", "GenericUnaryOp");
+        return BuildGenericUnaryOp(stubId, value);
+    }
+
+    ValueVertex *TryBuildConstantUnaryOperation(CommonStubID stubId, ValueVertex *value)
+    {
+        if (std::optional<int32_t> intValue = TryGetInt32Value(value)) {
+            return TryBuildInt32ConstantUnaryOperation(stubId, *intValue);
+        }
+        auto *float64Constant = value->TryCast<Float64ConstantVertex>();
+        if (float64Constant == nullptr) {
+            return nullptr;
+        }
+        return TryBuildFloat64ConstantUnaryOperation(stubId, float64Constant->GetValue());
+    }
+
+    ValueVertex *TryBuildInt32ConstantUnaryOperation(CommonStubID stubId, int32_t value)
+    {
+        switch (stubId) {
+            case CommonStubID::Inc:
+                if (value == std::numeric_limits<int32_t>::max()) {
+                    return nullptr;
+                }
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value + 1));
+            case CommonStubID::Dec:
+                if (value == std::numeric_limits<int32_t>::min()) {
+                    return nullptr;
+                }
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value - 1));
+            case CommonStubID::Neg:
+                if (value == 0 || value == std::numeric_limits<int32_t>::min()) {
+                    return nullptr;
+                }
+                return TaggedConstantFromFoldedValue(JSTaggedValue(-value));
+            case CommonStubID::Not:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(~value));
+            default:
+                return nullptr;
+        }
+    }
+
+    ValueVertex *TryBuildFloat64ConstantUnaryOperation(CommonStubID stubId, double value)
+    {
+        switch (stubId) {
+            case CommonStubID::Inc:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value + 1.0));
+            case CommonStubID::Dec:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(value - 1.0));
+            case CommonStubID::Neg:
+                return TaggedConstantFromFoldedValue(JSTaggedValue(-value));
+            default:
+                return nullptr;
+        }
+    }
+
+    ValueVertex *TryBuildFloat64ConstantBinaryOperation(BinaryOpKind kind, double lhs, double rhs)
+    {
+        double result = 0.0;
+        switch (kind) {
+            case BinaryOpKind::ADD:
+                result = lhs + rhs;
+                break;
+            case BinaryOpKind::SUB:
+                result = lhs - rhs;
+                break;
+            case BinaryOpKind::MUL:
+                result = lhs * rhs;
+                break;
+            case BinaryOpKind::DIV:
+                if (rhs == 0.0) {
+                    // x / 0 -> Infinity / -Infinity / NaN; the sign and NaN rules are best left
+                    // to the runtime F64DivVertex rather than reproduced at compile time.
+                    return nullptr;
+                }
+                result = lhs / rhs;
+                break;
+            default:
+                return nullptr;
+        }
+        return TaggedConstantFromFoldedValue(JSTaggedValue(result));
+    }
+
+    ValueVertex *TryBuildConstantBinaryOperation(BinaryOpKind kind, ValueVertex *left, ValueVertex *right)
+    {
+        std::optional<int32_t> leftValue = TryGetInt32Value(left);
+        std::optional<int32_t> rightValue = TryGetInt32Value(right);
+        if (leftValue.has_value() && rightValue.has_value()) {
+            int32_t lhs = *leftValue;
+            int32_t rhs = *rightValue;
+            int64_t result = 0;
+            switch (kind) {
+                case BinaryOpKind::ADD:
+                    result = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
+                    break;
+                case BinaryOpKind::SUB:
+                    result = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
+                    break;
+                case BinaryOpKind::MUL:
+                    if ((lhs == 0 || rhs == 0) && (lhs < 0 || rhs < 0)) {
+                        return nullptr;
+                    }
+                    result = static_cast<int64_t>(lhs) * static_cast<int64_t>(rhs);
+                    break;
+                default:
+                    // Int DIV/MOD/EXP are left unfolded.
+                    return nullptr;
+            }
+            if (result < std::numeric_limits<int32_t>::min() || result > std::numeric_limits<int32_t>::max()) {
+                return nullptr;
+            }
+            return self->graph_->GetTaggedConstant(JSTaggedValue(static_cast<int32_t>(result)).GetRawData());
+        }
+
+        // Float64 two-constant fold (ADD/SUB/MUL/DIV). Only fires for double constants, so int
+        // DIV/MOD are unaffected.
+        std::optional<double> leftF64 = TryGetFloat64Value(left);
+        std::optional<double> rightF64 = TryGetFloat64Value(right);
+        if (leftF64.has_value() && rightF64.has_value()) {
+            return TryBuildFloat64ConstantBinaryOperation(kind, *leftF64, *rightF64);
+        }
+        return nullptr;
+    }
+
+    enum class HClassCheckResult : uint8_t {
+        SUCCESS,
+        UNREACHABLE,
+        FAILURE,
+    };
+
+    struct RequestedHClassInfo {
+        JSHClass *hclass {nullptr};
+        ArkSteedHClassRef hclassRef {};
+        bool hasExternalStableDependency {false};
+    };
+
+    class KnownHClassesMerger {
+    public:
+        KnownHClassesMerger(CompileInfoFacts *facts, ValueVertex *object,
+                            const std::vector<RequestedHClassInfo> &requestedHClasses)
+            : knownType_(facts->GetKnownType(object))
+        {
+            if (requestedHClasses.empty()) {
+                return;
+            }
+            inputIsValid_ = true;
+            for (const RequestedHClassInfo &requested : requestedHClasses) {
+                if (requested.hclass == nullptr) {
+                    inputIsValid_ = false;
+                    requestedHClasses_.clear();
+                    requestedHClassPointers_.clear();
+                    return;
+                }
+                NodeInfo::NodeType hclassType = NodeTypeFromHClass(requested.hclass);
+                if (!NodeInfo::NodeTypeCanBe(knownType_, hclassType)) {
+                    continue;
+                }
+                auto existing =
+                    std::find_if(requestedHClasses_.begin(), requestedHClasses_.end(),
+                                 [&requested](const auto &entry) { return entry.hclass == requested.hclass; });
+                if (existing != requestedHClasses_.end()) {
+                    existing->hasExternalStableDependency |= requested.hasExternalStableDependency;
+                    if (!existing->hclassRef.IsSafeForCompile() && requested.hclassRef.IsSafeForCompile()) {
+                        existing->hclassRef = requested.hclassRef;
+                    }
+                    continue;
+                }
+                requestedHClasses_.push_back(requested);
+                requestedHClassPointers_.push_back(requested.hclass);
+            }
+
+            std::optional<NodeInfo::PossibleHClasses> knownHClasses = facts->TryGetPossibleHClasses(object);
+            if (!knownHClasses.has_value()) {
+                return;
+            }
+            existingFreshHClassesFound_ = true;
+            knownHClasses_ = std::move(knownHClasses.value());
+            knownHClassesAreSubset_ = true;
+            for (JSHClass *knownHClass : knownHClasses_) {
+                if (FindRequestedInfo(knownHClass) == nullptr) {
+                    knownHClassesAreSubset_ = false;
+                    continue;
+                }
+                intersectSet_.push_back(knownHClass);
+            }
+        }
+
+        bool InputIsValid() const
+        {
+            return inputIsValid_;
+        }
+
+        bool RequestedSetIsEmpty() const
+        {
+            return requestedHClasses_.empty();
+        }
+
+        bool ExistingFreshHClassesFound() const
+        {
+            return existingFreshHClassesFound_;
+        }
+
+        bool KnownHClassesAreSubset() const
+        {
+            return existingFreshHClassesFound_ && knownHClassesAreSubset_;
+        }
+
+        const NodeInfo::PossibleHClasses &KnownHClasses() const
+        {
+            return knownHClasses_;
+        }
+
+        const NodeInfo::PossibleHClasses &RequestedHClasses() const
+        {
+            return requestedHClassPointers_;
+        }
+
+        const NodeInfo::PossibleHClasses &IntersectSet() const
+        {
+            return intersectSet_;
+        }
+
+        const RequestedHClassInfo *FindRequestedInfo(JSHClass *hclass) const
+        {
+            auto it = std::find_if(requestedHClasses_.begin(), requestedHClasses_.end(),
+                                   [hclass](const auto &entry) { return entry.hclass == hclass; });
+            return it == requestedHClasses_.end() ? nullptr : &*it;
+        }
+
+    private:
+        NodeInfo::NodeType knownType_ {NodeInfo::NodeType::UNKNOWN};
+        std::vector<RequestedHClassInfo> requestedHClasses_;
+        NodeInfo::PossibleHClasses requestedHClassPointers_;
+        NodeInfo::PossibleHClasses knownHClasses_;
+        NodeInfo::PossibleHClasses intersectSet_;
+        bool inputIsValid_ {false};
+        bool existingFreshHClassesFound_ {false};
+        bool knownHClassesAreSubset_ {false};
+    };
+
+    HClassCheckResult EmitUnconditionalHClassDeopt(uint32_t bcIndex)
+    {
+        auto *deopt =
+            self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                               self->preproc_->GetBytecodeOffset(bcIndex));
+        deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        return HClassCheckResult::UNREACHABLE;
+    }
+
+    HClassCheckResult EmitHClassCheck(uint32_t bcIndex, ValueVertex *object, const NodeInfo::PossibleHClasses &hclasses,
+                                      const KnownHClassesMerger &merger)
+    {
+        ASSERT(!hclasses.empty());
+        std::vector<uint32_t> expectedHClassHandleIndices;
+        expectedHClassHandleIndices.reserve(hclasses.size());
+        for (JSHClass *hclass : hclasses) {
+            const RequestedHClassInfo *requested = merger.FindRequestedInfo(hclass);
+            if (requested == nullptr || !requested->hclassRef.IsSafeForCompile()) {
+                return HClassCheckResult::FAILURE;
+            }
+            std::optional<uint32_t> handleIndex = GetHeapConstantHandleIndex(requested->hclassRef);
+            if (!handleIndex.has_value()) {
+                return HClassCheckResult::FAILURE;
+            }
+            expectedHClassHandleIndices.push_back(handleIndex.value());
+        }
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        if (hclasses.size() == 1) {
+            auto *check = self->NewVertex<DeoptIfHClassMismatchVertex>(currentBlock, {object}, self->chunk_,
+                                                                       expectedHClassHandleIndices.front(),
+                                                                       self->preproc_->GetBytecodeOffset(bcIndex));
+            check->SetEagerDeoptFrameState(std::move(deoptFrameState));
+            return HClassCheckResult::SUCCESS;
+        }
+        auto *check =
+            self->NewVertex<DeoptIfHClassNotInVertex>(currentBlock, {object}, self->chunk_, expectedHClassHandleIndices,
+                                                      self->preproc_->GetBytecodeOffset(bcIndex));
+        check->SetEagerDeoptFrameState(std::move(deoptFrameState));
+        return HClassCheckResult::SUCCESS;
+    }
+
+    bool IsHClassStableForFacts(JSHClass *hclass, bool hasExternalStableDependency) const
+    {
+        return JSTaggedValue(hclass).IsInSharedHeap() || (self->IsLazyDeoptEnabled() && hasExternalStableDependency);
+    }
+
+    HClassCheckResult ResolveHClassStability(const NodeInfo::PossibleHClasses &hclasses,
+                                             const KnownHClassesMerger &merger, bool installStableDependencies,
+                                             NodeInfo::PossibleHClassInfos *resolvedHClasses)
+    {
+        ASSERT(resolvedHClasses != nullptr);
+        resolvedHClasses->clear();
+        resolvedHClasses->reserve(hclasses.size());
+        for (JSHClass *hclass : hclasses) {
+            const RequestedHClassInfo *requested = merger.FindRequestedInfo(hclass);
+            ASSERT(requested != nullptr);
+            bool isSharedHClass = JSTaggedValue(hclass).IsInSharedHeap();
+            bool isStable = IsHClassStableForFacts(hclass, requested->hasExternalStableDependency);
+            bool shouldInstallDependency = installStableDependencies && self->IsLazyDeoptEnabled() &&
+                                           kungfu::StableHClassDependency::IsValid(hclass) && !isSharedHClass &&
+                                           !isStable;
+            if (shouldInstallDependency) {
+                auto *dependencies = self->preproc_->GetEnv()->GetDependencies();
+                if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
+                    return HClassCheckResult::FAILURE;
+                }
+                isStable = true;
+            }
+            resolvedHClasses->push_back(NodeInfo::PossibleHClassInfo {
+                .hclass = hclass,
+                .isStable = isStable,
+            });
+        }
+        return HClassCheckResult::SUCCESS;
+    }
+
+    std::optional<HClassCheckResult> TryFoldConstantHClassCheck(uint32_t bcIndex, ValueVertex *object,
+                                                                const KnownHClassesMerger &merger,
+                                                                bool installStableDependencies)
+    {
+        std::optional<ArkSteedHeapRef> constantRef = TryGetConstantHeapRef(object);
+        if (!constantRef.has_value()) {
+            return std::nullopt;
+        }
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return HClassCheckResult::FAILURE;
+        }
+        JSTaggedValue constant = JSTaggedValue::Undefined();
+        {
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryFoldConstantHClassCheck");
+            if (!broker->TryResolveRef(*constantRef, &constant)) {
+                return HClassCheckResult::FAILURE;
+            }
+        }
+        if (constant.IsHole() || !constant.IsHeapObject()) {
+            return EmitUnconditionalHClassDeopt(bcIndex);
+        }
+        JSHClass *constantHClass = constant.GetTaggedObject()->GetClass();
+        if (merger.FindRequestedInfo(constantHClass) == nullptr) {
+            return EmitUnconditionalHClassDeopt(bcIndex);
+        }
+        NodeInfo::PossibleHClassInfos resolvedHClasses;
+        HClassCheckResult result =
+            ResolveHClassStability({constantHClass}, merger, installStableDependencies, &resolvedHClasses);
+        if (result != HClassCheckResult::SUCCESS) {
+            return result;
+        }
+        if (resolvedHClasses.front().isStable) {
+            compileInfoFacts_->RecordHClass(object, constantHClass, true);
+            return HClassCheckResult::SUCCESS;
+        }
+        return std::nullopt;
+    }
+
+    HClassCheckResult BuildHClassCheck(uint32_t bcIndex, ValueVertex *object,
+                                       const std::vector<RequestedHClassInfo> &requestedHClasses,
+                                       bool installStableDependencies)
+    {
+        KnownHClassesMerger merger(compileInfoFacts_, object, requestedHClasses);
+        if (!merger.InputIsValid()) {
+            return HClassCheckResult::FAILURE;
+        }
+        if (merger.RequestedSetIsEmpty()) {
+            return EmitUnconditionalHClassDeopt(bcIndex);
+        }
+        if (std::optional<HClassCheckResult> constantResult =
+                TryFoldConstantHClassCheck(bcIndex, object, merger, installStableDependencies)) {
+            return constantResult.value();
+        }
+        if (merger.KnownHClassesAreSubset()) {
+            return HClassCheckResult::SUCCESS;
+        }
+
+        const NodeInfo::PossibleHClasses &checkedHClasses =
+            merger.ExistingFreshHClassesFound() ? merger.IntersectSet() : merger.RequestedHClasses();
+        if (checkedHClasses.empty()) {
+            return EmitUnconditionalHClassDeopt(bcIndex);
+        }
+        NodeInfo::PossibleHClassInfos resolvedHClasses;
+        HClassCheckResult stabilityResult =
+            ResolveHClassStability(checkedHClasses, merger, installStableDependencies, &resolvedHClasses);
+        if (stabilityResult != HClassCheckResult::SUCCESS) {
+            return stabilityResult;
+        }
+
+        HClassCheckResult emissionResult = EmitHClassCheck(bcIndex, object, checkedHClasses, merger);
+        if (emissionResult != HClassCheckResult::SUCCESS) {
+            return emissionResult;
+        }
+        if (merger.ExistingFreshHClassesFound()) {
+            bool narrowed = compileInfoFacts_->NarrowPossibleHClasses(object, checkedHClasses);
+            ASSERT(narrowed);
+            for (const NodeInfo::PossibleHClassInfo &info : resolvedHClasses) {
+                if (info.isStable) {
+                    bool marked = compileInfoFacts_->MarkPossibleHClassStable(object, info.hclass);
+                    ASSERT(marked);
+                }
+            }
+        } else {
+            compileInfoFacts_->RecordPossibleHClasses(object, resolvedHClasses);
+        }
+        return HClassCheckResult::SUCCESS;
+    }
+
+    HClassCheckResult BuildCheckSingleHClass(uint32_t bcIndex, ValueVertex *object, JSHClass *hclass,
+                                             const ArkSteedHClassRef &hclassRef, bool installStableDependency,
+                                             bool hasExternalStableDependency)
+    {
+        std::vector<RequestedHClassInfo> requested {{hclass, hclassRef, hasExternalStableDependency}};
+        return BuildHClassCheck(bcIndex, object, requested, installStableDependency);
+    }
+
+    HClassCheckResult BuildCheckAnyOfHClasses(uint32_t bcIndex, ValueVertex *object,
+                                              const std::vector<JSHClass *> &hclasses,
+                                              const std::vector<ArkSteedHClassRef> &hclassRefs,
+                                              bool installStableDependencies, bool hasExternalStableDependencies)
+    {
+        if (hclasses.size() != hclassRefs.size()) {
+            return HClassCheckResult::FAILURE;
+        }
+        std::vector<RequestedHClassInfo> requested;
+        requested.reserve(hclasses.size());
+        for (size_t i = 0; i < hclasses.size(); ++i) {
+            requested.push_back(RequestedHClassInfo {hclasses[i], hclassRefs[i], hasExternalStableDependencies});
+        }
+        return BuildHClassCheck(bcIndex, object, requested, installStableDependencies);
+    }
+
+    class HClassInference {
+    public:
+        enum class Mode : uint8_t {
+            FRESH_ONLY,
+            ALLOW_STALE,
+        };
+
+        HClassInference(BytecodeVisitor *builder, ValueVertex *object, Mode mode = Mode::FRESH_ONLY)
+            : builder_(builder),
+              object_(object),
+              facts_(builder->compileInfoFacts_),
+              effectEpoch_(facts_->GetEffectEpoch())
+        {
+            std::optional<NodeInfo::PossibleHClasses> hclasses =
+                mode == Mode::FRESH_ONLY ? facts_->TryGetPossibleHClasses(object_)
+                                         : facts_->TryGetPossibleHClassesForRevalidation(object_);
+            if (hclasses.has_value()) {
+                hclasses_ = std::move(hclasses.value());
+                allHClassesAreFresh_ = !facts_->PossibleHClassesAreStale(object_);
+                return;
+            }
+            if (mode == Mode::FRESH_ONLY) {
+                return;
+            }
+            std::optional<ArkSteedHeapRef> constantRef = builder_->TryGetConstantHeapRef(object_);
+            ArkSteedHeapBroker *broker = builder_->self->pgoContext_.GetBroker();
+            if (!constantRef.has_value() || broker == nullptr) {
+                return;
+            }
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::HClassInference");
+            JSTaggedValue constant = JSTaggedValue::Undefined();
+            if (broker->TryResolveRef(constantRef.value(), &constant) && constant.IsHeapObject()) {
+                hclasses_.push_back(constant.GetTaggedObject()->GetClass());
+                hclassesComeFromConstant_ = true;
+            }
+        }
+
+        bool HasHClasses() const
+        {
+            return !hclasses_.empty();
+        }
+
+        bool AllHClassesAreFresh() const
+        {
+            return HasHClasses() && allHClassesAreFresh_;
+        }
+
+        std::optional<NodeInfo::PossibleHClasses> TryGetPossibleHClasses() const
+        {
+            return HasHClasses() ? std::optional<NodeInfo::PossibleHClasses>(hclasses_) : std::nullopt;
+        }
+
+        HClassCheckResult EnsureHClassesFresh(uint32_t bcIndex)
+        {
+            if (!HasHClasses()) {
+                return HClassCheckResult::FAILURE;
+            }
+            ASSERT(facts_ == builder_->compileInfoFacts_);
+            ASSERT(effectEpoch_ == facts_->GetEffectEpoch());
+            std::optional<NodeInfo::PossibleHClasses> freshHClasses = facts_->TryGetPossibleHClasses(object_);
+            if (freshHClasses.has_value()) {
+                if (!ContainsSameHClasses(freshHClasses.value(), hclasses_)) {
+                    return HClassCheckResult::FAILURE;
+                }
+                allHClassesAreFresh_ = true;
+                return HClassCheckResult::SUCCESS;
+            }
+            if (allHClassesAreFresh_) {
+                return HClassCheckResult::FAILURE;
+            }
+
+            std::optional<NodeInfo::PossibleHClasses> storedHClasses;
+            if (!hclassesComeFromConstant_) {
+                storedHClasses = facts_->TryGetPossibleHClassesForRevalidation(object_);
+                if (!storedHClasses.has_value() || !ContainsSameHClasses(storedHClasses.value(), hclasses_)) {
+                    return HClassCheckResult::FAILURE;
+                }
+            }
+            std::optional<std::vector<RequestedHClassInfo>> requestedHClasses = TryBuildRequestedHClasses();
+            if (!requestedHClasses.has_value()) {
+                return HClassCheckResult::FAILURE;
+            }
+            KnownHClassesMerger merger(facts_, object_, requestedHClasses.value());
+            if (!merger.InputIsValid()) {
+                return HClassCheckResult::FAILURE;
+            }
+            if (merger.RequestedSetIsEmpty()) {
+                return builder_->EmitUnconditionalHClassDeopt(bcIndex);
+            }
+            HClassCheckResult emissionResult =
+                builder_->EmitHClassCheck(bcIndex, object_, merger.RequestedHClasses(), merger);
+            if (emissionResult != HClassCheckResult::SUCCESS) {
+                return emissionResult;
+            }
+            if (hclassesComeFromConstant_) {
+                facts_->RecordPossibleHClasses(object_, hclasses_,
+                                               builder_->IsHClassStableForFacts(hclasses_.front(), false));
+            } else {
+                facts_->MarkPossibleHClassesFresh(object_);
+            }
+            allHClassesAreFresh_ = true;
+            return HClassCheckResult::SUCCESS;
+        }
+
+    private:
+        std::optional<std::vector<RequestedHClassInfo>> TryBuildRequestedHClasses() const
+        {
+            ArkSteedHeapBroker *broker = builder_->self->pgoContext_.GetBroker();
+            if (broker == nullptr) {
+                return std::nullopt;
+            }
+            std::vector<RequestedHClassInfo> requestedHClasses;
+            requestedHClasses.reserve(hclasses_.size());
+            ArkSteedHeapBroker::SerializingScope scope(broker,
+                                                       "GraphBuilder::HClassInference::TryBuildRequestedHClasses");
+            for (JSHClass *hclass : hclasses_) {
+                ArkSteedHClassRef hclassRef = broker->MakeHClassRef(JSTaggedValue(hclass));
+                if (!hclassRef.IsSafeForCompile()) {
+                    return std::nullopt;
+                }
+                requestedHClasses.push_back(RequestedHClassInfo {hclass, hclassRef, false});
+            }
+            return requestedHClasses;
+        }
+
+        static bool ContainsSameHClasses(const NodeInfo::PossibleHClasses &lhs, const NodeInfo::PossibleHClasses &rhs)
+        {
+            if (lhs.size() != rhs.size()) {
+                return false;
+            }
+            return std::all_of(lhs.begin(), lhs.end(), [&rhs](JSHClass *hclass) {
+                return std::find(rhs.begin(), rhs.end(), hclass) != rhs.end();
+            });
+        }
+
+        BytecodeVisitor *builder_ {nullptr};
+        ValueVertex *object_ {nullptr};
+        CompileInfoFacts *facts_ {nullptr};
+        NodeInfo::PossibleHClasses hclasses_;
+        uint32_t effectEpoch_ {0};
+        bool allHClassesAreFresh_ {false};
+        bool hclassesComeFromConstant_ {false};
+    };
+
+    ValueVertex *BuildLoadField(ValueVertex *object, PropertyLookupResult plr)
+    {
+        auto convertHoleToUndefined = [this, plr](ValueVertex *value) -> ValueVertex * {
+            if (plr.IsNotHole() || !plr.IsLoadFromIterResult()) {
+                return value;
+            }
+            return self->NewVertex<ConvertHoleToUndefinedVertex>(compileInfoFacts_, currentBlock, {value});
+        };
+        if (plr.IsInlinedProps()) {
+            int32_t offset = static_cast<int32_t>(plr.GetOffset());
+            ValueVertex *result =
+                self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object}, offset);
+            return convertHoleToUndefined(result);
+        }
+        ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        int32_t offset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        ValueVertex *result =
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {properties}, offset);
+        return convertHoleToUndefined(result);
+    }
+
+    ValueVertex *BuildLoadFieldWithoutCse(ValueVertex *object, PropertyLookupResult plr)
+    {
+        if (plr.IsInlinedProps()) {
+            int32_t offset = static_cast<int32_t>(plr.GetOffset());
+            return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {object}, offset);
+        }
+        ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        int32_t offset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {properties}, offset);
+    }
+
+    void BuildDeoptIfNotHeapObject(ValueVertex *value)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfNotHeapObjectVertex>(currentBlock, {value}, self->chunk_,
+                                                    self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfArrayBufferDetached(ValueVertex *receiver, OnHeapMode onHeapMode)
+    {
+        if (OnHeap::IsOnHeap(onHeapMode)) {
+            return;
+        }
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfArrayBufferDetachedVertex>(currentBlock, {receiver}, self->chunk_,
+                                                          self->preproc_->GetBytecodeOffset(currentBcIndex), onHeapMode)
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfCOWElements(ValueVertex *elements)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfCOWElementsVertex>(currentBlock, {elements}, self->chunk_,
+                                                  self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildDeoptIfElementsUnstable(ValueVertex *receiver)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(currentBcIndex);
+        self->NewVertex<DeoptIfElementsUnstableVertex>(currentBlock, {receiver}, self->chunk_,
+                                                       self->preproc_->GetBytecodeOffset(currentBcIndex))
+            ->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    void BuildStoreTaggedElement(ValueVertex *elements, ValueVertex *index, ValueVertex *value,
+                                 ArkSteedWriteBarrierValueKind provenValueKind = ArkSteedWriteBarrierValueKind::Unknown)
+    {
+        ArkSteedWriteBarrierValueKind valueKind = provenValueKind == ArkSteedWriteBarrierValueKind::Unknown
+                                                      ? ClassifyDirectWriteBarrierValueKind(value)
+                                                      : provenValueKind;
+        if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+            self->NewVertex<StoreTaggedElementVertex>(compileInfoFacts_, currentBlock, {elements, index, value});
+            return;
+        }
+        self->NewVertex<StoreTaggedElementWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                             {glue, elements, index, value}, valueKind);
+    }
+
+    ValueVertex *BuildCheckedElementIndex(ValueVertex *key)
+    {
+        if (compileInfoFacts_->CheckType(key, NodeInfo::NodeType::INT)) {
+            return BuildTaggedIntToI32(key);
+        }
+        ValueVertex *keyF64 = BuildCheckedNumberToF64(key);
+        ValueVertex *index = self->NewVertex<F64ToI32TruncVertex>(compileInfoFacts_, currentBlock,
+                                                                  std::initializer_list<ValueVertex *> {keyF64});
+        ValueVertex *roundTrip = self->NewVertex<I32ToF64Vertex>(compileInfoFacts_, currentBlock,
+                                                                 std::initializer_list<ValueVertex *> {index});
+        BuildDeoptIfFloat64Condition(keyF64, roundTrip, Condition::NOT_EQUAL, kungfu::DeoptType::NOTINT7);
+        return index;
+    }
+
+    struct ResolvedElementStoreHClass {
+        JSHClass *hclass {nullptr};
+        ArkSteedHClassRef ref {};
+    };
+
+    struct ResolvedElementStoreTransitionGroup {
+        ResolvedElementStoreHClass target {};
+        ValueVertex *targetHClassConstant {nullptr};
+        std::vector<ResolvedElementStoreHClass> transitionSources {};
+        ElementsKind targetElementsKind {ElementsKind::NONE};
+        bool useExactHClassTransition {false};
+    };
+
+    HClassCheckResult BuildCheckElementStoreHClasses(uint32_t bcIndex, ValueVertex *receiver,
+                                                     const std::vector<ResolvedElementStoreHClass> &expectedHClasses)
+    {
+        if (expectedHClasses.empty()) {
+            return HClassCheckResult::FAILURE;
+        }
+
+        std::vector<JSHClass *> rawHClasses;
+        std::vector<ArkSteedHClassRef> hclassRefs;
+        rawHClasses.reserve(expectedHClasses.size());
+        hclassRefs.reserve(expectedHClasses.size());
+        for (const ResolvedElementStoreHClass &expected : expectedHClasses) {
+            if (expected.hclass == nullptr || !expected.ref.IsSafeForCompile()) {
+                return HClassCheckResult::FAILURE;
+            }
+            rawHClasses.push_back(expected.hclass);
+            hclassRefs.push_back(expected.ref);
+        }
+        return BuildCheckAnyOfHClasses(bcIndex, receiver, rawHClasses, hclassRefs, false, true);
+    }
+
+    bool ResolveElementStoreTransitionGroups(const ElementStoreAccessInfo &access,
+                                             std::vector<ResolvedElementStoreTransitionGroup> *resolvedGroups)
+    {
+        if (!access.IsJSArray() || access.transitionGroupCount == 0) {
+            return false;
+        }
+
+        std::vector<JSHClass *> seenHClasses;
+        seenHClasses.reserve(access.caseCount);
+        resolvedGroups->reserve(access.transitionGroupCount);
+        for (uint32_t groupIndex = 0; groupIndex < access.transitionGroupCount; ++groupIndex) {
+            const ElementStoreTransitionGroup &group = access.transitionGroups[groupIndex];
+            ResolvedElementStoreTransitionGroup resolved;
+            resolved.target.ref = group.targetHClass;
+            if (!TryResolveHClassRef(group.targetHClass, &resolved.target.hclass) ||
+                !resolved.target.hclass->IsJSArray() || group.targetElementsKind == ElementsKind::NONE ||
+                resolved.target.hclass->GetElementsKind() != group.targetElementsKind ||
+                std::find(seenHClasses.begin(), seenHClasses.end(), resolved.target.hclass) != seenHClasses.end()) {
+                return false;
+            }
+            seenHClasses.push_back(resolved.target.hclass);
+            resolved.targetElementsKind = group.targetElementsKind;
+            resolved.useExactHClassTransition = group.useExactHClassTransition;
+            if (resolved.useExactHClassTransition) {
+                resolved.targetHClassConstant = GetHeapConstant(resolved.target.ref);
+                if (resolved.targetHClassConstant == nullptr) {
+                    return false;
+                }
+            }
+            resolved.transitionSources.reserve(group.sourceCount);
+            for (uint32_t sourceIndex = 0; sourceIndex < group.sourceCount; ++sourceIndex) {
+                JSHClass *sourceHClass = nullptr;
+                if (!TryResolveHClassRef(group.transitionSources[sourceIndex], &sourceHClass) ||
+                    !sourceHClass->IsJSArray() ||
+                    std::find(seenHClasses.begin(), seenHClasses.end(), sourceHClass) != seenHClasses.end()) {
+                    return false;
+                }
+                seenHClasses.push_back(sourceHClass);
+                resolved.transitionSources.push_back(
+                    ResolvedElementStoreHClass {sourceHClass, group.transitionSources[sourceIndex]});
+            }
+            resolvedGroups->push_back(std::move(resolved));
+        }
+        return !seenHClasses.empty();
+    }
+
+    void BuildTransitionElementsKind(ValueVertex *receiver, const ResolvedElementStoreTransitionGroup &group,
+                                     JSHClass *knownSourceHClass = nullptr)
+    {
+        NodeInfo::PossibleHClasses sourceHClasses;
+        if (knownSourceHClass != nullptr) {
+            sourceHClasses.push_back(knownSourceHClass);
+        } else {
+            sourceHClasses.reserve(group.transitionSources.size());
+            for (const ResolvedElementStoreHClass &source : group.transitionSources) {
+                sourceHClasses.push_back(source.hclass);
+            }
+        }
+        if (group.useExactHClassTransition) {
+            ASSERT(group.targetHClassConstant != nullptr);
+            self->NewVertex<TransitionHClassWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                               {glue, receiver, group.targetHClassConstant});
+            compileInfoFacts_->MarkHClassesStaleForElementsKindTransition(sourceHClasses);
+            compileInfoFacts_->RecordHClass(receiver, group.target.hclass, false);
+            return;
+        }
+        // Mutant backing is rejected by the access-info factory, so changing to the canonical array HClass is enough.
+        RuntimeCall({receiver, TaggedConstantFromInt32(static_cast<int32_t>(group.targetElementsKind))},
+                    RTSTUB_ID(UpdateHClassForElementsKind));
+        compileInfoFacts_->MarkHClassesStaleForElementsKindTransition(sourceHClasses);
+    }
+
+    void BuildJSArrayElementStore(ValueVertex *receiver, ValueVertex *index, ValueVertex *value,
+                                  ElementsKind elementsKind)
+    {
+        BuildDeoptIfElementsUnstable(receiver);
+        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                    static_cast<int32_t>(JSArray::LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(index, length, Condition::GREATER_THAN_OR_EQUAL, kungfu::DeoptType::NOTLEGALIDX1);
+        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                       static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+        BuildDeoptIfCOWElements(elements);
+        if (Elements::IsIntOrHoleInt(elementsKind)) {
+            BuildCheckedTaggedIntToI32(value);
+            BuildStoreTaggedElement(elements, index, value, ArkSteedWriteBarrierValueKind::NonHeap);
+            return;
+        }
+        if (Elements::IsNumberOrHoleNumber(elementsKind)) {
+            BuildCheckedNumberToF64(value);
+            BuildStoreTaggedElement(elements, index, value, ArkSteedWriteBarrierValueKind::NonHeap);
+            return;
+        }
+        if (Elements::IsStringOrHoleString(elementsKind)) {
+            ValueVertex *stringValue = BuildCheckedTaggedString(value);
+            BuildStoreTaggedElement(elements, index, stringValue, ArkSteedWriteBarrierValueKind::HeapObject);
+            return;
+        }
+        bool objectElements = elementsKind == ElementsKind::OBJECT || elementsKind == ElementsKind::HOLE_OBJECT;
+        if (objectElements) {
+            BuildDeoptIfNotHeapObject(value);
+        }
+        BuildStoreTaggedElement(elements, index, value,
+                                objectElements ? ArkSteedWriteBarrierValueKind::HeapObject
+                                               : ArkSteedWriteBarrierValueKind::Unknown);
+    }
+
+    bool BuildJSArrayElementStoreDispatch(const ElementStoreAccessInfo &access,
+                                          const std::vector<ResolvedElementStoreTransitionGroup> &groups,
+                                          JSHClass *knownHClass, ValueVertex *receiver, ValueVertex *index,
+                                          ValueVertex *value)
+    {
+        if (knownHClass != nullptr) {
+            for (const ResolvedElementStoreTransitionGroup &group : groups) {
+                if (knownHClass == group.target.hclass) {
+                    BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
+                    return true;
+                }
+                auto source = std::find_if(group.transitionSources.begin(), group.transitionSources.end(),
+                                           [knownHClass](const ResolvedElementStoreHClass &candidate) {
+                                               return candidate.hclass == knownHClass;
+                                           });
+                if (source != group.transitionSources.end()) {
+                    BuildTransitionElementsKind(receiver, group, source->hclass);
+                    BuildJSArrayElementStore(receiver, index, value, group.targetElementsKind);
+                    return true;
+                }
+            }
+            UNREACHABLE();
+        }
+
+        struct DispatchEntry {
+            const ResolvedElementStoreHClass *hclass {nullptr};
+            uint32_t hclassHandleIndex {0};
+            uint32_t groupIndex {0};
+            bool needsTransition {false};
+        };
+        std::vector<DispatchEntry> entries;
+        entries.reserve(access.caseCount + groups.size());
+        for (uint32_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+            entries.push_back(DispatchEntry {&groups[groupIndex].target, 0, groupIndex, false});
+            for (const ResolvedElementStoreHClass &source : groups[groupIndex].transitionSources) {
+                entries.push_back(DispatchEntry {&source, 0, groupIndex, true});
+            }
+        }
+        if (entries.empty()) {
+            UNREACHABLE();
+        }
+        for (DispatchEntry &entry : entries) {
+            std::optional<uint32_t> handleIndex = GetHeapConstantHandleIndex(entry.hclass->ref);
+            if (!handleIndex.has_value()) {
+                return false;
+            }
+            entry.hclassHandleIndex = handleIndex.value();
+        }
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        std::vector<BB *> checkBlocks;
+        checkBlocks.reserve(entries.size());
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            checkBlocks.push_back(self->NewBlock());
+        }
+        std::vector<BB *> actionBlocks;
+        std::vector<BB *> transitionBlocks;
+        actionBlocks.reserve(groups.size());
+        transitionBlocks.reserve(groups.size());
+        for (const ResolvedElementStoreTransitionGroup &group : groups) {
+            actionBlocks.push_back(self->NewBlock());
+            transitionBlocks.push_back(group.transitionSources.empty() ? nullptr : self->NewBlock());
+        }
+        std::vector<BB *> dispatchLandingBlocks;
+        dispatchLandingBlocks.reserve(entries.size());
+        // Keep conditional dispatch edges out of shared action blocks so RA can emit edge moves on the landing jump.
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            dispatchLandingBlocks.push_back(self->NewBlock());
+        }
+        BB *primitiveDeoptBlock = self->NewBlock();
+        BB *hclassMissDeoptBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        primitiveDeoptBlock->SetDeferred(true);
+        hclassMissDeoptBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {receiver}, checkBlocks.front(),
+                                                                    primitiveDeoptBlock);
+
+        ValueVertex *actualHClass = nullptr;
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            currentBlock = checkBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            if (actualHClass == nullptr) {
+                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
+            }
+            BB *nextBlock = i + 1 < entries.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(
+                currentBlock, {actualHClass}, dispatchLandingBlocks[i], nextBlock, self->chunk_,
+                std::vector<uint32_t> {entries[i].hclassHandleIndex}, true);
+        }
+
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            currentBlock = dispatchLandingBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            BB *destination = entries[i].needsTransition ? transitionBlocks[entries[i].groupIndex]
+                                                         : actionBlocks[entries[i].groupIndex];
+            self->FinishBlockWithJump(currentBlock, destination);
+        }
+
+        CompileInfoFacts *mergedExitFacts = nullptr;
+        for (uint32_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+            CompileInfoFacts *actionEntryFacts = entryFacts->Clone();
+            if (transitionBlocks[groupIndex] != nullptr) {
+                currentBlock = transitionBlocks[groupIndex];
+                compileInfoFacts_ = entryFacts->Clone();
+                BuildTransitionElementsKind(receiver, groups[groupIndex]);
+                actionEntryFacts->Merge(*compileInfoFacts_);
+                self->FinishBlockWithJump(currentBlock, actionBlocks[groupIndex]);
+            }
+
+            currentBlock = actionBlocks[groupIndex];
+            compileInfoFacts_ = actionEntryFacts;
+            BuildJSArrayElementStore(receiver, index, value, groups[groupIndex].targetElementsKind);
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+            if (mergedExitFacts == nullptr) {
+                mergedExitFacts = compileInfoFacts_->Clone();
+            } else {
+                mergedExitFacts->Merge(*compileInfoFacts_);
+            }
+        }
+
+        auto buildDeoptBlock = [&](BB *deoptBlock) {
+            currentBlock = deoptBlock;
+            compileInfoFacts_ = entryFacts->Clone();
+            auto *deopt =
+                self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                                   self->preproc_->GetBytecodeOffset(currentBcIndex));
+            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(currentBcIndex));
+        };
+        buildDeoptBlock(primitiveDeoptBlock);
+        buildDeoptBlock(hclassMissDeoptBlock);
+
+        ASSERT(mergedExitFacts != nullptr);
+        currentBlock = doneBlock;
+        compileInfoFacts_ = mergedExitFacts;
+        return true;
+    }
+
+    bool TryLowerElementStore(uint32_t bcIndex, const ElementStoreAccessInfo &access, ValueVertex *receiver,
+                              ValueVertex *key, ValueVertex *value)
+    {
+        if ((!access.IsJSArray() && !access.IsTypedArray()) || access.caseCount == 0) {
+            return false;
+        }
+
+        std::vector<ResolvedElementStoreTransitionGroup> jsArrayGroups;
+        JSHClass *knownJSArrayHClass = nullptr;
+        if (access.IsJSArray()) {
+            if (!ResolveElementStoreTransitionGroups(access, &jsArrayGroups)) {
+                return false;
+            }
+            knownJSArrayHClass = TryGetFreshKnownHClass(receiver);
+            if (knownJSArrayHClass != nullptr) {
+                bool foundKnownHClass = false;
+                for (const ResolvedElementStoreTransitionGroup &group : jsArrayGroups) {
+                    foundKnownHClass = knownJSArrayHClass == group.target.hclass ||
+                                       std::any_of(group.transitionSources.begin(), group.transitionSources.end(),
+                                                   [knownJSArrayHClass](const ResolvedElementStoreHClass &source) {
+                                                       return source.hclass == knownJSArrayHClass;
+                                                   });
+                    if (foundKnownHClass) {
+                        break;
+                    }
+                }
+                if (!foundKnownHClass) {
+                    knownJSArrayHClass = nullptr;
+                }
+            }
+        }
+
+        if (access.IsTypedArray()) {
+            std::vector<ResolvedElementStoreHClass> receiverHClasses;
+            receiverHClasses.reserve(access.caseCount);
+            for (uint32_t i = 0; i < access.caseCount; ++i) {
+                JSHClass *receiverHClass = nullptr;
+                if (!TryResolveHClassRef(access.cases[i].expectedHClass, &receiverHClass) ||
+                    !receiverHClass->IsTypedArray() || receiverHClass->GetObjectType() != access.typedArrayType) {
+                    return false;
+                }
+                receiverHClasses.push_back(ResolvedElementStoreHClass {receiverHClass, access.cases[i].expectedHClass});
+            }
+            HClassCheckResult checkResult = BuildCheckElementStoreHClasses(bcIndex, receiver, receiverHClasses);
+            if (checkResult != HClassCheckResult::SUCCESS) {
+                return checkResult == HClassCheckResult::UNREACHABLE;
+            }
+        }
+
+        ValueVertex *index = BuildCheckedElementIndex(key);
+        ValueVertex *zero = self->graph_->GetInt32Constant(0);
+        BuildDeoptIfInt32Condition(index, zero, Condition::LESS_THAN, kungfu::DeoptType::INDEXLESSZERO);
+
+        if (access.IsTypedArray()) {
+            BuildDeoptIfArrayBufferDetached(receiver, access.onHeapMode);
+            ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
+                compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
+            BuildDeoptIfInt32Condition(index, length, Condition::GREATER_THAN_OR_EQUAL,
+                                       kungfu::DeoptType::NOTLEGALIDX1);
+            switch (access.typedArrayType) {
+                case JSType::JS_INT8_ARRAY:
+                case JSType::JS_UINT8_ARRAY:
+                case JSType::JS_INT16_ARRAY:
+                case JSType::JS_UINT16_ARRAY:
+                case JSType::JS_INT32_ARRAY:
+                case JSType::JS_UINT32_ARRAY: {
+                    BuildTruncatingNumberTypedArrayStore(receiver, index, value, access);
+                    return true;
+                }
+                case JSType::JS_UINT8_CLAMPED_ARRAY:
+                    BuildClampedUint8TypedArrayStore(receiver, index, value, access);
+                    return true;
+                case JSType::JS_FLOAT32_ARRAY:
+                case JSType::JS_FLOAT64_ARRAY: {
+                    ValueVertex *doubleValue = BuildCheckedNumberToF64(value);
+                    self->NewVertex<StoreFloatTypedArrayElementVertex>(compileInfoFacts_, currentBlock,
+                                                                       {receiver, index, doubleValue},
+                                                                       access.typedArrayType, access.onHeapMode);
+                    return true;
+                }
+                default:
+                    UNREACHABLE();
+            }
+        }
+
+        return BuildJSArrayElementStoreDispatch(access, jsArrayGroups, knownJSArrayHClass, receiver, index, value);
+    }
+
+    void BuildStoreTaggedField(ValueVertex *object, int32_t offset, ValueVertex *value)
+    {
+        ArkSteedWriteBarrierValueKind valueKind = ClassifyDirectWriteBarrierValueKind(value);
+        if (valueKind == ArkSteedWriteBarrierValueKind::NonHeap) {
+            self->NewVertex<StoreTaggedFieldVertex>(compileInfoFacts_, currentBlock, {object, value}, offset);
+            return;
+        }
+        self->NewVertex<StoreTaggedFieldWithBarrierVertex>(compileInfoFacts_, currentBlock, {glue, object, value},
+                                                           offset, valueKind);
+    }
+
+    void BuildStoreField(ValueVertex *object, ValueVertex *value, PropertyLookupResult plr)
+    {
+        if (plr.IsInlinedProps()) {
+            BuildStoreTaggedField(object, static_cast<int32_t>(plr.GetOffset()), value);
+            return;
+        }
+        ValueVertex *properties = self->NewVertex<LoadTaggedFieldVertex>(
+            compileInfoFacts_, currentBlock, {object}, static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        int32_t offset =
+            static_cast<int32_t>(TaggedArray::DATA_OFFSET + plr.GetOffset() * JSTaggedValue::TaggedTypeSize());
+        BuildStoreTaggedField(properties, offset, value);
+    }
+
+    ValueVertex *BuildPropertyLoadSource(uint32_t bcIndex, ValueVertex *object, const NamedLoadAccessInfo &accessInfo)
+    {
+        if (accessInfo.holderDepth <= 0) {
+            return object;
+        }
+        if (accessInfo.hasStableProtoChain) {
+            if (accessInfo.holderHandleIndex == JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX ||
+                !accessInfo.holderRef.IsSafeForCompile()) {
+                return nullptr;
+            }
+            return GetHeapConstant(accessInfo.holderRef);
+        }
+        if (accessInfo.expectedPrototypeHClassRefs.size() != accessInfo.holderDepth) {
+            return nullptr;
+        }
+        std::vector<uint32_t> expectedHClassHandleIndices;
+        if (!GetHeapConstantHandleIndices(accessInfo.expectedPrototypeHClassRefs, &expectedHClassHandleIndices)) {
+            return nullptr;
+        }
+        auto *loadHolder = self->NewVertex<LoadPrototypeHolderByHClassVertex>(
+            compileInfoFacts_, currentBlock, {object}, self->chunk_, accessInfo.holderDepth,
+            expectedHClassHandleIndices, self->preproc_->GetBytecodeOffset(bcIndex));
+        loadHolder->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        return loadHolder;
+    }
+
+    bool TryResolveHeapRef(const ArkSteedHeapRef &ref, JSTaggedValue *value) const
+    {
+        auto *broker = self->pgoContext_.GetBroker();
+        return broker != nullptr && broker->TryResolveRef(ref, value);
+    }
+
+    bool TryResolveHClassRef(const ArkSteedHClassRef &ref, JSHClass **hclass) const
+    {
+        if (hclass == nullptr) {
+            return false;
+        }
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!TryResolveHeapRef(ref, &value) || !value.IsJSHClass()) {
+            return false;
+        }
+        *hclass = JSHClass::Cast(value.GetTaggedObject());
+        return true;
+    }
+
+    JSHClass *TryGetGenericInitialArrayHClass(JSHClass *receiverHClass, ArkSteedHClassRef *genericHClassRef) const
+    {
+        if (genericHClassRef == nullptr || receiverHClass == nullptr || !receiverHClass->IsJSArray() ||
+            receiverHClass->GetElementsKind() == ElementsKind::GENERIC) {
+            return nullptr;
+        }
+
+        JitCompilationEnv *env = self->preproc_->GetEnv();
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        JSThread *hostThread = env == nullptr ? nullptr : env->GetHostThread();
+        if (hostThread == nullptr || broker == nullptr) {
+            return nullptr;
+        }
+
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryGetGenericInitialArrayHClass");
+        auto globalEnv = env->GetGlobalEnv();
+        bool isPrototype = receiverHClass->IsPrototype();
+        JSHClass *initialHClass = hostThread->GetArrayInstanceHClass(globalEnv, receiverHClass->GetElementsKind(),
+                                                                     isPrototype, JSThread::ThreadKind::JitThread);
+        if (initialHClass != receiverHClass) {
+            return nullptr;
+        }
+        JSHClass *genericHClass = hostThread->GetArrayInstanceHClass(globalEnv, ElementsKind::GENERIC, isPrototype,
+                                                                     JSThread::ThreadKind::JitThread);
+        *genericHClassRef = broker->MakeHClassRef(JSTaggedValue(genericHClass));
+        return genericHClassRef->IsSafeForCompile() ? genericHClass : nullptr;
+    }
+
+    bool TryRecordHeapConstant(const ArkSteedHeapRef &ref, uint32_t *handleIndex, JSTaggedValue *value) const
+    {
+        if (g_isEnableCMCGC || handleIndex == nullptr || value == nullptr) {
+            return false;
+        }
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return false;
+        }
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::GetHeapConstant");
+        return broker->TryRecordHeapConstant(ref, handleIndex, value);
+    }
+
+    std::optional<uint32_t> GetHeapConstantHandleIndex(const ArkSteedHeapRef &ref) const
+    {
+        uint32_t handleIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!TryRecordHeapConstant(ref, &handleIndex, &value)) {
+            return std::nullopt;
+        }
+        return handleIndex;
+    }
+
+    std::optional<uint32_t> GetHeapConstantNameHandleIndex(const ArkSteedNameRef &ref) const
+    {
+        if (g_isEnableCMCGC) {
+            return std::nullopt;
+        }
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (broker == nullptr) {
+            return std::nullopt;
+        }
+
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::GetHeapConstantNameHandleIndex");
+        uint32_t handleIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!broker->TryRecordHeapConstant(ref, &handleIndex, &value) || (!value.IsString() && !value.IsSymbol())) {
+            return std::nullopt;
+        }
+        return handleIndex;
+    }
+
+    bool GetHeapConstantHandleIndices(const std::vector<ArkSteedHClassRef> &refs,
+                                      std::vector<uint32_t> *handleIndices) const
+    {
+        if (handleIndices == nullptr) {
+            return false;
+        }
+        handleIndices->clear();
+        handleIndices->reserve(refs.size());
+        for (const ArkSteedHClassRef &ref : refs) {
+            std::optional<uint32_t> handleIndex = GetHeapConstantHandleIndex(ref);
+            if (!handleIndex.has_value()) {
+                return false;
+            }
+            handleIndices->push_back(handleIndex.value());
+        }
+        return true;
+    }
+
+    ValueVertex *GetHeapConstant(const ArkSteedHeapRef &ref)
+    {
+        uint32_t handleIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (!TryRecordHeapConstant(ref, &handleIndex, &value)) {
+            return nullptr;
+        }
+        uint16_t staticNodeType = static_cast<uint16_t>(NodeTypeFromJSTaggedValue(value));
+        return self->graph_->GetHeapConstant(handleIndex, staticNodeType);
+    }
+
+    JSHClass *TryGetFreshKnownHClass(ValueVertex *receiver) const
+    {
+        return compileInfoFacts_->TryGetHClass(receiver);
+    }
+
+    HClassCheckResult RequireKnownHClass(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                         JSHClass *receiverHClass)
+    {
+        if (receiverHClass == nullptr) {
+            return HClassCheckResult::FAILURE;
+        }
+        return BuildCheckSingleHClass(bcIndex, receiver, receiverHClass, access.expectedHClass, false,
+                                      access.dependencies.canAssumeStableHClass);
+    }
+
+    bool TryLowerNamedStoreShared(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                  ValueVertex *value)
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (access.mode != AccessMode::NAMED_STORE || !access.isSharedStore || !access.holderIsReceiver ||
+            !TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
+            return false;
+        }
+        HClassCheckResult checkResult = RequireKnownHClass(bcIndex, access, receiver, receiverHClass);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+
+        ValueVertex *storeTarget = receiver;
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
+            return false;
+        }
+
+        auto *prepareField = self->NewVertex<PrepareSharedStoreFieldVertex>(
+            compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {value}, access.handlerInfo);
+        UpdateCatchBlockData(prepareField);
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, prepareField);
+        self->NewVertex<StoreSharedFieldWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                           {glue, storeTarget, prepareField}, access.fieldOffset);
+        return true;
+    }
+
+    bool TryLowerNamedStoreAccessor(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                    ValueVertex *value)
+    {
+        if (access.mode != AccessMode::NAMED_STORE || access.kind != AccessKind::ACCESSOR) {
+            return false;
+        }
+
+        ValueVertex *holder = receiver;
+        if (!access.holderIsReceiver) {
+            holder = BuildPrototypeHolder(access);
+            if (holder == nullptr) {
+                return false;
+            }
+        }
+
+        ValueVertex *accessorHolder = holder;
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            accessorHolder = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {holder},
+                                                                    static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
+            return false;
+        }
+        ValueVertex *accessor = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock,
+                                                                       {accessorHolder}, access.fieldOffset);
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        BB *internalAccessorBlock = self->NewBlock();
+        BB *loadSetterBlock = self->NewBlock();
+        BB *undefinedSetterBlock = self->NewBlock();
+        BB *callSetterBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        internalAccessorBlock->SetDeferred(true);
+        undefinedSetterBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfObjectTypeVertex>(currentBlock, {accessor}, internalAccessorBlock,
+                                                              loadSetterBlock, JSType::INTERNAL_ACCESSOR);
+
+        currentBlock = internalAccessorBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        auto *internalCall = RuntimeCall({receiver, accessor, value}, RTSTUB_ID(CallInternalSetter));
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, internalCall);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = loadSetterBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        ValueVertex *setter = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {accessor},
+                                                                     static_cast<int32_t>(AccessorData::SETTER_OFFSET));
+        CompileInfoFacts *setterFacts = compileInfoFacts_;
+        self->FinishBlockWithBranch<BranchIfReferenceEqualVertex>(currentBlock, {setter, self->undefinedValue_},
+                                                                  undefinedSetterBlock, callSetterBlock);
+
+        currentBlock = undefinedSetterBlock;
+        compileInfoFacts_ = setterFacts->Clone();
+        auto *throwCall = RuntimeCall({}, RTSTUB_ID(ThrowSetterIsUndefinedException));
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, throwCall);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = callSetterBlock;
+        compileInfoFacts_ = setterFacts->Clone();
+        CallVertex *call =
+            BuildCallVertex(std::initializer_list<ValueVertex *> {setter, self->undefinedValue_, receiver, value}, 1);
+        LoadLazyDeoptFrameStateForThrowableCall(bcIndex, call);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        compileInfoFacts_->OnSideEffect();
+        return true;
+    }
+
+    bool BuildNamedStoreEagerGuards(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                    bool checkNotPrototype = false)
+    {
+        bool needsStableProtoChain =
+            access.hasProtoCell || !access.holderIsReceiver || access.kind == AccessKind::TRANSITION;
+        bool needsProtoMarker = needsStableProtoChain && !access.dependencies.canAssumeStableProtoChain;
+        checkNotPrototype = checkNotPrototype && !access.dependencies.canAssumeNotPrototype;
+        if (!needsProtoMarker && !checkNotPrototype) {
+            return true;
+        }
+        ChunkVector<ValueVertex *> guardInputs(self->chunk_);
+        guardInputs.emplace_back(receiver);
+        auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(currentBlock, guardInputs, self->chunk_,
+                                                                     needsProtoMarker, checkNotPrototype,
+                                                                     self->preproc_->GetBytecodeOffset(bcIndex));
+        guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        return true;
+    }
+
+    ValueVertex *BuildPrototypeHolder(const NamedStoreAccessInfo &access)
+    {
+        return access.holder.IsSafeForCompile() ? GetHeapConstant(access.holder) : nullptr;
+    }
+
+    ValueVertex *BuildCheckedNamedStoreValue(AccessFieldRepresentation representation, ValueVertex *value)
+    {
+        switch (representation) {
+            case AccessFieldRepresentation::TAGGED:
+                return value;
+            case AccessFieldRepresentation::INT32:
+                return BuildCheckedTaggedIntToI32(value);
+            case AccessFieldRepresentation::DOUBLE:
+                return BuildCheckedNumberToF64(value);
+            default:
+                return nullptr;
+        }
+    }
+
+    void BuildPreparedNamedStoreField(ValueVertex *storeTarget, int32_t offset, ValueVertex *value,
+                                      AccessFieldRepresentation representation)
+    {
+        switch (representation) {
+            case AccessFieldRepresentation::TAGGED:
+                BuildStoreTaggedField(storeTarget, offset, value);
+                return;
+            case AccessFieldRepresentation::INT32:
+                self->NewVertex<StoreInt32FieldVertex>(compileInfoFacts_, currentBlock, {storeTarget, value}, offset);
+                return;
+            case AccessFieldRepresentation::DOUBLE:
+                self->NewVertex<StoreDoubleFieldVertex>(compileInfoFacts_, currentBlock, {storeTarget, value}, offset);
+                return;
+            default:
+                UNREACHABLE();
+        }
+    }
+
+    bool TryLowerNamedStoreTransition(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                      ValueVertex *value)
+    {
+        JSHClass *receiverHClass = nullptr;
+        JSHClass *transitionHClass = nullptr;
+        bool supportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+                                       access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                                       access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+        if (access.mode != AccessMode::NAMED_STORE || access.kind != AccessKind::TRANSITION ||
+            !access.holderIsReceiver || !supportedRepresentation ||
+            !TryResolveHClassRef(access.expectedHClass, &receiverHClass) ||
+            !TryResolveHClassRef(access.transitionHClass, &transitionHClass)) {
+            return false;
+        }
+        if (access.fieldStorage != AccessFieldStorage::IN_OBJECT &&
+            access.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) {
+            return false;
+        }
+        ValueVertex *transitionHClassValue = GetHeapConstant(access.transitionHClass);
+        if (transitionHClassValue == nullptr) {
+            return false;
+        }
+        if (receiverHClass->IsPrototype()) {
+            return false;
+        }
+        HClassCheckResult checkResult = RequireKnownHClass(bcIndex, access, receiver, receiverHClass);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+
+        if (!BuildNamedStoreEagerGuards(bcIndex, access, receiver, true)) {
+            return false;
+        }
+        ValueVertex *preparedValue = BuildCheckedNamedStoreValue(access.fieldRepresentation, value);
+        if (preparedValue == nullptr) {
+            return false;
+        }
+
+        self->NewVertex<TransitionHClassWithBarrierVertex>(compileInfoFacts_, currentBlock,
+                                                           {glue, receiver, transitionHClassValue});
+
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            auto *properties = self->NewVertex<EnsurePropertiesCapacityVertex>(
+                compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {glue, receiver},
+                static_cast<int32_t>(access.fieldIndex));
+            UpdateCatchBlockData(properties);
+            LoadLazyDeoptFrameStateForThrowableCall(bcIndex, properties);
+            BuildPreparedNamedStoreField(properties, access.fieldOffset, preparedValue, access.fieldRepresentation);
+        } else {
+            BuildPreparedNamedStoreField(receiver, access.fieldOffset, preparedValue, access.fieldRepresentation);
+        }
+        compileInfoFacts_->RecordHClass(receiver, transitionHClass, IsHClassStableForFacts(transitionHClass, false));
+        return true;
+    }
+
+    bool CanLowerNamedStoreField(const NamedStoreAccessInfo &access) const
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (access.mode != AccessMode::NAMED_STORE || !TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
+            return false;
+        }
+        bool hasSupportedStorage = access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
+                                   access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY;
+        if (!hasSupportedStorage) {
+            return false;
+        }
+        if (access.kind == AccessKind::TRANSITION) {
+            JSHClass *transitionHClass = nullptr;
+            bool hasSupportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+                                              access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                                              access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+            return access.holderIsReceiver && hasSupportedRepresentation && !receiverHClass->IsPrototype() &&
+                   TryResolveHClassRef(access.transitionHClass, &transitionHClass);
+        }
+        if (access.isSharedStore) {
+            return access.holderIsReceiver;
+        }
+        if (access.kind == AccessKind::ACCESSOR) {
+            if (access.holderIsReceiver) {
+                return true;
+            }
+            JSHClass *holderHClass = nullptr;
+            return access.HasHolderHClass() && TryResolveHClassRef(access.holderHClass, &holderHClass);
+        }
+        if (!access.IsDataField()) {
+            return false;
+        }
+        return access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+               access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+               access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+    }
+
+    bool TryLowerNamedStoreField(uint32_t bcIndex, const NamedStoreAccessInfo &access, ValueVertex *receiver,
+                                 ValueVertex *value)
+    {
+        if (access.kind == AccessKind::TRANSITION) {
+            return TryLowerNamedStoreTransition(bcIndex, access, receiver, value);
+        }
+        if (access.isSharedStore) {
+            return TryLowerNamedStoreShared(bcIndex, access, receiver, value);
+        }
+        if (access.mode != AccessMode::NAMED_STORE) {
+            return false;
+        }
+
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveHClassRef(access.expectedHClass, &receiverHClass)) {
+            return false;
+        }
+        HClassCheckResult checkResult = RequireKnownHClass(bcIndex, access, receiver, receiverHClass);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+        if (!BuildNamedStoreEagerGuards(bcIndex, access, receiver)) {
+            return false;
+        }
+        if (access.kind == AccessKind::ACCESSOR) {
+            return TryLowerNamedStoreAccessor(bcIndex, access, receiver, value);
+        }
+        if (!access.IsDataField()) {
+            return false;
+        }
+
+        ValueVertex *storeTarget = receiver;
+        if (access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        } else if (access.fieldStorage != AccessFieldStorage::IN_OBJECT) {
+            return false;
+        }
+
+        if (access.fieldRepresentation != AccessFieldRepresentation::TAGGED) {
+            if (access.fieldRepresentation != AccessFieldRepresentation::INT32 &&
+                access.fieldRepresentation != AccessFieldRepresentation::DOUBLE) {
+                return false;
+            }
+            ChunkVector<ValueVertex *> storeInputs(self->chunk_);
+            storeInputs.emplace_back(storeTarget);
+            storeInputs.emplace_back(value);
+            EagerDeoptimizableMixin *store = nullptr;
+            if (access.fieldRepresentation == AccessFieldRepresentation::INT32) {
+                store = self->NewVertex<StoreInt32FieldWithRepVertex>(compileInfoFacts_, currentBlock, storeInputs,
+                                                                      self->chunk_, access.fieldOffset,
+                                                                      self->preproc_->GetBytecodeOffset(bcIndex));
+            } else {
+                store = self->NewVertex<StoreDoubleFieldWithRepVertex>(compileInfoFacts_, currentBlock, storeInputs,
+                                                                       self->chunk_, access.fieldOffset,
+                                                                       self->preproc_->GetBytecodeOffset(bcIndex));
+            }
+            store->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+            return true;
+        }
+
+        BuildStoreTaggedField(storeTarget, access.fieldOffset, value);
+        return true;
+    }
+
+    static bool IsLocalTaggedStoreField(const NamedStoreAccessInfo &access)
+    {
+        return access.mode == AccessMode::NAMED_STORE && !access.isSharedStore && !access.hasProtoCell &&
+               access.IsDataField() && access.holderIsReceiver &&
+               access.fieldRepresentation == AccessFieldRepresentation::TAGGED &&
+               (access.fieldStorage == AccessFieldStorage::IN_OBJECT ||
+                access.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) &&
+               access.expectedHClass.IsSafeForCompile();
+    }
+
+    static bool IsLocalPolyNamedStoreCase(const NamedStoreAccessInfo &access)
+    {
+        if (access.mode != AccessMode::NAMED_STORE || access.isSharedStore ||
+            !access.expectedHClass.IsSafeForCompile()) {
+            return false;
+        }
+        if (!access.holderIsReceiver && !access.hasProtoCell) {
+            return false;
+        }
+        if (access.fieldStorage != AccessFieldStorage::IN_OBJECT &&
+            access.fieldStorage != AccessFieldStorage::PROPERTIES_ARRAY) {
+            return false;
+        }
+        if (access.kind == AccessKind::TRANSITION) {
+            bool supportedRepresentation = access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+                                           access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+                                           access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+            return access.holderIsReceiver && supportedRepresentation && access.transitionHClass.IsSafeForCompile();
+        }
+        if (access.kind == AccessKind::ACCESSOR) {
+            return access.holderIsReceiver || (access.hasFieldHClass && access.fieldHClass.IsSafeForCompile());
+        }
+        if (!access.IsDataField()) {
+            return false;
+        }
+        return access.fieldRepresentation == AccessFieldRepresentation::TAGGED ||
+               access.fieldRepresentation == AccessFieldRepresentation::INT32 ||
+               access.fieldRepresentation == AccessFieldRepresentation::DOUBLE;
+    }
+
+    static bool HasSameStoreFieldLocation(const NamedStoreAccessInfo &left, const NamedStoreAccessInfo &right)
+    {
+        return left.fieldStorage == right.fieldStorage && left.fieldOffset == right.fieldOffset;
+    }
+
+    bool TryLowerEquivalentNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                            ValueVertex *value)
+    {
+        if (access.caseCount < 2 || !IsLocalTaggedStoreField(access.cases[0])) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        std::vector<RequestedHClassInfo> requestedHClasses;
+        expectedHClasses.reserve(access.caseCount);
+        requestedHClasses.reserve(access.caseCount);
+        JSHClass *firstHClass = nullptr;
+        if (!TryResolveHClassRef(access.cases[0].expectedHClass, &firstHClass)) {
+            return false;
+        }
+        expectedHClasses.push_back(firstHClass);
+        requestedHClasses.push_back(RequestedHClassInfo {
+            firstHClass,
+            access.cases[0].expectedHClass,
+            access.cases[0].dependencies.canAssumeStableHClass,
+        });
+        for (uint32_t i = 1; i < access.caseCount; ++i) {
+            if (!IsLocalTaggedStoreField(access.cases[i]) ||
+                !HasSameStoreFieldLocation(access.cases[0], access.cases[i])) {
+                return false;
+            }
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(access.cases[i].expectedHClass, &expectedHClass)) {
+                return false;
+            }
+            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) != expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(expectedHClass);
+            requestedHClasses.push_back(RequestedHClassInfo {
+                expectedHClass,
+                access.cases[i].expectedHClass,
+                access.cases[i].dependencies.canAssumeStableHClass,
+            });
+        }
+
+        HClassCheckResult checkResult = BuildHClassCheck(bcIndex, receiver, requestedHClasses, false);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+        ValueVertex *storeTarget = receiver;
+        if (access.cases[0].fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+        }
+        BuildStoreTaggedField(storeTarget, access.cases[0].fieldOffset, value);
+        return true;
+    }
+
+    bool TryLowerPolyNamedStoreFields(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                      ValueVertex *value)
+    {
+        if (access.caseCount < 2) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        NodeInfo::PossibleHClassInfos provenHClasses;
+        std::vector<StoreTaggedFieldByHClassCase> storeCases;
+        expectedHClasses.reserve(access.caseCount);
+        provenHClasses.reserve(access.caseCount);
+        storeCases.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            const NamedStoreAccessInfo &storeCaseInfo = access.cases[i];
+            if (!IsLocalTaggedStoreField(storeCaseInfo)) {
+                return false;
+            }
+
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(storeCaseInfo.expectedHClass, &expectedHClass)) {
+                return false;
+            }
+            if (std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) != expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(expectedHClass);
+            std::optional<uint32_t> expectedHClassHandleIndex =
+                GetHeapConstantHandleIndex(storeCaseInfo.expectedHClass);
+            if (!expectedHClassHandleIndex.has_value()) {
+                return false;
+            }
+            provenHClasses.push_back(NodeInfo::PossibleHClassInfo {
+                .hclass = expectedHClass,
+                .isStable = IsHClassStableForFacts(expectedHClass, storeCaseInfo.dependencies.canAssumeStableHClass),
+            });
+            storeCases.push_back(StoreTaggedFieldByHClassCase {
+                expectedHClassHandleIndex.value(),
+                storeCaseInfo.fieldOffset,
+                storeCaseInfo.fieldStorage == AccessFieldStorage::PROPERTIES_ARRAY,
+            });
+        }
+
+        ChunkVector<ValueVertex *> storeInputs(self->chunk_);
+        storeInputs.emplace_back(glue);
+        storeInputs.emplace_back(receiver);
+        storeInputs.emplace_back(value);
+        auto *store = self->NewVertex<StoreTaggedFieldByHClassVertex>(
+            compileInfoFacts_, currentBlock, storeInputs, self->chunk_, storeCases,
+            ClassifyDirectWriteBarrierValueKind(value), self->preproc_->GetBytecodeOffset(bcIndex));
+        store->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        compileInfoFacts_->RecordPossibleHClasses(receiver, provenHClasses);
+        return true;
+    }
+
+    bool TryLowerMixedPolyNamedStores(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                      ValueVertex *value)
+    {
+        if (access.caseCount < 2) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        expectedHClasses.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            const NamedStoreAccessInfo &storeCase = access.cases[i];
+            if (!IsLocalPolyNamedStoreCase(storeCase)) {
+                return false;
+            }
+
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(storeCase.expectedHClass, &expectedHClass) ||
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), expectedHClass) != expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(expectedHClass);
+
+            if (storeCase.kind == AccessKind::TRANSITION) {
+                JSHClass *transitionHClass = nullptr;
+                if (expectedHClass->IsPrototype() ||
+                    !TryResolveHClassRef(storeCase.transitionHClass, &transitionHClass)) {
+                    return false;
+                }
+            }
+        }
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        std::vector<BB *> checkBlocks;
+        std::vector<BB *> caseBlocks;
+        std::vector<CompileInfoFacts *> caseExitFacts;
+        checkBlocks.reserve(access.caseCount);
+        caseBlocks.reserve(access.caseCount);
+        caseExitFacts.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            checkBlocks.push_back(self->NewBlock());
+            caseBlocks.push_back(self->NewBlock());
+        }
+        BB *primitiveDeoptBlock = self->NewBlock();
+        BB *hclassMissDeoptBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        primitiveDeoptBlock->SetDeferred(true);
+        hclassMissDeoptBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {receiver}, checkBlocks.front(),
+                                                                    primitiveDeoptBlock);
+
+        std::vector<uint32_t> expectedHClassHandleIndices;
+        expectedHClassHandleIndices.reserve(access.caseCount);
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            std::optional<uint32_t> expectedHClassHandleIndex =
+                GetHeapConstantHandleIndex(access.cases[i].expectedHClass);
+            if (!expectedHClassHandleIndex.has_value()) {
+                return false;
+            }
+            expectedHClassHandleIndices.push_back(expectedHClassHandleIndex.value());
+        }
+
+        ValueVertex *actualHClass = nullptr;
+        for (uint32_t i = 0; i < access.caseCount; ++i) {
+            currentBlock = checkBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            if (actualHClass == nullptr) {
+                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
+                    currentBlock, std::initializer_list<ValueVertex *> {receiver});
+            }
+            BB *nextBlock = i + 1 < access.caseCount ? checkBlocks[i + 1] : hclassMissDeoptBlock;
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(
+                currentBlock, {actualHClass}, caseBlocks[i], nextBlock, self->chunk_,
+                std::vector<uint32_t> {expectedHClassHandleIndices[i]}, true);
+
+            currentBlock = caseBlocks[i];
+            compileInfoFacts_ = entryFacts->Clone();
+            compileInfoFacts_->RecordHClass(
+                receiver, expectedHClasses[i],
+                IsHClassStableForFacts(expectedHClasses[i], access.cases[i].dependencies.canAssumeStableHClass));
+            bool lowered = TryLowerNamedStoreField(bcIndex, access.cases[i], receiver, value);
+            ASSERT(lowered);
+            if (!lowered) {
+                UNREACHABLE();
+            }
+            caseExitFacts.push_back(compileInfoFacts_);
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+        }
+
+        auto buildDeoptBlock = [&](BB *deoptBlock) {
+            currentBlock = deoptBlock;
+            compileInfoFacts_ = entryFacts->Clone();
+            auto *deopt =
+                self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                                   self->preproc_->GetBytecodeOffset(bcIndex));
+            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        };
+        buildDeoptBlock(primitiveDeoptBlock);
+        buildDeoptBlock(hclassMissDeoptBlock);
+
+        currentBlock = doneBlock;
+        ASSERT(!caseExitFacts.empty());
+        compileInfoFacts_ = caseExitFacts.front()->Clone();
+        for (size_t i = 1; i < caseExitFacts.size(); ++i) {
+            compileInfoFacts_->Merge(*caseExitFacts[i]);
+        }
+        return true;
+    }
+
+    bool TryLowerNamedStoreAccessSet(uint32_t bcIndex, const NamedStoreAccessSet &access, ValueVertex *receiver,
+                                     ValueVertex *value)
+    {
+        if (access.caseCount == 0) {
+            return false;
+        }
+        if (access.caseCount == 1) {
+            JSHClass *expectedHClass = nullptr;
+            if (!TryResolveHClassRef(access.cases[0].expectedHClass, &expectedHClass)) {
+                return false;
+            }
+            HClassCheckResult checkResult =
+                BuildCheckSingleHClass(bcIndex, receiver, expectedHClass, access.cases[0].expectedHClass, false,
+                                       access.cases[0].dependencies.canAssumeStableHClass);
+            if (checkResult != HClassCheckResult::SUCCESS) {
+                return checkResult == HClassCheckResult::UNREACHABLE;
+            }
+            return TryLowerNamedStoreField(bcIndex, access.cases[0], receiver, value);
+        }
+
+        JSHClass *knownHClass = TryGetFreshKnownHClass(receiver);
+        HClassInference inference(this, receiver, HClassInference::Mode::ALLOW_STALE);
+        std::optional<NodeInfo::PossibleHClasses> inferredHClasses = inference.TryGetPossibleHClasses();
+        if (knownHClass == nullptr && inferredHClasses.has_value() && inferredHClasses->size() == 1) {
+            knownHClass = inferredHClasses->front();
+        }
+        if (knownHClass != nullptr) {
+            const NamedStoreAccessInfo *matched = nullptr;
+            bool ambiguousMatch = false;
+            for (uint32_t i = 0; i < access.caseCount; ++i) {
+                JSHClass *caseHClass = nullptr;
+                if (!TryResolveHClassRef(access.cases[i].expectedHClass, &caseHClass)) {
+                    return false;
+                }
+                if (caseHClass != knownHClass) {
+                    continue;
+                }
+                if (matched != nullptr) {
+                    matched = nullptr;
+                    ambiguousMatch = true;
+                    break;
+                }
+                matched = &access.cases[i];
+            }
+            if (!ambiguousMatch && matched != nullptr && CanLowerNamedStoreField(*matched)) {
+                HClassCheckResult freshnessResult = inference.EnsureHClassesFresh(bcIndex);
+                if (freshnessResult == HClassCheckResult::UNREACHABLE) {
+                    return true;
+                }
+                if (freshnessResult == HClassCheckResult::SUCCESS) {
+                    return TryLowerNamedStoreField(bcIndex, *matched, receiver, value);
+                }
+            }
+        }
+
+        return TryLowerEquivalentNamedStoreFields(bcIndex, access, receiver, value) ||
+               TryLowerPolyNamedStoreFields(bcIndex, access, receiver, value) ||
+               TryLowerMixedPolyNamedStores(bcIndex, access, receiver, value);
+    }
+
+    ValueVertex *TryBuildPropertyLoad(uint32_t bcIndex, ValueVertex *object, const LoadedPropertyKey &key,
+                                      const NamedLoadAccessInfo &accessInfo)
+    {
+        ValueVertex *cached = compileInfoFacts_->LookupLoadedProperty(key);
+        if (cached == nullptr) {
+            cached = compileInfoFacts_->LookupLoadedConstantProperty(key);
+        }
+        if (cached != nullptr) {
+            return cached;
+        }
+
+        ValueVertex *loadSource = BuildPropertyLoadSource(bcIndex, object, accessInfo);
+        if (loadSource == nullptr) {
+            return nullptr;
+        }
+        ValueVertex *result = BuildLoadField(loadSource, accessInfo.plr);
+        if (accessInfo.isConst) {
+            compileInfoFacts_->RecordLoadedConstantProperty(key, result);
+        } else {
+            compileInfoFacts_->RecordLoadedProperty(key, result);
+        }
+        return result;
+    }
+
+    ValueVertex *BuildPolymorphicPropertyLoad(uint32_t bcIndex, ValueVertex *object,
+                                              const NamedLoadAccessInfo &accessInfo)
+    {
+        // Internal case blocks share CompileInfoFacts. Do not let a load from one sibling case
+        // enter the property cache or available-expression table and leak into another case.
+        ValueVertex *loadSource = BuildPropertyLoadSource(bcIndex, object, accessInfo);
+        return BuildLoadFieldWithoutCse(loadSource, accessInfo.plr);
+    }
+
+    bool TryBuildPolymorphicNamedAccess(uint32_t bcIndex, ValueVertex *receiver,
+                                        const std::vector<NamedLoadAccessInfo> &accessInfos)
+    {
+        ASSERT(accessInfos.size() > 1);
+        std::vector<JSHClass *> allExpectedHClasses;
+        std::vector<std::vector<uint32_t>> expectedHClassHandleIndices;
+        expectedHClassHandleIndices.reserve(accessInfos.size());
+        for (const NamedLoadAccessInfo &accessInfo : accessInfos) {
+            if (accessInfo.lookupStartObjectHClasses.empty() ||
+                accessInfo.lookupStartObjectHClasses.size() != accessInfo.lookupStartObjectHClassRefs.size()) {
+                return false;
+            }
+            for (uint32_t i = 0; i < accessInfo.lookupStartObjectHClasses.size(); ++i) {
+                JSHClass *hclass = accessInfo.lookupStartObjectHClasses[i];
+                if (hclass == nullptr || hclass->IsString() ||
+                    std::find(allExpectedHClasses.begin(), allExpectedHClasses.end(), hclass) !=
+                        allExpectedHClasses.end()) {
+                    return false;
+                }
+                allExpectedHClasses.push_back(hclass);
+            }
+            std::vector<uint32_t> groupHandleIndices;
+            if (!GetHeapConstantHandleIndices(accessInfo.lookupStartObjectHClassRefs, &groupHandleIndices)) {
+                return false;
+            }
+            expectedHClassHandleIndices.push_back(std::move(groupHandleIndices));
+            if (accessInfo.holderDepth != 0 && !accessInfo.hasStableProtoChain) {
+                std::vector<uint32_t> prototypeHandleIndices;
+                if (!GetHeapConstantHandleIndices(accessInfo.expectedPrototypeHClassRefs, &prototypeHandleIndices)) {
+                    return false;
+                }
+            }
+        }
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        std::vector<BB *> checkBlocks;
+        std::vector<BB *> caseBlocks;
+        checkBlocks.reserve(accessInfos.size());
+        caseBlocks.reserve(accessInfos.size());
+        for (uint32_t i = 0; i < accessInfos.size(); ++i) {
+            checkBlocks.push_back(self->NewBlock());
+            caseBlocks.push_back(self->NewBlock());
+        }
+        BB *primitiveDeoptBlock = self->NewBlock();
+        BB *hclassMissDeoptBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        primitiveDeoptBlock->SetDeferred(true);
+        hclassMissDeoptBlock->SetDeferred(true);
+
+        self->FinishBlockWithBranch<BranchIfTaggedHeapObjectVertex>(currentBlock, {receiver}, checkBlocks.front(),
+                                                                    primitiveDeoptBlock);
+
+        ValueVertex *actualHClass = nullptr;
+        for (uint32_t i = 0; i < accessInfos.size(); ++i) {
+            currentBlock = checkBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            if (actualHClass == nullptr) {
+                actualHClass = self->NewVertex<LoadHClassAddressVertex>(
+                    compileInfoFacts_, currentBlock, std::initializer_list<ValueVertex *> {receiver});
+            }
+            BB *nextBlock = i + 1 < accessInfos.size() ? checkBlocks[i + 1] : hclassMissDeoptBlock;
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(currentBlock, {actualHClass}, caseBlocks[i], nextBlock,
+                                                                self->chunk_, expectedHClassHandleIndices[i], true);
+        }
+
+        std::vector<ValueVertex *> results;
+        results.reserve(accessInfos.size());
+        for (uint32_t i = 0; i < accessInfos.size(); ++i) {
+            currentBlock = caseBlocks[i];
+            compileInfoFacts_ = entryFacts;
+            ValueVertex *result = BuildPolymorphicPropertyLoad(bcIndex, receiver, accessInfos[i]);
+            ASSERT(result != nullptr);
+            if (result == nullptr) {
+                UNREACHABLE();
+            }
+            results.push_back(result);
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+        }
+
+        auto buildDeoptBlock = [&](BB *deoptBlock) {
+            currentBlock = deoptBlock;
+            compileInfoFacts_ = entryFacts->Clone();
+            auto *deopt =
+                self->FinishBlockWith<DeoptVertex>(currentBlock, {}, self->chunk_, kungfu::DeoptType::KEYMISSMATCH,
+                                                   self->preproc_->GetBytecodeOffset(bcIndex));
+            deopt->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        };
+        buildDeoptBlock(primitiveDeoptBlock);
+        buildDeoptBlock(hclassMissDeoptBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        if (!allExpectedHClasses.empty()) {
+            compileInfoFacts_->RecordPossibleHClasses(receiver, allExpectedHClasses, false);
+        }
+        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, results, self->AccIndex()));
+        return true;
+    }
+
+    bool TryBuildNamedAccess(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId,
+                             const std::vector<NamedLoadAccessInfo> &accessInfos)
+    {
+        if (accessInfos.empty()) {
+            return false;
+        }
+        if (accessInfos.size() > 1) {
+            return TryBuildPolymorphicNamedAccess(bcIndex, receiver, accessInfos);
+        }
+        const NamedLoadAccessInfo &accessInfo = accessInfos.front();
+        const std::vector<JSHClass *> &maps = accessInfo.lookupStartObjectHClasses;
+        bool hasHClassOfString = std::any_of(maps.begin(), maps.end(),
+                                             [](JSHClass *hclass) { return hclass != nullptr && hclass->IsString(); });
+        if (hasHClassOfString) {
+            return false;
+        }
+        HClassCheckResult checkResult = BuildCheckAnyOfHClasses(
+            bcIndex, receiver, maps, accessInfo.lookupStartObjectHClassRefs, false, accessInfo.canAssumeStableHClasses);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+        LoadedPropertyKey propertyKey = LoadedPropertyKey::ConstDataId(receiver, constDataId, accessInfo.plr);
+        ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, propertyKey, accessInfo);
+        if (result == nullptr) {
+            return false;
+        }
+        frameState.SetAcc(result);
+        return true;
+    }
+
+    bool TryBuildLoadNamedProperty(const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver,
+                                   uint16_t constDataId)
+    {
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        PropertyAccessSet accessSet;
+        if (!factory.TryBuildNamedLoadAccessInfo(0, &accessSet)) {
+            return false;
+        }
+
+        NamedLoadAccessInfosOpt accessInfos = TryGetLoadObjByNameAccessInfos(accessSet, constDataId);
+        if (!accessInfos.has_value()) {
+            return false;
+        }
+        if (!TryBuildNamedAccess(bcIndex, receiver, constDataId, accessInfos.value())) {
+            return false;
+        }
+        return true;
+    }
+
+    ValueVertex *LoadValueFeedbackKey(uint32_t slotId)
+    {
+        ValueVertex *function = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *profileCell = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {function}, static_cast<int32_t>(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+        ValueVertex *profile = self->NewVertex<LoadTaggedFieldVertex>(
+            currentBlock, {profileCell}, static_cast<int32_t>(ProfileTypeInfoCell::VALUE_OFFSET));
+        int32_t slotOffset =
+            static_cast<int32_t>(ProfileTypeInfo::DATA_OFFSET + slotId * JSTaggedValue::TaggedTypeSize());
+        return self->NewVertex<LoadTaggedFieldVertex>(currentBlock, {profile}, slotOffset);
+    }
+
+    void BuildCheckValueKey(uint32_t bcIndex, ValueVertex *key, uint32_t slotId)
+    {
+        ValueVertex *cachedKey = LoadValueFeedbackKey(slotId);
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        auto *check = self->NewVertex<DeoptIfTaggedConditionVertex>(
+            currentBlock, {key, cachedKey}, self->chunk_, self->preproc_->GetBytecodeOffset(bcIndex),
+            Condition::NOT_EQUAL, kungfu::DeoptType::KEYMISSMATCH);
+        check->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    bool TryBuildNamedAccessByValue(uint32_t bcIndex, ValueVertex *receiver, uint32_t propertyKeyHandleIndex,
+                                    const std::vector<NamedLoadAccessInfo> &accessInfos)
+    {
+        if (accessInfos.empty()) {
+            return false;
+        }
+        if (accessInfos.size() > 1) {
+            return TryBuildPolymorphicNamedAccess(bcIndex, receiver, accessInfos);
+        }
+
+        const NamedLoadAccessInfo &accessInfo = accessInfos.front();
+        const std::vector<JSHClass *> &hclasses = accessInfo.lookupStartObjectHClasses;
+        bool hasStringHClass = std::any_of(hclasses.begin(), hclasses.end(),
+                                           [](JSHClass *hclass) { return hclass != nullptr && hclass->IsString(); });
+        if (hasStringHClass) {
+            return false;
+        }
+        HClassCheckResult checkResult =
+            BuildCheckAnyOfHClasses(bcIndex, receiver, hclasses, accessInfo.lookupStartObjectHClassRefs, false,
+                                    accessInfo.canAssumeStableHClasses);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+
+        LoadedPropertyKey key = LoadedPropertyKey::HeapConstant(receiver, propertyKeyHandleIndex, accessInfo.plr);
+        ValueVertex *result = TryBuildPropertyLoad(bcIndex, receiver, key, accessInfo);
+        if (result == nullptr) {
+            return false;
+        }
+        frameState.SetAcc(result);
+        return true;
+    }
+
+    void BuildCheckTaggedCondition(uint32_t bcIndex, ValueVertex *left, ValueVertex *right, Condition condition,
+                                   kungfu::DeoptType deoptType)
+    {
+        EagerDeoptFrameState deoptFrameState = BuildCurrentEagerDeoptFrameState(bcIndex);
+        auto *check = self->NewVertex<DeoptIfTaggedConditionVertex>(currentBlock, {left, right}, self->chunk_,
+                                                                    self->preproc_->GetBytecodeOffset(bcIndex),
+                                                                    condition, deoptType);
+        check->SetEagerDeoptFrameState(std::move(deoptFrameState));
+    }
+
+    bool TryResolveNormalElementLoadHClass(const ElementLoadAccessInfo &accessInfo, JSHClass **receiverHClass)
+    {
+        if (accessInfo.kind != ElementLoadKind::NORMAL || HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+            return false;
+        }
+
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, receiverHClass) || *receiverHClass == nullptr ||
+            ((*receiverHClass)->GetObjectType() != JSType::JS_OBJECT && !(*receiverHClass)->IsJSArray()) ||
+            (*receiverHClass)->IsDictionaryElement() ||
+            HandlerBase::IsJSArray(accessInfo.handlerInfo) != (*receiverHClass)->IsJSArray()) {
+            return false;
+        }
+        bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
+        if (isMutantArrayEnabled) {
+            ElementsKind kind = (*receiverHClass)->GetElementsKind();
+            if (Elements::IsIntOrHoleInt(kind) || Elements::IsNumberOrHoleNumber(kind)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool AppendCompatibleNormalElementHClasses(JSHClass *receiverHClass, const ArkSteedHClassRef &receiverHClassRef,
+                                               bool isMutantArrayEnabled, std::vector<JSHClass *> *receiverHClasses,
+                                               std::vector<ArkSteedHClassRef> *receiverHClassRefs)
+    {
+        ASSERT(receiverHClasses != nullptr && receiverHClassRefs != nullptr);
+        ASSERT(receiverHClasses->size() == receiverHClassRefs->size());
+        if (receiverHClass == nullptr || !receiverHClassRef.IsSafeForCompile()) {
+            return false;
+        }
+        if (std::find(receiverHClasses->begin(), receiverHClasses->end(), receiverHClass) == receiverHClasses->end()) {
+            receiverHClasses->push_back(receiverHClass);
+            receiverHClassRefs->push_back(receiverHClassRef);
+        }
+
+        // Large array literals currently use a specialized initial HClass in the interpreter but the generic
+        // initial HClass after their creator tiers up. When mutant arrays are disabled, both layouts store tagged
+        // elements, so accepting the generic companion avoids repeated deopts without weakening the element load.
+        if (!isMutantArrayEnabled) {
+            ArkSteedHClassRef genericHClassRef;
+            JSHClass *genericHClass = TryGetGenericInitialArrayHClass(receiverHClass, &genericHClassRef);
+            if (genericHClass != nullptr && std::find(receiverHClasses->begin(), receiverHClasses->end(),
+                                                      genericHClass) == receiverHClasses->end()) {
+                receiverHClasses->push_back(genericHClass);
+                receiverHClassRefs->push_back(genericHClassRef);
+            }
+        }
+        return true;
+    }
+
+    void BuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key)
+    {
+        ValueVertex *index = BuildCheckedTaggedIntToI32(key);
+        ValueVertex *elements = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                       static_cast<int32_t>(JSObject::ELEMENTS_OFFSET));
+        ValueVertex *capacity = self->NewVertex<LoadInt32FieldVertex>(compileInfoFacts_, currentBlock, {elements},
+                                                                      static_cast<int32_t>(TaggedArray::LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(index, capacity, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        ValueVertex *result =
+            self->NewVertex<LoadTaggedElementVertex>(compileInfoFacts_, currentBlock, {elements, index});
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        BuildCheckTaggedCondition(bcIndex, result, hole, Condition::EQUAL, kungfu::DeoptType::BUILTINISHOLE1);
+        frameState.SetAcc(result);
+    }
+
+    bool TryBuildNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                   const ElementLoadAccessInfo &accessInfo)
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveNormalElementLoadHClass(accessInfo, &receiverHClass)) {
+            return false;
+        }
+
+        bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
+        std::vector<JSHClass *> receiverHClasses;
+        std::vector<ArkSteedHClassRef> receiverHClassRefs;
+        if (!AppendCompatibleNormalElementHClasses(receiverHClass, accessInfo.expectedHClass, isMutantArrayEnabled,
+                                                   &receiverHClasses, &receiverHClassRefs)) {
+            return false;
+        }
+        HClassCheckResult checkResult =
+            receiverHClasses.size() == 1
+                ? BuildCheckSingleHClass(bcIndex, receiver, receiverHClass, accessInfo.expectedHClass, true, false)
+                : BuildCheckAnyOfHClasses(bcIndex, receiver, receiverHClasses, receiverHClassRefs, false, false);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+
+        BuildNormalElementLoad(bcIndex, receiver, key);
+        return true;
+    }
+
+    bool TryBuildStringElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                   const ElementLoadAccessInfo &accessInfo)
+    {
+        if (accessInfo.kind != ElementLoadKind::STRING || HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+            return false;
+        }
+
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, &receiverHClass) || receiverHClass == nullptr ||
+            !receiverHClass->IsLineString()) {
+            return false;
+        }
+        HClassCheckResult checkResult =
+            BuildCheckSingleHClass(bcIndex, receiver, receiverHClass, accessInfo.expectedHClass, true, false);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+
+        ValueVertex *index = BuildCheckedTaggedIntToI32(key);
+        ValueVertex *lengthAndFlags = self->NewVertex<LoadInt32FieldVertex>(
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(BaseString::LENGTH_AND_FLAGS_OFFSET));
+        ValueVertex *lengthShift =
+            self->graph_->GetInt32Constant(static_cast<int32_t>(BaseString::LengthBits::START_BIT));
+        ValueVertex *length = self->NewVertex<I32BitwiseBinaryVertex>(currentBlock, {lengthAndFlags, lengthShift},
+                                                                      IntBitwiseKind::SHIFT_RIGHT_LOGICAL);
+        BuildDeoptIfInt32Condition(index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        ValueVertex *charCode = self->NewVertex<LineStringLoadElementVertex>(compileInfoFacts_, currentBlock,
+                                                                             {receiver, index, lengthAndFlags});
+
+        // SingleCharTable caches one-character strings for codes [1, 0x7f].
+        ValueVertex *one = self->graph_->GetInt32Constant(LoadSingleCharTableElementVertex::MIN_CHAR_CODE);
+        ValueVertex *cachedRange = self->graph_->GetInt32Constant(LoadSingleCharTableElementVertex::MAX_CHAR_CODE -
+                                                                  LoadSingleCharTableElementVertex::MIN_CHAR_CODE);
+        ValueVertex *adjustedCharCode = self->NewVertex<I32SubVertex>(compileInfoFacts_, currentBlock, {charCode, one});
+
+        CompileInfoFacts *entryFacts = compileInfoFacts_;
+        BB *cachedCharBlock = self->NewBlock();
+        BB *createCharBlock = self->NewBlock();
+        BB *doneBlock = self->NewBlock();
+        createCharBlock->SetDeferred(true);
+        self->FinishBlockWithBranch<BranchIfInt32CompareVertex>(
+            currentBlock, {adjustedCharCode, cachedRange}, cachedCharBlock, createCharBlock, Condition::BELOW_OR_EQUAL);
+
+        currentBlock = cachedCharBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        ValueVertex *cachedChar =
+            self->NewVertex<LoadSingleCharTableElementVertex>(compileInfoFacts_, currentBlock, {glue, charCode});
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = createCharBlock;
+        compileInfoFacts_ = entryFacts->Clone();
+        ValueVertex *createdChar =
+            CommonStubCallToAccWithLazyDeopt({glue, charCode, GlobalEnv()}, CommonStubID::CreateStringBySingleCharCode);
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+
+        currentBlock = doneBlock;
+        compileInfoFacts_ = entryFacts;
+        compileInfoFacts_->OnSideEffect();
+        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, {cachedChar, createdChar}, self->AccIndex()));
+        return true;
+    }
+
+    bool TryFoldConstantStringElement(ValueVertex *receiver, ValueVertex *key)
+    {
+        ALLOW_DEREF_HANDLE;
+        std::optional<int32_t> index = TryGetInt32Value(key);
+        if (!index.has_value() || *index < 0) {
+            return false;
+        }
+
+        std::optional<ArkSteedHeapRef> stringRef = TryGetConstantHeapRef(receiver);
+        if (!stringRef.has_value()) {
+            auto *loadString = receiver->TryCast<CallCommonStubVertex>();
+            if (loadString == nullptr ||
+                loadString->GetCommonStubID() != static_cast<uint32_t>(CommonStubID::GetStringFromConstPool)) {
+                return false;
+            }
+            auto *stringId = loadString->GetInput(2)->TryCast<Int32ConstantVertex>();
+            if (stringId == nullptr || stringId->GetValue() < 0 ||
+                stringId->GetValue() > std::numeric_limits<uint16_t>::max()) {
+                return false;
+            }
+            stringRef = TryGetNameRefFromConstDataId(static_cast<uint16_t>(stringId->GetValue()));
+        }
+        JitCompilationEnv *env = self->preproc_->GetEnv();
+        JSThread *thread = env == nullptr ? nullptr : env->GetJSThread();
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (!stringRef.has_value() || thread == nullptr || broker == nullptr) {
+            return false;
+        }
+
+        ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::TryFoldConstantStringElement");
+        JSTaggedValue string = JSTaggedValue::Undefined();
+        if (!broker->TryResolveRef(*stringRef, &string) || !string.IsString()) {
+            return false;
+        }
+        EcmaStringAccessor accessor(string);
+        if (static_cast<uint32_t>(*index) >= accessor.GetLength()) {
+            return false;
+        }
+        uint16_t charCode = accessor.Get(thread, static_cast<uint32_t>(*index));
+        if (charCode < LoadSingleCharTableElementVertex::MIN_CHAR_CODE ||
+            charCode > LoadSingleCharTableElementVertex::MAX_CHAR_CODE) {
+            return false;
+        }
+
+        ValueVertex *charCodeConstant = self->graph_->GetInt32Constant(static_cast<int32_t>(charCode));
+        frameState.SetAcc(self->NewVertex<LoadSingleCharTableElementVertex>(compileInfoFacts_, currentBlock,
+                                                                            {glue, charCodeConstant}));
+        return true;
+    }
+
+    bool TryResolveTypedArrayElementLoadHClass(const ElementLoadAccessInfo &accessInfo, JSHClass **receiverHClass)
+    {
+        if (accessInfo.kind != ElementLoadKind::TYPED_ARRAY || HandlerBase::NeedSkipInPGODump(accessInfo.handlerInfo)) {
+            return false;
+        }
+
+        if (!TryResolveHClassRef(accessInfo.expectedHClass, receiverHClass) || *receiverHClass == nullptr ||
+            !(*receiverHClass)->IsTypedArray()) {
+            return false;
+        }
+        JSType objectType = (*receiverHClass)->GetObjectType();
+        if (objectType <= JSType::JS_TYPED_ARRAY_FIRST || objectType > JSType::JS_FLOAT64_ARRAY ||
+            HandlerBase::IsOnHeap(accessInfo.handlerInfo) != (*receiverHClass)->IsOnHeapFromBitField()) {
+            return false;
+        }
+        return true;
+    }
+
+    bool TryBuildTypedArrayElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                       const ElementLoadAccessInfo &accessInfo, ValueVertex *checkedIndex = nullptr,
+                                       bool buildHClassCheck = true)
+    {
+        JSHClass *receiverHClass = nullptr;
+        if (!TryResolveTypedArrayElementLoadHClass(accessInfo, &receiverHClass)) {
+            return false;
+        }
+        if (buildHClassCheck) {
+            HClassCheckResult checkResult =
+                BuildCheckSingleHClass(bcIndex, receiver, receiverHClass, accessInfo.expectedHClass, true, false);
+            if (checkResult != HClassCheckResult::SUCCESS) {
+                return checkResult == HClassCheckResult::UNREACHABLE;
+            }
+        }
+        JSType objectType = receiverHClass->GetObjectType();
+
+        ValueVertex *index = checkedIndex == nullptr ? BuildCheckedTaggedIntToI32(key) : checkedIndex;
+        ValueVertex *length = self->NewVertex<LoadInt32FieldVertex>(
+            compileInfoFacts_, currentBlock, {receiver}, static_cast<int32_t>(JSTypedArray::ARRAY_LENGTH_OFFSET));
+        BuildDeoptIfInt32Condition(index, length, Condition::ABOVE_OR_EQUAL, kungfu::DeoptType::RANGE_ERROR);
+
+        bool isOnHeap = receiverHClass->IsOnHeapFromBitField();
+        ValueVertex *storage =
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                   static_cast<int32_t>(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
+        if (!isOnHeap) {
+            storage = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {storage},
+                                                             static_cast<int32_t>(JSArrayBuffer::DATA_OFFSET));
+            ValueVertex *null = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_NULL);
+            BuildCheckTaggedCondition(bcIndex, storage, null, Condition::EQUAL,
+                                      kungfu::DeoptType::ARRAYBUFFERISDETACHED);
+        }
+
+        switch (objectType) {
+            case JSType::JS_INT8_ARRAY:
+            case JSType::JS_UINT8_ARRAY:
+            case JSType::JS_UINT8_CLAMPED_ARRAY:
+            case JSType::JS_INT16_ARRAY:
+            case JSType::JS_UINT16_ARRAY:
+            case JSType::JS_INT32_ARRAY: {
+                ValueVertex *raw = self->NewVertex<TypedArrayIntLoadElementVertex>(
+                    compileInfoFacts_, currentBlock, {receiver, index, storage}, objectType, isOnHeap);
+                frameState.SetAcc(self->NewVertex<I32ToTaggedIntVertex>(compileInfoFacts_, currentBlock, {raw}));
+                break;
+            }
+            case JSType::JS_UINT32_ARRAY:
+            case JSType::JS_FLOAT32_ARRAY:
+            case JSType::JS_FLOAT64_ARRAY: {
+                ValueVertex *raw = self->NewVertex<TypedArrayDoubleLoadElementVertex>(
+                    compileInfoFacts_, currentBlock, {receiver, index, storage}, objectType, isOnHeap);
+                frameState.SetAcc(self->NewVertex<F64ToTaggedDoubleVertex>(compileInfoFacts_, currentBlock, {raw}));
+                break;
+            }
+            default:
+                UNREACHABLE();
+        }
+        return true;
+    }
+
+    bool TryBuildPolymorphicTypedArrayElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                                  const ValueLoadAccessSet &access)
+    {
+        if (access.elementCount < 2) {
+            return false;
+        }
+
+        std::vector<JSHClass *> expectedHClasses;
+        std::vector<ArkSteedHClassRef> expectedHClassRefs;
+        expectedHClasses.reserve(access.elementCount);
+        expectedHClassRefs.reserve(access.elementCount);
+        for (uint32_t i = 0; i < access.elementCount; ++i) {
+            JSHClass *hclass = nullptr;
+            if (!TryResolveTypedArrayElementLoadHClass(access.elements[i], &hclass) ||
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), hclass) != expectedHClasses.end()) {
+                return false;
+            }
+            expectedHClasses.push_back(hclass);
+            expectedHClassRefs.push_back(access.elements[i].expectedHClass);
+        }
+        HClassCheckResult checkResult =
+            BuildCheckAnyOfHClasses(bcIndex, receiver, expectedHClasses, expectedHClassRefs, false, false);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+
+        ValueVertex *index = BuildCheckedTaggedIntToI32(key);
+        BB *doneBlock = self->NewBlock();
+        std::vector<ValueVertex *> results;
+        results.reserve(access.elementCount);
+        for (uint32_t i = 0; i + 1 < access.elementCount; ++i) {
+            BB *caseBlock = self->NewBlock();
+            BB *nextCaseBlock = self->NewBlock();
+            std::optional<uint32_t> expectedHClassHandleIndex = GetHeapConstantHandleIndex(expectedHClassRefs[i]);
+            if (!expectedHClassHandleIndex.has_value()) {
+                return false;
+            }
+            self->FinishBlockWithBranch<BranchIfHClassInVertex>(
+                currentBlock, {receiver}, caseBlock, nextCaseBlock, self->chunk_,
+                std::vector<uint32_t> {expectedHClassHandleIndex.value()});
+
+            currentBlock = caseBlock;
+            if (!TryBuildTypedArrayElementLoad(bcIndex, receiver, key, access.elements[i], index, false)) {
+                return false;
+            }
+            results.push_back(frameState.GetAcc());
+            self->FinishBlockWithJump(currentBlock, doneBlock);
+            currentBlock = nextCaseBlock;
+        }
+
+        if (!TryBuildTypedArrayElementLoad(bcIndex, receiver, key, access.elements[access.elementCount - 1], index,
+                                           false)) {
+            return false;
+        }
+        results.push_back(frameState.GetAcc());
+        self->FinishBlockWithJump(currentBlock, doneBlock);
+        currentBlock = doneBlock;
+        frameState.SetAcc(self->NewPhiVertexWith(currentBlock, results, self->AccIndex()));
+        return true;
+    }
+
+    bool TryBuildPolymorphicNormalElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                                              const ValueLoadAccessSet &access)
+    {
+        if (access.elementCount < 2) {
+            return false;
+        }
+
+        bool isMutantArrayEnabled = self->preproc_->GetEnv()->GetJSOptions().IsEnableMutantArray();
+        std::vector<JSHClass *> expectedHClasses;
+        std::vector<JSHClass *> compatibleHClasses;
+        std::vector<ArkSteedHClassRef> compatibleHClassRefs;
+        expectedHClasses.reserve(access.elementCount);
+        compatibleHClasses.reserve(access.elementCount + 1);
+        std::optional<bool> isJSArray;
+        for (uint32_t i = 0; i < access.elementCount; ++i) {
+            JSHClass *hclass = nullptr;
+            if (!TryResolveNormalElementLoadHClass(access.elements[i], &hclass) ||
+                std::find(expectedHClasses.begin(), expectedHClasses.end(), hclass) != expectedHClasses.end()) {
+                return false;
+            }
+            if (isJSArray.has_value() && *isJSArray != hclass->IsJSArray()) {
+                return false;
+            }
+            isJSArray = hclass->IsJSArray();
+            expectedHClasses.push_back(hclass);
+            if (!AppendCompatibleNormalElementHClasses(hclass, access.elements[i].expectedHClass, isMutantArrayEnabled,
+                                                       &compatibleHClasses, &compatibleHClassRefs)) {
+                return false;
+            }
+        }
+
+        HClassCheckResult checkResult =
+            BuildCheckAnyOfHClasses(bcIndex, receiver, compatibleHClasses, compatibleHClassRefs, false, false);
+        if (checkResult != HClassCheckResult::SUCCESS) {
+            return checkResult == HClassCheckResult::UNREACHABLE;
+        }
+        BuildNormalElementLoad(bcIndex, receiver, key);
+        return true;
+    }
+
+    bool TryBuildElementLoad(uint32_t bcIndex, ValueVertex *receiver, ValueVertex *key,
+                             const ValueLoadAccessSet &access)
+    {
+        if (access.kind != ValueLoadAccessKind::ELEMENT || access.elementCount == 0) {
+            return false;
+        }
+        if (access.elementCount > 1) {
+            switch (access.elements[0].kind) {
+                case ElementLoadKind::NORMAL:
+                    return TryBuildPolymorphicNormalElementLoad(bcIndex, receiver, key, access);
+                case ElementLoadKind::TYPED_ARRAY:
+                    return TryBuildPolymorphicTypedArrayElementLoad(bcIndex, receiver, key, access);
+                default:
+                    return false;
+            }
+        }
+        const ElementLoadAccessInfo &accessInfo = access.elements[0];
+        switch (accessInfo.kind) {
+            case ElementLoadKind::NORMAL:
+                return TryBuildNormalElementLoad(bcIndex, receiver, key, accessInfo);
+            case ElementLoadKind::STRING:
+                return TryBuildStringElementLoad(bcIndex, receiver, key, accessInfo);
+            case ElementLoadKind::TYPED_ARRAY:
+                return TryBuildTypedArrayElementLoad(bcIndex, receiver, key, accessInfo);
+            default:
+                return false;
+        }
+    }
+
+    bool TryBuildLoadPropertyByValue(const BytecodeInfo *bcInfo, uint32_t bcIndex, ValueVertex *receiver,
+                                     ValueVertex *key)
+    {
+        auto factory = self->pgoContext_.CreateAccessInfoFactory(*bcInfo);
+        ValueLoadAccessSet access;
+        if (!factory.TryBuildValueLoadAccessInfo(&access)) {
+            return false;
+        }
+        if (access.kind == ValueLoadAccessKind::ELEMENT) {
+            return TryBuildElementLoad(bcIndex, receiver, key, access);
+        }
+        if (access.kind != ValueLoadAccessKind::NAMED) {
+            return false;
+        }
+
+        std::optional<uint32_t> propertyKeyHandleIndex = GetHeapConstantNameHandleIndex(access.key);
+        if (!propertyKeyHandleIndex.has_value()) {
+            return false;
+        }
+        NamedLoadAccessInfosOpt accessInfos = TryGetLoadObjByNameAccessInfos(access.named, access.key);
+        if (!accessInfos.has_value()) {
+            return false;
+        }
+        bool hasStringHClass = std::any_of(accessInfos->begin(), accessInfos->end(), [](const auto &accessInfo) {
+            return std::any_of(accessInfo.lookupStartObjectHClasses.begin(), accessInfo.lookupStartObjectHClasses.end(),
+                               [](JSHClass *hclass) { return hclass != nullptr && hclass->IsString(); });
+        });
+        if (hasStringHClass) {
+            return false;
+        }
+
+        BuildCheckValueKey(bcIndex, key, access.feedback.slotId);
+        return TryBuildNamedAccessByValue(bcIndex, receiver, propertyKeyHandleIndex.value(), accessInfos.value());
+    }
+
+    static std::optional<AccessFieldRepresentation> TryConvertPropertyRepresentation(Representation representation)
+    {
+        switch (representation) {
+            case Representation::TAGGED:
+                return AccessFieldRepresentation::TAGGED;
+            case Representation::INT:
+                return AccessFieldRepresentation::INT32;
+            case Representation::DOUBLE:
+                return AccessFieldRepresentation::DOUBLE;
+            default:
+                return std::nullopt;
+        }
+    }
+
+    bool TryBuildStoreNamedProperty(uint32_t bcIndex, ValueVertex *receiver, uint16_t constDataId, ValueVertex *value)
+    {
+        HClassInference inference(this, receiver, HClassInference::Mode::ALLOW_STALE);
+        std::optional<NodeInfo::PossibleHClasses> possibleHClasses = inference.TryGetPossibleHClasses();
+        std::optional<ArkSteedNameRef> nameRef = TryGetNameRefFromConstDataId(constDataId);
+        if (!possibleHClasses.has_value() || !nameRef.has_value()) {
+            return false;
+        }
+
+        bool hasPlan = false;
+        bool isInlinedProperties = false;
+        uint32_t fieldOffset = 0;
+        AccessFieldRepresentation fieldRepresentation = AccessFieldRepresentation::UNKNOWN;
+        for (JSHClass *hclass : possibleHClasses.value()) {
+            std::optional<PropertyLookupResult> maybePlr = TryLookupPropertyInPGOHClass(hclass, nameRef.value());
+            if (!maybePlr.has_value()) {
+                return false;
+            }
+            PropertyLookupResult plr = maybePlr.value();
+            std::optional<AccessFieldRepresentation> representation =
+                TryConvertPropertyRepresentation(plr.GetRepresentation());
+            if (!plr.IsFound() || !plr.IsLocal() || !plr.IsWritable() || plr.IsAccessor() ||
+                !representation.has_value()) {
+                return false;
+            }
+            if (!hasPlan) {
+                hasPlan = true;
+                isInlinedProperties = plr.IsInlinedProps();
+                fieldOffset = plr.GetOffset();
+                fieldRepresentation = representation.value();
+                continue;
+            }
+            if (isInlinedProperties != plr.IsInlinedProps() || fieldOffset != plr.GetOffset() ||
+                fieldRepresentation != representation.value()) {
+                return false;
+            }
+        }
+        if (!hasPlan) {
+            return false;
+        }
+
+        std::vector<JSHClass *> pendingStableHClasses;
+        pendingStableHClasses.reserve(possibleHClasses->size());
+        bool needsNotPrototypeGuard = false;
+        auto *env = self->preproc_->GetEnv();
+        auto *dependencies = env == nullptr ? nullptr : env->GetDependencies();
+        for (JSHClass *hclass : possibleHClasses.value()) {
+            bool isStable = JSTaggedValue(hclass).IsInSharedHeap();
+            if (!isStable && self->IsLazyDeoptEnabled() && kungfu::StableHClassDependency::IsValid(hclass)) {
+                if (dependencies == nullptr || !dependencies->DependOnStableHClass(hclass)) {
+                    return false;
+                }
+                isStable = true;
+            }
+            if (isStable) {
+                pendingStableHClasses.push_back(hclass);
+            }
+            bool hasNotPrototypeDependency =
+                self->IsLazyDeoptEnabled() && dependencies != nullptr && dependencies->DependOnNotPrototype(hclass);
+            needsNotPrototypeGuard |= !hasNotPrototypeDependency;
+        }
+
+        HClassCheckResult freshnessResult = inference.EnsureHClassesFresh(bcIndex);
+        if (freshnessResult != HClassCheckResult::SUCCESS) {
+            return freshnessResult == HClassCheckResult::UNREACHABLE;
+        }
+        for (JSHClass *hclass : pendingStableHClasses) {
+            bool marked = compileInfoFacts_->MarkPossibleHClassStable(receiver, hclass);
+            ASSERT(marked);
+        }
+        if (needsNotPrototypeGuard) {
+            ChunkVector<ValueVertex *> guardInputs(self->chunk_);
+            guardInputs.emplace_back(receiver);
+            auto *guard = self->NewVertex<DeoptIfPrototypeChangedVertex>(
+                currentBlock, guardInputs, self->chunk_, false, true, self->preproc_->GetBytecodeOffset(bcIndex));
+            guard->SetEagerDeoptFrameState(BuildCurrentEagerDeoptFrameState(bcIndex));
+        }
+
+        ValueVertex *preparedValue = BuildCheckedNamedStoreValue(fieldRepresentation, value);
+        ASSERT(preparedValue != nullptr);
+        ValueVertex *storeTarget = receiver;
+        int32_t storeOffset = static_cast<int32_t>(fieldOffset);
+        if (!isInlinedProperties) {
+            storeTarget = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {receiver},
+                                                                 static_cast<int32_t>(JSObject::PROPERTIES_OFFSET));
+            storeOffset =
+                static_cast<int32_t>(TaggedArray::DATA_OFFSET + fieldOffset * JSTaggedValue::TaggedTypeSize());
+        }
+        BuildPreparedNamedStoreField(storeTarget, storeOffset, preparedValue, fieldRepresentation);
+        return true;
+    }
+
+    std::optional<ArkSteedObjectRef> TryGetGlobalCellBox(const BytecodeInfo *bcInfo)
+    {
+        ArkSteedFeedbackReader reader(self->compilerThread_, *bcInfo, self->pgoContext_.GetBroker());
+        GlobalAccessFeedback feedback;
+        if (!self->pgoContext_.GetBroker()->GetFeedbackForGlobalAccess(reader, &feedback)) {
+            return std::nullopt;
+        }
+        return feedback.box;
+    }
+
+    ValueVertex *BuildGlobalCellBoxValue(uint32_t bcIndex, ValueVertex *box)
+    {
+        ValueVertex *value = self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {box},
+                                                                    static_cast<int32_t>(PropertyBox::VALUE_OFFSET));
+        ValueVertex *hole = self->graph_->GetTaggedConstant(JSTaggedValue::VALUE_HOLE);
+        BuildCheckTaggedCondition(bcIndex, value, hole, Condition::EQUAL, kungfu::DeoptType::PROPERTYBOXINVALID);
+        return value;
+    }
+
+    template <class VertexT>
+    void UpdateCatchBlockData(VertexT *vertex)
+    {
+        ThrowableMixin *mixin = vertex;
+        if (reinterpret_cast<uintptr_t>(lazyCatchBlock) == NO_CATCH_BLOCK_TAG) {
+            return;  // (1) vertex has no catch block
+        }
+        if (blockInfo->catchBlockState == CatchBlockProfileState::NEVER_EXECUTED && self->IsLazyDeoptEnabled()) {
+            if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, VertexT>) {
+                return;  // The catch block is represented by lazy-deopt frame state instead of compiled code.
+            }
+        }
+        if (UNLIKELY(lazyCatchBlock == nullptr)) {
+            lazyCatchBlock = self->ActivateCatchBlock(&lazyCatchBlockInputs, blockInfo->catchBlock->rpoIndex);
+        }
+        ASSERT(lazyCatchBlockInputs != nullptr);
+        uint32_t catchPredIndex = lazyCatchBlockInputs->AddCatchPredecessor(frameState, self->undefinedValue_);
+        lazyCatchBlockInputs->AddCompileInfoFacts(*compileInfoFacts_);
+        mixin->LoadCatchBlock(lazyCatchBlock, catchPredIndex);
+    }
+
+    CallCommonStubVertex *CommonStubCall(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                         SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        ValidateCommonStubCallArgs(inputs, id);
+        auto *vertex =
+            self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
+        UpdateCatchBlockData(vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallWithLazyDeopt(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                                      SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallToAccWithLazyDeopt(std::initializer_list<ValueVertex *> inputs, CommonStubID id,
+                                                           SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = CommonStubCall(inputs, id, sideEffectKind);
+        frameState.SetAcc(vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallWithIC(const BytecodeInfo *bcInfo, std::initializer_list<ValueVertex *> inputs,
+                                               CommonStubID id)
+    {
+        ChunkVector<ValueVertex *> allArgs(self->chunk_);
+        allArgs.reserve(inputs.size() + CallVertex::FIRST_ARG_INDEX);
+
+        allArgs.push_back(glue);
+        allArgs.insert(allArgs.end(), inputs.begin(), inputs.end());
+        allArgs.push_back(LoadParam(CALL_TARGET_PARAM_INDEX));
+        allArgs.push_back(self->graph_->GetInt32Constant(GetICSlotId<int>(bcInfo, 0)));
+
+        ValidateCommonStubCallArgs({allArgs.data(), allArgs.size()}, id);
+
+        auto *vertex = self->NewVertex<CallCommonStubVertex>(compileInfoFacts_, currentBlock, allArgs, id);
+        UpdateCatchBlockData(vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallWithICAndLazyDeopt(const BytecodeInfo *bcInfo,
+                                                           std::initializer_list<ValueVertex *> inputs, CommonStubID id)
+    {
+        auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    CallCommonStubVertex *CommonStubCallToAccWithICAndLazyDeopt(const BytecodeInfo *bcInfo,
+                                                                std::initializer_list<ValueVertex *> inputs,
+                                                                CommonStubID id)
+    {
+        auto *vertex = CommonStubCallWithIC(bcInfo, inputs, id);
+        frameState.SetAcc(vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallRuntimeVertex *RuntimeCall(const InputRange &inputs, RuntimeStubID id,
+                                   SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = self->NewVertex<CallRuntimeVertex>(compileInfoFacts_, currentBlock, inputs, id, sideEffectKind);
+        UpdateCatchBlockData(vertex);
+        return vertex;
+    }
+
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallRuntimeVertex *RuntimeCallToAccWithLazyDeopt(const InputRange &inputs, RuntimeStubID id,
+                                                     SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = RuntimeCall(inputs, id, sideEffectKind);
+        frameState.SetAcc(vertex);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    template <class InputRange = std::initializer_list<ValueVertex *>>
+    CallRuntimeVertex *RuntimeCallWithLazyDeopt(const InputRange &inputs, RuntimeStubID id,
+                                                SideEffectKind sideEffectKind = SideEffectKind::UNKNOWN_CALL)
+    {
+        auto *vertex = RuntimeCall(inputs, id, sideEffectKind);
+        LoadLazyDeoptFrameStateForThrowableCall(currentBcIndex, vertex);
+        return vertex;
+    }
+
+    ValueVertex *TaggedConstantFromInt32(int value)
+    {
+        JSTaggedType taggedValue = JSTaggedValue(value).GetRawData();
+        return self->graph_->GetTaggedConstant(taggedValue);
+    }
+
+    ValueVertex *TaggedArrayFromValueIn(const BytecodeInfo *bcInfo, ValueVertex *taggedInputSize, uint32_t inputSize,
+                                        uint32_t startIndex = 0)
+    {
+        ValueVertex *taggedArray = RuntimeCall({taggedInputSize}, RTSTUB_ID(NewTaggedArray));
+        for (uint32_t idx = 0; idx < inputSize; ++idx) {
+            ValueVertex *arg = LoadRegister(bcInfo, startIndex + idx);
+            SetValueToTaggedArray(taggedArray, idx, arg);
+        }
+        return taggedArray;
+    }
+
+    ValueVertex *GetValueFromTaggedArray(ValueVertex *array, uint32_t index)
+    {
+        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {array}, offset);
+    }
+
+    void SetValueToTaggedArray(ValueVertex *array, uint32_t index, ValueVertex *value)
+    {
+        int32_t offset = static_cast<int32_t>(TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
+        BuildStoreTaggedField(array, offset, value);
+    }
+
+    ValueVertex *SharedConstPool()
+    {
+        int32_t methodOffset = static_cast<int32_t>(JSFunctionBase::METHOD_OFFSET);
+        int32_t constpoolOffset = static_cast<int32_t>(Method::CONSTANT_POOL_OFFSET);
+
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        ValueVertex *method =
+            self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, methodOffset);
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {method}, constpoolOffset);
+    }
+
+    ValueVertex *ModuleFromFunction()
+    {
+        int32_t moduleOffset = static_cast<int32_t>(JSFunction::ECMA_MODULE_OFFSET);
+        ValueVertex *jsFunc = LoadParam(CALL_TARGET_PARAM_INDEX);
+        return self->NewVertex<LoadTaggedFieldVertex>(compileInfoFacts_, currentBlock, {jsFunc}, moduleOffset);
+    }
+
+    bool TryGetConstPoolIndex(ValueVertex *indexVertex, uint32_t *index) const
+    {
+        ASSERT(index != nullptr);
+        if (auto *constant = indexVertex->TryCast<Int32ConstantVertex>()) {
+            if (constant->GetValue() < 0) {
+                return false;
+            }
+            *index = static_cast<uint32_t>(constant->GetValue());
+            return true;
+        }
+        if (auto *constant = indexVertex->TryCast<TaggedConstantVertex>()) {
+            JSTaggedValue value(constant->GetValue());
+            if (!value.IsInt() || value.GetInt() < 0) {
+                return false;
+            }
+            *index = static_cast<uint32_t>(value.GetInt());
+            return true;
+        }
+        return false;
+    }
+
+    ValueVertex *StringFromConstPool(ValueVertex *stringId)
+    {
+        uint32_t index = 0;
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (TryGetConstPoolIndex(stringId, &index) && index <= std::numeric_limits<uint16_t>::max() &&
+            broker != nullptr) {
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::StringFromConstPool");
+            ArkSteedNameRef stringRef;
+            if (broker->TryGetNameFromConstantPool(static_cast<uint16_t>(index), &stringRef)) {
+                if (ValueVertex *constant = GetHeapConstant(stringRef); constant != nullptr) {
+                    return constant;
+                }
+            }
+        }
+        ValueVertex *constpool = SharedConstPool();
+        return CommonStubCall({glue, constpool, stringId}, CommonStubID::GetStringFromConstPool);
+    }
+
+    ValueVertex *ObjectFromConstPool(ValueVertex *index)
+    {
+        ValueVertex *constpool = SharedConstPool();
+        ValueVertex *module = ModuleFromFunction();
+        return CommonStubCall({glue, constpool, index, module}, CommonStubID::GetObjectFromConstPool);
+    }
+
+    ValueVertex *MethodFromConstPool(ValueVertex *index)
+    {
+        uint32_t methodIndex = 0;
+        ArkSteedHeapBroker *broker = self->pgoContext_.GetBroker();
+        if (TryGetConstPoolIndex(index, &methodIndex) && methodIndex <= std::numeric_limits<uint16_t>::max() &&
+            broker != nullptr) {
+            ArkSteedHeapBroker::SerializingScope scope(broker, "GraphBuilder::MethodFromConstPool");
+            ArkSteedObjectRef methodRef;
+            if (broker->TryGetMethodFromConstantPool(static_cast<uint16_t>(methodIndex), &methodRef)) {
+                if (ValueVertex *constant = GetHeapConstant(methodRef); constant != nullptr) {
+                    return constant;
+                }
+            }
+        }
+        ValueVertex *constpool = SharedConstPool();
+        return RuntimeCall({constpool, index}, RTSTUB_ID(GetMethodFromCache));
+    }
+
+    GraphBuilder *self;
+    ValueVertex *glue;           // Equivalent to self->glue_. Cached for performance.
+    ValueVertex *lazyGlobalEnv;  // Equivalent to self->lazyGlobalEnv_. Cached for performance.
+    const BasicBlockInfo *blockInfo;
+    BB *currentBlock;    // Equivalent to self->blocks_[blockInfo->rpoIndex]. Cached for performance.
+    BB *lazyCatchBlock;  // Equivalent to self->blocks_[blockInfo->catchBlock->rpoIndex]. Cached for performance.
+    CompileInfoFacts *compileInfoFacts_;  // Equivalent to self->compileInfoFacts_[blockInfo->rpoIndex].
+    SharedBCFrameState frameState;
+    CatchBlockInputData *lazyCatchBlockInputs;
+    const BytecodeInfo *currentBcInfo {nullptr};
+    uint32_t currentBcIndex {0};
+};
+
+BB *GraphBuilder::VisitBytecodesOfBasicBlock(SharedBCFrameState frameState, uint32_t rpoIndex)
+{
+    const BasicBlockInfo *blockInfo = preproc_->GetBasicBlockByRPO(rpoIndex);
+
+    BB *catchBlock = reinterpret_cast<BB *>(NO_CATCH_BLOCK_TAG);
+    CatchBlockInputData *caughtByData = reinterpret_cast<CatchBlockInputData *>(NO_CATCH_BLOCK_TAG);
+    if (blockInfo->catchBlock != nullptr) {
+        uint32_t catchBlockIndex = blockInfo->catchBlock->rpoIndex;
+        // May be nullptr (indicating that the catch block is not activated yet)
+        catchBlock = blocks_[catchBlockIndex];
+        caughtByData = catchBlockInputs_[catchBlockIndex];
+    }
+
+    BytecodeVisitor visitor {
+        .self = this,
+        .glue = glue_,
+        .lazyGlobalEnv = lazyGlobalEnv_,
+        .blockInfo = blockInfo,
+        .currentBlock = blocks_[rpoIndex],  // visitor.currentBlock may be updated by subgraph creation
+        .lazyCatchBlock = catchBlock,
+        .compileInfoFacts_ = compileInfoFacts_[rpoIndex],
+        .frameState = frameState,
+        .lazyCatchBlockInputs = caughtByData,
+    };
+    for (uint32_t bcIndex = blockInfo->startBcIndex; bcIndex <= blockInfo->endBcIndex; ++bcIndex) {
+        if (!visitor.Visit(preproc_->GetBytecode(bcIndex), bcIndex)) {
             break;
         }
     }
-}
 
-BBRef *ArkSteedGraphBuilder::BranchBuilder::JumpTarget()
-{
-    switch (GetMode()) {
-        case Mode::JUMP_BYTECODE_TARGET: {
-            return &builder_->jumpTargets_[data_.bytecodeTarget.jumpTargetBcIndex];
-        }
-        case Mode::JUMP_LABEL_TARGET:
-            return &data_.labelTarget.jumpLabel->ref_;
+    if (visitor.currentBlock->GetControlVertex() == nullptr) {
+        ASSERT(blockInfo->IsFallthrough());
+        BB *target = ActivateNonCatchBlock(blockInfo->fallthroughBlock->rpoIndex);
+        FinishBlockWithJump(visitor.currentBlock, target);
     }
-}
-
-BBRef *ArkSteedGraphBuilder::BranchBuilder::FallThrough()
-{
-    switch (GetMode()) {
-        case Mode::JUMP_BYTECODE_TARGET: {
-            return &builder_->jumpTargets_[data_.bytecodeTarget.fallthroughBcIndex];
-        }
-        case Mode::JUMP_LABEL_TARGET:
-            return &data_.labelTarget.fallthroughTarget;
-    }
-}
-
-BBRef *ArkSteedGraphBuilder::BranchBuilder::TrueTarget()
-{
-    return GetCurrentBranchType() == BranchType::TRUE_BRANCH ? JumpTarget() : FallThrough();
-}
-
-BBRef *ArkSteedGraphBuilder::BranchBuilder::FalseTarget()
-{
-    return GetCurrentBranchType() == BranchType::FALSE_BRANCH ? JumpTarget() : FallThrough();
-}
-
-void ArkSteedGraphBuilder::BuildThrow(kungfu::RuntimeStubCSigns::ID id, ValueVertex *input)
-{
-    bool hasInput = (input != nullptr);
-    if (!hasInput) {
-        input = GetInt32Constant(0);
-    }
-    FinishBlock<ThrowVertex>({input}, id, hasInput);
+    // Lowering may create internal subgraphs, so callers need the actual exit block rather than blocks_[rpoIndex].
+    return visitor.currentBlock;
 }
 }  // namespace panda::ecmascript::arksteed

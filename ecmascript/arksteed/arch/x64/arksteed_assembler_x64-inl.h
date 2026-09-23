@@ -25,63 +25,10 @@ namespace panda::ecmascript::arksteed {
 // x64 Platform Constants
 // =============================================================================
 
-constexpr x64::Register X64_SCRATCH_REGISTER = x64::r10;
-constexpr x64::DoubleRegister X64_SCRATCH_DOUBLE_REGISTER = x64::xmm15;
-
 // Common registers
 constexpr x64::Register kReturnRegister = x64::rax;
 constexpr x64::Register kFramePointerRegister = x64::rbp;
 constexpr x64::Register kStackPointerRegister = x64::rsp;
-
-// =============================================================================
-// ScratchRegisterScope - x64 Implementation
-// =============================================================================
-
-class ScratchRegisterScope {
-public:
-    explicit ScratchRegisterScope() = default;
-
-    ~ScratchRegisterScope()
-    {
-#ifndef NDEBUG
-        if (gprAcquiredByMe) {
-            s_gprAcquired = false;
-        }
-        if (fprAcquiredByMe) {
-            s_fprAcquired = false;
-        }
-#endif
-    }
-
-    x64::Register AcquireScratch()
-    {
-#ifndef NDEBUG
-        ASSERT(!s_gprAcquired);
-        gprAcquiredByMe = true;
-        s_gprAcquired = true;
-#endif
-        return X64_SCRATCH_REGISTER;
-    }
-
-    x64::DoubleRegister AcquireDoubleScratch()
-    {
-#ifndef NDEBUG
-        ASSERT(!s_fprAcquired);
-        fprAcquiredByMe = true;
-        s_fprAcquired = true;
-#endif
-        return X64_SCRATCH_DOUBLE_REGISTER;
-    }
-
-private:
-#ifndef NDEBUG
-    static inline bool s_gprAcquired = false;
-    static inline bool s_fprAcquired = false;
-
-    bool gprAcquiredByMe = false;
-    bool fprAcquiredByMe = false;
-#endif
-};
 
 x64::Operand ArkSteedAssembler::GetStackSlot(const AllocatedState &operand)
 {
@@ -112,7 +59,7 @@ void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, Dest dst, Source sr
 template <>
 inline void ArkSteedAssembler::MoveRepr(MachineRepresentation repr, MemoryOperand dst, MemoryOperand src)
 {
-    ScratchRegisterScope scope;
+    TemporaryRegisterScope scope(this);
     ArkSteedRegister scratch = scope.AcquireScratch();
     MoveRepr(repr, scratch, src);
     MoveRepr(repr, dst, scratch);

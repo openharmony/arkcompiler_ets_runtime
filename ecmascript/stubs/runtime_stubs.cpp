@@ -26,6 +26,7 @@
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_function.h"
@@ -51,6 +52,9 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#endif
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -86,6 +90,21 @@ namespace panda::ecmascript {
 
 #define GET_ASM_FRAME(CurrentSp) \
     (reinterpret_cast<AsmInterpretedFrame *>(CurrentSp) - 1) // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+extern "C" bool PrepareForExceptionLazyDeopt(uintptr_t argGlue)
+{
+    return Deoptimizier::PrepareForExceptionLazyDeopt(JSThread::GlueToJSThread(argGlue));
+}
+
+extern "C" bool PrepareForExceptionLazyDeoptFromLeaveFrame(uintptr_t argGlue)
+{
+    JSThread *thread = JSThread::GlueToJSThread(argGlue);
+    if (!thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+        return false;
+    }
+    auto *lastLeave = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
+    return Deoptimizier::PrepareForExceptionLazyDeopt(thread, lastLeave);
+}
 
 DEF_RUNTIME_STUBS(InitializeGeneratorFunction)
 {
@@ -1935,6 +1954,16 @@ DEF_RUNTIME_STUBS(OptCreateObjectWithExcludedKeys)
 DEF_RUNTIME_STUBS(UpFrame)
 {
     RUNTIME_STUBS_HEADER(UpFrame);
+    constexpr int32_t PREPARE_EXCEPTION_LAZY_DEOPT = 1;
+    if (argc == 1 && GetArg(argv, argc, 0).GetInt() == PREPARE_EXCEPTION_LAZY_DEOPT) {
+        if (thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+            PrepareForExceptionLazyDeoptFromLeaveFrame(thread->GetGlueAddr());
+        }
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableJitLazyDeopt()) {
+        PrepareForExceptionLazyDeopt(thread->GetGlueAddr());
+    }
     FrameHandler frameHandler(thread);
     uint32_t pcOffset = panda_file::INVALID_OFFSET;
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
@@ -3520,6 +3549,24 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     }
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+uintptr_t RuntimeStubs::ArkSteedDeoptimize(uintptr_t argGlue, uintptr_t returnPc,
+                                           uintptr_t inputFp, uintptr_t snapshot)
+{
+    if (argGlue == 0) {
+        LOG_FULL(FATAL) << "ArkSteed eager deopt runtime received a null glue";
+        UNREACHABLE();
+    }
+    JSThread *thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType context = 0;
+    if (!arksteed::HandleArkSteedDeoptNoGC(thread, returnPc, inputFp, snapshot, &context)) {
+        LOG_FULL(FATAL) << "ArkSteed eager deopt metadata or runtime ABI is corrupted";
+        UNREACHABLE();
+    }
+    return static_cast<uintptr_t>(context);
+}
+#endif
+
 double RuntimeStubs::FloatMod(double x, double y)
 {
     return std::fmod(x, y);
@@ -3960,7 +4007,8 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     RUNTIME_STUBS_HEADER(DeoptHandler);
     // deoptType must be tagged because maybe gc will happen, if not, gc will accidentally scan it as heap object.
     ASSERT(GetArg(argv, argc, 0).IsInt());
-    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
+    int32_t dispatch = GetArg(argv, argc, 0).GetInt();
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(dispatch);
     JSHandle<JSTaggedValue> maybeAcc = GetHArg<JSTaggedValue>(argv, argc, 1);
     size_t depth = Deoptimizier::GetInlineDepth(thread, static_cast<uint32_t>(type));
     Deoptimizier deopt(thread, depth, type);
@@ -3969,8 +4017,8 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     ASSERT(!deoptBundle.empty());
     size_t shift = Deoptimizier::ComputeShift(depth);
     deopt.CollectVregs(deoptBundle, shift);
-    deopt.UpdateAndDumpDeoptInfo(type);
-    return deopt.ConstructAsmInterpretFrame(maybeAcc);
+    deopt.UpdateAndDumpDeoptInfo(type, true);
+    return deopt.ConstructAsmInterpretFrame(maybeAcc, false);
 }
 
 DEF_RUNTIME_STUBS(AotInlineTrace)

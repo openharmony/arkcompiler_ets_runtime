@@ -16,10 +16,18 @@
 #ifndef ECMASCRIPT_ARKSTEED_ASSEMBLER_H
 #define ECMASCRIPT_ARKSTEED_ASSEMBLER_H
 
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
 #include "ecmascript/arksteed/arksteed_comment.h"
+#include "ecmascript/arksteed/arksteed_condition_code.h"
+#include "ecmascript/arksteed/arksteed_deopt_helper.h"
+#include "ecmascript/mem/embedded_code_ref.h"
 #include "ecmascript/arksteed/arksteed_regalloc_types.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
 #include "libpandabase/macros.h"
 
@@ -27,42 +35,32 @@
 #include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #elif defined(PANDA_TARGET_ARM64)
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/mem/chunk_containers.h"
 #endif
 
 namespace panda::ecmascript::arksteed {
 
 class ArkSteedDisassembler;
 class Graph;
-
-using Label = panda::ecmascript::Label;
-
 class ArkSteedAssembler;
-class ScratchRegisterScope;
+class TemporaryRegisterScope;
 
-// =============================================================================
-// Condition - Platform-agnostic condition codes
-// =============================================================================
-
-enum class Condition {
-    COND_EQUAL,
-    COND_NOT_EQUAL,
-    COND_LESS_THAN,
-    COND_LESS_THAN_OR_EQUAL,
-    COND_GREATER_THAN,
-    COND_GREATER_THAN_OR_EQUAL,
-    COND_ABOVE,
-    COND_BELOW,
-    COND_ABOVE_OR_EQUAL,
-    COND_BELOW_OR_EQUAL,
-    COND_ZERO,
-    COND_NOT_ZERO,
-    COND_OVERFLOW,
-    COND_NOT_OVERFLOW
-};
-inline Condition NegateCondition(Condition cond)
-{
-    return static_cast<Condition>(static_cast<int>(cond) ^ 1);
-}
+#if defined(PANDA_TARGET_AMD64)
+constexpr x64::Register X64_SCRATCH_REGISTER = ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER;
+constexpr x64::DoubleRegister X64_SCRATCH_DOUBLE_REGISTER = x64::xmm15;
+static_assert(!GetAllocatableGeneralRegisters().Has(X64_SCRATCH_REGISTER));
+static_assert(!GetAllocatableDoubleRegisters().Has(X64_SCRATCH_DOUBLE_REGISTER));
+#elif defined(PANDA_TARGET_ARM64)
+constexpr aarch64::Register kScratchRegister = ARKSTEED_EAGER_DEOPT_ENTRY_TARGET_REGISTER;
+constexpr aarch64::Register kScratchRegister2 = ARKSTEED_EAGER_DEOPT_ENTRY_GLUE_REGISTER;
+constexpr aarch64::DoubleRegister kScratchDoubleRegister = aarch64::d30;
+constexpr aarch64::DoubleRegister kScratchDoubleRegister2 = aarch64::d31;
+// x16 carries the shared-entry address, x17 carries the current glue and lr carries the JIT continuation PC.
+static_assert(!GetAllocatableGeneralRegisters().Has(kScratchRegister));
+static_assert(!GetAllocatableGeneralRegisters().Has(kScratchRegister2));
+static_assert(!GetAllocatableDoubleRegisters().Has(kScratchDoubleRegister));
+static_assert(!GetAllocatableDoubleRegisters().Has(kScratchDoubleRegister2));
+#endif
 
 // =============================================================================
 // ArkSteedAssembler - Platform-agnostic assembler interface
@@ -85,6 +83,7 @@ public:
     static constexpr int NUM_ARG_REGISTERS = 8;
 #endif
     static constexpr ArkSteedRegister GetParameterRegister(int i);
+    inline void LoadGlue(ArkSteedRegister dst);
 
     static constexpr int FRAME_SLOT_SIZE = 8;
 
@@ -95,6 +94,11 @@ public:
     inline MemoryOperand GetCallArgSlot(int32_t slotIndex);
     void ReserveCallArgSlots(int32_t slotCount);
     void FreeCallArgSlots(int32_t slotCount);
+    void ReserveCallArgSlots(ArkSteedRegister slotCount);
+    void FreeCallArgSlots(ArkSteedRegister slotCount);
+    void RestoreStackPointerToFrameBottom(Graph *graph);
+    void PushUndefinedForSteedCall(ArkSteedRegister fillSlotCount, uint32_t userArgc);
+    void PrepareSteedCalleeContext(ArkSteedRegister target, ArkSteedRegister codeEntry);
 
     inline int32_t GetFramePointerOffsetForStackSlot(int32_t slotIndex, MachineRepresentation rep) const
     {
@@ -115,21 +119,57 @@ public:
     void Move(ArkSteedRegister dst, uint64_t immediate);
     void Move(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
     void Move(ArkSteedDoubleRegister dst, double immediate);
+    void Move(ArkSteedDoubleRegister dst, double immediate, ArkSteedRegister scratch);
+    void Move(ArkSteedDoubleRegister dst, ArkSteedRegister src);
+    void Move(ArkSteedRegister dst, ArkSteedDoubleRegister src);
 
     template <typename Dest, typename Source>
     inline void MoveRepr(MachineRepresentation repr, Dest dst, Source src);
 
     void LoadTaggedValue(ArkSteedRegister dst, uint64_t taggedValue);
+    void MoveEmbeddedTagged(ArkSteedRegister dst, uint32_t handleIndex);
+    void FinalizeEmbeddedRefs();
+
+    const std::vector<EmbeddedCodeRefReloc> &GetEmbeddedRefRelocations() const
+    {
+        return embeddedRefRelocations_;
+    }
 
     // =========================================================================
     // Memory Operations
     // =========================================================================
 
     void LoadField(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
+    void LoadInt32Field(ArkSteedRegister dst, ArkSteedRegister base, int32_t offset);
+    void LoadTaggedElement(ArkSteedRegister dst, ArkSteedRegister elements, ArkSteedRegister index);
+    void StoreTaggedElement(ArkSteedRegister elements, ArkSteedRegister index, ArkSteedRegister value,
+                            ArkSteedRegister scratch);
+    void LoadLineStringCharCode(ArkSteedRegister dst, ArkSteedRegister string, ArkSteedRegister index,
+                                ArkSteedRegister lengthAndFlags);
+    void LoadTypedArrayDataPointer(ArkSteedRegister dst, ArkSteedRegister receiver, ArkSteedRegister storage,
+                                   ArkSteedRegister scratch, bool isOnHeap);
+    void LoadTypedArrayIntElement(ArkSteedRegister dst, ArkSteedRegister data, ArkSteedRegister index,
+                                  JSType elementType);
+    void LoadTypedArrayDoubleElement(ArkSteedDoubleRegister dst, ArkSteedRegister data, ArkSteedRegister index,
+                                     ArkSteedRegister scratch, JSType elementType);
+    void StoreTypedArrayIntElement(ArkSteedRegister value, ArkSteedRegister data, ArkSteedRegister index,
+                                   JSType elementType);
     void StoreField(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreField(ArkSteedRegister src, ArkSteedRegister base, ArkSteedRegister offset);
+    void StoreInt8Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreInt16Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreInt32Field(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreInt32FieldRelease(ArkSteedRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreFloat64Field(ArkSteedDoubleRegister src, ArkSteedRegister base, int32_t offset);
+    void StoreFloat32Field(ArkSteedDoubleRegister src, ArkSteedDoubleRegister scratch, ArkSteedRegister base,
+                           int32_t offset);
     void LoadActualArgc(ArkSteedRegister dst);
 
     void LoadFloat64(ArkSteedDoubleRegister dst, MemoryOperand srcOp);
+    void StoreFloat64(MemoryOperand dstOp, ArkSteedDoubleRegister src);
+    void StoreFloat64Constant(MemoryOperand dstOp, double immediate, ArkSteedRegister scratchGPR,
+                              ArkSteedDoubleRegister scratchFPR);
+    void ConvertInt32ToDouble(ArkSteedDoubleRegister dst, ArkSteedRegister src);
 
     // =========================================================================
     // Arithmetic Operations
@@ -137,30 +177,90 @@ public:
 
     void Add(ArkSteedRegister dst, ArkSteedRegister src);
     void Add(ArkSteedRegister dst, int32_t immediate);
+    void Add(ArkSteedRegister dst, int64_t immediate);
     void Sub(ArkSteedRegister dst, ArkSteedRegister src);
     void Sub(ArkSteedRegister dst, int32_t immediate);
+    void SignExtendInt32ToInt64(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Add(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32Sub(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32Mul(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32MulWide(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32MulHigh(ArkSteedRegister dst, ArkSteedRegister left, ArkSteedRegister right);
+    void Int32Div(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor);
+    void Int32DivAndRemainder(ArkSteedRegister quotient, ArkSteedRegister remainder, ArkSteedRegister dividend,
+                              ArkSteedRegister divisor);
+    void PositiveInt32Mod(ArkSteedRegister dst, ArkSteedRegister dividend, ArkSteedRegister divisor);
+    void Int32ToFloat64(ArkSteedDoubleRegister dst, ArkSteedRegister src);
+    void Float64Add(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Sub(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Mul(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Div(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void Float64Neg(ArkSteedDoubleRegister dst, ArkSteedDoubleRegister src);
+    void CompareFloat64(ArkSteedDoubleRegister left, ArkSteedDoubleRegister right);
+    void TruncateFloat64ToInt32(ArkSteedRegister dst, ArkSteedDoubleRegister src);
+    void Word64And(ArkSteedRegister dst, ArkSteedRegister src);
 
     // =========================================================================
     // Bitwise Operations
     // =========================================================================
 
+    void Or(ArkSteedRegister dst, int32_t immediate);
     void Or(ArkSteedRegister dst, int64_t immediate);
     void Or(ArkSteedRegister dst, ArkSteedRegister src);
+    void And(ArkSteedRegister dst, int32_t immediate);
+    void And(ArkSteedRegister dst, int64_t immediate);
+    void And(ArkSteedRegister dst, ArkSteedRegister src);
+    void Lsr(ArkSteedRegister dst, uint32_t shift);
+    void ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
+    void ShiftLeft(ArkSteedRegister dst, uint32_t shift);
+    void ShiftRightLogical32(ArkSteedRegister dst, uint32_t shift);
+    void MoveBitMask32(ArkSteedRegister dst, ArkSteedRegister bitIndex);
+    void Int32Neg(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Inc(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Dec(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32BNot(ArkSteedRegister dst);
+    void Int32And(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32And(ArkSteedRegister dst, int32_t immediate);
+    void Int32Or(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Or(ArkSteedRegister dst, int32_t immediate);
+    void Int32Xor(ArkSteedRegister dst, ArkSteedRegister src);
+    void Int32Xor(ArkSteedRegister dst, int32_t immediate);
+    void Int32ShiftLeft(ArkSteedRegister dst, uint32_t shift);
+    void Int32ShiftLeftByRegister(ArkSteedRegister dst, ArkSteedRegister shift);
+    void Int32ShiftRightLogical(ArkSteedRegister dst, uint32_t shift);
+    void Int32ShiftRightLogicalByRegister(ArkSteedRegister dst, ArkSteedRegister shift);
+    void Int32ShiftRightArithmetic(ArkSteedRegister dst, uint32_t shift);
+    void Int32ShiftRightArithmeticByRegister(ArkSteedRegister dst, ArkSteedRegister shift);
 
     // =========================================================================
     // Comparison Operations
     // =========================================================================
 
     void Compare(ArkSteedRegister lhs, ArkSteedRegister rhs);
+    void CompareInt32(ArkSteedRegister lhs, ArkSteedRegister rhs);
     void Compare(ArkSteedRegister lhs, int32_t immediate);
+    void Compare(ArkSteedRegister lhs, int64_t immediate);
+    void CompareInt32(ArkSteedRegister lhs, int32_t immediate);
+    void CompareField(ArkSteedRegister base, int32_t offset, ArkSteedRegister rhs);
 
     // =========================================================================
     // Control Flow
     // =========================================================================
 
     void Jump(Label *target);
+#if defined(PANDA_TARGET_AMD64)
+    void Jump(ArkSteedRegister target);
+#endif
     void JumpIf(Condition condition, Label *target);
+    void JumpIfNotTaggedHeapObject(ArkSteedRegister value, Label *target);
+    void JumpIfNotJSFunction(ArkSteedRegister value, Label *target);
+    void JumpIfClassConstructor(ArkSteedRegister jsFunc, Label *target);
+    void JumpIfNotArkSteedEntry(ArkSteedRegister jsFunc, Label *target);
     void Bind(Label *label);
+#if defined(PANDA_TARGET_ARM64)
+    void CheckCodePools(bool precedingCodeCanFallThrough, size_t protectedCodeSize = 0U);
+    void FinalizeVeneers();
+#endif
     inline void Branch(Condition condition, Label *ifTrue, bool fallthroughWhenTrue, Label *ifFalse,
                        bool fallthroughWhenFalse);
 
@@ -171,25 +271,38 @@ public:
     void Call(ArkSteedRegister target);
     void Call(Label *target);
     inline void CallRuntime(kungfu::RuntimeStubCSigns::ID runtimeId);
+    inline void CallTrampoline(kungfu::RuntimeStubCSigns::ID stubId);
+    inline void CallNGCRuntime(kungfu::RuntimeStubCSigns::ID runtimeId);
     inline void CallCommonStub(uint32_t stubId);
     void ReturnWithPendingException();
     void ReturnIfPendingException();
     // Branch to target if no pending exception exists in JSThread.
-    void BranchIfNoPendingException(Label* target);
+    void BranchIfNoPendingException(Label *target);
     void LoadAndClearPendingException(ArkSteedRegister dst, ArkSteedRegister glue);
     void Return();
+
+    // =========================================================================
+    // Deoptimization
+    // =========================================================================
+
+    void CallDeoptHandler(kungfu::DeoptType deoptType);
+    // Restores the normal ArkSteed cold-block link/alignment state before the GC-capable overflow path.
+    void NormalizeEagerDeoptOverflowLink();
+    // Calls the global no-GC entry while preserving the fixed-exit return PC.
+    void CallArkSteedDeoptimizationEntry();
 
     // =========================================================================
     // Stack Operations
     // =========================================================================
 
-#if defined(PANDA_TARGET_AMD64)
     void Push(ArkSteedRegister reg);
     void Pop(ArkSteedRegister reg);
-#elif defined(PANDA_TARGET_ARM64)
-    void Push(ArkSteedRegister reg1, ArkSteedRegister reg2);
-    void Pop(ArkSteedRegister reg1, ArkSteedRegister reg2);
-#endif
+    void Push(ArkSteedDoubleRegister reg);
+    void Pop(ArkSteedDoubleRegister reg);
+    void PushAll(const ArkSteedRegList &registers);
+    void PopAll(const ArkSteedRegList &registers);
+    void PushAll(const ArkDoubleRegList &registers);
+    void PopAll(const ArkDoubleRegList &registers);
 
     // =========================================================================
     // Function Prologue/Epilogue
@@ -214,6 +327,7 @@ public:
         enableComments_ = enable;
     }
     void RecordComment(const char *str);
+    void RecordCommentAt(uint32_t pcOffset, const char *str);
     bool IsCommentEnabled() const
     {
         return enableComments_;
@@ -236,23 +350,198 @@ public:
     }
 
 private:
+    friend class TemporaryRegisterScope;
+
 #if defined(PANDA_TARGET_AMD64)
     using PlatformAssembler = x64::AssemblerX64;
 #elif defined(PANDA_TARGET_ARM64)
     using PlatformAssembler = aarch64::AssemblerAarch64;
+    enum class AddSubImmediateOp : uint8_t {
+        ADD,
+        SUB,
+        SUBS,
+    };
+
     aarch64::Condition ToPhysicalCondition(Condition condition) const;
+    void EmitAddSubImmediate(ArkSteedRegister dst, ArkSteedRegister src, uint64_t immediate,
+                             AddSubImmediateOp operation);
+    aarch64::MemoryOperand MaterializeAddress(const aarch64::MemoryOperand &operand);
+    void LoadRegisterWithOperand(const aarch64::Register &dst, const aarch64::MemoryOperand &src);
+    void StoreRegisterWithOperand(const aarch64::Register &src, const aarch64::MemoryOperand &dst);
+    void PushPair(ArkSteedRegister reg1, ArkSteedRegister reg2);
+    void PopPair(ArkSteedRegister reg1, ArkSteedRegister reg2);
+    void PushPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
+    void PopPair(ArkSteedDoubleRegister reg1, ArkSteedDoubleRegister reg2);
+    static constexpr uint32_t VENEER_INSTRUCTION_SIZE = sizeof(uint32_t);  // One ARM64 instruction is 4 bytes.
+    static constexpr uint32_t VENEER_DISTANCE_MARGIN = 4U * 1024U;         // Check 4 KiB before the encoding limit.
+    static constexpr uint32_t EMBEDDED_LITERAL_MAX_FORWARD_DISPLACEMENT = ((1U << 18U) - 1U) * sizeof(uint32_t);
+    static constexpr uint32_t EMBEDDED_LITERAL_DISTANCE_MARGIN = 4U * 1024U;
+    static constexpr uint32_t EMBEDDED_LITERAL_SIZE = sizeof(JSTaggedType);
+    static constexpr uint32_t EMBEDDED_LITERAL_POOL_PREFIX_RESERVE = 2U * sizeof(uint32_t);
+    static bool IsVeneerBranchOrCall(uint32_t instruction);
+    static bool IsVeneerConditionOrCompareBranch(uint32_t instruction);
+    static bool IsVeneerTestBranch(uint32_t instruction);
+    bool IsVeneerBranchInRange(uint32_t instruction, int64_t displacement) const;
+    uint32_t GetVeneerBranchDeadline(uint32_t branchPc, uint32_t instruction) const;
+    uint64_t GetPotentialVeneerPoolSize() const;
+    void UpdateVeneerPoolCheck();
+    void CheckVeneerPool(bool precedingCodeCanFallThrough, size_t protectedCodeSize);
+    void RecordVeneerBranch(uint32_t branchPc, Label *target);
+    void PatchVeneerBranchTarget(uint32_t branchPc, uint32_t targetPc);
+    void BindVeneerLabel(Label *label);
+    void UpdateEmbeddedLiteralPoolCheck(uint32_t loadOffset, size_t literalIndex);
+    uint64_t GetEmbeddedLiteralPoolMaxSize() const;
+    void EmitEmbeddedLiteralPool(bool precedingCodeCanFallThrough);
+    void TestAndBranchIfZero(ArkSteedRegister value, int32_t bit, Label *target);
+    void TestAndBranchIfNotZero(ArkSteedRegister value, int32_t bit, Label *target);
 #endif
 
     PlatformAssembler assembler_;
+#if defined(PANDA_TARGET_ARM64)
+    Chunk *chunk_;
+    ChunkMap<Label *, ChunkVector<uint32_t>> veneerBranches_;
+    uint32_t nextVeneerPoolCheck_ {UINT32_MAX};  // UINT32_MAX means that no pool check is pending.
+    uint32_t nextEmbeddedLiteralPoolCheck_ {UINT32_MAX};
+    bool emittingVeneerPool_ {false};
+    bool emittingEmbeddedLiteralPool_ {false};
+
+    struct PendingEmbeddedLiteral {
+        Label label {};
+        uint32_t handleIndex {0};
+        std::vector<uint32_t> loadOffsets {};
+    };
+    std::vector<std::unique_ptr<PendingEmbeddedLiteral>> pendingEmbeddedLiterals_ {};
+    std::unordered_map<uint32_t, size_t> embeddedLiteralIndexByHandle_ {};
+#endif
+    std::vector<EmbeddedCodeRefReloc> embeddedRefRelocations_ {};
     bool enableComments_ = false;
     bool hasFrame_ = false;
     uint32_t taggedStackSlots_ = 0;
+    TemporaryRegisterScope *temporaryRegisterScope_ = nullptr;
     CommentList comments_;
     [[maybe_unused]] JSThread *compilerThread_;
     JSThread *entryThread_;
 
     NO_COPY_SEMANTIC(ArkSteedAssembler);
     NO_MOVE_SEMANTIC(ArkSteedAssembler);
+};
+
+class TemporaryRegisterScope {
+public:
+    explicit TemporaryRegisterScope(ArkSteedAssembler *assembler) : assembler_(assembler)
+    {
+        previous_ = assembler_->temporaryRegisterScope_;
+        if (previous_ != nullptr) {
+            availableTemporaryGPRs_ = previous_->availableTemporaryGPRs_;
+            availableTemporaryFPRs_ = previous_->availableTemporaryFPRs_;
+            requiredSpecificGPRs_ = previous_->requiredSpecificGPRs_;
+            requiredSpecificFPRs_ = previous_->requiredSpecificFPRs_;
+            availableScratchGPRs_ = previous_->availableScratchGPRs_;
+            availableScratchFPRs_ = previous_->availableScratchFPRs_;
+        } else {
+#if defined(PANDA_TARGET_AMD64)
+            availableScratchGPRs_.Set(X64_SCRATCH_REGISTER);
+            availableScratchFPRs_.Set(X64_SCRATCH_DOUBLE_REGISTER);
+#elif defined(PANDA_TARGET_ARM64)
+            availableScratchGPRs_.Set(kScratchRegister);
+            availableScratchGPRs_.Set(kScratchRegister2);
+            availableScratchFPRs_.Set(kScratchDoubleRegister);
+            availableScratchFPRs_.Set(kScratchDoubleRegister2);
+#endif
+        }
+        assembler_->temporaryRegisterScope_ = this;
+    }
+
+    ~TemporaryRegisterScope()
+    {
+        ASSERT(assembler_->temporaryRegisterScope_ == this);
+        assembler_->temporaryRegisterScope_ = previous_;
+    }
+
+    NO_COPY_SEMANTIC(TemporaryRegisterScope);
+    NO_MOVE_SEMANTIC(TemporaryRegisterScope);
+
+    void Include(const ArkSteedRegList &registers)
+    {
+        ASSERT((registers - GetAllocatableGeneralRegisters()).IsEmpty());
+        availableTemporaryGPRs_ |= registers;
+    }
+
+    void IncludeDouble(const ArkDoubleRegList &registers)
+    {
+        ASSERT((registers - GetAllocatableDoubleRegisters()).IsEmpty());
+        availableTemporaryFPRs_ |= registers;
+    }
+
+    void IncludeSpecific(const ArkSteedRegList &registers)
+    {
+        ASSERT((registers - GetAllocatableGeneralRegisters()).IsEmpty());
+        requiredSpecificGPRs_ |= registers;
+    }
+
+    void IncludeSpecificDouble(const ArkDoubleRegList &registers)
+    {
+        ASSERT((registers - GetAllocatableDoubleRegisters()).IsEmpty());
+        requiredSpecificFPRs_ |= registers;
+    }
+
+    ArkSteedRegister Acquire()
+    {
+        if (availableTemporaryGPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "RA temporary GPR pool exhausted";
+        }
+        return availableTemporaryGPRs_.PopFirst();
+    }
+
+    ArkSteedDoubleRegister AcquireDouble()
+    {
+        if (availableTemporaryFPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "RA temporary FPR pool exhausted";
+        }
+        return availableTemporaryFPRs_.PopFirst();
+    }
+
+    ArkSteedRegister AcquireSpecific(ArkSteedRegister reg) const
+    {
+        if (!requiredSpecificGPRs_.Has(reg)) {
+            LOG_JIT(FATAL) << "Undeclared specific GPR temporary: " << static_cast<int32_t>(reg.Code());
+        }
+        return reg;
+    }
+
+    ArkSteedDoubleRegister AcquireSpecificDouble(ArkSteedDoubleRegister reg) const
+    {
+        if (!requiredSpecificFPRs_.Has(reg)) {
+            LOG_JIT(FATAL) << "Undeclared specific FPR temporary: " << static_cast<int32_t>(reg.Code());
+        }
+        return reg;
+    }
+
+    ArkSteedRegister AcquireScratch()
+    {
+        if (availableScratchGPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "Architecture scratch GPR pool exhausted";
+        }
+        return availableScratchGPRs_.PopFirst();
+    }
+
+    ArkSteedDoubleRegister AcquireDoubleScratch()
+    {
+        if (availableScratchFPRs_.IsEmpty()) {
+            LOG_JIT(FATAL) << "Architecture scratch FPR pool exhausted";
+        }
+        return availableScratchFPRs_.PopFirst();
+    }
+
+private:
+    ArkSteedAssembler *assembler_;
+    TemporaryRegisterScope *previous_ = nullptr;
+    ArkSteedRegList availableTemporaryGPRs_;
+    ArkDoubleRegList availableTemporaryFPRs_;
+    ArkSteedRegList requiredSpecificGPRs_;
+    ArkDoubleRegList requiredSpecificFPRs_;
+    ArkSteedRegList availableScratchGPRs_;
+    ArkDoubleRegList availableScratchFPRs_;
 };
 
 }  // namespace panda::ecmascript::arksteed

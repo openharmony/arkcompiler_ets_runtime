@@ -84,6 +84,18 @@ void SharedFullGC::Mark()
     marker->ProcessMarkStack(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningMarkTaskFinished();
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    // SharedFullGC keeps mutators suspended, so no embedded references can be installed after root marking.
+    // Keep patching after marking finishes and before Sweep can invoke external callbacks.
+    if (marker->hasEmbeddedRefs_) {
+        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+            if (!heap->GetEmbeddedCodeRefSet()->UpdateSharedTargets()) {
+                LOG_GC(FATAL) << "Failed to update ArkSteed embedded shared-heap references";
+            }
+        });
+    }
+#endif
 }
 
 void SharedFullGC::Sweep()

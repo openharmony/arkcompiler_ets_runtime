@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ARKSTEED_PGO_CONTEXT_H
 
 #include "ecmascript/arksteed/arksteed_access_info_factory.h"
+#include "ecmascript/arksteed/arksteed_feedback_reader.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -26,8 +27,7 @@ public:
         : compilerThread_(compilerThread), env_(env), broker_(compilerThread, env)
     {}
 
-    ArkSteedAccessInfoFactory CreateAccessInfoFactory(
-        const panda::ecmascript::kungfu::BytecodeInfo &bytecodeInfo) const
+    ArkSteedAccessInfoFactory CreateAccessInfoFactory(const kungfu::BytecodeInfo &bytecodeInfo) const
     {
         return ArkSteedAccessInfoFactory(compilerThread_, bytecodeInfo, env_,
                                          const_cast<ArkSteedHeapBroker *>(&broker_));
@@ -46,6 +46,14 @@ public:
     const ArkSteedHeapBroker *GetBroker() const
     {
         return &broker_;
+    }
+
+    OperationFeedback ReadOperationFeedback(const kungfu::BytecodeInfo &bytecodeInfo)
+    {
+        OperationFeedback feedback;
+        ArkSteedFeedbackReader reader(compilerThread_, bytecodeInfo, &broker_);
+        broker_.GetFeedbackForOperation(reader, &feedback);
+        return feedback;
     }
 
 private:

@@ -311,6 +311,7 @@
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::JSTaggedValue::SetProperty*;
+      panda::ecmascript::JSTaggedValue::ToBoolean*;
       panda::ecmascript::JSTaggedValue::ToString*;
       panda::ecmascript::JSTypedArray::FastSetPropertyByIndex*;
       panda::ecmascript::LiteralDataExtractor::ExtractObjectDatas*;
@@ -391,6 +392,7 @@
       panda::ecmascript::filesystem::CreateEmptyFile*;
       panda::ecmascript::base::ArrayHelper::GetLength*;
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
+      panda::ecmascript::base::NumberHelper::DoubleToInt*;
       panda::ecmascript::base::NumberHelper::StringToBigInt*;
       panda::ecmascript::base::NumberHelper::TruncateDouble*;
       panda::ecmascript::base::Utf8JsonParser::Parse*;
@@ -430,6 +432,7 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindsForUser*;
       panda::ecmascript::kungfu::ReviseData::Resolve*;
       panda::ecmascript::kungfu::SnapshotConstantPoolData::Record*;
+      panda::ecmascript::kungfu::LazyDeoptAllDependencies::CheckStableHClass*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnArrayDetector*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnDetector*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnNotPrototype*;
@@ -437,9 +440,19 @@
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnStableProtoChain*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnNotHotReloadPatchMain*;
       panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::DefineSafepoint*;
+      panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::DefineDeoptSafepoint*;
+      panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::DumpMemoryUsage*;
       panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::SetFrameSlots*;
       panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::GetTableSize*;
       panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::EmitToNewBuffer*;
+      panda::ecmascript::arksteed::ArkSteedTask::SetDeoptTranslationData*;
+      panda::ecmascript::arksteed::ArkSteedTask::SetDeoptLiteralData*;
+      panda::ecmascript::arksteed::ArkSteedTask::SetEmbeddedRefData*;
+      panda::ecmascript::arksteed::BuildDeoptTranslationInputs*;
+      panda::ecmascript::arksteed::DeoptLiteralTableBuilder::GetOrAdd*;
+      panda::ecmascript::arksteed::DeoptTranslationBuilder::AddTranslation*;
+      panda::ecmascript::arksteed::DeoptTranslationBuilder::Encode*;
+      panda::ecmascript::arksteed::GetFloat64RawBits*;
       panda::ecmascript::ohos::DecrypRemoveKey*;
       panda::ecmascript::ohos::DecryptAssociateKey*;
       panda::ecmascript::ohos::DecryptSetKey*;

@@ -211,10 +211,16 @@ public:
     void Ldp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Stp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Ldr(const Register &rt, const MemoryOperand &operand);
+    void Ldr(const Register &rt, Label *label);
     void Ldr(const VRegister &vt, const MemoryOperand &operand);  // Load SIMD&FP from memory
     void Ldrh(const Register &rt, const MemoryOperand &operand);
     void Ldrb(const Register &rt, const MemoryOperand &operand);
     void Str(const Register &rt, const MemoryOperand &operand);
+    void Stlr(const Register &rt, const MemoryOperand &operand);
+    void Str(const VRegister &vt, const MemoryOperand &operand);  // Store SIMD&FP to memory
+    void Strb(const Register &rt, const MemoryOperand &operand);
+    void Strh(const Register &rt, const MemoryOperand &operand);
+    void StrFloat32(const VRegister &vt, const MemoryOperand &operand);
     void Ldur(const Register &rt, const MemoryOperand &operand);
     void Stur(const Register &rt, const MemoryOperand &operand);
     void Mov(const Register &rd, const Immediate &imm);
@@ -225,8 +231,12 @@ public:
     // Floating-point/Vector register operations
     void Mov(const VRegister &vd, const VRegister &vn);
     void Fmov(const VRegister &vd, const Register &rn);  // FMOV Dd, Xn - move from GP to V register
+    void Fmov(const Register &rd, const VRegister &vn);  // FMOV Xd, Dn - move from V register to GP
+    bool TryFmov(const VRegister &vd, double immediate);
     void Orr(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Orr(const Register &rd, const Register &rn, const Operand &operand);
+    void Eor(const Register &rd, const Register &rn, const LogicalImmediate &imm);
+    void Eor(const Register &rd, const Register &rn, const Operand &operand);
     void And(const Register &rd, const Register &rn, const Operand &operand);
     void Ands(const Register &rd, const Register &rn, const Operand &operand);
     void And(const Register &rd, const Register &rn, const LogicalImmediate &imm);
@@ -234,7 +244,11 @@ public:
     void Lsr(const Register &rd, const Register &rn, unsigned shift);
     void Lsl(const Register &rd, const Register &rn, const Register &rm);
     void Lsr(const Register &rd, const Register &rn, const Register &rm);
+    void Asr(const Register &rd, const Register &rn, unsigned shift);
+    void Asr(const Register &rd, const Register &rn, const Register &rm);
+    void Mvn(const Register &rd, const Register &rn);
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
+    void Sbfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
 
     void Adr(const Register &rd, Label *label);
@@ -243,6 +257,20 @@ public:
     void Adds(const Register &rd, const Register &rn, const Operand &operand);
     void Sub(const Register &rd, const Register &rn, const Operand &operand);
     void Subs(const Register &rd, const Register &rn, const Operand &operand);
+    void Mul(const Register &rd, const Register &rn, const Register &rm);
+    void Smull(const Register &rd, const Register &rn, const Register &rm);
+    void Sdiv(const Register &rd, const Register &rn, const Register &rm);
+    void Msub(const Register &rd, const Register &rn, const Register &rm, const Register &ra);
+    void Scvtf(const VRegister &vd, const Register &rn);
+    void Fcvt(const VRegister &vd, const VRegister &vn);
+    void Fadd(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fsub(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fmul(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fdiv(const VRegister &vd, const VRegister &vn, const VRegister &vm);
+    void Fneg(const VRegister &vd, const VRegister &vn);
+    void Fcmp(const VRegister &vn, const VRegister &vm);
+    void Fcvtzs(const Register &rd, const VRegister &vn);
+    void FcvtFloat32(const VRegister &vd, const VRegister &vn);
     void Cmp(const Register &rd, const Operand &operand);
     void CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond);
     void B(Label *label);
@@ -282,6 +310,11 @@ private:
     inline uint32_t Rm(uint32_t id)
     {
         return (id << COMMON_REG_Rm_LOWBITS) & COMMON_REG_Rm_MASK;
+    }
+
+    inline uint32_t Ra(uint32_t id)
+    {
+        return (id << COMMON_REG_Ra_LOWBITS) & COMMON_REG_Ra_MASK;
     }
 
     inline uint32_t Rt(uint32_t id)
@@ -333,6 +366,9 @@ private:
     int32_t ImmBranch(uint32_t branchCode);
     void SetRealOffsetToBranchInst(uint32_t linkPos, int32_t disp);
     void Ldr(const Register &rt, const MemoryOperand &operand, Scale scale);
+    void StrRegisterOffset(const Register &rt, const MemoryOperand &operand, Scale scale);
+    void EmitLoadStoreD(const VRegister &vt, const MemoryOperand &operand, uint32_t offsetOpcode,
+                        uint32_t preIndexOpcode, uint32_t postIndexOpcode);
     uint64_t GetImmOfLdr(const MemoryOperand &operand, Scale scale, bool isRegX);
     uint64_t GetOpcodeOfLdr(const MemoryOperand &operand, Scale scale);
     uint32_t GetShiftOfLdr(const MemoryOperand &operand, Scale scale, bool isRegX);

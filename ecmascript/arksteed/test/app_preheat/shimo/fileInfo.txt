@@ -1,2 +1,0 @@
-./shimo/modoc.js;modoc;commonjs;xxx;yyy
-./shimo/shimo.js;shimo;esm;xxx;yyy

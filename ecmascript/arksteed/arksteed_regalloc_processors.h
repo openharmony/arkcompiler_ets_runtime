@@ -16,12 +16,13 @@
 #ifndef ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_PROCESSORS_H
 #define ECMASCRIPT_ARKSTEED_ARKSTEED_REGALLOC_PROCESSORS_H
 
-#include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph_processor.h"
 #include "ecmascript/arksteed/arksteed_opcode.h"
 #include "ecmascript/arksteed/arksteed_regalloc.h"
 #include "ecmascript/arksteed/arksteed_regalloc_vertex_info.h"
 #include "ecmascript/arksteed/arksteed_vertex.h"
+
+#include <type_traits>
 
 namespace panda::ecmascript::arksteed {
 
@@ -58,6 +59,23 @@ private:
     Chunk *chunk_ = nullptr;
 };
 
+template <typename T>
+void EnsureDeoptLocationsForVertex(T *vertex)
+{
+    if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, T>) {
+        auto *deopt = static_cast<LazyDeoptimizableMixin *>(vertex);
+        if (!deopt->HasLazyDeoptFrameState()) {
+            return;
+        }
+        for (uint32_t index = 0; index < deopt->GetDeoptFrameValueCount(); ++index) {
+            InputLocation *location = deopt->GetDeoptSourceLocation(index);
+            if (location->GetOperand().IsInvalid()) {
+                location->GetOperand() = UnallocatedState(NO_VREG);
+            }
+        }
+    }
+}
+
 // =============================================================================
 // ValueLocationConstraintProcessor
 // Calls SetValueLocationConstraints() on each vertex to define
@@ -75,6 +93,7 @@ public:
 #define DEF_PROCESS_VERTEX(NAME)                                         \
     void ProcessVertex(NAME##Vertex *vertex, const ArkSteedState &state) \
     {                                                                    \
+        EnsureDeoptLocationsForVertex(vertex);                           \
         vertex->SetValueLocationConstraints();                           \
         return;                                                          \
     }
@@ -101,21 +120,22 @@ public:
     template <typename T>
     void ProcessVertex(T *vertex, const ArkSteedState &state)
     {
-        constexpr bool isCall = T::PROPERTIES.IsCall();
-        constexpr bool needsRegSnapshot = T::PROPERTIES.NeedsRegisterSnapshot();
-        if constexpr (isCall || needsRegSnapshot) {
-            int vertexStackArgs = static_cast<int>(vertex->GetInputCount());
-            if constexpr (needsRegSnapshot) {
+        constexpr bool isCall = IsCall(T::PROPERTIES);
+        constexpr bool isDeferredCall = IsDeferredCall(T::PROPERTIES);
+        if constexpr (isCall || isDeferredCall) {
+            uint32_t vertexStackArgs = vertex->GetInputCount();
+            if constexpr (isDeferredCall) {
                 // Pessimistically assume that we'll push all registers in deferred calls.
                 vertexStackArgs += ALLOCATABLE_GENERAL_REGISTER_COUNT + ALLOCATABLE_DOUBLE_REGISTER_COUNT;
             }
-            maxCallStackArgs_ = std::max(maxCallStackArgs_, vertexStackArgs);
+            maxCallStackArgs_ = std::max<uint32_t>(maxCallStackArgs_, vertexStackArgs);
         }
     }
 
 private:
-    int maxCallStackArgs_{0};
-    static constexpr int ALLOCATABLE_GENERAL_REGISTER_COUNT = 32; // 32: number of allocatable general-purpose registers
+    int maxCallStackArgs_ {0};
+    static constexpr int ALLOCATABLE_GENERAL_REGISTER_COUNT =
+        32;                                                       // 32: number of allocatable general-purpose registers
     static constexpr int ALLOCATABLE_DOUBLE_REGISTER_COUNT = 32;  // 32: number of allocatable double (FP) registers
 };
 
@@ -129,10 +149,12 @@ private:
 // - For unconditional jumps (Jump/JumpLoop): target block can have Phi vertices
 // =============================================================================
 
-// to do: loop optimize && handle deoptimization
 class LivenessProcessor {
 public:
-    void PreProcessGraph(Graph *graph) {}
+    void PreProcessGraph(Graph *graph)
+    {
+        chunk_ = graph->GetChunk();
+    }
 
     void PreProcessBlock(BB *block)
     {
@@ -159,13 +181,28 @@ public:
     void ProcessVertex(T *vertex, const ArkSteedState &state)
     {
         vertex->GetRegallocInfo()->SetId(nextVertexId_++);
+        LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+        if (loopUsedVertices != nullptr && vertex->IsCall()) {
+            if (loopUsedVertices->firstCall == INVALID_VERTEX_ID) {
+                loopUsedVertices->firstCall = vertex->GetId();
+            }
+            loopUsedVertices->lastCall = vertex->GetId();
+        }
         MarkInputUses(vertex, state);
     }
 
 private:
+    struct LoopVertexUse {
+        VertexId firstRegisterUse = INVALID_VERTEX_ID;
+        VertexId lastRegisterUse = INVALID_VERTEX_ID;
+    };
+
     struct LoopUsedVertices {
-        std::vector<ValueVertex *> usedVertices;  // ValueVertex* from outside the loop
-        BB *header;
+        // ValueVertex* from outside the loop.
+        std::map<ValueVertex *, LoopVertexUse> usedVertices;
+        VertexId firstCall = INVALID_VERTEX_ID;
+        VertexId lastCall = INVALID_VERTEX_ID;
+        BB *header = nullptr;
     };
 
     LoopUsedVertices *GetCurrentLoopUsedVertices()
@@ -181,26 +218,53 @@ private:
     {
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
         vertex->ForAllInputsInRegallocAssignmentOrder([&](const Input &input) {
-            MarkUse(static_cast<ValueVertex *>(input.vertex()), vertex->GetId(), input.GetLocation(), loopUsedVertices);
+            MarkUse(input.vertex()->Cast<ValueVertex>(), vertex->GetId(), input.GetLocation(), loopUsedVertices);
         });
+    }
+
+    template <typename T>
+    void MarkLazyDeoptInputUses(T *vertex, const ArkSteedState &state)
+    {
+        if (!vertex->HasLazyDeoptFrameState()) {
+            return;
+        }
+        uint32_t vertexID = vertex->GetId();
+        LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+        for (uint32_t index = 0, valueCount = vertex->GetDeoptFrameValueCount(); index < valueCount; ++index) {
+            ValueVertex *value = vertex->GetDeoptFrameValue(index);
+            InputLocation *location = vertex->GetDeoptSourceLocation(index);
+            MarkUse(value, vertexID, location, loopUsedVertices);
+        }
     }
 
     template <typename T>
     void MarkCatchPhiInputUses(T *vertex, const ArkSteedState &state)
     {
-        BB *catchBlock = vertex->CaughtBy();
+        BB *catchBlock = CatchBlockOf(vertex);
         if (catchBlock == nullptr || !catchBlock->HasPhi()) {
             return;
         }
         uint32_t use = vertex->GetId();
-        uint32_t predId = vertex->GetCatchPredecessorIndex();
+        uint32_t predId = CatchPredecessorIndexOf(vertex);
         int predIdx = static_cast<int>(predId);
         LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
 
         for (PhiVertex *phi : catchBlock->GetPhis()) {
-            const ValueVertex *input = phi->GetInput(predIdx);
+            ValueVertex *input = phi->GetInput(predIdx);
             InputLocation *location = phi->GetInputLocation(predIdx);
-            MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
+            MarkUse(input, use, location, loopUsedVertices);
+        }
+    }
+
+    template <typename T>
+    void MarkEagerDeoptUses(T *vertex)
+    {
+        if constexpr (std::is_base_of_v<EagerDeoptimizableMixin, T>) {
+            LoopUsedVertices *loopUsedVertices = GetCurrentLoopUsedVertices();
+            for (uint32_t index = 0; index < vertex->GetDeoptFrameValueCount(); ++index) {
+                MarkUse(vertex->GetDeoptFrameValue(index), vertex->GetId(), vertex->GetDeoptSourceLocation(index),
+                        loopUsedVertices);
+            }
         }
     }
 
@@ -209,6 +273,13 @@ public:
     void MarkInputUses(T *vertex, const ArkSteedState &state)
     {
         MarkDirectInputUses(vertex, state);
+        MarkEagerDeoptUses(vertex);
+        if constexpr (std::is_base_of_v<LazyDeoptimizableMixin, T>) {
+            MarkLazyDeoptInputUses(vertex, state);
+        }
+        if constexpr (std::is_base_of_v<ThrowableMixin, T>) {
+            MarkCatchPhiInputUses(vertex, state);
+        }
     }
 
     // Specialization for PhiVertex - skip here, will be handled by control vertices
@@ -228,31 +299,10 @@ public:
 
         const auto &phis = target->GetPhis();
         for (PhiVertex *phi : phis) {
-            const ValueVertex *input = phi->GetPredecessor(predecessorIdx);
+            ValueVertex *input = phi->GetPredecessor(predecessorIdx);
             InputLocation *location = phi->GetInputLocation(predecessorIdx);
-            MarkUse(const_cast<ValueVertex *>(input), use, location, loopUsedVertices);
+            MarkUse(input, use, location, loopUsedVertices);
         }
-    }
-
-    // Specialization for CallCommonStubVertex - extend live range of catch phi inputs
-    void MarkInputUses(CallCommonStubVertex *vertex, const ArkSteedState &state)
-    {
-        MarkDirectInputUses(vertex, state);
-        MarkCatchPhiInputUses(vertex, state);
-    }
-
-    // Specialization for CallRuntimeVertex - extend live range of catch phi inputs
-    void MarkInputUses(CallRuntimeVertex *vertex, const ArkSteedState &state)
-    {
-        MarkDirectInputUses(vertex, state);
-        MarkCatchPhiInputUses(vertex, state);
-    }
-
-    // Specialization for ThrowVertex - extend live range of catch phi inputs
-    void MarkInputUses(ThrowVertex *vertex, const ArkSteedState &state)
-    {
-        MarkDirectInputUses(vertex, state);
-        MarkCatchPhiInputUses(vertex, state);
     }
 
     // Specialization for JumpLoopVertex - handle phi inputs for loop header block and propagate loop-external vertices
@@ -260,7 +310,7 @@ public:
     {
         BB *target = vertex->Target();
         uint32_t use = vertex->GetId();
-        int predecessorIdx = state.GetBlock()->GetPredecessorId();
+        uint32_t predecessorIdx = state.GetBlock()->GetPredecessorId();
 
         ASSERT(!loopUsedVertices_.empty());
         LoopUsedVertices loopUsedVertices = std::move(loopUsedVertices_.back());
@@ -273,23 +323,77 @@ public:
         if (target->HasPhi()) {
             const auto &phis = target->GetPhis();
             for (PhiVertex *phi : phis) {
-                const ValueVertex *input = phi->GetPredecessor(predecessorIdx);
+                ValueVertex *input = phi->GetPredecessor(predecessorIdx);
                 InputLocation *location = phi->GetInputLocation(predecessorIdx);
-                MarkUse(const_cast<ValueVertex *>(input), use, location, outerLoopUsedVertices);
+                MarkUse(input, use, location, outerLoopUsedVertices);
             }
         }
 
         // Propagate loop-external vertices to outer loop if exists
         // This extends their lifetime across the loop back edge
         if (!loopUsedVertices.usedVertices.empty()) {
-            JumpLoopVertex::UsedVerticesType usedVertexInputs;
+            BB::RegallocLoopInfo &loopInfo = loopUsedVertices.header->GetOrCreateRegallocLoopInfo(chunk_);
+            for (auto &[usedVertex, useInfo] : loopUsedVertices.usedVertices) {
+                if (ShouldReloadAtLoopHeader(useInfo, loopUsedVertices)) {
+                    loopInfo.reloadHints.push_back(usedVertex);
+                }
+                if (ShouldSpillAtLoopHeader(useInfo, loopUsedVertices)) {
+                    loopInfo.spillHints.push_back(usedVertex);
+                }
+            }
+
+            JumpLoopVertex::UsedVerticesType usedVertexInputs(chunk_);
             usedVertexInputs.reserve(loopUsedVertices.usedVertices.size());
-            for (size_t i = 0; i < loopUsedVertices.usedVertices.size(); i++) {
-                usedVertexInputs.emplace_back(loopUsedVertices.usedVertices[i], InputLocation());
-                MarkUse(loopUsedVertices.usedVertices[i], use, &usedVertexInputs[i].second, outerLoopUsedVertices);
+            for (auto &entry : loopUsedVertices.usedVertices) {
+                ValueVertex *usedVertex = entry.first;
+                usedVertexInputs.emplace_back(usedVertex, InputLocation());
+                MarkUse(usedVertex, use, &usedVertexInputs.back().second, outerLoopUsedVertices);
             }
             vertex->SetUsedVertices(std::move(usedVertexInputs));
         }
+    }
+
+    static bool IsRegisterUse(const InputLocation *input)
+    {
+        const InstructionOperand &operand = input->GetOperand();
+        if (!operand.IsUnallocated()) {
+            return false;
+        }
+
+        const UnallocatedState unallocated = UnallocatedState::Cast(operand);
+        if (unallocated.GetBasicPolicy() != UnallocatedState::BasicPolicy::EXTENDED_POLICY) {
+            return false;
+        }
+
+        switch (unallocated.GetExtendedPolicy()) {
+            case UnallocatedState::ExtendedPolicy::MUST_HAVE_REGISTER:
+            case UnallocatedState::ExtendedPolicy::FIXED_REGISTER:
+            case UnallocatedState::ExtendedPolicy::FIXED_FP_REGISTER:
+                return true;
+            case UnallocatedState::ExtendedPolicy::NONE:
+            case UnallocatedState::ExtendedPolicy::MUST_HAVE_SLOT:
+            case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT:
+            case UnallocatedState::ExtendedPolicy::REGISTER_OR_SLOT_OR_CONSTANT:
+            case UnallocatedState::ExtendedPolicy::SAME_AS_INPUT:
+                return false;
+        }
+        UNREACHABLE();
+    }
+
+    static bool ShouldReloadAtLoopHeader(const LoopVertexUse &useInfo, const LoopUsedVertices &loopUsedVertices)
+    {
+        return useInfo.firstRegisterUse != INVALID_VERTEX_ID &&
+               (loopUsedVertices.firstCall == INVALID_VERTEX_ID ||
+                (useInfo.firstRegisterUse <= loopUsedVertices.firstCall &&
+                 useInfo.lastRegisterUse > loopUsedVertices.lastCall));
+    }
+
+    static bool ShouldSpillAtLoopHeader(const LoopVertexUse &useInfo, const LoopUsedVertices &loopUsedVertices)
+    {
+        return useInfo.firstRegisterUse == INVALID_VERTEX_ID ||
+               (loopUsedVertices.firstCall != INVALID_VERTEX_ID &&
+                useInfo.firstRegisterUse > loopUsedVertices.firstCall &&
+                useInfo.lastRegisterUse <= loopUsedVertices.lastCall);
     }
 
     void MarkUse(ValueVertex *vertex, uint32_t useId, InputLocation *input, LoopUsedVertices *loopUsedVertices)
@@ -303,13 +407,22 @@ public:
         // and make sure to extend its lifetime to the loop end if yes.
         if (loopUsedVertices != nullptr) {
             if (vertex->GetId() < loopUsedVertices->header->GetFirstId()) {
-                loopUsedVertices->usedVertices.push_back(vertex);
+                LoopVertexUse initialUse {INVALID_VERTEX_ID, INVALID_VERTEX_ID};
+                auto result = loopUsedVertices->usedVertices.emplace(vertex, initialUse);
+                LoopVertexUse &useInfo = result.first->second;
+                if (IsRegisterUse(input)) {
+                    if (useInfo.firstRegisterUse == INVALID_VERTEX_ID) {
+                        useInfo.firstRegisterUse = useId;
+                    }
+                    useInfo.lastRegisterUse = useId;
+                }
             }
         }
     }
 
     std::vector<LoopUsedVertices> loopUsedVertices_;
-    uint32_t nextVertexId_{0};
+    Chunk *chunk_ = nullptr;
+    uint32_t nextVertexId_ {0};
 };
 
 }  // namespace panda::ecmascript::arksteed

@@ -15,249 +15,284 @@
 
 #include "ecmascript/arksteed/arksteed_bytecode_analysis.h"
 
-#include "ecmascript/arksteed/arksteed_bytecode_iterator.h"
-#include "ecmascript/compiler/bytecodes.h"
-
 namespace panda::ecmascript::arksteed {
+using BasicBlockInfo = BytecodePreprocessor::BasicBlockInfo;
 
-void BytecodeAnalysis::PushLoop(uint32_t loopHeader, uint32_t loopEnd)
+BytecodeAnalysis::BytecodeAnalysis(const BytecodePreprocessor *parent)
+    : parent_(parent),
+      numVRegs_(parent->GetNumVRegs()),
+      blockLiveIn_(parent->GetChunk()),
+      blockLiveOut_(parent->GetChunk()),
+      bcLiveIn_(parent->GetChunk()),
+      bcLiveOut_(parent->GetChunk()),
+      ueSet_(parent->GetChunk()),
+      killSet_(parent->GetChunk())
+{}
+
+bool BytecodeAnalysis::Run()
 {
-    loopEndIndexQueue_.push_back(loopEnd);
-    loopInfo_.emplace_back(chunk_, loopHeader, loopEnd, numLocal_, numParams_);
-    loopStack_.push_back(static_cast<int>(loopInfo_.size() - 1));
-}
-
-void BytecodeAnalysis::AnalyzeLivenessAndAssignments(BytecodeContext *bytecodeContext,
-                                                     const ArkSteedCompilationOptions *options)
-{
-    SetOptions(options);
-    const auto &bytecodes = GetBytecodes();
-    const auto &jumpLoop = GetJumpLoop();
-    const auto &pcOffsets = GetPcOffsets();
-
-    ASSERT(bytecodes.size() > 0);
-    BytecodeIterator iterator(bytecodeContext);
-    bytecodeCount_ = bytecodes.size();
-    loopStack_.clear();
-    loopEndIndexQueue_.clear();
-    liveness_.clear();
-    loopStack_.push_back(-1);
-
-    std::generate_n(std::back_inserter(liveness_), bytecodeCount_, [this] {
-        return LivenessInfo(chunk_, numLocal_, numParams_);
-    });
-    LivenessBitSet nexBytecodeLiveIn(chunk_, numLocal_, numParams_);
-
-    // 1. analysis loop
-    for (iterator.GotoEnd(); !iterator.Done(); --iterator) {
-        auto &bytecodeInfo = bytecodes[iterator.Index()];
-        uint32_t index = iterator.Index();
-        if (jumpLoop[index]) {
-            uint32_t loopHeader = iterator.GetJumpTargetBcIndex();
-            uint32_t loopEnd = index;
-            PushLoop(loopHeader, loopEnd);
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (auto *dest : {&blockLiveIn_, &blockLiveOut_, &ueSet_, &killSet_}) {
+        dest->reserve(numBlocks);
+        for (uint32_t i = 0; i < numBlocks; i++) {
+            dest->emplace_back(GetChunk(), numVRegs_);
         }
-        int inLoop = loopStack_.size() > 1 && (!jumpLoop[index] || iterator.GetJumpTargetBcIndex() == index);
-        if (inLoop) {
-            for (size_t i = 1; i < loopStack_.size(); i++) {
-                LoopInfo &curLoop = loopInfo_[loopStack_[i]];
-                UpdateAssignments(curLoop, iterator);
-            }
-            LoopInfo &curInnermostLoop = loopInfo_[loopStack_.back()];
-            if (curInnermostLoop.HeaderIndex() == index) {
-                loopStack_.pop_back();
-            }
-        }
-        UpdateLiveness(bytecodes[index], liveness_[index], nexBytecodeLiveIn, iterator);
     }
 
-    ASSERT(loopStack_.size() == 1);
-    ASSERT(loopStack_.back() == -1);
+    InitializeUEAndKillSets();
+    InitializeLiveIn();
 
-    for (uint32_t loopEndIndex : loopEndIndexQueue_) {
-        iterator.Goto(loopEndIndex);
-        uint32_t headerIndex = iterator.GetJumpTargetBcIndex();
-        uint32_t endIndex = iterator.Index();
-        LivenessInfo &headerLiveness = liveness_[headerIndex];
-        LivenessInfo &endLiveness = liveness_[endIndex];
+    unsigned numIterations = 1;
+    while (UpdateLiveness()) {
+        numIterations++;
+    }
+    ExpandKillSet();
+    FinalizeWithFixedParamsAndEnv();
+    InitializeBytecodeLiveness();
+#ifndef NDEBUG
+    LOG_COMPILER(DEBUG) << "Liveness analysis done. " << numIterations << " iterations used.";
+#endif
+    return true;
+}
 
-        // Live variable set unchanged, continue propagation
-        // The back edge propagates loop_header.in info back to loop_end.out
-        if (!endLiveness.GetLiveOut().UnionWithChanged(headerLiveness.GetLiveIn())) {
+void BytecodeAnalysis::AddUpwardExposedUses(const BytecodeInfo *info, const kungfu::BitSet &killed, kungfu::BitSet &ue)
+{
+    if (info->AccIn() && !TestAcc(killed)) {
+        SetAcc(ue);
+    }
+    if (info->EnvIn() && !TestVReg(killed, LexicalEnvIndex())) {
+        SetVReg(ue, LexicalEnvIndex());
+    }
+    if (info->ThisObjectIn()) {
+        SetVReg(ue, ThisObjectIndex());
+    }
+    for (size_t i = 0, n = info->inputs.size(); i < n; i++) {
+        const auto &in = info->inputs[i];
+        if (!std::holds_alternative<VirtualRegister>(in)) {
             continue;
         }
-        endLiveness.GetLiveIn().CopyFrom(endLiveness.GetLiveOut());
-        nexBytecodeLiveIn.CopyFrom(endLiveness.GetLiveIn());
-
-        --iterator;
-        for (; iterator.Index() != headerIndex; --iterator) {
-            uint32_t index = iterator.Index();
-            UpdateLiveness(bytecodes[index], liveness_[index], nexBytecodeLiveIn, iterator);
-        }
-        UpdateOutLiveness(bytecodes[iterator.Index()], headerLiveness, nexBytecodeLiveIn, iterator);
-    }
-
-    // 3. Print liveness results
-    if (IsLogEnabled()) {
-        DumpLiveness();
-    }
-}
-
-void BytecodeAnalysis::UpdateAssignments(LoopInfo &dest, const BytecodeIterator &iterator)
-{
-    const BytecodeInfo &info = iterator.GetCurrentBytecodeInfo();
-    if (info.AccOut()) {
-        dest.AddDef(VRegOfAcc(numLocal_, numParams_));
-    }
-    for (VRegIDType out : info.vregOut) {
-        dest.AddDef(VirtualRegister{out});
-    }
-}
-
-void BytecodeAnalysis::UpdateLiveness(const BytecodeInfo &bytecode, LivenessInfo &liveness,
-                                      LivenessBitSet &nextBytecodeLiveIn, BytecodeIterator iterator)
-{
-    UpdateOutLiveness(bytecode, liveness, nextBytecodeLiveIn, iterator);
-    UpdateInLiveness(bytecode, liveness);
-    nextBytecodeLiveIn.CopyFrom(liveness.GetLiveIn());
-}
-
-// in[i] = use[i] ∪ (out[i] \ def[i])
-void BytecodeAnalysis::UpdateInLiveness(const BytecodeInfo &bytecode, LivenessInfo &liveness)
-{
-    // Initially let in[i] <- out[i]
-    liveness.GetLiveIn().CopyFrom(liveness.GetLiveOut());
-    // def[i], variable kill
-    if (bytecode.AccOut()) {
-        liveness.GetLiveIn().ClearAcc();
-    }
-    for (const auto &out : bytecode.vregOut) {
-        liveness.GetLiveIn().Clear(out);
-    }
-
-    // use[i], variable use
-    if (bytecode.AccIn()) {
-        liveness.GetLiveIn().SetAcc();
-    }
-    for (size_t i = 0; i < bytecode.inputs.size(); i++) {
-        auto in = bytecode.inputs[i];
-        if (std::holds_alternative<VirtualRegister>(in)) {
-            auto vreg = std::get<VirtualRegister>(in).GetId();
-            liveness.GetLiveIn().Set(vreg);
+        VRegIDType vreg = std::get<VirtualRegister>(in).GetId();
+        if (!TestVReg(killed, vreg)) {
+            SetVReg(ue, vreg);
         }
     }
 }
 
-/*
- out[i] = ⋃ in[next]                    // fall-through
-          ⋃ in[jump_target]             // forward jump
-          ⋃ in[handler]                 // exception handler
-*/
-void BytecodeAnalysis::UpdateOutLiveness(const BytecodeInfo &bytecode, LivenessInfo &liveness,
-                                         LivenessBitSet &nexBytecodeLiveIn, BytecodeIterator iterator)
+void BytecodeAnalysis::AddUsedVRegs(const BytecodeInfo *info, kungfu::BitSet &bitset)
 {
-    const auto &jumpLoop = GetJumpLoop();
-    const auto &exceptionInfo = GetExceptionInfo();
-
-    uint32_t currentIndex = iterator.Index();
-    if (!bytecode.IsJumpImm() && !bytecode.IsReturn() && !bytecode.IsThrow()) {
-        liveness.GetLiveOut().Union(liveness_[currentIndex + 1].GetLiveIn());
+    if (info->AccIn()) {
+        SetAcc(bitset);
     }
-
-    // forwardJump
-    if (bytecode.IsJump() && !jumpLoop[currentIndex]) {
-        int targetIndex = iterator.GetJumpTargetBcIndex();
-        liveness.GetLiveOut().Union(liveness_[targetIndex].GetLiveIn());
+    if (info->EnvIn()) {
+        SetVReg(bitset, LexicalEnvIndex());
     }
-
-    // Exception handling
-    // If bytecode has external side effects (may throw exceptions), consider exception handler liveness
-    // In Ark, the throw instruction's accumulator carries the exception value to the handler
-    if (bytecode.NoSideEffects() || exceptionInfo.empty()) {
-        return;
+    if (info->ThisObjectIn()) {
+        SetVReg(bitset, ThisObjectIndex());
     }
-    
-    // Binary search for the try block containing the current bytecode
-    // Find the last ExceptionItem where startBcIndex <= currentIndex
-    auto it = std::upper_bound(
-        exceptionInfo.begin(),
-        exceptionInfo.end(),
-        currentIndex,
-        [](int value, const ExceptionItem &item) { return value < static_cast<int>(item.startBcIndex); });
-
-    if (it == exceptionInfo.begin()) {
-        return;
-    }
-    --it;
-    const ExceptionItem &exItem = *it;
-
-    // Check if currentIndex is within [startBcIndex, endBcIndex)
-    if (currentIndex < static_cast<uint32_t>(exItem.startBcIndex) ||
-        currentIndex >= static_cast<uint32_t>(exItem.endBcIndex)) {
-        return;
-    }
-    
-    // 1. First record whether the accumulator was originally live
-    bool wasAccumulatorLive = liveness.GetLiveOut().TestAcc();
-
-    // 2. For each catch block, union its in-liveness into out-liveness
-    for (uint32_t catchBcIndex : exItem.catchBcIndices) {
-        if (catchBcIndex < liveness_.size()) {
-            liveness.GetLiveOut().Union(liveness_[catchBcIndex].GetLiveIn());
+    for (size_t i = 0, n = info->inputs.size(); i < n; i++) {
+        const auto &in = info->inputs[i];
+        if (!std::holds_alternative<VirtualRegister>(in)) {
+            continue;
         }
-    }
-
-    // 3. If only the catch makes the accumulator live, clear it
-    // This is because the accumulator is overwritten by the exception value when entering the handler
-    if (!wasAccumulatorLive) {
-        liveness.GetLiveOut().ClearAcc();
+        SetVReg(bitset, std::get<VirtualRegister>(in).GetId());
     }
 }
 
-void BytecodeAnalysis::DumpLiveness() const
+void BytecodeAnalysis::SetDefinedVRegs(const BytecodeInfo *info, kungfu::BitSet &bitset)
 {
-    LOG_COMPILER(INFO) << "========== Liveness Analysis Result ==========";
-    LOG_COMPILER(INFO) << "numLocal = " << numLocal_ << ", numParams = " << numParams_;
+    if (info->AccOut()) {
+        SetAcc(bitset);
+    }
+    if (info->EnvOut()) {
+        SetVReg(bitset, LexicalEnvIndex());
+    }
+    for (VRegIDType out : info->vregOut) {
+        SetVReg(bitset, out);
+    }
+}
 
-    const auto &bytecodes = GetBytecodes();
+void BytecodeAnalysis::ClearDefinedVRegs(const BytecodeInfo *info, kungfu::BitSet &bitset)
+{
+    if (info->AccOut()) {
+        ClearAcc(bitset);
+    }
+    if (info->EnvOut()) {
+        ClearVReg(bitset, LexicalEnvIndex());
+    }
+    for (VRegIDType out : info->vregOut) {
+        ClearVReg(bitset, out);
+    }
+}
+
+void BytecodeAnalysis::ExpandKillSet()
+{
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(blockIndex);
+
+        while (curBlock->loopHeaderBlock != nullptr) {
+            uint32_t headerBlockIndex = curBlock->loopHeaderBlock->rpoIndex;
+            killSet_[headerBlockIndex].Union(killSet_[blockIndex]);
+            curBlock = curBlock->loopHeaderBlock;
+        }
+    }
+}
+
+void BytecodeAnalysis::InitializeUEAndKillSets()
+{
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(blockIndex);
+
+        for (uint32_t bcIndex = curBlock->startBcIndex; bcIndex <= curBlock->endBcIndex; ++bcIndex) {
+            const BytecodeInfo *curBc = parent_->GetBytecode(bcIndex);
+            AddUpwardExposedUses(curBc, killSet_[blockIndex], ueSet_[blockIndex]);
+            SetDefinedVRegs(curBc, killSet_[blockIndex]);
+        }
+    }
+}
+
+void BytecodeAnalysis::InitializeLiveIn()
+{
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        blockLiveIn_[blockIndex].CopyFrom(ueSet_[blockIndex]);  // Initially LiveIn(B) <- UESet(B)
+    }
+}
+
+void BytecodeAnalysis::FinalizeWithFixedParamsAndEnv()
+{
+    VRegIDType callTarget = VRegOfParam(GetNumLocalVRegs(), CALL_TARGET_PARAM_INDEX);
+    VRegIDType newTarget = VRegOfParam(GetNumLocalVRegs(), NEW_TARGET_PARAM_INDEX);
+
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        // These virtual registers may be used implicitly by GraphBuilder. Mark them as always-live.
+        for (VRegIDType vregIndex : {callTarget, newTarget}) {
+            blockLiveIn_[blockIndex].SetBit(vregIndex);
+            blockLiveOut_[blockIndex].SetBit(vregIndex);
+        }
+    }
+}
+
+void BytecodeAnalysis::InitializeBytecodeLiveness()
+{
+    uint32_t numBytecodes = parent_->GetNumBytecodes();
+    bcLiveIn_.reserve(numBytecodes);
+    bcLiveOut_.reserve(numBytecodes);
+    for (uint32_t bcIndex = 0; bcIndex < numBytecodes; bcIndex++) {
+        bcLiveIn_.emplace_back(GetChunk(), numVRegs_);
+        bcLiveOut_.emplace_back(GetChunk(), numVRegs_);
+    }
+
+    kungfu::BitSet live(GetChunk(), numVRegs_);
+
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t blockIndex = 0; blockIndex < numBlocks; blockIndex++) {
+        const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(blockIndex);
+        if (curBlock->startBcIndex > curBlock->endBcIndex) {
+            continue;
+        }
+        live.CopyFrom(blockLiveOut_[blockIndex]);
+        // Reverse scan: compute per-bytecode liveness
+        for (uint32_t bcIndex = curBlock->endBcIndex + 1; bcIndex-- > curBlock->startBcIndex;) {
+            const BytecodeInfo *curBc = parent_->GetBytecode(bcIndex);
+            bcLiveOut_[bcIndex].CopyFrom(live);
+            ClearDefinedVRegs(curBc, live);
+            AddUsedVRegs(curBc, live);
+            bcLiveIn_[bcIndex].CopyFrom(live);
+        }
+    }
+}
+
+bool BytecodeAnalysis::UpdateLiveness()
+{
+    bool hasChange = false;
+    kungfu::BitSet temp(GetChunk(), numVRegs_);
+    kungfu::BitSet newLiveIn(GetChunk(), numVRegs_);
+    kungfu::BitSet exceptionalUE(GetChunk(), numVRegs_);
+
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t i = numBlocks - 1; i != static_cast<uint32_t>(-1); i--) {
+        const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(i);
+        temp.Reset();
+        for (const BasicBlockInfo *succBlock : {curBlock->fallthroughBlock, curBlock->jumpBlock}) {
+            if (succBlock != nullptr) {
+                temp.Union(blockLiveIn_[succBlock->rpoIndex]);
+            }
+        }
+
+        if (!temp.Equals(blockLiveOut_[i])) {
+            hasChange = true;
+            blockLiveOut_[i].CopyFrom(temp);
+        }
+
+        newLiveIn.CopyFrom(blockLiveOut_[i]);
+        newLiveIn.Exclude(killSet_[i]);
+        newLiveIn.Union(ueSet_[i]);
+
+        exceptionalUE.Reset();
+        ComputeExceptionalUE(i, exceptionalUE);
+        newLiveIn.Union(exceptionalUE);
+
+        if (!newLiveIn.Equals(blockLiveIn_[i])) {
+            hasChange = true;
+            blockLiveIn_[i].CopyFrom(newLiveIn);
+        }
+    }
+    return hasChange;
+}
+
+void BytecodeAnalysis::ComputeExceptionalUE(uint32_t blockIndex, kungfu::BitSet &exceptionalUE)
+{
+    const BasicBlockInfo *curBlock = parent_->GetBasicBlockByRPO(blockIndex);
+    if (curBlock->catchBlock == nullptr) {
+        return;
+    }
+    kungfu::BitSet killedBefore(GetChunk(), numVRegs_);
+    kungfu::BitSet liveAtThrow(GetChunk(), numVRegs_);
+    for (uint32_t bcIndex = curBlock->startBcIndex; bcIndex <= curBlock->endBcIndex; ++bcIndex) {
+        const BytecodeInfo *curBc = parent_->GetBytecode(bcIndex);
+        if (curBc->IsGeneral() && !curBc->NoThrow()) {
+            liveAtThrow.CopyFrom(blockLiveIn_[curBlock->catchBlock->rpoIndex]);
+            liveAtThrow.Exclude(killedBefore);
+            ClearAcc(liveAtThrow);
+            exceptionalUE.Union(liveAtThrow);
+        }
+        SetDefinedVRegs(curBc, killedBefore);
+    }
+}
+
+std::string BytecodeAnalysis::Dump() const
+{
     std::ostringstream out;
-    auto appendVReg = [this, &out](VirtualRegister reg, bool *first) {
-        if (!*first) {
-            out << ", ";
-        }
-        *first = false;
-        if (reg.GetId() < numLocal_) {
-            out << 'v' << reg.GetId();
-        } else if (reg.GetId() < numLocal_ + numParams_) {
-            out << 'a' << reg.GetId() - numLocal_;
-        } else if (reg == VRegOfEnv(numLocal_, numParams_)) {
-            out << "env";
-        } else if (reg == VRegOfAcc(numLocal_, numParams_)) {
-            out << "acc";
-        } else {
-            UNREACHABLE();
-        }
-    };
-    for (size_t i = 0; i < bytecodes.size(); i++) {
-        out << "BC[" << i << "]: " << GetEcmaOpcodeStr(bytecodes[i].GetMetaData().GetOpcode()) << '\n';
-        out << "  LiveIn: {";
-
-        bool first = true;
-        for (VRegIDType j = 0; j < NumVRegs(numLocal_, numParams_); j++) {
-            if (liveness_[i].GetLiveIn().Test(j)) {
-                appendVReg(VirtualRegister{j}, &first);
-            }
-        }
-        out << "}\n  LiveOut: {";
-        first = true;
-        for (VRegIDType j = 0; j < NumVRegs(numLocal_, numParams_); j++) {
-            if (liveness_[i].GetLiveOut().Test(j)) {
-                appendVReg(VirtualRegister{j}, &first);
-            }
-        }
-        out << "}\n";
+    out << "Liveness of Basic Blocks (labelled by RPO index):";
+    uint32_t numBlocks = parent_->GetNumLiveBasicBlocks();
+    for (uint32_t rpoIndex = 0; rpoIndex < numBlocks; rpoIndex++) {
+        // 2: width for block index
+        out << "\n[" << std::setw(2) << rpoIndex << "] UESet:   " << DumpBitset(ueSet_[rpoIndex]);
+        out << "\n     KillSet: " << DumpBitset(killSet_[rpoIndex]);
+        out << "\n     LiveIn:  " << DumpBitset(blockLiveIn_[rpoIndex]);
+        out << "\n     LiveOut: " << DumpBitset(blockLiveOut_[rpoIndex]);
     }
-    LOG_COMPILER(INFO) << out.str() << "==============================================";
+    return out.str();
 }
 
+std::string BytecodeAnalysis::DumpBitset(const kungfu::BitSet &bitset) const
+{
+    std::ostringstream out;
+    out << '[';
+
+    bool first = true;
+    for (VRegIDType i = 0; i < numVRegs_; i++) {
+        if (!TestVReg(bitset, i)) {
+            continue;
+        }
+        first ? (void)(first = false) : (void)(out << ", ");
+        out << VRegDisplayString(i, GetNumLocalVRegs(), GetNumParamVRegs());
+    }
+
+    out << ']';
+    return out.str();
+}
 }  // namespace panda::ecmascript::arksteed

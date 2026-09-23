@@ -22,8 +22,15 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/lexical_env.h"
+#include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript::kungfu {
+
+GateRef CircuitBuilder::HasArkSteedEntry(GateRef jsFunc)
+{
+    GateRef bitField = LoadWithoutBarrier(VariableType::INT32(), jsFunc, IntPtr(JSFunctionBase::BIT_FIELD_OFFSET));
+    return Int32NotEqual(Int32And(bitField, Int32(JSFunctionBase::IsArkSteedEntryBit::Mask())), Int32(0));
+}
 
 GateRef CircuitBuilder::Merge(const std::vector<GateRef> &inList)
 {

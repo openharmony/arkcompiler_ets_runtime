@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_ARKSTEED_OPCODE_LIST_H
 #define ECMASCRIPT_ARKSTEED_OPCODE_LIST_H
 
-#include <algorithm>
-
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::arksteed {
@@ -31,50 +29,128 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 // List of constant value vertices (for constant folding, etc.)
 #define CONSTANT_VALUE_VERTEX_LIST(V) \
-    V(Constant)                       \
     V(Int32Constant)                  \
-    V(IntPtrConstant)                 \
+    V(Int64Constant)                  \
     V(Float64Constant)                \
     V(TaggedConstant)                 \
-    V(RootConstant)                   \
-    V(BooleanConstant)
+    V(HeapConstant)
 
-// List of value vertex types (must match the enum in arksteed_vertex.h)
-#define COMMON_VALUE_VERTEX_LIST(V) \
-    CONSTANT_VALUE_VERTEX_LIST(V)   \
-    V(InitialValue)                 \
-    V(ActualArgc)                   \
-    V(CallRuntime)                  \
-    V(CallCommonStub)               \
-    V(Deopt)                        \
-    V(Phi)
+#define VALUE_VERTEX_LIST(V)            \
+    CONSTANT_VALUE_VERTEX_LIST(V)       \
+    V(InitialValue)                     \
+    V(ActualArgc)                       \
+    V(Call)                             \
+    V(CallRuntime)                      \
+    V(CallCommonStub)                   \
+    V(LineStringLoadElement)            \
+    V(Phi)                              \
+    V(LoadTaggedFromAddress)            \
+    V(LoadI32FromAddress)               \
+    V(LoadI64FromAddress)               \
+    V(LoadF64FromAddress)               \
+    V(LoadTaggedField)                  \
+    V(LoadInt32Field)                   \
+    V(LoadTaggedElement)                \
+    V(LoadSingleCharTableElement)       \
+    V(TypedArrayIntLoadElement)         \
+    V(TypedArrayDoubleLoadElement)      \
+    V(LoadPrototypeFromObject)          \
+    V(LoadPrototypeHolderByHClass)      \
+    V(ConvertHoleToUndefined)           \
+    V(LoadHClassAddress)                \
+    V(PrepareSharedStoreField)          \
+    V(EnsurePropertiesCapacity)         \
+    V(LoadException)                    \
+    V(TaggedIntToI32)                   \
+    V(CheckedTaggedIntToI32)            \
+    V(CheckedTaggedString)              \
+    V(I32ConditionCheck)                \
+    V(F64ConditionCheck)                \
+    V(TaggedEqual)                      \
+    V(TaggedNotEqual)                   \
+    V(StringEqual)                      \
+    V(I32AddWithOverflow)               \
+    V(I32SubWithOverflow)               \
+    V(I32MulWithOverflow)               \
+    V(I32DivWithOverflow)               \
+    V(I32DivByConstWithCheck)           \
+    V(I32Add)                           \
+    V(I32Sub)                           \
+    V(I32Mul)                           \
+    V(I32Div)                           \
+    V(CheckedI32Mod)                    \
+    V(I32BitwiseBinary)                 \
+    V(I32ToTaggedInt)                   \
+    V(RawI64ToTagged)                   \
+    V(TaggedToRawI64)                   \
+    V(I64BitwiseBinary)                 \
+    V(CheckedNonNegativeI32ToTaggedInt) \
+    V(I32BNot)                          \
+    V(I32NegWithOverflow)               \
+    V(I32IncWithOverflow)               \
+    V(I32DecWithOverflow)               \
+    V(I32ToF64)                         \
+    V(CheckedNumberToF64)               \
+    V(F64ToI32Trunc)                    \
+    V(I32ToUint8Clamped)                \
+    V(F64ToUint8Clamped)                \
+    V(DoubleToInt32Call)                \
+    V(F64ToTaggedDouble)                \
+    V(F64Neg)                           \
+    V(F64Add)                           \
+    V(F64Sub)                           \
+    V(F64Mul)                           \
+    V(F64Div)
 
-#define VALUE_VERTEX_LIST(V)    \
-    V(LoadFromAddress)          \
-    V(StoreToAddress)           \
-    V(LoadTaggedField)          \
-    V(StoreTaggedField)         \
-    V(LoadException)            \
-    COMMON_VALUE_VERTEX_LIST(V) \
-    CONVERSION_VERTEX_LIST(V)
+#define NON_VALUE_VERTEX_LIST(V)    \
+    V(DeoptIfHClassMismatch)        \
+    V(DeoptIfHClassNotIn)           \
+    V(DeoptIfPrototypeChanged)      \
+    V(DeoptIfTaggedCondition)       \
+    V(DeoptIfInt32Condition)        \
+    V(DeoptIfFloat64Condition)      \
+    V(DeoptIfNotNumber)             \
+    V(DeoptIfNotHeapObject)         \
+    V(DeoptIfArrayBufferDetached)   \
+    V(DeoptIfCOWElements)           \
+    V(DeoptIfElementsUnstable)      \
+    V(StoreTaggedToAddress)         \
+    V(StoreI32ToAddress)            \
+    V(StoreI64ToAddress)            \
+    V(StoreF64ToAddress)            \
+    V(StoreTaggedField)             \
+    V(StoreInt32Field)              \
+    V(StoreDoubleField)             \
+    V(StoreInt32FieldWithRep)       \
+    V(StoreDoubleFieldWithRep)      \
+    V(StoreTaggedFieldWithBarrier)  \
+    V(StoreTaggedElement)           \
+    V(StoreTaggedElementWithBarrier) \
+    V(StoreIntTypedArrayElement)    \
+    V(StoreFloatTypedArrayElement)  \
+    V(StoreSharedFieldWithBarrier)  \
+    V(TransitionHClassWithBarrier)  \
+    V(StoreTaggedFieldByHClass)     \
+    V(StoreEnvSlot)                 \
+    V(SetValueWithBarrier)          \
+    V(GapMove)                      \
+    V(ConstantGapMove)
 
 #define NON_CONTROL_VERTEX_LIST(V) \
     NON_VALUE_VERTEX_LIST(V)       \
     VALUE_VERTEX_LIST(V)
 
-#define NON_VALUE_VERTEX_LIST(V)    \
-    V(ThrowIfSuperNotCorrectCall)   \
-    V(ThrowIfNotObject)             \
-    V(ThrowUndefinedIfHole)         \
-    V(ThrowUndefinedIfHoleWithName) \
-    V(GapMove)                      \
-    V(ConstantGapMove)
-
-#define CONVERSION_VERTEX_LIST(V) V(ToTaggedInt)
-
-#define BRANCH_CONTROL_VERTEX_LIST(V) V(BranchIfTrue)
-
-#define CONDITION_CONTROL_VERTEX_LIST(V) BRANCH_CONTROL_VERTEX_LIST(V)
+#define BRANCH_CONTROL_VERTEX_LIST(V)       \
+    V(BranchIfTrue)                         \
+    V(BranchIfTaggedString)                 \
+    V(BranchIfHClassIn)                     \
+    V(BranchIfInt32Compare)                 \
+    V(BranchIfInt64Compare)                 \
+    V(BranchIfFloat64Compare)               \
+    V(BranchIfReferenceEqual)               \
+    V(BranchIfObjectType)                   \
+    V(BranchIfCallable)                     \
+    V(BranchIfTaggedHeapObject)
 
 #define UNCONDITIONAL_CONTROL_VERTEX_LIST(V) \
     V(Jump)                                  \
@@ -82,18 +158,29 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 #define TERMINAL_CONTROL_VERTEX_LIST(V) \
     V(Return)                           \
-    V(Throw)
+    V(Throw)                            \
+    V(Deopt)
 
 // List of control vertex types
-#define CONTROL_VERTEX_LIST(V)       \
-    TERMINAL_CONTROL_VERTEX_LIST(V)  \
-    CONDITION_CONTROL_VERTEX_LIST(V) \
-    UNCONDITIONAL_CONTROL_VERTEX_LIST(V)
+#define CONTROL_VERTEX_LIST(V)              \
+    BRANCH_CONTROL_VERTEX_LIST(V)           \
+    UNCONDITIONAL_CONTROL_VERTEX_LIST(V)    \
+    TERMINAL_CONTROL_VERTEX_LIST(V)
 
 // List of all vertex types (both value and control vertices)
 #define ALL_VERTEX_LIST(V)     \
     NON_CONTROL_VERTEX_LIST(V) \
     CONTROL_VERTEX_LIST(V)
+
+#define VERTEX_LISTS_FOR_EACH(V)                                        \
+    V(CONSTANT_VALUE_VERTEX_LIST,        IsConstantValueVertex)         \
+    V(VALUE_VERTEX_LIST,                 IsValueVertex)                 \
+    V(NON_VALUE_VERTEX_LIST,             IsNonValueVertex)              \
+    V(NON_CONTROL_VERTEX_LIST,           IsNonControlVertex)            \
+    V(BRANCH_CONTROL_VERTEX_LIST,        IsBranchControlVertex)         \
+    V(UNCONDITIONAL_CONTROL_VERTEX_LIST, IsUnconditionalControlVertex)  \
+    V(TERMINAL_CONTROL_VERTEX_LIST,      IsTerminalControlVertex)       \
+    V(CONTROL_VERTEX_LIST,               IsControlVertex)
 
 //==============================================================================
 // Opcode Enum and Constants
@@ -101,34 +188,63 @@ static constexpr VertexId INVALID_VERTEX_ID = static_cast<VertexId>(-1);
 
 // Define the opcode enum
 #define DEF_OPCODE(type) type,
-enum class VertexOpcode : uint16_t { ALL_VERTEX_LIST(DEF_OPCODE) INVALID };
+enum class VertexOpcode : uint16_t { INVALID, ALL_VERTEX_LIST(DEF_OPCODE) };
 #undef DEF_OPCODE
 
 // Count opcodes
 #define PLUS_ONE(type) +1
-static constexpr int OPCODE_COUNT = ALL_VERTEX_LIST(PLUS_ONE);
+static constexpr uint32_t OPCODE_COUNT = ALL_VERTEX_LIST(PLUS_ONE);
 #undef PLUS_ONE
 
-static constexpr VertexOpcode FIRST_OPCODE = static_cast<VertexOpcode>(0);
-static constexpr VertexOpcode LAST_OPCODE = static_cast<VertexOpcode>(OPCODE_COUNT - 1);
+static constexpr VertexOpcode FIRST_OPCODE = static_cast<VertexOpcode>(1);
+static constexpr VertexOpcode LAST_OPCODE = static_cast<VertexOpcode>(OPCODE_COUNT);
 
-#define VERTEX_OPCODE_VALUE(type) VertexOpcode::type,
-
-static constexpr VertexOpcode FIRST_UNCONDITIONAL_CONTROL_VERTEX_OPCODE =
-    std::min({UNCONDITIONAL_CONTROL_VERTEX_LIST(VERTEX_OPCODE_VALUE)});
-static constexpr VertexOpcode LAST_UNCONDITIONAL_CONTROL_VERTEX_OPCODE =
-    std::max({UNCONDITIONAL_CONTROL_VERTEX_LIST(VERTEX_OPCODE_VALUE)});
-#undef VERTEX_OPCODE_VALUE
+#define CASE(type) case VertexOpcode::type:
+#define DEFINE_OPCODE_PREDICATE(CUR_OPCODE_LIST, FunctionName)  \
+    constexpr bool FunctionName(VertexOpcode opcode)            \
+    {                                                           \
+        switch (opcode) {                                       \
+            CUR_OPCODE_LIST(CASE)                               \
+                return true;                                    \
+            default:                                            \
+                return false;                                   \
+        }                                                       \
+    }
+VERTEX_LISTS_FOR_EACH(DEFINE_OPCODE_PREDICATE)
+#undef DEFINE_OPCODE_PREDICATE
+#undef CASE
 
 inline const char *OpcodeToString(VertexOpcode opcode)
 {
 #define DEF_NAME(Name) #Name,
     static constexpr const char *names[] = {ALL_VERTEX_LIST(DEF_NAME)};
 #undef DEF_NAME
-    auto index = static_cast<int>(opcode);
-    ASSERT(index >= 0 && index < static_cast<int>(sizeof(names)));
-    return names[index];
+    unsigned index = static_cast<unsigned>(opcode);
+    ASSERT(index >= 1 && index <= sizeof(names));  // 1 : Opcode is 1-based. 0 is reserved for INVALID
+    return names[index - 1];
 }
+
+//==============================================================================
+// Forward Declaration & Opcode Mapping
+//==============================================================================
+
+#define DEF_FORWARD_DECLARATION(type) class type##Vertex;
+ALL_VERTEX_LIST(DEF_FORWARD_DECLARATION)
+#undef DEF_FORWARD_DECLARATION
+
+template <typename T>
+struct OpcodeTraits;
+
+template <typename T>
+constexpr VertexOpcode OpcodeOf = OpcodeTraits<T>::value;
+
+#define DEF_OPCODE_OF_TRAITS(type)                                  \
+    template <>                                                     \
+    struct OpcodeTraits<type##Vertex> {                             \
+        static constexpr VertexOpcode value = VertexOpcode::type;   \
+    };
+ALL_VERTEX_LIST(DEF_OPCODE_OF_TRAITS)
+#undef DEF_OPCODE_HELPER
 
 }  // namespace panda::ecmascript::arksteed
 
