@@ -1478,7 +1478,7 @@ HWTEST_F_L0(JSNApiTests, NapiTryFastTest)
     Local<JSValueRef> res2 = JSNApi::NapiGetProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                        reinterpret_cast<uintptr_t>(*key2));
     ASSERT_TRUE(value->IsStrictEquals(vm_, res2));
-    
+
     Local<JSValueRef> flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                      reinterpret_cast<uintptr_t>(*key));
     ASSERT_TRUE(flag->BooleaValue(vm_));
@@ -4878,7 +4878,7 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf8Replacement)
     uint8_t u8Data[1024] = {0xcc, 0x5c, 0x0};
     uint8_t u8Out[1024] = {0};
     size_t u8OutLen = 0;
-    
+
     Local<StringRef> resStr = StringRef::NewFromUtf8Replacement(thread_->GetEcmaVM(),
                                                                 reinterpret_cast<char*>(u8Data), 2);
     u8OutLen = resStr-> Utf8Length(thread_->GetEcmaVM());
@@ -4927,7 +4927,7 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf8WithoutStringTableReplacement)
     uint8_t u8Data[1024] = {0xcc, 0x5c, 0x0};
     uint8_t u8Out[1024] = {0};
     size_t u8OutLen = 0;
-    
+
     Local<StringRef> resStr = StringRef::NewFromUtf8Replacement(thread_->GetEcmaVM(),
                                                                 reinterpret_cast<char*>(u8Data), 2);
     u8OutLen = resStr-> Utf8Length(thread_->GetEcmaVM());
@@ -5066,10 +5066,13 @@ HWTEST_F_L0(JSNApiTests, CrossThreadExecution)
     bool res = JSNApi::CheckAndSetAllowCrossThreadExecution(vm_);
     if (ecmascript::g_isEnableCMCGC) {
         EXPECT_FALSE(res);
+        EXPECT_FALSE(JSNApi::IsCrossThreadExecutionAllowed(vm_));
     } else {
         if (res) {
+            EXPECT_TRUE(JSNApi::IsCrossThreadExecutionAllowed(vm_));
             JSNApi::DisallowCrossThreadExecution(vm_);
         } else {
+            EXPECT_FALSE(JSNApi::IsCrossThreadExecutionAllowed(vm_));
             GTEST_LOG_(INFO) << "vm is in the gc or shared gc";
         }
     }
