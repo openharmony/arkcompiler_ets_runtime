@@ -4,32 +4,57 @@ This file provides guidance for AI agents when working with code in the extracto
 
 ## Overview
 
-ExtractorTool is a C++ component of the OpenHarmony ArkCompiler ETS Runtime that handles file extraction from HAP (OpenHarmony Application Package) files and ZIP archives. It provides memory-mapped file access, source map processing for JavaScript debugging, and utilities for path manipulation in the OpenHarmony ecosystem.
+ExtractorTool is a C++ component that provides source map processing for JavaScript debugging in the ArkCompiler ETS Runtime. The core extraction functionality (Extractor, ZipFile, FileMapper, etc.) is provided by the `foundation/ability/ability_base:extractortool` shared library (`OHOS::AbilityBase` namespace). This directory only retains arkcompiler-specific components.
 
 ## Architecture
 
-### Core Components
+### Local Components
 
-- **`extractor.h/cpp`**: Main interface for file extraction operations from HAP/ZIP files. Detects and validates HAP packages, supports both stage model and FA (Feature Ability) model. Provides file listing, extraction to filesystem or memory buffers. Thread-safe caching via `ExtractorUtil` for performance.
-- **`zip_file.h/cpp`**: Low-level ZIP archive parser using minizip library. Parses ZIP structure (local file headers, central directory, end of central directory). Handles both stored and deflated compression methods. Provides efficient file access without full extraction.
-- **`file_mapper.h/cpp`**: Abstraction for memory-mapped file access. Three mapping types: `NORMAL_MEM` (standard heap allocation), `SHARED_MMAP` (shared memory mapping via mmap), `SAFE_ABC` (special safe region mapping for ABC bytecode files). Provides automatic decompression when accessing compressed data.
-- **`source_map.h/cpp`**: Processes JavaScript source maps for debugging support. Translates generated positions back to original source locations. Handles VQl (Variable-Length Quantity) encoded mappings. Manages source map data from multiple packages.
-- **`file_path_utils.h/cpp`**: Path manipulation utilities specific to OpenHarmony. Handles NPM package resolution and OHM (OpenHarmony Module) URI processing. Bundle path constants defined in `constants.h`.
-- **`zip_file_reader.h/cpp`**: Interface for ZIP file readers with two implementations:
-  - `zip_file_reader_io.cpp`: File-based ZIP reading
-  - `zip_file_reader_mem.cpp`: Memory-based ZIP reading
+- **`source_map.h/cpp`**: Processes JavaScript source maps for debugging support. Translates generated positions back to original source locations. Handles VQL (Variable-Length Quantity) encoded mappings. Manages source map data from multiple packages. Uses the foundation Extractor internally for HAP file access.
+
+> **Note**: The `extractor_adapter.h/cpp` adapter layer that bridges `OHOS::AbilityBase` types into the `panda::ecmascript` namespace now lives at `adapter/ohos/extractortool/` (outside the `ecmascript/` tree). See that directory's BUILD.gn and the `adapter/ohos/tests/extractor_adapter_test.cpp` for details.
+
+### External Dependencies (from foundation/ability/ability_base)
+
+- **`extractor.h`**: Main interface for file extraction from HAP/ZIP files (namespace `OHOS::AbilityBase`)
+- **`zip_file.h`**: Low-level ZIP archive parser
+- **`file_mapper.h`**: Memory-mapped file access abstraction
+- Build target: `ability_base:extractortool`
 
 ### Key Data Structures
 
-- **`FileInfo`**: Contains file metadata including filename, offset, length, and modification time
-- **`FileMapperType`**: Enum for mapping types (`NORMAL_MEM`, `SHARED_MMAP`, `SAFE_ABC`)
 - **`SourceMapInfo`**: Stores source map position information (before/after row/column, sources/names indices)
 - **`MappingInfo`**: Represents line/column mapping information
 - **`SourceMapData`**: Complete source map data including sources, package name, position mappings
+- **`InitStatus`**: Enum for source map initialization state (`NOT_EXECUTED`, `IN_EXECUTED`, `EXECUTED_SUCCESSFULLY`)
 
 ## Building
 
 This project uses the **GN (Generate Ninja)** build system, integrated with the larger OpenHarmony/ArkCompiler build infrastructure.
+
+### ENABLE_ABILITY_EXTRACTOR Macro
+
+The `ENABLE_ABILITY_EXTRACTOR` define gates all code that depends on `ability_base:extractortool`. It is controlled at the GN level — no `#if` guards inside `adapter/ohos/extractortool/extractor_adapter.h` or `extractor_adapter.cpp`.
+
+**Production builds** (`js_runtime_config.gni`, `libark_jsruntime_common_set` template):
+```gn
+if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) &&
+    is_ohos && is_standard_system) {
+  external_deps += [ "ability_base:extractortool" ]
+  defines += [ "ENABLE_ABILITY_EXTRACTOR" ]
+}
+```
+
+**Source file inclusion** (`BUILD.gn`):
+```gn
+if (enable_ecma_stackinfo) {
+  ecma_stackinfo_source = [ "adapter/ohos/extractortool/extractor_adapter.cpp" ]
+}
+```
+
+`extractor_adapter.cpp` is only added to the source list when the dependency is available, so no preprocessor guard is needed inside the file.
+
+Consumer files (`js_stackinfo.cpp/h`, `source_map.cpp/h`) still use `#if defined(ENABLE_ABILITY_EXTRACTOR)` to guard code sections that reference ability_base types, because those files compile in all OHOS configurations.
 
 ### Build Commands
 
@@ -51,9 +76,20 @@ Full OpenHarmony build (from repository root):
 Tests are organized in `tests/BUILD.gn`:
 
 - **ExtractorToolTest** - Main test executable including:
-  - `extractor_test.cpp` - Extractor functionality tests
-  - `zip_file_test.cpp` - ZIP file parsing tests
   - `source_map_test.cpp` - Source map processing tests
+
+> The `extractor_adapter_test.cpp` has moved to `adapter/ohos/tests/` together with the adapter sources. The `ExtractorAdapterTest` target is defined in `adapter/ohos/BUILD.gn`.
+
+- **SourceMapUnitTest** - Additional source map unit tests:
+  - `source_map_unit_test.cpp`
+
+### Adapter Test Design
+
+`extractor_adapter_test.cpp` is fully self-contained:
+- Fake `OHOS::AbilityBase` types (`Extractor`, `FileMapper`, `ZipFile`, `ZipEntry`) are defined inline at the top of the file
+- The adapter functions (`GetSafeDataAsShared`, `GetFilePathByOffset`) are implemented inline with the same logic as `extractor_adapter.cpp`
+- No stub header files, no `fake/` directory, no `-include` flags, no `ENABLE_ABILITY_EXTRACTOR` define needed
+- Trade-off: the test validates a copy of the adapter logic, not the compiled production `.cpp`. If `extractor_adapter.cpp` changes, the test must be updated manually.
 
 ### Running Tests
 

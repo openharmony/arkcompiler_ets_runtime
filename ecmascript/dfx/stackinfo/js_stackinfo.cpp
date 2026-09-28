@@ -26,9 +26,6 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
-#if defined(PANDA_TARGET_OHOS)
-#include "ecmascript/extractortool/src/extractor.h"
-#endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif
@@ -1090,7 +1087,7 @@ bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
                                               [[maybe_unused]]bool needTranslate,
                                               [[maybe_unused]]const char* filePath)
 {
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     if (isInitialized_) {
         return isInitialized_;
     }
@@ -1102,10 +1099,22 @@ bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
         return isInitialized_;
     }
 
-    const std::string &pandaFilePath = extractor->GetFilePathByOffset(offset);
-    fileMapper_ = extractor->GetSafeData(pandaFilePath);
+    std::string pandaFilePath;
+    auto zipFile = std::make_unique<ZipFile>(hapPath);
+    bool zipOpenOk = zipFile->Open();
+    if (!zipOpenOk) {
+        LOG_ECMA(WARN) << "ZipFile open failed, hap path: " << hapPath;
+        return isInitialized_;
+    }
+    pandaFilePath = GetFilePathByOffset(*zipFile, offset);
+    if (pandaFilePath.empty()) {
+        pandaFilePath = "ets/modules.abc";
+        LOG_ECMA(WARN) << "Unknown offset, attempt to parse " << pandaFilePath;
+    }
+    fileMapper_ = GetSafeDataAsShared(*extractor, pandaFilePath);
     if (!fileMapper_) {
-        LOG_ECMA(ERROR) << "GetSafeData failed, hap path: " << hapPath;
+        LOG_ECMA(ERROR) << "GetSafeData failed, hap path: " << hapPath
+                        << ", panda file: " << pandaFilePath;
         return isInitialized_;
     }
 
@@ -1121,14 +1130,9 @@ bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
     }
 #endif
     CreateJSPandaFile();
-    auto zipFile = std::make_unique<ZipFile>(hapPath);
-    if (zipFile == nullptr || !zipFile->Open()) {
-        return false;
-    }
-    auto &entrys = zipFile->GetAllEntries();
-    if (isInitialized_ && needTranslate) {
-        std::string filePath = "ets/sourceMaps.map";
-        if (entrys.find(filePath) == entrys.end()) {
+    if (zipOpenOk && isInitialized_ && needTranslate) {
+        auto &entrys = zipFile->GetAllEntries();
+        if (entrys.find("ets/sourceMaps.map") == entrys.end()) {
             LOG_ECMA(INFO) << "Can't find sourceMaps.map in hap/hsp";
             return isInitialized_;
         }
@@ -1140,7 +1144,7 @@ bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
 
 bool JSSymbolExtractor::InitializeAbcFileInfo([[maybe_unused]]const char* filePath)
 {
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     if (isInitialized_) {
         return isInitialized_;
     }
@@ -1166,7 +1170,7 @@ bool JSSymbolExtractor::InitializeAbcFileInfo([[maybe_unused]]const char* filePa
 bool JSSymbolExtractor::InitializeELFFileInfo(uintptr_t offset, const char* filePath)
 {
     // only for dynamic_abc, because dynamic_abc may be compiled into .so
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     if (isInitialized_) {
         return isInitialized_;
     }
@@ -1213,7 +1217,7 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
                         [[maybe_unused]] JsFunction *jsFunction)
 {
     bool ret = false;
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     if (filePath == nullptr) {
         LOG_ECMA(ERROR) << "FilePath from dfx is nullptr.";
         return false;
@@ -1321,7 +1325,7 @@ SourceMap* JSSymbolExtractor::GetSourceMap()
 
 void JSSymbolExtractor::CreateSourceMap([[maybe_unused]] const std::string &hapPath)
 {
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     if (sourceMap_ == nullptr) {
         sourceMap_ = std::make_shared<SourceMap>();
         sourceMap_->Init(hapPath);

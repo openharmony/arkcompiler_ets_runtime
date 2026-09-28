@@ -75,7 +75,7 @@ public:
     SourceMap(const SourceMap&) = delete;
     SourceMap& operator=(const SourceMap&) = delete;
 
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     void Init(const std::string& hapPath);
 #endif
     void SplitSourceMap(const std::string& sourceMapData);
@@ -103,7 +103,7 @@ private:
                               const SourceMapData& targetMap, const std::string& key);
     static void GetPackageName(const SourceMapData& targetMap, std::string& packageName);
     friend class SourceMapFriend;
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     bool ReadSourceMapData(const std::string& hapPath);
 #endif
     bool ParseSourceMapData(std::string_view url);

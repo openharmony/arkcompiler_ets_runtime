@@ -23,8 +23,8 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/dfx/dump_code/jit_dump_elf.h"
-#if defined(PANDA_TARGET_OHOS)
-#include "ecmascript/extractortool/src/zip_file.h"
+#if defined(ENABLE_ABILITY_EXTRACTOR)
+#include "adapter/ohos/extractortool/extractor_adapter.h"
 #endif
 
 namespace panda::ecmascript {
@@ -209,7 +209,7 @@ private:
     bool InitializeHapFileInfo(uintptr_t offset, bool needTranslate, const char* filePath);
 
     MemMap fileMapMem_ {};
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
     std::shared_ptr<FileMapper> fileMapper_ {nullptr};
 #endif
 
