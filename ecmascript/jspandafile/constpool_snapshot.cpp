@@ -35,6 +35,11 @@ namespace panda::ecmascript {
 void ConstPoolSnapshot::SerializeDataAndPostSavingJob(const EcmaVM* vm, JSPandaFile* pandafile, const CString& path,
                                                       const CString& version)
 {
+    if (!vm->GetJSOptions().EnableConstPoolSnapshot()) {
+        LOG_ECMA(DEBUG) << "ConstPoolSnapshot::SerializeDataAndPostSavingJob ConstPool Snapshot is not enabled "
+            "by runtime option";
+        return;
+    }
     LOG_ECMA(DEBUG) << "ConstPoolSnapshot::SerializeDataAndPostSavingJob " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConstPoolSnapshot::SerializeDataAndPostSavingJob",
                       "");
@@ -58,6 +63,10 @@ void ConstPoolSnapshot::SerializeDataAndPostSavingJob(const EcmaVM* vm, JSPandaF
 bool ConstPoolSnapshot::DeserializeData(EcmaVM* vm, JSPandaFile* pandafile, const CString& path, const CString& version)
 {
     if (pandafile == nullptr) {
+        return false;
+    }
+    if (!vm->GetJSOptions().EnableConstPoolSnapshot()) {
+        LOG_ECMA(DEBUG) << "ConstPoolSnapshot::DeserializeData ConstPool Snapshot is not enabled by runtime option";
         return false;
     }
     if (ModulesSnapshotHelper::IsConstPoolSnapshotDisabled(path)) {
