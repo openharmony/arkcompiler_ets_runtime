@@ -21,7 +21,9 @@
 #include <sstream>
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/extractortool/src/extractor.h"
+#if defined(ENABLE_ABILITY_EXTRACTOR)
+#include "adapter/ohos/extractortool/extractor_adapter.h"
+#endif
 
 namespace panda {
 namespace ecmascript {
@@ -112,7 +114,7 @@ uint32_t SourceMap::Base64CharToInt(char charCode)
     return DIGIT_NUM;
 }
 
-#if defined(PANDA_TARGET_OHOS)
+#if defined(ENABLE_ABILITY_EXTRACTOR)
 bool SourceMap::ReadSourceMapData(const std::string& hapPath)
 {
     if (hapPath.empty()) {
@@ -140,7 +142,7 @@ void SourceMap::Init(const std::string& hapPath)
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOG_ECMA(INFO) << "Init sourcemap time: " << duration.count() << "ms";
 }
-#endif
+#endif  // ENABLE_ABILITY_EXTRACTOR
 
 // Zero-copy path: parse raw buffer into URL -> string_view blocks
 void SourceMap::SplitSourceMap()
