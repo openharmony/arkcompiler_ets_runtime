@@ -19,7 +19,7 @@
 #include <cmath>
 
 namespace panda::ecmascript {
-static constexpr int MS_PER_SECOND = 1000;
+static constexpr int64_t MS_PER_SECOND = 1000;
 
 int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal)
 {
