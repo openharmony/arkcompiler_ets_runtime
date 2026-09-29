@@ -45,6 +45,13 @@
 
 #include "ecmascript/tests/test_helper.h"
 
+constexpr std::string_view TEST_ROM_VERSION = "version 205.0.1.120(SP20)";
+constexpr std::string_view UPDATED_TEST_ROM_VERSION = "version 205.0.1.125(SP20)";
+constexpr std::string_view MOCK_PANDAFILE_NAME = "/data/storage/el1/bundle/entry/ets/main/modules.abc";
+constexpr std::string_view MOCK_SNAPSHOT_LOG_PREFIX = "MockConstPoolSnapshot";
+constexpr std::string_view INVALID_MMAP_PATH = "/non_existent_dir/deep/nested/path/";
+constexpr std::string_view INVALID_READ_PATH = "/non_existent_path/";
+
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
@@ -55,13 +62,13 @@ public:
     static bool WriteDataToFile(const std::unique_ptr<SerializeData> &data, const CString &filePath,
                                 ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr header)
     {
-        return ModulesSnapshotHelper::WriteDataToFile(data, filePath, header, "MockConstPoolSnapshot");
+        return ModulesSnapshotHelper::WriteDataToFile(data, filePath, header, MOCK_SNAPSHOT_LOG_PREFIX.data());
     }
 
     static bool ReadDataFromFile(std::unique_ptr<SerializeData> &data, const CString &path,
                                  ModulesSnapshotHelper::SnapshotVersionInfo::UniquePtr header)
     {
-        return ModulesSnapshotHelper::ReadDataFromFile(data, path, header, "MockConstPoolSnapshot");
+        return ModulesSnapshotHelper::ReadDataFromFile(data, path, header, MOCK_SNAPSHOT_LOG_PREFIX.data());
     }
 
     static std::unique_ptr<SerializeData> GetSerializeData(JSThread *thread, JSPandaFile *pandafile)
@@ -193,7 +200,7 @@ public:
     std::shared_ptr<JSPandaFile> NewMockJSPandaFile() const
     {
         Parser parser;
-        const char *filename = "/data/storage/el1/bundle/entry/ets/main/modules.abc";
+        const char *filename = MOCK_PANDAFILE_NAME.data();
         const char *data = R"(
             .function any func_main_0(any a0, any a1, any a2) {
                 ldai 1
@@ -263,7 +270,7 @@ public:
 HWTEST_F_L0(ConstPoolSnapshotTest, SerializeAndReadDataFromFile)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     NormalTranslateJSPandaFile(pf);
     // serialize
@@ -285,7 +292,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, SerializeAndReadDataFromFile)
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldNotSerializeWhenFileIsExists)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     NormalTranslateJSPandaFile(pf);
@@ -305,7 +312,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldNotSerializeWhenFileIsExists)
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldNotDeserializeWhenFileIsNotExists)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     // return false when file is not exists
@@ -313,10 +320,45 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldNotDeserializeWhenFileIsNotExists)
     ASSERT_FALSE(ConstPoolSnapshot::DeserializeData(thread->GetEcmaVM(), pf.get(), path, version));
 }
 
+HWTEST_F_L0(ConstPoolSnapshotTest, ShouldNotSerializeWhenConstPoolSnapshotIsDisabled)
+{
+    CString path = GetSnapshotPath();
+    CString version = TEST_ROM_VERSION.data();
+    const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
+    CString fileName = path + GetSnapshotFileName(pf.get());
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->GetJSOptions().SetArkProperties(ArkProperties::DISABLE_CONSTPOOL_SNAPSHOT);
+    // returns before MarkConstPoolSnapshotLoaded and no file is generated
+    int loadedFeatureBefore = ModulesSnapshotHelper::GetFeatureLoaded();
+    ConstPoolSnapshot::SerializeDataAndPostSavingJob(vm, pf.get(), path, version);
+    ASSERT_EQ(ModulesSnapshotHelper::GetFeatureLoaded(), loadedFeatureBefore);
+    ASSERT_FALSE(FileExist(fileName.c_str()));
+}
+
+HWTEST_F_L0(ConstPoolSnapshotTest, ShouldNotDeserializeWhenConstPoolSnapshotIsDisabled)
+{
+    CString path = GetSnapshotPath();
+    CString version = TEST_ROM_VERSION.data();
+    const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
+    NormalTranslateJSPandaFile(pf);
+    // prepare a valid snapshot file
+    std::unique_ptr<SerializeData> serializeData = MockConstPoolSnapshot::GetSerializeData(thread, pf.get());
+    ASSERT_NE(serializeData, nullptr);
+    CString fileName = path + GetSnapshotFileName(pf.get());
+    auto header = NewHeader(version, pf.get());
+    ASSERT_TRUE(MockConstPoolSnapshot::WriteDataToFile(serializeData, fileName, std::move(header)));
+    ASSERT_TRUE(FileExist(fileName.c_str()));
+    // disabled by option, deserialization fails and the file is kept
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->GetJSOptions().SetArkProperties(ArkProperties::DISABLE_CONSTPOOL_SNAPSHOT);
+    ASSERT_FALSE(ConstPoolSnapshot::DeserializeData(vm, pf.get(), path, version));
+    ASSERT_TRUE(FileExist(fileName.c_str()));
+}
+
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenFileIsEmpty)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     std::ofstream ofStream(fileName.c_str());
@@ -329,7 +371,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenFileIsEmpty)
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenCheckSumIsNotMatch)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     NormalTranslateJSPandaFile(pf);
@@ -354,7 +396,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenCheckSumIsNotMatch
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenAppVersionCodeIsNotMatch)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     NormalTranslateJSPandaFile(pf);
@@ -374,7 +416,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenAppVersionCodeIsNo
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenVersionCodeIsNotMatch)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     NormalTranslateJSPandaFile(pf);
@@ -385,7 +427,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenVersionCodeIsNotMa
     ASSERT_TRUE(MockConstPoolSnapshot::WriteDataToFile(serializeData, fileName, std::move(header)));
     ASSERT_TRUE(FileExist(fileName.c_str()));
     // deserialize failed when version code is not match
-    CString updatedVersion = "version 205.0.1.125(SP20)";
+    CString updatedVersion = UPDATED_TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> deserializePf = NewMockJSPandaFile();
     ASSERT_FALSE(ConstPoolSnapshot::DeserializeData(thread->GetEcmaVM(), deserializePf.get(), path, updatedVersion));
 }
@@ -393,7 +435,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenVersionCodeIsNotMa
 HWTEST_F_L0(ConstPoolSnapshotTest, ShouldDeserializeFailedWhenHasIncompleteData)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     CString fileName = path + GetSnapshotFileName(pf.get());
     NormalTranslateJSPandaFile(pf);
@@ -412,17 +454,16 @@ HWTEST_F_L0(ConstPoolSnapshotTest, WriteDataToFileMmapFailed)
     std::unique_ptr<SerializeData> serializeData = MockConstPoolSnapshot::GetSerializeData(thread, pf.get());
     ASSERT_NE(serializeData, nullptr);
     // Use an invalid/non-existent directory path to cause mmap failure
-    CString invalidPath =
-        CString("/non_existent_dir/deep/nested/path/") + GetSnapshotFileName(pf.get());
-    CString version = "version 205.0.1.120(SP20)";
+    CString invalidPath = CString(INVALID_MMAP_PATH.data()) + GetSnapshotFileName(pf.get());
+    CString version = TEST_ROM_VERSION.data();
     auto header = NewHeader(version, pf.get());
     ASSERT_FALSE(MockConstPoolSnapshot::WriteDataToFile(serializeData, invalidPath, std::move(header)));
 }
 
 HWTEST_F_L0(ConstPoolSnapshotTest, ReadDataFromFileWithInvalidPath)
 {
-    CString invalidPath = "/non_existent_path/";
-    CString version = "version 205.0.1.120(SP20)";
+    CString invalidPath = INVALID_READ_PATH.data();
+    CString version = TEST_ROM_VERSION.data();
     // Read from non-existent file - should fail
     std::unique_ptr<SerializeData> data = std::make_unique<SerializeData>(thread);
     auto header = NewHeader(version, "");
@@ -454,7 +495,7 @@ HWTEST_F_L0(ConstPoolSnapshotTest, GetSerializeArrayTest)
 HWTEST_F_L0(ConstPoolSnapshotTest, ReadDataFromFileTest)
 {
     CString path = GetSnapshotPath();
-    CString version = "version 205.0.1.120(SP20)";
+    CString version = TEST_ROM_VERSION.data();
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     NormalTranslateJSPandaFile(pf);
     // First serialize
