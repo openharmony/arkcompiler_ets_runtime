@@ -19,11 +19,11 @@
 #include <cmath>
 
 namespace panda::ecmascript {
-static constexpr int MS_PER_SECOND = 1000;
-static constexpr int HOUR_PER_DAY = 24;
-static constexpr int MINUTE_PER_DAY = 24 * 60;
-static constexpr int SECOND_PER_DAY = 24 * 60 * 60;
-static constexpr int MS_PER_DAY = SECOND_PER_DAY * MS_PER_SECOND;
+static constexpr int64_t MS_PER_SECOND = 1000;
+static constexpr int64_t HOUR_PER_DAY = 24;
+static constexpr int64_t MINUTE_PER_DAY = 24 * 60;
+static constexpr int64_t SECOND_PER_DAY = 24 * 60 * 60;
+static constexpr int64_t MS_PER_DAY = SECOND_PER_DAY * MS_PER_SECOND;
 
 int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal)
 {
