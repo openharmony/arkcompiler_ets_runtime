@@ -14,6 +14,8 @@
  */
 #include "ecmascript/module/module_path_helper.h"
 
+#include <charconv>
+
 #include "ecmascript/platform/module.h"
 
 namespace panda::ecmascript {
@@ -960,8 +962,19 @@ ModulePathType ModulePathHelper::ParseVMANameToFileName(const CString &inputPath
         return ModulePathType::INVALID_MODULE_PATH;
     }
 
-    offset = static_cast<uintptr_t>(std::stoull(offsetStr.c_str()));
-    ModulePathType type = static_cast<ModulePathType>(std::stoull(typeStr.c_str()));
+    auto parseUnsigned = [](const CString &value, auto &result) {
+        const char *begin = value.data();
+        const char *end = begin + value.size();
+        auto parsed = std::from_chars(begin, end, result);
+        return parsed.ec == std::errc{} && parsed.ptr == end;
+    };
+    uintptr_t parsedOffset = 0;
+    uint32_t parsedType = 0;
+    if (!parseUnsigned(offsetStr, parsedOffset) || !parseUnsigned(typeStr, parsedType)) {
+        return ModulePathType::INVALID_MODULE_PATH;
+    }
+    offset = parsedOffset;
+    ModulePathType type = static_cast<ModulePathType>(parsedType);
 
     switch (type) {
         case ModulePathType::SHORT_MODULE_PATH:
