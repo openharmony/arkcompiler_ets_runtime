@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
+#include <charconv>
 #include <algorithm>
 #include <vector>
 #if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
@@ -617,9 +618,17 @@ kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn
             size_t keySZ = expectedKey.size();
             size_t strSZ = str.size();
             if (strSZ >= keySZ && str.substr(0, keySZ) == expectedKey) {
-                int RegNum = std::stoi(str.substr(keySZ, strSZ - keySZ));
-                auto value = std::stoi(std::string(Attr.getValueAsString()));
-                info.push_back(std::make_pair(RegNum, value));
+                int regNum = 0;
+                int value = 0;
+                const std::string regText = str.substr(keySZ, strSZ - keySZ);
+                const std::string valueText = std::string(Attr.getValueAsString());
+                auto regParsed = std::from_chars(regText.data(), regText.data() + regText.size(), regNum);
+                auto valueParsed = std::from_chars(valueText.data(), valueText.data() + valueText.size(), value);
+                if (regParsed.ec != std::errc{} || regParsed.ptr != regText.data() + regText.size() ||
+                    valueParsed.ec != std::errc{} || valueParsed.ptr != valueText.data() + valueText.size()) {
+                    continue;
+                }
+                info.push_back(std::make_pair(regNum, value));
                 (void)log;
             }
         }
