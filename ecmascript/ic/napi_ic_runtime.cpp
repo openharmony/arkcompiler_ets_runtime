@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/ic/napi_ic_runtime.h"
+
+#include <charconv>
+
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
@@ -576,9 +579,16 @@ void NapiICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
         JsFrameInfo jsFrameInfo = jsStackInfo.front();
         size_t pos = jsFrameInfo.pos.find(':', 0);
         if (pos != CString::npos) {
-            int lineNumber = std::stoi(jsFrameInfo.pos.substr(0, pos));
-            int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
-            if (!jsFrameInfo.fileName.empty()) {
+            auto parsePosition = [](const std::string &value, int &result) {
+                const char *begin = value.data();
+                const char *end = begin + value.size();
+                auto parsed = std::from_chars(begin, end, result);
+                return parsed.ec == std::errc{} && parsed.ptr == end;
+            };
+            int lineNumber = 0;
+            int columnNumber = 0;
+            if (parsePosition(jsFrameInfo.pos.substr(0, pos), lineNumber) &&
+                parsePosition(jsFrameInfo.pos.substr(pos + 1), columnNumber) && !jsFrameInfo.fileName.empty()) {
                 SourceMap::GetInstance().TranslateUrlPositionBySourceMap(
                     jsFrameInfo.fileName, lineNumber, columnNumber, jsFrameInfo.packageName);
             }
